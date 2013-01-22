@@ -172,7 +172,7 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.dataChanged.connect(self.onLabelListDataChanged)
 
         # Initialize the arrow tool button with an icon and handler
-        iconPath = os.path.split(__file__)[0] + "/icons/arrow.jpg"
+        iconPath = os.path.split(__file__)[0] + "/icons/arrow.png"
         arrowIcon = QIcon(iconPath)
         _labelControlUi.arrowToolButton.setIcon(arrowIcon)
         _labelControlUi.arrowToolButton.setCheckable(True)
