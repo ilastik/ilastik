@@ -16,10 +16,12 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-   
+
+   lazyflow_overview   
    installation
-   overview
+   operator_overview
    advanced
+   request
 
    utilities
 

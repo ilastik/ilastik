@@ -1,5 +1,5 @@
-Overview
-========
+Operator Overview
+=================
 
 In Lazyflow computations are encapsulated by so called **operators**, the inputs and results of a computation
 are provided through named **slots**. A computation that works on two input arrays and provides one result array
