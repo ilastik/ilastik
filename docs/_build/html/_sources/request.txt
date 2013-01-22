@@ -267,6 +267,11 @@ The exception that caused the failure is propagated to the request(s) or thread(
     except:
         sys.stderr("Request failed.")
     
+.. note:: Request failure handling and exception propagation is relatively heavy-weight.  
+	      You can and should rely on it to catch occasional or unexpected failures, but do not rely 
+	      on it as though it were as cheap as a simple if/else statement.  If your requests are 
+	      repeatedly raising and catching exceptions, your performance may suffer.
+
 Exception Propagation
 ---------------------
 
