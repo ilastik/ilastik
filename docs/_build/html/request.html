@@ -1,0 +1,1012 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lazyflow Request Framework &mdash; lazyflow 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
+    <link rel="next" title="Utilities" href="utilities.html" />
+    <link rel="prev" title="Advanced Concepts" href="advanced.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utilities"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="advanced.html" title="Advanced Concepts"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="lazyflow-request-framework">
+<h1><a class="toc-backref" href="#id4">Lazyflow Request Framework</a><a class="headerlink" href="#lazyflow-request-framework" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#lazyflow-request-framework" id="id4">Lazyflow Request Framework</a><ul>
+<li><a class="reference internal" href="#introduction" id="id5">Introduction</a></li>
+<li><a class="reference internal" href="#quick-start" id="id6">Quick Start</a></li>
+<li><a class="reference internal" href="#dependencies" id="id7">Dependencies</a></li>
+<li><a class="reference internal" href="#cancellation" id="id8">Cancellation</a><ul>
+<li><a class="reference internal" href="#handling-cancellation" id="id9">Handling Cancellation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#failed-requests" id="id10">Failed Requests</a><ul>
+<li><a class="reference internal" href="#exception-propagation" id="id11">Exception Propagation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#request-notifications" id="id12">Request Notifications</a><ul>
+<li><a class="reference internal" href="#callback-timing-guarantee" id="id13">Callback Timing Guarantee</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#requestlock-objects" id="id14">RequestLock Objects</a></li>
+<li><a class="reference internal" href="#implementation-details" id="id15">Implementation Details</a><ul>
+<li><a class="reference internal" href="#threadpool" id="id16">ThreadPool</a></li>
+<li><a class="reference internal" href="#thread-context-consistency-guarantee" id="id17">Thread Context Consistency Guarantee</a></li>
+<li><a class="reference internal" href="#request-lifetime" id="id18">Request Lifetime</a></li>
+<li><a class="reference internal" href="#optimization-direct-execution" id="id19">Optimization: Direct Execution</a></li>
+<li><a class="reference internal" href="#foreign-thread-context-vs-request-context" id="id20">Foreign Thread Context vs. Request Context</a></li>
+<li><a class="reference internal" href="#request-priority" id="id21">Request Priority</a></li>
+<li><a class="reference internal" href="#old-api-backwards-compatibility" id="id22">Old API Backwards Compatibility</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#class-reference" id="id23">Class Reference</a><ul>
+<li><a class="reference internal" href="#request" id="id24">Request</a></li>
+<li><a class="reference internal" href="#requestlock" id="id25">RequestLock</a></li>
+<li><a class="reference internal" href="#requestpool" id="id26">RequestPool</a></li>
+<li><a class="reference internal" href="#id3" id="id27">ThreadPool</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h2><a class="toc-backref" href="#id5">Introduction</a><a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>See the Lazyflow Overview section for a brief introduction to the Request Framework and its role within lazyflow.</p>
+<p>The request framework provides infrastructure for scheduling user-defined tasks.  This dependency diagram shows how user-defined workloads depend on the parts of the request system.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_framework_structure.svg"><img alt="request framework dependencies" src="_images/request_framework_structure.svg" /></a>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The request framework is written to allow easy parallelization of computations.
+In Python, the <em>Global Interpreter Lock</em> (GIL) prevents the interpreter from executing two python statements at once.
+This restriction does not apply to C or C++ extensions (as long as they release the GIL).
+Therefore, the Request framework is most useful for workloads that do most of their &#8220;heavy lifting&#8221; within C/C++ extensions.
+For pure Python workloads, the Request Framework doesn&#8217;t provide performance benefits, but may still be useful for the abstractions it provides.</p>
+</div>
+</div>
+<div class="section" id="quick-start">
+<span id="id1"></span><h2><a class="toc-backref" href="#id6">Quick Start</a><a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h2>
+<p>Let&#8217;s start with an example computation.  Suppose you want to smooth an image at two different scales, then subtract the two resulting images.
+A naive implementation of this computation might look like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span>
+
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">):</span>
+    <span class="n">smoothedA</span> <span class="o">=</span> <span class="n">smooth</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span>
+    <span class="n">smoothedB</span> <span class="o">=</span> <span class="n">smooth</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">smoothedA</span> <span class="o">-</span> <span class="n">smoothedB</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">my_image</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above single-threaded approach leaves much room for improvement.  Using the request framework, we can parallelize the workload:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span>
+
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">):</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">r3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="c"># Start executing r3</span>
+    <span class="n">r3</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+    <span class="c"># Wait until both requests are complete</span>
+    <span class="n">smoothedA</span> <span class="o">=</span> <span class="n">r2</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="c"># (Auto-submits)</span>
+    <span class="n">smoothedB</span> <span class="o">=</span> <span class="n">r3</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">smoothedA</span> <span class="o">-</span> <span class="n">smoothedB</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">my_image</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To understand the example, we make a few key observations:</p>
+<ul class="simple">
+<li>Request objects are constructed with a single callable object, which it executes</li>
+<li>Requests do not execute their callable until they have been submitted via <tt class="docutils literal"><span class="pre">Request.submit()</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">Request.wait()</span></tt> automatically calls <tt class="docutils literal"><span class="pre">submit()</span></tt> if the request hasn&#8217;t been submitted yet.</li>
+<li>The callable&#8217;s return value is given as the result of <tt class="docutils literal"><span class="pre">Request.wait()</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">functools.partial</span></tt> (from the python standard library) is a convenient way of creating a new callable object from a function and a set of arguments.</li>
+</ul>
+<p>In cases where we are creating multiple requests and waiting until they are all complete, we can use a RequestPool, which eliminates some boilerplate.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">RequestPool</span>
+
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">):</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">r3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">RequestPool</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">r2</span> <span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">r3</span> <span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">r2</span><span class="o">.</span><span class="n">result</span> <span class="o">-</span> <span class="n">r3</span><span class="o">.</span><span class="n">result</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">my_image</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Okay, in our example, only two of the requests can execute in parallel, so the RequestPool didn&#8217;t save any code in this case.
+Anyway, we have more observations to make note of:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">RequestPool.wait()</span></tt> will block until all requests in the pool have completed.</li>
+<li>All Request objects save their callable&#8217;s return value as an attribute: <tt class="docutils literal"><span class="pre">Request.result</span></tt></li>
+</ul>
+</div>
+<div class="section" id="dependencies">
+<h2><a class="toc-backref" href="#id7">Dependencies</a><a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>Here&#8217;s a visualization of the dependencies between the requests from the quickstart example:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_dependency.svg"><img alt="request dependency diagram" src="_images/request_dependency.svg" /></a>
+</div>
+<p>As you can see, r1 depends on BOTH r2 and r3.  In a typical use case, request dependencies form a tree, but this isn&#8217;t always true.
+Let&#8217;s tweak our example even further.  In the new version, we don&#8217;t already have the input image.  Instead, we compute it in a separate request.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span><span class="p">,</span> <span class="n">compute_sample_image</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">RequestPool</span>
+
+<span class="k">def</span> <span class="nf">waitAndSmooth</span><span class="p">(</span> <span class="n">imageRequest</span><span class="p">,</span> <span class="n">sigma</span> <span class="p">):</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">imageRequest</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">smooth</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">imageRequest</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">):</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">waitAndSmooth</span><span class="p">,</span> <span class="n">imageRequest</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">r3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">waitAndSmooth</span><span class="p">,</span> <span class="n">imageRequest</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">RequestPool</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">r2</span> <span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">r3</span> <span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">r2</span><span class="o">.</span><span class="n">result</span> <span class="o">-</span> <span class="n">r3</span><span class="o">.</span><span class="n">result</span>
+
+<span class="n">r4</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">compute_sample_image</span> <span class="p">)</span>
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">r4</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now our example is getting a little contrived for such a simple computation, but bear with us.
+The request dependencies are visualized in the following diagram:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_dependency_shared.svg"><img alt="request dependency diagram" src="_images/request_dependency_shared.svg" /></a>
+</div>
+</div>
+<div class="section" id="cancellation">
+<h2><a class="toc-backref" href="#id8">Cancellation</a><a class="headerlink" href="#cancellation" title="Permalink to this headline">¶</a></h2>
+<p>The request framework is designed to support interactive GUIs, in which the computational workload may need to be altered on the fly.
+In such an environment, it may be necessary to <em>cancel</em> a request that has already been submitted.</p>
+<p>To cancel a request, simply call <tt class="docutils literal"><span class="pre">Request.cancel()</span></tt></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_work</span> <span class="p">)</span>
+<span class="n">r1</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+<span class="c"># ...</span>
+
+<span class="n">r1</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If the request was waiting for any other requests, those requests will be cancelled, too.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">some_work</span><span class="p">():</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_more_work</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">r2</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_work</span> <span class="p">)</span>
+<span class="n">r1</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+<span class="c"># ...</span>
+
+<span class="n">r1</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span> <span class="c"># Cancels r1 AND r2.</span>
+</pre></div>
+</div>
+<p>But a request will not be cancelled unless ALL of the requests that were waiting for it have already been cancelled.
+For example, suppose the dependency graph for some group of requests looked like this:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_cancellation_example_before.svg"><img alt="request dependency diagram" src="_images/request_cancellation_example_before.svg" /></a>
+</div>
+<p>Now suppose that we call <tt class="docutils literal"><span class="pre">r1.cancel()</span></tt>.  The following diagram shows all cancelled requests in red.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_cancellation_example_after.svg"><img alt="request dependency diagram" src="_images/request_cancellation_example_after.svg" /></a>
+</div>
+<p>Notice that r3 and subsequent requests were <strong>not</strong> cancelled because there is a non-cancelled request (r2) still waiting for it.</p>
+<div class="section" id="handling-cancellation">
+<h3><a class="toc-backref" href="#id9">Handling Cancellation</a><a class="headerlink" href="#handling-cancellation" title="Permalink to this headline">¶</a></h3>
+<p>Within the context of a request, cancellation produces an exception.  When a request has been cancelled, nothing happens at first.
+As soon as the request cedes control to the Request framework by calling <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> on a child request, a cancellation request is raised.
+In a typical application, requests are used to execute pure functional callables.  For pure-functional requests, there&#8217;s no need to handle the cancellation exception.
+However, in some applications, you may want to use requests to modify some external state.
+In that case, you&#8217;ll need to handle the cancellation exception that might be raised any time your request calls <tt class="docutils literal"><span class="pre">wait()</span></tt>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">global_list</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">add_items_to_global_list</span><span class="p">(</span> <span class="n">num_items</span> <span class="p">):</span>
+    <span class="n">initial_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">global_list</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_items</span><span class="p">):</span>
+            <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">get_next_item</span> <span class="p">)</span>
+            <span class="n">next_item</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="c"># Might raise</span>
+            <span class="n">global_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">next_item</span> <span class="p">)</span>
+    <span class="k">except</span> <span class="n">Request</span><span class="o">.</span><span class="n">CancellationException</span><span class="p">:</span>
+        <span class="c"># Restore the previous global state</span>
+        <span class="n">global_list</span> <span class="o">=</span> <span class="n">global_list</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">initial_size</span><span class="p">]</span>
+        <span class="k">raise</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">add_items_to_global_list</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">r1</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+<span class="c"># ...</span>
+
+<span class="n">r1</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span> <span class="c"># Cancels r1 AND r2.</span>
+</pre></div>
+</div>
+<p>In the example above, we catch the <tt class="docutils literal"><span class="pre">Request.CancellationException</span></tt> that might be raised within <tt class="docutils literal"><span class="pre">req.wait()</span></tt>.
+Note that we <strong>re-raise</strong> the exception after we clean up.  Re-raising the cancellation exception isn&#8217;t strictly
+required by the current Request framework implementation, but it is considered best practice nonetheless.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">There is a special corner case that can occur if your request attempts to wait for a request that has <em>already been cancelled</em> from some other thread or request.
+If you attempt to wait for a request that is already cancelled, a <tt class="docutils literal"><span class="pre">Request.InvalidRequestException</span></tt> is raised.</p>
+</div>
+</div>
+</div>
+<div class="section" id="failed-requests">
+<h2><a class="toc-backref" href="#id10">Failed Requests</a><a class="headerlink" href="#failed-requests" title="Permalink to this headline">¶</a></h2>
+<p>If any exception is raised within a request (other than a cancellation exception), the request fails.
+The exception that caused the failure is propagated to the request(s) or thread(s) that are waiting for it.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">some_work</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Something went wrong.&quot;</span><span class="p">)</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_work</span> <span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">(</span><span class="s">&quot;Request failed.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="exception-propagation">
+<h3><a class="toc-backref" href="#id11">Exception Propagation</a><a class="headerlink" href="#exception-propagation" title="Permalink to this headline">¶</a></h3>
+<p>As mentioned above, exceptions raised in a request are propagated backwards to waiting requests.
+There is an interesting consequence of this behavior: For the special case where a request is being waited on by multiple requests,
+a single exception may propagate through multiple callstacks.</p>
+<p>Consider this request dependency graph:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_before.svg" /></a>
+</div>
+<p>Suppose an exception is raised in r1.  The following series of diagrams highlights the requests in which the exception will be seen.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_before.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step1.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step1.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step2.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step2.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step3.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step3.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step4.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step4.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step5.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step5.svg" /></a>
+</div>
+</div>
+</div>
+<div class="section" id="request-notifications">
+<h2><a class="toc-backref" href="#id12">Request Notifications</a><a class="headerlink" href="#request-notifications" title="Permalink to this headline">¶</a></h2>
+<p>For some use-cases, you may want to be notified when a request completes.  Request objects allow you to subscribe callbacks to three notifications:</p>
+<ul class="simple">
+<li>Use <tt class="docutils literal"><span class="pre">Request.notify_finished()</span></tt> to be notified when a request completes <strong>successfully</strong>.</li>
+<li>Use <tt class="docutils literal"><span class="pre">Request.notify_failed()</span></tt> to be notified when a request has <strong>failed</strong> (due to an uncaught exception).</li>
+<li>Use <tt class="docutils literal"><span class="pre">Request.notify_cancelled()</span></tt> to be notified when a request has been <strong>cancelled</strong>.</li>
+</ul>
+<p>Here&#8217;s an example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">some_work</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Do some work.&quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">handle_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;The result was:&quot;</span><span class="p">,</span> <span class="n">result</span>
+
+<span class="k">def</span> <span class="nf">handle_failure</span><span class="p">(</span><span class="n">ex</span><span class="p">):</span>
+    <span class="k">print</span> <span class="s">&quot;The request failed due a {} exception&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span> <span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">handle_cancelled</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&quot;The request was cancelled&quot;</span>
+
+<span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_work</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_finished</span><span class="p">(</span> <span class="n">handle_result</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_failed</span><span class="p">(</span> <span class="n">handle_failure</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_cancelled</span><span class="p">(</span> <span class="n">handle_cancelled</span> <span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&quot;Request is no longer executing.&quot;</span>
+</pre></div>
+</div>
+<div class="section" id="callback-timing-guarantee">
+<h3><a class="toc-backref" href="#id13">Callback Timing Guarantee</a><a class="headerlink" href="#callback-timing-guarantee" title="Permalink to this headline">¶</a></h3>
+<p>If you&#8217;re paying very close attention, you might be thinking of a question:</p>
+<p>Does <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> return <strong>before</strong> or <strong>after</strong> the callbacks are notified?
+In other words, after I <tt class="docutils literal"><span class="pre">wait()</span></tt> for a request, is it guaranteed that my callbacks have finished executing?</p>
+<p>Answer:</p>
+<ul class="simple">
+<li>Callbacks that were subscribed (via <tt class="docutils literal"><span class="pre">notify_finished</span></tt>, <tt class="docutils literal"><span class="pre">notify_failed</span></tt>, <tt class="docutils literal"><span class="pre">notify_cancelled</span></tt>)
+<em>before</em> the call to <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> are <em>guaranteed</em> to be called before <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> returns.</li>
+<li>Callbacks that are subscribed <em>after</em> you call <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> will eventually be called,
+but the timing of the notification is <strong>not</strong> guaranteed to be before <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> returns.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="requestlock-objects">
+<h2><a class="toc-backref" href="#id14">RequestLock Objects</a><a class="headerlink" href="#requestlock-objects" title="Permalink to this headline">¶</a></h2>
+<p>&#8220;Simultaneous&#8221; requests share the same pool of OS threads.
+The usual <tt class="docutils literal"><span class="pre">Lock</span></tt> and <tt class="docutils literal"><span class="pre">RLock</span></tt> objects from the python standard threading module will <strong>not</strong> function as intended within the context of a Request.**
+The Request Framework provides an alternative lock, which <strong>can</strong> be used within a Request.  The <tt class="docutils literal"><span class="pre">request.RequestLock</span></tt> class has the same API as
+<tt class="docutils literal"><span class="pre">threading.Lock</span></tt>, and can be used as a drop-in replacement.  See the <tt class="docutils literal"><span class="pre">RequestLock</span></tt> documentation for further details.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">**Actually, <tt class="docutils literal"><span class="pre">threading.Lock</span></tt> <em>can</em> be used within a Request if used carefully.
+As long as <tt class="docutils literal"><span class="pre">wait()</span></tt> is not called while the lock is held, there is no increased risk of deadlock or unexpected race conditions.
+The <tt class="docutils literal"><span class="pre">ResultLock</span></tt> class relieves the developer of this constraint.</p>
+</div>
+</div>
+<div class="section" id="implementation-details">
+<h2><a class="toc-backref" href="#id15">Implementation Details</a><a class="headerlink" href="#implementation-details" title="Permalink to this headline">¶</a></h2>
+<p>This section is of interest to developers who need to maintain or experiment with the implementation of the Request Framework.</p>
+<div class="section" id="threadpool">
+<h3><a class="toc-backref" href="#id16">ThreadPool</a><a class="headerlink" href="#threadpool" title="Permalink to this headline">¶</a></h3>
+<p>As indicated in the dependency diagram in the introduction, the ThreadPool class is an independent module.
+In fact, since it does not depend on the rest of the Request Framework in any way, it could be useful as a general thread pool utility for other applications.
+Tasks are added to the ThreadPool via <tt class="docutils literal"><span class="pre">ThreadPool.wake_up()</span></tt>.  At first, they sit in a queue of tasks that is shared by all Worker threads.
+Each Worker thread keeps its own queue of tasks to execute.  When a Worker&#8217;s task queue becomes empty, it pulls a task from the shared queue.</p>
+</div>
+<div class="section" id="thread-context-consistency-guarantee">
+<span id="thread-context-guarantee"></span><h3><a class="toc-backref" href="#id17">Thread Context Consistency Guarantee</a><a class="headerlink" href="#thread-context-consistency-guarantee" title="Permalink to this headline">¶</a></h3>
+<p>For simple tasks (e.g. plain functions), that&#8217;s the end of the story.  For more complicated cases (e.g. requests, generators, etc.) that may
+be woken up multiple times, the <tt class="docutils literal"><span class="pre">ThreadPool</span></tt> provides an important guarantee: a given task will always execute on the SAME Worker thread, every time
+it is woken up.  The Worker thread chosen for a particular task is arbitrary for the first time it is woken up, but it will return to the same
+Worker thread for each subsequent call to <tt class="docutils literal"><span class="pre">wake_up()</span></tt>.  This guarantee is essential for coroutine based tasks based on greenlets (e.g. all Requests).</p>
+</div>
+<div class="section" id="request-lifetime">
+<h3><a class="toc-backref" href="#id18">Request Lifetime</a><a class="headerlink" href="#request-lifetime" title="Permalink to this headline">¶</a></h3>
+<p>We&#8217;ll use the following diagram to track the state of a request throughout its lifetime.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_blank.svg"><img alt="empty request lifetime diagram" src="_images/request_lifetime_blank.svg" /></a>
+</div>
+<p>Let&#8217;s consider the first example we used in the <a class="reference internal" href="#quick-start"><em>Quick Start</em></a> section from above:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span>
+
+<span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">):</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">r3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="c"># Start executing r3</span>
+    <span class="n">r3</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+    <span class="c"># Wait until both requests are complete</span>
+    <span class="n">smoothedA</span> <span class="o">=</span> <span class="n">r2</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="c"># (Auto-submits)</span>
+    <span class="n">smoothedB</span> <span class="o">=</span> <span class="n">r3</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">smoothedA</span> <span class="o">-</span> <span class="n">smoothedB</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">my_image</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The first request is created on this line:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">r1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">my_image</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="p">)</span>
+</pre></div>
+</div>
+<p>Since it hasn&#8217;t been submitted yet, it isn&#8217;t yet known to the ThreadPool:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_not_submitted.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r1_not_submitted.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>The next line (implicitly) submits the request and immediately blocks for it.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">diff_of_smoothed</span> <span class="o">=</span> <span class="n">r1</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>When the request is submitted, it is given to the ThreadPool.  Since the ThreadPool hasn&#8217;t seen this request previously, it ends up in the shared task queue.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_unassigned.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r1_unassigned.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Next, it is picked up by one of the ThreadPool&#8217;s worker threads:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_A.svg"><img alt="r1 executing" src="_images/request_lifetime_r1_executing_A.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>When r1 starts executing, it creates two new requests:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">r2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaA</span><span class="p">)</span> <span class="p">)</span>
+<span class="n">r3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">smooth</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">sigmaB</span><span class="p">)</span> <span class="p">)</span>
+</pre></div>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_r3_not_submitted.svg"><img alt="r2 and r3 not yet submitted" src="_images/request_lifetime_r2_r3_not_submitted.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>First, it submits r3:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Start executing r3</span>
+<span class="n">r3</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_submitted.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r3_submitted.svg" /></a>
+</div>
+<p>...which is eventually picked up by a ThreadPool Worker thread:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_executing_A.svg"><img alt="r3 executing" src="_images/request_lifetime_r3_executing_A.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>For the sake of illustration, let&#8217;s suppose that some other part of our app has also just submitted some requests:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_extra_requests_submitted.svg"><img alt="r2 submitted" src="_images/request_lifetime_extra_requests_submitted.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Back in r1, we submit and wait for r2.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">smoothedA</span> <span class="o">=</span> <span class="n">r2</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span> <span class="c"># (Auto-submits)</span>
+</pre></div>
+</div>
+<p>This happens in two steps.  First, r2 is submitted:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_submitted.svg"><img alt="r2 submitted" src="_images/request_lifetime_r2_submitted.svg" /></a>
+</div>
+<p>Next, r1 is <em>suspended</em> (since it is now waiting for r2).</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended.svg"><img alt="r1 suspended" src="_images/request_lifetime_r1_suspended.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>This next step exhibits the advantage of the Request Framework over a simple ThreadPool.
+Since r1 has been suspended, it <em>no longer ties up a Thread</em>.
+The newly available worker now picks up a request from the shared queue:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended_B.svg"><img alt="r1 suspended" src="_images/request_lifetime_r1_suspended_B.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Eventually, each request either completes or is suspended, and r2 makes it to the front of the shared queue:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_front_of_queue.svg"><img alt="r1 suspended" src="_images/request_lifetime_r2_front_of_queue.svg" /></a>
+</div>
+<p>...and gets picked up by a free worker:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing.svg"><img alt="r1 suspended" src="_images/request_lifetime_r2_executing.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Meanwhile, r3 finishes execution:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_finished.svg"><img alt="r1 suspended" src="_images/request_lifetime_r3_finished.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>After a while, suppose other requests (from other parts of the app) continue to be submitted:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing_other_requests_woken.svg"><img alt="r2 executing, other requests woken" src="_images/request_lifetime_r2_executing_other_requests_woken.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Eventually, r2 finishes execution:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_finished.svg"><img alt="r2 finished" src="_images/request_lifetime_r2_finished.svg" /></a>
+</div>
+<hr class="docutils" />
+<p>Since r2 and r3 are both complete, r1 can finally be woken up again:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_woken_up.svg"><img alt="r1 woken up" src="_images/request_lifetime_r1_woken_up.svg" /></a>
+</div>
+<p>The last figure shows something important.  Did you catch it?  When r1 was <strong>initially</strong> submitted to the ThreadPool, it didn&#8217;t matter which Worker was chosen to execute it in.
+But now that it is being re-awoken, it <strong>must</strong> execute on the same Worker that it used previously.
+It is not added to the ThreadPool&#8217;s shared queue.
+Also, it does not execute on the second worker thread, even though (in our example) that thread happens to be unoccupied at the moment.
+It is added to the first worker&#8217;s queue.  This is a constraint imposed by the greenlet package, which is used to implement Request coroutines.
+See also: <a class="reference internal" href="#thread-context-guarantee"><em>Thread Context Consistency Guarantee</em></a>.</p>
+<hr class="docutils" />
+<p>When the first worker becomes free, r1 can finally resume execution:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_B.svg"><img alt="r1 executing again" src="_images/request_lifetime_r1_executing_B.svg" /></a>
+</div>
+<p>...and eventually r1 finishes execution.</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_finished.svg"><img alt="r1 finished" src="_images/request_lifetime_r1_finished.svg" /></a>
+</div>
+</div>
+<div class="section" id="optimization-direct-execution">
+<h3><a class="toc-backref" href="#id19">Optimization: Direct Execution</a><a class="headerlink" href="#optimization-direct-execution" title="Permalink to this headline">¶</a></h3>
+<p>From the user&#8217;s perspective, calling <tt class="docutils literal"><span class="pre">req.wait()</span></tt> is equivalent to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">req</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+<span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>But under the hood, the Request framework uses an optimization for the case where <tt class="docutils literal"><span class="pre">req.wait()</span></tt> is called on a request that hasn&#8217;t been submitted yet.
+Instead of submitting the request to the ThreadPool, the request is simply executed <em>synchronously</em>.
+There is no need to incur the overhead of creating a new greenlet, queueing the request, and so on.
+With this optimization, we don&#8217;t have to pay a significant penalty for using requests in cases where no parallelism was needed in the first place.</p>
+</div>
+<div class="section" id="foreign-thread-context-vs-request-context">
+<h3><a class="toc-backref" href="#id20">Foreign Thread Context vs. Request Context</a><a class="headerlink" href="#foreign-thread-context-vs-request-context" title="Permalink to this headline">¶</a></h3>
+<p>Internally, the Request Framework distinguishes between two types of execution contexts: <tt class="docutils literal"><span class="pre">request.RequestGreenlet</span></tt> and &#8220;normal&#8221; a.k.a &#8220;foreign&#8221; threads.
+If a Request is waited upon from within a foreign thread, we don&#8217;t attempt to suspend the foreign thread.
+Instead, we simply use a regular threading.Event to wait for the Request to complete.
+The current context is obtained by calling the classmethod <tt class="docutils literal"><span class="pre">Request.current_request()</span></tt>.  It returns <tt class="docutils literal"><span class="pre">None</span></tt> if the current context is a &#8220;foreign&#8221; thread.</p>
+</div>
+<div class="section" id="request-priority">
+<h3><a class="toc-backref" href="#id21">Request Priority</a><a class="headerlink" href="#request-priority" title="Permalink to this headline">¶</a></h3>
+<p>The queue class used by the <tt class="docutils literal"><span class="pre">ThreadPool</span></tt> can be easily configured.  One of the options is a priority queue, in which tasks are ordered according to their implementation of <tt class="docutils literal"><span class="pre">__lt__</span></tt>.
+Requests are prioritized according to a simple rule: whichever request has the oldest ancestor (i.e. the request that spawned it) has higher priority.
+If two requests have a common ancestor, then their next-oldest ancestors are compared, and so on.  This way, we hope to avoid cache and RAM thrashing that might be
+encountered if newer requests were to &#8220;cut in line&#8221; in front of older requests, preventing the old requests from finishing as quickly as possible.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This prioritization scheme is simple, and could maybe be improved.  Fortunately, the ThreadPool class is written to allow easy experimentation with different queueing schemes.</p>
+</div>
+</div>
+<div class="section" id="old-api-backwards-compatibility">
+<h3><a class="toc-backref" href="#id22">Old API Backwards Compatibility</a><a class="headerlink" href="#old-api-backwards-compatibility" title="Permalink to this headline">¶</a></h3>
+<p>As a temporary convenience for migration to the latest version of the Request Framework, a few methods from the old API have been provided:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">Request.onFinish()</span></tt> (now replaced with <tt class="docutils literal"><span class="pre">Request.notify_finished()</span></tt>)</li>
+<li><tt class="docutils literal"><span class="pre">Request.onCancel()</span></tt> (now replaced with <tt class="docutils literal"><span class="pre">Request.notify_cancelled()</span></tt>)</li>
+<li><tt class="docutils literal"><span class="pre">notify()</span></tt> (now replaced with <tt class="docutils literal"><span class="pre">Request.submit()</span></tt> followed by <tt class="docutils literal"><span class="pre">Request.notify_finished()</span></tt>)</li>
+<li><tt class="docutils literal"><span class="pre">Request.allocate()</span></tt> (not supported any more)</li>
+<li><tt class="docutils literal"><span class="pre">Request.getResult()</span></tt> (now replaced with <tt class="docutils literal"><span class="pre">Request.result</span></tt>)</li>
+<li><tt class="docutils literal"><span class="pre">Request.writeInto()</span></tt> (This member is specific to the Lazyflow Graph Framework.  It will soon be implemented there, in a special subclass of <tt class="docutils literal"><span class="pre">Request</span></tt>.)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="class-reference">
+<h2><a class="toc-backref" href="#id23">Class Reference</a><a class="headerlink" href="#class-reference" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="request">
+<span id="id2"></span><h3><a class="toc-backref" href="#id24">Request</a><a class="headerlink" href="#request" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="lazyflow.request.Request">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.</tt><tt class="descname">Request</tt><big>(</big><em>fn</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="lazyflow.request.Request.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>fn</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.
+Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="lazyflow.request.Request.CancellationException">
+<em class="property">exception </em><tt class="descname">CancellationException</tt><a class="headerlink" href="#lazyflow.request.Request.CancellationException" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is raised when the whole request has been cancelled.
+If you catch this exception from within a request, clean up and return immediately.
+If you have nothing to clean up, you are not required to handle this exception.</p>
+<p>Implementation details:
+This exception is raised when the cancel flag is checked in the wait() function:
+- immediately before the request is suspended OR
+- immediately after the request is woken up from suspension</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="lazyflow.request.Request.CircularWaitException">
+<em class="property">exception </em><tt class="descclassname">Request.</tt><tt class="descname">CircularWaitException</tt><a class="headerlink" href="#lazyflow.request.Request.CircularWaitException" title="Permalink to this definition">¶</a></dt>
+<dd><p>This exception is raised if a request calls wait() on itself.
+Currently, this only catches the most basic case.
+No attempt is made to detect indirect cycles
+(e.g. if req.wait() is called from within a req&#8217;s own child.),
+so don&#8217;t rely on it to catch tricky deadlocks due to indirect self-waiting.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="lazyflow.request.Request.InvalidRequestException">
+<em class="property">exception </em><tt class="descclassname">Request.</tt><tt class="descname">InvalidRequestException</tt><a class="headerlink" href="#lazyflow.request.Request.InvalidRequestException" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is raised when calling wait on a request that has already been cancelled,
+which can only happen if the request you&#8217;re waiting for was spawned elsewhere 
+(i.e. you are waiting for someone else&#8217;s request to avoid duplicate work).
+When this occurs, you will typically want to restart the request yourself.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="lazyflow.request.Request.TimeoutException">
+<em class="property">exception </em><tt class="descclassname">Request.</tt><tt class="descname">TimeoutException</tt><a class="headerlink" href="#lazyflow.request.Request.TimeoutException" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is raised if a call to wait() times out in the context of a foreign thread.
+See <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> for details.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="lazyflow.request.Request.assigned_worker">
+<tt class="descclassname">Request.</tt><tt class="descname">assigned_worker</tt><a class="headerlink" href="#lazyflow.request.Request.assigned_worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>This member is accessed by the ThreadPool to determine which Worker thread this request belongs to.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.cancel">
+<tt class="descclassname">Request.</tt><tt class="descname">cancel</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to cancel this request and all requests that it spawned.
+No request will be cancelled if other non-cancelled requests are waiting for its results.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.clean">
+<tt class="descclassname">Request.</tt><tt class="descname">clean</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.clean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all state from the request, for cleanup purposes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.notify_cancelled">
+<tt class="descclassname">Request.</tt><tt class="descname">notify_cancelled</tt><big>(</big><em>fn</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.notify_cancelled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to be called when this request is finished due to cancellation.
+If we&#8217;re already finished and cancelled, call it now.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request is cancelled.  Signature: fn()</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.notify_failed">
+<tt class="descclassname">Request.</tt><tt class="descname">notify_failed</tt><big>(</big><em>fn</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.notify_failed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to be called when this request is finished due to failure (an exception was raised).
+If we&#8217;re already failed, call it now.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.notify_finished">
+<tt class="descclassname">Request.</tt><tt class="descname">notify_finished</tt><big>(</big><em>fn</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.notify_finished" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to be called when this request is finished.
+If we&#8217;re already finished, call it now.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to be notified.  Signature: fn(result)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="lazyflow.request.Request.result">
+<tt class="descclassname">Request.</tt><tt class="descname">result</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.request.Request.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>After this request finishes execution, this attribute holds the return value from the workload function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.submit">
+<tt class="descclassname">Request.</tt><tt class="descname">submit</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.submit" title="Permalink to this definition">¶</a></dt>
+<dd><p>If this request isn&#8217;t started yet, schedule it to be started.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.Request.wait">
+<tt class="descclassname">Request.</tt><tt class="descname">wait</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start this request if necessary, then wait for it to complete.  Return the request&#8217;s result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> &#8211; If running within a request, this parameter must be None.
+If running within the context of a foreign (non-request) thread, 
+a timeout may be specified in seconds (floating-point).
+If the request does not complete within the timeout period, 
+then a Request.TimeoutException is raised.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="requestlock">
+<h3><a class="toc-backref" href="#id25">RequestLock</a><a class="headerlink" href="#requestlock" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="lazyflow.request.RequestLock">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.</tt><tt class="descname">RequestLock</tt><a class="headerlink" href="#lazyflow.request.RequestLock" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request-aware lock.  Implements the same interface as threading.Lock.
+If acquire() is called from a normal thread, the the lock blocks the thread as usual.
+If acquire() is called from a Request, then the request is suspended so that another Request can be resumed on the thread.</p>
+<p>Requests and normal threads can <em>share</em> access to a RequestLock.
+That is, they compete equally for access to the lock.</p>
+<p>Implementation detail:  Depends on the ability to call two <em>private</em> Request methods: _suspend() and _wake_up().</p>
+<dl class="method">
+<dt id="lazyflow.request.RequestLock.acquire">
+<tt class="descname">acquire</tt><big>(</big><em>blocking=True</em><big>)</big><a class="headerlink" href="#lazyflow.request.RequestLock.acquire" title="Permalink to this definition">¶</a></dt>
+<dd><p>Acquire the lock.  If <cite>blocking</cite> is True, block until the lock is available.
+If <cite>blocking</cite> is False, don&#8217;t wait and return False if the lock couldn&#8217;t be acquired immediately.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>blocking</strong> &#8211; Same as in threading.Lock</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestLock.locked">
+<tt class="descname">locked</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestLock.locked" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if lock is currently held by some thread or request.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestLock.release">
+<tt class="descname">release</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestLock.release" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release the lock so that another request or thread can acquire it.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="requestpool">
+<h3><a class="toc-backref" href="#id26">RequestPool</a><a class="headerlink" href="#requestpool" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="lazyflow.request.RequestPool">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.</tt><tt class="descname">RequestPool</tt><a class="headerlink" href="#lazyflow.request.RequestPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience class for submitting a batch of requests and waiting until they are all complete.
+Requests can not be added to the pool after it has already started.
+Not threadsafe (don&#8217;t add requests from more than one thread).</p>
+<dl class="exception">
+<dt id="lazyflow.request.RequestPool.RequestPoolError">
+<em class="property">exception </em><tt class="descname">RequestPoolError</tt><a class="headerlink" href="#lazyflow.request.RequestPool.RequestPoolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised if you attempt to use the Pool in a manner that it isn&#8217;t designed for.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.add">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">add</tt><big>(</big><em>req</em><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.cancel">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">cancel</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel all requests in the pool.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.clean">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">clean</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.clean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Release our handles to all requests in the pool, for cleanup purposes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.request">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">request</tt><big>(</big><em>func</em><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.request" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>Deprecated method</strong>.  Convenience function to construct a request for the given callable and add it to the pool.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.submit">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">submit</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.submit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.RequestPool.wait">
+<tt class="descclassname">RequestPool.</tt><tt class="descname">wait</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.RequestPool.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for all requests in the pool to complete.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="id3">
+<h3><a class="toc-backref" href="#id27">ThreadPool</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="lazyflow.request.threadPool.ThreadPool">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.threadPool.</tt><tt class="descname">ThreadPool</tt><big>(</big><em>num_workers</em>, <em>queue_type=&lt;class 'lazyflow.request.threadPool.PriorityQueue'&gt;</em><big>)</big><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#ThreadPool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.ThreadPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manages a set of worker threads and dispatches tasks to them.</p>
+<dl class="method">
+<dt id="lazyflow.request.threadPool.ThreadPool.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>num_workers</em>, <em>queue_type=&lt;class 'lazyflow.request.threadPool.PriorityQueue'&gt;</em><big>)</big><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#ThreadPool.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.ThreadPool.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.  Starts all workers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>num_workers</strong> &#8211; The number of worker threads to create.</li>
+<li><strong>queue_type</strong> &#8211; The type of queue to use for prioritizing tasks.  Possible queue types include <a class="reference internal" href="#lazyflow.request.threadPool.PriorityQueue" title="lazyflow.request.threadPool.PriorityQueue"><tt class="xref py py-class docutils literal"><span class="pre">PriorityQueue</span></tt></a>,
+<a class="reference internal" href="#lazyflow.request.threadPool.FifoQueue" title="lazyflow.request.threadPool.FifoQueue"><tt class="xref py py-class docutils literal"><span class="pre">FifoQueue</span></tt></a>, and <a class="reference internal" href="#lazyflow.request.threadPool.LifoQueue" title="lazyflow.request.threadPool.LifoQueue"><tt class="xref py py-class docutils literal"><span class="pre">LifoQueue</span></tt></a>, or any class with <tt class="docutils literal"><span class="pre">push()</span></tt>, <tt class="docutils literal"><span class="pre">pop()</span></tt>, and <tt class="docutils literal"><span class="pre">__len__()</span></tt> methods.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.threadPool.ThreadPool.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#ThreadPool.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.ThreadPool.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop all threads in the pool, and block for them to complete.
+Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.threadPool.ThreadPool.wake_up">
+<tt class="descname">wake_up</tt><big>(</big><em>task</em><big>)</big><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#ThreadPool.wake_up"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.ThreadPool.wake_up" title="Permalink to this definition">¶</a></dt>
+<dd><p>Schedule the given task on the worker that is assigned to it.
+If it has no assigned worker yet, assign it to the first worker that becomes available.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="lazyflow.request.threadPool.PriorityQueue">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.threadPool.</tt><tt class="descname">PriorityQueue</tt><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#PriorityQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.PriorityQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple threadsafe heap based on the python heapq module.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="lazyflow.request.threadPool.FifoQueue">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.threadPool.</tt><tt class="descname">FifoQueue</tt><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#FifoQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.FifoQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple FIFO queue based on collections.deque.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="lazyflow.request.threadPool.LifoQueue">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.threadPool.</tt><tt class="descname">LifoQueue</tt><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#LifoQueue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.LifoQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple LIFO queue based on collections.deque.</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lazyflow Request Framework</a><ul>
+<li><a class="reference internal" href="#introduction">Introduction</a></li>
+<li><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#cancellation">Cancellation</a><ul>
+<li><a class="reference internal" href="#handling-cancellation">Handling Cancellation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#failed-requests">Failed Requests</a><ul>
+<li><a class="reference internal" href="#exception-propagation">Exception Propagation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#request-notifications">Request Notifications</a><ul>
+<li><a class="reference internal" href="#callback-timing-guarantee">Callback Timing Guarantee</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#requestlock-objects">RequestLock Objects</a></li>
+<li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
+<li><a class="reference internal" href="#threadpool">ThreadPool</a></li>
+<li><a class="reference internal" href="#thread-context-consistency-guarantee">Thread Context Consistency Guarantee</a></li>
+<li><a class="reference internal" href="#request-lifetime">Request Lifetime</a></li>
+<li><a class="reference internal" href="#optimization-direct-execution">Optimization: Direct Execution</a></li>
+<li><a class="reference internal" href="#foreign-thread-context-vs-request-context">Foreign Thread Context vs. Request Context</a></li>
+<li><a class="reference internal" href="#request-priority">Request Priority</a></li>
+<li><a class="reference internal" href="#old-api-backwards-compatibility">Old API Backwards Compatibility</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#class-reference">Class Reference</a><ul>
+<li><a class="reference internal" href="#request">Request</a></li>
+<li><a class="reference internal" href="#requestlock">RequestLock</a></li>
+<li><a class="reference internal" href="#requestpool">RequestPool</a></li>
+<li><a class="reference internal" href="#id3">ThreadPool</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="advanced.html"
+                        title="previous chapter">Advanced Concepts</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="utilities.html"
+                        title="next chapter">Utilities</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/request.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utilities"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="advanced.html" title="Advanced Concepts"
+             >previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

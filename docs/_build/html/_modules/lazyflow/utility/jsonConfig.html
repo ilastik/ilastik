@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>lazyflow.utility.jsonConfig &mdash; lazyflow v0.1 documentation</title>
+    <title>lazyflow.utility.jsonConfig &mdash; lazyflow 0.1 documentation</title>
+    
     <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
-    <link rel="top" title="lazyflow v0.1 documentation" href="../../../index.html" />
+    <link rel="top" title="lazyflow 0.1 documentation" href="../../../index.html" />
     <link rel="up" title="lazyflow.utility" href="../utility.html" /> 
   </head>
   <body>
@@ -35,7 +38,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+        <li><a href="../../../index.html">lazyflow 0.1 documentation</a> &raquo;</li>
           <li><a href="../../index.html" >Module code</a> &raquo;</li>
           <li><a href="../utility.html" accesskey="U">lazyflow.utility</a> &raquo;</li> 
       </ul>
@@ -47,14 +50,16 @@
           <div class="body">
             
   <h1>Source code for lazyflow.utility.jsonConfig</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="c"># We import numpy here so that eval() understands names like &quot;numpy.uint8&quot;</span>
 
-<span class="k">class</span> <span class="nc">Namespace</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="Namespace"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.Namespace">[docs]</a><span class="k">class</span> <span class="nc">Namespace</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="Namespace"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.Namespace">[docs]</a><span class="sd">    Provides the same functionality as:</span>
+<span class="sd">    Provides the same functionality as:</span>
 <span class="sd">    </span>
-<span class="sd">    .. code_block:: python</span>
+<span class="sd">    .. code-block:: python</span>
 <span class="sd">    </span>
 <span class="sd">        class Namespace(object):</span>
 <span class="sd">            pass</span>
@@ -103,9 +108,9 @@
 
     <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
-
+</div>
 <span class="k">class</span> <span class="nc">AutoEval</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span></div>
+    <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Callable that serves as a pseudo-type.</span>
 <span class="sd">    Converts a value to a specific type, unless the value is a string, in which case it is evaluated first.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -174,9 +179,9 @@
             <span class="k">return</span> <span class="n">o</span><span class="o">.</span><span class="n">__name__</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">(</span> <span class="n">JsonConfigEncoder</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
 
-<span class="k">class</span> <span class="nc">JsonConfigParser</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+<div class="viewcode-block" id="JsonConfigParser"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser">[docs]</a><span class="k">class</span> <span class="nc">JsonConfigParser</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="JsonConfigParser"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser">[docs]</a><span class="sd">    Simple config schema for json config files.</span>
+<span class="sd">    Simple config schema for json config files.</span>
 <span class="sd">    Currently, only a very small set of json is supported.</span>
 <span class="sd">    The schema fields must be a single non-nested dictionary of name : type (or pseudo-type) pairs.</span>
 <span class="sd">    </span>
@@ -192,36 +197,38 @@
 <span class="sd">    &gt;&gt;&gt; </span>
 <span class="sd">    &gt;&gt;&gt; # Write a config file to disk for this example.</span>
 <span class="sd">    &gt;&gt;&gt; example_file_str = \\</span>
-<span class="sd">    ... &#39;{\\</span>
-<span class="sd">    ...   &quot;_schema_name&quot; : &quot;example-schema&quot;,\\</span>
-<span class="sd">    ...   &quot;_schema_version&quot; : 1.0,\\</span>
-<span class="sd">    ... \\</span>
-<span class="sd">    ...   &quot;shoe_size&quot; : 12,\\</span>
-<span class="sd">    ...   &quot;color&quot; : &quot;red&quot;,\\</span>
-<span class="sd">    ...   &quot;ignored_field&quot; : &quot;Fields that are unrecognized by the schema are ignored.&quot;\\</span>
-<span class="sd">    ... }&#39;</span>
-<span class="sd">    &gt;&gt;&gt; with open(&#39;/tmp/example_config.json&#39;, &#39;w&#39;) as f:</span>
-<span class="sd">    ...   f.write(example_file_str) </span>
-<span class="sd">    &gt;&gt;&gt;</span>
-<span class="sd">    &gt;&gt;&gt; # Create a parser that understands your schema</span>
-<span class="sd">    &gt;&gt;&gt; parser = JsonConfigParser( SchemaFields )</span>
-<span class="sd">    &gt;&gt;&gt; </span>
-<span class="sd">    &gt;&gt;&gt; # Parse the config file</span>
-<span class="sd">    &gt;&gt;&gt; parsedFields = parser.parseConfigFile(&#39;/tmp/example_config.json&#39;)</span>
-<span class="sd">    &gt;&gt;&gt; print parsedFields.shoe_size</span>
-<span class="sd">    12</span>
-<span class="sd">    &gt;&gt;&gt; print parsedFields.color</span>
-<span class="sd">    red</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    ... \&quot;&quot;&quot;</span>
+    <span class="o">...</span> <span class="p">{</span>
+    <span class="o">...</span>   <span class="s">&quot;_schema_name&quot;</span> <span class="p">:</span> <span class="s">&quot;example-schema&quot;</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;_schema_version&quot;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="o">...</span> 
+    <span class="o">...</span>   <span class="s">&quot;shoe_size&quot;</span> <span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;color&quot;</span> <span class="p">:</span> <span class="s">&quot;red&quot;</span><span class="p">,</span>
+    <span class="o">...</span>   <span class="s">&quot;ignored_field&quot;</span> <span class="p">:</span> <span class="s">&quot;Fields that are unrecognized by the schema are ignored.&quot;</span>
+    <span class="o">...</span> <span class="p">}</span>
+    <span class="o">...</span> \<span class="s">&quot;&quot;&quot;</span>
+<span class="s">    &gt;&gt;&gt; with open(&#39;/tmp/example_config.json&#39;, &#39;w&#39;) as f:</span>
+<span class="s">    ...   f.write(example_file_str)</span>
+<span class="s">    &gt;&gt;&gt; </span>
+<span class="s">    &gt;&gt;&gt; # Create a parser that understands your schema</span>
+<span class="s">    &gt;&gt;&gt; parser = JsonConfigParser( SchemaFields )</span>
+<span class="s">    &gt;&gt;&gt; </span>
+<span class="s">    &gt;&gt;&gt; # Parse the config file</span>
+<span class="s">    &gt;&gt;&gt; parsedFields = parser.parseConfigFile(&#39;/tmp/example_config.json&#39;)</span>
+<span class="s">    &gt;&gt;&gt; print parsedFields.shoe_size</span>
+<span class="s">    12</span>
+<span class="s">    &gt;&gt;&gt; print parsedFields.color</span>
+<span class="s">    red</span>
+<span class="s">    &quot;&quot;&quot;</span>
     <span class="k">class</span> <span class="nc">ParsingError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
         <span class="k">pass</span>
     
     <span class="k">class</span> <span class="nc">SchemaError</span><span class="p">(</span><span class="n">ParsingError</span><span class="p">):</span>
         <span class="k">pass</span>
     
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">fields</span> <span class="p">):</span>
+<div class="viewcode-block" id="JsonConfigParser.__init__"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">fields</span> <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
-<div class="viewcode-block" id="JsonConfigParser.__init__"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.__init__">[docs]</a>        <span class="k">assert</span> <span class="s">&#39;_schema_name&#39;</span> <span class="ow">in</span> <span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s">&quot;JsonConfig Schema must have a field called &#39;_schema_name&#39;&quot;</span>
+        <span class="k">assert</span> <span class="s">&#39;_schema_name&#39;</span> <span class="ow">in</span> <span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s">&quot;JsonConfig Schema must have a field called &#39;_schema_name&#39;&quot;</span>
         <span class="k">assert</span> <span class="s">&#39;_schema_version&#39;</span> <span class="ow">in</span> <span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s">&quot;JsonConfig Schema must have a field called &#39;_schema_version&#39;&quot;</span>
 
         <span class="c"># Special case for the required schema fields</span>
@@ -230,10 +237,10 @@
     
         <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span>
-
-    <span class="k">def</span> <span class="nf">parseConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="JsonConfigParser.parseConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">[docs]</a><span class="sd">        Parse the JSON file at the given path into a Namespace object that provides easy access to the config contents.</span>
+</div>
+<div class="viewcode-block" id="JsonConfigParser.parseConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">[docs]</a>    <span class="k">def</span> <span class="nf">parseConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parse the JSON file at the given path into a :py:class:`Namespace` object that provides easy access to the config contents.</span>
 <span class="sd">        Fields are converted from default JSON types into the types specified by the schema.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">)</span> <span class="k">as</span> <span class="n">configFile</span><span class="p">:</span>
@@ -255,10 +262,10 @@
                 <span class="k">raise</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)(</span> <span class="s">&quot;Error parsing config file &#39;{f}&#39;:</span><span class="se">\n</span><span class="s">{msg}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">f</span><span class="o">=</span><span class="n">configFilePath</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">namespace</span>
-
-    <span class="k">def</span> <span class="nf">writeConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">,</span> <span class="n">configNamespace</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="JsonConfigParser.writeConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.writeConfigFile">[docs]</a><span class="sd">        Simply write the given object to a json file as a dict, </span>
+</div>
+<div class="viewcode-block" id="JsonConfigParser.writeConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.writeConfigFile">[docs]</a>    <span class="k">def</span> <span class="nf">writeConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">,</span> <span class="n">configNamespace</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simply write the given object to a json file as a dict, </span>
 <span class="sd">        but check it for errors first by parsing each field with the schema.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c"># Check for errors by parsing the fields</span>
@@ -266,9 +273,9 @@
 
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configFile</span><span class="p">:</span>
             <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span> <span class="n">configNamespace</span><span class="o">.</span><span class="n">__dict__</span><span class="p">,</span> <span class="n">configFile</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">cls</span><span class="o">=</span><span class="n">JsonConfigEncoder</span> <span class="p">)</span>
-
+</div>
     <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This converts the given value (a dict) into a Namespace object.</span>
 <span class="sd">        By implmenenting __call__ this way, we allow NESTED JsonConfigs.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -350,9 +357,9 @@
             <span class="n">ordered_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
         <span class="k">return</span> <span class="n">ordered_dict</span>
 
-
+</div>
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">doctest</span></div>
+    <span class="kn">import</span> <span class="nn">doctest</span>
     <span class="n">doctest</span><span class="o">.</span><span class="n">testmod</span><span class="p">()</span>
 </pre></div>
 
@@ -387,14 +394,14 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+        <li><a href="../../../index.html">lazyflow 0.1 documentation</a> &raquo;</li>
           <li><a href="../../index.html" >Module code</a> &raquo;</li>
           <li><a href="../utility.html" >lazyflow.utility</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

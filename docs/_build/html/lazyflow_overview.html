@@ -1,0 +1,163 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Lazyflow Overview &mdash; lazyflow 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="lazyflow developer documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="lazyflow developer documentation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="lazyflow-overview">
+<h1>Lazyflow Overview<a class="headerlink" href="#lazyflow-overview" title="Permalink to this headline">¶</a></h1>
+<p>The lazyflow framework consists of four main modules, shown in this dependency diagram:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/lazyflow_structure.svg"><img alt="lazyflow component modules" src="_images/lazyflow_structure.svg" /></a>
+</div>
+<div class="section" id="operator-library">
+<h2>Operator Library<a class="headerlink" href="#operator-library" title="Permalink to this headline">¶</a></h2>
+<p>Lazyflow comes with a set of reusable operators for performing general image processing computations.
+Before writing your own operator for a given task, check to see if one already exists in the library.</p>
+</div>
+<div class="section" id="graph-framework">
+<h2>Graph Framework<a class="headerlink" href="#graph-framework" title="Permalink to this headline">¶</a></h2>
+<p>All lazyflow operators are implemented using a special API, defined by the graph framework.
+The graph framework implements the &#8220;plumbing&#8221; that manages interactions between operator inputs and outputs (&#8220;slots&#8221;).
+This includes dirty region propagation, &#8220;ready&#8221; state, request forwarding, resource cleanup, and so on.
+When data is requested from an operator slot, the graph framework generates a request for that data.</p>
+</div>
+<div class="section" id="request-framework">
+<h2>Request Framework<a class="headerlink" href="#request-framework" title="Permalink to this headline">¶</a></h2>
+<p>The request framework is a general-purpose, coroutine-based task scheduling system based on the <a class="reference external" href="http://pypi.python.org/pypi/greenlet">greenlet</a> python library.
+It does not depend in any way on the graph framework, so it could be used to schedule the execution of generic python callables.
+It is similar in spirit to other greenlet-based frameworks like eventlet and gevent, which provide a similar interface for
+highly concurrent IO applications.</p>
+<p>Using the lazyflow request framework, it is easy to perform concurrent, asynchronous workloads, without requiring the developer
+to write complicated state-machines or messy callback handlers.  The request framework hides this complexity from the developer,
+allowing you to write in a clean, blocking <em>style</em> without the performance drag of actually blocking the OS thread(s) your workload is executing on.
+Internally, requests are scheduled for execution in a fixed-size threadpool.  When a request has to wait for subcomputations to
+complete in other requests, it is temporarily suspended so that its OS thread can be used to perform other work.
+See the Request Framework documentation for details.</p>
+</div>
+<div class="section" id="utility-library">
+<h2>Utility Library<a class="headerlink" href="#utility-library" title="Permalink to this headline">¶</a></h2>
+<p>Any functionality not directly related to requests or graph operations is part of the utility module.
+See the utility module documentation for details.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Lazyflow Overview</a><ul>
+<li><a class="reference internal" href="#operator-library">Operator Library</a></li>
+<li><a class="reference internal" href="#graph-framework">Graph Framework</a></li>
+<li><a class="reference internal" href="#request-framework">Request Framework</a></li>
+<li><a class="reference internal" href="#utility-library">Utility Library</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">lazyflow developer documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="next chapter">Installation</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/lazyflow_overview.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="lazyflow developer documentation"
+             >previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

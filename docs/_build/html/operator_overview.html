@@ -1,0 +1,386 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Operator Overview &mdash; lazyflow 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
+    <link rel="next" title="Advanced Concepts" href="advanced.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="advanced.html" title="Advanced Concepts"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="operator-overview">
+<h1>Operator Overview<a class="headerlink" href="#operator-overview" title="Permalink to this headline">¶</a></h1>
+<p>In Lazyflow computations are encapsulated by so called <strong>operators</strong>, the inputs and results of a computation
+are provided through named <strong>slots</strong>. A computation that works on two input arrays and provides one result array
+could be represented like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
+<span class="kn">from</span> <span class="nn">lazyflow.stype</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+
+<span class="k">class</span> <span class="nc">SumOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+  <span class="n">inputA</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>  <span class="c"># define an inputslot</span>
+  <span class="n">inputB</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>  <span class="c"># define an inputslot</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="c"># define an outputslot</span>
+</pre></div>
+</div>
+<p>The above operator justs specifies its inputs and outputs, the actual definition
+of the <strong>computation</strong> is still missing. When another operator or the user requests
+the result of a computation from the operator, its <strong>execute</strong> method is called.
+The methods receives as arguments the outputs slot that was queried and the requested
+region of interest:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">SumOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+  <span class="n">inputA</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+  <span class="n">inputB</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+    <span class="c"># the following two lines query the inputs of the</span>
+    <span class="c"># operator for the specififed region of interest</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputA</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputB</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="c"># the result of the computation is written into the</span>
+    <span class="c"># pre-allocated result array</span>
+
+    <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="o">+</span><span class="n">b</span>
+</pre></div>
+</div>
+<div class="section" id="connecting-operators-and-providing-input">
+<h2>Connecting operators and providing input<a class="headerlink" href="#connecting-operators-and-providing-input" title="Permalink to this headline">¶</a></h2>
+<p>To chain multiple calculations the input and output slots of operators can be <strong>connected</strong>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">op1</span> <span class="o">=</span> <span class="n">SumOperator</span><span class="p">()</span>
+<span class="n">op2</span> <span class="o">=</span> <span class="n">SumOperator</span><span class="p">()</span>
+
+<span class="n">op2</span><span class="o">.</span><span class="n">inputA</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <strong>input</strong> of an operator can either be the output of another operator, or
+the input can be specified directly via the <strong>setValue</strong> method of an input slot:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">op1</span><span class="o">.</span><span class="n">inputA</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">)))</span>
+<span class="n">op1</span><span class="o">.</span><span class="n">inputB</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">)))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="performing-calculations">
+<h2>Performing calculations<a class="headerlink" href="#performing-calculations" title="Permalink to this headline">¶</a></h2>
+<p>The <strong>result</strong> of a computation from an operator can be requested from the <strong>output</strong> slot by calling
+one of the following methods:</p>
+<ol class="arabic simple">
+<li><tt class="docutils literal"><span class="pre">__getitem__(slicing)</span></tt> : the usual [] array access operator is also provided and supports normal python slicing syntax (no strides!):</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">request1</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">request2</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">:</span><span class="mi">20</span><span class="p">]</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><tt class="docutils literal"><span class="pre">__call__(</span> <span class="pre">start,</span> <span class="pre">stop</span> <span class="pre">)</span></tt> : the call method of the outputslot expects two keyword arguments,
+namely the start and the stop of the region of interest window
+of a multidimensional numpy array:</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># request result via the __call__ method:</span>
+<span class="n">request2</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">(</span><span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">stop</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">))</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><tt class="docutils literal"><span class="pre">get(roi)</span></tt> : the get method of an outputslot requires as argument an existing
+roi object (as in the &#8220;execute&#8221; method of the example operator):</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># request result via the get method and an existing roi object</span>
+<span class="n">request3</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">some_roi_object</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It should be noted that a query to an outputslot does <strong>not</strong> return
+the final calculation result. Instead a handle for the running calculation is returned, a so called
+<strong>Request</strong> object.</p>
+</div>
+<div class="section" id="request-objects">
+<h2>Request objects<a class="headerlink" href="#request-objects" title="Permalink to this headline">¶</a></h2>
+<p>All queries to output slots return <strong>Request</strong> objects. These requests are
+processed in parallel by a set of worker threads.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">request1</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">request2</span> <span class="o">=</span> <span class="n">op2</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">request3</span> <span class="o">=</span> <span class="n">op3</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">request4</span> <span class="o">=</span> <span class="n">op4</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+</pre></div>
+</div>
+<p>These request objects provide several methods to obtain the final result of the computation
+or to get a notification of a finished computation.</p>
+<ul>
+<li><p class="first">Synchronous <strong>waiting</strong> for a calculation</p>
+<blockquote>
+<div><div class="highlight-python"><div class="highlight"><pre><span class="n">request</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>after the wait method returns, the result objects contains the actual array that was requested.</p>
+</div></blockquote>
+</li>
+<li><p class="first">Asynchronous <strong>notification</strong> of finished calculations</p>
+<blockquote>
+<div><div class="highlight-python"><div class="highlight"><pre><span class="n">request</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+
+<span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="c"># request.wait() will return immediately</span>
+    <span class="c"># and just provide the result</span>
+    <span class="c"># do something useful with the result..</span>
+
+<span class="c"># register the callback function</span>
+<span class="c"># it is called once the calculation is finished</span>
+<span class="c"># or immediately if the calculation is already done.</span>
+<span class="n">request</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p class="first">Specification of <strong>destination</strong> result area. Sometimes it is useful
+to tell an operator where to put the results of its computation, when handling
+large numpy arrays this may save copying the array around in memory.</p>
+<blockquote>
+<div><div class="highlight-python"><div class="highlight"><pre><span class="c"># create a request</span>
+<span class="n">request</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="p">[:]</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span><span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+<span class="c"># specify a destination array for the request</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">writeInto</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="c"># when the request.wait() method returns, a will</span>
+<span class="c"># hold the result of the calculation</span>
+<span class="n">request</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">writeInto()</span></tt> can also be combined with <tt class="docutils literal"><span class="pre">notify()</span></tt> instead of <tt class="docutils literal"><span class="pre">wait()</span></tt></p>
+</div>
+</div></blockquote>
+</li>
+</ul>
+<p>When writing operators the execute method obtains
+its input for the calculation from the <strong>input slots</strong> in the same manner.</p>
+</div>
+<div class="section" id="meta-data">
+<h2>Meta data<a class="headerlink" href="#meta-data" title="Permalink to this headline">¶</a></h2>
+<p>The <strong>input</strong> and <strong>output</strong> slots of operators have associated meta data which
+is held in a .meta dictionary.</p>
+<p>The content of the dictionary depends on the operator, since the operator is responsible
+to provide meaningful meta information on its output slots.</p>
+<p>Examples of often available meta information are the shape, dtype and axistags in the
+case of ndarray slots.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>    <span class="c"># the shape of the result array</span>
+<span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span>    <span class="c"># the dtype of the result array</span>
+<span class="n">op1</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="c"># the axistags of the result array</span>
+                         <span class="c"># for more information on axistags, consult the vigra manual</span>
+</pre></div>
+</div>
+<p>When writing an <strong>operator</strong> the programmer must implement the <strong>setupOutputs</strong> method of the
+Operator. This method is called once all neccessary inputs for the operator have been connected
+(or have been provided directly via <strong>setValue</strong>).</p>
+<p>A simple example for the SumOperator is given below:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">SumOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+  <span class="n">inputA</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+  <span class="n">inputB</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># query the shape of the operator inputs</span>
+    <span class="c"># by reading the input slots meta dictionary</span>
+    <span class="n">shapeA</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputA</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">shapeB</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputB</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="c"># check that the inputs are compatible</span>
+    <span class="k">assert</span> <span class="n">shapeA</span> <span class="o">==</span> <span class="n">shapeB</span>
+
+    <span class="c"># setup the meta dictionary of the output slot</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">shapeA</span>
+
+    <span class="c"># setup the dtype of the output slot</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputA</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span>
+
+
+  <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="propagating-changes-in-the-inputs">
+<h2>Propagating changes in the inputs<a class="headerlink" href="#propagating-changes-in-the-inputs" title="Permalink to this headline">¶</a></h2>
+<p>lazyflow operators should propagate changes in its inputs to their outputs.
+Since the exact mapping from inputs to outputs depends on the computation the operator
+implements, only the operator knows how the state of its outputs changes when an inputslot is modified.</p>
+<p>To support the efficient propagation of information about changes operators should implement
+the <strong>propagateDirty</strong> method.
+This method is called from the outside whenever one of the inputs (or only part of an input) of an operator is changed.</p>
+<p>Depending on the calculation which the operator computes the programmer should implement the correct mapping from changes
+in the inputs to changes in the outputs - which is fairly easy for the simple sum operator:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">SumOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+  <span class="n">inputA</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+  <span class="n">inputB</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="n">output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+    <span class="c"># the method receives as argument the slot</span>
+    <span class="c"># which was changed, and the region of interest (roi)</span>
+    <span class="c"># that was changed in the slot</span>
+
+    <span class="c"># in this case the mapping of the dirty</span>
+    <span class="c"># region is fairly simple, it corresponds exactly</span>
+    <span class="c"># to the region of interest that was changed in</span>
+    <span class="c"># one of the input slots</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+
+  <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+  <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="wrapup-writing-an-operator">
+<h2>Wrapup: Writing an Operator<a class="headerlink" href="#wrapup-writing-an-operator" title="Permalink to this headline">¶</a></h2>
+<p>To implement a lazyflow operator one should:</p>
+<ul class="simple">
+<li>create a subclass of the <strong>Operator</strong> base class</li>
+<li>define the <strong>InputSlots</strong> and <strong>OutputSlots</strong> of the computation</li>
+<li>implement the <strong>setupOutputs</strong> methods to set up the meta information of the
+output slots depending on the meta information which is available on the input
+slots.</li>
+<li>implement the <strong>execute</strong> method, that is called when an outputslot is queried
+for results.</li>
+<li>implement the <strong>propagateDirty</strong> method, which is called when a region of interest
+of an input slot is changed.</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">SumOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="n">inputA</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+    <span class="n">inputB</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+    <span class="n">output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">ArrayLike</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Operator Overview</a><ul>
+<li><a class="reference internal" href="#connecting-operators-and-providing-input">Connecting operators and providing input</a></li>
+<li><a class="reference internal" href="#performing-calculations">Performing calculations</a></li>
+<li><a class="reference internal" href="#request-objects">Request objects</a></li>
+<li><a class="reference internal" href="#meta-data">Meta data</a></li>
+<li><a class="reference internal" href="#propagating-changes-in-the-inputs">Propagating changes in the inputs</a></li>
+<li><a class="reference internal" href="#wrapup-writing-an-operator">Wrapup: Writing an Operator</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="previous chapter">Installation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="advanced.html"
+                        title="next chapter">Advanced Concepts</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/operator_overview.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="advanced.html" title="Advanced Concepts"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >previous</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
