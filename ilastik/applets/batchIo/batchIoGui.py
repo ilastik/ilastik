@@ -273,6 +273,7 @@ class BatchIoGui(QMainWindow):
                 self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
 
                 # Start with 1% so the progress bar shows up
+                self.progressSignal.emit(0)
                 self.progressSignal.emit(1)
 
                 def signalFileProgress(slotIndex, percent):

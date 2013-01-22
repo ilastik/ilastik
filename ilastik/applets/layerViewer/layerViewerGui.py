@@ -157,7 +157,13 @@ class LayerViewerGui(QMainWindow):
             for j, slot in enumerate(multiLayerSlot):
                 if slot.ready() and slot.meta.axistags is not None:
                     layer = self.createStandardLayerFromSlot(slot)
-                    layer.name = multiLayerSlot.name + " " + str(j)
+                    
+                    # Name the layer after the slot name.
+                    if isinstance( multiLayerSlot.getRealOperator(), Op1ToMulti ):
+                        # We attached an 'upleveling' operator, so look upstream for the real slot.
+                        layer.name = multiLayerSlot.getRealOperator().Input.partner.name
+                    else:
+                        layer.name = multiLayerSlot.name + " " + str(j)
                     layers.append(layer)
         return layers
 
