@@ -55,26 +55,30 @@ class TestInterpolatedFeatures():
                 features = numpy.zeros((rows,cols), dtype=bool)
                 features[i, j]=True
                 self.selectedFeatures.append(features)
-
-    def aaaVigraStructureTensor(self):
-        roi_small = ((0, 0, 2), (5, 5, 3))
-        roi_full = ((0, 0, 0), (5, 5, 9))
-        import h5py
-        f = h5py.File("/home/anna/data/temptestimage1.h5")
-        data1= numpy.asarray(f["/volume/data"])
-        f2 = h5py.File("/home/anna/data/temptestimage2.h5")
-        data2 = numpy.asarray(f2["/volume/data"])
+                
+    def aaaAssert(self):
+        g = graph.Graph()
+        data = numpy.zeros((self.nx, self.ny, self.nz), dtype=numpy.float32)
+        for i in range(self.data3d.shape[2]):
+            data[:, :, i]=i
+        data = data.view(vigra.VigraArray)
+        data.axistags = vigra.VigraArray.defaultAxistags(3)
+        opFeaturesInterp = OpPixelFeaturesInterpPresmoothed(graph=g)
+        opFeaturesInterp.Input.setValue(data)
+        opFeaturesInterp.Scales.setValue(self.scales)
+        opFeaturesInterp.FeatureIds.setValue(self.featureIds)
+        opFeaturesInterp.InterpolationScaleZ.setValue(self.scaleZ)
+        opFeaturesInterp.Matrix.setValue(self.selectedFeatures[0])
         
-        st1 = vigra.filters.structureTensor(data2, innerScale=1., outerScale=0.5, sigma_d=0, step_size=1,\
-                                            window_size=2, roi=roi_small)
-        st2 = vigra.filters.structureTensor(data1, innerScale=1., outerScale=0.5, sigma_d=0, step_size=1,\
-                                            window_size=2, roi=roi_full)
-        assert_array_almost_equal(st1, st2[:, :, 2:3, :], 3)
-    
+        out = opFeaturesInterp.Output[:].wait()
+        
+        print "passed"
+        
     def test(self):
         self.runFeatures(self.data3d, self.data3dInterp)
         #print "TEST ONE DONE"
         self.runFeatures(self.randomData, self.randomDataInterp)
+    
     
     def runFeatures(self, data, dataInterp):
         g = graph.Graph()
@@ -98,9 +102,6 @@ class TestInterpolatedFeatures():
             opFeaturesInterp.Matrix.setValue(imatrix)
             outputInterpData = opFeatures.Output[:].wait()
             outputInterpFeatures = opFeaturesInterp.Output[:].wait()
-            
-            print "DONEDONEDONE"
-            
             
             for iz in range(self.nz):
             #for iz in range(2, 3):
