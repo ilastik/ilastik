@@ -1,0 +1,139 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Maintaining this Documentation &mdash; lazyflow v0.1 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="lazyflow v0.1 documentation" href="index.html" />
+    <link rel="prev" title="Utilities" href="utilities.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utilities"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="maintaining-this-documentation">
+<h1>Maintaining this Documentation<a class="headerlink" href="#maintaining-this-documentation" title="Permalink to this headline">¶</a></h1>
+<p>This documentation is built with <a class="reference external" href="http://sphinx-doc.org/">Sphinx</a>, and
+hosted on github as a <a class="reference external" href="http://pages.github.com/">github page</a> for the lazyflow repo.</p>
+<p>To make a changes to the docs, edit the desired .rst file(s) in the docs directory, and then build the docs:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">cd </span>docs
+<span class="nv">$ </span>make html
+</pre></div>
+</div>
+<p>First, view your changes locally:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>firefox _build/html/index.html
+</pre></div>
+</div>
+<p>Your changes will not be visible online until they are applied to the special <tt class="docutils literal"><span class="pre">gh-pages</span></tt> branch of lazyflow and pushed.</p>
+<p>There is a script in lazyflow for automating this process.
+It is highly recommended that you use a special local copy of the lazyflow repo to do this.  Just follow these steps:</p>
+<ol class="arabic simple">
+<li>Make sure your changes to the .rst files are pushed to lazyflow/master.</li>
+<li>Make a new clone of the lazyflow repo, and checkout the <tt class="docutils literal"><span class="pre">gh-pages</span></tt> branch.</li>
+<li>Run the <tt class="docutils literal"><span class="pre">update_from_master.sh</span></tt> script.</li>
+</ol>
+<p>Here&#8217;s a walk-through (output not shown).</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">pwd</span>
+/home/bergs/workspace/lazyflow/docs
+<span class="nv">$ </span>git add -u .
+<span class="nv">$ </span>git commit -m <span class="s2">&quot;docs: Added some example code.&quot;</span>
+<span class="nv">$ </span>git push origin master
+<span class="nv">$ </span><span class="nb">cd</span> /tmp
+<span class="nv">$ </span>git clone ssh://git@github.com/ilastik/lazyflow lazyflow-gh-pages
+<span class="nv">$ </span><span class="nb">cd </span>lazyflow-gh-pages/
+<span class="nv">$ </span>git checkout gh-pages
+<span class="nv">$ </span>./update_from_master.sh
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">update_from_master.sh</span></tt> script handles the necessary pre-processing required by the github pages system.
+You view the updated documentation at <a class="reference external" href="http://ilastik.github.com/lazyflow">http://ilastik.github.com/lazyflow</a>.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="utilities.html"
+                        title="previous chapter">Utilities</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/documentation_maintenance.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utilities"
+             >previous</a> |</li>
+        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>

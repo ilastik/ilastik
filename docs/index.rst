@@ -22,8 +22,8 @@ Contents:
    operator_overview
    advanced
    request
-
    utilities
+   documentation_maintenance
 
 Indices and tables
 ==================
