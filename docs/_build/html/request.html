@@ -366,6 +366,17 @@ a single exception may propagate through multiple callstacks.</p>
 <a class="reference internal image-reference" href="_images/request_exception_propagation_step5.svg"><object data="_images/request_exception_propagation_step5.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step5.svg" type="image/svg+xml" /></object>
 </a>
 </div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>We are missing an optimzation opportunity here.  In the example above, one of the right-most requests
+never sees the exception.
+That&#8217;s expected behavior, since that request did not fail.  But after the exception is propagated
+through the request &#8220;call&#8221; stacks, the request is not needed any more.  To save CPU cycles, we
+could <em>cancel</em> the non-failed children of failed requests.</p>
+<p class="last">If we decide to implement this optimization, we should take care not to interfere with the status of
+the children that have already failed.  Only the non-failed requests should be cancelled, to avoid
+downgrading the &#8220;failed&#8221; status of some requests into a &#8220;cancelled&#8221; status.</p>
+</div>
 </div>
 </div>
 <div class="section" id="request-notifications">

@@ -308,6 +308,16 @@ Suppose an exception is raised in r1.  The following series of diagrams highligh
    :scale: 100  %
    :alt: request dependency diagram
 
+.. note:: We are missing an optimzation opportunity here.  In the example above, one of the right-most requests
+		  never sees the exception.  
+		  That's expected behavior, since that request did not fail.  But after the exception is propagated 
+		  through the request "call" stacks, the request is not needed any more.  To save CPU cycles, we 
+		  could *cancel* the non-failed children of failed requests.
+		  
+		  If we decide to implement this optimization, we should take care not to interfere with the status of 
+		  the children that have already failed.  Only the non-failed requests should be cancelled, to avoid
+		  downgrading the "failed" status of some requests into a "cancelled" status.
+
 Request Notifications
 =====================
 
