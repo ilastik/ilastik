@@ -40,7 +40,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
-            data = numpy.random.random((1,1000,1000,100,1))
+            data = numpy.random.random((1,512,512,128,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
         
@@ -94,12 +94,12 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
             opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-            selections = numpy.array( [[True, False, False, False, False, False, False],
-                                       [True, False, False, False, False, False, False],
-                                       [True, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False],
-                                       [False, False, False, False, False, False, False]] )
+            selections = numpy.array( [[True, True, True, True, True, True, False],
+                                       [True, True, True, True, True, True, False],
+                                       [True, True, True, True, True, True, False],
+                                       [True, True, True, True, True, True, False],
+                                       [True, True, True, True, True, True, False],
+                                       [True, True, True, True, True, True, False]] )
 
             opFeatures.SelectionMatrix.setValue(selections)
         
@@ -203,10 +203,25 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
             logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
-            # Disable iteractive mode.            
-            gui.currentGui()._viewerControlUi.pauseUpdateButton.click()
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+    
+    def test_4_SwitchSlice(self):
+        """
+        Move the z-window by 1 slice.  The data should already be cached, so this is really measuring the performance of cache access.
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
 
-            self.waitForViews(gui.currentGui().editor.imageViews)
+            with Timer() as timer:
+                gui.currentGui().editor.posModel.slicingPos = (0,0,1)
+    
+                # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
+                self.waitForViews(gui.currentGui().editor.imageViews)
+
+            logger.debug("New Slice Rendering Time: {}".format( timer.seconds() ))
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
