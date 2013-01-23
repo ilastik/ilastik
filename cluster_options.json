@@ -4,7 +4,6 @@
 
 	"workflow_type" : "PixelClassificationWorkflow",
 	"sys_tmp_dir" : "/scratch/bergs",
-	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
 	"num_jobs" : "2**3",
 	"task_subrequest_shape" : { "t":1, "x":128, "y":128, "z":128, "c":100},
 	"task_timeout_secs" : "20*60",

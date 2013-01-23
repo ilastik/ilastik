@@ -11,7 +11,6 @@ ClusterConfigFields = \
     "output_slot_id" : str,
 
     "sys_tmp_dir" : str,
-    "scratch_directory" : str,
     "task_subrequest_shape" : dict,
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,
@@ -43,7 +42,6 @@ if __name__ == "__main__":
 
     "workflow_type" : "PixelClassificationWorkflow",
     "sys_tmp_dir" : "/scratch/bergs",
-    "scratch_directory" : "/home/bergs/clusterstuff/scratch",
     "num_jobs" : "2**3",
     "task_timeout_secs" : "20*60",
     "use_node_local_scratch" : true,

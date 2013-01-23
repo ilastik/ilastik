@@ -9,7 +9,6 @@
 
 	"###":"Performance Setttings",
 	"sys_tmp_dir" : "/scratch/bergs",
-	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
 	"task_subrequest_shape" : { "t":1, "x":256, "y":256, "z":32, "c":100},
 	"task_timeout_secs" : "20*60",
 

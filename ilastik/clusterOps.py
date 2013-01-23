@@ -106,7 +106,6 @@ class OpClusterize(Operator):
     class TaskInfo():
         taskName = None
         command = None
-        outputFilePath = None
         subregion = None
         
     def setupOutputs(self):
@@ -176,9 +175,6 @@ class OpClusterize(Operator):
         
                     # Locate finished blocks
                     finished_rois = self._determineCompletedBlocks( blockwiseFileset, taskInfos )
-    #                # Figure out which results have finished already and copy their results into the final output file
-    #                finished_rois = self._copyFinishedResults( taskInfos )
-    #                serialStepSeconds += self._copyFinishedResults.prev_run_timer.seconds()
         
                     # Remove the finished tasks from the list we're polling for
                     for roi in finished_rois:
@@ -217,7 +213,6 @@ class OpClusterize(Operator):
             
             taskName = "JOB{:02}".format(roiIndex)
             outputFileName = OUTPUT_FILE_NAME_FORMAT.format( taskName, str(roi) )
-            outputFilePath = os.path.join( self._config.scratch_directory, outputFileName )
 
             commandArgs = []
             commandArgs.append( "--option_config_file=" + self.ConfigFilePath.value )
@@ -238,7 +233,6 @@ class OpClusterize(Operator):
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.taskName = taskName
             taskInfo.command = commandFormat.format( task_args=allArgs, task_name=taskName, task_output_file=taskOutputLogPath )
-            taskInfo.outputFilePath = outputFilePath
             taskInfos[roi] = taskInfo
 
         return taskInfos
@@ -309,105 +303,6 @@ class OpClusterize(Operator):
         for roi in taskInfos.keys():
             if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE:
                 finished_rois.append( roi )
-        return finished_rois
-
-    @timed
-    def _copyFinishedResults(self, taskInfos):
-        """
-        For each of the taskInfos provided:
-        - Check to see if we have a status file for that task
-        - If so, copy the the data from the task output file into the final output file
-        - Remove the task from final dataset's list of 'missing rois'
-        
-        Return the list of rois that we processed.
-        """
-        finished_rois = []
-        destinationFile = None
-        resultDataset = None
-        missingRois = None
-        for roi, taskInfo in taskInfos.items():
-            # Has the task completed yet?
-            #logger.debug( "Checking for file: {}".format( taskInfo.statusFilePath ) )
-            if not os.path.exists( taskInfo.statusFilePath ):
-                continue
-
-            logger.info( "Found status file: {}".format( taskInfo.statusFilePath ) )
-#            if not os.path.exists( taskInfo.outputFilePath ):
-#                raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
-
-            # Open the destination file if necessary
-            if destinationFile is None:
-                destinationFile = h5py.File( self.OutputFilePath.value )
-                resultDataset = destinationFile[OpClusterize.FINAL_DATASET_NAME]
-                assert 'missingRois' in resultDataset.attrs
-                missingRois = set( resultDataset.attrs['missingRois'] )
-
-            roiString = Roi.dumps( taskInfo.subregion )
-            assert roiString in missingRois, "This task didn't need to be executed: it wasn't missing from the result!"
-            
-            nodeOutputFilePath = taskInfo.outputFilePath
-
-            # Optionally copy to local tmpdir before copying the node dataset.
-            if self._config.use_master_local_scratch:
-                with Timer() as fileCopyTimer:
-                    # Copy the scratch file to local scratch area before we open it with h5py
-                    tempDir = tempfile.mkdtemp()
-                    roiString = Roi.dumps( taskInfo.subregion )
-                    tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
-
-                    # Optionally decompress as we copy    
-                    if self._config.node_output_compression_cmd is not None:
-                        decompress_cmd = self._config.node_output_decompression_cmd.format( uncompressed_file=tmpOutputFilePath, compressed_file=taskInfo.outputFilePath )
-                        logger.info( "Decompressing with command: " + decompress_cmd )
-                        retcode = subprocess.call( decompress_cmd, shell=True )
-                        if retcode == 0:
-                            logger.info( "Finished decompressing after {} seconds".format( fileCopyTimer.seconds() ) )
-                        else:
-                            logger.error( "Decompression command returned non-zero code: {}".format(retcode) )                    
-                    else:
-                        logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
-                        shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
-                        logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
-                nodeOutputFilePath = tmpOutputFilePath
-
-            # Open the file
-            with h5py.File( nodeOutputFilePath, 'r' ) as f:
-                # Check the result
-                assert 'node_result' in f.keys()
-                assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
-                assert f['node_result'].dtype == self.Input.meta.dtype
-                assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
-    
-                shape = f['node_result'][:].shape
-
-                dtypeBytes = self._getDtypeBytes()
-                
-                # Copy the data into our result (which might be an h5py dataset...)
-                key = taskInfo.subregion.toSlice()
-    
-                with Timer() as copyTimer:
-                    resultDataset[key] = f['node_result'][:]
-    
-                totalBytes = dtypeBytes * numpy.prod(shape)
-                totalMB = totalBytes / (1000*1000)
-    
-                logger.info( "Copying {} MB hdf5 slice took {} seconds".format(totalMB, copyTimer.seconds() ) )
-                finished_rois.append(roi)
-
-                # Remove the roi from the list of remaining rois
-                roiString = Roi.dumps(taskInfo.subregion)
-                missingRois.remove( roiString )
-
-            if self._config.use_master_local_scratch:
-                os.remove(tmpOutputFilePath)
-
-        # For now, we close the file after every pass in case something goes horribly wrong...
-        if destinationFile is not None:
-            # Update the list of rois that are still missing from the output file.
-            resultDataset.attrs['missingRois'] = list(missingRois)
-            destinationFile.close()
-            destinationFile = None
-
         return finished_rois
 
     def _checkForFailures(self, taskInfos):
