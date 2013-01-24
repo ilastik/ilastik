@@ -162,8 +162,8 @@ class OpMultiMultiArrayPiper(Operator):
 
 try:
     from  lazyflow.drtile import drtile
-except:
-    raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !")
+except Exception, e:
+    raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !\n" + str(e))
 
 class BlockQueue(object):
     __slots__ = ["queue","lock"]
