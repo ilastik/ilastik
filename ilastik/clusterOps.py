@@ -13,6 +13,7 @@ import collections
 import tempfile
 import shutil
 import hashlib
+import functools
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.utility.timer import Timer, timed
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
@@ -117,10 +118,6 @@ class OpClusterize(Operator):
             assert self._config.node_output_compression_cmd is None, "Can't use node dataset compression unless master local scratch is also used."
     
     def execute(self, slot, subindex, roi, result):
-        # We use fabric for executing remote tasks
-        # Import it here because it isn't required that the nodes can use it.
-        import fabric.api as fab
-
         success = True
         
         dtypeBytes = self._getDtypeBytes()
@@ -147,16 +144,23 @@ class OpClusterize(Operator):
             for roi in unneeded_rois:
                 logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
                 del taskInfos[roi]
-    
-            @fab.hosts( self._config.task_launch_server )
-            def remoteCommand( cmd ):
-                with fab.cd( self._config.server_working_directory ):
-                    fab.run( cmd )
+
+            if self._config.task_launch_server == "localhost":
+                launchFunc = functools.partial( subprocess.call, shell=True )
+            else:
+                # We use fabric for executing remote tasks
+                # Import it here because it isn't required that the nodes can use it.
+                import fabric.api as fab
+                @fab.hosts( self._config.task_launch_server )
+                def remoteCommand( cmd ):
+                    with fab.cd( self._config.server_working_directory ):
+                        fab.run( cmd )
+                launchFunc = functools.partial( fab.execute, remoteCommand )
     
             # Spawn each task
             for taskInfo in taskInfos.values():
                 logger.info("Launching node task: " + taskInfo.command )
-                fab.execute( remoteCommand, taskInfo.command )
+                launchFunc( taskInfo.command )
     
             timeOut = self._config.task_timeout_secs
             serialStepSeconds = 0
