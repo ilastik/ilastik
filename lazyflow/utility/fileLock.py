@@ -19,6 +19,7 @@ Modifications in this version:
 """
 
 import os
+import sys
 import time
 import errno
  
@@ -31,7 +32,7 @@ class FileLock(object):
     class FileLockException(Exception):
         pass
  
-    def __init__(self, protected_file_path, timeout=None, delay=1):
+    def __init__(self, protected_file_path, timeout=None, delay=1, lock_file_contents=None):
         """ Prepare the file locker. Specify the file to lock and optionally
             the maximum timeout and the delay between each attempt to lock.
         """
@@ -39,7 +40,12 @@ class FileLock(object):
         self.lockfile = protected_file_path + ".lock"
         self.timeout = timeout
         self.delay = delay
- 
+        self._lock_file_contents = lock_file_contents
+        if self._lock_file_contents is None:
+            self._lock_file_contents = "Owning process args:\n"
+            for arg in sys.argv:
+                self._lock_file_contents += arg + "\n"
+            
     def locked(self):
         """
         Returns True iff the file is owned by THIS FileLock instance.
@@ -63,8 +69,10 @@ class FileLock(object):
             try:
                 # Attempt to create the lockfile.
                 # These flags cause os.open to raise an OSError if the file already exists.
-                self.fd = os.open( self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR )
-                os.close(self.fd)
+                fd = os.open( self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR )
+                with os.fdopen( fd, 'a' ) as f:
+                    # Print some info about the current process as debug info for anyone who bothers to look.
+                    f.write( self._lock_file_contents )
                 break;
             except OSError as e:
                 if e.errno != errno.EEXIST:
@@ -124,6 +132,7 @@ if __name__ == "__main__":
     import tempfile
     temp_dir = tempfile.mkdtemp()
     protected_filepath = os.path.join( temp_dir, "somefile.txt" )
+    print "Protecting file: {}".format( protected_filepath )
     fl = FileLock( protected_filepath )
 
     def writeLines(line, repeat=10):
@@ -154,5 +163,4 @@ if __name__ == "__main__":
     # Please manually inspect the output.  Does it look like the operations were atomic?
     with open( protected_filepath, 'r' ) as f:
         sys.stdout.write( f.read() )
-    
-    
+        
