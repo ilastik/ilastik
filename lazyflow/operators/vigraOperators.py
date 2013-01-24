@@ -518,9 +518,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 roiSmootherList = list(roiSmoother)
                                 
                                 roiSmootherList.insert(axisindex, slice(begin, end, None))
-                                roiSmoother = SubRegion(self.Input, pslice=roiSmootherList)
+                                roiSmootherRegion = SubRegion(self.Input, pslice=roiSmootherList)
                                 
-                                closure = partial(oslot.operator.execute, oslot, (), roiSmoother, destArea, sourceArray = sourceArraysForSigmas[j])
+                                closure = partial(oslot.operator.execute, oslot, (), roiSmootherRegion, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin

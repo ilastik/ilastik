@@ -1,6 +1,7 @@
 import vigra
 import numpy
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed, OpPixelFeaturesPresmoothed
+from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow import graph
 from numpy.testing import assert_array_almost_equal
 
@@ -77,12 +78,12 @@ class TestInterpolatedFeatures():
         
         print "passed"
         
-    def testInterpolated(self):
+    def aaaInterpolated(self):
         self.runFeatures(self.data3d, self.data3dInterp)
         #print "TEST ONE DONE"
         self.runFeatures(self.randomData, self.randomDataInterp)
     
-    def testSlices(self):
+    def aaaSlices(self):
         g = graph.Graph()
         opFeatures = OpPixelFeaturesPresmoothed(graph=g)
         opFeatures.Scales.setValue(self.scales)
@@ -105,6 +106,32 @@ class TestInterpolatedFeatures():
                     print dataSlice
                     raise AssertionError
                     
+    def testNumpyFile(self):
+        g =graph.Graph()
+        npfile = "/home/akreshuk/data/synapse_small_4d.npy"
+        reader = OpInputDataReader(graph=g)
+        reader.FilePath.setValue(npfile)
+        #out = reader.Output[:].wait()
+        #print out.shape
+        
+        opFeatures = OpPixelFeaturesPresmoothed(graph=g)
+        opFeatures.Scales.setValue(self.scales)
+        opFeatures.FeatureIds.setValue(self.featureIds)
+        opFeatures.Input.connect(reader.Output)
+        opFeatures.Matrix.setValue(self.selectedFeatures[5])
+        out = opFeatures.Output[:].wait()
+        print out.shape
+        
+        opFeaturesInterp = OpPixelFeaturesInterpPresmoothed(graph=g)
+        opFeaturesInterp.Scales.setValue(self.scales)
+        opFeaturesInterp.FeatureIds.setValue(self.featureIds)
+        opFeaturesInterp.Input.connect(reader.Output)
+        opFeaturesInterp.Matrix.setValue(self.selectedFeatures[5])
+        opFeaturesInterp.InterpolationScaleZ.setValue(2)
+        out = opFeaturesInterp.Output[:].wait()
+        
+        print out.shape
+        
             
     def runFeatures(self, data, dataInterp):
         g = graph.Graph()
