@@ -225,6 +225,7 @@ if __name__ == "__main__":
         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
         args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
 
