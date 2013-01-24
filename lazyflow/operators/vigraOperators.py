@@ -360,10 +360,13 @@ class OpPixelFeaturesPresmoothed(Operator):
 
 
             inShape  = self.inputs["Input"].meta.shape
-
+            hasChannelAxis = (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) > 0)
+            #if (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0):
+            #    noChannels = True
+            inAxistags = self.inputs["Input"].meta.axistags
+                
             shape = self.outputs["Output"].meta.shape
-
-            axistags = self.inputs["Input"].meta.axistags
+            axistags = self.outputs["Output"].meta.axistags
 
             result = result.view(vigra.VigraArray)
             result.axistags = copy.copy(axistags)
@@ -431,8 +434,13 @@ class OpPixelFeaturesPresmoothed(Operator):
                 sourceArray.resize((1,), refcheck = False)
                 del sourceArray
                 sourceArray = sourceArrayF
+                
+            #if (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0):
+                #add a channel dimension to make the code afterwards more uniform
+            #    sourceArray = sourceArray.view(numpy.ndarray)
+            #    sourceArray = sourceArray.reshape(sourceArray.shape+(1,))
             sourceArrayV = sourceArray.view(vigra.VigraArray)
-            sourceArrayV.axistags =  copy.copy(axistags)
+            sourceArrayV.axistags =  copy.copy(inAxistags)
             
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
@@ -489,8 +497,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         vop= self.featureOps[i][j]
                         oslot = vop.outputs["Output"]
                         req = None
-                        inTagKeys = [ax.key for ax in oslot.meta.axistags]
-                        if flag in inTagKeys:
+                        #inTagKeys = [ax.key for ax in oslot.meta.axistags]
+                        #print inTagKeys, flag
+                        if hasChannelAxis:
                             slices = oslot.meta.shape[axisindex]
                             if cnt + slices >= rroi.start[axisindex] and rroi.start[axisindex]-cnt<slices and rroi.start[axisindex]+written<rroi.stop[axisindex]:
                                 begin = 0
@@ -503,9 +512,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 key_.insert(axisindex, slice(begin, end, None))
                                 reskey = [slice(None, None, None) for x in range(len(result.shape))]
                                 reskey[axisindex] = slice(written, written+end-begin, None)
-
+                                
                                 destArea = result[tuple(reskey)]
-                                roi_ = SubRegion(self.Input, pslice=key_)
                                 #readjust the roi for the new source array
                                 roiSmootherList = list(roiSmoother)
                                 
@@ -519,14 +527,16 @@ class OpPixelFeaturesPresmoothed(Operator):
                             cnt += slices
                         else:
                             if cnt>=rroi.start[axisindex] and rroi.start[axisindex] + written < rroi.stop[axisindex]:
-                                reskey = copy.copy(oldkey)
-                                reskey.insert(axisindex, written)
-                                #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
-                                #print "result: ", result.shape, "inslot:", inSlot.shape
-
+                                reskey = [slice(None, None, None) for x in range(len(result.shape))]
+                                slices = oslot.meta.shape[axisindex]
+                                reskey[axisindex]=slice(written, written+slices, None)
+                                #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey, "resshape:", result.shape
+                                #print "roiSmoother:", roiSmoother
                                 destArea = result[tuple(reskey)]
+                                #print "destination area:", destArea.shape
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
                                 oldroi = SubRegion(self.Input, pslice=oldkey)
+                                #print "passing roi:", oldroi
                                 closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
@@ -1076,7 +1086,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         elif self.inputs.has_key("innerScale"):
             sigma = self.inputs["innerScale"].value
 
-        #windowSize = 4.0
         windowSize = 3.5
         if self.supportsWindow:
             kwparams['window_size']=self.window_size_feature
@@ -1086,7 +1095,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         largestSigma = max(0.7,sigma)
 
         shape = self.outputs["Output"].meta.shape
-        #print "largestSigma=", largestSigma, "outputs shape:", shape
 
         axistags = self.inputs["Input"].meta.axistags
         hasChannelAxis = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels)
@@ -1115,7 +1123,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         
         readKey = roi.roiToSlice(newStart, newStop)
-        #print "readkey:", readKey
 
         writeNewStart = start - newStart
         writeNewStop = writeNewStart +  stop - start
@@ -1142,21 +1149,24 @@ class OpBaseVigraFilter(OpArrayPiper):
 
         i2 = 0
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
-            treadKey=list(readKey)
-
+            newReadKey = list(readKey) #add channel and time axis if needed
             if hasTimeAxis:
                 if channelAxis > timeAxis:
-                    treadKey.insert(timeAxis, key[timeAxis])
+                    newReadKey.insert(timeAxis, key[timeAxis])
                 else:
-                    treadKey.insert(timeAxis-1, key[timeAxis])
-            treadKey.insert(channelAxis, slice(i,i+1,None))
-            treadKey=tuple(treadKey)
-
+                    newReadKey.insert(timeAxis-1, key[timeAxis])
+            if hasChannelAxis:
+                newReadKey.insert(channelAxis, slice(i, i+1, None))
+                
             if sourceArray is None:
-                req = self.inputs["Input"][treadKey].allocate()
+                req = self.inputs["Input"][newReadKey].allocate()
                 t = req.wait()
             else:
-                t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
+                if hasChannelAxis:
+                    t = sourceArray[getAllExceptAxis(len(newReadKey),channelAxis,slice(i,i+1,None) )]
+                else:
+                    fullkey = [slice(None, None, None)]*len(newReadKey)
+                    t = sourceArray[fullkey]
 
             t = numpy.require(t, dtype=self.inputDtype)
             t = t.view(vigra.VigraArray)
@@ -1172,8 +1182,6 @@ class OpBaseVigraFilter(OpArrayPiper):
                 sourceEnd = channelsPerChannel - ((i+1) * channelsPerChannel - oldstop[channelAxis])
             destBegin = i2
             destEnd = i2 + sourceEnd - sourceBegin
-
-
 
             if channelsPerChannel>1:
                 tkey=getAllExceptAxis(len(shape),channelAxis,slice(destBegin,destEnd,None))

@@ -34,8 +34,6 @@ class TestInterpolatedFeatures():
         self.data3dInterp.axistags =  vigra.VigraArray.defaultAxistags(4)
         
         self.randomData = (numpy.random.random((self.nx, self.ny, self.nz, 1))).astype(numpy.float32)
-        
-        
         self.randomDataInterp = vigra.sampling.resizeVolumeSplineInterpolation(self.randomData.squeeze(), \
                                                                                shape = (self.nx, self.ny, newRangeZ))
         self.randomDataInterp = self.randomDataInterp.reshape(self.randomDataInterp.shape+(1,))
@@ -44,6 +42,11 @@ class TestInterpolatedFeatures():
         self.randomData.axistags = vigra.defaultAxistags(4)
         self.randomDataInterp = self.randomDataInterp.view(vigra.VigraArray)
         self.randomDataInterp.axistags = vigra.defaultAxistags(4)
+        
+        #data without channels
+        self.dataNoChannels = self.randomData.squeeze()
+        self.dataNoChannels = self.dataNoChannels.view(vigra.VigraArray)
+        self.dataNoChannels.axistags = vigra.defaultAxistags(3, noChannels=True)
         
         #setup the feature selection
         rows = 6
@@ -74,12 +77,35 @@ class TestInterpolatedFeatures():
         
         print "passed"
         
-    def test(self):
+    def testInterpolated(self):
         self.runFeatures(self.data3d, self.data3dInterp)
         #print "TEST ONE DONE"
         self.runFeatures(self.randomData, self.randomDataInterp)
     
-    
+    def testSlices(self):
+        g = graph.Graph()
+        opFeatures = OpPixelFeaturesPresmoothed(graph=g)
+        opFeatures.Scales.setValue(self.scales)
+        opFeatures.FeatureIds.setValue(self.featureIds)
+        opFeatures.Input.setValue(self.dataNoChannels)
+        for i, imatrix in enumerate(self.selectedFeatures):
+            opFeatures.Matrix.setValue(imatrix)
+            #compute in one piece
+            dataOne = opFeatures.Output[:].wait()
+            
+            #compute slice-wise
+            for z in range(self.nz):
+                dataSlice = opFeatures.Output[:, :, z:z+1].wait()
+                try:
+                    assert_array_almost_equal(dataOne[:, :, z:z+1], dataSlice, 2)
+                except AssertionError:
+                    print "wrong for matrix:", imatrix
+                    print "wrong for slice:", z
+                    print dataOne[:, :, z:z+1]
+                    print dataSlice
+                    raise AssertionError
+                    
+            
     def runFeatures(self, data, dataInterp):
         g = graph.Graph()
         opFeatures = OpPixelFeaturesPresmoothed(graph=g)
