@@ -17,17 +17,14 @@ def getOrCreateGroup(parentGroup, groupName):
     necessary.
 
     """
-    try:
+    if groupName in parentGroup:
         return parentGroup[groupName]
-    except KeyError:
-        return parentGroup.create_group(groupName)
+    return parentGroup.create_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    try:
+    if name in parentGroup:
         del parentGroup[name]
-    except KeyError:
-        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form

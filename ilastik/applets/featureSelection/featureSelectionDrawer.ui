@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>262</width>
-    <height>56</height>
+    <height>96</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,7 +41,14 @@
         <string>Open the Feature Selection Dialog</string>
        </property>
        <property name="text">
-        <string>Select Features</string>
+        <string>Select Features...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="UsePrecomputedFeaturesButton">
+       <property name="text">
+        <string>Precomputed features...</string>
        </property>
       </widget>
      </item>
