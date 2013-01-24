@@ -114,6 +114,8 @@ class FileLock(object):
         """
         if os.path.exists(self.lockfile):
             self.release()
+            return True
+        return False
     
 if __name__ == "__main__":
     import sys
