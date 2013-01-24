@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 from lazyflow.roi import getIntersection, roiToSlice
-from lazyflow.utility import PathComponents, getPathVariants
+from lazyflow.utility import PathComponents, getPathVariants, FileLock
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 
 try:
@@ -126,7 +126,12 @@ class BlockwiseFileset(object):
         
         self._lock = threading.Lock()
         self._openBlockFiles = {}
+        self._fileLocks = {}
         self._closed = False
+
+    def __del__(self):
+        if not self._closed:
+            self.close()
 
     def close(self):
         """
@@ -138,6 +143,9 @@ class BlockwiseFileset(object):
             for path in paths:
                 blockFile = self._openBlockFiles[path]
                 blockFile.close()
+                if self.mode == 'a':
+                    fileLock = self._fileLocks[path]
+                    fileLock.release()
             self._closed = True
             
 
@@ -348,12 +356,38 @@ class BlockwiseFileset(object):
         with self._lock:
             if blockFilePath not in self._openBlockFiles.keys():
                 try:
+                    writeLock = FileLock( blockFilePath )
+                    if self.mode == 'a':
+                        writeLock.acquire( blocking=False )
+                        self._fileLocks[blockFilePath] = writeLock
+                    elif self.mode == 'r':
+                        assert writeLock.available(), "Can't read from a file that is being written to elsewhere."
+                    else: 
+                        assert False, "Unsupported mode"
                     self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
                 except:
                     logger.error( "Couldn't open {}".format(blockFilePath) )
                     raise
             return self._openBlockFiles[ blockFilePath ]
 
+    def purgeAllLocks(self):
+        """
+        Clears all .lock files from the local blockwise fileset.
+        This may be necessary if previous processes crashed or were killed while some blocks were downloading.
+        You must ensure that this is NOT called while more than one process (or thread) has access to the fileset.
+        For example, in a master/worker situation, call this only from the master, before the workers have been started.
+        """
+        found_lock = False
+        
+        view_shape = self.description.view_shape
+        view_roi = ([0]*len(view_shape), view_shape)
+        block_starts = list( getIntersectingBlocks(self.description.block_shape, view_roi) )
+        for block_start in block_starts:
+            blockFilePathComponents = self.getDatasetPathComponents( block_start )
+            fileLock = FileLock( blockFilePathComponents.externalPath )
+            found_lock |= fileLock.purge()
+        
+        return found_lock
 
 
 

@@ -47,7 +47,9 @@ class TestBlockwiseFileset(object):
         
     @classmethod
     def teardownClass(cls):
-        cls.bfs.close()
+        if not cls.bfs._closed:
+            cls.bfs.close()
+        assert not cls.bfs.purgeAllLocks(), "Some lockfiles were left lingering."
         shutil.rmtree(cls.tempDir)
 
     def test_1_BasicWrite(self):
@@ -114,9 +116,13 @@ class TestBlockwiseFileset(object):
             random_data = numpy.random.random( roiShape )
             self.bfs.writeData( roi, random_data )
 
-    def test_6_TestView(self):
+    def test_6_CloseBfs(self):
+        self.bfs.close()
+
+    def test_7_TestView(self):
         """
-        Load some of the dataset again; this time with an offset view
+        Load some of the dataset again; this time with an offset view.
+        Note: The original blockwise fileset must be closed before this test starts.
         """
         # Create a copy of the original description, but specify a translated (and smaller) view
         desc = BlockwiseFileset.readDescription(self.configpath)
