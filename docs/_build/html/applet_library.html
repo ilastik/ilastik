@@ -126,7 +126,12 @@ When a change is detected, the <cite>setupLayers()</cite> function is called, an
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>topLevelOperatorView</strong> &#8211; The top-level operator for the applet this GUI belongs to.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>topLevelOperatorView</strong> &#8211; The top-level operator for the applet this GUI belongs to.</li>
+<li><strong>additionalMonitoredSlots</strong> &#8211; Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).</li>
+<li><strong>centralWidgetOnly</strong> &#8211; If True, provide only a central widget without drawer or viewer controls.</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -140,9 +145,9 @@ Subclasses should override this method to create the list of layers that can be 
 For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="classmethod">
 <dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot">
-<tt class="descname">createStandardLayerFromSlot</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.createStandardLayerFromSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><tt class="descname">createStandardLayerFromSlot</tt><big>(</big><em>slot</em>, <em>lastChannelIsAlpha=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.createStandardLayerFromSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convenience function.
 Generates a volumina layer using the given slot.
 Chooses between grayscale or RGB depending on the number of channels in the slot.</p>
@@ -517,6 +522,9 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 <h3>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/opPixelClassification.svg"><img alt="Pixel Classification Top-Level Operator" src="_images/opPixelClassification.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/opPixelClassification_detailed.png"><img alt="Pixel Classification Top-Level Operator" src="_images/opPixelClassification_detailed.png" style="width: 1139.0px; height: 497.4px;" /></a>
 </div>
 <dl class="class">
 <dt id="ilastik.applets.pixelClassification.pixelClassificationApplet.PixelClassificationApplet">

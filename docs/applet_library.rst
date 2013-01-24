@@ -145,6 +145,10 @@ Pixel Classification
    :scale: 100  %
    :alt: Pixel Classification Top-Level Operator
 
+.. figure:: images/opPixelClassification_detailed.png
+   :scale: 20 %
+   :alt: Pixel Classification Top-Level Operator
+
 .. currentmodule:: ilastik.applets.pixelClassification.pixelClassificationApplet
 .. autoclass:: PixelClassificationApplet
    :members:
