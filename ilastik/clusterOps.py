@@ -146,7 +146,12 @@ class OpClusterize(Operator):
                 del taskInfos[roi]
 
             if self._config.task_launch_server == "localhost":
-                launchFunc = functools.partial( subprocess.call, shell=True )
+                def localCommand( cmd ):
+                    cwd = os.getcwd()
+                    os.chdir( self._config.server_working_directory )
+                    subprocess.call( cmd, shell=True )
+                    os.chdir( cwd )
+                launchFunc = localCommand
             else:
                 # We use fabric for executing remote tasks
                 # Import it here because it isn't required that the nodes can use it.
