@@ -130,7 +130,7 @@ class BlockwiseFileset(object):
         self._closed = False
 
     def __del__(self):
-        if not self._closed:
+        if hasattr(self, '_closed') and not self._closed:
             self.close()
 
     def close(self):
