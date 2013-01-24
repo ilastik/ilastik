@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     # Start the GUI
     if len(args) == 1:
-        def loadProject(shell, workflow):
+        def loadProject(shell):
             shell.openProjectFile(args[0])
         startShellGui( PixelClassificationWorkflow, loadProject )
     elif len(args) == 0:
