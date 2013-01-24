@@ -852,10 +852,13 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             newStopNI = copy.copy(newStop)
             newStartNI[zaxis] = numpy.floor(newStart[zaxis]/scaleZ)
             newStopNI[zaxis] = numpy.ceil(newStop[zaxis]/scaleZ)
-
             readKey = roi.roiToSlice(newStartNI, newStopNI)
+            
+            #interpolation is applied on a region read with the above key. In x-y it should just read everything
             newStartI = copy.copy(newStart)
             newStopI = copy.copy(newStop)
+            newStopI = newStopI - newStartI
+            newStartI = newStartI - newStartI
             newStartI[zaxis] = newStart[zaxis]-scaleZ*newStartNI[zaxis]
             newStopI[zaxis] = newStop[zaxis]-scaleZ*newStartNI[zaxis]
             readKeyInterp = roi.roiToSlice(newStartI, newStopI)
@@ -904,10 +907,10 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             interpShape = popFlagsFromTheKey(interpShape, axistags, 'c')
             interpShape = popFlagsFromTheKey(interpShape, at2, 't')
             #FIXME: this won't work with multichannel data. Don't care for now.
+            
             sourceArrayVInterp = vigra.sampling.resizeVolumeSplineInterpolation(sourceArrayV.squeeze(), shape=interpShape)
-            sourceArrayVInterp.resize(sourceArrayVInterp.shape+(1,))
+            sourceArrayVInterp = numpy.ndarray.reshape(sourceArrayVInterp, sourceArrayVInterp.shape+(1,))
             sourceArrayVInterp.axistags = copy.copy(axistags)
-
             sourceArrayVInterp = sourceArrayVInterp[treadKeyInterp]
 
             dimCol = len(self.scales)
@@ -945,8 +948,13 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
                     droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
-
+                    try:
+                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
+                    except RuntimeError:
+                        print "interpolated array:", sourceArrayVInterp.shape, sourceArrayVInterp.axistags
+                        print "source array:", sourceArrayV.shape, sourceArrayV.axistags
+                        print "droi:", droi
+                        raise RuntimeError
             del sourceArrayV
             del sourceArrayVInterp
             try:

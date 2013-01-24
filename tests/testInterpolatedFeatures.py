@@ -78,7 +78,7 @@ class TestInterpolatedFeatures():
         
         print "passed"
         
-    def aaaInterpolated(self):
+    def testInterpolated(self):
         self.runFeatures(self.data3d, self.data3dInterp)
         #print "TEST ONE DONE"
         self.runFeatures(self.randomData, self.randomDataInterp)
@@ -106,7 +106,7 @@ class TestInterpolatedFeatures():
                     print dataSlice
                     raise AssertionError
                     
-    def testNumpyFile(self):
+    def aaaNumpyFile(self):
         g =graph.Graph()
         npfile = "/home/akreshuk/data/synapse_small_4d.npy"
         reader = OpInputDataReader(graph=g)
