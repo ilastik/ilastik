@@ -67,7 +67,6 @@ class OpFeatureSelection(Operator):
             self.FeatureLayers.disconnect()
             
             axistags = self.inputs["InputImage"].meta.axistags
-            axistags.dtype = numpy.float32
             
             self.FeatureLayers.resize(len(self._files))
             for i in range(len(self._files)):
@@ -136,20 +135,27 @@ class OpFeatureSelection(Operator):
     def execute(self, slot, subindex, rroi, result):
         if len(self.FeatureListFilename.value) == 0:
             return
+       
+        assert result.dtype == numpy.float32
         
+        key = roiToSlice(rroi.start, rroi.stop)
+            
         if slot == self.FeatureLayers:
             index = subindex[0]
-            key = roiToSlice(rroi.start, rroi.stop)
             f = h5py.File(self._files[index], 'r')
             result[...,0] = f["data"][key[0:3]]
             return result
         elif slot == self.OutputImage or slot == self.CachedOutputImage:
             assert result.ndim == 4
-            key = roiToSlice(rroi.start, rroi.stop)
+            assert result.shape[-1] == len(self._files), "result.shape = %r" % result.shape 
+            assert rroi.start == 0, "rroi = %r" % (rroi,)
+            assert rroi.stop  == len(self._files), "rroi = %r" % (rroi,)
+            
             j = 0
             for i in range(key[3].start, key[3].stop):
                 f = h5py.File(self._files[i], 'r')
                 r = f["data"][key[0:3]]
+                assert r.dtype == numpy.float32
                 assert r.ndim == 3
                 f.close()
                 result[:,:,:,j] = r 
