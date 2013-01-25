@@ -159,6 +159,6 @@ class OpFeatureSelection(Operator):
                 assert r.ndim == 3
                 f.close()
                 result[:,:,:,j] = r 
-                ++j
+                j += 1
             return result  
         pass
