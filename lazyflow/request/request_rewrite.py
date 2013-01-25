@@ -197,6 +197,12 @@ class Request( object ):
             else:
                 self._sig_finished(self.result)
 
+            # Once the signals have fired, there's no need to keep their callbacks around
+            # (Callbacks, especially functools.partial, may contain parameters that should be collected.)
+            self._sig_finished.clean()
+            self._sig_failed.clean()
+            self._sig_cancelled.clean()
+
             # Unconditionally signal (internal use only)
             with self._lock:
                 self.execution_complete = True
