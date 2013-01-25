@@ -22,8 +22,6 @@ class BigRequestStreamer(object):
         self._minBlockStarts = getIntersectingBlocks(minBlockShape, offsetRoi)
         self._minBlockStarts += roi[0] # Un-offset
 
-        self._requestedBlocks = numpy.zeros( self._minBlockStarts.shape[:-1], dtype=bool )
-        
         totalVolume = numpy.prod( numpy.subtract(roi[1], roi[0]) )
         # For now, simply iterate over the min blocks
         # TODO: Auto-dialate block sizes based on CPU/RAM usage.
