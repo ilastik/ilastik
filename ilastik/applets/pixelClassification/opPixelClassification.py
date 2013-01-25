@@ -49,6 +49,7 @@ class OpPixelClassification( Operator ):
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
+    PmapColors = OutputSlot()
 
     def __init__( self, *args, **kwargs ):
         """
@@ -60,6 +61,7 @@ class OpPixelClassification( Operator ):
         self.FreezePredictions.setValue(True)
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
+        self.PmapColors.setValue( [] )
 
         # SPECIAL connection: The LabelInputs slot doesn't get it's data  
         #  from the InputImages slot, but it's shape must match.

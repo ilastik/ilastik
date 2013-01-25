@@ -228,7 +228,9 @@ class LabelingGui(LayerViewerGui):
             assert(firstRow == lastRow) # Only one data item changes at a time
 
             #in this case, the actual data (for example color) has changed
-            color = self._labelControlUi.labelListModel[firstRow].color
+            color = self._labelControlUi.labelListModel[firstRow].brushColor()
+            pmapColor = self._labelControlUi.labelListModel[firstRow].pmapColor()
+            print "onLabelListDataChanged: color = %s, pmapColor = %s" % (color.name(), pmapColor.name())
             self._colorTable16[firstRow+1] = color.rgba()
             self.editor.brushingModel.setBrushColor(color)
 
@@ -434,7 +436,9 @@ class LabelingGui(LayerViewerGui):
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
-        self.editor.brushingModel.setBrushColor(self._labelControlUi.labelListModel[row].color)
+        brushColor = self._labelControlUi.labelListModel[row].brushColor()
+        print "_onLabelSelected: brushColor = ", brushColor.name()
+        self.editor.brushingModel.setBrushColor( brushColor )
 
     @traceLogged(traceLogger)
     def _resetLabelSelection(self):
@@ -473,6 +477,7 @@ class LabelingGui(LayerViewerGui):
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
         label.colorChanged.connect(self.onLabelColorChanged)
+        label.pmapColorChanged.connect(self.onPmapColorChanged)
 
         newRow = self._labelControlUi.labelListModel.rowCount()
         self._labelControlUi.labelListModel.insertRow( newRow, label )
@@ -522,6 +527,12 @@ class LabelingGui(LayerViewerGui):
     def onLabelColorChanged(self):
         """
         Subclasses can override this to respond to changes in the label colors.
+        """
+        pass
+    
+    def onPmapColorChanged(self):
+        """
+        Subclasses can override this to respond to changes in a label associated probability color.
         """
         pass
 
