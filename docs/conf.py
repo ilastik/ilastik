@@ -180,13 +180,16 @@ latex_elements = {
 
 # Additional stuff for the LaTeX preamble.
 #'preamble': '',
+    'classoptions': ',openany,oneside',
+    'babel': '\\usepackage[english]{babel}'
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'ilastik.tex', u'ilastik Documentation',
-   u'Christoph Sommer, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg', 'manual'),
+   u'Christoph Sommer \\and Christoph Straehle \\and Bernhard X. Kausler \\and Thorben Kröger \\and Ullrich Köthe  \\and Fred A. Hamprecht \\and Anna Kreshuk \\and Luca Fiaschi \\and Stuart Berg',
+   'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
