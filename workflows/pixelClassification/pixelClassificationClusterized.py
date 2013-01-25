@@ -12,6 +12,10 @@ import threading
 import Queue
 import shutil
 
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
+
 # ilastik
 from ilastik.workflow import Workflow
 import ilastik.utility.monkey_patches
@@ -20,16 +24,12 @@ from ilastik.clusterConfig import parseClusterConfigFile
 
 from ilastik.utility.pathHelpers import getPathVariants
 
-import workflows # Load all known workflow modules
-
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from lazyflow.graph import OperatorWrapper
 
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
-ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
-
 logger = logging.getLogger(__name__)
+
+import workflows # Load all known workflow modules
 
 def main(argv):
     logger.debug( "Launching with sys.argv: {}".format(sys.argv) )
