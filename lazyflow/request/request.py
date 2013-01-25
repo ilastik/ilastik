@@ -11,6 +11,7 @@ from lazyflow.utility.helpers import detectCPUs
 import math
 import logging
 import itertools
+import warnings
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(1000)
@@ -769,3 +770,23 @@ class Request(object):
 
     def getResult(self):
         return self.result
+    
+    ##
+    ## Functions for forwards compatibility
+    ##
+    def notify_finished(self, fn):
+        self.onFinish( Request._wrapperFinishCallback, real_callback = fn)
+
+    def notify_cancelled(self, fn):
+        warnings.warn("notify_cancelled() not supported in old request implementation.")
+    
+    def notify_failed(self, fn):
+        warnings.warn("notify_failed() not supported in old request implementation.")
+##
+## Definitions for FORWARDS compatibility
+##
+
+# New names
+RequestPool = Pool
+RequestLock = Lock
+
