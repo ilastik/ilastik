@@ -9,6 +9,22 @@ import lazyflow.stype
 
 from lazyflow.request import RequestLock
 
+class FakeLock(object):
+    def do_nothing(self, *args, **kwargs):
+        pass
+
+    def __init__(self):
+        self.acquire = self.do_nothing
+        self.release = self.do_nothing
+        self.__enter__ = self.do_nothing
+        self.__exit__ = self.do_nothing
+
+    acquire = do_nothing
+    release = do_nothing
+    __enter__ = do_nothing
+    __exit__ = do_nothing
+
+
 class RoiRequestBatch( object ):
     """
     A simple utility for requesting a list of rois from an output slot.
@@ -35,7 +51,11 @@ class RoiRequestBatch( object ):
         self._batchSize = batchSize
 
         self._activeRequests = collections.deque()
-        self._lock = RequestLock()
+        
+        if lazyflow.request.backend == 'new':
+            self._lock = RequestLock()
+        else:
+            self._lock = FakeLock()
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
@@ -54,6 +74,9 @@ class RoiRequestBatch( object ):
         while next_request is not None:
             next_request.wait()
 
+            if lazyflow.request.backend == 'old':
+                self._handleCompletedRequest( roi, next_request, next_request.result )
+            
             # Get next request to wait for
             roi, next_request = self._popOldestActiveRequest()
 
@@ -71,13 +94,16 @@ class RoiRequestBatch( object ):
             else:
                 return (None, None)
 
-    def _handleCompletedRequest(self, roi, completed_request, result):
+    def _handleCompletedRequest(self, roi, req, result):
         # Add a new request to the batch to replace this finished one.
         self._activateNewRequest()
 
         with self._lock:
             # Signal the user with the result
-            self.resultSignal(roi, completed_request.result)
+            self.resultSignal(roi, result)
+            
+            # We no longer need the result.
+            req.result = None
 
             # Report progress (if possible)
             if self._totalVolume is not None:
@@ -97,7 +123,8 @@ class RoiRequestBatch( object ):
             else:
                 req = self._outputSlot( roi[0], roi[1] )
                 self._activeRequests.append( (roi, req) )
-                req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
+                if lazyflow.request.backend == 'new':
+                    req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
                 req.submit()
 
 
