@@ -145,10 +145,11 @@ class OpClusterize(Operator):
                 logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
                 del taskInfos[roi]
 
+            absWorkDir, relWorkDir = getPathVariants(self._config.server_working_directory, os.path.split( configFilePath )[0] )
             if self._config.task_launch_server == "localhost":
                 def localCommand( cmd ):
                     cwd = os.getcwd()
-                    os.chdir( self._config.server_working_directory )
+                    os.chdir( absWorkDir )
                     subprocess.call( cmd, shell=True )
                     os.chdir( cwd )
                 launchFunc = localCommand
@@ -158,7 +159,7 @@ class OpClusterize(Operator):
                 import fabric.api as fab
                 @fab.hosts( self._config.task_launch_server )
                 def remoteCommand( cmd ):
-                    with fab.cd( self._config.server_working_directory ):
+                    with fab.cd( absWorkDir ):
                         fab.run( cmd )
                 launchFunc = functools.partial( fab.execute, remoteCommand )
     
