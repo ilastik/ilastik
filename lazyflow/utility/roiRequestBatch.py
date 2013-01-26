@@ -73,6 +73,7 @@ class RoiRequestBatch( object ):
         roi, next_request = self._popOldestActiveRequest()
         while next_request is not None:
             next_request.wait()
+            next_request.clean()
 
             if lazyflow.request.backend == 'old':
                 self._handleCompletedRequest( roi, next_request, next_request.result )
@@ -102,9 +103,6 @@ class RoiRequestBatch( object ):
             # Signal the user with the result
             self.resultSignal(roi, result)
             
-            # We no longer need the result.
-            req.result = None
-
             # Report progress (if possible)
             if self._totalVolume is not None:
                 self._processedVolume += numpy.prod( roi[1] - roi[0] )

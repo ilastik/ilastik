@@ -3,9 +3,11 @@ import sys
 import numpy
 import psutil
 import threading
+from functools import partial
 from lazyflow.graph import Graph, Operator, OutputSlot
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
 from lazyflow.operators import OpArrayPiper
+from lazyflow.request import Request
 
 from lazyflow.utility import BigRequestStreamer
 
@@ -59,8 +61,14 @@ class TestBigRequestStreamer(object):
         logger.debug( "FINISHED" )
 
     def testForMemoryLeaks(self):
+        """
+        If the BigRequestStreamer doesn't clean requests as they complete, they'll take up too much memory.
+        """
         
         class OpNonsense( Operator ):
+            """
+            Provide nonsense data of the correct shape for each request.
+            """
             Output = OutputSlot()
 
             def setupOutputs(self):
@@ -68,8 +76,21 @@ class TestBigRequestStreamer(object):
                 self.Output.shape = (1000, 1000, 1000)
     
             def execute(self, slot, subindex, roi, result):
+                """
+                Simulate a cascade of requests, to make sure that the entire cascade is properly freed.
+                """
                 roiShape = roi.stop - roi.start
-                result[:] = numpy.indices(roiShape, self.Output.meta.dtype).sum()
+                def getResults1():
+                    return numpy.indices(roiShape, self.Output.meta.dtype).sum()
+                def getResults2():
+                    req = Request( getResults1 )
+                    req.submit()
+                    result[:] = req.wait()
+                    return result
+
+                req = Request( getResults2 )
+                req.submit()
+                result[:] = req.wait()
                 return result
         
             def propagateDirty(self, slot, subindex, roi):
@@ -85,9 +106,9 @@ class TestBigRequestStreamer(object):
         def handleProgress( progress ):
             logger.debug( "Progress update: {}".format(progress) )
 
-        batch = BigRequestStreamer(op.Output, [(0,0,0), (1000,1000,1000)], (100,100, 100) )
+        batch = BigRequestStreamer(op.Output, [(0,0,0), (100,1000,1000)], (100,100,100) )
         batch.resultSignal.subscribe( handleResult )
-        batch.progressSignal.subscribe( handleProgress )        
+        batch.progressSignal.subscribe( handleProgress )
         batch.execute()
 
         gc.collect()
@@ -96,7 +117,7 @@ class TestBigRequestStreamer(object):
         finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
         difference_mb = finished_mem_usage_mb - start_mem_usage_mb
         logger.debug( "Finished test with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
-        assert difference_mb < 1000, "BigRequestStreamer seems to have memory leaks.  After executing, RAM usage increased by {}".format( difference_mb )
+        assert difference_mb < 200, "BigRequestStreamer seems to have memory leaks.  After executing, RAM usage increased by {}".format( difference_mb )
 
 if __name__ == "__main__":
     import sys
