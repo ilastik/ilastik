@@ -278,13 +278,13 @@ class Request( object ):
                         then a Request.TimeoutException is raised.
         """        
         assert not self._cleaned, "Can't wait() for a request that has already been cleaned."
-        return self._block(timeout)
+        return self._wait(timeout)
 
     def block(self, timeout=None):
         """
         Like wait, but does not return a result.  Can be used even if the request has already been cleaned.
         """
-        self._wait(timeout)
+        self._wait(timeout) # No return value. Use wait()
 
     def _wait(self, timeout=None):
         # Quick shortcut:
