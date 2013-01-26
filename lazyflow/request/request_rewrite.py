@@ -90,7 +90,7 @@ class Request( object ):
         self.fn = fn
 
         #: After this request finishes execution, this attribute holds the return value from the workload function.
-        self.result = None
+        self._result = None
 
         # State
         self.started = False
@@ -100,6 +100,7 @@ class Request( object ):
         self.execution_complete = False
         self.finished_event = threading.Event()
         self.exception = None
+        self._cleaned = False
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
@@ -139,12 +140,21 @@ class Request( object ):
 
     def clean(self):
         """
-        Delete all state from the request, for cleanup purposes.
+        Delete all state from the request, for cleanup purposes.  Removes references to callbacks, children, and the result.
         """
+        self._cleaned = True
+        assert self.execution_complete, "Can't clean() a request that hasn't finished running."
         self._sig_cancelled.clean()
         self._sig_finished.clean()
         self._sig_failed.clean()
-        self.result = None
+        self._result = None
+
+        with self._lock:
+            for child in self.child_requests:
+                child.parent_request = None
+            self.child_requests.clear()
+        
+        self._result = None
         
     @property
     def assigned_worker(self):
@@ -164,6 +174,14 @@ class Request( object ):
         # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
         self.greenlet = RequestGreenlet(self, self._execute)
 
+    @property
+    def result(self):
+        assert not self._cleaned, "Can't get this result.  The request has already been cleaned!"
+        assert self.execution_complete, "Can't access the result until the request is complete."
+        assert not self.cancelled, "Can't access the result of a cancelled request."
+        assert self.exception is None, "Can't access this result.  The request failed."
+        return self._result
+
     def _execute(self):
         """
         Do the real work of this request.
@@ -172,7 +190,7 @@ class Request( object ):
         if not self.cancelled:
             try:
                 # Do the actual work
-                self.result = self.fn()
+                self._result = self.fn()
             except Request.CancellationException:
                 # Don't propagate cancellations back to the worker thread,
                 # even if the user didn't catch them.
@@ -195,7 +213,7 @@ class Request( object ):
             elif self.exception is not None:
                 self._sig_failed( self.exception )
             else:
-                self._sig_finished(self.result)
+                self._sig_finished(self._result)
 
             # Once the signals have fired, there's no need to keep their callbacks around
             # (Callbacks, especially functools.partial, may contain parameters that should be collected.)
@@ -266,7 +284,7 @@ class Request( object ):
         # Note that this is only possible because self.execution_complete is set to True 
         #  AFTER self.cancelled and self.exception have their final values.  See _execute().
         if self.execution_complete and not self.cancelled and self.exception is None:
-            return self.result
+            return self._result
         
         # Identify the request that is waiting for us (the current context)
         current_request = Request._current_request()
@@ -279,7 +297,7 @@ class Request( object ):
             self._wait_within_request( current_request )
 
         assert self.finished
-        return self.result
+        return self._result
 
     def _wait_within_foreign_thread(self, timeout):
         """
@@ -417,7 +435,7 @@ class Request( object ):
 
         if finished:
             # Call immediately
-            fn(self.result)
+            fn(self._result)
 
     def notify_cancelled(self, fn):
         """
