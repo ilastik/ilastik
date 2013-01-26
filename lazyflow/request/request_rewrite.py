@@ -143,7 +143,6 @@ class Request( object ):
         Delete all state from the request, for cleanup purposes.  Removes references to callbacks, children, and the result.
         """
         self._cleaned = True
-        assert self.execution_complete, "Can't clean() a request that hasn't finished running."
         self._sig_cancelled.clean()
         self._sig_finished.clean()
         self._sig_failed.clean()
@@ -213,6 +212,7 @@ class Request( object ):
             elif self.exception is not None:
                 self._sig_failed( self.exception )
             else:
+                assert not self._cleaned, "This request has been cleaned() already."
                 self._sig_finished(self._result)
 
             # Once the signals have fired, there's no need to keep their callbacks around
@@ -266,7 +266,7 @@ class Request( object ):
         """
         # Switch back to the worker that we're currently running in.
         self.greenlet.parent.switch()
-        
+
     def wait(self, timeout=None):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
@@ -277,6 +277,16 @@ class Request( object ):
                         If the request does not complete within the timeout period, 
                         then a Request.TimeoutException is raised.
         """        
+        assert not self._cleaned, "Can't wait() for a request that has already been cleaned."
+        return self._block(timeout)
+
+    def block(self, timeout=None):
+        """
+        Like wait, but does not return a result.  Can be used even if the request has already been cleaned.
+        """
+        self._wait(timeout)
+
+    def _wait(self, timeout=None):
         # Quick shortcut:
         # If there's no need to wait, just return immediately.
         # This avoids some function calls and locks.
@@ -427,6 +437,7 @@ class Request( object ):
         
         :param fn: The callback to be notified.  Signature: fn(result)
         """
+        assert not self._cleaned, "This request has been cleaned() already."
         with self._lock:
             finished = self.finished
             if not finished:
@@ -444,6 +455,7 @@ class Request( object ):
         
         :param fn: The callback to call if the request is cancelled.  Signature: fn()
         """
+        assert not self._cleaned, "This request has been cleaned() already."
         with self._lock:
             finished = self.finished
             cancelled = self.cancelled
@@ -462,6 +474,7 @@ class Request( object ):
 
         :param fn: The callback to call if the request fails.  Signature: fn(exception)
         """
+        assert not self._cleaned, "This request has been cleaned() already."
         with self._lock:
             finished = self.finished
             failed = self.exception is not None
