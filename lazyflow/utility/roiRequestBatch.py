@@ -72,8 +72,7 @@ class RoiRequestBatch( object ):
         # Wait for each request in FIFO order.  
         roi, next_request = self._popOldestActiveRequest()
         while next_request is not None:
-            next_request.wait()
-            next_request.clean()
+            next_request.block()
 
             if lazyflow.request.backend == 'old':
                 self._handleCompletedRequest( roi, next_request, next_request.result )
@@ -108,6 +107,8 @@ class RoiRequestBatch( object ):
                 self._processedVolume += numpy.prod( roi[1] - roi[0] )
                 progress =  100 * self._processedVolume / self._totalVolume
                 self.progressSignal( progress )
+
+        req.clean()
 
     def _activateNewRequest(self):
         """
