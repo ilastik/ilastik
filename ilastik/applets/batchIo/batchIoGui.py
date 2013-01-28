@@ -14,6 +14,8 @@ from ilastik.utility import PathComponents
 from ilastik.shell.gui.iconMgr import ilastikIcons
 import ilastik.applets.base.applet
 
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -46,7 +48,7 @@ class BatchIoGui(QMainWindow):
         return []
 
     def viewerControlWidget(self):
-        return QWidget() # No viewer controls for this applet.
+        return self._viewerControlWidgetStack
 
     def setImageIndex(self, index):
         pass
@@ -74,6 +76,7 @@ class BatchIoGui(QMainWindow):
             self.initAppletDrawerUic()
             self.initCentralUic()
             self.chosenExportDirectory = '/'
+            self.initViewerControls()
             
             self.guiControlSignal = guiControlSignal
             self.progressSignal = progressSignal
@@ -88,11 +91,22 @@ class BatchIoGui(QMainWindow):
     
             self.topLevelOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
             
-            def handleDatasetRemoved( multislot, index ):
-                # Simply remove the row we don't need any more
+            def handleImageRemoved( multislot, index, finalLength ):
+                if self.batchOutputTableWidget.rowCount() <= finalLength:
+                    return
+
+                # Remove the row we don't need any more
                 self.batchOutputTableWidget.removeRow( index )
-    
-            self.topLevelOperator.OutputDataPath.notifyRemove( bind( handleDatasetRemoved ) )
+
+                # Remove the viewer for this dataset
+                imageSlot = self.topLevelOperator.ImageToExport[index]
+                if imageSlot in self.layerViewerGuis.keys():
+                    layerViewerGui = self.layerViewerGuis[imageSlot]
+                    self.viewerStack.removeWidget( layerViewerGui )
+                    self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
+                    layerViewerGui.stopAndCleanUp()
+
+            self.topLevelOperator.ImageToExport.notifyRemove( bind( handleImageRemoved ) )
             
             self.topLevelOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
             self.topLevelOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
@@ -130,26 +144,36 @@ class BatchIoGui(QMainWindow):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
-        with Tracer(traceLogger):
-            # Load the ui file into this class (find it in our own directory)
-            localDir = os.path.split(__file__)[0]
-            uic.loadUi(localDir+"/batchIo.ui", self)
-    
-            self.batchOutputTableWidget.resizeRowsToContents()
-            self.batchOutputTableWidget.resizeColumnsToContents()
-            self.batchOutputTableWidget.setAlternatingRowColors(True)
-            self.batchOutputTableWidget.setShowGrid(False)
-            self.batchOutputTableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
-            
-            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
-            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
-            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Action, 100)
-    
-            self.batchOutputTableWidget.verticalHeader().hide()
-    
-            # Set up handlers
-            self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        # Load the ui file into this class (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        uic.loadUi(localDir+"/batchIo.ui", self)
+
+        self.batchOutputTableWidget.resizeRowsToContents()
+        self.batchOutputTableWidget.resizeColumnsToContents()
+        self.batchOutputTableWidget.setAlternatingRowColors(True)
+        self.batchOutputTableWidget.setShowGrid(False)
+        self.batchOutputTableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
         
+        self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
+        self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
+        self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Action, 100)
+
+        self.batchOutputTableWidget.verticalHeader().hide()
+
+        # Set up handlers
+        self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+
+        # Set up the viewer area
+        self.initViewerStack()
+        self.splitter.setSizes([150, 850])
+    
+    def initViewerStack(self):
+        self.layerViewerGuis = {}
+        self.viewerStack.addWidget( QWidget() )
+        
+    def initViewerControls(self):
+        self._viewerControlWidgetStack = QStackedWidget(parent=self)
+
     def handleExportLocationOptionChanged(self):
         """
         The user has changed the export directory option (radio buttons).
@@ -227,6 +251,12 @@ class BatchIoGui(QMainWindow):
             exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.topLevelOperator.ExportResult[row], self.topLevelOperator.ProgressSignal[row] ) )
             self.batchOutputTableWidget.setCellWidget( row, Column.Action, exportNowButton )
 
+            # Select a row if there isn't one already selected.
+            selectedRanges = self.batchOutputTableWidget.selectedRanges()
+            if len(selectedRanges) == 0:
+                self.batchOutputTableWidget.selectRow(0)
+
+
     def updateDrawerGuiFromOperatorSettings(self, *args):
         with Tracer(traceLogger):
             if self.topLevelOperator.Suffix.ready():
@@ -247,21 +277,24 @@ class BatchIoGui(QMainWindow):
         """
         Any time the user selects a new item, select the whole row.
         """
-        with Tracer(traceLogger):
-            # Figure out which dataset to remove
-            selectedItemRows = set()
-            selectedRanges = self.batchOutputTableWidget.selectedRanges()
-            for rng in selectedRanges:
-                for row in range(rng.topRow(), rng.bottomRow()+1):
-                    selectedItemRows.add(row)
-            
-            # Disconnect from selection change notifications while we do this
-            self.batchOutputTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
-            for row in selectedItemRows:
-                self.batchOutputTableWidget.selectRow(row)
-                
-            # Reconnect now that we're finished
-            self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        self.selectEntireRow()
+        self.showSelectedDataset()
+    
+    def selectEntireRow(self):
+        # Figure out which row is selected
+        selectedItemRows = set()
+        selectedRanges = self.batchOutputTableWidget.selectedRanges()
+        for rng in selectedRanges:
+            for row in range(rng.topRow(), rng.bottomRow()+1):
+                selectedItemRows.add(row)
+        
+        # Disconnect from selection change notifications while we do this
+        self.batchOutputTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
+        for row in selectedItemRows:
+            self.batchOutputTableWidget.selectRow(row)
+
+        # Reconnect now that we're finished
+        self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
     def exportSlots(self, slotList, progressSignalSlotList ):
         with Tracer(traceLogger):
@@ -320,11 +353,66 @@ class BatchIoGui(QMainWindow):
         with Tracer(traceLogger):
             for slot in self.topLevelOperator.OutputDataPath:
                 os.remove(slot.value)
+    
+    def showSelectedDataset(self):
+        """
+        Show the exported file in the viewer
+        """
+        # Get the selected row and corresponding slot value
+        selectedRanges = self.batchOutputTableWidget.selectedRanges()
+        if len(selectedRanges) == 0:
+            return
+        row = selectedRanges[0].topRow()
+        imageSlot = self.topLevelOperator.ImageToExport[row]
+        
+        # Create if necessary
+        if imageSlot not in self.layerViewerGuis.keys():
+            layerViewer = self._createLayerViewer(row)
+
+            # Maximize the x-y view by default.
+            layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
+            
+            self.layerViewerGuis[imageSlot] = layerViewer
+            self.viewerStack.addWidget( layerViewer )
+            self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
+
+        # Show the right one
+        self.viewerStack.setCurrentWidget( self.layerViewerGuis[imageSlot] )
 
 
+    def _createLayerViewer(self, index):
+        opLane = self.topLevelOperator.getLane(index)
+        layerViewer = BatchIoLayerViewerGui( opLane )
+        return layerViewer
 
+class BatchIoLayerViewerGui(LayerViewerGui):
+    """
+    Subclass the default LayerViewerGui implementation so we can provide a custom layer order.
+    """
 
+    def setupLayers(self):
+        layers = []
 
+        # Show the exported data on disk
+        opLane = self.topLevelOperatorView
+        exportedDataSlot = opLane.ExportedImage
+        if exportedDataSlot.ready():
+            exportLayer = self.createStandardLayerFromSlot( exportedDataSlot )
+            exportLayer.name = "Exported Image"
+            exportLayer.visible = True
+            exportLayer.opacity = 1.0
+            layers.append(exportLayer)
+        
+        # Show the (live-updated) data we're exporting
+        previewSlot = opLane.ImageToExport
+        if previewSlot.ready():
+            previewLayer = self.createStandardLayerFromSlot( previewSlot )
+            previewLayer.name = "Live Preview"
+            previewLayer.visible = False # off by default
+            previewLayer.opacity = 1.0
+            layers.append(previewLayer)
+
+        return layers
 
 
 

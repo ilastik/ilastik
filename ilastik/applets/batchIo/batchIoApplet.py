@@ -4,7 +4,7 @@ from opBatchIo import OpBatchIo
 
 from batchIoSerializer import BatchIoSerializer
 
-from lazyflow.graph import OperatorWrapper
+from ilastik.utility import OpMultiLaneWrapper
 
 class BatchIoApplet( Applet ):
     """
@@ -12,7 +12,7 @@ class BatchIoApplet( Applet ):
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, workflow, title ):
-        self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
+        self._topLevelOperator = OpMultiLaneWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
         super(BatchIoApplet, self).__init__(title, syncWithImageIndex=False)
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
