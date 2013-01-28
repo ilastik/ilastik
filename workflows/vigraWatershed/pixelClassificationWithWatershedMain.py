@@ -1,21 +1,6 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWithWatershedWorkflow import PixelClassificationWithVigraWatershedWorkflow
 
-
-def debug_with_existing(shell, workflow):
-    """
-    (Function for debug and testing.)
-    """
-    projFilePath = "/magnetic/test_project.ilp"
-    #projFilePath = '/magnetic/gigacube.ilp'
-    #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-    #projFilePath = '/magnetic/250-2.ilp'
-    # Open a project
-    shell.openProjectFile(projFilePath)
-
-    # Select the labeling drawer
-    shell.setSelectedAppletDrawer(3)
-
 def debug_with_new(shell, workflow):
     """
     (Function for debug and testing.)
@@ -59,11 +44,17 @@ def debug_with_new(shell, workflow):
 
 
 if __name__ == "__main__":
-    startShellGui( PixelClassificationWithVigraWatershedWorkflow )
-    #startShellGui( PixelClassificationWithVigraWatershedWorkflow, debug_with_new )
-    #startShellGui( PixelClassificationWithVigraWatershedWorkflow, debug_with_existing )
+    from optparse import OptionParser
+    usage = "%prog [options] filename"
+    parser = OptionParser(usage)
 
-
-
-
-
+    (options, args) = parser.parse_args()
+    # Start the GUI
+    if len(args) == 1:
+        def loadProject(shell):
+            shell.openProjectFile(args[0])
+        startShellGui( PixelClassificationWithVigraWatershedWorkflow, loadProject )
+    elif len(args) == 0:
+        startShellGui( PixelClassificationWithVigraWatershedWorkflow )
+    else:
+        parser.error("incorrect number of arguments")
