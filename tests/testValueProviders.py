@@ -4,7 +4,7 @@ import numpy
 import vigra
 import lazyflow
 import lazyflow.graph
-from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache
+from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge
 
 class TestOpMetadataInjector(object):
     
@@ -79,6 +79,35 @@ class TestOpMetadataSelector(object):
         
         op.MetadataKey.setValue('axistags')
         assert op.Output.value == meta.axistags
+
+class TestOpMetadataMerge(object):
+    
+    def test(self):
+        from lazyflow.graph import Graph, MetaDict
+        from lazyflow.operators import OpArrayPiper
+        graph = Graph()
+        opDataSource = OpArrayPiper(graph=graph)
+        opDataSource.Input.setValue( numpy.ndarray((9,10), dtype=numpy.uint8) )
+        
+        # Create some metadata    
+        shape = (1,2,3,4,5)
+        data = numpy.indices(shape, dtype=int).sum(0)
+        meta = MetaDict()
+        meta.specialdata = "Salutations"
+        meta.notsospecial = "Hey"
+    
+        opProvider = OpOutputProvider( data, meta, graph=graph )
+        
+        op = OpMetadataMerge(graph=graph)
+        op.Input.connect( opDataSource.Output )
+        op.MetadataSource.connect( opProvider.Output )
+        op.FieldsToClone.setValue( ['specialdata'] )
+        
+        assert op.Output.ready()
+        assert op.Output.meta.shape == opDataSource.Output.meta.shape
+        assert op.Output.meta.dtype == opDataSource.Output.meta.dtype
+        assert op.Output.meta.specialdata == meta.specialdata
+        assert op.Output.meta.notsospecial is None
 
 class TestOpValueCache(object):
     

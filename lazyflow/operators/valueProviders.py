@@ -146,6 +146,30 @@ class OpMetadataSelector(Operator):
         if slot.name == "MetadataKey":
             self.Output.setDirty(slice(None))
 
+class OpMetadataMerge(Operator):
+    Input = InputSlot()
+    MetadataSource = InputSlot()
+    FieldsToClone = InputSlot(stype='list') # list of strings
+
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        # Start with the original metadata
+        self.Output.meta.assignFrom( self.Input.meta )
+
+        # Merge in additional fields, selected from the source connection.
+        for key in self.FieldsToClone.value:
+            assert isinstance(key, str), "Metadata field names are expected to be strings"
+            if key in self.MetadataSource.meta:
+                setattr( self.Output.meta, key, self.MetadataSource.meta[key] )
+
+    def execute(self, slot, subindex, roi, result):
+        result[...] = self.Input(roi.start, roi.stop).wait()
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Forward to the output slot
+        self.Output.setDirty(roi)
+
 class OpOutputProvider(Operator):
     name = "OpOutputProvider"
     category = "test"
