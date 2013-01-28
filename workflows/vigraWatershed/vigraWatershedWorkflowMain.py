@@ -29,6 +29,18 @@ def debug_with_new(shell, workflow):
 
 
 if __name__ == "__main__":
-    startShellGui( VigraWatershedWorkflow )
-    #startShellGui( VigraWatershedWorkflow, debug_with_new )
+    from optparse import OptionParser
+    usage = "%prog [options] filename"
+    parser = OptionParser(usage)
 
+    (options, args) = parser.parse_args()
+
+    # Start the GUI
+    if len(args) == 1:
+        def loadProject(shell):
+            shell.openProjectFile(args[0])
+        startShellGui( VigraWatershedWorkflow, loadProject )
+    elif len(args) == 0:
+        startShellGui( VigraWatershedWorkflow )
+    else:
+        parser.error("incorrect number of arguments")
