@@ -1,3 +1,5 @@
+import os
+import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
@@ -14,11 +16,17 @@ class OpBlockwiseFilesetReader(Operator):
     DescriptionFilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
 
+    class MissingDatasetError(Exception):
+        pass
+
     def __init__(self, *args, **kwargs):
         super(OpBlockwiseFilesetReader, self).__init__(*args, **kwargs)
         self._blockwiseFileset = None
 
     def setupOutputs(self):
+        if not os.path.exists(self.DescriptionFilePath.value):
+            raise OpBlockwiseFilesetReader.MissingDatasetError("Dataset description not found: {}".format( self.DescriptionFilePath.value ) )
+        
         # Load up the class that does the real work
         self._blockwiseFileset = BlockwiseFileset( self.DescriptionFilePath.value )
 
@@ -33,7 +41,19 @@ class OpBlockwiseFilesetReader(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
-        self._blockwiseFileset.readData( (roi.start, roi.stop), result )
+        try:
+            self._blockwiseFileset.readData( (roi.start, roi.stop), result )
+        except BlockwiseFileset.BlockNotReadyError:
+            # Replace this entire request with a simple pattern to indicate "not available"
+            pattern = numpy.indices( roi.stop - roi.start ).sum(0)
+            pattern += roi.start.sum()
+            pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
+            # If dtype is a float, use 0/1.
+            # If its an int, use 0/255
+            if isinstance(self.Output.meta.dtype(), numpy.integer):
+                pattern *= 255
+        
+            result[:] = pattern
         return result
 
     def propagateDirty(self, slot, subindex, roi):

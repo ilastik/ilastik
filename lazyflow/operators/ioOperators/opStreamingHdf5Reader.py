@@ -22,6 +22,12 @@ class OpStreamingHdf5Reader(Operator):
 
     # Output data
     OutputImage = OutputSlot()
+    
+    class DatasetReadError(Exception):
+        def __init__(self, internalPath):
+            self.internalPath = internalPath
+            self.msg = "Unable to open Hdf5 dataset: {}".format( internalPath )
+            super(OpStreamingHdf5Reader.DatasetReadError, self).__init__( self.msg )
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5Reader, self).__init__(*args, **kwargs)
@@ -34,6 +40,9 @@ class OpStreamingHdf5Reader(Operator):
         # Read the dataset meta-info from the HDF5 dataset
         self._hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
+
+        if internalPath not in self._hdf5File:
+            raise OpStreamingHdf5Reader.DatasetReadError(internalPath)
 
         dataset = self._hdf5File[internalPath]
         outputShape = dataset.shape

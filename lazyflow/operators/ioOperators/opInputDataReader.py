@@ -33,6 +33,9 @@ class OpInputDataReader(Operator):
     FilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
 
+    class DatasetReadError(Exception):
+        pass
+
     def __init__(self, *args, **kwargs):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperator = None
@@ -115,10 +118,16 @@ class OpInputDataReader(Operator):
         internalPath = filePath.split(ext)[1]
 
         if not os.path.exists(externalPath):
-            raise RuntimeError("Input file does not exist: " + externalPath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
 
         # Open the h5 file in read-only mode
-        h5File = h5py.File(externalPath, 'r')
+        try:
+            h5File = h5py.File(externalPath, 'r')
+        except Exception as e:
+            msg = "Unable to open HDF5 File: {}".format( externalPath )
+            if hasattr(e, 'message'):
+                msg += e.message
+            raise OpInputDataReader.DatasetReadError( msg )
         self._file = h5File
 
         h5Reader = OpStreamingHdf5Reader(parent=self, graph=self.graph)
@@ -127,7 +136,13 @@ class OpInputDataReader(Operator):
 
         # Can't set the internal path yet if we don't have one
         assert internalPath != '', "When using hdf5, you must append the hdf5 internal path to the data set to your filename, e.g. myfile.h5/volume/data"
-        h5Reader.InternalPath.setValue(internalPath)
+
+        try:
+            h5Reader.InternalPath.setValue(internalPath)
+        except OpStreamingHdf5Reader.DatasetReadError as e:
+            msg = "Error reading HDF5 File: {}".format(externalPath)
+            msg += e.msg
+            raise OpInputDataReader.DatasetReadError( msg )
 
         return (h5Reader, h5Reader.OutputImage)
 
@@ -139,11 +154,14 @@ class OpInputDataReader(Operator):
         if fileExtension not in OpInputDataReader.npyExts:
             return (None, None)
         else:
-            # Create an internal operator
-            npyReader = OpNpyFileReader(parent=self, graph=self.graph)
-            npyReader.AxisOrder.connect( self.DefaultAxisOrder )
-            npyReader.FileName.setValue(filePath)
-            return (npyReader, npyReader.Output)
+            try:
+                # Create an internal operator
+                npyReader = OpNpyFileReader(parent=self, graph=self.graph)
+                npyReader.AxisOrder.connect( self.DefaultAxisOrder )
+                npyReader.FileName.setValue(filePath)
+                return (npyReader, npyReader.Output)
+            except OpNpyFileReader.DatasetReadError as e:
+                raise OpInputDataReader.DatasetReadError( *e.args )
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -157,6 +175,8 @@ class OpInputDataReader(Operator):
                 return (opReader, opReader.Output)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
+            except OpBlockwiseFilesetReader.MissingDatasetError as e:
+                raise OpInputDataReader.DatasetReadError(*e.args)
         return (None, None)
 
     def _attemptOpenAsRESTfulBlockwiseFileset(self, filePath):
@@ -171,6 +191,8 @@ class OpInputDataReader(Operator):
                 return (opReader, opReader.Output)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
+            except OpRESTfulBlockwiseFilesetReader.MissingDatasetError as e:
+                raise OpInputDataReader.DatasetReadError(*e.args)
         return (None, None)
 
     def _attemptOpenWithVigraImpex(self, filePath):

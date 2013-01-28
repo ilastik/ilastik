@@ -143,6 +143,12 @@ class OpStackLoader(Operator):
     inputSlots = [InputSlot("globstring", stype = "string")]
     outputSlots = [OutputSlot("stack")]
 
+    class FileOpenError( Exception ):
+        def __init__(self, filename):
+            self.filename = filename
+            self.msg = "Unable to open file: {}".format(filename)
+            super(OpStackLoader.FileOpenError, self).__init__( self.msg )
+
     def setupOutputs(self):
         self.fileNameList = []
         globStrings = self.inputs["globstring"].value
@@ -152,7 +158,11 @@ class OpStackLoader(Operator):
             self.fileNameList += sorted(glob.glob(globString))
 
         if len(self.fileNameList) != 0:
-            self.info = vigra.impex.ImageInfo(self.fileNameList[0])
+            try:
+                self.info = vigra.impex.ImageInfo(self.fileNameList[0])
+            except RuntimeError:
+                raise OpStackLoader.FileOpenError(self.fileNameList[0])
+            
             oslot = self.outputs["stack"]
 
             #build 5D shape out of 2DShape and Filelist
