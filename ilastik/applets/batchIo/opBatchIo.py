@@ -75,7 +75,7 @@ class OpBatchIo(Operator):
         self.ProgressSignal.setValue( self.progressSignal )
         
         self._createDirLock = threading.Lock()
-
+        
     def setupOutputs(self):        
         if self._opExportedImageProvider is not None:
             self._opExportedImageProvider.cleanUp()
@@ -202,22 +202,32 @@ class OpExportedImageProvider(Operator):
         self._opReader = None
     
     def setupOutputs( self ):
-        self._dirty = self.Dirty.value
         if self._opReader is not None:
+            self.Output.disconnect()
             self._opReader.cleanUp()
+
+        dataReady = True
+        try:
+            # Configure the reader (shouldn't need to specify axis order; should be provided in data)
+            self._opReader = OpInputDataReader( parent=self )
+            self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
+            self._opReader.FilePath.setValue( self.DatasetPath.value )
+
+            dataReady &= self._opReader.Output.meta.shape == self.Input.meta.shape
+            dataReady &= self._opReader.Output.meta.dtype == self.Input.meta.dtype
+            if dataReady:
+                self.Output.connect( self._opReader.Output )
         
-        if self._dirty is True:
+        except OpInputDataReader.DatasetReadError:
+            # The dataset doesn't exist yet.
+            dataReady = False
+
+        if not dataReady:
+            # The dataset isn't ready.
+            # That's okay, we'll just return black pixels.
             self._opReader = None
             self.Output.meta.assignFrom( self.Input.meta )
-            return
 
-        # Configure the reader (shouldn't need to specify axis order; should be provided in data)        
-        self._opReader = OpInputDataReader( parent=self )
-        self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
-        self._opReader.FilePath.setValue( self.DatasetPath.value )
-        
-        self.Output.connect( self._opReader.Output )
-        
     def execute(self, slot, subindex, roi, result):
         # This is only called when the user is trying to view data that isn't ready yet.
         # In that case, we just provide zeros.
