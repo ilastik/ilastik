@@ -522,7 +522,7 @@ class Slot(object):
         Arguments:
           size    : the desired number of subslots
         """
-        assert isinstance(size, int)
+        assert isinstance(size, int) or isinstance(size, long)
 
         if self._resizing:
             return
