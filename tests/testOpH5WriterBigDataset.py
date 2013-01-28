@@ -24,7 +24,6 @@ class TestOpH5WriterBigDataset(object):
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
-        pass
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataFileName)
@@ -32,7 +31,6 @@ class TestOpH5WriterBigDataset(object):
             pass
 
     def test_Writer(self):
-        
         # Create the h5 file
         hdf5File = h5py.File(self.testDataFileName)
         
@@ -53,6 +51,7 @@ class TestOpH5WriterBigDataset(object):
         dataset = f[self.datasetInternalPath]
         assert dataset.shape == self.dataShape
         assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
+        f.close()
 
 class TestOpH5WriterBigDataset_2(object):
 
@@ -67,7 +66,6 @@ class TestOpH5WriterBigDataset_2(object):
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
-        pass
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataFileName)
@@ -99,9 +97,7 @@ class TestOpH5WriterBigDataset_2(object):
         dataset = f[self.datasetInternalPath]
         assert dataset.shape == self.dataShape
         assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
-
-
-
+        f.close()
 
 if __name__ == "__main__":
     import nose
