@@ -419,6 +419,8 @@ class Slot(object):
             self.disconnect()
             return
 
+        assert isinstance(partner, Slot), "Slot.connect() can only be used to connect other Slots.  Did you mean to use Slot.setValue()?"
+        
         if self.partner == partner and partner.level == self.level:
             return
         if self.level == 0:
@@ -1027,7 +1029,9 @@ class Slot(object):
             self.meta._dirty = False
 
         if self._type != "output":
-            self._configureOperator(self)
+            op = self.getRealOperator()
+            if op is not None and not op._cleaningUp:
+                self._configureOperator(self)
 
         if wasdirty:
             # call changed callbacks
@@ -1325,6 +1329,7 @@ class Operator(object):
                 raise Exception("Operator.__init__() [self.name='%s']: parent and graph can't be both None" % self.name)
             graph=parent.graph
         
+        self._cleaningUp = False
         self.graph = graph
         self._children = collections.OrderedDict()
         self._parent = None
@@ -1450,6 +1455,7 @@ class Operator(object):
             child._disconnect()
 
     def cleanUp(self):
+        self._cleaningUp = True
         if self._parent is not None:
             del self._parent._children[self]
 
