@@ -7,7 +7,7 @@ import numpy
 import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators import OpH5WriterBigDataset, OpDummyData
 from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.utility.pathHelpers import PathComponents
 
@@ -204,11 +204,14 @@ class OpExportedImageProvider(Operator):
     def __init__(self, *args, **kwargs):
         super( OpExportedImageProvider, self ).__init__(*args, **kwargs)
         self._opReader = None
+        self._opDummyData = OpDummyData( parent=self )
     
     def setupOutputs( self ):
         if self._opReader is not None:
             self.Output.disconnect()
             self._opReader.cleanUp()
+
+        self._opDummyData.Input.connect( self.Input )
 
         dataReady = True
         try:
@@ -228,15 +231,12 @@ class OpExportedImageProvider(Operator):
 
         if not dataReady:
             # The dataset isn't ready.
-            # That's okay, we'll just return black pixels.
+            # That's okay, we'll just return dummy data.
             self._opReader = None
-            self.Output.meta.assignFrom( self.Input.meta )
+            self.Output.connect( self._opDummyData.Output )
 
     def execute(self, slot, subindex, roi, result):
-        # This is only called when the user is trying to view data that isn't ready yet.
-        # In that case, we just provide zeros.
-        assert self.Output.partner is None
-        return numpy.zeros( roi.stop - roi.start )
+        assert False, "Output is supposed to be directly connected to an internal operator."
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
