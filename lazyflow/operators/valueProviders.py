@@ -165,6 +165,7 @@ class OpMetadataMerge(Operator):
 
     def execute(self, slot, subindex, roi, result):
         result[...] = self.Input(roi.start, roi.stop).wait()
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         # Forward to the output slot
