@@ -145,7 +145,7 @@ Pixel Classification
    :scale: 100  %
    :alt: Pixel Classification Top-Level Operator
 
-.. figure:: images/opPixelClassification_detailed.png
+.. figure:: images/OpPixelClassification_detailed.png
    :scale: 20 %
    :alt: Pixel Classification Top-Level Operator
 

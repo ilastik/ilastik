@@ -23,8 +23,10 @@ Utility Classes
    .. automethod:: __init__
 
 .. autoclass:: MultiLaneOperatorABC
+	:members:
 
 .. autoclass:: OpMultiLaneWrapper
+	:members:
 
 
 GUI Utilities

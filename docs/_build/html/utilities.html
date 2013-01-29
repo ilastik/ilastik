@@ -3,16 +3,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utility Classes &mdash; ilastik 0.6.0 documentation</title>
-    
+    <title>Utility Classes &mdash; ilastik v0.6.0 documentation</title>
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -25,7 +22,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
     <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
     <link rel="prev" title="Project Manager" href="projectManager.html" /> 
   </head>
@@ -42,7 +39,7 @@
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -111,7 +108,7 @@ No fine-grained unsubcribe mechanism.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>totalPath</strong> &#8211; The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
 For example, <tt class="docutils literal"><span class="pre">totalPath='/some/path/to/file.h5/with/internal/dataset'</span></tt></li>
 <li><strong>cwd</strong> &#8211; If provided, relative paths will be converted to absolute paths using this arg as the working directory.</li>
@@ -124,49 +121,49 @@ For example, <tt class="docutils literal"><span class="pre">totalPath='/some/pat
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.extension">
-<tt class="descname">extension</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extension</tt><a class="headerlink" href="#ilastik.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.externalPath">
-<tt class="descname">externalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalPath</tt><a class="headerlink" href="#ilastik.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalPath">
-<tt class="descname">internalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalPath</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/with/internal/dataset</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalDatasetName">
-<tt class="descname">internalDatasetName</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDatasetName</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/dataset</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalDirectory">
-<tt class="descname">internalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDirectory</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5/with/internal</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.externalDirectory">
-<tt class="descname">externalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalDirectory</tt><a class="headerlink" href="#ilastik.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.filename">
-<tt class="descname">filename</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filename</tt><a class="headerlink" href="#ilastik.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.filenameBase">
-<tt class="descname">filenameBase</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filenameBase</tt><a class="headerlink" href="#ilastik.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file</span></tt></p>
 </dd></dl>
 
@@ -196,7 +193,7 @@ Non-multislot members will not be replaced.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>op</strong> &#8211; The operator to view.</li>
 <li><strong>index</strong> &#8211; The index of this subview.  All multislots of the original 
 operator will be replaced with the corresponding subslot at this index.</li>
@@ -216,15 +213,74 @@ operator will be replaced with the corresponding subslot at this index.</li>
 The distinguishing characteristic of a top-level operator is the fact that they must be capable of 
 supporting multiple images via multi-slots that are indexed by image lane number.</p>
 <p>Image lanes of the top-level operator are added, removed, and accessed via the <tt class="docutils literal"><span class="pre">addLane</span></tt>, <tt class="docutils literal"><span class="pre">removeLane</span></tt>, and <tt class="docutils literal"><span class="pre">getLane</span></tt> functions.</p>
-<p>Note: Most applets can simply inherit from the <tt class="docutils literal"><span class="pre">StandardApplet</span></tt> base class, 
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Most applets can simply inherit from the <a class="reference internal" href="applet_api.html#ilastik.applets.base.standardApplet.StandardApplet" title="ilastik.applets.base.standardApplet.StandardApplet"><tt class="xref py py-class docutils literal"><span class="pre">StandardApplet</span></tt></a> base class, 
 which will automatically adapt single-lane top-level operators to satisfy this interface.</p>
+</div>
+<dl class="method">
+<dt id="ilastik.utility.MultiLaneOperatorABC.addLane">
+<tt class="descname">addLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="headerlink" href="#ilastik.utility.MultiLaneOperatorABC.addLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an image lane.  Called by the workflow when the user has added a new image to the pipeline.</p>
+<dl class="docutils">
+<dt><em>Postcondition:</em> The operator must be fully prepared to accept a new image.</dt>
+<dd>All input and output slots that are used by the image lane must be resized.
+Any internal operators that are part of the lane must be expanded).</dd>
+</dl>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Multi-slots that are connected together are auto-resized to stay in sync.  
+To resize a network of connected multi-slots (including OperatorWrapper inputs and 
+outputs), it is generally sufficient to resize only one of the multi-slots.  
+The others will auto-resize to adjust.  See lazyflow documentation for details.  
+If your operator has any slots that are NOT connected to the rest of the inputs or 
+outputs, then be sure to resize it explicitly in this function.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.MultiLaneOperatorABC.removeLane">
+<tt class="descname">removeLane</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="headerlink" href="#ilastik.utility.MultiLaneOperatorABC.removeLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove an image lane.  Called by the workflow when the user has removed an image from the pipeline.</p>
+<p><em>Postcondition:</em> The lane must be removed from all slots that were added in <a class="reference internal" href="#ilastik.utility.MultiLaneOperatorABC.addLane" title="ilastik.utility.MultiLaneOperatorABC.addLane"><tt class="xref py py-func docutils literal"><span class="pre">addLane()</span></tt></a></p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">See note in <a class="reference internal" href="#ilastik.utility.MultiLaneOperatorABC.addLane" title="ilastik.utility.MultiLaneOperatorABC.addLane"><tt class="xref py py-func docutils literal"><span class="pre">addLane()</span></tt></a> documentation.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.MultiLaneOperatorABC.getLane">
+<tt class="descname">getLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="headerlink" href="#ilastik.utility.MultiLaneOperatorABC.getLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get an object that exposes the relevant slots for the specific lane.
+The object may be an operator, or may merely be an operator-like &#8220;view&#8221; object.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
 <dt id="ilastik.utility.OpMultiLaneWrapper">
 <em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OpMultiLaneWrapper</tt><big>(</big><em>operatorClass</em>, <em>operator_args=None</em>, <em>operator_kwargs=None</em>, <em>parent=None</em>, <em>graph=None</em>, <em>promotedSlotNames=None</em>, <em>broadcastingSlotNames=None</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper" title="Permalink to this definition">¶</a></dt>
-<dd><p>An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.
+<dd><p>An extension of the <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> that provides the functions needed to satisfy <a class="reference internal" href="#ilastik.utility.MultiLaneOperatorABC" title="ilastik.utility.MultiLaneOperatorABC"><tt class="xref py py-class docutils literal"><span class="pre">MultiLaneOperatorABC</span></tt></a>.
 See <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> class documentation for details on that class.</p>
+<dl class="method">
+<dt id="ilastik.utility.OpMultiLaneWrapper.addLane">
+<tt class="descname">addLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper.addLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an image lane to this object.  Simply inserts a new inner operator into the base <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.OpMultiLaneWrapper.removeLane">
+<tt class="descname">removeLane</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper.removeLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove an image lane.  Simply removes the appropriate inner operator from the base <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.OpMultiLaneWrapper.getLane">
+<tt class="descname">getLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper.getLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create sub-view that exposes the correct inner operator from the base <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt>.</p>
+</dd></dl>
+
 </dd></dl>
 
 <div class="section" id="gui-utilities">
@@ -297,7 +353,7 @@ This mechanism is slow, and should only be used for functions that MUST execute 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parent</strong> &#8211; The parent object, which whose thread will be used for all <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> functions.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parent</strong> &#8211; The parent object, which whose thread will be used for all <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> functions.</td>
 </tr>
 </tbody>
 </table>
@@ -362,12 +418,12 @@ This mechanism is slow, and should only be used for functions that MUST execute 
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"
              >previous</a> |</li>
-        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>
