@@ -420,6 +420,14 @@ class BatchIoLayerViewerGui(LayerViewerGui):
             previewLayer.opacity = 1.0
             layers.append(previewLayer)
 
+        rawSlot = opLane.RawImage
+        if rawSlot.ready():
+            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+            rawLayer.name = "Raw Data"
+            rawLayer.visible = True
+            rawLayer.opacity = 1.0
+            layers.append(rawLayer)
+
         return layers
 
 

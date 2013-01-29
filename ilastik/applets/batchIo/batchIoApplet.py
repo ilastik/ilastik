@@ -12,7 +12,8 @@ class BatchIoApplet( Applet ):
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, workflow, title ):
-        self._topLevelOperator = OpMultiLaneWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
+        self._topLevelOperator = OpMultiLaneWrapper( OpBatchIo, parent=workflow,
+                                     promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase', 'RawImage']) )
         super(BatchIoApplet, self).__init__(title, syncWithImageIndex=False)
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
