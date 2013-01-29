@@ -190,6 +190,9 @@ class OpBatchIo(Operator):
 
             
 class OpExportedImageProvider(Operator):
+    """
+    This simply wraps a lazyflow OpInputDataReader, but provides a default output (zeros) if the file doesn't exist yet.
+    """
     Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
 
     WorkingDirectory = InputSlot(stype='filestring')
