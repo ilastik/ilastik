@@ -1454,8 +1454,14 @@ class Operator(object):
         for child in self._children.keys():
             child._disconnect()
 
-    def cleanUp(self):
+    def _initCleanup(self):
         self._cleaningUp = True
+        for child in self._children.keys():
+            child._initCleanup()
+
+    def cleanUp(self):
+        if not self._cleaningUp:
+            self._initCleanup()
         if self._parent is not None:
             del self._parent._children[self]
 
