@@ -376,7 +376,8 @@ class BatchIoGui(QMainWindow):
         
         # Create if necessary
         if imageSlot not in self.layerViewerGuis.keys():
-            layerViewer = self._createLayerViewer(row)
+            opLane = self.topLevelOperator.getLane(row)
+            layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
@@ -389,10 +390,8 @@ class BatchIoGui(QMainWindow):
         self.viewerStack.setCurrentWidget( self.layerViewerGuis[imageSlot] )
 
 
-    def _createLayerViewer(self, index):
-        opLane = self.topLevelOperator.getLane(index)
-        layerViewer = BatchIoLayerViewerGui( opLane )
-        return layerViewer
+    def createLayerViewer(self, opLane):
+        return BatchIoLayerViewerGui(opLane)
 
 class BatchIoLayerViewerGui(LayerViewerGui):
     """
