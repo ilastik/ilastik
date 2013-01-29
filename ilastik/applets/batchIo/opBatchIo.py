@@ -78,6 +78,7 @@ class OpBatchIo(Operator):
         
     def setupOutputs(self):        
         if self._opExportedImageProvider is not None:
+            self.ExportedImage.disconnect()
             self._opExportedImageProvider.cleanUp()
             
         # Create the output data path
