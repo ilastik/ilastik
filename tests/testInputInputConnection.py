@@ -36,6 +36,7 @@ class OpA(Operator):
         self.inputBackup = self.Input
 
     def setupOutputs(self):
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
         print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
