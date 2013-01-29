@@ -1,7 +1,6 @@
 import sys
-import urllib2
+import urllib
 import numpy
-import shutil
 
 from lazyflow.utility import PathComponents
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
@@ -67,6 +66,7 @@ class RESTfulVolume(object):
         them with default values, based on the other description fields.
         """
         # Augment with default parameters.
+        logger.debug(str(description))
         if description.origin_offset is None:
             description.origin_offset = numpy.array( [0]*len(description.bounds) )
         description.shape = description.bounds - description.origin_offset
@@ -124,33 +124,19 @@ class RESTfulVolume(object):
             RESTArgs[startKey] = accessStart[ axisindex ]
             RESTArgs[stopKey] = accessStop[ axisindex ]
 
-        # Open the url
+        # Download the ROI specified in the url to a HDF5 file
         url = self.description.url_format.format( **RESTArgs )
         logger.info( "Opening url for region {}..{}: {}".format(roi[0], roi[1], url) )
-
-        try:
-            # This merely opens the url (but does not download it).
-            # Still, we need a long timeout because this seems to take a long time for big files.
-            hdf5RawFileObject = urllib2.urlopen( url, timeout=300 )
-        except:
-            logger.error( "Failed to open url: {}\n".format(url) )
-            raise
-
+        
         pathComponents = PathComponents(outputDatasetPath)
 
         if pathComponents.internalPath != self.description.hdf5_dataset:
             # We could just open the file and rename the dataset to match what the user asked for, but that would probably be slow.
             # It's better just to force him to use the correct dataset name to begin with.
             raise RuntimeError("The RESTful volume format uses internal dataset name '{}', but you seem to be expecting '{}'.".format( self.description.hdf5_dataset, pathComponents.internalPath ) )
-
-        # Write the data from the url out to disk
         logger.info( "Downloading RESTful subvolume to file: {}".format( pathComponents.externalPath ) )
-        with open(pathComponents.externalPath, 'w') as rawFileToWrite:
-            # This is where the data is actually downloaded.
-            # Limit memory usage here: Use shutil instead of the write/read combo commented out below.
-            # Download in 20MB bursts
-            shutil.copyfileobj( hdf5RawFileObject, rawFileToWrite, length=20*1024*1024 )
-            # rawFileToWrite.write( hdf5RawFileObject.read() ) # <--Memory-hog
+
+        urllib.urlretrieve(url, pathComponents.externalPath)
         logger.info( "Finished downloading file: {}".format( pathComponents.externalPath ) )
 
 if __name__ == "__main__":
@@ -176,7 +162,7 @@ if __name__ == "__main__":
     import os
     import tempfile
     import numpy
-
+    
     # Write test to a temp file
     d = tempfile.mkdtemp()
     descriptionFilePath = os.path.join(d, 'remote_volume_parameters.json')
