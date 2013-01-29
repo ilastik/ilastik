@@ -1,3 +1,4 @@
+import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import lazyflow.roi
 import threading
@@ -325,11 +326,34 @@ class OpPrecomputedInput(Operator):
         assert False, "Should not get here: Output is directly connected to the input."
 
 
+class OpDummyData(Operator):
+    """
+    This operator provides a hard-coded test pattern that is a simple function of the requested output roi.
+    It can be useful for cases where the desired output is not available, but you want to show something in the GUI anyway.
+    """
+    Input = InputSlot() # Used only to format the output metadata
+    Output = OutputSlot()
 
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
 
-
-
-
+    def execute(self, slot, subindex, roi, result):
+        # Replace this entire request with a simple pattern to indicate "not available"
+        # The pattern is simply a bunch of diagonal planes.
+        pattern = numpy.indices( roi.stop - roi.start ).sum(0)
+        pattern += numpy.sum(roi.start)
+        pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
+        # If dtype is a float, use 0/1.
+        # If its an int, use 0/255
+        if isinstance(self.Output.meta.dtype(), numpy.integer):
+            pattern *= 255
+    
+        result[:] = pattern
+        return result
+    
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+    
 
 
 
