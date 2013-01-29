@@ -42,7 +42,11 @@ class OpInputDataReader(Operator):
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
         if self._file is not None:
-            self._file.close()
+            try:
+                self._file.close()
+            except Exception, e:
+                import logging
+                logging.warn('OpInputDataReader.cleanUp(): '+str(e))
 
     def setupOutputs(self):
         """
@@ -61,7 +65,7 @@ class OpInputDataReader(Operator):
                 return
             else:
                 # Convert this relative path into an absolute path
-                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath))
+                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath)).replace('\\','/')
 
         # Clean up before reconfiguring
         if self.internalOperator is not None:
@@ -82,7 +86,10 @@ class OpInputDataReader(Operator):
         # Try every method of opening the file until one works.
         iterFunc = openFuncs.__iter__()
         while self.internalOperator is None:
-            openFunc = iterFunc.next()
+            try:
+                openFunc = iterFunc.next()
+            except StopIteration:
+                break
             self.internalOperator, self.internalOutput = openFunc(filePath)
 
         if self.internalOutput is None:

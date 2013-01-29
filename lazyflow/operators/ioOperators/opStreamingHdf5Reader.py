@@ -81,7 +81,8 @@ class OpStreamingHdf5Reader(Operator):
         internalPath = self.InternalPath.value
         
         # On windows, internalPath may have backslashes, so replace them with forward slashes.
-        internalPath = internalPath.replace('\\', '/')
+        # Ulli: this is not the right place to fix this -- we need to do it during filename analysis
+        # internalPath = internalPath.replace('\\', '/')
 
         if len(key) > len(hdf5File[internalPath].shape):
             key = key[:len(hdf5File[internalPath].shape)]
