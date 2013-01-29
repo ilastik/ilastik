@@ -11,7 +11,8 @@ class PixelClassificationBatchResultsApplet( Applet ):
     """
     def __init__( self, workflow, title ):
         # Operator is a subclass of the generic batch operator.
-        self._topLevelOperator = OpMultiLaneWrapper( OpPixelClassificationBatchResults, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
+        self._topLevelOperator = OpMultiLaneWrapper( OpPixelClassificationBatchResults, parent=workflow,
+                                     promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase', 'RawImage']) )
         super(PixelClassificationBatchResultsApplet, self).__init__(title, syncWithImageIndex=False)
 
         # Serializer is the same as the batch io

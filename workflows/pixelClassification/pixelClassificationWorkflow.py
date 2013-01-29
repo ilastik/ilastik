@@ -101,7 +101,7 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
         
         # Provide these for the gui
-        opBatchResults.LabelColors.connect( opClassify.LabelColors )
+        opBatchResults.RawImage.connect( opBatchInputs.Image )
         opBatchResults.PmapColors.connect( opClassify.PmapColors )
         opBatchResults.LabelNames.connect( opClassify.LabelNames )
         
