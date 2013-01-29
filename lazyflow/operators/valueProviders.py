@@ -345,7 +345,7 @@ class OpDummyData(Operator):
         pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
         # If dtype is a float, use 0/1.
         # If its an int, use 0/255
-        if isinstance(self.Output.meta.dtype(), numpy.integer):
+        if isinstance(result.dtype, numpy.integer):
             pattern *= 255
     
         result[:] = pattern

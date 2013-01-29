@@ -1,8 +1,8 @@
 import os
-import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.operators import OpDummyData
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,11 +22,12 @@ class OpBlockwiseFilesetReader(Operator):
     def __init__(self, *args, **kwargs):
         super(OpBlockwiseFilesetReader, self).__init__(*args, **kwargs)
         self._blockwiseFileset = None
-
+        self._opDummyData = OpDummyData( parent=self )
+        
     def setupOutputs(self):
         if not os.path.exists(self.DescriptionFilePath.value):
             raise OpBlockwiseFilesetReader.MissingDatasetError("Dataset description not found: {}".format( self.DescriptionFilePath.value ) )
-        
+
         # Load up the class that does the real work
         self._blockwiseFileset = BlockwiseFileset( self.DescriptionFilePath.value )
 
@@ -44,16 +45,7 @@ class OpBlockwiseFilesetReader(Operator):
         try:
             self._blockwiseFileset.readData( (roi.start, roi.stop), result )
         except BlockwiseFileset.BlockNotReadyError:
-            # Replace this entire request with a simple pattern to indicate "not available"
-            pattern = numpy.indices( roi.stop - roi.start ).sum(0)
-            pattern += roi.start.sum()
-            pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
-            # If dtype is a float, use 0/1.
-            # If its an int, use 0/255
-            if isinstance(self.Output.meta.dtype(), numpy.integer):
-                pattern *= 255
-        
-            result[:] = pattern
+            result[:] = self._opDummyData.execute( slot, subindex, roi, result )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
