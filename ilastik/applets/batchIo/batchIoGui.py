@@ -88,9 +88,17 @@ class BatchIoGui(QMainWindow):
                 # Update the table row data when this slot has new data
                 # We can't bind in the row here because the row may change in the meantime.
                 multislot[index].notifyDirty( bind( self.updateTableForSlot ) )
+                if multislot[index].ready():
+                    self.updateTableForSlot( multislot[index] )
     
             self.topLevelOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
             
+            # For each dataset that already exists, update the GUI
+            for i, subslot in enumerate(self.topLevelOperator.OutputDataPath):
+                handleNewDataset( self.topLevelOperator.OutputDataPath, i )
+                if subslot.ready():
+                    self.updateTableForSlot(subslot)
+        
             def handleImageRemoved( multislot, index, finalLength ):
                 if self.batchOutputTableWidget.rowCount() <= finalLength:
                     return
@@ -178,16 +186,15 @@ class BatchIoGui(QMainWindow):
         """
         The user has changed the export directory option (radio buttons).
         """
-        with Tracer(traceLogger):
-            saveWithInput = self.drawer.saveWithInputButton.isChecked()
-            if saveWithInput:
-                # Set to '', which means export data is stored in the input data directory
-                self.topLevelOperator.ExportDirectory.setValue('')
-            else:
-                self.topLevelOperator.ExportDirectory.setValue(self.chosenExportDirectory)
-    
-            for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
-                self.updateTableForSlot(slot)
+        saveWithInput = self.drawer.saveWithInputButton.isChecked()
+        if saveWithInput:
+            # Set to '', which means export data is stored in the input data directory
+            self.topLevelOperator.ExportDirectory.setValue('')
+        else:
+            self.topLevelOperator.ExportDirectory.setValue(self.chosenExportDirectory)
+
+        for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
+            self.updateTableForSlot(slot)
     
     def handleExportFormatChanged(self, index):
         with Tracer(traceLogger):
@@ -233,28 +240,30 @@ class BatchIoGui(QMainWindow):
             return -1
 
     def updateTableForSlot(self, slot):
-        with Tracer(traceLogger):
-            """
-            Update the table row that corresponds to the given slot of the top-level operator (could be either input slot)
-            """
-            row = self.getSlotIndex( self.topLevelOperator.OutputDataPath, slot )
-            assert row != -1, "Unknown input slot!"
-            
-            datasetPath = self.topLevelOperator.DatasetPath[row].value
-            outputDataPath = self.topLevelOperator.OutputDataPath[row].value
-                    
-            self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(datasetPath) )
-            self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
-    
-            exportNowButton = QPushButton("Export")
-            exportNowButton.setToolTip("Generate individual batch output dataset.")
-            exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.topLevelOperator.ExportResult[row], self.topLevelOperator.ProgressSignal[row] ) )
-            self.batchOutputTableWidget.setCellWidget( row, Column.Action, exportNowButton )
+        """
+        Update the table row that corresponds to the given slot of the top-level operator (could be either input slot)
+        """
+        row = self.getSlotIndex( self.topLevelOperator.OutputDataPath, slot )
+        assert row != -1, "Unknown input slot!"
 
-            # Select a row if there isn't one already selected.
-            selectedRanges = self.batchOutputTableWidget.selectedRanges()
-            if len(selectedRanges) == 0:
-                self.batchOutputTableWidget.selectRow(0)
+        if not self.topLevelOperator.OutputDataPath[row].ready():
+            return
+        
+        datasetPath = self.topLevelOperator.DatasetPath[row].value
+        outputDataPath = self.topLevelOperator.OutputDataPath[row].value
+                
+        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(datasetPath) )
+        self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
+
+        exportNowButton = QPushButton("Export")
+        exportNowButton.setToolTip("Generate individual batch output dataset.")
+        exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.topLevelOperator.ExportResult[row], self.topLevelOperator.ProgressSignal[row] ) )
+        self.batchOutputTableWidget.setCellWidget( row, Column.Action, exportNowButton )
+
+        # Select a row if there isn't one already selected.
+        selectedRanges = self.batchOutputTableWidget.selectedRanges()
+        if len(selectedRanges) == 0:
+            self.batchOutputTableWidget.selectRow(0)
 
 
     def updateDrawerGuiFromOperatorSettings(self, *args):
