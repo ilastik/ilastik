@@ -19,6 +19,7 @@ class OpNpyFileReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpNpyFileReader, self).__init__(*args, **kwargs)
+        self.memmapFile = None
         self.rawVigraArray = None
 
     def setupOutputs(self):
@@ -33,6 +34,8 @@ class OpNpyFileReader(Operator):
 
         # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
         rawNumpyArray = numpy.load(str(fileName), 'r')
+        self.memmapFile = rawNumpyArray._mmap
+
 
         # We assume that a 2D array should be treated as a single-channel image
         if len(rawNumpyArray.shape) == 2:
@@ -70,3 +73,8 @@ class OpNpyFileReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
             self.Output.setDirty( roi )
+        
+    def cleanUp(self):
+        if self.memmapFile is not None:
+            self.memmapFile.close()
+        super(OpNpyFileReader, self).cleanUp()

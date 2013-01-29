@@ -53,7 +53,8 @@ class TestOpBlockwiseFilesetReader(object):
         bfs.writeData( datasetRoi, self.data )
         block_starts = getIntersectingBlocks(bfs.description.block_shape, datasetRoi)
         for block_start in block_starts:
-            bfs.setBlockStatus(block_start, BlockwiseFileset.BLOCK_AVAILABLE)        
+            bfs.setBlockStatus(block_start, BlockwiseFileset.BLOCK_AVAILABLE)
+        bfs.close()
 
     def tearDown(self):
         shutil.rmtree(self.tempDir)
@@ -66,6 +67,7 @@ class TestOpBlockwiseFilesetReader(object):
         slice1 = numpy.s_[ :, 20:150, 20:150, 20:100, : ]
         readData = op.Output[ slice1 ].wait()
         assert (readData == self.data[slice1]).all()
+        op.cleanUp()
 
 if __name__ == "__main__":
     import sys

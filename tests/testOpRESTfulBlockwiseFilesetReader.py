@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-logger.setLevel(logging.INFO)
+#logger.setLevel(logging.INFO)
 #logger.setLevel(logging.DEBUG)
 
 class TestOpBlockwiseFilesetReader(object):
@@ -90,6 +90,7 @@ class TestOpBlockwiseFilesetReader(object):
         slice1 = numpy.s_[ 0:21, 5:27, 10:33 ]
         readData = op.Output[ slice1 ].wait()
         assert readData.shape == (21, 22, 23)
+        op.cleanUp()
         
     def test_2_ReadTranslated(self):
         # Start by reading some data
@@ -118,7 +119,8 @@ class TestOpBlockwiseFilesetReader(object):
         translatedReadData = op.Output[ sliceTranslated ].wait()
         assert translatedReadData.shape == (10, 10, 10)
         assert (translatedReadData == readData).all(), "Data doesn't match!"
-        
+        op.cleanUp()
+        opTranslated.cleanUp()
 
 if __name__ == "__main__":
     import sys

@@ -39,4 +39,10 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.DescriptionFilePath, "Unknown input slot."
         self.Output.setDirty( slice(None) )
+        
+    def cleanUp(self):
+        import sys
+        if self._blockwiseFileset is not None:
+            self._blockwiseFileset.close()
+        super(OpRESTfulBlockwiseFilesetReader, self).cleanUp()
 
