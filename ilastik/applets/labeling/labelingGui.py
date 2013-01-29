@@ -482,6 +482,11 @@ class LabelingGui(LayerViewerGui):
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
+        # Call the 'changed' callbacks immediately to initialize any listeners
+        self.onLabelNameChanged()
+        self.onLabelColorChanged()
+        self.onPmapColorChanged()
+
         # Make the new label selected
         nlabels = self._labelControlUi.labelListModel.rowCount()
         selectedRow = nlabels-1
