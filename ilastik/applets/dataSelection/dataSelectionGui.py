@@ -565,7 +565,7 @@ class DataSelectionGui(QMainWindow):
             oldLocationSetting = self.topLevelOperator.Dataset[index].value.location
             
             # Get the directory by inspecting the original operator path
-            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath
+            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath.replace('\\', '/')
             # Split into directory, filename, extension, and internal path
             lastDotIndex = oldTotalPath.rfind('.')
             extensionAndInternal = oldTotalPath[lastDotIndex:]
@@ -591,6 +591,8 @@ class DataSelectionGui(QMainWindow):
     
             cwd = self.topLevelOperator.WorkingDirectory.value
             absTotalPath, relTotalPath = getPathVariants( newTotalPath, cwd )
+            absTotalPath = absTotalPath.replace('\\','/')
+            relTotalPath = relTotalPath.replace('\\','/')
     
             # Check the location setting
             locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
