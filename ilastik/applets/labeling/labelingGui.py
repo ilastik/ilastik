@@ -230,7 +230,6 @@ class LabelingGui(LayerViewerGui):
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
             pmapColor = self._labelControlUi.labelListModel[firstRow].pmapColor()
-            print "onLabelListDataChanged: color = %s, pmapColor = %s" % (color.name(), pmapColor.name())
             self._colorTable16[firstRow+1] = color.rgba()
             self.editor.brushingModel.setBrushColor(color)
 
@@ -437,7 +436,6 @@ class LabelingGui(LayerViewerGui):
         #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
-        print "_onLabelSelected: brushColor = ", brushColor.name()
         self.editor.brushingModel.setBrushColor( brushColor )
 
     @traceLogged(traceLogger)
