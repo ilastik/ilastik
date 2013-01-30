@@ -283,7 +283,7 @@ class PixelClassificationGui(LabelingGui):
             opSubRegion.Stop.setValue( tuple(stop) )                        
             rgbInputLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
             rgbInputLayer.name = "Temporal Difference"
-            rgbInputLayer.visible = True
+            rgbInputLayer.visible = False
             rgbInputLayer.opacity = 0.4
             layers.append(rgbInputLayer)
             
