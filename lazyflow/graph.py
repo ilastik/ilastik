@@ -1451,10 +1451,7 @@ class Operator(object):
 
     def cleanUp(self):
         if self._parent is not None:
-            try:
-                del self._parent._children[self]
-            except KeyError, e:
-                logging.warn("Operator.cleanUp(): "+str(e))
+            del self._parent._children[self]
 
         # Disconnect ourselves and all children
         self._disconnect()

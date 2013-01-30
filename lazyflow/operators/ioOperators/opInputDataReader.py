@@ -42,11 +42,7 @@ class OpInputDataReader(Operator):
     def cleanUp(self):
         super(OpInputDataReader, self).cleanUp()
         if self._file is not None:
-            try:
-                self._file.close()
-            except Exception, e:
-                import logging
-                logging.warn('OpInputDataReader.cleanUp(): '+str(e))
+            self._file.close()
 
     def setupOutputs(self):
         """
