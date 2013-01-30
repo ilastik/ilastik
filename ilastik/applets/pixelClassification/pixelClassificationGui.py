@@ -22,7 +22,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.opTempDifference import OpTempDifference
-from lazyflow.operators.obsolete.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager

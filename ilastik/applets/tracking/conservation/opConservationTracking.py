@@ -1,7 +1,7 @@
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import ctracking
+import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 
@@ -62,7 +62,7 @@ class OpConservationTracking(OpTrackingBase):
             median_obj_size = avgSize
             
         ep_gap = 0.05
-        tracker = ctracking.ConsTracking(maxObj,
+        tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename

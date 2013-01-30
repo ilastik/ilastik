@@ -10,7 +10,7 @@ import h5py
 from ilastik.utility import bind
 
 import logging
-from lazyflow.operators.obsolete.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
