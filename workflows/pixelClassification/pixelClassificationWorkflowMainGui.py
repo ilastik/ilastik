@@ -2,20 +2,21 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 import functools
 
-def debug_with_existing(shell, workflow):
+def debug_with_existing(shell):
     """
     (Function for debug and testing.)
     """
     #projFilePath = "/magnetic/test_project.ilp"
-    projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
+    #projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
+    projFilePath = "/home/bergs/MyProject.ilp"
     #projFilePath = '/magnetic/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
     #projFilePath = '/magnetic/250-2.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
 
-    # Select the labeling drawer
-    shell.setSelectedAppletDrawer(3)
+    # Select a default drawer
+    shell.setSelectedAppletDrawer(5)
 
 def debug_with_new(shell, workflow):
     """

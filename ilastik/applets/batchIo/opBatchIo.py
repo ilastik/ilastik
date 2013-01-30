@@ -1,11 +1,14 @@
 import os
-import h5py
 import traceback
 import threading
 import logging
 
+import numpy
+import h5py
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators import OpH5WriterBigDataset, OpDummyData
+from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.utility.pathHelpers import PathComponents
 
 logger = logging.getLogger(__name__)
@@ -39,6 +42,7 @@ class OpBatchIo(Operator):
     
     InternalPath = InputSlot(stype='string', optional=True) # Hdf5 internal path
 
+    RawImage = InputSlot(optional=True)
     DatasetPath = InputSlot(stype='string') # The path to the original the dataset we're saving
     ImageToExport = InputSlot()             # The image that needs to be saved
 
@@ -50,8 +54,12 @@ class OpBatchIo(Operator):
     
     ProgressSignal = OutputSlot(stype='object')
 
+    ExportedImage = OutputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpBatchIo, self).__init__(*args, **kwargs)
+
+        self._opExportedImageProvider = None
         
         self.Dirty.meta.shape = (1,)
         self.Dirty.meta.dtype = bool
@@ -67,8 +75,12 @@ class OpBatchIo(Operator):
         self.ProgressSignal.setValue( self.progressSignal )
         
         self._createDirLock = threading.Lock()
-
+        
     def setupOutputs(self):        
+        if self._opExportedImageProvider is not None:
+            self.ExportedImage.disconnect()
+            self._opExportedImageProvider.cleanUp()
+            
         # Create the output data path
         formatId = self.Format.value
         ext = SupportedFormats[formatId].extension
@@ -104,6 +116,14 @@ class OpBatchIo(Operator):
             self.OutputDataPath.setValue( outputPath )
         elif formatId == ExportFormat.Tiff:
             self.OutputDataPath.setValue( outputPath )
+
+        # Set up the output that let's us view the exported file
+        self._opExportedImageProvider = OpExportedImageProvider( parent=self )
+        self._opExportedImageProvider.Input.connect( self.ImageToExport )
+        self._opExportedImageProvider.WorkingDirectory.connect( self.WorkingDirectory )
+        self._opExportedImageProvider.DatasetPath.connect( self.OutputDataPath )
+        self._opExportedImageProvider.Dirty.connect( self.Dirty )
+        self.ExportedImage.connect( self._opExportedImageProvider.Output )
 
     def propagateDirty(self, slot, subindex, roi):
         # Out input data changed, so we have work to do when we get executed.
@@ -169,6 +189,112 @@ class OpBatchIo(Operator):
             result[0] = not self.Dirty.value
 
             
+class OpExportedImageProvider(Operator):
+    """
+    This simply wraps a lazyflow OpInputDataReader, but provides a default output (zeros) if the file doesn't exist yet.
+    """
+    Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
+
+    WorkingDirectory = InputSlot(stype='filestring')
+    DatasetPath = InputSlot(stype='filestring')
+    Dirty = InputSlot(stype='bool')
+    
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpExportedImageProvider, self ).__init__(*args, **kwargs)
+        self._opReader = None
+        self._opDummyData = OpDummyData( parent=self )
+    
+    def setupOutputs( self ):
+        if self._opReader is not None:
+            self.Output.disconnect()
+            self._opReader.cleanUp()
+
+        self._opDummyData.Input.connect( self.Input )
+
+        dataReady = True
+        try:
+            # Configure the reader (shouldn't need to specify axis order; should be provided in data)
+            self._opReader = OpInputDataReader( parent=self )
+            self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
+            self._opReader.FilePath.setValue( self.DatasetPath.value )
+
+            dataReady &= self._opReader.Output.meta.shape == self.Input.meta.shape
+            dataReady &= self._opReader.Output.meta.dtype == self.Input.meta.dtype
+            if dataReady:
+                self.Output.connect( self._opReader.Output )
+        
+        except OpInputDataReader.DatasetReadError:
+            # The dataset doesn't exist yet.
+            dataReady = False
+
+        if not dataReady:
+            # The dataset isn't ready.
+            # That's okay, we'll just return dummy data.
+            self._opReader = None
+            self.Output.connect( self._opDummyData.Output )
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Output is supposed to be directly connected to an internal operator."
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Input:
+            self.Output.setDirty( roi )
+        else:
+            self.Output.setDirty( slice(None) )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

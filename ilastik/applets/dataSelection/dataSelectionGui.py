@@ -138,19 +138,20 @@ class DataSelectionGui(QMainWindow):
         
             def handleDatasetRemoved( multislot, index, finalLength ):
                 assert multislot == self.topLevelOperator.Dataset
-                dataset = multislot[index]
                 if self.fileInfoTableWidget.rowCount() > finalLength:
                     # Remove the row we don't need any more
                     self.fileInfoTableWidget.removeRow( index )
-                    
-                    # Remove the viewer for this dataset
-                    imageSlot = self.topLevelOperator.Image[index]
-                    if imageSlot in self.volumeEditors.keys():
-                        editor = self.volumeEditors[imageSlot]
-                        self.viewerStack.removeWidget( editor )
-                        editor.stopAndCleanUp()
+
+            def handleImageRemoved(multislot, index, finalLength):                    
+                # Remove the viewer for this dataset
+                imageSlot = self.topLevelOperator.Image[index]
+                if imageSlot in self.volumeEditors.keys():
+                    editor = self.volumeEditors[imageSlot]
+                    self.viewerStack.removeWidget( editor )
+                    editor.stopAndCleanUp()
     
             self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
+            self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
         
     def initAppletDrawerUic(self):
         """
@@ -213,6 +214,7 @@ class DataSelectionGui(QMainWindow):
 
     def initViewerStack(self):
         self.volumeEditors = {}
+        self.viewerStack.addWidget( QWidget() )
         
     def handleAddFileButtonClicked(self):
         """
@@ -437,6 +439,7 @@ class DataSelectionGui(QMainWindow):
             # (Won't have any effect if nothing changed this time around.)
             self.updateFilePath(row)
             
+            # Select a row if there isn't one already selected.
             selectedRanges = self.fileInfoTableWidget.selectedRanges()
             if len(selectedRanges) == 0:
                 self.fileInfoTableWidget.selectRow(0)
