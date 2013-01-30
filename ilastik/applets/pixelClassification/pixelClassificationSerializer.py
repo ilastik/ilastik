@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class SerialPredictionSlot(SerialSlot):
 
-    def __init__(self, slot, operator, *args, **kwargs):
-        super(SerialPredictionSlot, self).__init__(slot, *args, **kwargs)
+    def __init__(self, slot, operator, **kwargs):
+        super(SerialPredictionSlot, self).__init__(slot, **kwargs)
         self.operator = operator
         self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
 
@@ -57,7 +57,7 @@ class SerialPredictionSlot(SerialSlot):
         super(SerialPredictionSlot, self).serialize(group)
         self.deserialize(group)
 
-    def _serialize(self, group):
+    def _serialize(self, group, name, slot):
         """Called when the currently stored predictions are dirty. If
         prediction storage is currently enabled, store them to the
         file. Otherwise, just delete them/
@@ -73,7 +73,7 @@ class SerialPredictionSlot(SerialSlot):
         
         failedToSave = False
         try:
-            num = len(self.slot)
+            num = len(slot)
             if num > 0:
                 increment = 100 / float(num)
 
@@ -89,7 +89,7 @@ class SerialPredictionSlot(SerialSlot):
                 opWriter = OpH5WriterBigDataset(graph=self.operator.graph)
                 opWriter.hdf5File.setValue(predictionDir)
                 opWriter.hdf5Path.setValue(datasetName)
-                opWriter.Image.connect(self.slot[imageIndex])
+                opWriter.Image.connect(slot[imageIndex])
 
                 def handleProgress(percent):
                     # Stop sending progress if we were cancelled
@@ -124,14 +124,14 @@ class SerialPredictionSlot(SerialSlot):
         finally:
             # If we were cancelled, delete the predictions we just started
             if not self.predictionStorageEnabled or failedToSave:
-                deleteIfPresent(group, self.name)
+                deleteIfPresent(group, name)
 
     def deserialize(self, group):
         # override because we need to set self._predictionsPresent
         self._predictionsPresent = self.name in group.keys()
         super(SerialPredictionSlot, self).deserialize(group)
 
-    def _deserialize(self, group):
+    def _deserialize(self, group, slot):
         # Flush the GUI cache of any saved up dirty rois
         if self.operator.FreezePredictions.value == True:
             self.operator.FreezePredictions.setValue(False)
@@ -158,7 +158,8 @@ class PixelClassificationSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         self.predictionSlot = SerialPredictionSlot(operator.PredictionProbabilities,
                                                    operator,
-                                                   name=('Predictions', 'predictions{:04d}'))
+                                                   name='Predictions',
+                                                   subname='predictions{:04d}',)
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors),
@@ -166,11 +167,13 @@ class PixelClassificationSerializer(AppletSerializer):
                  SerialBlockSlot(operator.LabelInputs,
                                  operator.LabelImages,
                                  operator.NonzeroLabelBlocks,
-                                 name=('LabelSets', 'labels{:03d}'),
+                                 name='LabelSets',
+                                 subname='labels{:03d}',
                                  autodepends=False),
                  SerialClassifierSlot(operator.Classifier,
                                       operator.classifier_cache,
-                                      name=("ClassifierForests", "Forest{:04d}")),
+                                      name="ClassifierForests",
+                                      subname="Forest{:04d}"),
                  self.predictionSlot]
 
 
