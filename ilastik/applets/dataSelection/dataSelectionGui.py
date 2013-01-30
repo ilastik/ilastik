@@ -462,6 +462,7 @@ class DataSelectionGui(QMainWindow):
         """
         Create and add the combobox for storage location options
         """
+        assert threading.current_thread().name == "MainThread"
         with Tracer(traceLogger):
             # Determine the relative path to this file
             absPath, relPath = getPathVariants(filePath, self.topLevelOperator.WorkingDirectory.value)
@@ -499,6 +500,7 @@ class DataSelectionGui(QMainWindow):
             self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
     def updateInternalPathComboBox( self, row, externalPath, internalPath ):
+        assert threading.current_thread().name == "MainThread"
         with Tracer(traceLogger):
             combo = QComboBox()
             datasetNames = []
@@ -675,6 +677,7 @@ class DataSelectionGui(QMainWindow):
         self.showSelectedDataset()
     
     def selectEntireRow(self):
+        assert threading.current_thread().name == "MainThread"
         selectedItemRows = set()
         selectedRanges = self.fileInfoTableWidget.selectedRanges()
         for rng in selectedRanges:
@@ -690,6 +693,7 @@ class DataSelectionGui(QMainWindow):
         self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
     
     def showSelectedDataset(self):
+        assert threading.current_thread().name == "MainThread"
         # Get the selected row and corresponding slot value
         selectedRanges = self.fileInfoTableWidget.selectedRanges()
         if len(selectedRanges) == 0:

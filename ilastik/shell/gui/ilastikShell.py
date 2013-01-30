@@ -16,7 +16,7 @@ import weakref
 
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
 from ilastik.utility import bind
-from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
+from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 
 import sys
 import logging
@@ -183,6 +183,8 @@ class IlastikShell( QMainWindow ):
         self.projectManager = None
         self.projectDisplayManager = None
         self.updateShellProjectDisplay()
+        
+        self.threadRouter = ThreadRouter(self) # Enable @threadRouted
 
     @property
     def _applets(self):
@@ -342,36 +344,43 @@ class IlastikShell( QMainWindow ):
         self.imageNamesSlot = multiSlot
         self.cleanupFunctions = []
         
-        def insertImageName( index, slot ):
-            self.imageSelectionCombo.setItemText( index, slot.value )
-            if self.currentImageIndex == -1:
-                self.changeCurrentInputImageIndex(index)
-
-        def handleImageNameSlotInsertion(multislot, index):
-            assert multislot == self.imageNamesSlot
-            self.populatingImageSelectionCombo = True
-            self.imageSelectionCombo.insertItem(index, "uninitialized")
-            self.populatingImageSelectionCombo = False
-            multislot[index].notifyDirty( bind( insertImageName, index) )
-
-        insertedCallback = bind(handleImageNameSlotInsertion)
+        insertedCallback = bind(self.handleImageNameSlotInsertion)
         self.cleanupFunctions.append( partial( multiSlot.unregisterInserted, insertedCallback ) )
         multiSlot.notifyInserted( insertedCallback )
 
-        def handleImageNameSlotRemoval(multislot, index):
-            # Simply remove the combo entry, which causes the currentIndexChanged signal to fire if necessary.
-            self.imageSelectionCombo.removeItem(index)
-            if len(multislot) == 0:
-                self.changeCurrentInputImageIndex(-1)
-
-        removeCallback = bind(handleImageNameSlotRemoval)
+        removeCallback = bind(self.handleImageNameSlotRemoval)
         self.cleanupFunctions.append( partial( multiSlot.unregisterRemove, removeCallback ) )
-        multiSlot.notifyRemove( bind(handleImageNameSlotRemoval) )
+        multiSlot.notifyRemove( bind(self.handleImageNameSlotRemoval) )
         
         # Update for the slots that already exist
         for index, slot in enumerate(multiSlot):
-            handleImageNameSlotInsertion(multiSlot, index)
-            insertImageName(index, slot)
+            self.handleImageNameSlotInsertion(multiSlot, index)
+            self.insertImageName(index, slot)
+
+    @threadRouted
+    def insertImageName(self, index, slot ):
+        assert threading.current_thread().name == "MainThread"
+        self.imageSelectionCombo.setItemText( index, slot.value )
+        if self.currentImageIndex == -1:
+            self.changeCurrentInputImageIndex(index)
+
+    @threadRouted
+    def handleImageNameSlotInsertion(self, multislot, index):
+        assert threading.current_thread().name == "MainThread"
+        assert multislot == self.imageNamesSlot
+        self.populatingImageSelectionCombo = True
+        self.imageSelectionCombo.insertItem(index, "uninitialized")
+        self.populatingImageSelectionCombo = False
+        multislot[index].notifyDirty( bind( self.insertImageName, index) )
+
+    @threadRouted
+    def handleImageNameSlotRemoval(self, multislot, index):
+        assert threading.current_thread().name == "MainThread"
+        # Simply remove the combo entry, which causes the currentIndexChanged signal to fire if necessary.
+        self.imageSelectionCombo.removeItem(index)
+        if len(multislot) == 0:
+            self.changeCurrentInputImageIndex(-1)
+
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
@@ -383,6 +392,7 @@ class IlastikShell( QMainWindow ):
                 except:
                     # Revert to the original image index.
                     if self.currentImageIndex != -1:
+                        assert threading.current_thread().name == "MainThread"
                         self.imageSelectionCombo.setCurrentIndex(self.currentImageIndex)
                     return
 
@@ -419,6 +429,7 @@ class IlastikShell( QMainWindow ):
         Show the correct applet central widget, viewer control widget, and applet drawer widget for this drawer index.
         """
         if self._refreshDrawerRecursionGuard is False:
+            assert threading.current_thread().name == "MainThread"
             self._refreshDrawerRecursionGuard = True
             self.currentAppletIndex = applet_index
             # Collapse all drawers in the applet bar...
@@ -785,6 +796,7 @@ class IlastikShell( QMainWindow ):
         """
         Undo everything that was done in loadProject()
         """
+        assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
