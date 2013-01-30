@@ -83,8 +83,11 @@ def debug_with_imported(shell, workflow):
 
 if __name__ == "__main__":
 
-    import warnings
-    warnings.warn("WARNING: Assuming a strange axis order when importing 0.5 projects!")
+    # Special hack for Janelia: 
+    # In some old versions of 0.5, the data was stored in tyxzc order.
+    # We have no way of inspecting the data to determine this, so we allow 
+    #  users to specify that their ilp is very old using the 
+    #  assume_old_ilp_axes command-line flag
     import ilastik.utility.globals
     ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
 

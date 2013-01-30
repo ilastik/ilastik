@@ -47,8 +47,8 @@ class OpDataSelection(Operator):
     SupportedExtensions = OpInputDataReader.SupportedExtensions
 
     # Inputs    
-    ProjectFile = InputSlot(stype='object') #: The project hdf5 File object (already opened)
-    ProjectDataGroup = InputSlot(stype='string') #: The internal path to the hdf5 group where project-local datasets are stored within the project file
+    ProjectFile = InputSlot(stype='object', optional=True) #: The project hdf5 File object (already opened)
+    ProjectDataGroup = InputSlot(stype='string', optional=True) #: The internal path to the hdf5 group where project-local datasets are stored within the project file
     WorkingDirectory = InputSlot(stype='filestring') #: The filesystem directory where the project file is located
     Dataset = InputSlot(stype='object') #: A DatasetInfo object
 
@@ -65,19 +65,20 @@ class OpDataSelection(Operator):
         self._opReaders = []
     
     def setupOutputs(self):
-        datasetInfo = self.Dataset.value
-        internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
-
-        # Data only comes from the project file if the user said so AND it exists in the project
-        datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
-        datasetInProject &= self.ProjectFile.connected() and \
-                            internalPath in self.ProjectFile.value
-
         if len(self._opReaders) > 0:
             self.Image.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
         
+        datasetInfo = self.Dataset.value
+
+        # Data only comes from the project file if the user said so AND it exists in the project
+        datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
+        datasetInProject &= self.ProjectFile.ready()
+        if datasetInProject:
+            internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
+            datasetInProject &= internalPath in self.ProjectFile.value
+
         # If we should find the data in the project file, use a dataset reader
         if datasetInProject:
             opReader = OpStreamingHdf5Reader(parent=self)

@@ -252,11 +252,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             #  paths from relative paths is the project file's directory.
             projectDir = os.path.split(projectFilePath)[0]
             self.topLevelOperator.WorkingDirectory.setValue( projectDir )
-    
-            # These project file inputs are required, but are not used because the data is treated as "external"
-            self.topLevelOperator.ProjectDataGroup.setValue( 'DataSets' )
-            self.topLevelOperator.ProjectFile.setValue(hdf5File)
-    
+
             # Access the top group and the info group
             try:
                 #dataset = hdf5File["DataSets"]["dataItem00"]["data"]
@@ -269,16 +265,20 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             self.topLevelOperator.Dataset.resize( len(dataDir) )
             for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
                 datasetInfo = DatasetInfo()
-    
-                # Since we are importing from a 0.5 file, all datasets will be external 
-                #  to the project (pulled in from the old file as hdf5 datasets)
-                datasetInfo.location = DatasetInfo.Location.FileSystem
+
+                # We'll set up the link to the dataset in the old project file, 
+                #  but we'll set the location to ProjectInternal so that it will 
+                #  be copied to the new file when the project is saved.    
+                datasetInfo.location = DatasetInfo.Location.ProjectInternal
                 
                 # Some older versions of ilastik 0.5 stored the data in tzyxc order.
                 # Some power-users can enable a command-line flag that tells us to 
-                #  transpose the data back to txyzc order when we import the old project. 
-                if ilastik.utility.globals.ImportOptions.default_axis_order is not None:
-                    datasetInfo.axisorder = ilastik.utility.globals.ImportOptions.default_axis_order
+                #  transpose the data back to txyzc order when we import the old project.
+                default_axis_order = ilastik.utility.globals.ImportOptions.default_axis_order
+                if default_axis_order is not None:
+                    import warnings
+                    warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
+                    datasetInfo.axisorder = default_axis_order
                 
                 # Write to the 'private' members to avoid resetting the dataset id
                 totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
