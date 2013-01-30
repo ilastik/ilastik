@@ -14,7 +14,8 @@ from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 
 @atexit.register
 def quitApp():
-    qApp.quit()
+    if qApp is not None:
+        qApp.quit()
 
 def run_shell_nosetest(filename):
     """
@@ -156,7 +157,7 @@ class ShellGuiTestCaseBase(object):
         """
         for imgView in views:
             # Wait for the image to be rendered into the view.
-            imgView.scene().joinRendering()
+            imgView.scene().joinRenderingAllTiles()
             imgView.viewport().repaint()
 
         # Let the GUI catch up: Process all events
@@ -198,28 +199,31 @@ class ShellGuiTestCaseBase(object):
         startPoint = QPoint(*start) + centerPoint
         endPoint = QPoint(*end) + centerPoint
 
+        # Note: Due to the implementation of volumina.EventSwitch.eventFilter(), 
+        #       mouse events intended for the ImageView MUST go through the viewport.
+
         # Move to start
         move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, move )
+        QApplication.postEvent(imgView.viewport(), move )
 
         # Press left button
         press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, press )
+        QApplication.postEvent(imgView.viewport(), press )
 
         # Move to end in several steps
         numSteps = 10
         for i in range(numSteps):
             nextPoint = startPoint + (endPoint - startPoint) * ( float(i) / numSteps )
             move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-            QApplication.postEvent(imgView, move )
+            QApplication.postEvent(imgView.viewport(), move )
 
         # Move to end
         move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, move )
+        QApplication.postEvent(imgView.viewport(), move )
 
         # Release left button
         release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, release )
+        QApplication.postEvent(imgView.viewport(), release )
 
         # Wait for the gui to catch up
         QApplication.processEvents()

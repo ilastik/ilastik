@@ -18,12 +18,12 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from volumina.adaptors import Op5ifyer
 
-from volumina.clickReportingInterpreter import ClickReportingInterpreter
+from volumina.interpreter import ClickReportingInterpreter
 
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import traceLogged, Tracer
+from lazyflow.utility import traceLogged, Tracer
 
 class LayerViewerGuiMetaclass(type(QMainWindow)):
     """
@@ -36,7 +36,7 @@ class LayerViewerGuiMetaclass(type(QMainWindow)):
         """
         # Base class first. (type is our baseclass)
         # type.__call__ calls instance.__init__ internally
-        instance = type(QMainWindow).__call__(cls,*args,**kwargs)
+        instance = super(LayerViewerGuiMetaclass, cls).__call__(*args,**kwargs)
         instance._after_init()
         return instance
 
@@ -59,7 +59,7 @@ class LayerViewerGui(QMainWindow):
         return self
 
     def appletDrawer(self):
-        return QWidget(self)
+        return self._drawer
 
     def menus( self ):
         return [self.menuView] # From the .ui file
@@ -86,13 +86,15 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[]):
+    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
         When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
 
         :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.
+        :param additionalMonitoredSlots: Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).
+        :param centralWidgetOnly: If True, provide only a central widget without drawer or viewer controls.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -135,8 +137,10 @@ class LayerViewerGui(QMainWindow):
         self._initCentralUic()
         self._initEditor()
         self.__viewerControlWidget = None
-        self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-        self.initAppletDrawerUi() # Default implementation loads a blank drawer.
+        if not centralWidgetOnly:
+            self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+            self._drawer = QWidget( self )
+            self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
         
     def _after_init(self):
         self._initialized = True
@@ -151,9 +155,15 @@ class LayerViewerGui(QMainWindow):
         layers = []
         for multiLayerSlot in self.observedSlots:
             for j, slot in enumerate(multiLayerSlot):
-                if slot.ready():
+                if slot.ready() and slot.meta.axistags is not None:
                     layer = self.createStandardLayerFromSlot(slot)
-                    layer.name = multiLayerSlot.name + " " + str(j)
+                    
+                    # Name the layer after the slot name.
+                    if isinstance( multiLayerSlot.getRealOperator(), Op1ToMulti ):
+                        # We attached an 'upleveling' operator, so look upstream for the real slot.
+                        layer.name = multiLayerSlot.getRealOperator().Input.partner.name
+                    else:
+                        layer.name = multiLayerSlot.name + " " + str(j)
                     layers.append(layer)
         return layers
 
@@ -179,8 +189,8 @@ class LayerViewerGui(QMainWindow):
         # TODO
         assert False
 
-    @traceLogged(traceLogger)
-    def createStandardLayerFromSlot(self, slot, lastChannelIsAlpha=False):
+    @classmethod
+    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False):
         """
         Convenience function.
         Generates a volumina layer using the given slot.

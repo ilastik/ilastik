@@ -1,5 +1,5 @@
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
+from lazyflow.operators.valueProviders import OpAttributeSelector
 
 from ilastik.workflow import Workflow
 

@@ -1,13 +1,40 @@
+import os
 from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QVBoxLayout, QPushButton, QColor, QWidget, \
-                        QHeaderView, QSizePolicy
+                        QHeaderView, QDialog
 from PyQt4.QtCore import Qt
+from PyQt4 import uic
 from labelListModel import LabelListModel, Label
+
+class ColorDialog(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self._brushColor = None
+        self._pmapColor  = None
+        self.ui = uic.loadUi(os.path.split(__file__)[0] + '/color_dialog.ui', self)
+        self.ui.brushColorButton.clicked.connect(self.onBrushColor)
+        self.ui.pmapColorButton.clicked.connect(self.onPmapColor)
+        
+    def setBrushColor(self, c):
+        self._brushColor = c
+        self.ui.brushColorButton.setStyleSheet("background-color: "+c.name())
+    def onBrushColor(self):
+        self.setBrushColor(QColorDialog().getColor())
+    def brushColor(self):
+        return self._brushColor
+        
+    def setPmapColor(self, c):
+        self._pmapColor = c
+        self.ui.pmapColorButton.setStyleSheet("background-color: "+c.name())
+    def onPmapColor(self):
+        self.setPmapColor(QColorDialog().getColor())
+    def pmapColor(self):
+        return self._pmapColor
 
 class LabelListView(QTableView):
 
     class ColumnID():
-        Color = 0
-        Name = 1
+        Color  = 0
+        Name   = 1
         Delete = 2
       
     def __init__(self, parent = None):
@@ -17,10 +44,19 @@ class LabelListView(QTableView):
         self.verticalHeader().sectionMoved.connect(self.rowMovedTest)
         self.setShowGrid(False)
         
+        self._colorDialog = ColorDialog() 
+        
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == LabelListView.ColumnID.Color:
-            color = QColorDialog().getColor()
-            self.model().setData(modelIndex, color)
+            self._colorDialog.setBrushColor( self.model()[modelIndex.row()].brushColor() )
+            self._colorDialog.setPmapColor ( self.model()[modelIndex.row()].pmapColor()  )
+            self._colorDialog.exec_()
+            
+            print "brush color = ", self._colorDialog.brushColor().name()
+            print "pmap color  = ", self._colorDialog.pmapColor().name()
+            
+            self.model().setData(modelIndex, (self._colorDialog.brushColor(),
+                                              self._colorDialog.pmapColor ()) )
         
     def rowMovedTest(self, logicalIndex, oldVisualIndex, newVisualIndex):
         print logicalIndex, " ", oldVisualIndex, " ", newVisualIndex

@@ -3,16 +3,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Applet API &mdash; ilastik 0.6.0 documentation</title>
-    
+    <title>Applet API &mdash; ilastik v0.6.0 documentation</title>
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -25,7 +22,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
     <link rel="next" title="Applet Library" href="applet_library.html" />
     <link rel="prev" title="Overview" href="overview.html" /> 
   </head>
@@ -42,7 +39,7 @@
         <li class="right" >
           <a href="overview.html" title="Overview"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -60,7 +57,7 @@ A workflow is created when the user loads a project, and destroyed when the proj
 <p>The workflow has three main responsibilities:</p>
 <ul class="simple">
 <li>Instantiate a set of applets, and expose them as a list for the ilastik shell to display.</li>
-<li>Build up a complete computational pipeline, one <em>image lane</em> at a time.  This is done by connecting an individual <em>image lane</em> from each applet&#8217;s <em class="xref std std-ref">Top-Level Operator</em>. (More on that in a bit.)</li>
+<li>Build up a complete computational pipeline, one <em>image lane</em> at a time.  This is done by connecting an individual <em>image lane</em> from each applet&#8217;s <a class="reference internal" href="#top-level-ops"><em>Top-Level Operator</em></a>. (More on that in a bit.)</li>
 <li>Select a particular slot to serve as the &#8220;image name slot&#8221; for the shell.  The shell uses this slot as the &#8220;master list&#8221; of all image lanes present in the workflow at any time.</li>
 </ul>
 <div class="section" id="image-lanes">
@@ -84,12 +81,14 @@ Instead of manipulating the top-level operator directly, most GUIs manipulate a 
 operator for a particular image lane.</p>
 <p>For example, consider this top-level operator diagram (the <cite>Workflow Design</cite> page explains how to interpret operator diagrams).</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/DeviationFromMean-Top-Level-Operator.svg"><img alt="Deviation-From-Mean Top-Level Operator" src="_images/DeviationFromMean-Top-Level-Operator.svg" /></a>
+<a class="reference internal image-reference" href="_images/DeviationFromMean-Top-Level-Operator.svg"><object data="_images/DeviationFromMean-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/DeviationFromMean-Top-Level-Operator.svg" type="image/svg+xml" /></object>
+</a>
 </div>
 <p>If the Applet GUI is only interested in dealing with a single image (say, the second one), it can be written to use a <em>view</em>.
 In that case, the GUI is provided with an object that looks like this:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/DeviationFromMean-View.svg"><img alt="Deviation-From-Mean Top-Level Operator (View)" src="_images/DeviationFromMean-View.svg" /></a>
+<a class="reference internal image-reference" href="_images/DeviationFromMean-View.svg"><object data="_images/DeviationFromMean-View.svg" type="image/svg+xml"><embed src="_images/DeviationFromMean-View.svg" type="image/svg+xml" /></object>
+</a>
 </div>
 <p>Notice that the view object has no multi-slots. As far as the GUI is concerned, there is only one image lane.
 (The dotted lines are just shown for comparison with the previous diagram.  Click on the diagram and zoom in for better rendering.)</p>
@@ -111,7 +110,7 @@ The graph argument should be included.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>headless</strong> &#8211; Set to True if this workflow is being instantiated by a &#8220;headless&#8221; script, 
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>headless</strong> &#8211; Set to True if this workflow is being instantiated by a &#8220;headless&#8221; script, 
 in which case the workflow should not attempt to access applet GUIs.</td>
 </tr>
 </tbody>
@@ -181,7 +180,7 @@ If they fail to do so, the shell raises an exception.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> &#8211; The applet&#8217;s name, which will appear as the applet drawer title.</li>
 <li><strong>syncWithImageIndex</strong> &#8211; If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow.</li>
 </ul>
@@ -193,7 +192,7 @@ If they fail to do so, the shell raises an exception.</p>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.Applet.progressSignal">
-<tt class="descname">progressSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.progressSignal" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">progressSignal</tt><a class="headerlink" href="#ilastik.applets.base.applet.Applet.progressSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Progress signal.
 When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
 Signature: <tt class="docutils literal"><span class="pre">emit(percentComplete,</span> <span class="pre">canceled=false)</span></tt></p>
@@ -201,7 +200,7 @@ Signature: <tt class="docutils literal"><span class="pre">emit(percentComplete,<
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.Applet.guiControlSignal">
-<tt class="descname">guiControlSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">guiControlSignal</tt><a class="headerlink" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>GUI control signal
 See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)
 Signature: <tt class="docutils literal"><span class="pre">emit(command=ControlCommand.DisableAll)</span></tt></p>
@@ -209,7 +208,7 @@ Signature: <tt class="docutils literal"><span class="pre">emit(command=ControlCo
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.Applet.shellRequestSignal">
-<tt class="descname">shellRequestSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.shellRequestSignal" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">shellRequestSignal</tt><a class="headerlink" href="#ilastik.applets.base.applet.Applet.shellRequestSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shell request signal is used to trigger certain shell actions.
 Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt>
 where <tt class="docutils literal"><span class="pre">request</span></tt> is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the <a class="reference internal" href="#ilastik.applets.base.applet.ShellRequest" title="ilastik.applets.base.applet.ShellRequest"><tt class="xref py py-class docutils literal"><span class="pre">ShellRequest</span></tt></a> class.
@@ -249,31 +248,31 @@ Subclasses should override this property.  By default, returns [].</p>
 Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.</p>
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ControlCommand.Pop">
-<tt class="descname">Pop</tt><em class="property"> = 0</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.Pop" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">Pop</tt><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.Pop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Undo the most recent command that the issuing applet sent</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ControlCommand.DisableAll">
-<tt class="descname">DisableAll</tt><em class="property"> = 1</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableAll" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DisableAll</tt><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableAll" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable all applets in the workflow</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ControlCommand.DisableUpstream">
-<tt class="descname">DisableUpstream</tt><em class="property"> = 2</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableUpstream" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DisableUpstream</tt><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableUpstream" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable applets that come before the applet that is issuing the command</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ControlCommand.DisableDownstream">
-<tt class="descname">DisableDownstream</tt><em class="property"> = 3</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableDownstream" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DisableDownstream</tt><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableDownstream" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable applets that come after the applet that is issuing the command</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ControlCommand.DisableSelf">
-<tt class="descname">DisableSelf</tt><em class="property"> = 4</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableSelf" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DisableSelf</tt><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableSelf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable the applet that is issuing the command</p>
 </dd></dl>
 
@@ -286,7 +285,7 @@ Gui control commands are used to prevent the user from altering upstream or down
 At the moment, there is only one supported action.</p>
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.ShellRequest.RequestSave">
-<tt class="descname">RequestSave</tt><em class="property"> = 0</em><a class="headerlink" href="#ilastik.applets.base.applet.ShellRequest.RequestSave" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">RequestSave</tt><a class="headerlink" href="#ilastik.applets.base.applet.ShellRequest.RequestSave" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request that the shell perform a &#8220;save project&#8221; action.</p>
 </dd></dl>
 
@@ -319,7 +318,7 @@ StandardApplets are designed to simplify two tasks for most use-cases: Creating 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>name</strong> &#8211; The applet&#8217;s name as it will appear in the GUI (e.g. the Applet Drawer title).</li>
 <li><strong>workflow</strong> &#8211; The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).</li>
 </ul>
@@ -359,7 +358,7 @@ Note that the top-level operator must adhere to the <tt class="docutils literal"
 <dt id="ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass">
 <tt class="descname">singleLaneGuiClass</tt><a class="reference internal" href="_modules/ilastik/applets/base/standardApplet.html#StandardApplet.singleLaneGuiClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the class that will be instantiated for each image lane the applet needs.
-The class constructure should accept a single parameter: a single-lane of the top-level operator.</p>
+The class constructor should accept a single parameter: a single-lane of the top-level operator.</p>
 </dd></dl>
 
 <dl class="method">
@@ -579,7 +578,7 @@ project.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> &#8211; If None, all all slots are assumed to be
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> &#8211; If None, all all slots are assumed to be
 processed. Otherwise, decides for each slot by calling
 slot.shouldSerialize(group).</td>
 </tr>
@@ -597,7 +596,7 @@ subclasses override the &#8216;private&#8217; version, <em>_serializetoHdf5</em>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file,
 which should already be open</li>
 <li><strong>projectFilePath</strong> &#8211; The path to the given file handle.
@@ -621,7 +620,7 @@ subclasses override the &#8216;private&#8217; version,
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file,
 which should already be open</li>
 <li><strong>projectFilePath</strong> &#8211; The path to the given file handle.
@@ -656,7 +655,7 @@ top group to deserialize.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>slot</strong> &#8211; the slot to save/load</li>
 <li><strong>name</strong> &#8211; <p>name used for the group in the hdf5 file.</p>
 <ul>
@@ -687,7 +686,7 @@ can be serialized. If None, defaults to [].</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group.</td>
 </tr>
 </tbody>
 </table>
@@ -700,7 +699,7 @@ can be serialized. If None, defaults to [].</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>subgroup</strong> (<em>h5py.Group</em>) &#8211; <em>not</em> the parent group. This slot&#8217;s group.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>subgroup</strong> (<em>h5py.Group</em>) &#8211; <em>not</em> the parent group. This slot&#8217;s group.</td>
 </tr>
 </tbody>
 </table>
@@ -724,7 +723,7 @@ _serialize().</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
 group.</td>
 </tr>
 </tbody>
@@ -742,7 +741,7 @@ _deserialize.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
 group.</td>
 </tr>
 </tbody>
@@ -774,7 +773,7 @@ group.</td>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>transform</strong> &#8211; function applied to members on deserialization.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>transform</strong> &#8211; function applied to members on deserialization.</td>
 </tr>
 </tbody>
 </table>
@@ -793,7 +792,7 @@ group.</td>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>inslot</strong> &#8211; where to put deserialized data.</li>
 <li><strong>outslot</strong> &#8211; where to take data for serialization.</li>
 <li><strong>blockslot</strong> &#8211; provides non-zero blocks.</li>
@@ -921,12 +920,12 @@ It is intended to be used as a base class for almost all user-defined applets.</
         <li class="right" >
           <a href="overview.html" title="Overview"
              >previous</a> |</li>
-        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>

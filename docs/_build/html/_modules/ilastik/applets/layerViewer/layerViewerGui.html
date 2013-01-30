@@ -3,16 +3,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.layerViewer.layerViewerGui &mdash; ilastik 0.6.0 documentation</title>
-    
+    <title>ilastik.applets.layerViewer.layerViewerGui &mdash; ilastik v0.6.0 documentation</title>
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -25,7 +22,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,8 +43,6 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.layerViewer.layerViewerGui</h1><div class="highlight"><pre>
-<span class="kn">import</span> <span class="nn">numpy</span>
-
 <span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QRectF</span><span class="p">,</span> <span class="n">Qt</span>
 <span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">PyQt4</span> <span class="kn">import</span> <span class="n">uic</span>
@@ -66,12 +61,12 @@
 
 <span class="kn">from</span> <span class="nn">volumina.adaptors</span> <span class="kn">import</span> <span class="n">Op5ifyer</span>
 
-<span class="kn">from</span> <span class="nn">volumina.clickReportingInterpreter</span> <span class="kn">import</span> <span class="n">ClickReportingInterpreter</span>
+<span class="kn">from</span> <span class="nn">volumina.interpreter</span> <span class="kn">import</span> <span class="n">ClickReportingInterpreter</span>
 
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
 <span class="n">traceLogger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;TRACE.&#39;</span> <span class="o">+</span> <span class="n">__name__</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">lazyflow.tracer</span> <span class="kn">import</span> <span class="n">traceLogged</span><span class="p">,</span> <span class="n">Tracer</span>
+<span class="kn">from</span> <span class="nn">lazyflow.utility</span> <span class="kn">import</span> <span class="n">traceLogged</span><span class="p">,</span> <span class="n">Tracer</span>
 
 <span class="k">class</span> <span class="nc">LayerViewerGuiMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">)):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -84,13 +79,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c"># Base class first. (type is our baseclass)</span>
         <span class="c"># type.__call__ calls instance.__init__ internally</span>
-        <span class="n">instance</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">)</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">LayerViewerGuiMetaclass</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">instance</span><span class="o">.</span><span class="n">_after_init</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">instance</span>
 
-<div class="viewcode-block" id="LayerViewerGui"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui">[docs]</a><span class="k">class</span> <span class="nc">LayerViewerGui</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">LayerViewerGui</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Implements an applet GUI whose central widget is a VolumeEditor</span>
+<div class="viewcode-block" id="LayerViewerGui"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui">[docs]</a><span class="sd">    Implements an applet GUI whose central widget is a VolumeEditor</span>
 <span class="sd">    and whose layer controls simply contains a layer list widget.</span>
 <span class="sd">    Intended to be used as a subclass for applet GUI objects.</span>
 
@@ -107,7 +102,7 @@
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">appletDrawer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">QWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span>
 
     <span class="k">def</span> <span class="nf">menus</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">menuView</span><span class="p">]</span> <span class="c"># From the .ui file</span>
@@ -134,13 +129,15 @@
     <span class="c">###########################################</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-<div class="viewcode-block" id="LayerViewerGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="n">additionalMonitoredSlots</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="n">additionalMonitoredSlots</span><span class="o">=</span><span class="p">[],</span> <span class="n">centralWidgetOnly</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.</span>
+<div class="viewcode-block" id="LayerViewerGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">[docs]</a><span class="sd">        Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.</span>
 <span class="sd">        Changes include slot resize events, and slot ready/unready status changes.</span>
 <span class="sd">        When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.</span>
 
 <span class="sd">        :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.</span>
+<span class="sd">        :param additionalMonitoredSlots: Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).</span>
+<span class="sd">        :param centralWidgetOnly: If True, provide only a central widget without drawer or viewer controls.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">LayerViewerGui</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
 
@@ -183,30 +180,38 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_initCentralUic</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_initEditor</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">initViewerControlUi</span><span class="p">()</span> <span class="c"># Might be overridden in a subclass. Default implementation loads a standard layer widget.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">initAppletDrawerUi</span><span class="p">()</span> <span class="c"># Default implementation loads a blank drawer.</span>
-        </div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">centralWidgetOnly</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initViewerControlUi</span><span class="p">()</span> <span class="c"># Might be overridden in a subclass. Default implementation loads a standard layer widget.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span> <span class="o">=</span> <span class="n">QWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initAppletDrawerUi</span><span class="p">()</span> <span class="c"># Default implementation loads a blank drawer from drawer.ui.</span>
+        
     <span class="k">def</span> <span class="nf">_after_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="bp">True</span></div>
         <span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">()</span>
 
-<div class="viewcode-block" id="LayerViewerGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">[docs]</a>    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Create a list of layers to be displayed in the central widget.</span>
+<div class="viewcode-block" id="LayerViewerGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">[docs]</a><span class="sd">        Create a list of layers to be displayed in the central widget.</span>
 <span class="sd">        Subclasses should override this method to create the list of layers that can be displayed.</span>
 <span class="sd">        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">multiLayerSlot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">multiLayerSlot</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
                     <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createStandardLayerFromSlot</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
-                    <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">multiLayerSlot</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+                    
+                    <span class="c"># Name the layer after the slot name.</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span> <span class="n">multiLayerSlot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">(),</span> <span class="n">Op1ToMulti</span> <span class="p">):</span>
+                        <span class="c"># We attached an &#39;upleveling&#39; operator, so look upstream for the real slot.</span>
+                        <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">multiLayerSlot</span><span class="o">.</span><span class="n">getRealOperator</span><span class="p">()</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">partner</span><span class="o">.</span><span class="n">name</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">multiLayerSlot</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
                     <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">layers</span>
-</div>
+
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_handleLayerInsertion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">slotIndex</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_handleLayerInsertion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">slotIndex</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The multislot providing our layers has a new item.</span>
 <span class="sd">        Make room for it in the layer GUI and subscribe to updates.</span>
@@ -227,10 +232,10 @@
         <span class="c"># TODO</span>
         <span class="k">assert</span> <span class="bp">False</span>
 
-    <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-<div class="viewcode-block" id="LayerViewerGui.createStandardLayerFromSlot"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot">[docs]</a>    <span class="k">def</span> <span class="nf">createStandardLayerFromSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">lastChannelIsAlpha</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">createStandardLayerFromSlot</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">lastChannelIsAlpha</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Convenience function.</span>
+<div class="viewcode-block" id="LayerViewerGui.createStandardLayerFromSlot"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot">[docs]</a><span class="sd">        Convenience function.</span>
 <span class="sd">        Generates a volumina layer using the given slot.</span>
 <span class="sd">        Chooses between grayscale or RGB depending on the number of channels in the slot.</span>
 
@@ -306,9 +311,9 @@
 
         <span class="n">layer</span> <span class="o">=</span> <span class="n">RGBALayer</span><span class="p">(</span> <span class="n">red</span><span class="o">=</span><span class="n">redNormSource</span><span class="p">,</span> <span class="n">green</span><span class="o">=</span><span class="n">greenNormSource</span><span class="p">,</span> <span class="n">blue</span><span class="o">=</span><span class="n">blueNormSource</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alphaNormSource</span> <span class="p">)</span>
         <span class="k">return</span> <span class="n">layer</span>
-</div>
+
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="nd">@threadRouted</span>
+    <span class="nd">@threadRouted</span></div>
     <span class="k">def</span> <span class="nf">updateAllLayers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopped</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
             <span class="k">return</span>
@@ -412,9 +417,9 @@
         <span class="k">return</span> <span class="n">newDataShape</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-<div class="viewcode-block" id="LayerViewerGui.initViewerControlUi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initViewerControlUi">[docs]</a>    <span class="k">def</span> <span class="nf">initViewerControlUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">initViewerControlUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Load the viewer controls GUI, which appears below the applet bar.</span>
+<div class="viewcode-block" id="LayerViewerGui.initViewerControlUi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initViewerControlUi">[docs]</a><span class="sd">        Load the viewer controls GUI, which appears below the applet bar.</span>
 <span class="sd">        In our case, the viewer control GUI consists mainly of a layer list.</span>
 <span class="sd">        Subclasses should override this if they provide their own viewer control widget.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -435,19 +440,19 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DownButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">moveSelectedDown</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DeleteButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">deleteSelected</span><span class="p">)</span>
 
-</div>
+
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-<div class="viewcode-block" id="LayerViewerGui.initAppletDrawerUi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initAppletDrawerUi">[docs]</a>    <span class="k">def</span> <span class="nf">initAppletDrawerUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">initAppletDrawerUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        By default, this base class provides a blank applet drawer.</span>
+<div class="viewcode-block" id="LayerViewerGui.initAppletDrawerUi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initAppletDrawerUi">[docs]</a><span class="sd">        By default, this base class provides a blank applet drawer.</span>
 <span class="sd">        Override this in a subclass to get a real applet drawer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c"># Load the ui file (find it in our own directory)</span>
         <span class="n">localDir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span> <span class="o">=</span> <span class="n">uic</span><span class="o">.</span><span class="n">loadUi</span><span class="p">(</span><span class="n">localDir</span><span class="o">+</span><span class="s">&quot;/drawer.ui&quot;</span><span class="p">)</span>
-</div>
+
     <span class="k">def</span> <span class="nf">getAppletDrawerUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span></div>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_initCentralUic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -627,8 +632,8 @@
 
     <span class="k">def</span> <span class="nf">handleEditorLeftClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordiante</span><span class="p">):</span>
         <span class="c"># Override me</span>
-        <span class="k">pass</span></div>
-</pre></div>
+        <span class="k">pass</span>
+</pre></div></div>
 
           </div>
         </div>
@@ -658,13 +663,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>

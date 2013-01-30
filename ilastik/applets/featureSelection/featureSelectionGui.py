@@ -6,6 +6,7 @@ from ilastik.widgets.featureDlg import FeatureDlg
 
 import os
 import numpy
+import h5py
 from ilastik.utility import bind
 
 import logging
@@ -13,7 +14,7 @@ from lazyflow.operators.obsolete.generic import OpSubRegion
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-from lazyflow.tracer import traceLogged
+from lazyflow.utility import Tracer, traceLogged
 from ilastik.applets.layerViewer import LayerViewerGui
 
 class FeatureSelectionGui(LayerViewerGui):
@@ -23,14 +24,6 @@ class FeatureSelectionGui(LayerViewerGui):
     # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
-
-#    # Default order
-#    FeatureIds = [ 'GaussianSmoothing',
-#                   'LaplacianOfGaussian',
-#                   'GaussianGradientMagnitude',
-#                   'DifferenceOfGaussians',
-#                   'StructureTensorEigenvalues',
-#                   'HessianOfGaussianEigenvalues' ]
 
     # Map feature groups to lists of feature IDs
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
@@ -79,6 +72,7 @@ class FeatureSelectionGui(LayerViewerGui):
         super(FeatureSelectionGui, self).__init__(topLevelOperatorView)
 
         self.topLevelOperatorView.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
+        self.topLevelOperatorView.FeatureListFilename.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
         self.onFeaturesSelectionsChanged()
 
         # Init feature dialog
@@ -103,7 +97,7 @@ class FeatureSelectionGui(LayerViewerGui):
         # (We don't pass self here because we keep the drawer ui in a separate object.)
         self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-    
+        self.drawer.UsePrecomputedFeaturesButton.clicked.connect(self.onUsePrecomputedFeaturesButtonClicked)
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
@@ -232,7 +226,39 @@ class FeatureSelectionGui(LayerViewerGui):
 
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
+    def onUsePrecomputedFeaturesButtonClicked(self):
+        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.')
+        
+        #sanity checks on the given file
+        if not filename:
+            return
+        if not os.path.exists(filename):
+            QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
+            return
+        f = open(filename, 'r')
+        with f:
+            for line in f:
+                line = line.strip()
+                if len(line) == 0:
+                    continue
+                if not os.path.exists(line):
+                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', does not exist" % (line, filename))
+                    return
+                try:
+                    h = h5py.File(line, 'r')
+                    with h:
+                        assert len(h["data"].shape) == 3
+                except:
+                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', could not be opened as an HDF5 file or does not contain a 3D dataset called 'data'" % (line, filename))
+                    return
+
+        self.topLevelOperatorView.FeatureListFilename.setValue(filename)
+        self.topLevelOperatorView._setupOutputs()
+        self.onFeaturesSelectionsChanged()
+
     def onFeatureButtonClicked(self):
+        self.topLevelOperatorView.FeatureListFilename.setValue("")
+        
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
         if self.topLevelOperatorView.SelectionMatrix.ready() and self.topLevelOperatorView.FeatureIds.ready():
@@ -263,6 +289,7 @@ class FeatureSelectionGui(LayerViewerGui):
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
                 opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                self.topLevelOperatorView._setupOutputs()
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
@@ -273,41 +300,16 @@ class FeatureSelectionGui(LayerViewerGui):
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
-        if not self.topLevelOperatorView.SelectionMatrix.ready():
+        
+        fff = ( self.topLevelOperatorView.FeatureListFilename.ready() and \
+                len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
+        
+        if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff: 
             self.drawer.caption.setText( "(No features selected)" )
             self.layerstack.clear()
+        elif fff:
+            self.drawer.caption.setText( "(features from files)" )
         else:
             self.initFeatureOrder()
             matrix = self.topLevelOperatorView.SelectionMatrix.value
             self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(matrix) )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

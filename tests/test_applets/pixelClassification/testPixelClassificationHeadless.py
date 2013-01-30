@@ -50,7 +50,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     @classmethod
     def create_new_tst_project(cls):
         # Instantiate 'shell'
-        shell = HeadlessShell( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
+        shell = HeadlessShell( PixelClassificationWorkflow )
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
@@ -127,6 +127,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
 #    unittest.main()
 
 if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.

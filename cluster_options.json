@@ -1,0 +1,29 @@
+{
+    "_schema_name" : "cluster-execution-configuration",
+    "_schema_version" : 1.0,
+
+	"workflow_type" : "PixelClassificationWorkflow",
+	"sys_tmp_dir" : "/scratch/bergs",
+	"num_jobs" : "2**3",
+	"task_subrequest_shape" : { "t":1, "x":128, "y":128, "z":128, "c":100},
+	"task_timeout_secs" : "20*60",
+	"##use_node_local_scratch" : true,
+	"##use_master_local_scratch" : true,
+	"##node_output_compression_cmd" : "gzip -1 --to-stdout \"{uncompressed_file}\" > \"{compressed_file}.gz\"",
+	"##node_output_decompression_cmd" : "gzip -d --to-stdout \"{compressed_file}.gz\" > \"{uncompressed_file}\"",
+	"server_working_directory" : "/home/bergs/clusterstuff/launchdir",
+	
+	"##output_log_directory" : "/home/bergs/clusterstuff/logs/gigatrial_monday2",
+	"output_log_directory" : "/home/bergs/home/bergs/bock11_250_cubes/",
+
+	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -o {task_output_file} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'",
+	"task_launch_server" : "login.int.janelia.org",
+	"task_progress_update_command" : "./update_job_name {progress} > /dev/null",
+
+	"##command_format" : "python /home/bergs/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {task_args}",
+	"##task_launch_server" : "bergs-ws1",
+	"##task_progress_update_command" : "echo {progress}",
+
+	"debug_option_use_previous_node_files" : false
+}
+

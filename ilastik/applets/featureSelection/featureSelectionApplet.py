@@ -18,7 +18,7 @@ class FeatureSelectionApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ['Scales', 'FeatureIds', 'SelectionMatrix']
+        return ['Scales', 'FeatureIds', 'SelectionMatrix', 'FeatureListFilename']
     
     @property
     def singleLaneGuiClass(self):

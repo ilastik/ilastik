@@ -1,10 +1,19 @@
 import os
+import sys
 import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
-from workflows.pixelClassification import PixelClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
+from workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed
+
+from ilastik.utility.timer import Timer
+
+import logging
+logger = logging.getLogger(__name__)
+logger.addHandler( logging.StreamHandler(sys.stdout) )
+#logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
@@ -34,9 +43,16 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             data = numpy.random.random((1,200,200,50,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
+        
+        # Start the timer
+        cls.timer = Timer()
+        cls.timer.start()
 
     @classmethod
     def teardownClass(cls):
+        cls.timer.stop()
+        logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
+        
         # Call our base class so the app quits!
         super(TestPixelClassificationGui, cls).teardownClass()
 
@@ -182,7 +198,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Save the project
-            self.shell.onSaveProjectActionTriggered()
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -380,12 +397,19 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 
             # Re-add all labels
             self.test_4_AddLabels()
+            
+            # Make sure the entire slice is visible
+            gui.currentGui().menuGui.actionFitToScreen.trigger()
 
-            # Enable interactive mode            
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            with Timer() as timer:
+                # Enable interactive mode            
+                assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+                gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+    
+                # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
+                self.waitForViews(gui.currentGui().editor.imageViews)
 
-            self.waitForViews(gui.currentGui().editor.imageViews)
+            logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
             # Disable iteractive mode.            
             gui.currentGui()._viewerControlUi.pauseUpdateButton.click()

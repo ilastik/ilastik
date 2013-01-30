@@ -69,6 +69,7 @@ class TestOpBatchIo(object):
         opBatchIo.Suffix.setValue( '_smoothed' )
         opBatchIo.Format.setValue( ExportFormat.H5 )
         opBatchIo.DatasetPath.setValue( info.filePath )
+        opBatchIo.WorkingDirectory.setValue( cwd )
         
         internalPath = 'path/to/data'
         opBatchIo.InternalPath.setValue( internalPath )
@@ -124,6 +125,7 @@ class TestOpBatchIo(object):
         opBatchIo.Suffix.setValue( '_smoothed' )
         opBatchIo.Format.setValue( ExportFormat.H5 )
         opBatchIo.DatasetPath.setValue( info.filePath )
+        opBatchIo.WorkingDirectory.setValue( cwd )
         
         internalPath = 'path/to/data'
         opBatchIo.InternalPath.setValue( internalPath )

@@ -146,6 +146,7 @@ class PixelClassificationSerializer(AppletSerializer):
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors),
+                 SerialListSlot(operator.PmapColors),
                  SerialBlockSlot(operator.LabelInputs,
                                  operator.LabelImages,
                                  operator.NonzeroLabelBlocks,

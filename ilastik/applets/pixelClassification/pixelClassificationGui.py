@@ -12,7 +12,7 @@ from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
-from lazyflow.tracer import Tracer, traceLogged
+from lazyflow.utility import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 
@@ -63,8 +63,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelArray.deleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
@@ -205,7 +205,7 @@ class PixelClassificationGui(LabelingGui):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=ref_label.color,
+                                                    tintColor=ref_label.pmapColor(),
                                                     range=(0.0, 1.0),
                                                     normalize=(0.0, 1.0) )
                 predictLayer.opacity = 0.25
@@ -220,7 +220,7 @@ class PixelClassificationGui(LabelingGui):
                     predictLayer.name = newName
 
                 setLayerName(ref_label.name)
-                ref_label.colorChanged.connect(setLayerColor)
+                ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 layers.append(predictLayer)
 
@@ -231,7 +231,7 @@ class PixelClassificationGui(LabelingGui):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
                 segLayer = AlphaModulatedLayer( segsrc,
-                                                tintColor=ref_label.color,
+                                                tintColor=ref_label.pmapColor(),
                                                 range=(0.0, 1.0),
                                                 normalize=(0.0, 1.0) )
 
@@ -255,7 +255,7 @@ class PixelClassificationGui(LabelingGui):
 
                 setLayerName(ref_label.name)
 
-                ref_label.colorChanged.connect(setLayerColor)
+                ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 self._setup_contexts(segLayer)
                 layers.append(segLayer)
@@ -510,8 +510,13 @@ class PixelClassificationGui(LabelingGui):
 
     def onLabelColorChanged(self):
         super( PixelClassificationGui, self ).onLabelColorChanged()
-        labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
+        labelColors = map( lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue()), self.labelListData )
         self.topLevelOperatorView.LabelColors.setValue( labelColors )
+        
+    def onPmapColorChanged(self):
+        super( PixelClassificationGui, self ).onPmapColorChanged()
+        pmapColors = map( lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue()), self.labelListData )
+        self.topLevelOperatorView.PmapColors.setValue( pmapColors )
 
     def _update_rendering(self):
         if not self.render:

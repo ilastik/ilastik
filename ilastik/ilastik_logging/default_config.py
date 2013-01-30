@@ -3,98 +3,123 @@ import logging.config
 import warnings
 import loggingHelpers
 
-default_log_config = {
-    "version": 1,
-    #"incremental" : False,
-    #"disable_existing_loggers": True,
-    "formatters": {
-        "verbose": {
-            "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s"
+def get_default_config(prefix=""):
+    default_log_config = {
+        "version": 1,
+        #"incremental" : False,
+        #"disable_existing_loggers": True,
+        "formatters": {
+            "verbose": {
+                "format": "{}%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s".format(prefix)
+            },
+            "location": {
+                #"format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+                "format": "{}%(levelname)s %(name)s: %(message)s".format(prefix)
+            },
+            "timestamped": {
+                #"format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+                "format": "{}%(levelname)s %(name)s: [%(asctime)s] %(message)s".format(prefix)
+            },
+            "simple": {
+                "format": "{}%(levelname)s %(message)s".format(prefix)
+            },
         },
-        "location": {
-            #"format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
-            "format": "%(levelname)s %(name)s: %(message)s"
+        "filters" : {
+            "no_warn" : {
+                "()":"ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"
+            }
         },
-        "simple": {
-            "format": "%(levelname)s %(message)s"
+        "handlers": {
+            "console":{
+                "level":"DEBUG",
+                #"class":"logging.StreamHandler",
+                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "formatter": "location",
+                "filters":["no_warn"]
+            },
+            "console_timestamp":{
+                "level":"DEBUG",
+                #"class":"logging.StreamHandler",
+                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "formatter": "timestamped",
+                "filters":["no_warn"]
+            },
+            "console_warn":{
+                "level":"WARN",
+                "class":"logging.StreamHandler", # Defaults to sys.stderr
+                "formatter":"verbose"
+            },
+            "console_warning_module":{
+                "level":"WARN",
+                "class":"logging.StreamHandler", # Defaults to sys.stderr
+                "formatter":"simple"
+            },
+            "console_trace":{
+                "level":"DEBUG",
+                #"class":"logging.StreamHandler",
+                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "formatter": "verbose"
+            },
         },
-    },
-    "filters" : {
-        "no_warn" : {
-            "()":"ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"
+        "root": {
+            "handlers": ["console", "console_warn"],
+            "level": "INFO",
+        },
+        "loggers": {
+            # This logger captures warnings module warnings
+            "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
+    
+            # When copying to a json file, remember to remove comments and change True/False to true/false
+            "__main__":                                                         { "level":"INFO" },
+            "lazyflow":                                                         { "level":"INFO" },
+            "lazyflow.graph":                                                   { "level":"INFO" },
+            "lazyflow.graph.Slot":                                              { "level":"INFO" },
+            "lazyflow.operators":                                               { "level":"INFO" },
+            "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
+            "lazyflow.operators.opVigraWatershed":               { "level":"INFO" },
+            "lazyflow.operators.ioOperators.opRESTfulVolumeReader":             { "level":"INFO" },
+            "lazyflow.operators.operators.OpArrayCache":               { "level":"INFO" },
+            "lazyflow.operators.operators.ArrayCacheMemoryMgr":        { "level":"INFO" },
+            "lazyflow.operators.vigraOperators":                       { "level":"INFO" },
+            "lazyflow.operators.vigraOperators.OpH5WriterBigDataset":  { "level":"INFO" },
+            "lazyflow.operators.classifierOperators":                  { "level":"INFO" },
+            "lazyflow.utility.io.RESTfulVolume":                                           { "level":"INFO" },
+            "ilastik":                                                          { "level":"INFO" },
+            "ilastik.clusterOps":                                               { "level":"INFO" },
+            "ilastik.applets":                                                  { "level":"INFO" },
+            "ilastik.applets.pixelClassification":                              { "level":"INFO" },
+            "ilastik.shell":                                                    { "level":"INFO" },
+            "ilastik.widgets":                                                  { "level":"INFO" },
+            "workflows":                                                        { "level":"INFO" },
+            "volumina":                                                         { "level":"INFO" },
+            "volumina.imageScene2D":                                            { "level":"INFO" },
+            # Python doesn't provide a trace log level, so we use a workaround.
+            # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
+            # To enable trace messages, change one or more of these to use level DEBUG
+            "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },
+            "TRACE.lazyflow.graph.Slot":                                        { "level":"INFO" },
+            "TRACE.lazyflow.graph.Operator":                                    { "level":"INFO" },
+            "TRACE.lazyflow.graph.OperatorWrapper":                             { "level":"INFO" },
+            "TRACE.lazyflow.operators.ioOperators":                             { "level":"INFO" },
+            "TRACE.lazyflow.operators":                                { "level":"INFO" },
+            "TRACE.lazyflow.operators.operators":                      { "level":"INFO" },
+            "TRACE.lazyflow.operators.generic":                        { "level":"INFO" },
+            "TRACE.lazyflow.operators.classifierOperators":            { "level":"INFO" },
+            "TRACE.lazyflow.operators.operators.OpArrayCache":         { "level":"INFO" },
+            "TRACE.lazyflow.operators.operators.ArrayCacheMemoryMgr":  { "level":"INFO" },
+            "TRACE.lazyflow.operators.valueProviders.OpValueCache":    { "level":"INFO" },
+            "TRACE.ilastik.clusterOps":                                         { "level":"INFO" },
+            "TRACE.ilastik.applets":                                            { "level":"INFO" },
+            "TRACE.ilastik.shell":                                              { "level":"INFO" },
+            "TRACE.volumina":                                                   { "level":"INFO" },
+            "TRACE.volumina.imageScene2D":                                      { "level":"INFO" }
         }
-    },
-    "handlers": {
-        "console":{
-            "level":"DEBUG",
-            #"class":"logging.StreamHandler",
-            "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
-            "formatter": "location",
-            "filters":["no_warn"]
-        },
-        "console_warn":{
-            "level":"WARN",
-            "class":"logging.StreamHandler", # Defaults to sys.stderr
-            "formatter":"verbose"
-        },
-        "console_warning_module":{
-            "level":"WARN",
-            "class":"logging.StreamHandler", # Defaults to sys.stderr
-            "formatter":"simple"
-        },
-        "console_trace":{
-            "level":"DEBUG",
-            #"class":"logging.StreamHandler",
-            "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
-            "formatter": "verbose"
-        },
-    },
-    "root": {
-        "handlers": ["console", "console_warn"],
-        "level": "INFO",
-    },
-    "loggers": {
-        # This logger captures warnings module warnings
-        "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
-
-        # When copying to a json file, remember to remove comments and change True/False to true/false
-        "lazyflow":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.graph":                       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.graph.Slot":                  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators":                   {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators.ioOperators":       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastik.applets.pixelClassification":  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastik.shell":                        {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastik.widgets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "volumina":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        # Python doesn't provide a trace log level, so we use a workaround.
-        # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emite DEBUG messages
-        # To enable trace messages, change one or more of these to use level DEBUG
-        "TRACE":                                                        { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.Slot":                                    { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.Operator":                                { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.OperatorWrapper":                         { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.ioOperators":                         { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete":                            { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.operators":                  { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.generic":                    { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.ilastik.applets":                                        { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.ilastik.shell":                                          { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False }
     }
-}
+    return default_log_config
 
-def init():
+def init(format_prefix=""):
     # Start with the default
-    logging.config.dictConfig(default_log_config)
+    logging.config.dictConfig( get_default_config( format_prefix ) )
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()

@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen
+from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
 import logging
@@ -7,22 +7,30 @@ logger = logging.getLogger(__name__)
 class Label(QObject):
     changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
+    pmapColorChanged = pyqtSignal(QColor)
     nameChanged  = pyqtSignal(object)
     
     def __init__(self, name, color, parent = None):
         QObject.__init__(self, parent)
-        self._name = name
-        self._color = color
+        self._name       = name
+        self._brushColor = color
+        self._pmapColor  = color 
     
-    @property
-    def color(self):
-        return self._color
-    @color.setter
-    def color(self, c):
-        if self._color != c:
-            logger.debug("Label '%s' has new color %r" % (self._color, c))
-            self._color = c
+    def brushColor(self):
+        return self._brushColor
+    def setBrushColor(self, c):
+        if self._brushColor != c:
+            logger.debug("Label '%s' has new brush color %r" % (self._brushColor, c))
+            self._brushColor = c
             self.colorChanged.emit(c)
+            
+    def pmapColor(self):
+        return self._pmapColor
+    def setPmapColor(self, c):
+        if self._pmapColor != c:
+            logger.debug("Label '%s' has new pmapColor %r" % (self._pmapColor, c))
+            self._pmapColor = c
+            self.pmapColorChanged.emit(c)
     
     @property
     def name(self):
@@ -35,7 +43,7 @@ class Label(QObject):
             self.nameChanged.emit(n)
     
     def __repr__(self):
-        return "<Label name=%s, color=%r>" % (self.name, self.color)
+        return "<Label name=%s, color=%r>" % (self.name, self._brushColor)
 
 class LabelListModel(QAbstractTableModel):
     orderChanged = pyqtSignal()
@@ -111,7 +119,7 @@ class LabelListModel(QAbstractTableModel):
 
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == 0:
-            return self._labels[index.row()].color
+            return (self._labels[index.row()].color, self._labels[index.row()].pmapColor)
         if role == Qt.EditRole and index.column() == 1:
             return self._labels[index.row()].name
         
@@ -126,8 +134,20 @@ class LabelListModel(QAbstractTableModel):
         if role == Qt.DecorationRole and index.column() == 0:
             row = index.row()
             value = self._labels[row]
-            pixmap = QPixmap(26, 26)
-            pixmap.fill(value.color)
+            if(value.brushColor == value.pmapColor):
+                pixmap = QPixmap(26, 26)
+                pixmap.fill(value.brushColor)
+            else:
+                a = value.brushColor().rgba()
+                b = value.pmapColor().rgba()
+                img = QImage(26,26, QImage.Format_RGB32)
+                for i in range(26):
+                    for j in range(0,26-i):
+                        img.setPixel(i,j, a)
+                for i in range(26):
+                    for j in range(26-i,26):
+                        img.setPixel(i,j, b)
+                pixmap = QPixmap.fromImage(img)
             icon = QIcon(pixmap)
             return icon
         
@@ -169,9 +189,15 @@ class LabelListModel(QAbstractTableModel):
     def setData(self, index, value, role = Qt.EditRole):
         if role == Qt.EditRole  and index.column() == 0:
             row = index.row()
-            color = QColor(value)
-            if color.isValid():
-                self._labels[row].color = color
+            brushColor = QColor(value[0])
+            pmapColor = QColor(value[1])
+            if brushColor.isValid() and pmapColor.isValid():
+                print "setData: brushColor = %r, pmapColor = %r" % (brushColor.name(), pmapColor.name())
+                print "  self._labels[row] has type ", type(self._labels[row])
+                self._labels[row].setBrushColor(brushColor)
+                self._labels[row].setPmapColor(pmapColor)
+                print "  self._labels[row].brushColor = ", self._labels[row].brushColor().name()
+                print "  self._labels[row].pmapColor  = ", self._labels[row].pmapColor().name()
                 self.dataChanged.emit(index, index)
                 return True
             

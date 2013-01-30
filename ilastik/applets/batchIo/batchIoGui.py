@@ -17,7 +17,7 @@ import ilastik.applets.base.applet
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 from opBatchIo import SupportedFormats
 
@@ -273,6 +273,7 @@ class BatchIoGui(QMainWindow):
                 self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
 
                 # Start with 1% so the progress bar shows up
+                self.progressSignal.emit(0)
                 self.progressSignal.emit(1)
 
                 def signalFileProgress(slotIndex, percent):

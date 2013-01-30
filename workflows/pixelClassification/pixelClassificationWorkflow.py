@@ -21,7 +21,7 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, appendBatchOperators=False, *args, **kwargs):
+    def __init__(self, appendBatchOperators=True, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( graph=graph, *args, **kwargs )
@@ -106,3 +106,14 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+
+        self.opBatchPredictor = opBatchPredictor
+
+    def getHeadlessOutputSlot(self, slotId):
+        if slotId == "Predictions":
+            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
+        if slotId == "Batch_Predictions":
+            return self.opBatchPredictor.PMaps
+        
+        raise Exception("Unknown headless output slot")
+    

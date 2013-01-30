@@ -3,16 +3,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.base.appletGuiInterface &mdash; ilastik 0.6.0 documentation</title>
-    
+    <title>ilastik.applets.base.appletGuiInterface &mdash; ilastik v0.6.0 documentation</title>
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -25,7 +22,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,17 +43,15 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.base.appletGuiInterface</h1><div class="highlight"><pre>
-<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
-
 <span class="k">def</span> <span class="nf">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="n">attr</span> <span class="p">):</span>
     <span class="k">return</span> <span class="bp">True</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">attr</span> <span class="ow">in</span> <span class="n">B</span><span class="o">.</span><span class="n">__dict__</span> <span class="k">for</span> <span class="n">B</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__mro__</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
 
 <span class="k">def</span> <span class="nf">_has_attributes</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="n">attrs</span> <span class="p">):</span>
     <span class="k">return</span> <span class="bp">True</span> <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">_has_attribute</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
 
-<div class="viewcode-block" id="AppletGuiInterface"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface">[docs]</a><span class="k">class</span> <span class="nc">AppletGuiInterface</span><span class="p">():</span>
+<span class="k">class</span> <span class="nc">AppletGuiInterface</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This is the abstract interface to which all applet GUI classes should adhere.</span>
+<div class="viewcode-block" id="AppletGuiInterface"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface">[docs]</a><span class="sd">    This is the abstract interface to which all applet GUI classes should adhere.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
@@ -65,75 +60,75 @@
         <span class="k">pass</span>
 
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.centralWidget"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.centralWidget">[docs]</a>    <span class="k">def</span> <span class="nf">centralWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">centralWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.  Return the widget that will be displayed in the main viewer area.</span>
+<div class="viewcode-block" id="AppletGuiInterface.centralWidget"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.centralWidget">[docs]</a><span class="sd">        Abstract method.  Return the widget that will be displayed in the main viewer area.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.appletDrawer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawer">[docs]</a>    <span class="k">def</span> <span class="nf">appletDrawer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">appletDrawer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.  Return the drawer widget for this applet.</span>
+<div class="viewcode-block" id="AppletGuiInterface.appletDrawer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawer">[docs]</a><span class="sd">        Abstract method.  Return the drawer widget for this applet.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-    </div>
+    
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.menus"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.menus">[docs]</a>    <span class="k">def</span> <span class="nf">menus</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">menus</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.</span>
+<div class="viewcode-block" id="AppletGuiInterface.menus"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.menus">[docs]</a><span class="sd">        Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.viewerControlWidget"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.viewerControlWidget">[docs]</a>    <span class="k">def</span> <span class="nf">viewerControlWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">viewerControlWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.</span>
+<div class="viewcode-block" id="AppletGuiInterface.viewerControlWidget"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.viewerControlWidget">[docs]</a><span class="sd">        Abstract method.</span>
 <span class="sd">        Return the widget that controls how the content of the central widget is displayed.</span>
 <span class="sd">        Typically this consists of a layer list control.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-    </div>
+    
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.setImageIndex"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex">[docs]</a>    <span class="k">def</span> <span class="nf">setImageIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">setImageIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.</span>
+<div class="viewcode-block" id="AppletGuiInterface.setImageIndex"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex">[docs]</a><span class="sd">        Abstract method.</span>
 <span class="sd">        Called by the shell when the user has switched the input image he wants to view.</span>
 <span class="sd">        The GUI should respond by updating the content of the central widget.</span>
 <span class="sd">        Note: Single-image GUIs do not need to provide this function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.laneAdded"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneAdded">[docs]</a>    <span class="k">def</span> <span class="nf">laneAdded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">laneAdded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.</span>
+<div class="viewcode-block" id="AppletGuiInterface.laneAdded"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneAdded">[docs]</a><span class="sd">        Abstract method.</span>
 <span class="sd">        Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.</span>
 <span class="sd">        Note: The default GUI provided by StandardApplet overrides this for you. </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@abstractmethod</span>    
-<div class="viewcode-block" id="AppletGuiInterface.laneRemoved"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneRemoved">[docs]</a>    <span class="k">def</span> <span class="nf">laneRemoved</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">laneRemoved</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.</span>
+<div class="viewcode-block" id="AppletGuiInterface.laneRemoved"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneRemoved">[docs]</a><span class="sd">        Abstract method.</span>
 <span class="sd">        Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.</span>
 <span class="sd">        The GUI should clean up any resourecs it owns.</span>
 <span class="sd">        Note: The default GUI provided by StandardApplet overrides this for you. </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@abstractmethod</span>    
-<div class="viewcode-block" id="AppletGuiInterface.stopAndCleanUp"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.stopAndCleanUp">[docs]</a>    <span class="k">def</span> <span class="nf">stopAndCleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">stopAndCleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.</span>
+<div class="viewcode-block" id="AppletGuiInterface.stopAndCleanUp"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.stopAndCleanUp">[docs]</a><span class="sd">        Abstract method.</span>
 <span class="sd">        Called when the GUI is about to be destroyed.</span>
 <span class="sd">        The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-</div>
+
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">__subclasshook__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">C</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__subclasshook__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">C</span><span class="p">):</span></div>
         <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="n">AppletGuiInterface</span><span class="p">:</span>
             <span class="n">requiredMethods</span> <span class="o">=</span> <span class="p">[</span> <span class="s">&#39;centralWidget&#39;</span><span class="p">,</span>
                                 <span class="s">&#39;appletDrawers&#39;</span><span class="p">,</span>
@@ -142,9 +137,9 @@
                                 <span class="s">&#39;setImageIndex&#39;</span> <span class="p">]</span>
             <span class="k">return</span> <span class="bp">True</span> <span class="k">if</span> <span class="n">_has_attributes</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">requiredMethods</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
         <span class="k">return</span> <span class="bp">NotImplemented</span>
-</div>
+
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="k">class</span> <span class="nc">CustomGui</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">class</span> <span class="nc">CustomGui</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span></div>
         <span class="k">def</span> <span class="nf">centralWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
             <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">            Return the widget that will be displayed in the main viewer area.</span>
@@ -211,13 +206,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>

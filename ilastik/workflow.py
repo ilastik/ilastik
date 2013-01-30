@@ -1,12 +1,18 @@
 from abc import abstractproperty, abstractmethod
-from lazyflow.graph import Operator
+from lazyflow.graph import Operator, OperatorMetaClass
+from ilastik.utility.subclassRegistry import SubclassRegistryMeta
+
+# This metaclass provides automatic factory registration and still allows us to inherit from Operator
+class WorkflowMeta(SubclassRegistryMeta, OperatorMetaClass):
+    pass
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
+    __metaclass__ = WorkflowMeta # Provides Workflow.all_subclasses member
     name = "Workflow (base class)"
-    
+
     ###############################
     # Abstract methods/properties #
     ###############################
@@ -25,6 +31,10 @@ class Workflow( Operator ):
         all image lanes (i.e. files) currently loaded by the workflow.
         This slot is typically provided by the DataSelection applet via its ImageName slot.
         """
+        return None
+
+    @property
+    def finalOutputSlot(self):
         return None
 
     @abstractmethod
@@ -65,6 +75,13 @@ class Workflow( Operator ):
         
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
+
+    @classmethod
+    def getSubclass(cls, name):
+        for subcls in cls.all_subclasses:
+            if subcls.__name__ == name:
+                return subcls
+        raise RuntimeError("No known workflow class has name " + name)
 
     ###################
     # Private methods #

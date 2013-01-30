@@ -13,21 +13,18 @@ import numpy
 #######################
 
 def getOrCreateGroup(parentGroup, groupName):
-    """Returns parentGorup[groupName], creating first it if
+    """Returns parentGroup[groupName], creating first it if
     necessary.
 
     """
-    try:
+    if groupName in parentGroup:
         return parentGroup[groupName]
-    except KeyError:
-        return parentGroup.create_group(groupName)
+    return parentGroup.create_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
-    """Deletes parentGorup[groupName], if it exists."""
-    try:
+    """Deletes parentGroup[name], if it exists."""
+    if name in parentGroup:
         del parentGroup[name]
-    except KeyError:
-        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
@@ -373,7 +370,7 @@ class SerialClassifierSlot(SerialSlot):
             group.copy(cacheFile[self.name], self.name)
 
         os.remove(cachePath)
-        os.removedirs(tmpDir)
+        os.rmdir(tmpDir)
 
     def deserialize(self, group):
         """
@@ -397,7 +394,7 @@ class SerialClassifierSlot(SerialSlot):
             forests.append(vigra.learning.RandomForest(cachePath, targetname))
 
         os.remove(cachePath)
-        os.removedirs(tmpDir)
+        os.rmdir(tmpDir)
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can

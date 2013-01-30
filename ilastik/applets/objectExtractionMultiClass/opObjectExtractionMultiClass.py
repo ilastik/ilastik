@@ -1,7 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
-from lazyflow.operators.obsolete.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 import numpy
 import h5py

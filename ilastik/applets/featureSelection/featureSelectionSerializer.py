@@ -1,4 +1,5 @@
 import numpy
+import h5py
 
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent
@@ -9,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 class FeatureSelectionSerializer(AppletSerializer):
     """
@@ -37,12 +38,22 @@ class FeatureSelectionSerializer(AppletSerializer):
             deleteIfPresent(topGroup, 'Scales')
             deleteIfPresent(topGroup, 'FeatureIds')
             deleteIfPresent(topGroup, 'SelectionMatrix')
+            deleteIfPresent(topGroup, 'FeatureListFilename')
             
             # Store the new values (as numpy arrays)
+            
             topGroup.create_dataset('Scales', data=self.topLevelOperator.Scales.value)
+            
             topGroup.create_dataset('FeatureIds', data=self.topLevelOperator.FeatureIds.value)
+            
             if self.topLevelOperator.SelectionMatrix.ready():
                 topGroup.create_dataset('SelectionMatrix', data=self.topLevelOperator.SelectionMatrix.value)
+                
+            if self.topLevelOperator.FeatureListFilename.ready():
+                fname = str(self.topLevelOperator.FeatureListFilename.value) 
+                if fname:
+                    topGroup.create_dataset('FeatureListFilename', data=fname)
+                
             self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -84,6 +95,12 @@ class FeatureSelectionSerializer(AppletSerializer):
                         newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
 
                     self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
+                    
+            try:
+                ffl = topGroup['FeatureListFilename'].value
+                self.topLevelOperator.FeatureListFilename.setValue(ffl)
+            except KeyError:
+                pass
     
             self._dirty = False
 

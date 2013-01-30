@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-from lazyflow.tracer import Tracer, traceLogged
+from lazyflow.utility import Tracer, traceLogged
 
 class DataSelectionSerializer( AppletSerializer ):
     """

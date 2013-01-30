@@ -2,6 +2,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from ilastik.utility.operatorSubView import OperatorSubView
 
+from lazyflow.operators import Op5ifyer
+
 import uuid
 
 class DatasetInfo(object):
@@ -60,7 +62,7 @@ class OpDataSelection(Operator):
     
     def __init__(self, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
-        self._opReader = None
+        self._opReaders = []
     
     def setupOutputs(self):
         datasetInfo = self.Dataset.value
@@ -71,24 +73,36 @@ class OpDataSelection(Operator):
         datasetInProject &= self.ProjectFile.connected() and \
                             internalPath in self.ProjectFile.value
 
-        if self._opReader is not None:
+        if len(self._opReaders) > 0:
             self.Image.disconnect()
-            self._opReader.cleanUp()
+            for reader in reversed(self._opReaders):
+                reader.cleanUp()
         
         # If we should find the data in the project file, use a dataset reader
         if datasetInProject:
-            self._opReader = OpStreamingHdf5Reader(parent=self)
-            self._opReader.Hdf5File.setValue(self.ProjectFile.value)
-            self._opReader.InternalPath.setValue(internalPath)
-            providerSlot = self._opReader.OutputImage
+            opReader = OpStreamingHdf5Reader(parent=self)
+            opReader.Hdf5File.setValue(self.ProjectFile.value)
+            opReader.InternalPath.setValue(internalPath)
+            providerSlot = opReader.OutputImage
+            self._opReaders.append(opReader)
         else:
             # Use a normal (filesystem) reader
-            self._opReader = OpInputDataReader(parent=self)
+            opReader = OpInputDataReader(parent=self)
             if datasetInfo.axisorder is not None:
-                self._opReader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
-            self._opReader.WorkingDirectory.connect( self.WorkingDirectory )
-            self._opReader.FilePath.setValue(datasetInfo.filePath)
-            providerSlot = self._opReader.Output        
+                opReader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
+            opReader.WorkingDirectory.connect( self.WorkingDirectory )
+            opReader.FilePath.setValue(datasetInfo.filePath)
+            providerSlot = opReader.Output
+            self._opReaders.append(opReader)
+
+        # If there is no channel axis, use an Op5ifyer to append one.
+        if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
+            op5 = Op5ifyer( parent=self )
+            providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
+            op5.order.setValue(providerKeys + 'c')
+            op5.input.connect( providerSlot )
+            providerSlot = op5.output
+            self._opReaders.append( op5 )
         
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)

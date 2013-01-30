@@ -1,9 +1,15 @@
 *~
+build
+tests/*.h5
 *.pyc
 *.pyo
 *.kdev4
 .DS_Store
 
+*/*.pyc
+*.*~
+tests/*.png
+tests/images
 .project
 *.h5
 .pydevproject

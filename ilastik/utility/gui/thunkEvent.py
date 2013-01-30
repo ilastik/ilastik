@@ -36,8 +36,8 @@ class ThunkEventHandler( QObject ):
     The callable will NOT be called synchronously.  It will be called when the QT 
     event system eventually passes the event to the GUI object's event filters.
 
-    In the following example, C.setText() can be called from ANY thread safely.
-    The widget's text will ONLY be updated in the main thread.
+    In the following example, ``C.setCaption()`` can be called from ANY thread safely.
+    The widget's text will ONLY be updated in the main thread, at some point in the future.
     
     .. code-block:: python
     
