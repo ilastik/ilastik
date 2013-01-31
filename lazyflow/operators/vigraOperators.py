@@ -1618,6 +1618,8 @@ class OpH5WriterBigDataset(Operator):
             s=activeSlicings.popleft()
             data = req.wait()
             self.d[s]=data
+            
+            req.clean() # Discard the data in the request and allow its children to be garbage collected.
 
             if len(slicings) > 0:
                 # Create a new active request
