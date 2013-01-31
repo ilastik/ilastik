@@ -251,10 +251,15 @@ class OpPredictionPipeline(Operator):
         super( OpPredictionPipeline, self ).__init__( *args, **kwargs )
         
         self.predict = OpPredictRandomForest( parent=self )
+        self.predict.name = "OpPredictRandomForest"
         self.prediction_cache = OpSlicedBlockedArrayCache( parent=self )
+        self.prediction_cache.name = "prediction_cache"
         self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
+        self.prediction_cache_gui.name = "prediction_cache_gui"
         self.precomputed_predictions = OpPrecomputedInput( parent=self )
+        self.precomputed_predictions.name = "precomputed_predictions"
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
+        self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
 
         ##
         # 
@@ -265,7 +270,6 @@ class OpPredictionPipeline(Operator):
         self.PredictionProbabilities.connect( self.predict.PMaps )
         
         # prediction cache for downstream operators (if they want it)
-        self.prediction_cache.name = "PredictionCache"
         self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
         self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
 
@@ -276,7 +280,6 @@ class OpPredictionPipeline(Operator):
         self.CachedPredictionProbabilities.connect( self.precomputed_predictions.Output )
 
         # Prediction cache for the GUI
-        self.prediction_cache_gui.name = "PredictionCache"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
 
@@ -286,6 +289,7 @@ class OpPredictionPipeline(Operator):
         # CACHELESS FLOW (Don't pass through feature cache)
         #  This is terrible for interactive labeling, but fast for command-line predictions.
         self.cacheless_predict = OpPredictRandomForest( parent=self )
+        self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.inputs['LabelsCount'].connect(self.MaxLabel)
@@ -294,6 +298,7 @@ class OpPredictionPipeline(Operator):
 
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
+        self.opPredictionSlicer.name = "opPredictionSlicer"
         self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
@@ -303,6 +308,7 @@ class OpPredictionPipeline(Operator):
         self.opSegementor.Function.setValue( lambda x: numpy.where(x < 0.5, 0, 1) )
 
         self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
+        self.opSegmentationSlicer.name = "opSegmentationSlicer"
         self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
         self.opSegmentationSlicer.AxisFlag.setValue('c')
         self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
@@ -313,6 +319,7 @@ class OpPredictionPipeline(Operator):
 
         # Cache the uncertainty so we get zeros for uncomputed points
         self.opUncertaintyCache = OpSlicedBlockedArrayCache( parent=self )
+        self.opUncertaintyCache.name = "opUncertaintyCache"
         self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
         self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
