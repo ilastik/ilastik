@@ -7,6 +7,9 @@ from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
 import threading
 from ilastik.utility.simpleSignal import SimpleSignal
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SerialPredictionSlot(SerialSlot):
 
     def __init__(self, slot, operator, *args, **kwargs):
@@ -64,6 +67,10 @@ class SerialPredictionSlot(SerialSlot):
 
         """
         predictionDir = group.create_group(self.name)
+
+        # Disconnect the operators that might be using the old data.
+        self.deserialize(group)
+        
         failedToSave = False
         try:
             num = len(self.slot)
@@ -94,17 +101,21 @@ class SerialPredictionSlot(SerialSlot):
                 # Create the request
                 self._predictionStorageRequest = opWriter.WriteImage[...]
 
+                # Must use a threading event here because if we wait on the 
+                # request from within a "real" thread, it refuses to be cancelled.
                 finishedEvent = threading.Event()
-                def handleFinish(request):
+                def handleFinish(result):
                     finishedEvent.set()
 
-                def handleCancel(request):
+                def handleCancel():
+                    logger.info("Full volume prediction save CANCELLED.")
                     self._predictionStorageRequest = None
                     finishedEvent.set()
 
                 # Trigger the write and wait for it to complete or cancel.
-                self._predictionStorageRequest.notify(handleFinish)
-                self._predictionStorageRequest.onCancel(handleCancel)
+                self._predictionStorageRequest.notify_finished(handleFinish)
+                self._predictionStorageRequest.notify_cancelled(handleCancel)
+                self._predictionStorageRequest.submit() # Can't call wait().  See note above.
                 finishedEvent.wait()
                 progress += increment
         except:
@@ -126,7 +137,12 @@ class SerialPredictionSlot(SerialSlot):
             self.operator.FreezePredictions.setValue(False)
             self.operator.FreezePredictions.setValue(True)
 
-        self.operator.PredictionsFromDisk.resize(len(group))
+        #self.operator.PredictionsFromDisk.resize(len(group))
+        if len(group.keys()) > 0:
+            assert len(group.keys()) == len(self.operator.PredictionsFromDisk), "Expected to find the same number of on-disk predications as there are images loaded."
+        else:
+            for slot in self.operator.PredictionsFromDisk:
+                slot.disconnect()
         for imageIndex, datasetName in enumerate(group.keys()):
             opStreamer = OpStreamingHdf5Reader(graph=self.operator.graph)
             opStreamer.Hdf5File.setValue(group)
@@ -161,10 +177,7 @@ class PixelClassificationSerializer(AppletSerializer):
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName,
                                                             slots=slots)
 
-
-        def handleProgress(x):
-            self.progressSignal.emit(x)
-        self.predictionSlot.progressSignal.connect(handleProgress)
+        self.predictionSlot.progressSignal.connect(self.progressSignal.emit)
 
     @property
     def predictionStorageEnabled(self):
