@@ -648,7 +648,7 @@ class Slot(object):
             request = Request( execWrapper )
 
             # We must decrement the execution count even if the request is cancelled
-            request.onCancel( execWrapper.handleCancel )
+            request.notify_cancelled( execWrapper.handleCancel )
             return request
             
     class RequestExecutionWrapper(object):
