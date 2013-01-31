@@ -1404,6 +1404,7 @@ class OpSlicedBlockedArrayCache(Operator):
         with Tracer(self.traceLogger):
             super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
             self._innerOps = []
+            self._somethingIsDirty = False
 
     def setupOutputs(self):
         self.shape = self.inputs["Input"].meta.shape
@@ -1438,7 +1439,7 @@ class OpSlicedBlockedArrayCache(Operator):
         self.InnerOutputs.resize( len(self._innerOps) )
         for i, slot in enumerate(self.InnerOutputs):
             slot.connect(self._innerOps[i].Output)
-
+        
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
         
@@ -1476,10 +1477,15 @@ class OpSlicedBlockedArrayCache(Operator):
             elif slot == self.outerBlockShape or slot == self.innerBlockShape:
                 self.Output.setDirty( slice(None) )
             elif slot == self.fixAtCurrent:
-                self.Output.setDirty( slice(None) )
+                # Special case: If *nothing* has become dirty since we became 'fixed',
+                #  then there's no reason to send out a big dirty notification.
+                if self._somethingIsDirty:
+                    self.Output.setDirty( slice(None) )
+                    self._somethingIsDirty = False
             else:
                 assert False, "Unknown dirty input slot"
-
+        elif slot != self.fixAtCurrent:
+            self._somethingIsDirty = True
 
 
 
