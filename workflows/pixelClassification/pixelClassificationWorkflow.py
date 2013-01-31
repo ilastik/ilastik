@@ -1,10 +1,9 @@
 from ilastik.workflow import Workflow
 
-from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationBatchResultsApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.batchIo import BatchIoApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
@@ -42,7 +41,7 @@ class PixelClassificationWorkflow(Workflow):
         if appendBatchOperators:
             # Create applets for batch workflow
             self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = BatchIoApplet(self, "Batch Prediction Output Locations")
+            self.batchResultsApplet = PixelClassificationBatchResultsApplet(self, "Batch Prediction Output Locations")
     
             # Expose in shell        
             self._applets.append(self.batchInputApplet)
@@ -100,6 +99,11 @@ class PixelClassificationWorkflow(Workflow):
         # Classifier and LabelsCount are provided by the interactive workflow
         opBatchPredictor.Classifier.connect( opClassify.Classifier )
         opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
+        
+        # Provide these for the gui
+        opBatchResults.RawImage.connect( opBatchInputs.Image )
+        opBatchResults.PmapColors.connect( opClassify.PmapColors )
+        opBatchResults.LabelNames.connect( opClassify.LabelNames )
         
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export

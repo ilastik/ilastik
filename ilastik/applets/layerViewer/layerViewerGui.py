@@ -237,7 +237,8 @@ class LayerViewerGui(QMainWindow):
             normSource = NormalizingSource( source, bounds=normalize )
             return GrayscaleLayer(normSource)
 
-        assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha)
+        assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
+            "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
         redProvider = OpSingleChannelSelector(graph=slot.graph)
         redProvider.Input.connect(slot)
         redProvider.Index.setValue( 0 )

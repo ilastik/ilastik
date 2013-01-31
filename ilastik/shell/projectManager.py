@@ -113,6 +113,8 @@ class ProjectManager(object):
         :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
         # Instantiate the workflow.
+        self._workflowClass = workflowClass
+        self._headless = headless
         self.workflow = workflowClass(headless=headless)
 
         self.currentProjectFile = None
@@ -353,8 +355,8 @@ class ProjectManager(object):
         # Close the original project
         self._closeCurrentProject()
 
-        # Discard the old workflow and make a new one
-        self.workflow = self.workflow.__class__()
+        # Create brand new workflow to load from the new project file.
+        self.workflow = self._workflowClass(headless=self._headless)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)

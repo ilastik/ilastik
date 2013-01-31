@@ -1,4 +1,5 @@
 import os
+import tempfile
 import h5py
 import numpy.random
 from lazyflow.graph import Graph
@@ -10,6 +11,8 @@ from ilastik.utility import PathComponents
 
 class TestOpBatchIo(object):
     def setUp(self):
+        tempDir = tempfile.gettempdir()
+        os.chdir(tempDir)
         self.testDataFileName = 'NpyTestData.npy'
         
     def tearDown(self):
@@ -20,7 +23,7 @@ class TestOpBatchIo(object):
     
     def testBasic5d(self):
         # Start by writing some test data to disk.
-        self.testData = numpy.random.random((1,10,10,10,2))
+        self.testData = numpy.random.random((1,10,10,10,2)).astype(numpy.float32)
         self.expectedDataShape = (1,10,10,10,2)
         numpy.save(self.testDataFileName, self.testData)
         
@@ -28,7 +31,7 @@ class TestOpBatchIo(object):
 
     def testBasic4d(self):
         # Start by writing some 4D test data to disk.
-        self.testData = numpy.random.random((10,10,10,2))
+        self.testData = numpy.random.random((10,10,10,2)).astype(numpy.float32)
         self.expectedDataShape = (10,10,10,2)
         numpy.save(self.testDataFileName, self.testData)
 
@@ -36,7 +39,7 @@ class TestOpBatchIo(object):
         
     def testBasic3d(self):
         # Start by writing some 4D test data to disk.
-        self.testData = numpy.random.random((10,10,10))
+        self.testData = numpy.random.random((10,10,10)).astype(numpy.float32)
         self.expectedDataShape = (10,10,10,1)
         numpy.save(self.testDataFileName, self.testData)
 
@@ -44,7 +47,7 @@ class TestOpBatchIo(object):
         
     def testBasic2d(self):
         # Start by writing some 4D test data to disk.
-        self.testData = numpy.random.random((10,10))
+        self.testData = numpy.random.random((10,10)).astype(numpy.float32)
         numpy.save(self.testDataFileName, self.testData)
         self.expectedDataShape = (10,10,1)
 
@@ -53,7 +56,7 @@ class TestOpBatchIo(object):
     def basicImpl(self):
         cwd = os.getcwd()
         info = DatasetInfo()
-        info.filePath = os.path.join(cwd, 'NpyTestData.npy')
+        info.filePath = os.path.join(cwd, self.testDataFileName)
         
         graph = Graph()
         opBatchIo = OpBatchIo(graph=graph)
@@ -93,10 +96,14 @@ class TestOpBatchIo(object):
         with h5py.File(smoothedPath, 'r') as f:
             assert internalPath in f
             assert f[internalPath].shape == self.expectedDataShape
+            assert (f[internalPath][:] == opSmooth.Output[:].wait()).all()
         try:
             os.remove(smoothedPath)
         except:
             pass
+        
+        # Check the exported image
+        assert ( opBatchIo.ExportedImage[:].wait() == opSmooth.Output[:].wait() ).all()
 
     def testCreateExportDirectory(self):
         """

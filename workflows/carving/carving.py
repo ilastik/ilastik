@@ -11,6 +11,8 @@ if __name__ == "__main__":
     import numpy
     from ilastik.shell.gui.startShellGui import startShellGui
     import socket
+    import logging
+    logging.basicConfig(level=logging.INFO)
 
 #    import sys
 #    sys.argv.append( "/magnetic/denk.h5" )

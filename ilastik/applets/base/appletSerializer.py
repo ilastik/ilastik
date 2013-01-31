@@ -526,7 +526,8 @@ class AppletSerializer(object):
 
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
-        self.progressSignal.emit(0)
+        progress = 0
+        self.progressSignal.emit(progress)
 
         # Set the version
         key = 'StorageVersion'
@@ -537,7 +538,8 @@ class AppletSerializer(object):
             inc = self.progressIncrement(topGroup)
             for ss in self.serialSlots:
                 ss.serialize(topGroup)
-                self.progressSignal.emit(inc)
+                progress += inc
+                self.progressSignal.emit(progress)
 
             # Call the subclass to do remaining work, if any
             self._serializeToHdf5(topGroup, hdf5File, projectFilePath)

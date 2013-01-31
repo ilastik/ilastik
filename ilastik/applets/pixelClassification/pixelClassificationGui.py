@@ -439,6 +439,7 @@ class PixelClassificationGui(LabelingGui):
 
             @traceLogged(traceLogger)
             def saveThreadFunc():
+                logger.info("Starting full volume save...")
                 # Disable all other applets
                 self.guiControlSignal.emit( ControlCommand.DisableUpstream )
                 self.guiControlSignal.emit( ControlCommand.DisableDownstream )
@@ -483,6 +484,7 @@ class PixelClassificationGui(LabelingGui):
                 # Re-enable all other applets
                 self.guiControlSignal.emit( ControlCommand.Pop )
                 self.guiControlSignal.emit( ControlCommand.Pop )
+                logger.info("Finished full volume save.")
 
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()

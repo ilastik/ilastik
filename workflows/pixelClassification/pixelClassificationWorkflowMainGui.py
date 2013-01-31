@@ -1,23 +1,23 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 import functools
-
 import argparse
 
-def debug_with_existing(shell, workflow):
+def debug_with_existing(shell):
     """
     (Function for debug and testing.)
     """
     #projFilePath = "/magnetic/test_project.ilp"
-    projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
+    #projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
+    projFilePath = "/home/bergs/MyProject.ilp"
     #projFilePath = '/magnetic/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
     #projFilePath = '/magnetic/250-2.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
 
-    # Select the labeling drawer
-    shell.setSelectedAppletDrawer(3)
+    # Select a default drawer
+    shell.setSelectedAppletDrawer(5)
 
 def debug_with_new(shell, workflow):
     """
@@ -82,8 +82,11 @@ def debug_with_imported(shell, workflow):
 
 if __name__ == "__main__":
 
-    import warnings
-    warnings.warn("WARNING: Assuming a strange axis order when importing 0.5 projects!")
+    # Special hack for Janelia: 
+    # In some old versions of 0.5, the data was stored in tyxzc order.
+    # We have no way of inspecting the data to determine this, so we allow 
+    #  users to specify that their ilp is very old using the 
+    #  assume_old_ilp_axes command-line flag
     import ilastik.utility.globals
     ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
 

@@ -1,35 +1,35 @@
 #!/usr/bin/env python2.7
 
 # Standard libs
-import os
-import sys
-import argparse
-import logging
-import traceback
-import functools
-import subprocess
-import threading
-import Queue
-import shutil
-
-# ilastik
-from ilastik.workflow import Workflow
-import ilastik.utility.monkey_patches
-from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.clusterConfig import parseClusterConfigFile
-
+from ilastik.clusterOps import OpClusterize, OpTaskWorker
+from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.utility.pathHelpers import getPathVariants
-
+from ilastik.workflow import Workflow
+from lazyflow.graph import OperatorWrapper
+import Queue
+import argparse
+import functools
+import ilastik.ilastik_logging
+import ilastik.utility.monkey_patches
+import logging
+import os
+import shutil
+import subprocess
+import sys
+import threading
+import traceback
 import workflows # Load all known workflow modules
 
-from ilastik.clusterOps import OpClusterize, OpTaskWorker
-from lazyflow.graph import OperatorWrapper
-
-import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
+# ilastik
+
+
+
 logger = logging.getLogger(__name__)
+
 
 def main(argv):
     logger.debug( "Launching with sys.argv: {}".format(sys.argv) )
@@ -192,17 +192,18 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     #debug = None
-    debug = 'Master'
-    #debug = 'Node'
+    #debug = 'Master'
+    debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
         args = []
-        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json" )
-        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp" )
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 510, 510, 510, 0], [1, 1020, 1020, 1020, 4])' )
-        args.append( "--process_name=JOB07" )
-        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json" )
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+        args.append( "--sys_tmp_dir=/scratch/bergs")
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
+        args.append( "--process_name=JOB00" )
 
         sys.argv += args
 
@@ -216,15 +217,16 @@ if __name__ == "__main__":
 #        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
 
-        # BIGGER TEST
-        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
-        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
+#        # BIGGER TEST
+#        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
+#        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
-#        # RESTful TEST
-#        args.append( "--option_config_file=/home/bergs/bock11_cluster_trials/bock11-256_cluster_options.json")
-#        args.append( "--project=/home/bergs/bock11_cluster_trials/bock11-256.ilp")
-#        args.append( "--output_description_file=/home/bergs/bock11_cluster_trials/results/results_description.json")
+        # RESTful TEST
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
 

@@ -14,7 +14,7 @@ packages=['ilastik',
           'ilastik.applets.objectExtractionMultiClass',
           'ilastik.applets.pixelClassification',
           'ilastik.applets.projectMetadata',
-	  'ilastik.applets.stopWatch',
+          'ilastik.applets.stopWatch',
           'ilastik.applets.thresholdMasking',
           'ilastik.applets.tracking',
           'ilastik.applets.tracking.base',
@@ -51,7 +51,8 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.tracking.fastApproximate': ['*.ui'],
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
           'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
-          'ilastik.ilastik_logging': ['logging_config.json']
+          'ilastik.ilastik_logging': ['logging_config.json'],
+          'ilastik.widgets': ['*.ui']
               }
 
 setup(name='ilastik',

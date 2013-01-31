@@ -138,19 +138,20 @@ class DataSelectionGui(QMainWindow):
         
             def handleDatasetRemoved( multislot, index, finalLength ):
                 assert multislot == self.topLevelOperator.Dataset
-                dataset = multislot[index]
                 if self.fileInfoTableWidget.rowCount() > finalLength:
                     # Remove the row we don't need any more
                     self.fileInfoTableWidget.removeRow( index )
-                    
-                    # Remove the viewer for this dataset
-                    imageSlot = self.topLevelOperator.Image[index]
-                    if imageSlot in self.volumeEditors.keys():
-                        editor = self.volumeEditors[imageSlot]
-                        self.viewerStack.removeWidget( editor )
-                        editor.stopAndCleanUp()
+
+            def handleImageRemoved(multislot, index, finalLength):                    
+                # Remove the viewer for this dataset
+                imageSlot = self.topLevelOperator.Image[index]
+                if imageSlot in self.volumeEditors.keys():
+                    editor = self.volumeEditors[imageSlot]
+                    self.viewerStack.removeWidget( editor )
+                    editor.stopAndCleanUp()
     
             self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
+            self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
         
     def initAppletDrawerUic(self):
         """
@@ -213,6 +214,7 @@ class DataSelectionGui(QMainWindow):
 
     def initViewerStack(self):
         self.volumeEditors = {}
+        self.viewerStack.addWidget( QWidget() )
         
     def handleAddFileButtonClicked(self):
         """
@@ -437,6 +439,7 @@ class DataSelectionGui(QMainWindow):
             # (Won't have any effect if nothing changed this time around.)
             self.updateFilePath(row)
             
+            # Select a row if there isn't one already selected.
             selectedRanges = self.fileInfoTableWidget.selectedRanges()
             if len(selectedRanges) == 0:
                 self.fileInfoTableWidget.selectRow(0)
@@ -459,6 +462,7 @@ class DataSelectionGui(QMainWindow):
         """
         Create and add the combobox for storage location options
         """
+        assert threading.current_thread().name == "MainThread"
         with Tracer(traceLogger):
             # Determine the relative path to this file
             absPath, relPath = getPathVariants(filePath, self.topLevelOperator.WorkingDirectory.value)
@@ -496,6 +500,7 @@ class DataSelectionGui(QMainWindow):
             self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
     def updateInternalPathComboBox( self, row, externalPath, internalPath ):
+        assert threading.current_thread().name == "MainThread"
         with Tracer(traceLogger):
             combo = QComboBox()
             datasetNames = []
@@ -565,7 +570,7 @@ class DataSelectionGui(QMainWindow):
             oldLocationSetting = self.topLevelOperator.Dataset[index].value.location
             
             # Get the directory by inspecting the original operator path
-            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath
+            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath.replace('\\', '/')
             # Split into directory, filename, extension, and internal path
             lastDotIndex = oldTotalPath.rfind('.')
             extensionAndInternal = oldTotalPath[lastDotIndex:]
@@ -591,6 +596,8 @@ class DataSelectionGui(QMainWindow):
     
             cwd = self.topLevelOperator.WorkingDirectory.value
             absTotalPath, relTotalPath = getPathVariants( newTotalPath, cwd )
+            absTotalPath = absTotalPath.replace('\\','/')
+            relTotalPath = relTotalPath.replace('\\','/')
     
             # Check the location setting
             locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
@@ -670,6 +677,7 @@ class DataSelectionGui(QMainWindow):
         self.showSelectedDataset()
     
     def selectEntireRow(self):
+        assert threading.current_thread().name == "MainThread"
         selectedItemRows = set()
         selectedRanges = self.fileInfoTableWidget.selectedRanges()
         for rng in selectedRanges:
@@ -685,6 +693,7 @@ class DataSelectionGui(QMainWindow):
         self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
     
     def showSelectedDataset(self):
+        assert threading.current_thread().name == "MainThread"
         # Get the selected row and corresponding slot value
         selectedRanges = self.fileInfoTableWidget.selectedRanges()
         if len(selectedRanges) == 0:

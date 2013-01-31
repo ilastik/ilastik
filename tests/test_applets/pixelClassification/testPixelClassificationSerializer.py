@@ -34,12 +34,14 @@ class OpMockPixelClassifier(Operator):
     
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
+    PmapColors = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
 
         self.LabelNames.setValue( ["Membrane", "Cytoplasm"] )
         self.LabelColors.setValue( [(255,0,0), (0,255,0)] ) # Red, Green
+        self.PmapColors.setValue( [(255,0,0), (0,255,0)] ) # Red, Green
         
         self._data = []
         self.dataShape = (1,10,100,100,1)
@@ -179,6 +181,7 @@ class TestPixelClassificationSerializer(object):
             # change label names and colors
             op.LabelNames.setValue( ["Label1", "Label2"] )
             op.LabelColors.setValue( [(255,30,30), (30,255,30)] )
+            op.PmapColors.setValue( [(255,30,30), (30,255,30)] )
             
             # Simulate the predictions changing by setting the prediction output dirty
             op.PredictionProbabilities[0].setDirty(slice(None))
@@ -190,7 +193,10 @@ class TestPixelClassificationSerializer(object):
             serializer.serializeToHdf5(testProject, testProjectName)
     
             # Check that the prediction data was written to the file
-            assert (testProject['PixelClassificationTest/Predictions/predictions0000'][...] == op.PredictionProbabilities[0][...].wait()).all()
+            calculated = op.PredictionProbabilities[0][...].wait()
+            saved = testProject['PixelClassificationTest/Predictions/predictions0000'][...]
+            #print (saved - calculated).max()
+            assert (saved == calculated).all()
             
             # Deserialize into a fresh operator
             operatorToLoad = OpMockPixelClassifier(graph=g)
@@ -204,6 +210,7 @@ class TestPixelClassificationSerializer(object):
 
             assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value
             assert (numpy.array(operatorToSave.LabelColors.value) == numpy.array(operatorToLoad.LabelColors.value)).all()
+            assert (numpy.array(operatorToSave.PmapColors.value) == numpy.array(operatorToLoad.PmapColors.value)).all()
         
         os.remove(testProjectName)
 

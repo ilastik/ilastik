@@ -71,6 +71,9 @@ class OperatorSubView(object):
             if name != '_parent' and isinstance(member, MultiLaneOperatorABC):
                 setattr(self, name, OperatorSubView(member, index) )
 
+    def viewed_operator(self):
+        return self.__op
+
     def __getattribute__(self, name):
         try:
             # If we have this attr, use it.  It's either a slot, an inner operator, a  view itself.
