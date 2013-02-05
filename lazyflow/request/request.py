@@ -782,6 +782,9 @@ class Request(object):
     
     def notify_failed(self, fn):
         warnings.warn("notify_failed() not supported in old request implementation.")
+    
+    def block(self):
+        return self.wait()
 ##
 ## Definitions for FORWARDS compatibility
 ##
