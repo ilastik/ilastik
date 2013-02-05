@@ -3,6 +3,11 @@ import atexit
 import collections
 import heapq
 import threading
+import platform
+
+# This module's code needs to be sanitized if you're not using CPython.
+# In particular, check that deque operations like push() and pop() are still atomic.
+assert platform.python_implementation() == "CPython"
 
 class PriorityQueue(object):
     """
@@ -149,7 +154,11 @@ class _Worker(threading.Thread):
             # Start (or resume) the work by switching to its greenlet
             next_task()
 
-            # Try to get some work.
+            # We're done with this request.
+            # Free it immediately for garbage collection.
+            next_task = None
+
+            # Now try to get some work (wait if necessary).
             next_task = self._get_next_job()
 
     def stop(self):
