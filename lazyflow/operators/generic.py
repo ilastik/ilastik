@@ -104,6 +104,8 @@ class OpMultiArraySlicer(Operator):
             o.meta.assignFrom( self.Input.meta )
             o.meta.axistags = outaxistags
             o.meta.shape = outshape
+            if self.Input.meta.drange is not None:
+                o.meta.drange = self.Input.meta.drange
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
@@ -194,6 +196,8 @@ class OpMultiArraySlicer2(Operator):
             oslot.meta.assignFrom( self.Input.meta )
             oslot.meta.axistags = outaxistags
             oslot.meta.shape = outshape
+            if self.Input.meta.drange is not None:
+                oslot.meta.drange = self.Input.meta.drange
 
         inputShape = self.Input.meta.shape
         if self.inputShape != inputShape:
@@ -400,6 +404,8 @@ class OpSingleChannelSelector(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape[:-1]+(1,)
+        if self.Input.meta.drange is not None:
+            self.Output.meta.drange = self.Input.meta.drange
 
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
@@ -454,7 +460,9 @@ class OpSubRegion(Operator):
                 outShape = outShape + (e,)
 
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = outShape        
+        self.Output.meta.shape = outShape
+        if self.Input.meta.drange is not None:
+            self.Output.meta.drange = self.Input.meta.drange
 
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
@@ -576,6 +584,13 @@ class OpPixelOperator(Operator):
         self.outputs["Output"].meta.shape = inputSlot.meta.shape
         self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
+        
+        # Provide a default drange.
+        # Works for monotonic functions.
+        drange_in = self.Input.meta.drange
+        if drange_in is not None:
+            drange_out = self.function( numpy.array(drange_in) )
+            self.Output.meta.drange = tuple(drange_out)
 
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
