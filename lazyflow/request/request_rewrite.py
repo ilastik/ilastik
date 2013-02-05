@@ -5,12 +5,18 @@ import itertools
 import collections
 import threading
 import multiprocessing
+import weakref
+import platform
 
 # Third-party
 import greenlet
 
 # lazyflow
 import threadPool
+
+# This module's code needs to be sanitized if you're not using CPython.
+# In particular, check that set operations like remove() are still atomic.
+assert platform.python_implementation() == "CPython"
 
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
@@ -104,6 +110,7 @@ class Request( object ):
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
+        self._weak_greenlet = None
         self._assigned_worker = None
 
         # Request relationships
@@ -146,6 +153,7 @@ class Request( object ):
         self._sig_cancelled.clean()
         self._sig_finished.clean()
         self._sig_failed.clean()
+        self._sig_execution_complete.clean()
         self._result = None
 
         with self._lock:
@@ -172,6 +180,7 @@ class Request( object ):
 
         # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
         self.greenlet = RequestGreenlet(self, self._execute)
+        self._weak_greenlet = weakref.ref( self.greenlet )
 
     @property
     def result(self):
@@ -225,10 +234,16 @@ class Request( object ):
             with self._lock:
                 self.execution_complete = True
                 self._sig_execution_complete()
+                self._sig_execution_complete.clean()
 
         finally:
             # Notify non-request-based threads
             self.finished_event.set()
+
+            # Clean-up
+            if self.greenlet is not None:
+                assert self.greenlet.owning_requests.pop() == self
+            self.greenlet = None
 
     def submit(self):
         """
@@ -259,6 +274,8 @@ class Request( object ):
         .. note:: DO NOT use ``Request.__call__`` explicitly from your code.  It is called internally or from the ThreadPool.
         """
         self._switch_to()
+        if self.greenlet is None and self._weak_greenlet is not None:
+            assert self._weak_greenlet() is None, "Potential memory leak: Didn't remove all references to a RequestGreenlet."
         
     def _suspend(self):
         """
@@ -404,11 +421,17 @@ class Request( object ):
         elif direct_execute_needed:
             # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
             self.greenlet = current_request.greenlet
+            self._weak_greenlet = weakref.ref(self.greenlet)
             self.greenlet.owning_requests.append(self)
             self._assigned_worker = current_request._assigned_worker
             self._execute()
-            assert self.greenlet.owning_requests.pop() == self
+            self.greenlet = None
             current_request.blocking_requests.remove(self)
+
+        if suspend_needed or direct_execute_needed:
+            # No need to lock here because set.remove is atomic in CPython.
+            #with self._lock:
+                self.pending_requests.remove( current_request )
 
         # Now we're back (no longer suspended)
         # Was the current request cancelled while it was waiting for us?
