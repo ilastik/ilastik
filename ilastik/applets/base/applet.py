@@ -26,6 +26,11 @@ class Applet( object ):
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
         #: Signature: ``emit(percentComplete, canceled=false)``
+        #: 
+        #: .. note:: To update the progress bar correctly, the shell expects that progress updates always 
+        #:           begin with at least one zero update and end with at least one 100 update.
+        #:           That is: 
+        #:           ``self.progressSignal(0)`` ... more updates ... ``self.progressSignal(100)``
         self.progressSignal = SimpleSignal()
         
         #: GUI control signal
