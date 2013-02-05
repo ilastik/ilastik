@@ -3,9 +3,8 @@ import sys
 import numpy
 import psutil
 import threading
-from functools import partial
 from lazyflow.graph import Graph, Operator, OutputSlot
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpArrayPiper
 from lazyflow.request import Request
 
@@ -73,7 +72,7 @@ class TestBigRequestStreamer(object):
 
             def setupOutputs(self):
                 self.Output.meta.dtype = numpy.float32
-                self.Output.shape = (1000, 1000, 1000)
+                self.Output.shape = (2000, 2000, 2000)
     
             def execute(self, slot, subindex, roi, result):
                 """
@@ -96,6 +95,8 @@ class TestBigRequestStreamer(object):
             def propagateDirty(self, slot, subindex, roi):
                 pass
 
+        gc.collect()
+
         vmem = psutil.virtual_memory()
         start_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
         logger.debug( "Starting test with memory usage at: {} MB".format( start_mem_usage_mb ) )
@@ -103,14 +104,26 @@ class TestBigRequestStreamer(object):
         op = OpNonsense( graph=Graph() )
         def handleResult( roi, result ):
             pass
+
         def handleProgress( progress ):
-            logger.debug( "Progress update: {}".format(progress) )
+            #gc.collect()
+            logger.debug( "Progress update: {}".format( progress ) )
+            #vmem = psutil.virtual_memory()
+            #finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
+            #difference_mb = finished_mem_usage_mb - start_mem_usage_mb
+            #logger.debug( "Progress update: {} with memory usage at: {} MB ({} MB increase)".format( progress, finished_mem_usage_mb, difference_mb ) )
 
         batch = BigRequestStreamer(op.Output, [(0,0,0), (100,1000,1000)], (100,100,100) )
         batch.resultSignal.subscribe( handleResult )
         batch.progressSignal.subscribe( handleProgress )
         batch.execute()
 
+        vmem = psutil.virtual_memory()
+        finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
+        difference_mb = finished_mem_usage_mb - start_mem_usage_mb
+        logger.debug( "Finished execution with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
+
+        # Collect
         gc.collect()
 
         vmem = psutil.virtual_memory()
