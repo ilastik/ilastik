@@ -623,6 +623,11 @@ Instead of submitting the request to the ThreadPool, the request is simply execu
 There is no need to incur the overhead of creating a new greenlet, queueing the request, and so on. 
 With this optimization, we don't have to pay a significant penalty for using requests in cases where no parallelism was needed in the first place.
 
+.. note:: This optimization avoids some overhead of starting new requests in their own greenlets, but it has a side-effect worth noting:
+          When a subrequest is directly executed, it "skips in line".  It does not sit in the ThreadPool shared queue.
+          It is executed immediately, even if higher priority requests are waiting in the shared queue.
+          Before experimenting with alternative request prioritization schemes, it might be worth disabling this optimization.
+
 Foreign Thread Context vs. Request Context
 ------------------------------------------
 
