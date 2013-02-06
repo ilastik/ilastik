@@ -470,11 +470,14 @@ class PixelClassificationGui(LabelingGui):
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()
 
-    def _getNext(self, slot, parentFun):
+    def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
         value = slot.value
         if numLabels < len(value):
-            return value[numLabels]
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
         else:
             return parentFun()
 
@@ -491,12 +494,18 @@ class PixelClassificationGui(LabelingGui):
                              super(PixelClassificationGui, self).getNextLabelName)
 
     def getNextLabelColor(self):
-        return QColor(*(self._getNext(self.topLevelOperatorView.LabelColors,
-                                      super(PixelClassificationGui, self).getNextLabelColor)))
+        return self._getNext(
+            self.topLevelOperatorView.LabelColors,
+            super(PixelClassificationGui, self).getNextLabelColor,
+            lambda x: QColor(*x)
+        )
 
     def getNextPmapColor(self):
-        return QColor(*(self._getNext(self.topLevelOperatorView.PmapColors,
-                                      super(PixelClassificationGui, self).getNextPmapColor)))
+        return self._getNext(
+            self.topLevelOperatorView.PmapColors,
+            super(PixelClassificationGui, self).getNextPmapColor,
+            lambda x: QColor(*x)
+        )
 
     def onLabelNameChanged(self):
         self._onLabelChanged(super(PixelClassificationGui, self).onLabelNameChanged,
