@@ -72,6 +72,7 @@ class SerialPredictionSlot(SerialSlot):
         self.deserialize(group)
         
         failedToSave = False
+        opWriter = None
         try:
             num = len(slot)
             if num > 0:
@@ -118,10 +119,15 @@ class SerialPredictionSlot(SerialSlot):
                 self._predictionStorageRequest.submit() # Can't call wait().  See note above.
                 finishedEvent.wait()
                 progress += increment
+                opWriter.cleanUp()
+                opWriter = None
         except:
             failedToSave = True
             raise
         finally:
+            if opWriter is not None:
+                opWriter.cleanUp()
+
             # If we were cancelled, delete the predictions we just started
             if not self.predictionStorageEnabled or failedToSave:
                 deleteIfPresent(group, name)
