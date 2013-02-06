@@ -162,8 +162,8 @@ class PixelClassificationSerializer(AppletSerializer):
                                                    subname='predictions{:04d}',)
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
-                 SerialListSlot(operator.LabelColors),
-                 SerialListSlot(operator.PmapColors),
+                 SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+                 SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
                  SerialBlockSlot(operator.LabelInputs,
                                  operator.LabelImages,
                                  operator.NonzeroLabelBlocks,
