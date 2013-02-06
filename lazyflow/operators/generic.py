@@ -577,13 +577,15 @@ class OpPixelOperator(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def setupOutputs(self):
-        inputSlot = self.inputs["Input"]
-
         self.function = self.inputs["Function"].value
 
-        self.outputs["Output"].meta.shape = inputSlot.meta.shape
-        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
-        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
+        self.Output.meta.shape = self.Input.meta.shape
+        self.Output.meta.axistags = self.Input.meta.axistags
+        
+        # To determine the output dtype, we'll test the function on a tiny array.
+        # For pathological functions, this might raise an exception (e.g. divide by zero).
+        testInputData = numpy.array([1], dtype=self.Input.meta.dtype)
+        self.Output.meta.dtype = self.function( testInputData ).dtype.type
         
         # Provide a default drange.
         # Works for monotonic functions.
