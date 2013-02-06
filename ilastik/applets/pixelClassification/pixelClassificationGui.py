@@ -31,6 +31,12 @@ except:
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+def _listReplace(old, new):
+    if len(old) > len(new):
+        return new + old[len(new):]
+    else:
+        return new
+
 class PixelClassificationGui(LabelingGui):
 
     ###########################################
@@ -475,7 +481,9 @@ class PixelClassificationGui(LabelingGui):
     def onLabelNameChanged(self):
         super( PixelClassificationGui, self ).onLabelNameChanged()
         labelNames = map( lambda l: l.name, self.labelListData )
-        self.topLevelOperatorView.LabelNames.setValue( labelNames )
+        oldNames = self.topLevelOperatorView.LabelNames.value
+        result = _listReplace(oldNames, labelNames)
+        self.topLevelOperatorView.LabelNames.setValue(result)
 
     def getNextLabelColor(self):
         numLabels = self.labelListData.rowCount()
@@ -487,13 +495,30 @@ class PixelClassificationGui(LabelingGui):
 
     def onLabelColorChanged(self):
         super( PixelClassificationGui, self ).onLabelColorChanged()
-        labelColors = map( lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue()), self.labelListData )
-        self.topLevelOperatorView.LabelColors.setValue( labelColors )
+        f = lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue())
+        labelColors = map(f, self.labelListData)
+        oldColors = self.topLevelOperatorView.LabelColors.value
+        result = _listReplace(oldColors, labelColors)
+        self.topLevelOperatorView.LabelColors.setValue(result)
+
+    def getNextPmapColor(self):
+        """
+        Return a QColor to use for the next label.
+        """
+        numLabels = self.labelListData.rowCount()
+        pmapColors = self.topLevelOperatorView.PmapColors.value
+        if numLabels < len(pmapColors):
+            return QColor( *pmapColors[numLabels] )
+        else:
+            return super( PixelClassificationGui, self ).getNextLabelColor()
         
     def onPmapColorChanged(self):
         super( PixelClassificationGui, self ).onPmapColorChanged()
-        pmapColors = map( lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue()), self.labelListData )
-        self.topLevelOperatorView.PmapColors.setValue( pmapColors )
+        f = lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue())
+        pmapColors = map( f, self.labelListData )
+        oldColors = self.topLevelOperatorView.PmapColors.value
+        result = _listReplace(oldColors, pmapColors)
+        self.topLevelOperatorView.PmapColors.setValue( result )
 
     def _update_rendering(self):
         if not self.render:

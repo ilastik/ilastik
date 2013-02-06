@@ -10,11 +10,14 @@ class Label(QObject):
     pmapColorChanged = pyqtSignal(QColor)
     nameChanged  = pyqtSignal(object)
     
-    def __init__(self, name, color, parent = None):
+    def __init__(self, name, color, parent = None, pmapColor=None):
         QObject.__init__(self, parent)
         self._name       = name
         self._brushColor = color
-        self._pmapColor  = color 
+        if pmapColor is None:
+            self._pmapColor = color
+        else:
+            self._pmapColor = pmapColor
     
     def brushColor(self):
         return self._brushColor
