@@ -54,7 +54,7 @@ class LabelListModel(QAbstractTableModel):
     
     def __init__(self, labels = [], parent = None):
         QAbstractTableModel.__init__(self, parent)
-        self._labels = labels
+        self._labels = list(labels)
         self._selectionModel = QItemSelectionModel(self)
         
         def onSelectionChanged(selected, deselected):
