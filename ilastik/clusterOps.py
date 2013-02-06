@@ -260,7 +260,7 @@ class OpClusterize(Operator):
         # -- axes
         datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
         # -- shape
-        datasetDescription.shape = list(self.Input.meta.shape)
+        datasetDescription.view_shape = list(self.Input.meta.shape)
         # -- block_shape
         assert originalDescription.block_shape is not None
         originalBlockDims = collections.OrderedDict( zip( originalDescription.axes, originalDescription.block_shape ) )
