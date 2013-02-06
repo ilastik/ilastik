@@ -483,11 +483,9 @@ class PixelClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        super(PixelClassificationGui, self).onLabelNameChanged()
         new = map(mapf, self.labelListData)
         old = slot.value
         slot.setValue(_listReplace(old, new))
-
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
