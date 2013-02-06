@@ -165,14 +165,12 @@ class OpStackLoader(Operator):
             
             oslot = self.outputs["stack"]
 
-            #build 5D shape out of 2DShape and Filelist
-            oslot.meta.shape = (1, self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
+            #build 4D shape out of 2DShape and Filelist: xyzc
+            oslot.meta.shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
             oslot.meta.dtype = self.info.getDtype()
             zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
-            tAxisInfo = vigra.AxisInfo(key='t',typeFlags = vigra.AxisType.Time)
             oslot.meta.axistags = self.info.getAxisTags()
-            oslot.meta.axistags.insert(0,tAxisInfo)
-            oslot.meta.axistags.insert(3,zAxisInfo)
+            oslot.meta.axistags.insert(2,zAxisInfo)
 
         else:
             oslot = self.outputs["stack"]
@@ -190,10 +188,12 @@ class OpStackLoader(Operator):
         i=0
         key = roi.toSlice()
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        for fileName in self.fileNameList[key[3]]:
+        for fileName in self.fileNameList[key[2]]:
             traceLogger.debug( "Reading image: {}".format(fileName) )
             assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
-            result[...,i,:] = vigra.impex.readImage(fileName)[key[1],key[2],key[4]]
+            # roi is in xyzc order.
+            # Copy each z-slice one at a time.
+            result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
             i = i+1
 
 
