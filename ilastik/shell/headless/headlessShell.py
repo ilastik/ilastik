@@ -38,5 +38,5 @@ class HeadlessShell(object):
 
             # Create the project manager.
             # Here, we provide an additional parameter: the path of the project we're importing from. 
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=oldProjectFilePath, headless=True )
+            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly=False, importFromPath=oldProjectFilePath, headless=True )
 
