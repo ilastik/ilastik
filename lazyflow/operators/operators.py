@@ -1016,6 +1016,11 @@ if has_blist:
                 if self.inputs["deleteLabel"].ready():
                     for l in self._labelers.values():
                         l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
+                        
+                        # Our internal labelers will mark their outputs as dirty,
+                        # But we aren't hooked up to forward those dirty notifications to our outputs.
+                        # Instead, we'll just mark our whole output dirty right now.
+                        self.Output.setDirty(slice(None))
 
         def execute(self, slot, subindex, roi, result):
             key = roi.toSlice()
