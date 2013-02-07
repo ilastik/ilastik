@@ -169,6 +169,10 @@ def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOut
         info.filePath = comp.totalPath()        
         batchInputInfos.append(info)
 
+    # Also convert the export dir to absolute (for the same reason)
+    if batchExportDir != '':
+        batchExportDir = os.path.abspath( batchExportDir )
+
     # Configure batch input operator
     opBatchInputs = workflow.batchInputApplet.topLevelOperator
     opBatchInputs.Dataset.setValues( batchInputInfos )
