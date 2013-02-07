@@ -1,6 +1,7 @@
 import os
 import numpy
 import time
+import random
 
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
@@ -333,6 +334,7 @@ class CarvingGui(LabelingGui):
         #hints
         useLazyflow = True
         ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
+        ctable.extend( [QColor(255*random.random(), 255*random.random(), 255*random.random()) for x in range(254)] )
         if useLazyflow:
             hints = self.topLevelOperatorView.opCarving.HintOverlay
             layer = ColortableLayer(LazyflowSource(hints), ctable, direct=True)
