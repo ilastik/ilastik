@@ -37,14 +37,16 @@ class OpCarvingTopLevel(Operator):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
-    def __init__(self, parent=None, carvingGraphFile=None, hintOverlayFile=None):
+    def __init__(self, parent=None, carvingGraphFile=None, hintOverlayFile=None, pmapOverlayFile=None):
         super(OpCarvingTopLevel, self).__init__(parent=parent)
 
         # Convert data to 5d before giving it to the real operators
         op5 = OpMultiLaneWrapper( Op5ifyer, parent=self, graph=self.graph )
         op5.input.connect( self.RawData )
         
-        operator_kwargs={'carvingGraphFilename': carvingGraphFile, 'hintOverlayFile': hintOverlayFile}
+        operator_kwargs={'carvingGraphFilename': carvingGraphFile,
+                         'hintOverlayFile': hintOverlayFile,
+                         'pmapOverlayFile': pmapOverlayFile }
         self.opCarving = OpMultiLaneWrapper( OpCarving, operator_kwargs=operator_kwargs, parent=self )
         self.opCarving.RawData.connect( op5.output )
 

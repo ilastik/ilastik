@@ -26,6 +26,10 @@ if __name__ == "__main__":
     parser.add_option("--hintoverlay",
                   dest="hintoverlayFile", default=None,
                   help="specify a file which adds a hint overlay")
+    
+    parser.add_option("--pmapoverlay",
+                  dest="pmapoverlayFile", default=None,
+                  help="specify a file which adds a pmap overlay")
 
     options, args = parser.parse_args()
     print options,args
@@ -50,7 +54,9 @@ if __name__ == "__main__":
             opDataSelection.Dataset[0].setValue(info)
             shell.setSelectedAppletDrawer(2)
 
-        workflowKwargs={'carvingGraphFile': carvingGraphFilename,'hintoverlayFile': options.hintoverlayFile}
+        workflowKwargs={'carvingGraphFile': carvingGraphFilename,
+                        'hintoverlayFile' : options.hintoverlayFile,
+                        'pmapoverlayFile' : options.pmapoverlayFile }
         startShellGui( functools.partial(CarvingWorkflow, **workflowKwargs), loadProject)
     else:
         parser.error("incorrect number of arguments %d, expected 2" % len(args))

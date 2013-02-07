@@ -346,6 +346,16 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
+            
+        #pmaps
+        useLazyflow = True
+        pmaps = self.topLevelOperatorView.opCarving._pmap
+        if pmaps is not None:
+            layer = GrayscaleLayer(ArraySource(pmaps), direct=True)
+            layer.name = "pmap"
+            layer.visible = False
+            layer.opacity = 1.0
+            layers.append(layer)
 
         #done seg
         doneSeg = self.topLevelOperatorView.opCarving.DoneSegmentation
