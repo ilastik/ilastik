@@ -737,18 +737,18 @@ if has_blist:
                 self._oldShape = shape
                 self.outputs["Output"].meta.dtype = numpy.uint8
                 self.outputs["Output"].meta.shape = shape
-                self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(shape))
+                
+                # FIXME: Don't give arbitrary axistags.  Specify them correctly if you need them.
+                #self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(shape))
 
                 self.inputs["Input"].meta.shape = shape
 
 
                 self.outputs["nonzeroValues"].meta.dtype = object
                 self.outputs["nonzeroValues"].meta.shape = (1,)
-                self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
 
                 self.outputs["nonzeroCoordinates"].meta.dtype = object
                 self.outputs["nonzeroCoordinates"].meta.shape = (1,)
-                self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
 
                 self._denseArray = numpy.zeros(shape, numpy.uint8)
                 self._sparseNZ =  blist.sorteddict()
@@ -962,15 +962,12 @@ if has_blist:
     
                     self.outputs["nonzeroValues"].meta.dtype = object
                     self.outputs["nonzeroValues"].meta.shape = (1,)
-                    self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
     
                     self.outputs["nonzeroCoordinates"].meta.dtype = object
                     self.outputs["nonzeroCoordinates"].meta.shape = (1,)
-                    self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
     
                     self.outputs["nonzeroBlocks"].meta.dtype = object
                     self.outputs["nonzeroBlocks"].meta.shape = (1,)
-                    self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
     
                     self.outputs["maxLabel"].setValue(self._maxLabel)
     
