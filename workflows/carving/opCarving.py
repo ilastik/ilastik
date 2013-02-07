@@ -1,4 +1,4 @@
-import numpy
+import numpy, h5py
 import time
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -80,8 +80,10 @@ class OpCarving(Operator):
         if hintOverlayFile is not None:
             try:
                 f = h5py.File(hintOverlayFile,"r")
-            except:
-                raise RuntimeError("Could not open hint overlay '%s'" % hintOverlayFile)
+            except Exception as e:
+                print "Could not open hint overlay '%s'" % hintOverlayFile
+                raise e
+                
             self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
 
         self._setCurrObjectName("")
@@ -115,8 +117,8 @@ class OpCarving(Operator):
         for i, (name, objectSupervoxels) in enumerate(self._mst.object_lut.iteritems()):
             if name == self._currObjectName:
                 continue
-            print name,
             self._done_lut[objectSupervoxels] += 1
+            assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
             self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         print ""
 
