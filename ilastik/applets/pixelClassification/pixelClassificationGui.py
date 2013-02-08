@@ -18,6 +18,7 @@ from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
@@ -385,6 +386,7 @@ class PixelClassificationGui(LabelingGui):
             self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
+    @threadRouted
     @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
