@@ -61,19 +61,16 @@ def stringToSlicing(strSlicing):
 
 class SerialSlot(object):
     """Implements the logic for serializing a slot."""
-    def __init__(self, slot, name=None, default=None, depends=None,
-                 autodepends=True):
+    def __init__(self, slot, name=None, subname=None, default=None,
+                 depends=None, autodepends=True):
         """
         :param slot: the slot to save/load
 
         :param name: name used for the group in the hdf5 file.
 
-            - For level 0 slots, this should just be a string, or None to
-              use the slot's name.
-
-            - For level 1 slots, this should be a tuple (groupname,
-              subname), or None. If provided, subname should be able to be
-              format()ed with a single argument: the index of the subslot.
+        :param subname: used for creating subgroups for multislots.
+          should be able to call subname.format(i), where i is an
+          integer.
 
         :param default: the default value when unload() is called. If it is
           None, the slot will just be disconnected (for level 0 slots) or
@@ -94,15 +91,11 @@ class SerialSlot(object):
         if autodepends:
             self.depends.append(slot)
         if name is None:
-            if slot.level == 0:
-                name = slot.name
-            else:
-                name = slot.name, "{0}"
-
-        if slot.level == 0:
-            self.name = name
-        else:
-            self.name, self.subname = name
+            name = slot.name
+        self.name = name
+        if subname is None:
+            subname = '{}'
+        self.subname = subname
 
         self._dirty = False
         self._bind()
@@ -158,7 +151,7 @@ class SerialSlot(object):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        self._serialize(group)
+        self._serialize(group, self.name, self.slot)
         self.dirty = False
 
     @staticmethod
@@ -171,19 +164,23 @@ class SerialSlot(object):
         """
         group.create_dataset(name, data=value)
 
-    def _serialize(self, group):
+    def _serialize(self, group, name, slot):
         """
         :param group: The parent group.
         :type group: h5py.Group
+        :param name: The name of the data or group
+        :type name: string
+        :param slot: the slot to serialize
+        :type slot: SerialSlot
 
         """
-        if self.slot.level == 0:
-            self._saveValue(group, self.name, self.slot.value)
+        if slot.level == 0:
+            self._saveValue(group, name, slot.value)
         else:
-            subgroup = group.create_group(self.name)
-            for i, subslot in enumerate(self.slot):
+            subgroup = group.create_group(name)
+            for i, subslot in enumerate(slot):
                 subname = self.subname.format(i)
-                self._saveValue(subgroup, subname, self.slot[i].value)
+                self._serialize(subgroup, subname, slot[i])
 
     def deserialize(self, group):
         """Performs tasks common to all deserializations.
@@ -199,23 +196,27 @@ class SerialSlot(object):
         """
         if not self.name in group:
             return
-        self._deserialize(group[self.name])
+        self._deserialize(group[self.name], self.slot)
         self.dirty = False
 
-    def _deserialize(self, subgroup):
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(val)
+
+    def _deserialize(self, subgroup, slot):
         """
         :param subgroup: *not* the parent group. This slot's group.
         :type subgroup: h5py.Group
 
         """
-        if self.slot.level == 0:
-            val = subgroup[()]
-            self.slot.setValue(val)
+        if slot.level == 0:
+            self._getValue(subgroup, slot)
         else:
-            self.slot.resize(len(subgroup))
+            slot.resize(len(subgroup))
             for i, key in enumerate(subgroup):
-                val = subgroup[key][()]
-                self.slot[i].setValue(val)
+                assert key == self.subname.format(i)
+                self._deserialize(subgroup[key], slot[i])
 
     def unload(self):
         """see AppletSerializer.unload()"""
@@ -243,17 +244,16 @@ class SerialListSlot(SerialSlot):
       (for instance, to convert it to the proper type).
 
     """
-    def __init__(self, slot, name=None, default=None, depends=None,
-                 autodepends=False, transform=None):
+    def __init__(self, slot, transform=None, **kwargs):
         """
         :param transform: function applied to members on deserialization.
 
         """
+        # TODO: implement for multislots
         if slot.level > 0:
             raise NotImplementedError()
 
-        super(SerialListSlot, self).__init__(slot, name, default, depends,
-                                             autodepends)
+        super(SerialListSlot, self).__init__(slot, **kwargs)
         if transform is None:
             transform = lambda x: x
         self.transform = transform
@@ -292,35 +292,33 @@ class SerialListSlot(SerialSlot):
 
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
-    def __init__(self, inslot, outslot, blockslot, name=None, default=None,
-                 depends=None, autodepends=False):
+    def __init__(self, inslot, outslot, blockslot, **kwargs):
         """
         :param inslot: where to put deserialized data.
         :param outslot: where to take data for serialization.
         :param blockslot: provides non-zero blocks.
 
         """
-        super(SerialBlockSlot, self).__init__(inslot, name, default,
-                                              depends, autodepends)
+        super(SerialBlockSlot, self).__init__(inslot, **kwargs)
         self.inslot = inslot
         self.outslot = outslot
         self.blockslot = blockslot
         self._bind(outslot)
 
-    def _serialize(self, group):
-        mygroup = group.create_group(self.name)
+    def _serialize(self, group, name, slot):
+        mygroup = group.create_group(name)
         num = len(self.blockslot)
         for index in range(num):
-            subsubname = self.subname.format(index)
-            subsubgroup = mygroup.create_group(subsubname)
+            subname = self.subname.format(index)
+            subgroup = mygroup.create_group(subname)
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex, slicing in enumerate(nonZeroBlocks):
                 block = self.outslot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
-                subsubgroup.create_dataset(blockName, data=block)
-                subsubgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
+                subgroup.create_dataset(blockName, data=block)
+                subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
-    def _deserialize(self, mygroup):
+    def _deserialize(self, mygroup, slot):
         num = len(mygroup)
         self.inslot.resize(num)
         for index, t in enumerate(sorted(mygroup.items())):
@@ -332,22 +330,19 @@ class SerialBlockSlot(SerialSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cacheslot, name=None, default=None,
-                 depends=None, autodepends=True):
-        super(SerialClassifierSlot, self).__init__(slot, name,
-                                                   default, depends,
-                                                   autodepends)
+    def __init__(self, slot, cacheslot, **kwargs):
+        super(SerialClassifierSlot, self).__init__(slot, **kwargs)
         self.cacheslot = cacheslot
         if self.name is None:
             self.name = slot.name
+        if self.subname is None:
             self.subname = "Forest{:04d}"
-        self.name, self.subname = name
 
     def unload(self):
         self.cacheslot.Input.setDirty(slice(None))
 
-    def _serialize(self, group):
-        classifier_forests = self.slot.value
+    def _serialize(self, group, name, slot):
+        classifier_forests = slot.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:
@@ -362,12 +357,12 @@ class SerialClassifierSlot(SerialSlot):
         tmpDir = tempfile.mkdtemp()
         cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
         for i, forest in enumerate(classifier_forests):
-            targetname = '{0}/{1}'.format(self.name, self.subname.format(i))
+            targetname = '{0}/{1}'.format(name, self.subname.format(i))
             forest.writeHDF5(cachePath, targetname)
 
         # Open the temp file and copy to our project group
         with h5py.File(cachePath, 'r') as cacheFile:
-            group.copy(cacheFile[self.name], self.name)
+            group.copy(cacheFile[name], name)
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
@@ -379,7 +374,7 @@ class SerialClassifierSlot(SerialSlot):
         super(SerialClassifierSlot, self).deserialize(group)
         self.dirty = False
 
-    def _deserialize(self, classifierGroup):
+    def _deserialize(self, classifierGroup, slot):
         # Due to non-shared hdf5 dlls, vigra can't read directly
         # from our open hdf5 group. Instead, we'll copy the
         # classfier data to a temporary file and give it to vigra.
@@ -404,6 +399,32 @@ class SerialClassifierSlot(SerialSlot):
         # loaded. As soon as training input changes, it will be
         # retrained.)
         self.cacheslot.forceValue(numpy.array(forests))
+
+
+class SerialDictSlot(SerialSlot):
+    """For saving a dictionary."""
+    def __init__(self, slot, transform=None, **kwargs):
+        """
+        :param transform: a function called on each key before
+          inserting it into the dictionary.
+
+        """
+        super(SerialDictSlot, self).__init__(slot, **kwargs)
+        if transform is None:
+            transform = lambda x: x
+        self.transform = transform
+
+    @staticmethod
+    def _saveValue(group, name, value):
+        sg = group.create_group(name)
+        for key, v in value.iteritems():
+            sg.create_dataset(str(key), data=v)
+
+    def _getValue(self, subgroup, slot):
+        result = {}
+        for key in subgroup.keys():
+            result[self.transform(key)] = subgroup[key][()]
+        slot.setValue(result)
 
 
 ####################################

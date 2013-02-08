@@ -33,6 +33,12 @@ except:
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+def _listReplace(old, new):
+    if len(old) > len(new):
+        return new + old[len(new):]
+    else:
+        return new
+
 class PixelClassificationGui(LabelingGui):
 
     ###########################################
@@ -489,36 +495,60 @@ class PixelClassificationGui(LabelingGui):
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()
 
-    def getNextLabelName(self):
+    def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
-        labelNames = self.topLevelOperatorView.LabelNames.value
-        if numLabels < len(labelNames):
-            return labelNames[numLabels]
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
         else:
-            return super( PixelClassificationGui, self ).getNextLabelName()
+            return parentFun()
 
-    def onLabelNameChanged(self):
-        super( PixelClassificationGui, self ).onLabelNameChanged()
-        labelNames = map( lambda l: l.name, self.labelListData )
-        self.topLevelOperatorView.LabelNames.setValue( labelNames )
+    def _onLabelChanged(self, parentFun, mapf, slot):
+        parentFun()
+        new = map(mapf, self.labelListData)
+        old = slot.value
+        slot.setValue(_listReplace(old, new))
+
+    def getNextLabelName(self):
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(PixelClassificationGui, self).getNextLabelName)
 
     def getNextLabelColor(self):
-        numLabels = self.labelListData.rowCount()
-        labelColors = self.topLevelOperatorView.LabelColors.value
-        if numLabels < len(labelColors):
-            return QColor( *labelColors[numLabels] )
-        else:
-            return super( PixelClassificationGui, self ).getNextLabelColor()
+        return self._getNext(
+            self.topLevelOperatorView.LabelColors,
+            super(PixelClassificationGui, self).getNextLabelColor,
+            lambda x: QColor(*x)
+        )
+
+    def getNextPmapColor(self):
+        return self._getNext(
+            self.topLevelOperatorView.PmapColors,
+            super(PixelClassificationGui, self).getNextPmapColor,
+            lambda x: QColor(*x)
+        )
+
+    def onLabelNameChanged(self):
+        self._onLabelChanged(super(PixelClassificationGui, self).onLabelNameChanged,
+                             lambda l: l.name,
+                             self.topLevelOperatorView.LabelNames)
 
     def onLabelColorChanged(self):
-        super( PixelClassificationGui, self ).onLabelColorChanged()
-        labelColors = map( lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue()), self.labelListData )
-        self.topLevelOperatorView.LabelColors.setValue( labelColors )
-        
+        self._onLabelChanged(super(PixelClassificationGui, self).onLabelColorChanged,
+                             lambda l: (l.brushColor().red(),
+                                        l.brushColor().green(),
+                                        l.brushColor().blue()),
+                             self.topLevelOperatorView.LabelColors)
+
+
     def onPmapColorChanged(self):
-        super( PixelClassificationGui, self ).onPmapColorChanged()
-        pmapColors = map( lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue()), self.labelListData )
-        self.topLevelOperatorView.PmapColors.setValue( pmapColors )
+        self._onLabelChanged(super(PixelClassificationGui, self).onPmapColorChanged,
+                             lambda l: (l.pmapColor().red(),
+                                        l.pmapColor().green(),
+                                        l.pmapColor().blue()),
+                             self.topLevelOperatorView.PmapColors)
 
     def _update_rendering(self):
         if not self.render:

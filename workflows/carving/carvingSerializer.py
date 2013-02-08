@@ -57,7 +57,7 @@ class CarvingSerializer( AppletSerializer ):
         for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
             mst = opCarving._mst 
             
-            for name in obj:
+            for i, name in enumerate(obj):
                 print " loading object with name='%s'" % name
                 try:
                     g = obj[name]
@@ -67,7 +67,8 @@ class CarvingSerializer( AppletSerializer ):
                     bg_voxels = [bg_voxels[:,i] for i in range(3)]
                     
                     sv = g["sv"].value
-                    
+                   
+                    mst.object_names[name]           = i+1 
                     mst.object_seeds_fg_voxels[name] = fg_voxels
                     mst.object_seeds_bg_voxels[name] = bg_voxels
                     mst.object_lut[name]             = sv

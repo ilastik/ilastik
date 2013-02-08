@@ -16,13 +16,13 @@ class SerialDatasetPath(SerialSlot):
     session efficiently.
 
     """
-    def __init__(self, slot, dirtyslot, *args, **kwargs):
-        super(SerialDatasetPath, self).__init__(slot, *args, **kwargs)
+    def __init__(self, slot, dirtyslot, **kwargs):
+        super(SerialDatasetPath, self).__init__(slot, **kwargs)
         self.dirtyslot = dirtyslot
 
-    def _serialize(self, group):
-        subgroup = group.create_group(self.name)
-        for index in range(len(self.slot)):
+    def _serialize(self, group, name, slot):
+        subgroup = group.create_group(name)
+        for index in range(len(slot)):
             groupName = self.subname.format(index)
             dataGroup = subgroup.create_group(groupName)
             dataGroup.create_dataset('Dirty', data=self.dirtyslot[index].value)
@@ -46,7 +46,8 @@ class BatchIoSerializer(AppletSerializer):
             SerialSlot(operator.Suffix, default='_results'),
             SerialDatasetPath(operator.DatasetPath,
                               operator.Dirty,
-                              name=('datasetInfos', 'dataset{:>04}')),
+                              name='datasetInfos',
+                              subname='dataset{:>04}',),
         ]
 
         super(BatchIoSerializer, self).__init__(projectFileGroupName,

@@ -7,11 +7,11 @@ from carvingGui import CarvingGui
 
 class CarvingApplet(LabelingApplet):
 
-    def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None):
+    def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None, pmapOverlayFile=None):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
+        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
 

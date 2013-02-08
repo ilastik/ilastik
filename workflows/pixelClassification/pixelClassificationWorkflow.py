@@ -116,6 +116,8 @@ class PixelClassificationWorkflow(Workflow):
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "Predictions":
             return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
+        elif slotId == "PredictionsUint8":
+            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilitiesUint8
         if slotId == "Batch_Predictions":
             return self.opBatchPredictor.PMaps
         

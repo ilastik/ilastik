@@ -1,4 +1,4 @@
-import numpy
+import numpy, h5py
 import time
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -58,8 +58,11 @@ class OpCarving(Operator):
     
     #Hint Overlay
     HintOverlay = OutputSlot()
+    
+    #Pmap Overlay
+    PmapOverlay = OutputSlot()
 
-    def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, parent=None):
+    def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
    
         blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
@@ -77,12 +80,23 @@ class OpCarving(Operator):
         self._done_lut = None
         self._done_seg_lut = None
         self._hints = None
+        self._pmap = None
         if hintOverlayFile is not None:
             try:
                 f = h5py.File(hintOverlayFile,"r")
-            except:
-                raise RuntimeError("Could not open hint overlay '%s'" % hintOverlayFile)
+            except Exception as e:
+                print "Could not open hint overlay '%s'" % hintOverlayFile
+                raise e
             self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
+            
+        print "xxxxx ", pmapOverlayFile
+        if pmapOverlayFile is not None:
+            try:
+                f = h5py.File(pmapOverlayFile,"r")
+            except Exception as e:
+                print "Could not open pmap overlay '%s'" % pmapOverlayFile
+                raise e
+            self._pmap  = f["/data"].value[numpy.newaxis, :,:,:, numpy.newaxis]
 
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
@@ -115,8 +129,8 @@ class OpCarving(Operator):
         for i, (name, objectSupervoxels) in enumerate(self._mst.object_lut.iteritems()):
             if name == self._currObjectName:
                 continue
-            print name,
             self._done_lut[objectSupervoxels] += 1
+            assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
             self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         print ""
 
@@ -136,6 +150,7 @@ class OpCarving(Operator):
         self.DoneObjects.meta.assignFrom(self.RawData.meta)
         self.DoneSegmentation.meta.assignFrom(self.RawData.meta)
         self.HintOverlay.meta.assignFrom(self.RawData.meta)
+        self.PmapOverlay.meta.assignFrom(self.RawData.meta)
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
@@ -462,6 +477,13 @@ class OpCarving(Operator):
                 return result
             else:
                 result[:] = self._hints[roi.toSlice()]
+                return result
+        elif slot == self.PmapOverlay:
+            if self._pmap is None:
+                result[:] = 0
+                return result
+            else:
+                result[:] = self._pmap[roi.toSlice()]
                 return result
         else:
             raise RuntimeError("unknown slot")

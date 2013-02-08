@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
     #debug = None
     #debug = 'Master'
-    debug = 'Node'
+    debug = 'Master'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:

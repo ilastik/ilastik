@@ -10,11 +10,14 @@ class Label(QObject):
     pmapColorChanged = pyqtSignal(QColor)
     nameChanged  = pyqtSignal(object)
     
-    def __init__(self, name, color, parent = None):
+    def __init__(self, name, color, parent = None, pmapColor=None):
         QObject.__init__(self, parent)
         self._name       = name
         self._brushColor = color
-        self._pmapColor  = color 
+        if pmapColor is None:
+            self._pmapColor = color
+        else:
+            self._pmapColor = pmapColor
     
     def brushColor(self):
         return self._brushColor
@@ -51,7 +54,7 @@ class LabelListModel(QAbstractTableModel):
     
     def __init__(self, labels = [], parent = None):
         QAbstractTableModel.__init__(self, parent)
-        self._labels = labels
+        self._labels = list(labels)
         self._selectionModel = QItemSelectionModel(self)
         
         def onSelectionChanged(selected, deselected):
@@ -119,12 +122,12 @@ class LabelListModel(QAbstractTableModel):
 
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == 0:
-            return (self._labels[index.row()].color, self._labels[index.row()].pmapColor)
+            return (self._labels[index.row()].brushColor(), self._labels[index.row()].pmapColor())
         if role == Qt.EditRole and index.column() == 1:
             return self._labels[index.row()].name
         
         if role == Qt.ToolTipRole and index.column() == 0:
-            return "Hex code : " + self._labels[index.row()].color.name() + "\n DoubleClick to change"
+            return "Hex code : " + self._labels[index.row()].brushColor().name() + "\n DoubleClick to change"
         if role == Qt.ToolTipRole and index.column() == 1:
             suffix = self._getToolTipSuffix(index.row())
             return self._labels[index.row()].name + "\n DoubleClick to rename" + suffix
@@ -134,7 +137,7 @@ class LabelListModel(QAbstractTableModel):
         if role == Qt.DecorationRole and index.column() == 0:
             row = index.row()
             value = self._labels[row]
-            if(value.brushColor == value.pmapColor):
+            if(value.brushColor == value.pmapColor()):
                 pixmap = QPixmap(26, 26)
                 pixmap.fill(value.brushColor)
             else:

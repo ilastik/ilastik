@@ -191,8 +191,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 try:
                     datasetInfo.axisorder = infoGroup['axisorder'].value
                 except KeyError:
-                    if ilastik.utility.globals.ImportOptions.default_axis_order is not None:
-                        datasetInfo.axisorder = ilastik.utility.globals.ImportOptions.default_axis_order
+                    pass
                 
                 # If the data is supposed to be in the project,
                 #  check for it now.

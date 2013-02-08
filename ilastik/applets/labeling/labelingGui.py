@@ -471,7 +471,9 @@ class LabelingGui(LayerViewerGui):
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
         """
-        label = Label( self.getNextLabelName(), self.getNextLabelColor() )
+        label = Label( self.getNextLabelName(), self.getNextLabelColor(),
+                       pmapColor=self.getNextPmapColor(),
+                   )
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
         label.colorChanged.connect(self.onLabelColorChanged)
@@ -520,6 +522,12 @@ class LabelingGui(LayerViewerGui):
         color = QColor()
         color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
         return color
+
+    def getNextPmapColor(self):
+        """
+        Return a QColor to use for the next label.
+        """
+        return None
 
     def onLabelNameChanged(self):
         """
