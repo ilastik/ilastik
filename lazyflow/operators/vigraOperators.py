@@ -424,14 +424,17 @@ class OpPixelFeaturesPresmoothed(Operator):
             treadKey=tuple(treadKey)
 
             req = self.inputs["Input"][treadKey].allocate()
-
+            
             sourceArray = req.wait()
             req.clean()
             #req.result = None
             req.destination = None
             if sourceArray.dtype != numpy.float32:
                 sourceArrayF = sourceArray.astype(numpy.float32)
-                sourceArray.resize((1,), refcheck = False)
+                try:
+                    sourceArray.resize((1,), refcheck = False)
+                except:
+                    pass
                 del sourceArray
                 sourceArray = sourceArrayF
                 
@@ -518,6 +521,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 roiSmootherList = list(roiSmoother)
                                 
                                 roiSmootherList.insert(axisindex, slice(begin, end, None))
+                                
+                                if hasTimeAxis:
+                                    roiSmootherList.insert(timeAxis, self.Input.meta.shape[timeAxis])
                                 roiSmootherRegion = SubRegion(self.Input, pslice=roiSmootherList)
                                 
                                 closure = partial(oslot.operator.execute, oslot, (), roiSmootherRegion, destArea, sourceArray = sourceArraysForSigmas[j])
