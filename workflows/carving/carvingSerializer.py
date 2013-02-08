@@ -63,11 +63,11 @@ class CarvingSerializer( AppletSerializer ):
                     g = obj[name]
                     fg_voxels = g["fg_voxels"]
                     bg_voxels = g["bg_voxels"]
-                    fg_voxels = [fg_voxels[:,i] for i in range(3)]
-                    bg_voxels = [bg_voxels[:,i] for i in range(3)]
+                    fg_voxels = [fg_voxels[:,k] for k in range(3)]
+                    bg_voxels = [bg_voxels[:,k] for k in range(3)]
                     
                     sv = g["sv"].value
-                   
+                  
                     mst.object_names[name]           = i+1 
                     mst.object_seeds_fg_voxels[name] = fg_voxels
                     mst.object_seeds_bg_voxels[name] = bg_voxels
@@ -82,7 +82,7 @@ class CarvingSerializer( AppletSerializer ):
                     print "  bg priority = %f" % mst.bg_priority[name]
                     print "  no bias below = %d" % mst.no_bias_below[name]
                 except Exception as e:
-                    print 'object %s couldnt be loaded due to exception: %s'% (name,e)
+                    print 'object %s could not be loaded due to exception: %s'% (name,e)
                 
             opCarving._buildDone()
            
