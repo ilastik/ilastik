@@ -10,6 +10,7 @@ from PyQt4.QtGui import QInputDialog, QMessageBox
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
+from volumina import colortables
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -188,6 +189,7 @@ class CarvingGui(LabelingGui):
             for i in range(254):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
+            self._doneSegmentationColortable[1:17] = colortables.default16
         makeColortable()
         self._doneSegmentationLayer = None
         def onRandomizeColors():
