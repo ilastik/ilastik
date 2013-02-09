@@ -385,15 +385,6 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         #
-        # load additional layer: features / probability map
-        #
-
-#        import h5py
-#        f = h5py.File("pmap.h5")
-#        pmap = f["data"].value
-
-
-        #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
         #
         raw = self.topLevelOperatorView.opCarving._mst.raw
