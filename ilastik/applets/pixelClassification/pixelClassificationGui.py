@@ -393,7 +393,8 @@ class PixelClassificationGui(LabelingGui):
         if self.topLevelOperatorView.MaxLabelValue.ready():
             enabled = True
             enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
-            enabled &= numpy.prod(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0
+            enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
+            # FIXME: also check that each label has scribbles?
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self._viewerControlUi.liveUpdateButton.setEnabled(enabled)
