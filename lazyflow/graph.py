@@ -176,45 +176,80 @@ class Slot(object):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger('TRACE.' + loggerName)
 
-    _global_counter = itertools.count() # Allow slots to be sorted by their order of creation for debug output and diagramming purposes.
+    # Allow slots to be sorted by their order of creation for debug
+    # output and diagramming purposes.
+    _global_counter = itertools.count()
 
     @property
     def graph(self):
         return self.operator.graph
 
-    def __init__( self, name="", operator=None, stype=ArrayLike, rtype=rtype.SubRegion, value=None, optional=False, level=0, nonlane=False ):
-        """
-        Constructor of the Slot class.
+    def __init__(self, name="", operator=None, stype=ArrayLike,
+                 rtype=rtype.SubRegion, value=None, optional=False,
+                 level=0, nonlane=False):
+        """Constructor of the Slot class.
 
-        Arguments:
-          name      : user readable name of the slot, is normally assigned automatically by the Operator
-          operator  : the parent operator of a slot
-          stype     : the slot type (see stype.py)
-          rtype     : the region of interest type (see rtype.py)
-          value     : the default value of the slot
-          optional  : if True this means the slot needs a value or connection for its parent operator to be functional
-          level     : defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
+        :param name: user readable name of the slot, is normally
+          assigned automatically by the Operator
+
+        :param operator: the parent operator of a slot
+
+        :param stype: the slot type (see stype.py)
+
+        :param rtype: the region of interest type (see rtype.py)
+
+        :param value: the default value of the slot
+
+        :param optional: if True this means the slot needs a value or
+          connection for its parent operator to be functional
+
+        :param level: defines the dimensionality of the slot. 0 for
+          single element (e.g. single numpy.ndarray), 1 for list of
+          elements (e.g. list of strings), 2 for list of list of
+          elements.
+
+        :param nonlane: For multislot, this flag protects it from
+          being considered lane-indexed
+
         """
         if not hasattr(self, "_type"):
             self._type = None
         if type(stype) == str:
             stype = ArrayLike
         self.partners = []
-        self.name = name              # a user readable name for the slot
-        self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
-        self.operator = operator      # the parent operator of the slot
-        self.partner = None           # in the case of an InputSlot this is the slot to wich it is connected
-        self.level = level            # defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
-        self._value = None            # in the case of an InputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
-        self._defaultValue = value    # a InputSlot can
-        self._backpropagate_values = False # Causes calls to setValue to be propagated backwards to the partner slot.  Used by the OperatorWrapper.
-        self.rtype = rtype            # the region of interest type of the slot ( rtype.py)
-        self.meta = MetaDict()        # the MetaDict that holds the slots meta information
-        self._subSlots = []           # if level > 0, this holds the sub-Input/Output slots
-        self._stypeType = stype       # the slot type class
-        self.stype = stype(self)      # the slot type instance
-        self.nonlane = nonlane        # For multislot, this flag protects it from being considered lane-indexed
-        
+        self.name = name
+        self._optional = optional
+        self.operator = operator
+
+        # in the case of an InputSlot this is the slot to which it is
+        # connected
+        self.partner = None
+        self.level = level
+
+        # in the case of an InputSlot one can directly assign a value
+        # to a slot instead of connecting it to a partner, this
+        # attribute holds the value
+        self._value = None
+
+        self._defaultValue = value
+
+        # Causes calls to setValue to be propagated backwards to the
+        # partner slot. Used by the OperatorWrapper.
+        self._backpropagate_values = False
+
+        self.rtype = rtype
+
+        # the MetaDict that holds the slots meta information
+        self.meta = MetaDict()
+
+        # if level > 0, this holds the sub-Input/Output slots
+        self._subSlots = []
+        self._stypeType = stype
+
+        # the slot type instance
+        self.stype = stype(self)
+        self.nonlane = nonlane
+
         self._sig_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
         self._sig_unready = OrderedSignal()
@@ -226,14 +261,16 @@ class Slot(object):
         self._sig_remove = OrderedSignal()
         self._sig_removed = OrderedSignal()
         self._sig_inserted = OrderedSignal()
-        
+
         self._resizing = False
-        
+
         self._executionCount = 0
         self._settingUp = False
         self._condition = threading.Condition()
-        
-        self._global_slot_id = Slot._global_counter.next() # Allow slots to be sorted by their order of creation for debug output and diagramming purposes.
+
+        # Allow slots to be sorted by their order of creation for
+        # debug output and diagramming purposes.
+        self._global_slot_id = Slot._global_counter.next()
 
     #
     #
@@ -420,7 +457,7 @@ class Slot(object):
             return
 
         assert isinstance(partner, Slot), "Slot.connect() can only be used to connect other Slots.  Did you mean to use Slot.setValue()?"
-        
+
         if self.partner == partner and partner.level == self.level:
             return
         if self.level == 0:
@@ -500,7 +537,7 @@ class Slot(object):
                 pass
         self.partner = None
         self._value = None
-        oldReady = self.meta._ready 
+        oldReady = self.meta._ready
         self.meta = MetaDict()
 
         if len(self._subSlots) > 0:
@@ -509,7 +546,7 @@ class Slot(object):
         # call callbacks
         if had_partner:
             self._sig_disconnect(self)
-        
+
         # Notify our partners that we changed.
         self._changed()
 
@@ -598,7 +635,7 @@ class Slot(object):
         assert position < len(self)
         if self.operator is not None:
             self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
-        
+
         # call before-remove callbacks
         self._sig_remove(self, position, finalsize)
 
@@ -650,7 +687,7 @@ class Slot(object):
             # We must decrement the execution count even if the request is cancelled
             request.notify_cancelled( execWrapper.handleCancel )
             return request
-            
+
     class RequestExecutionWrapper(object):
         def __init__(self, slot, roi, destination):
             self.started = False
@@ -678,7 +715,7 @@ class Slot(object):
             try:
                 # Execute the workload, which might not ever return (if we get cancelled).
                 result_op = self.operator.execute(self.slot, (), self.roi, destination)
-            
+
                 # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
                 if destination_given and result_op is not None and id(result_op) != id(destination):
                     self.slot.stype.copy_data(dst = destination, src = result_op)
@@ -687,7 +724,7 @@ class Slot(object):
                     if hasattr(result_op, "shape"):
                         assert result_op.shape == destination.shape, " ERROR: Operator %r has failed to provide a result of correct shape. result shape is %r vs %r.  roi was %r" % (self.operator,result_op.shape, destination.shape, str(self.roi) )
                     destination = result_op
-                
+
                 # Decrement the execution count
                 self._decrementOperatorExecutionCount()
                 return destination
@@ -704,7 +741,7 @@ class Slot(object):
                 while self.operator._settingUp:
                     self.operator._condition.wait()
                 self.operator._executionCount += 1
-    
+
         def handleCancel(self, *args):
             # The new request api does clean up by handling an exception,
             #  not in this callback.
@@ -712,7 +749,7 @@ class Slot(object):
             using_old_api = len(args) > 0 and not hasattr(args[0], 'notify_cancelled')
             if using_old_api:
                 self._decrementOperatorExecutionCount()
-    
+
         def _decrementOperatorExecutionCount(self):
             # Must lock here because cancel callbacks are asynchronous.
             # (Perhaps it would be better if they were called from the worker thread instead...)
@@ -726,7 +763,7 @@ class Slot(object):
                         self.operator._executionCount -= 1
                         self.operator._condition.notifyAll()
 
-    def setDirty(self, *args,**kwargs):
+    def setDirty(self, *args, **kwargs):
         """
         this method is called by a partnering OutputSlot
         when its content changes.
@@ -736,8 +773,11 @@ class Slot(object):
         """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
+
         if self.stype.isConfigured():
-            if not isinstance(args[0],rtype.Roi):
+            if len(args) == 0 and len(kwargs) == 0:
+                roi = self.getRoi()
+            elif len(args) == 0 or not isinstance(args[0], rtype.Roi):
                 roi = self.rtype(self, *args, **kwargs)
             else:
                 roi = args[0]
@@ -841,22 +881,25 @@ class Slot(object):
                 self.logger.warn(w)
                 return temp
 
-    def setValue(self, value, notify = True, check_changed = True):
-        """
-        This method can be used to directly assign a value to an InputSlot.
+    def setValue(self, value, notify=True, check_changed=True):
+        """This method can be used to directly assign a value to an
+        InputSlot.
 
-        Usually a slot is either connected to another slot from which it retrieves
-        the content when it is queried, or it directly holds a value itself.
-        This method can be used to set such a value.
+        Usually a slot is either connected to another slot from which
+        it retrieves the content when it is queried, or it directly
+        holds a value itself. This method can be used to set such a
+        value.
 
-        If check_changed is True, the new value is compared to the current one and updates are
-        onyl triggerd if they differ. This check can take several seconds (for instance for
-        large array-like values). In that case you should turn off the check.
+        If check_changed is True, the new value is compared to the
+        current one and updates are onyl triggerd if they differ. This
+        check can take several seconds (for instance for large
+        array-like values). In that case you should turn off the
+        check.
 
         """
         assert isinstance( notify, bool )
         assert isinstance( check_changed, bool )
-        
+
         # This assertion is here to prevent accidental use of setValue when connect should be used.
         # If your use case requires passing slots as values, then this assertion can be refined.
         assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
@@ -894,7 +937,7 @@ class Slot(object):
             self._changed()
 
             # Propagate dirtyness
-            self.setDirty(slice(None))
+            self.setDirty(dirtyroi)
 
     def setValues(self, values):
         """
@@ -959,10 +1002,10 @@ class Slot(object):
         wasReady = self.ready()
 
         for p in self._subSlots:
-            p._setReady()        
+            p._setReady()
 
         self.meta._ready = (self.level == 0) or (len(self._subSlots) > 0)
-        
+
         # If we just became ready...
         if not wasReady and self.meta._ready:
             # Notify partners of changed readystatus
@@ -1118,7 +1161,7 @@ class Slot(object):
     #
     #   methods aimed to enhance usability
     #
-    
+
     def setShapeAtAxisTo(self,axis,size):
         tmpshape = list(self.meta.shape)
         tmpshape[self.meta.axistags.index(axis)] = size
@@ -1176,7 +1219,7 @@ class OutputSlot(Slot):
     def __init__(self, *args, **kwargs):
         super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
- 
+
     def execute(self, slot, subindex, roi, result):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
@@ -1255,8 +1298,8 @@ class OperatorMetaClass(ABCMeta):
         try:
             instance = ABCMeta.__call__(cls, *args, **kwargs)
         except Exception as e:
-            err =  "Could not create instance of '%r'\n" % cls 
-            err += "*args   = %r\n" % (args,) 
+            err =  "Could not create instance of '%r'\n" % cls
+            err += "*args   = %r\n" % (args,)
             err += "*kwargs = %r\n" % (kwargs,)
             err +="The exception was:\n"
             err += str(e)
@@ -1318,24 +1361,24 @@ class Operator(object):
         ##
         obj = super(Operator, cls).__new__(cls)
         obj.inputs = InputDict(obj)
-        obj.outputs = OutputDict(obj)        
+        obj.outputs = OutputDict(obj)
         return obj
 
     def __init__( self, parent = None, graph = None ):
         if not( parent is None or isinstance(parent, Operator) ):
             raise Exception("parent of operator name='%s' must be an operator, not %r of type %s" % (self.name, parent, type(parent)))
         if graph is None:
-            if parent is None: 
+            if parent is None:
                 raise Exception("Operator.__init__() [self.name='%s']: parent and graph can't be both None" % self.name)
             graph=parent.graph
-        
+
         self._cleaningUp = False
         self.graph = graph
         self._children = collections.OrderedDict()
         self._parent = None
         if parent is not None:
             parent._add_child(self)
-        
+
         self._initialized = False
 
         self._condition = threading.Condition()
@@ -1343,7 +1386,7 @@ class Operator(object):
         self._settingUp = False
 
         self._instantiate_slots()
-        
+
         # We normally assert if an operator's upstream partners are yanked away.
         # If operator is marked as "externally_managed", then we'll avoid the assert.
         # In that case, it's assumed that you know what you're doing, and you weren't planning to use that operator, anyway.
@@ -1417,7 +1460,7 @@ class Operator(object):
     @property
     def parent(self):
         return self._parent
-    
+
     def __setattr__(self, name, value):
         """
         This method safeguards that operators do not overwrite slot names with
@@ -1525,27 +1568,27 @@ class Operator(object):
             # Don't setup this operator if there are currently requests on it.
             with self._condition:
                 while self._executionCount > 0:
-                    self._condition.wait()            
+                    self._condition.wait()
                 self._settingUp = True
-                
+
                 # Outputslots may become "ready" during setupOutputs()
                 # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
                 readyFlags = {}
                 for k, oslot in self.outputs.items():
                     readyFlags[k] = oslot.meta._ready
-                
+
                 # Call the subclass
                 self.setupOutputs()
-        
+
                 self._settingUp = False
                 self._condition.notifyAll()
-    
+
             # Determine new "ready" flags
             for k, oslot in self.outputs.items():
                 if oslot.partner is None:
                     # All unconnected outputs are ready after setupOutputs
                     oslot._setReady()
-    
+
             #notify outputs of probably changed meta information
             for k,v in self.outputs.items():
                 v._changed()
@@ -1556,16 +1599,16 @@ class Operator(object):
             # If it was optional, we don't care.
             if slot._optional:
                 return
-    
+
             # Keep track of the old ready statuses so we know if something changed
             readyFlags = {}
             for k, oslot in self.outputs.items():
                 readyFlags[k] = oslot.meta._ready
-    
+
             # All unconnected outputs are no longer ready
             for oslot in self.outputs.values():
                 oslot.meta._ready &= ( oslot.partner is not None )
-                
+
             # If the ready status changed, signal it.
             for k, oslot in self.outputs.items():
                 if readyFlags[k] != oslot.meta._ready:
@@ -1645,7 +1688,7 @@ class OperatorWrapper(Operator):
             self._name = "Wrapped " + operatorClass.__name__
         else:
             self._name = "Wrapped " + operatorClass.name
-        
+
         self._customName = False
 
         if promotedSlotNames is not None:
@@ -1656,7 +1699,7 @@ class OperatorWrapper(Operator):
         elif broadcastingSlotNames is not None:
             # 'Broadcasting' slots are NOT exposed as multi-slots.
             # Each is exposed as a single slot that is shared by all inner operators.
-            allInputSlotNames = set( map( lambda s: s.name, operatorClass.inputSlots ) )        
+            allInputSlotNames = set( map( lambda s: s.name, operatorClass.inputSlots ) )
             promotedSlotNames = allInputSlotNames - set(broadcastingSlotNames) # set difference
         else:
             # No slots specified: All original slots are promoted by default
@@ -1706,7 +1749,7 @@ class OperatorWrapper(Operator):
     @property
     def name(self):
         return self._name
-    
+
     @name.setter
     def name(self, name):
         self._name = name
@@ -1738,19 +1781,19 @@ class OperatorWrapper(Operator):
             if len(self.innerOperators) >= length:
                 return self.innerOperators[index]
             op = self._createInnerOperator()
-            
+
             # Update our name (if the client didn't already give us a special one)
             if self._customName is False:
                 self._name = "Wrapped " + op.name
 
-            # If anyone calls setValue() on one of these slots, forward the setValue 
+            # If anyone calls setValue() on one of these slots, forward the setValue
             #  call to the slot's partner (the outer slot on the operator wrapper)
             for slot in op.inputs.values():
                 slot.backpropagate_values = True
                 slot.notifyDisconnect( self.handleEarlyDisconnect )
-            
+
             self.innerOperators.insert(index, op)
-    
+
             # Connect the inner operator's inputs to our outer input slots
             for key,outerSlot in self.inputs.items():
                 # Only connect to a subslot if it was promoted during wrapping
@@ -1781,12 +1824,12 @@ class OperatorWrapper(Operator):
             if len(self.innerOperators) <= length:
                 return
             assert index < len(self.innerOperators)
-    
+
             for key,mslot in self.outputs.items():
                 if len(mslot) > length:
                     mslot[index].backpropagate_values = False
                     mslot[index].unregisterDisconnect( self.handleEarlyDisconnect )
-    
+
             op = self.innerOperators.pop(index)
             for slot in op.inputs.values():
                 slot.backpropagate_values = False
@@ -1794,10 +1837,10 @@ class OperatorWrapper(Operator):
 
             for oslot in self.outputs.values():
                 oslot.removeSlot(index, length)
-    
+
             for islot in self.inputs.values():
                 islot.removeSlot(index, length)
-    
+
             op.cleanUp()
             length = len(self.innerOperators)
 
@@ -1815,7 +1858,7 @@ class OperatorWrapper(Operator):
         # Calls to Slot.setitem are already forwarded to all slot partners.
         pass
 
-class Graph(object):    
+class Graph(object):
     def stopGraph(self):
         pass
 
