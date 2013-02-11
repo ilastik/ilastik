@@ -775,9 +775,7 @@ class Slot(object):
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
 
         if self.stype.isConfigured():
-            if len(args) == 0 and len(kwargs) == 0:
-                roi = self.getRoi()
-            elif len(args) == 0 or not isinstance(args[0], rtype.Roi):
+            if len(args) == 0 or not isinstance(args[0], rtype.Roi):
                 roi = self.rtype(self, *args, **kwargs)
             else:
                 roi = args[0]
