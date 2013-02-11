@@ -881,7 +881,7 @@ class Slot(object):
                 self.logger.warn(w)
                 return temp
 
-    def setValue(self, value, notify=True, check_changed=True):
+    def setValue(self, value, notify=True, check_changed=True, dirtyroi=None):
         """This method can be used to directly assign a value to an
         InputSlot.
 
@@ -895,6 +895,9 @@ class Slot(object):
         check can take several seconds (for instance for large
         array-like values). In that case you should turn off the
         check.
+
+        :param dirtyroi: argument to setDirty(). If it is `None`, it
+        defaults to `slice(None)`.
 
         """
         assert isinstance( notify, bool )
@@ -937,6 +940,8 @@ class Slot(object):
             self._changed()
 
             # Propagate dirtyness
+            if dirtyroi is None:
+                dirtyroi = slice(None)
             self.setDirty(dirtyroi)
 
     def setValues(self, values):
