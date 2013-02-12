@@ -3,14 +3,18 @@ import numpy
 import h5py
 import unittest
 import tempfile
-import functools
 
+from ilastik.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
-from workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
+from workflows.pixelClassification import PixelClassificationWorkflow
 
 import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
+
+import logging
+logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
 
 class TestPixelClassificationHeadless(unittest.TestCase):
     dir = tempfile.mkdtemp()
@@ -105,6 +109,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         shell.projectManager.saveProject()
         del shell
         
+    @timeLogged(logger)
     def test(self):
         args = "ilastik_headless"
         args += " --project=" + self.PROJECT_FILE
