@@ -270,6 +270,7 @@ class Slot(object):
         self._sig_resized = OrderedSignal()
         self._sig_remove = OrderedSignal()
         self._sig_removed = OrderedSignal()
+        self._sig_preinsertion = OrderedSignal()
         self._sig_inserted = OrderedSignal()
 
         self._resizing = False
@@ -379,6 +380,13 @@ class Slot(object):
         """
         self._sig_removed.subscribe(function, **kwargs)
 
+    def notifyPreInsertion(self, function, **kwargs):
+        """
+        Called immediately before a slot is going to be inserted into a multi-slot.
+        Same signature as the notifyInserted signal.
+        """
+        self._sig_preinsertion.subscribe(function, **kwargs)
+
     def notifyInserted(self, function, **kwargs):
         """
         calls the corresponding function after a slot has been added
@@ -449,6 +457,13 @@ class Slot(object):
         unregister a removed callback
         """
         self._sig_removed.unsubscribe(function)
+
+
+    def unregisterPreInsertion(self, function):
+        """
+        unregister a inserted callback
+        """
+        self._sig_preinsertion.unsubscribe(function)
 
     def unregisterInserted(self, function):
         """
@@ -632,6 +647,10 @@ class Slot(object):
         """
         if len(self) >= finalsize:
             return self[position]
+
+        # pre-insert callbacks
+        self._sig_preinsertion(self, position, finalsize)
+        
         slot =  self._insertNew(position)
         self.logger.debug("Inserting slot {} into slot {} of operator {} to size {}".format(
             position, self.name, self.operator.name, finalsize))
