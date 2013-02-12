@@ -112,14 +112,16 @@ class ProjectManager(object):
         :param readOnly: Set to True if the project file should NOT be modified.
         :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
+        # Init
+        self.workflow = None
+        self.currentProjectFile = None
+        self.currentProjectPath = None
+        self.currentProjectIsReadOnly = False
+
         # Instantiate the workflow.
         self._workflowClass = workflowClass
         self._headless = headless
         self.workflow = workflowClass(headless=headless)
-
-        self.currentProjectFile = None
-        self.currentProjectPath = None
-        self.currentProjectIsReadOnly = False
 
         if importFromPath is None:
             # Normal load        
