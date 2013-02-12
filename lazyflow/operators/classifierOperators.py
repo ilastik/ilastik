@@ -60,10 +60,10 @@ class OpTrainRandomForest(Operator):
         pool = Pool()
         for i in range(self._forest_count):
             def train_and_store(number):
-                result[number] = vigra.learning.RandomForest(self._tree_count) 
+                result[number] = vigra.learning.RandomForest(self._tree_count)
                 result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
             req = pool.request(partial(train_and_store, i))
-        
+
         pool.wait()
 
         return result
@@ -137,7 +137,7 @@ class OpTrainRandomForestBlocked(Operator):
                     progressInc = (80-10)/numLabelBlocks/numImages
 
                 def progressNotify(req):
-                    # Note: If we wanted perfect progress reporting, we could use lock here 
+                    # Note: If we wanted perfect progress reporting, we could use lock here
                     #       to protect the progress from being incremented simultaneously.
                     #       But that would slow things down and imperfect reporting is okay for our purposes.
                     progress_outer[0] += progressInc/2
@@ -168,7 +168,7 @@ class OpTrainRandomForestBlocked(Operator):
                 progress = progress_outer[0]
 
                 traceLogger.debug("Requests processed")
-        
+
         self.progressSignal(80/numImages)
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
@@ -185,7 +185,7 @@ class OpTrainRandomForestBlocked(Operator):
 
                 for i in range(self._forest_count):
                     def train_and_store(number):
-                        result[number] = vigra.learning.RandomForest(self._tree_count) 
+                        result[number] = vigra.learning.RandomForest(self._tree_count)
                         result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
                     req = pool.request(partial(train_and_store, i))
 
@@ -200,7 +200,7 @@ class OpTrainRandomForestBlocked(Operator):
                 raise
             finally:
                 self.progressSignal(100)
-        
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -235,7 +235,7 @@ class OpPredictRandomForest(Operator):
             # Training operator may return 'None' if there was no data to train with
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
 
-        traceLogger.debug("OpPredictRandomForest: Got classifier")        
+        traceLogger.debug("OpPredictRandomForest: Got classifier")
         #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
         newKey = key[:-1]
@@ -249,10 +249,10 @@ class OpPredictRandomForest(Operator):
         features=res
 
         predictions = [0]*len(forests)
-        
+
         def predict_forest(number):
             predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32))
-        
+
         t2 = time.time()
 
         # predict the data with all the forests in parallel
@@ -314,7 +314,13 @@ class OpSegmentation(Operator):
 
         self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1]
         self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
-        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
+
+        tags = inputSlot.meta.axistags
+        newtags = []
+        for i in range(len(inputSlot.meta.shape) - 1):
+            newtags.append(tags[i].key)
+        newtags = vigra.defaultAxistags(''.join(newtags))
+        self.outputs["Output"].meta.axistags = newtags
 
 
     def execute(self, slot, subindex, roi, result):
@@ -352,6 +358,9 @@ class OpSegmentation(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
+        ndim = len(self.outputs['Output'].meta.shape)
+        if len(key) > ndim:
+            key = key[:ndim]
         self.outputs["Output"].setDirty(key)
 
     @property
