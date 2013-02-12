@@ -1004,7 +1004,7 @@ class Slot(object):
             self.meta._dirty = True
 
             for s in self._subSlots:
-                s.setValue(self._value)
+                s.setValue(self._value, dirtyroi=dirtyroi)
 
             notify = (self.meta._ready == False)
 
