@@ -18,7 +18,7 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>50</width>
+    <width>256</width>
     <height>0</height>
    </size>
   </property>
@@ -33,21 +33,21 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_5">
+    <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QPushButton" name="labelImageButton">
        <property name="styleSheet">
         <string notr="true"/>
        </property>
        <property name="text">
-        <string>Extract Objects</string>
+        <string>Label Segmentation</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="extractObjectsButton">
        <property name="text">
-        <string>Calculate Features</string>
+        <string>Extract Objects</string>
        </property>
       </widget>
      </item>
