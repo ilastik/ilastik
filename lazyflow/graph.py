@@ -951,8 +951,7 @@ class Slot(object):
                                      self.name, temp))
                 return temp
 
-    def setValue(self, value, notify=True, check_changed=True,
-                 dirtyroi=None):
+    def setValue(self, value, notify=True, check_changed=True):
         """This method can be used to directly assign a value to an
         InputSlot.
 
@@ -966,9 +965,6 @@ class Slot(object):
         check can take several seconds (for instance for large
         array-like values). In that case you should turn off the
         check.
-
-        :param dirtyroi: argument to setDirty(). If it is `None`, it
-        defaults to `slice(None)`.
 
         """
         assert isinstance(notify, bool)
@@ -1004,7 +1000,7 @@ class Slot(object):
             self.meta._dirty = True
 
             for s in self._subSlots:
-                s.setValue(self._value, dirtyroi=dirtyroi)
+                s.setValue(self._value)
 
             notify = (self.meta._ready == False)
 
@@ -1018,9 +1014,10 @@ class Slot(object):
             self._changed()
 
             # Propagate dirtyness
-            if dirtyroi is None:
-                dirtyroi = slice(None)
-            self.setDirty(dirtyroi)
+            if self.rtype == rtype.List:
+                self.setDirty(())
+            else:
+                self.setDirty(slice(None))
 
     def setValues(self, values):
         """Set values of subslots with arraylike object. Resizes the
