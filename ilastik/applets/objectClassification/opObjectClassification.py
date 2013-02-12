@@ -398,7 +398,11 @@ class OpToImage(Operator):
             # call setDirty with ().
             if len(roi._l) == 0:
                 self.Output.setDirty(slice(None))
+            elif isinstance(roi._l[0], int):
+                for t in roi._l:
+                    self.Output.setDirty(slice(t))
             else:
+                assert len(roi._l[0]) == 2
                 # for each dirty object, only set its bounding box dirty
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
