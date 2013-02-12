@@ -44,34 +44,46 @@ class OpLabelImage(Operator):
     def __del__(self):
         self._mem_h5.close()
 
+
+    def _computeLabelImage(self, roi, destination):
+        shape = self.BinaryImage.meta.shape
+        channels = shape[-1]
+        for t in range(roi.start[0], roi.stop[0]):
+            if t not in self._processedTimeSteps:
+                for c in range(channels):
+                    print ("Calculating LabelImage at"
+                           " t={}, c={}".format(t, c))
+                    sroi = SubRegion(self.BinaryImage,
+                                     start=[t,0,0,0,c],
+                                     stop=[t+1,] + list(shape[1:-1]) + [c+1,])
+                    a = self.BinaryImage.get(sroi).wait()
+                    a = numpy.array(a[0,...,0], dtype=numpy.uint8)
+                    if self.BackgroundLabels.ready():
+                        backgroundLabel = self.BackgroundLabels.value[c]
+                    else:
+                        backgroundLabel = self.defaultBackground
+                    if backgroundLabel != -1:
+                        f = vigra.analysis.labelVolumeWithBackground
+                        self._mem_h5['LabelImage'][t,...,c] = \
+                            f(a, background_value=backgroundLabel)
+                self._processedTimeSteps.append(t)
+
+
     def execute(self, slot, subindex, roi, destination):
-        if slot is self.LabelImage:
-            for t in range(roi.start[0],roi.stop[0]):
-                slc = roi.toSlice()
-                slc = (slice(t, t + 1),) + slc[1:]
+        if slot is self.LabelImageComputation:
+            self._computeLabelImage(roi, destination)
+
+        elif slot is self.LabelImage:
+            start, stop = roi.start[0], roi.stop[0]
+            for t in range(start, stop):
+                slc = (slice(t, t + 1),) + roi.toSlice()[1:]
+                dslc = slice(t - start, t - start + 1)
                 if t not in self._processedTimeSteps:
-                    destination[t-roi.start[0]:t-roi.start[0]+1,...] = 0
+                    destination[dslc] = 0
                 else:
-                    destination[t-roi.start[0]:t-roi.start[0]+1,...] = self._mem_h5['LabelImage'][slc]
+                    destination[dslc] = self._mem_h5['LabelImage'][slc]
             return destination
 
-        if slot is self.LabelImageComputation:
-            channels = self.BinaryImage.meta.shape[-1]
-            for t in range(roi.start[0],roi.stop[0]):
-                if t not in self._processedTimeSteps:
-                    for c in range(channels):
-                        print "Calculating LabelImage at t=" + str(t) + ", c=" + str(c) + " "
-                        sroi = SubRegion(self.BinaryImage, start=[t,0,0,0,c],
-                                         stop=[t+1,] + list(self.BinaryImage.meta.shape[1:-1]) + [c+1,])
-                        a = self.BinaryImage.get(sroi).wait()
-                        a = numpy.array(a[0,...,0],dtype=numpy.uint8)
-                        if self.BackgroundLabels.ready():
-                            backgroundLabel = self.BackgroundLabels.value[c]
-                        else:
-                            backgroundLabel = self.defaultBackground
-                        if backgroundLabel != -1:
-                            self._mem_h5['LabelImage'][t,...,c] = vigra.analysis.labelVolumeWithBackground(a, background_value = backgroundLabel)
-                    self._processedTimeSteps.append(t)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage:
@@ -212,8 +224,10 @@ class OpObjectExtraction(Operator):
 
         # internal operators
         self._opLabelImage = OpLabelImage(parent=self, graph=graph)
-        self._opRegFeats = OpRegionFeatures(parent=self, graph=graph, features=self.default_features)
-        self._opObjectCenterImage = OpObjectCenterImage(parent=self, graph=self.graph)
+        self._opRegFeats = OpRegionFeatures(parent=self, graph=graph,
+                                            features=self.default_features)
+        self._opObjectCenterImage = OpObjectCenterImage(parent=self,
+                                                        graph=self.graph)
 
         # connect internal operators
         self._opLabelImage.BinaryImage.connect(self.BinaryImage)
