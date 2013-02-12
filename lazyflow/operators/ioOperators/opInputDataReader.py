@@ -17,7 +17,7 @@ class OpInputDataReader(Operator):
     name = "OpInputDataReader"
     category = "Input"
 
-    h5Exts = ['h5', 'hdf5']
+    h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
     blockwiseExts = ['json']
     vigraImpexExts = vigra.impex.listExtensions().split()
@@ -235,7 +235,30 @@ class OpInputDataReader(Operator):
         # Output slots are directly conncted to internal operators
         pass
 
+    @classmethod
+    def getInternalDatasets(cls, filePath):
+        """
+        Search the given file for internal datasets, and return their internal paths as a list.
+        For now, it is assumed that the file is an hdf5 file.
+        
+        Returns: A list of the internal datasets in the file, or None if the format doesn't support internal datasets.
+        """
+        datasetNames = None
+        ext = os.path.splitext(filePath)[1][1:]
+        
+        # HDF5. Other formats don't contain more than one dataset (as far as we're concerned).
+        if ext in OpInputDataReader.h5Exts:
+            datasetNames = []
+            # Open the file as a read-only so we can get a list of the internal paths
+            with h5py.File(filePath, 'r') as f:
+                # Define a closure to collect all of the dataset names in the file.
+                def accumulateDatasetPaths(name, val):
+                    if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                        datasetNames.append( '/' + name )    
+                # Visit every group/dataset in the file            
+                f.visititems(accumulateDatasetPaths)        
 
+        return datasetNames
 
 
 
