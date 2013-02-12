@@ -309,52 +309,24 @@ class OpSegmentation(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def setupOutputs(self):
-
         inputSlot = self.inputs["Input"]
-
-        self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1]
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1] + (1,)
         self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
-
-        tags = inputSlot.meta.axistags
-        newtags = []
-        for i in range(len(inputSlot.meta.shape) - 1):
-            newtags.append(tags[i].key)
-        newtags = vigra.defaultAxistags(''.join(newtags))
-        self.outputs["Output"].meta.axistags = newtags
-
+        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
-
         shape = self.inputs["Input"].meta.shape
+
         rstart, rstop = sliceToRoi(key, self.outputs["Output"].meta.shape)
-        rstart.append(0)
-        rstop.append(shape[-1])
-        rkey = roiToSlice(rstart,rstop)
+        rstart[-1] = 0
+        rstop[-1] = shape[-1]
+        rkey = roiToSlice(rstart, rstop)
         img = self.inputs["Input"][rkey].allocate().wait()
-
-        stop = img.size
-
-        seg = []
-
-        for i in range(0,stop,img.shape[-1]):
-            curr_prob = -1
-            highest_class = -1
-            for c in range(img.shape[-1]):
-                prob = img.ravel()[i+c]
-                if prob > curr_prob:
-                    curr_prob = prob
-                    highest_class = c
-            assert highest_class != -1, "OpSegmentation: Strange classes/probabilities"
-
-            seg.append(highest_class)
-
-        seg = numpy.array(seg)
-        seg.resize(img.shape[:-1])
-
-        return seg[:]
-
-
+        axis = img.ndim - 1
+        result = numpy.argmax(img, axis=axis)
+        result.resize(result.shape + (1,))
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
