@@ -111,7 +111,7 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell = HeadlessShell( functools.partial(Workflow.getSubclass(config.workflow_type), appendBatchOperators=False) )
+    shell = HeadlessShell( functools.partial(Workflow.getSubclass(config.workflow_type) ) )
     
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
@@ -224,7 +224,8 @@ if __name__ == "__main__":
 
         # RESTful TEST
         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
         args.append( "--sys_tmp_dir=/scratch/bergs")
 
