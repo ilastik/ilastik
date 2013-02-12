@@ -35,7 +35,7 @@ class TestOpToImage(unittest.TestCase):
         map_ = {0 : np.array([10, 20, 30]),
                 1 : np.array([40, 50, 60, 70])}
         self.op.Image.setValue(segimg)
-        self.op.ObjectMap.setValue(map_, dirtyroi=())
+        self.op.ObjectMap.setValue(map_)
         self.op.Features._setReady() # hack because we do not use features
         img = self.op.Output.value
 
@@ -63,7 +63,7 @@ class TestOpObjectTrain(unittest.TestCase):
     def test_train(self):
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 1, 1, 2])}
-        self.op.Labels.setValue(labels, dirtyroi=())
+        self.op.Labels.setValue(labels)
         classifier = self.op.Classifier.value
 
 
@@ -88,7 +88,7 @@ class TestOpObjectPredict(unittest.TestCase):
 
         self.featsop.LabelImage.setValue(segimg)
         self.trainop.Features[0].connect(self.featsop.Output)
-        self.trainop.Labels.setValue(labels, dirtyroi=())
+        self.trainop.Labels.setValue(labels)
 
         self.op.Features.connect(self.featsop.Output)
 

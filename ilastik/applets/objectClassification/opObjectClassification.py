@@ -132,7 +132,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         labels = dict()
         for t in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             labels[t] = numpy.zeros((2,))
-        self.LabelInputs[imageIndex].setValue(labels, dirtyroi=())
+        self.LabelInputs[imageIndex].setValue(labels)
 
     def setupOutputs(self):
         pass

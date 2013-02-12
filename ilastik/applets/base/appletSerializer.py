@@ -424,7 +424,7 @@ class SerialDictSlot(SerialSlot):
         result = {}
         for key in subgroup.keys():
             result[self.transform(key)] = subgroup[key][()]
-        slot.setValue(result, dirtyroi=())
+        slot.setValue(result)
 
 
 ####################################
