@@ -73,12 +73,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         # internal operators
         opkwargs = dict(parent=self)
         self.opInputShapeReader = OpMultiLaneWrapper(OpShapeReader, **opkwargs)
-        self.opTrain = OpObjectTrain(graph=self.graph)
+        self.opTrain = OpObjectTrain(parent=self)
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
         self.opLabelsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
 
-        self.classifier_cache = OpValueCache(parent=self, graph=self.graph)
+        self.classifier_cache = OpValueCache(parent=self)
 
         # connect inputs
         self.opInputShapeReader.Input.connect(self.SegmentationImages)
