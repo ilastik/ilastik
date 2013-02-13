@@ -213,7 +213,8 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            slot.resize(len(subgroup))
+            if len(slot) < len(subgroup):
+                slot.resize(len(subgroup))
             for i, key in enumerate(subgroup):
                 assert key == self.subname.format(i)
                 self._deserialize(subgroup[key], slot[i])
@@ -320,7 +321,8 @@ class SerialBlockSlot(SerialSlot):
 
     def _deserialize(self, mygroup, slot):
         num = len(mygroup)
-        self.inslot.resize(num)
+        if len(self.inslot) < num:
+            self.inslot.resize(num)
         for index, t in enumerate(sorted(mygroup.items())):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
