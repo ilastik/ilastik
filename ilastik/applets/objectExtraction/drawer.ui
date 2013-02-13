@@ -45,7 +45,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="extractObjectsButton">
+      <widget class="QPushButton" name="calculateFeaturesButton">
        <property name="text">
         <string>Calculate Features</string>
        </property>
