@@ -25,8 +25,8 @@ class OpLabelImage(Operator):
     # file instead of allocating space for all the requests.
     LabelImageComputation = OutputSlot(stype="float")
 
-    def __init__(self, parent=None, graph=None):
-        super(OpLabelImage, self).__init__(parent=parent,graph=graph)
+    def __init__(self, parent):
+        super(OpLabelImage, self).__init__(parent)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._processedTimeSteps = set()
         self._lock = lazyflow.request.RequestLock()
@@ -70,6 +70,7 @@ class OpLabelImage(Operator):
                 self._processedTimeSteps.add(t)
 
     def execute(self, slot, subindex, roi, destination):
+        assert slot == self.LabelImage, "Unknown output slot"
         with self._lock:
             if slot is self.LabelImageComputation:
                 self._computeLabelImage(roi, destination)
@@ -102,9 +103,8 @@ class OpRegionFeatures(Operator):
     LabelImage = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
 
-    def __init__(self, features, parent=None, graph=None):
-        super(OpRegionFeatures, self).__init__(parent=parent,
-                                               graph=graph)
+    def __init__(self, features, parent):
+        super(OpRegionFeatures, self).__init__(parent)
         self._cache = {}
         self.fixed = False
         self.features = features
@@ -124,8 +124,7 @@ class OpRegionFeatures(Operator):
         return feats
 
     def execute(self, slot, subindex, roi, result):
-        if slot is not self.Output:
-            return
+        assert slot == self.Output, "Unknown output slot"
         feats = {}
         if len(roi) == 0:
             roi = range(self.LabelImage.meta.shape[0])
@@ -144,9 +143,13 @@ class OpRegionFeatures(Operator):
                                       stop = [t+1,] + list(lshape[1:-1]) + [c+1,])
 
                     image = self.RawImage.get(tcroi).wait()
+                    axiskeys = self.RawImage.meta.getTaggedShape().keys()
+                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     image = image[0,...,0] # assumes t,x,y,z,c
 
                     labels = self.LabelImage.get(tcroi).wait()
+                    axiskeys = self.LabelImage.meta.getTaggedShape().keys()
+                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     labels = labels[0,...,0] # assumes t,x,y,z,c
                     feats_at.append(self.extract(image, labels))
                 self._cache[t] = feats_at
@@ -181,6 +184,7 @@ class OpObjectCenterImage(Operator):
         return tuple(key)
 
     def execute(self, slot, subindex, roi, result):
+        assert slot == self.Output, "Unknown output slot"
         result[:] = 0
         for t in range(roi.start[0], roi.stop[0]):
             centers = self.RegionCenters([t]).wait()
@@ -225,17 +229,14 @@ class OpObjectExtraction(Operator):
         'Coord<Maximum>',
     ]
 
-    def __init__(self, parent=None, graph=None):
+    def __init__(self, parent):
 
-        super(OpObjectExtraction, self).__init__(parent=parent,
-                                                 graph=graph)
+        super(OpObjectExtraction, self).__init__(parent)
 
         # internal operators
-        self._opLabelImage = OpLabelImage(parent=self, graph=graph)
-        self._opRegFeats = OpRegionFeatures(parent=self, graph=graph,
-                                            features=self.default_features)
-        self._opObjectCenterImage = OpObjectCenterImage(parent=self,
-                                                        graph=self.graph)
+        self._opLabelImage = OpLabelImage(parent=self)
+        self._opRegFeats = OpRegionFeatures(features=self.default_features, parent=self)
+        self._opObjectCenterImage = OpObjectCenterImage(parent=self)
 
         # connect internal operators
         self._opLabelImage.BinaryImage.connect(self.BinaryImage)
@@ -256,7 +257,7 @@ class OpObjectExtraction(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        pass
+        assert False, "Shouldn't get here."
 
     def propagateDirty(self, inputSlot, subindex, roi):
         pass

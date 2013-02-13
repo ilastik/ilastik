@@ -85,8 +85,8 @@ class ObjectClassificationWorkflow(Workflow):
 
         # connect pixel output to object extraction
         # TODO: how to put operators between applets?
-        opseg = OpSegmentation(graph=self.graph)
-        op5 = Op5ifyer(graph=self.graph)
+        opseg = OpSegmentation(parent=self)
+        op5 = Op5ifyer(parent=self)
         opseg.Input.connect(opClassify.CachedPredictionProbabilities)
         op5.input.connect(opseg.Output)
         opObjExtraction.BinaryImage.connect(op5.output)
