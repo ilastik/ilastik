@@ -43,8 +43,9 @@ class OpLabelImage(Operator):
                                     chunks=True,
                                     )
 
-    def __del__(self):
+    def cleanUp(self):
         self._mem_h5.close()
+        super( OpLabelImage, self ).cleanUp()
 
     def _computeLabelImage(self, roi, destination):
         shape = self.BinaryImage.meta.shape
