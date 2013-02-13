@@ -9,7 +9,7 @@ class SerialLabelImageSlot(SerialSlot):
             return
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
-        mainOperator = self.slot.operator
+        mainOperator = self.slot.getRealOperator()
         for i, op in enumerate(mainOperator.innerOperators):
             src = op._opLabelImage._mem_h5
             group.copy(src['/LabelImage'], group, name=str(i))
@@ -18,9 +18,9 @@ class SerialLabelImageSlot(SerialSlot):
     def deserialize(self, group):
         if not self.name in group:
             return
-        innerops= self.slot.operator.innerOperators
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        self.slot.resize(len(opgroup))
         for inner in opgroup.keys():
             op = innerops[int(inner)]
             dest = op._opLabelImage._mem_h5
@@ -38,7 +38,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
-        innerops = self.slot.operator.innerOperators
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             opgroup = getOrCreateGroup(group, str(i))
             for t in op._opRegFeats._cache.keys():
@@ -53,9 +54,9 @@ class SerialObjectFeaturesSlot(SerialSlot):
     def deserialize(self, group):
         if not self.name in group:
             return
-        innerops = self.slot.operator.innerOperators
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        self.slot.resize(len(opgroup))
         for inner in opgroup.keys():
             gr = opgroup[inner]
             op = innerops[int(inner)]
