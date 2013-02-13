@@ -99,6 +99,7 @@ class OpLabelImage(Operator):
 
 
 class OpRegionFeatures(Operator):
+    RawImage = InputSlot()
     LabelImage = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
 
@@ -114,10 +115,10 @@ class OpRegionFeatures(Operator):
         self.Output.meta.shape = self.LabelImage.meta.shape[0:1]
         self.Output.meta.dtype = object
 
-    def extract(self, a):
-        labels = numpy.asarray(a, dtype=numpy.uint32)
-        data = numpy.asarray(a, dtype=numpy.float32)
-        feats = vigra.analysis.extractRegionFeatures(data,
+    def extract(self, image, labels):
+        image = numpy.asarray(image, dtype=numpy.float32)
+        labels = numpy.asarray(labels, dtype=numpy.uint32)
+        feats = vigra.analysis.extractRegionFeatures(image,
                                                      labels,
                                                      features=self.features,
                                                      ignoreLabel=0)
@@ -142,9 +143,13 @@ class OpRegionFeatures(Operator):
                     tcroi = SubRegion(self.LabelImage,
                                       start = [t,] + (len(lshape) - 2) * [0,] + [c,],
                                       stop = [t+1,] + list(lshape[1:-1]) + [c+1,])
-                    a = self.LabelImage.get(tcroi).wait()
-                    a = a[0,...,0] # assumes t,x,y,z,c
-                    feats_at.append(self.extract(a))
+
+                    image = self.RawImage.get(tcroi).wait()
+                    image = image[0,...,0] # assumes t,x,y,z,c
+
+                    labels = self.LabelImage.get(tcroi).wait()
+                    labels = labels[0,...,0] # assumes t,x,y,z,c
+                    feats_at.append(self.extract(image, labels))
                 self._cache[t] = feats_at
             feats[t] = feats_at
         return feats
@@ -237,6 +242,7 @@ class OpObjectExtraction(Operator):
         self._opLabelImage.BinaryImage.connect(self.BinaryImage)
         self._opLabelImage.BackgroundLabels.connect(self.BackgroundLabels)
 
+        self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelImage.LabelImage)
 
         self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
