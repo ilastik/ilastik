@@ -7,11 +7,11 @@ class OpThresholdTwoLevels(Operator):
     name = "opThresholdTwoLevels"
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int')
-    MaxSize = InputSlot(stype='int')
-    HighThreshold = InputSlot(stype='float')
-    LowThreshold = InputSlot(stype='float')
-    SmootherSigma = InputSlot(optional=True)
+    MinSize = InputSlot(stype='int', value=100)
+    MaxSize = InputSlot(stype='int', value=1000)
+    HighThreshold = InputSlot(stype='float', value=0.5)
+    LowThreshold = InputSlot(stype='float', value=0.1)
+    SmootherSigma = InputSlot(optional=True, value=(3.5, 3.5, 1))
     
     Output = OutputSlot()
     
