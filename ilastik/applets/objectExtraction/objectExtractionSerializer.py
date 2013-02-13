@@ -1,6 +1,8 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot
 
+import numpy
+
 
 class SerialLabelImageSlot(SerialSlot):
 
@@ -12,7 +14,11 @@ class SerialLabelImageSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         for i, op in enumerate(mainOperator.innerOperators):
             src = op._opLabelImage._mem_h5
-            group.copy(src['/LabelImage'], group, name=str(i))
+            ts = op._opLabelImage._processedTimeSteps
+            if len(ts) > 0:
+                subgroup = getOrCreateGroup(group, str(i))
+                subgroup.copy(src['/LabelImage'], subgroup, name='data')
+                subgroup.create_dataset(name='timesteps', data=list(ts))
         self.dirty = False
 
     def deserialize(self, group):
@@ -22,12 +28,14 @@ class SerialLabelImageSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
         for inner in opgroup.keys():
+            mygroup = opgroup[inner]
             op = innerops[int(inner)]
             dest = op._opLabelImage._mem_h5
             del dest['LabelImage']
-            dest.copy(opgroup[inner], dest, name='LabelImage')
+            dest.copy(mygroup['data'], dest, name='LabelImage')
+            ts = set(numpy.array(mygroup['timesteps'][:]).flat)
+            op._opLabelImage._processedTimeSteps = ts
             op._opLabelImage._fixed = False
-            op._opLabelImage._processedTimeSteps = set(range(opgroup[inner].shape[0]))
         self.dirty = False
 
 
