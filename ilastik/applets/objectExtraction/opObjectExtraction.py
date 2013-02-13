@@ -88,9 +88,7 @@ class OpLabelImage(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # FIXME: this does nothing. We need to clean cache and
         # recompute.
-        if slot is self.BinaryImage:
-            self.LabelImage.setDirty(roi)
-        elif slot is self.BackgroundLabels:
+        if slot is self.BinaryImage or slot is self.BackgroundLabels:
             self.LabelImage.setDirty(roi)
         else:
             print "Unknown dirty input slot: " + str(slot.name)
