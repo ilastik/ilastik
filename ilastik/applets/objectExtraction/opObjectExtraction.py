@@ -44,7 +44,6 @@ class OpLabelImage(Operator):
     def __del__(self):
         self._mem_h5.close()
 
-
     def _computeLabelImage(self, roi, destination):
         shape = self.BinaryImage.meta.shape
         channels = shape[-1]
@@ -68,7 +67,6 @@ class OpLabelImage(Operator):
                             f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
 
-
     def execute(self, slot, subindex, roi, destination):
         if slot is self.LabelImageComputation:
             self._computeLabelImage(roi, destination)
@@ -79,11 +77,9 @@ class OpLabelImage(Operator):
                 slc = (slice(t, t + 1),) + roi.toSlice()[1:]
                 dslc = slice(t - start, t - start + 1)
                 if t not in self._processedTimeSteps:
-                    destination[dslc] = 0
-                else:
-                    destination[dslc] = self._mem_h5['LabelImage'][slc]
+                    self._computeLabelImage(roi, destination)
+                destination[dslc] = self._mem_h5['LabelImage'][slc]
             return destination
-
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
