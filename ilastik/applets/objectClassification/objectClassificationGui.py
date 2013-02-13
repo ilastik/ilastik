@@ -128,12 +128,18 @@ class ObjectClassificationGui(LabelingGui):
 
         labelOutput = self._labelingSlots.labelOutput
         binarySlot = self.op.BinaryImages
+        rawSlot = self.op.RawImages
 
         if binarySlot.ready():
-            ct = colortables.create_default_8bit()
             self.binaryimagesrc = LazyflowSource(binarySlot)
             layer = GrayscaleLayer(self.binaryimagesrc, range=(0,1), normalize=(0,1))
             layer.name = "Binary Image"
+            layers.append(layer)
+
+        if rawSlot.ready():
+            self.rawimagesrc = LazyflowSource(rawSlot)
+            layer = self.createStandardLayerFromSlot(rawSlot)
+            layer.name = "Raw data"
             layers.append(layer)
 
         predictionSlot = self.op.PredictionImages

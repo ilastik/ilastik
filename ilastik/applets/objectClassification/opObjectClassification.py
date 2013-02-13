@@ -48,6 +48,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     # Input slots #
     ###############
     BinaryImages = InputSlot(level=1) # for visualization
+    RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1)
     ObjectFeatures = InputSlot(rtype=List, level=1)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)

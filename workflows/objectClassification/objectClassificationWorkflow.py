@@ -73,7 +73,7 @@ class ObjectClassificationWorkflow(Workflow):
         opTrainingFeatures.InputImage.connect(opData.Image)
         opClassify.InputImages.connect(opData.Image)
         opObjExtraction.RawImage.connect(opData.Image)
-        opObjClassification.BinaryImages.connect(opData.Image)
+        opObjClassification.RawImages.connect(opData.Image)
 
         # training flags
         opClassify.LabelsAllowedFlags.connect(opData.AllowLabels)
@@ -90,6 +90,8 @@ class ObjectClassificationWorkflow(Workflow):
         opseg.Input.connect(opClassify.CachedPredictionProbabilities)
         op5.input.connect(opseg.Output)
         opObjExtraction.BinaryImage.connect(op5.output)
+
+        opObjClassification.BinaryImages.connect(op5.output)
 
         # connect object features
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
