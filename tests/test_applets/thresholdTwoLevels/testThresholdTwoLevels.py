@@ -5,12 +5,14 @@ from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdT
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
+import vigra
 
 class TestThresholdTwoLevels(object):
     def setUp(self):
         self.nx = 20
         self.ny = 20
         self.nz = 20
+        self.nc = 3
         #self.data = numpy.zeros((self.nx, self.ny, self.nz))
         #cluster of 4 points
         self.cluster1 = numpy.zeros((self.nx, self.ny, self.nz))
@@ -26,6 +28,14 @@ class TestThresholdTwoLevels(object):
         self.cluster4[2:10, 2:10, 15]=0.9
         
         self.data = self.cluster1 + self.cluster2 + self.cluster3 + self.cluster4
+        self.data = self.data.reshape(self.data.shape+(1,))
+        self.data = self.data.view(vigra.VigraArray)
+        self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
+        
+        self.dataChannels = numpy.zeros((self.nx, self.ny, self.nz, self.nc))
+        self.dataChannels[:, :, :, 2] = self.cluster1 + self.cluster2 + self.cluster3 + self.cluster4
+        self.dataChannels = self.dataChannels.view(vigra.VigraArray)
+        self.dataChannels.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         
         self.minSize = 5 #first cluster doesn't pass this
         self.maxSize = 30 #fourth cluster doesn't pass this
@@ -45,6 +55,19 @@ class TestThresholdTwoLevels(object):
         oper.SmootherSigma.setValue(self.sigma)
         
         output = oper.Output[:].wait()
+        output = output.reshape((self.nx, self.ny, self.nz))
+        cluster1 = numpy.logical_and(output, self.cluster1)
+        assert numpy.any(cluster1!=0)==False
+        cluster2 = numpy.logical_and(output, self.cluster2)
+        assert numpy.any(cluster2!=0)==True
+        cluster3 = numpy.logical_and(output, self.cluster3)
+        assert numpy.any(cluster3!=0)==False
+        cluster4 = numpy.logical_and(output, self.cluster4)
+        assert numpy.any(cluster4!=0)==False
+        
+        oper.InputImage.setValue(self.dataChannels)
+        output = oper.Output[:].wait()
+        output = output.reshape((self.nx, self.ny, self.nz))
         cluster1 = numpy.logical_and(output, self.cluster1)
         assert numpy.any(cluster1!=0)==False
         cluster2 = numpy.logical_and(output, self.cluster2)

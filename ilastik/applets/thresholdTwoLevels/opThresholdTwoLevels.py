@@ -12,6 +12,7 @@ class OpThresholdTwoLevels(Operator):
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.1)
     SmootherSigma = InputSlot(optional=True, value=(3.5, 3.5, 1))
+    Channel = InputSlot(optional=True, value=2)
     
     Output = OutputSlot()
     
@@ -22,10 +23,31 @@ class OpThresholdTwoLevels(Operator):
         # Copy the input metadata to the output
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype=numpy.uint8
+
+        assert self.InputImage.meta.axistags is not None
+        axistags = self.InputImage.meta.axistags
+        hasChannels = axistags.axisTypeCount(vigra.AxisType.Channels)
+        self.channelSlice=None
+        if hasChannels and self.InputImage.meta.shape[axistags.channelIndex]>1:
+            self.channelSlice = slice(self.Channel.value, self.Channel.value+1, None)
+        elif hasChannels and self.InputImage.meta.shape[axistags.channelIndex]==1:
+            self.channelSlice = slice(None, None, None)
+        shape = list(self.InputImage.meta.shape)
+        shape[axistags.channelIndex]=1
+        self.Output.meta.shape = tuple(shape)
     
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
+        
+        axistags = self.InputImage.meta.axistags
+        #nchannels = axistags.axisTypeCount(vigra.AxisType.Channels)
+        if self.channelSlice is not None:
+            keylist = list(key)
+            keylist[axistags.channelIndex]=self.channelSlice
+            key = tuple(keylist)
+        
         data = self.InputImage[key].wait()
+        
         sigma = self.SmootherSigma.value
         smoothed = vigra.filters.gaussianSmoothing(data.astype(numpy.float32), sigma)
         cc_high = self.extractCC(smoothed, self.HighThreshold.value)
@@ -35,9 +57,11 @@ class OpThresholdTwoLevels(Operator):
         
         maxregion = numpy.max(cc_low)
 
+        cc_low = cc_low.view(numpy.ndarray)
         prod = th_high * cc_low
         
         passed = numpy.unique(prod)
+        
         newsizes = numpy.zeros((maxregion+2,), dtype=numpy.uint32)
         ngood = 1
         for index in passed:
