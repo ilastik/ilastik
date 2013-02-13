@@ -5,6 +5,7 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
+import lazyflow.request
 
 class OpLabelImage(Operator):
     name = "Label Image Accessor"
@@ -28,6 +29,7 @@ class OpLabelImage(Operator):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._processedTimeSteps = set()
+        self._lock = lazyflow.request.RequestLock()
 
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
@@ -43,7 +45,6 @@ class OpLabelImage(Operator):
 
     def __del__(self):
         self._mem_h5.close()
-
 
     def _computeLabelImage(self, roi, destination):
         shape = self.BinaryImage.meta.shape
@@ -68,22 +69,20 @@ class OpLabelImage(Operator):
                             f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
 
-
     def execute(self, slot, subindex, roi, destination):
-        if slot is self.LabelImageComputation:
-            self._computeLabelImage(roi, destination)
+        with self._lock:
+            if slot is self.LabelImageComputation:
+                self._computeLabelImage(roi, destination)
 
-        elif slot is self.LabelImage:
-            start, stop = roi.start[0], roi.stop[0]
-            for t in range(start, stop):
-                slc = (slice(t, t + 1),) + roi.toSlice()[1:]
-                dslc = slice(t - start, t - start + 1)
-                if t not in self._processedTimeSteps:
-                    destination[dslc] = 0
-                else:
+            elif slot is self.LabelImage:
+                start, stop = roi.start[0], roi.stop[0]
+                for t in range(start, stop):
+                    slc = (slice(t, t + 1),) + roi.toSlice()[1:]
+                    dslc = slice(t - start, t - start + 1)
+                    if t not in self._processedTimeSteps:
+                        self._computeLabelImage(roi, destination)
                     destination[dslc] = self._mem_h5['LabelImage'][slc]
-            return destination
-
+                return destination
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
