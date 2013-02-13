@@ -27,7 +27,7 @@ class OpLabelImage(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
-        self._processedTimeSteps = []
+        self._processedTimeSteps = set()
 
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
@@ -66,7 +66,7 @@ class OpLabelImage(Operator):
                         f = vigra.analysis.labelVolumeWithBackground
                         self._mem_h5['LabelImage'][t,...,c] = \
                             f(a, background_value=backgroundLabel)
-                self._processedTimeSteps.append(t)
+                self._processedTimeSteps.add(t)
 
 
     def execute(self, slot, subindex, roi, destination):
@@ -86,10 +86,14 @@ class OpLabelImage(Operator):
 
 
     def propagateDirty(self, slot, subindex, roi):
-        # FIXME: this does nothing. We need to clean cache and
-        # recompute.
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
             self.LabelImage.setDirty(roi)
+            start, stop = roi.start[0], roi.stop[0]
+            for t in range(start, stop):
+                try:
+                    self._processedTimeSteps.remove(t)
+                except KeyError:
+                    continue
         else:
             print "Unknown dirty input slot: " + str(slot.name)
 
