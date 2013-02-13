@@ -1860,7 +1860,7 @@ class OperatorWrapper(Operator):
         assert isinstance(operator_args, (tuple, list))
         assert isinstance(operator_kwargs, dict)
         self._createInnerOperator = functools.partial(
-            operatorClass, parent=self, graph=graph,
+            operatorClass, parent=self,
             *operator_args, **operator_kwargs)
 
         self._initialized = False
