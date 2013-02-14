@@ -24,7 +24,7 @@ _MAXLABELS = 2
 
 # Features that are uninformative for classification purposes, but
 # calculated for other reasons.
-USELESS_FEATS = ['RegionCenter',
+BLACKLIST_FEATS = ['RegionCenter',
                  'Coord<Minimum>',
                  'Coord<Maximum>',
                  'Coord<PowerSum<1>>',
@@ -35,6 +35,8 @@ USELESS_FEATS = ['RegionCenter',
                  'Coord<PowerSum<1> >',
                  'Coord<ArgMaxWeight >',
 ]
+
+WHITELIST_FEATS = ['Mean', 'Variance']
 
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
@@ -227,7 +229,7 @@ class OpObjectTrain(Operator):
                 labelsMatrix_tmp.append(lab[index])
 
                 for key, value in feats[t][0].iteritems():
-                    if key in USELESS_FEATS:
+                    if not key in WHITELIST_FEATS:
                         continue
                     ft = numpy.asarray(value.squeeze())
                     featsMatrix_tmp.append(ft[index])
@@ -302,7 +304,7 @@ class OpObjectPredict(Operator):
 
             ftsMatrix = []
             for key, value in self.Features([t]).wait()[t][0].iteritems():
-                if key in USELESS_FEATS:
+                if not key in WHITELIST_FEATS:
                     continue
                 tmpfts = numpy.asarray(value).astype(numpy.float32)
                 _atleast_nd(tmpfts, 2)
