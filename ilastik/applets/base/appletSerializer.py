@@ -344,7 +344,7 @@ class SerialClassifierSlot(SerialSlot):
         self.cacheslot.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
-        classifier_forests = slot.value
+        classifier_forests = slot[()].wait()
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:
