@@ -230,9 +230,9 @@ class OpObjectExtraction(Operator):
         'Coord<Maximum>',
     ]
 
-    def __init__(self, parent):
+    def __init__(self, parent, graph):
 
-        super(OpObjectExtraction, self).__init__(parent)
+        super(OpObjectExtraction, self).__init__(parent, graph=graph)
 
         # internal operators
         self._opLabelImage = OpLabelImage(parent=self)
