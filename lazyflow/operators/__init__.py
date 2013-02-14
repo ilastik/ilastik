@@ -24,6 +24,7 @@ except:
     from opColorizeLabels import OpColorizeLabels
     from opObjectFeatures import OpObjectFeatures
     from adaptors import Op5ifyer
+    from opCompressedCache import OpCompressedCache
 
     ops = itersubclasses(Operator)
     logger.debug("Loading default Operators...")
