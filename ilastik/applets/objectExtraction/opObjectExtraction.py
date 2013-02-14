@@ -71,7 +71,7 @@ class OpLabelImage(Operator):
                 self._processedTimeSteps.add(t)
 
     def execute(self, slot, subindex, roi, destination):
-        assert slot == self.LabelImage, "Unknown output slot"
+        assert slot == self.LabelImage, "Unknown output slot {}".format(slot.name)
         with self._lock:
             if slot is self.LabelImageComputation:
                 self._computeLabelImage(roi, destination)
