@@ -49,6 +49,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     NumLabels = OutputSlot()
     Classifier = OutputSlot()
     LabelImages = OutputSlot(level=1)
+    Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
     PredictionImages = OutputSlot(level=1)
     SegmentationImagesOut = OutputSlot(level=1)
 
@@ -93,6 +94,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         # connect outputs
         self.NumLabels.setValue(_MAXLABELS)
         self.LabelImages.connect(self.opLabelsToImage.Output)
+        self.Predictions.connect(self.opPredict.Predictions)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
         self.Classifier.connect(self.opTrain.Classifier)
 
@@ -195,7 +197,6 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.axistags = None
 
     def execute(self, slot, subindex, roi, result):
-
         featMatrix = []
         labelsMatrix = []
 
@@ -289,9 +290,15 @@ class OpObjectPredict(Operator):
             # return a dictionary of predictions.
             return numpy.zeros(numpy.subtract(roi.stop, roi.start),
                                dtype=numpy.float32)[...]
+
+        times = roi._l
+        if len(times) == 0:
+            # we assume that 0-length requests are requesting everything
+            times = range(self.Predictions.meta.shape[0])
+
         feats = {}
         predictions = {}
-        for t in roi._l:
+        for t in times:
             if t in self.cache:
                 continue
 
@@ -315,7 +322,7 @@ class OpObjectPredict(Operator):
         # predict the data with all the forests in parallel
         pool = Pool()
 
-        for t in roi._l:
+        for t in times:
             if t in self.cache:
                 continue
             for i, f in enumerate(forests):
@@ -326,7 +333,7 @@ class OpObjectPredict(Operator):
 
         final_predictions = dict()
 
-        for t in roi._l:
+        for t in times:
             if t not in self.cache:
                 # shape (ForestCount, number of objects)
                 prediction = numpy.vstack(predictions[t])
