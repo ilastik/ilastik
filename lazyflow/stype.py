@@ -156,7 +156,8 @@ class Struct( SlotType ):
         else:
             self.graph = None
         for k,v in self.__class__.__dict__.items():
-            if hasattr(v,"_subSlots") and v != slot: #FIXME: really bad detection of type
+            #FIXME: really bad detection of type
+            if hasattr(v,"_subSlots") and v != slot:
                 v._type = slot._type
                 si = v.getInstance(operator=self)
                 self._subSlots[k] = si
@@ -173,8 +174,13 @@ class Struct( SlotType ):
     def connect(self, slot):
         for k,v in self._subSlots.items():
             if hasattr(slot,k):
-                self._subSlots[k].connect(getattr(slot,k))
-                print "subslot ", k, "connected:", self._subSlots[k].partner,self._subSlots[k].connected(),self._subSlots[k].shape, self._subSlots[k].graph, self.slot.operator
+                self._subSlots[k].connect(getattr(slot, k))
+                print "subslot {} connected: {}".format(k,
+                                                        (self._subSlots[k].partner,
+                                                         self._subSlots[k].connected(),
+                                                         self._subSlots[k].shape,
+                                                         self._subSlots[k].graph,
+                                                         self.slot.operator))
 
 
     def execute(self, slot, subindex, roi, destination):
@@ -183,12 +189,12 @@ class Struct( SlotType ):
     def copy_data(self, dst, src):
         raise("Not Implemented")
 
-class Opaque( SlotType ):
-    def allocateDestination( self, roi ):
+class Opaque(SlotType):
+    def allocateDestination(self, roi):
         return None
 
-    def writeIntoDestination( self, destination, value,roi ):
-        print "FIXME: roi cant be applied here"
+    def writeIntoDestination(self, destination, value, roi):
+        warnings.warn("FIXME: roi cant be applied here")
         destination = value
         return destination
 
