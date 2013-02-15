@@ -29,12 +29,13 @@ class OpLabelImage(Operator):
 
     def __init__(self, parent):
         super(OpLabelImage, self).__init__(parent)
-        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+        # whether to use in-memory compressed hdf5 or a numpy array
+        self.compressed = config.compress_labels
+        if self.compressed:
+            self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._processedTimeSteps = set()
         self._lock = lazyflow.request.RequestLock()
 
-        # whether to use in-memory compressed hdf5 or a numpy array
-        self.compressed = config.compress_labels
 
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
@@ -43,14 +44,17 @@ class OpLabelImage(Operator):
         self.LabelImageComputation.meta.shape = [0]
 
         shape = self.LabelImage.meta.shape
-        self._mem_h5.create_dataset('LabelImage', shape=shape,
-                                    dtype=numpy.uint32, compression=1,
-                                    chunks=True,
-                                    )
-        self._labeled_image = numpy.empty(shape, dtype=numpy.uint32)
+        if self.compressed:
+            self._mem_h5.create_dataset('LabelImage', shape=shape,
+                                        dtype=numpy.uint32, compression=1,
+                                        chunks=True,
+                                        )
+        else:
+            self._labeled_image = numpy.empty(shape, dtype=numpy.uint32)
 
     def cleanUp(self):
-        self._mem_h5.close()
+        if self.compressed:
+            self._mem_h5.close()
         super( OpLabelImage, self ).cleanUp()
 
     def _computeLabelImage(self, roi, destination):
