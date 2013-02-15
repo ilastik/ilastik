@@ -95,6 +95,7 @@ class ObjectExtractionGui(QWidget):
         ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
         layer = ColortableLayer(self.objectssrc, ct)
         layer.name = "Label Image"
+        layer.visible = False
         layer.opacity = 0.5
         self.layerstack.append(layer)
 
@@ -146,42 +147,12 @@ class ObjectExtractionGui(QWidget):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
-        self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.calculateFeaturesButton.pressed.connect(self._calculateFeaturesButtonPressed)
 
     def _initViewerControlUi(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
-
-    def _onLabelImageButtonPressed(self):
-        m = self.mainOperator.LabelImage.meta
-        maxt = m.shape[0]
-        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setCancelButtonText(QString())
-        progress.forceShow()
-
-        self.mainOperator._opLabelImage._fixed = False
-        reqs = []
-        for t in range(maxt):
-            reqs.append(self.mainOperator._opLabelImage.LabelImageComputation([t]))
-            reqs[-1].submit()
-
-        for i, req in enumerate(reqs):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()
-
-        progress.setValue(maxt)
-
-        roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
-        self.mainOperator.LabelImage.setDirty(roi)
-
-        print 'Label Segmentation: done.'
 
     def _calculateFeaturesButtonPressed(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]

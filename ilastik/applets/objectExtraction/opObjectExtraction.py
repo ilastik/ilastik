@@ -1,128 +1,21 @@
 import numpy
-import h5py
 import vigra.analysis
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-import lazyflow.request
+from lazyflow.operators import OpCachedLabelImage
 
 from ilastik.applets.objectExtraction import config
 
-class OpLabelImage(Operator):
-    name = "Label Image Accessor"
-    BinaryImage = InputSlot()
-
-    # List of background label in the order of channels of the binary
-    # image; -1 if the label image should not be computed for that
-    # channel
-    BackgroundLabels = InputSlot(optional=True)
-    defaultBackground = 0
-
-    LabelImage = OutputSlot()
-
-    # Pull the following output slot to compute the label image. This
-    # slot is introduced in order to do a precomputation of the output
-    # image and to write the results into a compressed hdf5 virtual
-    # file instead of allocating space for all the requests.
-    LabelImageComputation = OutputSlot(stype="float")
-
-    def __init__(self, parent):
-        super(OpLabelImage, self).__init__(parent)
-        # whether to use in-memory compressed hdf5 or a numpy array
-        self.compressed = config.compress_labels
-        if self.compressed:
-            self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
-        self._processedTimeSteps = set()
-        self._lock = lazyflow.request.RequestLock()
-
-
-    def setupOutputs(self):
-        self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
-        self.LabelImage.meta.dtype = numpy.uint32
-        self.LabelImageComputation.meta.dtype = numpy.float
-        self.LabelImageComputation.meta.shape = [0]
-
-        shape = self.LabelImage.meta.shape
-        if self.compressed:
-            self._mem_h5.create_dataset('LabelImage', shape=shape,
-                                        dtype=numpy.uint32, compression=1,
-                                        chunks=True,
-                                        )
-        else:
-            self._labeled_image = numpy.empty(shape, dtype=numpy.uint32)
-
-    def cleanUp(self):
-        if self.compressed:
-            self._mem_h5.close()
-        super( OpLabelImage, self ).cleanUp()
-
-    def _computeLabelImage(self, roi, destination):
-        shape = self.BinaryImage.meta.shape
-        channels = shape[-1]
-        for t in range(roi.start[0], roi.stop[0]):
-            if t not in self._processedTimeSteps:
-                for c in range(channels):
-                    print ("Calculating LabelImage at"
-                           " t={}, c={}".format(t, c))
-                    sroi = SubRegion(self.BinaryImage,
-                                     start=[t,0,0,0,c],
-                                     stop=[t+1,] + list(shape[1:-1]) + [c+1,])
-                    a = self.BinaryImage.get(sroi).wait()
-                    a = numpy.array(a[0,...,0], dtype=numpy.uint8)
-                    if self.BackgroundLabels.ready():
-                        backgroundLabel = self.BackgroundLabels.value[c]
-                    else:
-                        backgroundLabel = self.defaultBackground
-                    if backgroundLabel != -1:
-                        f = vigra.analysis.labelVolumeWithBackground
-                        if self.compressed:
-                            dest = self._mem_h5['LabelImage']
-                        else:
-                            dest = self._labeled_image
-                        dest[t,...,c] = f(a, background_value=backgroundLabel)
-                self._processedTimeSteps.add(t)
                 self.LabelImage._sig_value_changed()
-
-    def execute(self, slot, subindex, roi, destination):
-        with self._lock:
-            if slot is self.LabelImageComputation:
-                self._computeLabelImage(roi, destination)
-
-            elif slot is self.LabelImage:
-                start, stop = roi.start[0], roi.stop[0]
-                for t in range(start, stop):
-                    slc = (slice(t, t + 1),) + roi.toSlice()[1:]
-                    dslc = slice(t - start, t - start + 1)
-                    if t not in self._processedTimeSteps:
-                        self._computeLabelImage(roi, destination)
-                    if self.compressed:
-                        src = self._mem_h5['LabelImage']
-                    else:
-                        src = self._labeled_image
-                    destination[dslc] = src[slc]
-                return destination
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot is self.BinaryImage or slot is self.BackgroundLabels:
-            start, stop = roi.start[0], roi.stop[0]
-            self.LabelImage.setDirty(slice(start, stop))
-            for t in range(start, stop):
-                try:
-                    self._processedTimeSteps.remove(t)
-                except KeyError:
-                    continue
-        else:
-            print "Unknown dirty input slot: " + str(slot.name)
-
-
 class OpRegionFeatures(Operator):
     RawImage = InputSlot()
     LabelImage = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
 
-    def __init__(self, features, parent):
-        super(OpRegionFeatures, self).__init__(parent)
+    def __init__(self, features, *args, **kwargs):
+        super(OpRegionFeatures, self).__init__(*args, **kwargs)
         self._cache = {}
         self.fixed = False
         self.features = features
@@ -248,29 +141,29 @@ class OpObjectExtraction(Operator):
         'Coord<Maximum>',
     ]
 
-    def __init__(self, parent):
+    def __init__(self, *args, **kwargs):
 
-        super(OpObjectExtraction, self).__init__(parent)
+        super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         features = list(set(config.vigra_features).union(set(self.default_features)))
 
         # internal operators
-        self._opLabelImage = OpLabelImage(parent=self)
+        self._opLabelImage = OpCachedLabelImage(parent=self)
         self._opRegFeats = OpRegionFeatures(features=features, parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
 
         # connect internal operators
-        self._opLabelImage.BinaryImage.connect(self.BinaryImage)
+        self._opLabelImage.Input.connect(self.BinaryImage)
         self._opLabelImage.BackgroundLabels.connect(self.BackgroundLabels)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
-        self._opRegFeats.LabelImage.connect(self._opLabelImage.LabelImage)
+        self._opRegFeats.LabelImage.connect(self._opLabelImage.Output)
 
         self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeats.Output)
 
         # connect outputs
-        self.LabelImage.connect(self._opLabelImage.LabelImage)
+        self.LabelImage.connect(self._opLabelImage.Output)
         self.ObjectCenterImage.connect(self._opObjectCenterImage.Output)
         self.RegionFeatures.connect(self._opRegFeats.Output)
 

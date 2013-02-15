@@ -14,6 +14,7 @@ class SerialLabelImageSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         for i, op in enumerate(mainOperator.innerOperators):
             oplabel = op._opLabelImage
+            assert False, "FIXME: OpLabelImage implementation has changed, not longer has _processedTimeSteps member"
             ts = oplabel._processedTimeSteps
             if len(ts) > 0:
                 subgroup = getOrCreateGroup(group, str(i))
@@ -37,6 +38,7 @@ class SerialLabelImageSlot(SerialSlot):
             mygroup = opgroup[inner]
             oplabel = innerops[int(inner)]._opLabelImage
             ts = set(numpy.array(mygroup['timesteps'][:]).flat)
+            assert False, "FIXME: OpLabelImage implementation has changed, not longer has _processedTimeSteps member"
             oplabel._processedTimeSteps = ts
             oplabel._fixed = False
 
