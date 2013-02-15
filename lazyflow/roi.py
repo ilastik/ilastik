@@ -225,9 +225,9 @@ def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
     if hasattr(sigma, "__iter__"):
         sigma = TinyVector(sigma)
-    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros)
+    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( type(start[0]) )
     sa = numpy.array(shape)
-    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa)
+    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( type(start[0]) )
     return newStart, newStop
 
 
