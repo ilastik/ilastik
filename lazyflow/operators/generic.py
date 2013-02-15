@@ -378,6 +378,9 @@ class OpMultiArrayStacker(Operator):
             r.wait()
 
     def propagateDirty(self, inputSlot, subindex, roi):
+        if not self.Output.ready():
+            # If we aren't even fully configured, there's no need to notify downstream slots about dirtiness
+            return
         if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
             self.Output.setDirty( slice(None) )
 
