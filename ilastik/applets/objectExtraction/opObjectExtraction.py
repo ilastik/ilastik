@@ -246,7 +246,7 @@ class OpObjectExtraction(Operator):
 
         super(OpObjectExtraction, self).__init__(parent)
 
-        features = list(set(config.features).union(set(self.default_features)))
+        features = list(set(config.vigra_features).union(set(self.default_features)))
 
         # internal operators
         self._opLabelImage = OpLabelImage(parent=self)

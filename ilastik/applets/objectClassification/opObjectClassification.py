@@ -216,7 +216,7 @@ class OpObjectTrain(Operator):
 
                 for key in sorted(feats[t][0].keys()):
                     value = feats[t][0][key]
-                    if not key in config.features:
+                    if not key in config.selected_features:
                         continue
                     ft = numpy.asarray(value.squeeze())
                     featsMatrix_tmp.append(ft[index])
@@ -293,7 +293,7 @@ class OpObjectPredict(Operator):
             tmpfeats = self.Features([t]).wait()
             for key in sorted(tmpfeats[t][0].keys()):
                 value = tmpfeats[t][0][key]
-                if not key in config.features:
+                if not key in config.selected_features:
                     continue
                 tmpfts = numpy.asarray(value).astype(numpy.float32)
                 _atleast_nd(tmpfts, 2)
