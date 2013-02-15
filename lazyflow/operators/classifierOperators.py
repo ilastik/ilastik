@@ -65,7 +65,7 @@ class OpTrainRandomForest(Operator):
             req = pool.request(partial(train_and_store, i))
 
         pool.wait()
-        self.outputs["Classifier"].setDirty((slice(0,1,None),))
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -201,7 +201,6 @@ class OpTrainRandomForestBlocked(Operator):
             finally:
                 self.progressSignal(100)
 
-        self.outputs["Classifier"].setDirty((slice(0,1,None),))
         return result
 
     def propagateDirty(self, slot, subindex, roi):
