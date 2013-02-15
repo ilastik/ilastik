@@ -19,10 +19,10 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpShapeRea
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 
+from ilastik.applets.objectExtraction import config
+
 # Right now we only support having two types of objects.
 _MAXLABELS = 2
-
-WHITELIST_FEATS = ['Count']
 
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
@@ -216,7 +216,7 @@ class OpObjectTrain(Operator):
 
                 for key in sorted(feats[t][0].keys()):
                     value = feats[t][0][key]
-                    if not key in WHITELIST_FEATS:
+                    if not key in config.features:
                         continue
                     ft = numpy.asarray(value.squeeze())
                     featsMatrix_tmp.append(ft[index])
@@ -293,7 +293,7 @@ class OpObjectPredict(Operator):
             tmpfeats = self.Features([t]).wait()
             for key in sorted(tmpfeats[t][0].keys()):
                 value = tmpfeats[t][0][key]
-                if not key in WHITELIST_FEATS:
+                if not key in config.features:
                     continue
                 tmpfts = numpy.asarray(value).astype(numpy.float32)
                 _atleast_nd(tmpfts, 2)

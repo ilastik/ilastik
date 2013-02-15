@@ -7,6 +7,8 @@ from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 import lazyflow.request
 
+from ilastik.applets.objectExtraction import config
+
 class OpLabelImage(Operator):
     name = "Label Image Accessor"
     BinaryImage = InputSlot()
@@ -32,7 +34,7 @@ class OpLabelImage(Operator):
         self._lock = lazyflow.request.RequestLock()
 
         # whether to use in-memory compressed hdf5 or a numpy array
-        self.compressed = False
+        self.compressed = config.compress_labels
 
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
@@ -233,8 +235,8 @@ class OpObjectExtraction(Operator):
     RegionCenters = OutputSlot(stype=Opaque, rtype=List)
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
+    # these features are needed by classification applet.
     default_features = [
-        'Count',
         'RegionCenter',
         'Coord<ArgMaxWeight>',
         'Coord<Minimum>',
@@ -245,9 +247,11 @@ class OpObjectExtraction(Operator):
 
         super(OpObjectExtraction, self).__init__(parent)
 
+        features = list(set(config.features).union(set(self.default_features)))
+
         # internal operators
         self._opLabelImage = OpLabelImage(parent=self)
-        self._opRegFeats = OpRegionFeatures(features=self.default_features, parent=self)
+        self._opRegFeats = OpRegionFeatures(features=features, parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
 
         # connect internal operators
