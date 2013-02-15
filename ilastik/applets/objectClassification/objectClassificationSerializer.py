@@ -4,6 +4,11 @@ from ilastik.applets.base.appletSerializer import \
 
 
 class ObjectClassificationSerializer(AppletSerializer):
+    # FIXME: predictions can only be saved, not loaded, because it
+    # would call setValue() on a connected slot
+
+    # FIXME: saving always pulls predictions, even if they have not
+    # yet been requested by the user.
     def __init__(self, topGroupName, operator):
         serialSlots = [SerialDictSlot(operator.LabelInputs, transform=int),
                        SerialClassifierSlot(operator.Classifier,
