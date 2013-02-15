@@ -82,7 +82,6 @@ class OpLabelImage(Operator):
                             dest = self._labeled_image
                         dest[t,...,c] = f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
-                self.LabelImage.setDirty(t)
 
     def execute(self, slot, subindex, roi, destination):
         with self._lock:
@@ -105,6 +104,7 @@ class OpLabelImage(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
+            # FIXME: set everything dirty in that time slice
             self.LabelImage.setDirty(roi)
             start, stop = roi.start[0], roi.stop[0]
             for t in range(start, stop):
@@ -171,7 +171,6 @@ class OpRegionFeatures(Operator):
                     assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     labels = labels[0,...,0] # assumes t,x,y,z,c
                     feats_at.append(self.extract(image, labels))
-                    self.Output.setDirty(())
                 self._cache[t] = feats_at
             feats[t] = feats_at
         return feats

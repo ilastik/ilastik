@@ -248,7 +248,6 @@ class OpObjectTrain(Operator):
                 raise
 
         slcs = (slice(0, self.ForestCount.value, None),)
-        self.outputs["Classifier"].setDirty(slcs)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
