@@ -34,7 +34,8 @@ except:
     from opObjectFeatures import OpObjectFeatures
     from adaptors import Op5ifyer
     from opCompressedCache import OpCompressedCache
-    from opLabelImage import OpLabelImage, OpCachedLabelImage
+    from opLabelImage import OpLabelImage
+    from opCachedLabelImage import OpCachedLabelImage
 
     ops = list(itersubclasses(Operator))
     '''

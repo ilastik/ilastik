@@ -4,7 +4,7 @@ import vigra
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpVigraLabelVolume, OpCompressedCache, OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.operators import OpVigraLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker
 
 class OpLabelImage(Operator):
     """
@@ -21,7 +21,7 @@ class OpLabelImage(Operator):
     # 
     # BackgroundLabels -> opBgTimeSlicer -> opBgChannelSlicer --
     #                                                           \
-    # Input -> opTimeSlicer -> opChannelSlicer ----------------> opLabelers -> opChannelStacker -> opTimeStacker -> Output
+    # Input ------------> opTimeSlicer ---> opChannelSlicer -----> opLabelers -> opChannelStacker -> opTimeStacker -> Output
 
     def __init__(self, *args, **kwargs):
         """
@@ -117,10 +117,11 @@ class OpLabelImage(Operator):
             # Turn this list into an array with axistags='tc' that can be sliced by time and channel,
             #  just like the input data
             bgLabelList = self.BackgroundLabels.value
-            assert len(bgLabelList) == taggedShape['c'], "If background labels are provided, there must be one for each input channel"
+            assert len(bgLabelList) == taggedShape['c'], \
+                "If background labels are provided, there must be one for each input channel"
             bgLabelVolume = numpy.ndarray( shape=(taggedShape['t'], taggedShape['c']), dtype=numpy.uint32 )
             
-            # Duplicate the bg label list for all times
+            # Duplicate the bg label list for all time slices
             bgLabelVolume[...] = bgLabelList
             bgLabelVolume = bgLabelVolume.view( vigra.VigraArray )
             bgLabelVolume.axistags = vigra.defaultAxistags('tc')
@@ -133,93 +134,6 @@ class OpLabelImage(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         pass # Nothing to do...
-
-
-
-class OpCachedLabelImage(Operator):
-    """
-    Combines OpLabelImage with a compressed cache.
-    """
-    Input = InputSlot()
-
-    BackgroundLabels = InputSlot(optional=True) # Optional. See OpLabelImage for details.
-    BlockShape = InputSlot(optional=True)   # If not provided, blockshape is 1 time slice, 1 channel slice, 
-                                            #  and the entire volume in xyz.
-
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpCachedLabelImage, self).__init__(*args, **kwargs)
-        
-        # Hook up the labeler
-        self._opLabelImage = OpLabelImage( parent=self )
-        self._opLabelImage.Input.connect( self.Input )
-        self._opLabelImage.BackgroundLabels.connect( self.BackgroundLabels )
-
-        # Hook up the cache
-        self._opCache = OpCompressedCache( parent=self )
-        self._opCache.Input.connect( self._opLabelImage.Output )
-        
-        # Hook up our output slot
-        self.Output.connect( self._opCache.Output )
-    
-    def setupOutputs(self):
-        if self.BlockShape.ready():
-            self._opCache.BlockShape.setValue( self.BlockShape.value )
-        else:
-            # By default, block shape is the same as the entire image shape,
-            #  but only 1 time slice and 1 channel slice
-            taggedBlockShape = self.Input.meta.getTaggedShape()
-            taggedBlockShape['t'] = 1
-            taggedBlockShape['c'] = 1
-            self._opCache.BlockShape.setValue( tuple( taggedBlockShape.values() ) )
-
-    def execute(self, slot, subindex, roi, destination):
-        assert False, "Shouldn't get here."
-    
-    def propagateDirty(self, slot, subindex, roi):
-        pass # Nothing to do...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
