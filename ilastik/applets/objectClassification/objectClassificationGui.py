@@ -131,8 +131,10 @@ class ObjectClassificationGui(LabelingGui):
         rawSlot = self.op.RawImages
 
         if binarySlot.ready():
+            ct_binary = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
             self.binaryimagesrc = LazyflowSource(binarySlot)
-            layer = GrayscaleLayer(self.binaryimagesrc, range=(0,1), normalize=(0,1))
+            #layer = GrayscaleLayer(self.binaryimagesrc, range=(0,1), normalize=(0,1))
+            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
             layer.name = "Binary Image"
             layers.append(layer)
 
