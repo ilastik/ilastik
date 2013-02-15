@@ -226,7 +226,7 @@ class OpCompressedCache(Operator):
     def _closeAllCacheFiles(self):
         logger.debug( "Closing all caches" )
         with self._lock:
-            for k,v in self._cacheFiles:
+            for k,v in self._cacheFiles.items():
                 with self._blockLocks[k]:
                     v.close()
             self._blockLocks = {}
