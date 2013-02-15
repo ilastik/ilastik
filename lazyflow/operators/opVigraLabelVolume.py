@@ -37,18 +37,30 @@ class OpVigraLabelVolume(Operator):
         assert slot == self.Output
         
         inputData = self.Input(roi.start, roi.stop).wait()
-        inputData = inputData.astype(numpy.uint8) # vigra.labelVolume insists on a uint8 dtype
         inputData = inputData.view(vigra.VigraArray)
         inputData.axistags = self.Input.meta.axistags
 
         # Drop the time axis, which vigra.labelVolume doesn't remove automatically
-        # (Channel axis is auto-removed.)
         axiskeys = [tag.key for tag in inputData.axistags]        
         if 't' in axiskeys:
             inputData = inputData.bindAxis('t', 0)
 
+        # Drop the channel axis, too.
+        if 'c' in axiskeys:
+            inputData = inputData.bindAxis('c', 0)
+
+        inputData = inputData.view(numpy.ndarray)
+
         if self.BackgroundValue.ready():
             bg = self.BackgroundValue.value
+            if isinstance( bg, numpy.ndarray ):
+                # If background value was given as a 1-element array, extract it.
+                assert bg.size == 1
+                bg = bg.squeeze()[()]
+            if isinstance( bg, numpy.float ):
+                bg = float(bg)
+            else:
+                bg = int(bg)
             result =  vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg).view(numpy.ndarray)
         else:
             result =  vigra.analysis.labelVolumeWithBackground(inputData).view(numpy.ndarray)
