@@ -214,12 +214,13 @@ class OpObjectTrain(Operator):
                 index = numpy.nonzero(lab)
                 labelsMatrix_tmp.append(lab[index])
 
-                for key in sorted(feats[t][0].keys()):
-                    value = feats[t][0][key]
-                    if not key in config.selected_features:
-                        continue
-                    ft = numpy.asarray(value.squeeze())
-                    featsMatrix_tmp.append(ft[index])
+                for channel in sorted(feats[t]):
+                    for featname in sorted(channel.keys()):
+                        value = channel[featname]
+                        if not featname in config.selected_features:
+                            continue
+                        ft = numpy.asarray(value.squeeze())
+                        featsMatrix_tmp.append(ft[index])
 
                 featMatrix.append(_concatenate(featsMatrix_tmp, axis=1))
                 labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
@@ -291,13 +292,14 @@ class OpObjectPredict(Operator):
 
             ftsMatrix = []
             tmpfeats = self.Features([t]).wait()
-            for key in sorted(tmpfeats[t][0].keys()):
-                value = tmpfeats[t][0][key]
-                if not key in config.selected_features:
-                    continue
-                tmpfts = numpy.asarray(value).astype(numpy.float32)
-                _atleast_nd(tmpfts, 2)
-                ftsMatrix.append(tmpfts)
+            for channel in sorted(tmpfeats[t]):
+                for featname in sorted(channel.keys()):
+                    value = channel[featname]
+                    if not featname in config.selected_features:
+                        continue
+                    tmpfts = numpy.asarray(value).astype(numpy.float32)
+                    _atleast_nd(tmpfts, 2)
+                    ftsMatrix.append(tmpfts)
 
             feats[t] = _concatenate(ftsMatrix, axis=1)
             predictions[t]  = [0] * len(forests)
