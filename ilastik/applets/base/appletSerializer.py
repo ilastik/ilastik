@@ -332,19 +332,22 @@ class SerialBlockSlot(SerialSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cacheslot, **kwargs):
+    def __init__(self, slot, cache, **kwargs):
         super(SerialClassifierSlot, self).__init__(slot, **kwargs)
-        self.cacheslot = cacheslot
+        self.cache = cache
         if self.name is None:
             self.name = slot.name
         if self.subname is None:
             self.subname = "Forest{:04d}"
 
     def unload(self):
-        self.cacheslot.Input.setDirty(slice(None))
+        self.cache.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
-        classifier_forests = slot[()].wait()
+        if self.cache._dirty:
+            return
+
+        classifier_forests = self.cache._value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:
@@ -400,7 +403,7 @@ class SerialClassifierSlot(SerialSlot):
         # consistent with the images and labels that we just
         # loaded. As soon as training input changes, it will be
         # retrained.)
-        self.cacheslot.forceValue(numpy.array(forests))
+        self.cache.forceValue(numpy.array(forests))
 
 
 class SerialDictSlot(SerialSlot):
