@@ -7,6 +7,7 @@ import tempfile
 import vigra
 import h5py
 import numpy
+import warnings
 
 #######################
 # Convenience methods #
@@ -175,7 +176,10 @@ class SerialSlot(object):
 
         """
         if slot.level == 0:
-            self._saveValue(group, name, slot.value)
+            try:
+                self._saveValue(group, name, slot.value)
+            except:
+                self._saveValue(group, name, slot(()).wait())
         else:
             subgroup = group.create_group(name)
             for i, subslot in enumerate(slot):
@@ -429,7 +433,10 @@ class SerialDictSlot(SerialSlot):
         result = {}
         for key in subgroup.keys():
             result[self.transform(key)] = subgroup[key][()]
-        slot.setValue(result)
+        try:
+            slot.setValue(result)
+        except AssertionError as e:
+            warnings.warn('setValue() failed. message: {}'.format(e.message))
 
 
 ####################################
