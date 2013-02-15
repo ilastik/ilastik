@@ -284,6 +284,9 @@ class OpObjectPredict(Operator):
 
         if forests is None:
             # this happens if there was no data to train with
+
+            # FIXME: this is incorrect. roi is not SubRegion, and we
+            # return a dictionary of predictions.
             return numpy.zeros(numpy.subtract(roi.stop, roi.start),
                                dtype=numpy.float32)[...]
         feats = {}
