@@ -31,6 +31,9 @@ class OpLabelImage(Operator):
         self._processedTimeSteps = set()
         self._lock = lazyflow.request.RequestLock()
 
+        # whether to use in-memory compressed hdf5 or a numpy array
+        self.compressed = False
+
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
         self.LabelImage.meta.dtype = numpy.uint32
@@ -42,6 +45,7 @@ class OpLabelImage(Operator):
                                     dtype=numpy.uint32, compression=1,
                                     chunks=True,
                                     )
+        self._labeled_image = numpy.empty(shape, dtype=numpy.uint32)
 
     def cleanUp(self):
         self._mem_h5.close()
@@ -66,8 +70,11 @@ class OpLabelImage(Operator):
                         backgroundLabel = self.defaultBackground
                     if backgroundLabel != -1:
                         f = vigra.analysis.labelVolumeWithBackground
-                        self._mem_h5['LabelImage'][t,...,c] = \
-                            f(a, background_value=backgroundLabel)
+                        if self.compressed:
+                            dest = self._mem_h5['LabelImage']
+                        else:
+                            dest = self._labeled_image
+                        dest[t,...,c] = f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
 
     def execute(self, slot, subindex, roi, destination):
@@ -83,7 +90,11 @@ class OpLabelImage(Operator):
                     dslc = slice(t - start, t - start + 1)
                     if t not in self._processedTimeSteps:
                         self._computeLabelImage(roi, destination)
-                    destination[dslc] = self._mem_h5['LabelImage'][slc]
+                    if self.compressed:
+                        src = self._mem_h5['LabelImage']
+                    else:
+                        src = self._labeled_image
+                    destination[dslc] = src[slc]
                 return destination
 
     def propagateDirty(self, slot, subindex, roi):

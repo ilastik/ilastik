@@ -13,12 +13,18 @@ class SerialLabelImageSlot(SerialSlot):
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
         for i, op in enumerate(mainOperator.innerOperators):
-            src = op._opLabelImage._mem_h5
-            ts = op._opLabelImage._processedTimeSteps
+            oplabel = op._opLabelImage
+            ts = oplabel._processedTimeSteps
             if len(ts) > 0:
                 subgroup = getOrCreateGroup(group, str(i))
-                subgroup.copy(src['/LabelImage'], subgroup, name='data')
                 subgroup.create_dataset(name='timesteps', data=list(ts))
+
+                if oplabel.compressed:
+                    src = oplabel._mem_h5
+                    subgroup.copy(src['/LabelImage'], subgroup, name='data')
+                else:
+                    src = oplabel._labeled_image
+                    subgroup.create_dataset(name='data', data=src)
         self.dirty = False
 
     def deserialize(self, group):
@@ -29,13 +35,18 @@ class SerialLabelImageSlot(SerialSlot):
         opgroup = group[self.name]
         for inner in opgroup.keys():
             mygroup = opgroup[inner]
-            op = innerops[int(inner)]
-            dest = op._opLabelImage._mem_h5
-            del dest['LabelImage']
-            dest.copy(mygroup['data'], dest, name='LabelImage')
+            oplabel = innerops[int(inner)]._opLabelImage
             ts = set(numpy.array(mygroup['timesteps'][:]).flat)
-            op._opLabelImage._processedTimeSteps = ts
-            op._opLabelImage._fixed = False
+            oplabel._processedTimeSteps = ts
+            oplabel._fixed = False
+
+            if oplabel.compressed:
+                dest = oplabel._mem_h5
+                del dest['LabelImage']
+                dest.copy(mygroup['data'], dest, name='LabelImage')
+            else:
+                oplabel._labeled_image[:] = mygroup['data'][:]
+
         self.dirty = False
 
 
