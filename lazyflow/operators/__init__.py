@@ -18,14 +18,6 @@ except:
     import valueProviders
     import operators
     
-    from opVigraWatershed import OpVigraWatershed
-    from opVigraLabelVolume import OpVigraLabelVolume
-    from opFilterLabels import OpFilterLabels
-    from opColorizeLabels import OpColorizeLabels
-    from opObjectFeatures import OpObjectFeatures
-    from adaptors import Op5ifyer
-    from opCompressedCache import OpCompressedCache
-
     ops = itersubclasses(Operator)
     logger.debug("Loading default Operators...")
     loaded = ""
@@ -34,6 +26,15 @@ except:
         globals()[o.__name__] = o
     loaded += os.linesep
     logger.debug(loaded)
+
+    from opVigraWatershed import OpVigraWatershed
+    from opVigraLabelVolume import OpVigraLabelVolume
+    from opFilterLabels import OpFilterLabels
+    from opColorizeLabels import OpColorizeLabels
+    from opObjectFeatures import OpObjectFeatures
+    from adaptors import Op5ifyer
+    from opCompressedCache import OpCompressedCache
+    from opCachedLabelImage import OpCachedLabelImage
 
     ops = list(itersubclasses(Operator))
     '''
