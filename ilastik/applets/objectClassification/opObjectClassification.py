@@ -22,21 +22,7 @@ from ilastik.utility.mode import mode
 # Right now we only support having two types of objects.
 _MAXLABELS = 2
 
-# Features that are uninformative for classification purposes, but
-# calculated for other reasons.
-BLACKLIST_FEATS = ['RegionCenter',
-                 'Coord<Minimum>',
-                 'Coord<Maximum>',
-                 'Coord<PowerSum<1>>',
-                 'Coord<ArgMaxWeight>',
-                 # FIXME: duplicate features with space before '>'
-                 'Coord<Minimum >',
-                 'Coord<Maximum >',
-                 'Coord<PowerSum<1> >',
-                 'Coord<ArgMaxWeight >',
-]
-
-WHITELIST_FEATS = ['Mean', 'Variance']
+WHITELIST_FEATS = ['Count']
 
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
@@ -221,14 +207,15 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            for t in feats:
+            for t in sorted(feats.keys()):
                 featsMatrix_tmp = []
                 labelsMatrix_tmp = []
                 lab = labels[t].squeeze()
                 index = numpy.nonzero(lab)
                 labelsMatrix_tmp.append(lab[index])
 
-                for key, value in feats[t][0].iteritems():
+                for key in sorted(feats[t][0].keys()):
+                    value = feats[t][0][key]
                     if not key in WHITELIST_FEATS:
                         continue
                     ft = numpy.asarray(value.squeeze())
@@ -303,7 +290,9 @@ class OpObjectPredict(Operator):
                 continue
 
             ftsMatrix = []
-            for key, value in self.Features([t]).wait()[t][0].iteritems():
+            tmpfeats = self.Features([t]).wait()
+            for key in sorted(tmpfeats[t][0].keys()):
+                value = tmpfeats[t][0][key]
                 if not key in WHITELIST_FEATS:
                     continue
                 tmpfts = numpy.asarray(value).astype(numpy.float32)
