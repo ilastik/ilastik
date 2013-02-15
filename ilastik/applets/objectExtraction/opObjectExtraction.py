@@ -78,9 +78,9 @@ class OpLabelImage(Operator):
                             dest = self._labeled_image
                         dest[t,...,c] = f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
+                self.LabelImage.setDirty(t)
 
     def execute(self, slot, subindex, roi, destination):
-        assert slot == self.LabelImage, "Unknown output slot {}".format(slot.name)
         with self._lock:
             if slot is self.LabelImageComputation:
                 self._computeLabelImage(roi, destination)
@@ -144,6 +144,7 @@ class OpRegionFeatures(Operator):
             roi = range(self.LabelImage.meta.shape[0])
         for t in roi:
             if t in self._cache:
+                # FIXME: if features have changed, they may not be in the cache.
                 feats_at = self._cache[t]
             elif self.fixed:
                 feats_at = dict((f, numpy.asarray([[]])) for f in self.features)
@@ -166,6 +167,7 @@ class OpRegionFeatures(Operator):
                     assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     labels = labels[0,...,0] # assumes t,x,y,z,c
                     feats_at.append(self.extract(image, labels))
+                    self.Output.setDirty(())
                 self._cache[t] = feats_at
             feats[t] = feats_at
         return feats
