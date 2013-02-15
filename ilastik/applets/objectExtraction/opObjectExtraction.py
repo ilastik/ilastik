@@ -238,7 +238,6 @@ class OpObjectExtraction(Operator):
     # these features are needed by classification applet.
     default_features = [
         'RegionCenter',
-        'Coord<ArgMaxWeight>',
         'Coord<Minimum>',
         'Coord<Maximum>',
     ]
