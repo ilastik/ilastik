@@ -22,11 +22,11 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
         red   = QColor(255,0,0)
         green = QColor(0,255,0)
         blue  = QColor(0,0,255)
-        model = LabelListModel([Label("Label 1", red), Label("Label 2", green), Label("Label 3", blue)])
-        
+        model = LabelListModel([Label("Label 1", red),
+                                Label("Label 2", green),
+                                Label("Label 3", blue)])
         a=LabelListView(parent)
         a.setModel(model)
-        
         return a
     
     def name(self):
