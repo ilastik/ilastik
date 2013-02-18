@@ -74,6 +74,13 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.setEnabled(True)
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(self.handleShowPredictionsClicked)
 
+        self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
+        self.labelingDrawerUi.savePredictionsButton.setVisible(False)
+
+        self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
+        self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
+
+
         self.op.NumLabels.notifyDirty(bind(self.handleLabelSelectionChange))
 
     def initAppletDrawerUi(self):
@@ -168,7 +175,6 @@ class ObjectClassificationGui(LabelingGui):
             enabled = True
             enabled &= self.op.NumLabels.value >= 2
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
 
@@ -181,7 +187,6 @@ class ObjectClassificationGui(LabelingGui):
         #     mexBox.exec_()
         #     return
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.op.FreezePredictions.setValue(not checked)
 
         # Auto-set the "show predictions" state according to what the
