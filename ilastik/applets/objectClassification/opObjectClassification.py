@@ -226,26 +226,27 @@ class OpObjectTrain(Operator):
                 featMatrix.append(_concatenate(featsMatrix_tmp, axis=1))
                 labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
 
+        featMatrix = _concatenate(featMatrix, axis=0)
+        labelsMatrix = _concatenate(labelsMatrix, axis=0)
+
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
-        else:
-            featMatrix = _concatenate(featMatrix, axis=0)
-            labelsMatrix = _concatenate(labelsMatrix, axis=0)
+            return
 
-            try:
-                # train and store forests in parallel
-                pool = Pool()
-                for i in range(self.ForestCount.value):
-                    def train_and_store(number):
-                        result[number] = vigra.learning.RandomForest(self._tree_count)
-                        result[number].learnRF(featMatrix.astype(numpy.float32),
-                                               labelsMatrix.astype(numpy.uint32))
-                    req = pool.request(partial(train_and_store, i))
-                pool.wait()
-                pool.clean()
-            except:
-                print ("couldn't learn classifier")
-                raise
+        try:
+            # train and store forests in parallel
+            pool = Pool()
+            for i in range(self.ForestCount.value):
+                def train_and_store(number):
+                    result[number] = vigra.learning.RandomForest(self._tree_count)
+                    result[number].learnRF(featMatrix.astype(numpy.float32),
+                                           labelsMatrix.astype(numpy.uint32))
+                req = pool.request(partial(train_and_store, i))
+            pool.wait()
+            pool.clean()
+        except:
+            print ("couldn't learn classifier")
+            raise
 
         slcs = (slice(0, self.ForestCount.value, None),)
         return result
@@ -280,20 +281,15 @@ class OpObjectPredict(Operator):
         self.cache = dict()
 
     def execute(self, slot, subindex, roi, result):
-        forests=self.inputs["Classifier"][:].wait()
-
-        if forests is None:
-            # this happens if there was no data to train with
-
-            # FIXME: this is incorrect. roi is not SubRegion, and we
-            # return a dictionary of predictions.
-            return numpy.zeros(numpy.subtract(roi.stop, roi.start),
-                               dtype=numpy.float32)[...]
-
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
             times = range(self.Predictions.meta.shape[0])
+
+        forests=self.inputs["Classifier"][:].wait()
+        if forests is None or forests[0] is None:
+            # this happens if there was no data to train with
+            return dict((t, numpy.array([])) for t in times)
 
         feats = {}
         predictions = {}
