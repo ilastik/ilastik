@@ -106,7 +106,6 @@ class OpLabelImage(Operator):
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
             start, stop = roi.start[0], roi.stop[0]
             self.LabelImage.setDirty(slice(start, stop))
-            print 'set label image dirty from {} to {}'.format(start, stop)
             for t in range(start, stop):
                 try:
                     self._processedTimeSteps.remove(t)
