@@ -259,6 +259,7 @@ class OpValueCache(Operator):
         # If we made the request, set the members
         if state == State.Dirty:
             with self._lock:
+                self.Output._sig_value_changed()
                 self._value = value
                 self._request = None
                 self._dirty = False

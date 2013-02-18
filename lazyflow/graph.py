@@ -261,6 +261,7 @@ class Slot(object):
         self.nonlane = nonlane
 
         self._sig_changed = OrderedSignal()
+        self._sig_value_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
         self._sig_unready = OrderedSignal()
         self._sig_dirty = OrderedSignal()
@@ -305,6 +306,13 @@ class Slot(object):
         """
 
         self._sig_changed.subscribe(function, **kwargs)
+
+    def notifyValueChanged(self, function, **kwargs):
+        """Used by slots with cached values to notify when the cache
+        has changed, even if the output is not dirty.
+
+        """
+        self._sig_value_changed.subscribe(function, **kwargs)
 
     def notifyReady(self, function, **kwargs):
         """Calls the corresponding function when the slot is "ready",
@@ -421,6 +429,13 @@ class Slot(object):
         unregister a changed callback
         """
         self._sig_changed.unsubscribe(function)
+
+    def unregisterValueChanged(self, function):
+        """
+        unregister a value changed callback
+        """
+        self._sig_value_changed.unsubscribe(function)
+
 
     def unregisterReady(self, function):
         """
