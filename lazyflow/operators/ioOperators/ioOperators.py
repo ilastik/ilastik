@@ -7,13 +7,14 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+
 class OpH5Writer(Operator):
     name = "H5 File Writer"
     category = "Output"
 
-    inputSlots = [InputSlot("filename", stype = "filestring"), \
-                  InputSlot("hdf5Path", stype = "string"), InputSlot("input"),\
-                  InputSlot("blockShape"),InputSlot("dataType"),InputSlot("roi"),\
+    inputSlots = [InputSlot("filename", stype = "filestring"),
+                  InputSlot("hdf5Path", stype = "string"), InputSlot("input"),
+                  InputSlot("blockShape"),InputSlot("dataType"),InputSlot("roi"),
                   InputSlot("normalize")]
 
     outputSlots = [OutputSlot("WriteImage")]
@@ -22,15 +23,14 @@ class OpH5Writer(Operator):
         self.outputs["WriteImage"].meta.shape = (1,)
         self.outputs["WriteImage"].meta.dtype = object
 
-
     def execute(self, slot, subindex, roi, result):
-
         inputRoi = self.inputs["roi"].value
         key = roiToSlice(inputRoi[0], inputRoi[1])
         filename = self.inputs["filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
         imSlot = self.inputs["input"]
-        image = numpy.ndarray(imSlot.meta.shape, dtype=self.inputs["dataType"].value)[key]
+        image = numpy.ndarray(imSlot.meta.shape,
+                              dtype=self.inputs["dataType"].value)[key]
 
         #create H5File and DataSet
         f = h5py.File(filename, 'w')
@@ -43,7 +43,7 @@ class OpH5Writer(Operator):
                 g = g.create_group(s)
             d = g.create_dataset(pathElements[-1],data = image)
         except:
-            print '*************String %s is not a valid hdf5 path, path set to default************' %(hdf5Path)
+            print 'String {} is not a valid hdf5 path, path set to default'.format(hdf5Path)
             hdf5Path = 'volume/data'
             pathElements = hdf5Path.split("/")
             for s in pathElements[:-1]:
@@ -52,35 +52,45 @@ class OpH5Writer(Operator):
 
         #get, respectively set the blockshape as a tuple
         bs = self.inputs["blockShape"].value
-        if type(bs) != tuple:
-            assert(type(bs) == int)
-            bs = (bs,)*len(image.shape)
+        if not isinstance(bs, tuple):
+            assert isinstance(bs, int)
+            bs = (bs,) * len(image.shape)
 
         #calculate the number of blocks
         nBlockShape = numpy.array(bs)
         nshape = numpy.array(image.shape)
-        blocks = numpy.ceil(nshape*1.0 / nBlockShape).astype(numpy.int32)
+        blocks = numpy.ceil(nshape * 1.0 / nBlockShape).astype(numpy.int32)
         blockIndices = numpy.nonzero(numpy.ones(blocks))
 
         #calculate normalization
-        max0, min0 = numpy.max(self.inputs["input"].value), numpy.min(self.inputs["input"].value)
-        max1, min1 = self.inputs["normalize"].value[1],self.inputs["normalize"].value[0]
+        invalue = self.inputs['input'].value
+        normvalue = self.inputs['normalize'].value
+        data_max, data_min = numpy.max(invalue), numpy.min(invalue)
 
-        #check normalization limits positive? ordered?
-        assert type(max1) == int and type(min1) == int, 'Normalization constants are not integer!'
+        if normvalue == -1:
+            normalize = lambda value: value
+        else:
+            norm_max, norm_min = normvalue
 
-        if max1 < 0 or min1 < 0 or max1 < min1:
-            max1,min1 = sorted([abs(max1),abs(min1)])
-            print '*************WARNING: Normalization limits arent positvive or ordered**********'
+            #check normalization limits positive? ordered?
+            if not (isinstance(norm_max, int) and isinstance(norm_min, int)):
+                raise Exception('Normalization constants are not integers!')
 
-        #normalization function
-        def normalize(value):
-            return 1.0*(value - min0)*(max1-min1)/(max0-min0)+min1
+            if norm_max < 0 or norm_min < 0 or norm_max < norm_min:
+                norm_max,norm_min = sorted([abs(norm_max),abs(norm_min)])
+                print 'WARNING: Normalization limits arent positive or ordered'
 
-        #check combination normalization limits with datatype
-        if abs(max1)-abs(min1) <= 255 and (self.inputs["dataType"].value == 'uint8' or self.inputs["dataType"].value == 'uint16'):
-            print '*************WARNING: Normalization is not appropriate for dataType************'
+            #check combination normalization limits with datatype
+            if (abs(norm_max) - abs(norm_min) <= 255 and
+                (self.inputs["dataType"].value == 'uint8' or
+                 self.inputs["dataType"].value == 'uint16')):
+                print 'WARNING: Normalization is not appropriate for dataType'
 
+            #normalization function
+            def normalize (value):
+                num = 1.0 * (value - data_min) * (norm_max - norm_min)
+                denom = (data_max - data_min)
+                return num / denom + norm_min
 
         #define write function
         def writeResult(result, blockNr, roiSlice):
@@ -89,7 +99,7 @@ class OpH5Writer(Operator):
 
         requests = []
 
-        #iter trough blocks and generate requests
+        #iter through blocks and generate requests
         for bnr in range(len(blockIndices[0])):
             indices = [blockIndices[0][bnr]*nBlockShape[0],]
             for i in range(1,len(nshape)):
@@ -104,34 +114,43 @@ class OpH5Writer(Operator):
             req.notify(writeResult, blockNr = bnr, roiSlice=s)
             print "Added callback"
             requests.append(req)
+
         #execute requests
         for req in requests:
             req.wait()
 
         f.close()
-
         result[0] = True
-        
+
     def propagateDirty(self, slot, subindex, roi):
-        # The output from this operator isn't generally connected to other operators.
-        # If someone is using it that way, we'll assume that the user wants to know that 
-        #  the input image has become dirty and may need to be written to disk again.
+        # The output from this operator isn't generally connected to
+        # other operators. If someone is using it that way, we'll
+        # assume that the user wants to know that the input image has
+        # become dirty and may need to be written to disk again.
         self.WriteImage.setDirty(slice(None))
 
+
 class OpStackLoader(Operator):
-    """
-    Imports an image stack.
-    Note: This operator does NOT cache the images, so direct access via the execute() 
-          function is very inefficient, especially through the Z-axis.
-          Typically, you'll want to connect this operator to a cache whose block size is large in the X-Y plane.
-    
-    Input:
-    globstring - A glob string as defined by the glob module.
-                 We also support the following special extension to globstring syntax:
-                 A single string can hold a *list* of globstrings.
-                     Each separate globstring in the list is separated by two forward slashes (//).
-                     For, example, '/a/b/c.txt///d/e/f.txt//../g/i/h.txt' is parsed as:
-                     ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
+    """Imports an image stack.
+
+    Note: This operator does NOT cache the images, so direct access
+          via the execute() function is very inefficient, especially
+          through the Z-axis. Typically, you'll want to connect this
+          operator to a cache whose block size is large in the X-Y
+          plane.
+
+    :param globstring: A glob string as defined by the glob module. We
+        also support the following special extension to globstring
+        syntax: A single string can hold a *list* of globstrings. Each
+        separate globstring in the list is separated by two forward
+        slashes (//). For, example,
+
+            '/a/b/c.txt///d/e/f.txt//../g/i/h.txt'
+
+        is parsed as
+
+            ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
+
     """
     name = "Image Stack Reader"
     category = "Input"
@@ -148,7 +167,7 @@ class OpStackLoader(Operator):
     def setupOutputs(self):
         self.fileNameList = []
         globStrings = self.inputs["globstring"].value
-        
+
         # Parse list into separate globstrings and combine them
         for globString in sorted(globStrings.split("//")):
             self.fileNameList += sorted(glob.glob(globString))
@@ -158,13 +177,16 @@ class OpStackLoader(Operator):
                 self.info = vigra.impex.ImageInfo(self.fileNameList[0])
             except RuntimeError:
                 raise OpStackLoader.FileOpenError(self.fileNameList[0])
-            
+
             oslot = self.outputs["stack"]
 
             #build 4D shape out of 2DShape and Filelist: xyzc
-            oslot.meta.shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
+            oslot.meta.shape = (self.info.getShape()[0],
+                                self.info.getShape()[1],
+                                len(self.fileNameList),
+                                self.info.getShape()[2])
             oslot.meta.dtype = self.info.getDtype()
-            zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
+            zAxisInfo = vigra.AxisInfo(key='z', typeFlags=vigra.AxisType.Space)
             oslot.meta.axistags = self.info.getAxisTags()
             oslot.meta.axistags.insert(2,zAxisInfo)
 
@@ -178,7 +200,6 @@ class OpStackLoader(Operator):
         assert slot == self.globstring
         # Any change to the globstring means our entire output is dirty.
         self.stack.setDirty(slice(None))
-
 
     def execute(self, slot, subindex, roi, result):
         i=0
@@ -197,8 +218,8 @@ class OpStackWriter(Operator):
     name = "Stack File Writer"
     category = "Output"
 
-    inputSlots = [InputSlot("filepath", stype = "string"), \
-                  InputSlot("dummy", stype = "list"), \
+    inputSlots = [InputSlot("filepath", stype = "string"),
+                  InputSlot("dummy", stype = "list"),
                   InputSlot("input")]
     outputSlots = [OutputSlot("WritePNGStack")]
 
@@ -225,31 +246,39 @@ class OpStackWriter(Operator):
             for i in range(image.shape[2]):
                 for j in range(image.shape[3]):
                     for k in range(image.shape[4]):
-                        vigra.impex.writeImage(image[:,:,i,j,k],filepath+"-xt-y_%04d_z_%04d_c_%04d." % (i,j,k)+filetype)
+                        vigra.impex.writeImage(image[:,:,i,j,k],
+                                               filepath+"-xt-y_%04d_z_%04d_c_%04d." % (i,j,k)+filetype)
         if "yz" in dummy:
             for i in range(image.shape[0]):
                 for j in range(image.shape[1]):
                     for k in range(image.shape[4]):
-                        vigra.impex.writeImage(image[i,j,:,:,k],filepath+"-yz-t_%04d_x_%04d_c_%04d." % (i,j,k)+filetype)
+                        vigra.impex.writeImage(image[i,j,:,:,k],
+                                               filepath+"-yz-t_%04d_x_%04d_c_%04d." % (i,j,k)+filetype)
         if "yt" in dummy:
             for i in range(image.shape[1]):
                 for j in range(image.shape[3]):
                     for k in range(image.shape[4]):
-                        vigra.impex.writeImage(image[:,i,:,j,k],filepath+"-yt-x_%04d_z_%04d_c_%04d." % (i,j,k)+filetype)
+                        vigra.impex.writeImage(image[:,i,:,j,k],
+                                               filepath+"-yt-x_%04d_z_%04d_c_%04d." % (i,j,k)+filetype)
         if "zt" in dummy:
             for i in range(image.shape[1]):
                 for j in range(image.shape[2]):
                     for k in range(image.shape[4]):
-                        vigra.impex.writeImage(image[:,i,j,:,k],filepath+"-zt-x_%04d_y_%04d_c_%04d." % (i,j,k)+filetype)
+                        vigra.impex.writeImage(image[:,i,j,:,k],
+                                               filepath+"-zt-x_%04d_y_%04d_c_%04d." % (i,j,k)+filetype)
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.WritePNGStack.setDirty(slice(None))
+
 
 class OpStackToH5Writer(Operator):
     name = "OpStackToH5Writer"
     category = "IO"
-    
+
     GlobString = InputSlot(stype='globstring')
     hdf5Group = InputSlot(stype='object')
     hdf5Path  = InputSlot(stype='string')
-    
+
     # Requesting the output induces the copy from stack to h5 file.
     WriteImage = OutputSlot(stype='bool')
 
@@ -258,11 +287,11 @@ class OpStackToH5Writer(Operator):
         self.progressSignal = OrderedSignal()
         self.opStackLoader = OpStackLoader(graph=self.graph, parent=self)
         self.opStackLoader.globstring.connect( self.GlobString )
-    
+
     def setupOutputs(self):
         self.WriteImage.meta.shape = (1,)
         self.WriteImage.meta.dtype = object
-    
+
     def propagateDirty(self, slot, subindex, roi):
         # Any change to our inputs means we're dirty
         assert slot == self.GlobString or slot == self.hdf5Group or slot == self.hdf5Path
@@ -274,7 +303,7 @@ class OpStackToH5Writer(Operator):
         zAxis = stackTags.index('z')
         dataShape=self.opStackLoader.stack.meta.shape
         numImages = self.opStackLoader.stack.meta.shape[zAxis]
-        
+
         axistags = self.opStackLoader.stack.meta.axistags
         dtype = self.opStackLoader.stack.meta.dtype
         if type(dtype) is numpy.dtype:
@@ -295,7 +324,7 @@ class OpStackToH5Writer(Operator):
         chunkDims['y'] = cubeDim
         chunkDims['z'] = cubeDim
         chunkDims['c'] = numChannels
-        
+
         # h5py guide to chunking says chunks of 300k or less "work best"
         assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
 
@@ -307,7 +336,7 @@ class OpStackToH5Writer(Operator):
 
         # Create the dataset
         internalPath = self.hdf5Path.value
-        internalPath = internalPath.replace('\\', '/') # Windows fix 
+        internalPath = internalPath.replace('\\', '/') # Windows fix
         group = self.hdf5Group.value
         if internalPath in group:
             del group[internalPath]
@@ -323,17 +352,17 @@ class OpStackToH5Writer(Operator):
         for z in range(numImages):
             # Ask for an entire z-slice (exactly one whole image from the stack)
             slicing = [slice(None)] * len(stackTags)
-            slicing[zAxis] = slice(z, z+1)            
+            slicing[zAxis] = slice(z, z+1)
             data[tuple(slicing)] = self.opStackLoader.stack[slicing].wait()
             self.progressSignal( z*100 / numImages )
-            
+
         # We're done
         result[...] = True
-        
+
         self.progressSignal(100)
-        
+
         return result
-        
+
 if __name__ == '__main__':
     from lazyflow.graph import Graph
     import h5py
@@ -342,65 +371,16 @@ if __name__ == '__main__':
     traceLogger.addHandler(logging.StreamHandler(sys.stdout))
     traceLogger.setLevel(logging.DEBUG)
     traceLogger.debug("HELLO")
-    
+
     f = h5py.File('/tmp/flyem_sample_stack.h5')
     internalPath = 'volume/data'
-        
+
     # OpStackToH5Writer
     graph = Graph()
     opStackToH5 = OpStackToH5Writer()
     opStackToH5.GlobString.setValue('/tmp/flyem_sample_stack/*.png')
     opStackToH5.hdf5Group.setValue(f)
     opStackToH5.hdf5Path.setValue(internalPath)
-    
+
     success = opStackToH5.WriteImage.value
     assert success
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
-
