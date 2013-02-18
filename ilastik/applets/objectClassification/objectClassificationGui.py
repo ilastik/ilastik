@@ -99,11 +99,9 @@ class ObjectClassificationGui(LabelingGui):
         else:
             labelsrc = LazyflowSinkSource(labelOutput,
                                           labelInput)
-            labellayer = ClickableColortableLayer(self.editor,
-                                                  self.onClick,
-                                                  datasource=labelsrc,
-                                                  colorTable=self._colorTable16,
-                                                  direct=direct)
+            labellayer = ColortableLayer(labelsrc,
+                                         colorTable=self._colorTable16,
+                                         direct=direct)
 
             labellayer.segmentationImageSlot = self.op.SegmentationImagesOut
             labellayer.name = "Labels"
