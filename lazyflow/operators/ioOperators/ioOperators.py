@@ -32,12 +32,8 @@ class OpH5Writer(Operator):
         imSlot = self.inputs["input"]
         image = numpy.ndarray(imSlot.meta.shape, dtype=self.inputs["dataType"].value)[key]
 
-        try:
-            #create H5File and DataSet
-            f = h5py.File(filename, 'w')
-        except:
-            assert False
-            return
+        #create H5File and DataSet
+        f = h5py.File(filename, 'w')
         g = f
 
         #check for valid hdf5 path, if not valid, use default
