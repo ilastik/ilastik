@@ -154,6 +154,11 @@ class ObjectClassificationGui(LabelingGui):
             # predict".
             layers.insert(0, self.predictlayer)
 
+        # since we start with existing labels, it makes sense to start
+        # with the first one selected. This would make more sense in
+        # __init__(), but it does not take effect there.
+        self.selectLabel(0)
+
         return layers
 
     @pyqtSlot()
