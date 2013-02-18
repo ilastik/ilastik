@@ -18,7 +18,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 
 
-class ObjectExtractionGui( QWidget ):
+class ObjectExtractionGui(QWidget):
     """
     """
 
@@ -46,8 +46,6 @@ class ObjectExtractionGui( QWidget ):
     ###########################################
 
     def __init__(self, topLevelOperatorView):
-        """
-        """
         super(ObjectExtractionGui, self).__init__()
         self.mainOperator = topLevelOperatorView
         self.layerstack = LayerStackModel()
@@ -123,13 +121,12 @@ class ObjectExtractionGui( QWidget ):
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )
 
-
     def _initEditor(self):
         """
         Initialize the Volume Editor GUI.
         """
 
-        self.editor = VolumeEditor(self.layerstack)
+        self.editor = VolumeEditor(self.layerstack, crosshair=False)
 
         self.volumeEditorWidget = VolumeEditorWidget()
         self.volumeEditorWidget.init(self.editor)
@@ -147,8 +144,6 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
 
         self.editor._lastImageViewFocus = 0
-
-
 
     def _initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -194,7 +189,6 @@ class ObjectExtractionGui( QWidget ):
         self.mainOperator.LabelImage.setDirty(roi)
 
         print 'Label Segmentation: done.'
-
 
     def _calculateFeaturesButtonPressed( self ):
         maxt = self.mainOperator.LabelImage.meta.shape[0]

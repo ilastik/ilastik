@@ -61,7 +61,7 @@ class ObjectClassificationGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(ObjectClassificationGui, self).__init__(labelSlots, op, labelingDrawerUiPath)
+        super(ObjectClassificationGui, self).__init__(labelSlots, op, labelingDrawerUiPath, crosshair=False)
 
         self.op = op
         self.guiControlSignal = guiControlSignal

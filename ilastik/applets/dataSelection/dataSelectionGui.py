@@ -703,7 +703,8 @@ class DataSelectionGui(QMainWindow):
         
         # Create if necessary
         if imageSlot not in self.volumeEditors.keys():
-            layerViewer = LayerViewerGui( self.topLevelOperator.getLane(row) )
+            layerViewer = LayerViewerGui(self.topLevelOperator.getLane(row),
+                                         crosshair=False)
 
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
