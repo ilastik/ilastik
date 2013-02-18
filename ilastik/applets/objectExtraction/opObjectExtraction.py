@@ -104,9 +104,9 @@ class OpLabelImage(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage or slot is self.BackgroundLabels:
-            # FIXME: set everything dirty in that time slice
-            self.LabelImage.setDirty(roi)
             start, stop = roi.start[0], roi.stop[0]
+            self.LabelImage.setDirty(slice(start, stop))
+            print 'set label image dirty from {} to {}'.format(start, stop)
             for t in range(start, stop):
                 try:
                     self._processedTimeSteps.remove(t)
