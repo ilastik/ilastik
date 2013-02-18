@@ -126,7 +126,7 @@ class SerialSlot(object):
             slot.notifyDirty(self.setDirty)
         else:
             slot.notifyInserted(doMulti)
-            slot.notifyRemoved( self.setDirty )
+            slot.notifyRemoved(self.setDirty)
 
     def shouldSerialize(self, group):
         """Whether to serialize or not."""
@@ -343,6 +343,22 @@ class SerialClassifierSlot(SerialSlot):
             self.name = slot.name
         if self.subname is None:
             self.subname = "Forest{:04d}"
+        self._bind(cache.Output)
+
+    def _bind(self, slot=None):
+        # FIXME: code duplication
+        slot = maybe(slot, self.slot)
+
+        def doMulti(slot, index, size):
+            slot[index].notifyDirty(self.setDirty)
+            slot[index].notifyValueChanged(self.setDirty)
+
+        if slot.level == 0:
+            slot.notifyDirty(self.setDirty)
+            slot.notifyValueChanged(self.setDirty)
+        else:
+            slot.notifyInserted(doMulti)
+            slot.notifyRemoved(self.setDirty)
 
     def unload(self):
         self.cache.Input.setDirty(slice(None))
