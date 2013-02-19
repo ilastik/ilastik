@@ -55,13 +55,16 @@ class ObjectClassificationGui(LabelingGui):
         labelSlots.maxLabelValue = op.NumLabels
         labelSlots.labelsAllowed = op.LabelsAllowedFlags
 
-        # We provide our own UI file (which adds an extra control for interactive mode)
-        # This UI file is copied from pixelClassification pipeline
+        # We provide our own UI file (which adds an extra control for
+        # interactive mode) This UI file is copied from
+        # pixelClassification pipeline
         #
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(ObjectClassificationGui, self).__init__(labelSlots, op, labelingDrawerUiPath, crosshair=False)
+        super(ObjectClassificationGui, self).__init__(labelSlots, op,
+                                                      labelingDrawerUiPath,
+                                                      crosshair=False)
 
         self.op = op
         self.guiControlSignal = guiControlSignal
@@ -70,9 +73,11 @@ class ObjectClassificationGui(LabelingGui):
         self.interactiveModeActive = False
 
         self.labelingDrawerUi.checkInteractive.setEnabled(True)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
+        self.labelingDrawerUi.checkInteractive.toggled.connect(
+            self.toggleInteractive)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(True)
-        self.labelingDrawerUi.checkShowPredictions.toggled.connect(self.handleShowPredictionsClicked)
+        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
+            self.handleShowPredictionsClicked)
 
         self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
         self.labelingDrawerUi.savePredictionsButton.setVisible(False)
@@ -88,7 +93,9 @@ class ObjectClassificationGui(LabelingGui):
         Load the ui file for the applet drawer, which we own.
         """
         localDir = os.path.split(__file__)[0]
-        # (We don't pass self here because we keep the drawer ui in a separate object.)
+
+        # We don't pass self here because we keep the drawer ui in a
+        # separate object.
         self.drawer = uic.loadUi(localDir+"/drawer.ui")
 
     def createLabelLayer(self, direct=False):
@@ -119,7 +126,8 @@ class ObjectClassificationGui(LabelingGui):
             # FIXME: labeling only possible after some strange
             # combination of selecting labels and layers
             clickInt = ClickInterpreter(self.editor, labellayer,
-                                        self.onClick, right=False, double=False)
+                                        self.onClick, right=False,
+                                        double=False)
             self.editor.brushingInterpreter = clickInt
 
             return labellayer, labelsrc
@@ -133,14 +141,16 @@ class ObjectClassificationGui(LabelingGui):
 
         labelOutput = self._labelingSlots.labelOutput
         binarySlot = self.op.BinaryImages
+        segmentedSlot = self.op.SegmentationImages
         rawSlot = self.op.RawImages
 
-        if binarySlot.ready():
-            ct_binary = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
-            self.binaryimagesrc = LazyflowSource(binarySlot)
-            #layer = GrayscaleLayer(self.binaryimagesrc, range=(0,1), normalize=(0,1))
-            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
-            layer.name = "Binary Image"
+        if segmentedSlot.ready():
+            ct = colortables.create_default_16bit()
+            self.objectssrc = LazyflowSource(segmentedSlot)
+            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+            layer = ColortableLayer(self.objectssrc, ct)
+            layer.name = "Objects"
+            layer.opacity = 0.5
             layers.append(layer)
 
         if rawSlot.ready():
@@ -149,10 +159,19 @@ class ObjectClassificationGui(LabelingGui):
             layer.name = "Raw data"
             layers.append(layer)
 
+        if binarySlot.ready():
+            ct_binary = [QColor(0, 0, 0, 0).rgba(),
+                         QColor(255, 255, 255, 255).rgba()]
+            self.binaryimagesrc = LazyflowSource(binarySlot)
+            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
+            layer.name = "Binary Image"
+            layers.append(layer)
+
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
-            self.predictlayer = ColortableLayer(self.predictsrc, colorTable=self._colorTable16)
+            self.predictlayer = ColortableLayer(self.predictsrc,
+                                                colorTable=self._colorTable16)
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
@@ -180,13 +199,6 @@ class ObjectClassificationGui(LabelingGui):
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
-        # if checked and len(self.op.ObjectFeatures) == 0:
-        #     self.labelingDrawerUi.checkInteractive.setChecked(False)
-        #     mexBox=QMessageBox()
-        #     mexBox.setText("There are no features selected ")
-        #     mexBox.exec_()
-        #     return
-
         self.op.FreezePredictions.setValue(not checked)
 
         # Auto-set the "show predictions" state according to what the

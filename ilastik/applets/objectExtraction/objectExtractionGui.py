@@ -11,35 +11,31 @@ from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSour
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
-
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 
-
 class ObjectExtractionGui(QWidget):
-    """
-    """
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
 
-    def centralWidget( self ):
+    def centralWidget(self):
         """ Return the widget that will be displayed in the main viewer area. """
         return self.volumeEditorWidget
 
-    def appletDrawer( self ):
+    def appletDrawer(self):
         return self._drawer
 
-    def menus( self ):
+    def menus(self):
         return []
 
-    def viewerControlWidget( self ):
+    def viewerControlWidget(self):
         return self._viewerControlWidget
 
-    def stopAndCleanUp( self ):
+    def stopAndCleanUp(self):
         pass
 
     ###########################################
@@ -61,70 +57,70 @@ class ObjectExtractionGui(QWidget):
         self._initViewer()
 
 
-    def _onMetaChanged( self, slot ):
+    def _onMetaChanged(self, slot):
         if slot is self.mainOperator.BinaryImage:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
 
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )
+                self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
+                layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
+                self.layerstack.append(layerraw)
 
-    def _onReady( self, slot ):
+    def _onReady(self, slot):
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )
+                self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
+                layerraw = GrayscaleLayer(self.rawsrc)
                 layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
+                self.layerstack.append(layerraw)
 
-    def _initViewer( self ):
+    def _initViewer(self):
         mainOperator = self.mainOperator
 
-        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()] # blue foreground on transparent background
-        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
+        # white foreground on transparent background
+        ct = [QColor(0, 0, 0, 0).rgba(),
+              QColor(255, 255, 255, 255).rgba()]
+        self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
         self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
-        layer = ColortableLayer( self.binaryimagesrc, ct )
+        layer = ColortableLayer(self.binaryimagesrc, ct)
         layer.name = "Binary Image"
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
-        self.objectssrc = LazyflowSource( mainOperator.LabelImage )
+        self.objectssrc = LazyflowSource(mainOperator.LabelImage)
         self.objectssrc.setObjectName("LabelImage LazyflowSrc")
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        layer = ColortableLayer( self.objectssrc, ct )
+        ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+        layer = ColortableLayer(self.objectssrc, ct)
         layer.name = "Label Image"
         layer.opacity = 0.5
         self.layerstack.append(layer)
 
-        self.centerimagesrc = LazyflowSource( mainOperator.ObjectCenterImage )
-        layer = RGBALayer( red=ConstantSource(255), alpha=self.centerimagesrc )
+        self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
+        layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
         layer.name = "Object Centers"
         layer.visible = False
-        self.layerstack.append( layer )
+        self.layerstack.append(layer)
 
         ## raw data layer
         self.rawsrc = None
-        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
-        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw = GrayscaleLayer(self.rawsrc)
         layerraw.name = "Raw"
-        self.layerstack.insert( len(self.layerstack), layerraw )
+        self.layerstack.insert(len(self.layerstack), layerraw)
 
-        mainOperator.RawImage.notifyReady( self._onReady )
-        mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )
+        mainOperator.RawImage.notifyReady(self._onReady)
+        mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
 
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
-        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )
+        mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
 
     def _initEditor(self):
-        """
-        Initialize the Volume Editor GUI.
-        """
+        """Initialize the Volume Editor GUI."""
 
         self.editor = VolumeEditor(self.layerstack, crosshair=False)
 
@@ -153,15 +149,12 @@ class ObjectExtractionGui(QWidget):
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.calculateFeaturesButton.pressed.connect(self._calculateFeaturesButtonPressed)
 
-#        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
-
-
-    def _initViewerControlUi( self ):
+    def _initViewerControlUi(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
-    def _onLabelImageButtonPressed( self ):
+    def _onLabelImageButtonPressed(self):
         m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0]
         progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
@@ -190,7 +183,7 @@ class ObjectExtractionGui(QWidget):
 
         print 'Label Segmentation: done.'
 
-    def _calculateFeaturesButtonPressed( self ):
+    def _calculateFeaturesButtonPressed(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]
         progress = QProgressDialog("Calculating featuers...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -213,11 +206,6 @@ class ObjectExtractionGui(QWidget):
         self.mainOperator._opRegFeats.fixed = True
         progress.setValue(maxt)
 
-        self.mainOperator.ObjectCenterImage.setDirty( SubRegion(self.mainOperator.ObjectCenterImage))
+        self.mainOperator.ObjectCenterImage.setDirty(SubRegion(self.mainOperator.ObjectCenterImage))
 
         print 'Object Extraction: done.'
-
-#
-#    def _onDoAllButtonPressed(self):
-#        self._onLabelImageButtonPressed()
-#        self._calculateFeaturesButtonPressed()
