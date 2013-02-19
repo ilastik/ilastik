@@ -204,14 +204,14 @@ class OpCompressedCache(Operator):
             with self._blockLocks[block_start]:
                 # Check AGAIN now that we have the lock.
                 # (Avoid doing this twice in parallel requests.)
-                if block_start in self._dirtyBlocks:                
+                if block_start in self._dirtyBlocks:
                     # Can't write directly into the hdf5 dataset because 
                     #  h5py.dataset.__getitem__ creates a copy, not a view.
                     # We must use a temporary numpy array to hold the data.
                     data = self.Input(*entire_block_roi).wait()
                     block_file['data'][...] = data
-            with self._lock:
-                self._dirtyBlocks.remove( block_start )
+                    with self._lock:
+                        self._dirtyBlocks.remove( block_start )
 
 
     def _getBlockDataset(self, entire_block_roi, block_start):
@@ -225,10 +225,11 @@ class OpCompressedCache(Operator):
 
     def _closeAllCacheFiles(self):
         logger.debug( "Closing all caches" )
+        cacheFiles = self._cacheFiles
+        for k,v in cacheFiles.items():
+            with self._blockLocks[k]:
+                v.close()
         with self._lock:
-            for k,v in self._cacheFiles.items():
-                with self._blockLocks[k]:
-                    v.close()
             self._blockLocks = {}
             self._cacheFiles = {}
 
