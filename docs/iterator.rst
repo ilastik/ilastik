@@ -23,6 +23,14 @@ slice, the mask cuts it down to the appropriate size. The mask and trgt slices a
 Inner Mechanics
 ============
 
+Consider the following example:
+
+
+.. code-block:: python
+	roi = Roi((10,10),(90,50))
+	srcGrid = (20,40)
+	trgtGrid = (40,20)
+	it = AxisIterator(roi,srcGrid,trgtGrid)
 
 ==========================
 Lazyflow Request Framework
