@@ -68,9 +68,9 @@ class OpVigraLabelVolume(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
-            # Extend the region by 1 pixel
-            dirtyRoi = extendSlice(roi.start, roi.stop, self.Input.meta.shape, 1,1)
-            self.Output.setDirty(dirtyRoi[0], dirtyRoi[1])
+            # If anything changed, the whole image is now dirty 
+            #  because a single pixel change can trigger a cascade of relabeling.
+            self.Output.setDirty( slice(None) )
         elif inputSlot == self.BackgroundValue:
             self.Output.setDirty( slice(None) )
 
