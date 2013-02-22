@@ -44,7 +44,9 @@ class OpConservationTracking(OpTrackingBase):
             withAppearance=True,
             withDisappearance=True,
             withTracklets=False,
-            sizeDependent=True
+            sizeDependent=True,
+            divWeight=1.0,
+            transWeight=1.0
             ):
         
         median_obj_size = [0]
@@ -74,7 +76,9 @@ class OpConservationTracking(OpTrackingBase):
                                          float(median_obj_size[0]), # median_object_size
                                          withAppearance,
                                          withDisappearance,
-                                         withTracklets
+                                         withTracklets,
+                                         divWeight,
+                                         transWeight
                                          )
         
         try:
