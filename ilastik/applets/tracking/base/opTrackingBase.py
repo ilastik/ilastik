@@ -70,7 +70,7 @@ class OpTrackingBase(Operator):
                     div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
                 if event.type == pgmlink.EventType.Move:
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-                if( hasattr(pgmlink.Event, "Merger") ):
+                if( hasattr(pgmlink.EventType, "Merger") ):
                     if event.type == pgmlink.EventType.Merger:
                         merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))                              
 
