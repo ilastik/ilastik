@@ -159,8 +159,11 @@ class OpClassExtraction(Operator):
                 if labelDiv == 0:
                     continue
                 coordDiv = regionFeaturesDiv['Coord<ArgMaxWeight>'][labelDiv]
-                labelBg = labelImageBg[tuple(coordDiv)]
-                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)
+                labelBg = labelImageBg[tuple(coordDiv)] 
+                if labelBg == 0:
+                    print 'WARNING: labelBg = 0, coordDiv = ' + str(coordDiv) + ', skipping.'                    
+                    continue
+#                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)
                 assert labelBg < len(regionFeaturesBg['Count']), str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)                 
                 assert volDiv > 0
                 volBg = regionFeaturesBg['Count'][labelBg]
