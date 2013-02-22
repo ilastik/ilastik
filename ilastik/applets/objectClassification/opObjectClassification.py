@@ -4,6 +4,7 @@ import vigra
 import vigra.analysis
 import copy
 from collections import defaultdict
+import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -62,7 +63,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         # internal operators
         opkwargs = dict(parent=self)
-        self.opInputShapeReader = OpMultiLaneWrapper(OpShapeReader, **opkwargs)
         self.opTrain = OpObjectTrain(parent=self)
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
         self.opLabelsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
@@ -71,8 +71,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.classifier_cache = OpValueCache(parent=self)
 
         # connect inputs
-        self.opInputShapeReader.Input.connect(self.SegmentationImages)
-
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
@@ -379,16 +377,17 @@ class OpToImage(Operator):
 
             tmap = tmap.squeeze()
 
+            warnings.warn("FIXME: This should be cached (and reset when the input becomes dirty)")
             idx = img.max()
             if len(tmap) <= idx:
-                newTmap = numpy.zeros((idx + 1,))
+                newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
 
             img[t] = tmap[img[t]]
 
         return img
-
+    
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Image:
             self.Output.setDirty(roi)
