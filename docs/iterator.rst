@@ -10,8 +10,10 @@ Overview
 
 The Axisiterator has been designed to provide a way to iterate through two volumes which is easy on the eye. An example of a typical use ist:
 
+
 .. code-block:: python
-	it = AxisIterator(roi,srcGrid,trgtGrid)
+
+ 	it = AxisIterator(roi,srcGrid,trgtGrid)
 	for src,trgt,mask in it:
 		target[trgt] = operation_on_source(source[src])[mask]
 
@@ -26,6 +28,7 @@ Inner Mechanics
 Consider the following example:
 
 .. code-block:: python
+
 	roi = Roi((10,10),(90,50))
 	srcGrid = (20,40)
 	trgtGrid = (40,20)
@@ -36,10 +39,12 @@ It could be visualized like this:
 .. figure:: images/iterator_exposition.svg
    :scale: 100  %
    :alt: iterator exposition
+   
 
 Using this:
 
 .. code-block:: python
+
 	for src,trgt,mask in it:
 		print 'src ',src
 		print 'trgt ',trgt
@@ -47,7 +52,9 @@ Using this:
 		print '--------------------------------------------------'
 
 One will get the following output:
+
 .. code-block:: python
+
 	src  (slice(0, 20, None), slice(0, 40, None))
 	trgt  (slice(0, 30, None), slice(0, 10, None))
 	mask  (slice(0, 30, None), slice(0, 10, None))
@@ -107,4 +114,18 @@ When you have all starting points, nextStop() can be used to find the next stopp
    :scale: 100  %
    :alt: assigning stopping points
    
-The last step is ofcourse merily conceptual. 
+The last step is of course merely conceptual. Once the trgt space is segmented into trgt slices, each trgt slice is mapped to a src slice. This is done using the mapRoiToSource() method. HOW this mapping is 
+done is up to the developer. In the current implementation it fits the needs of image filtering. An illustration:
+
+.. figure:: images/iterator_mapToSrc.svg
+   :scale: 100  %
+   :alt: mapping a trgt roi to the src roi
+
+Now all that has to be done is to create the mask slice. Why is there a need for this? Sometimes the filter operation inflates the image and returns e.g. 3 channels even if you requested just one. The mask 
+slice cuts out the desired part. Here is an illustration:
+
+.. figure:: images/iterator_mask.svg
+   :scale: 100  %
+   :alt: mapping a trgt roi to the src roi
+   
+Finally src,trgt and mask slices are grouped together and returned.
