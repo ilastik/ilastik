@@ -11,6 +11,12 @@ class OpCachedLabelImage(Operator):
     BlockShape = InputSlot(optional=True)   # If not provided, blockshape is 1 time slice, 1 channel slice, 
                                             #  and the entire volume in xyz.
     Output = OutputSlot()
+    
+    # Schematic:
+    #
+    # BackgroundLabels --     BlockShape --
+    #                    \                 \
+    # Input ------------> OpLabelImage ---> OpCompressedCache -> Output
 
     def __init__(self, *args, **kwargs):
         super(OpCachedLabelImage, self).__init__(*args, **kwargs)
