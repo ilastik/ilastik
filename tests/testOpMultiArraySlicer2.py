@@ -29,6 +29,37 @@ class TestOpMultiArraySlicer2(object):
             assert slot.meta.shape == (10,10,10,1)
             assert (slot[...].wait() == i).all()
 
+    def testBasicWithObjectDtype(self):
+        """
+        Make sure the slicer works even if dtype is 'object'
+        """
+        class SpecialNumber(object):
+            def __init__(self, x):
+                self.n = x
+        
+        data = numpy.ndarray(shape=(2,3), dtype=object)
+        data = data.view(vigra.VigraArray)
+        data.axistags = vigra.defaultAxistags('tc')
+        for i in range(2):
+            for j in range(3):
+                data[i,j] = SpecialNumber(i*j)
+        
+        graph = Graph()
+        opSlicer = OpMultiArraySlicer2(graph=graph)
+        opSlicer.AxisFlag.setValue('t')
+        opSlicer.Input.setValue( data )
+        assert len(opSlicer.Slices) == 2
+        assert opSlicer.Input.meta.dtype == object
+        assert opSlicer.Slices[0].meta.dtype == object
+        
+        for i, slot in enumerate( opSlicer.Slices ):
+            a = slot[:].wait()
+            assert a.shape == (1,3)
+            for j in range(3):
+                val = a[0,j]
+                assert type(val) == SpecialNumber
+                assert val.n == i*j
+
     def testDirty(self):
         opSlicer = self.opSlicer
 

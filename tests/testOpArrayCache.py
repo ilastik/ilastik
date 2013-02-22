@@ -208,6 +208,35 @@ class TestOpArrayCache(object):
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount
 
+class TestOpArrayCacheWithObjectDtype(object):
+    """
+    This test is here to convince me that the OpArrayCache can be used with objects as the dtype.
+    (Check whether or not the implementation relies on any operations that are not supported for arrays of dtype=object)
+    """
+    def test(self):
+        class SpecialNumber(object):
+            def __init__(self, x):
+                self.n = x
+        
+        data = numpy.ndarray(shape=(2,3), dtype=object)
+        data = data.view(vigra.VigraArray)
+        data.axistags = vigra.defaultAxistags('tc')
+        for i in range(2):
+            for j in range(3):
+                data[i,j] = SpecialNumber(i*j)
+
+        graph = Graph()
+        op = OpArrayCache(graph=graph)
+        op.Input.setValue(data)
+        op.blockShape.setValue( (1,3) )
+        assert op.Output.meta.shape == (2,3)
+        outputData = op.Output[:].wait()
+        
+        # Can't use (outputData == data).all() here because vigra doesn't do the right thing if dtype is object.
+        for x,y in zip(outputData.flat, data.flat):
+            assert x == y
+        
+
 if __name__ == "__main__":
     import sys
     import nose
