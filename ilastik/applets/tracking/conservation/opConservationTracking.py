@@ -39,7 +39,7 @@ class OpConservationTracking(OpTrackingBase):
             maxDist=30,     
             maxObj=2,       
             divThreshold=0.5,
-            avgSize=0,
+            avgSize=[0],
             fixedDetections=False,
             withAppearance=True,
             withDisappearance=True,
@@ -60,9 +60,10 @@ class OpConservationTracking(OpTrackingBase):
             raise Exception, 'cannot track frames with 0 objects, abort.'
               
         
-        if avgSize > 0:
+        if avgSize[0] > 0:
             median_obj_size = avgSize
-            
+        
+        print 'median_obj_size = ', median_obj_size
         ep_gap = 0.05
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
