@@ -32,15 +32,20 @@ def relabelMergers(volume, merger):
     return mp[volume]
 
 
-def write_events(self, events, directory, t, labelImage):
+def write_events(events, directory, t, labelImage, mergers=None):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         
         dis = []
         app = []
         div = []
         mov = []
-        merger = []
+        merger = []       
+            
         print "-- Writing results to " + path.basename(fn)
+        if mergers is not None:
+            for m in mergers[t].keys():
+                merger.append((m,mergers[t][m],0.0))
+                 
         for event in events:
             if event.type == pgmlink.EventType.Appearance:
                 app.append((event.traxel_ids[0], event.energy))
@@ -50,8 +55,8 @@ def write_events(self, events, directory, t, labelImage):
                 div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
             if event.type == pgmlink.EventType.Move:
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-            if event.type == pgmlink.EventType.Merger:
-                merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+#            if event.type == pgmlink.EventType.Merger:
+#                merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
     
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
@@ -70,7 +75,8 @@ def write_events(self, events, directory, t, labelImage):
             
             seg = f_curr.create_group("segmentation")            
             # write label image
-            seg.create_dataset("labels", data = labelImage[0,...,0], dtype=np.uint32, compression=1)
+#            seg.create_dataset("labels", data = labelImage[t,...,0], dtype=np.uint32, compression=1)
+            seg.create_dataset("labels", data = labelImage, dtype=np.uint32, compression=1)
             
             # delete old tracking
             if "tracking" in f_curr.keys():
@@ -102,7 +108,7 @@ def write_events(self, events, directory, t, labelImage):
             if len(merger):
                 ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
                 ds.attrs["Format"] = "descendant (current file), number of objects"    
-                ds = tg.create_dataset("Mergers-Energy", data=div[:, -1], dtype=np.double, compression=1)
+                ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
     
         print "-> results successfully written"

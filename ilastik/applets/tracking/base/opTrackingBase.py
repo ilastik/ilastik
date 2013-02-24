@@ -100,7 +100,7 @@ class OpTrackingBase(Operator):
                 label2color[-1][e[2]] = ancestor_color
             
             for e in merger:
-                mergers[-2][e[0]] = e[1]
+                mergers[-1][e[0]] = e[1]
                 
         # mark the filtered objects
         for t in filtered_labels.keys():

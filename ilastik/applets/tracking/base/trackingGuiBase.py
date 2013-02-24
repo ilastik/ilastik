@@ -22,10 +22,12 @@ class TrackingGuiBase( LayerViewerGui ):
     """
     """
     
+    withMergers=False
+    
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
-    ###########################################        
-
+    ###########################################            
+    
     def appletDrawer( self ):
         return self._drawer
 
@@ -49,6 +51,7 @@ class TrackingGuiBase( LayerViewerGui ):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+            
 
 
     def _onMetaChanged( self, slot ):
@@ -218,15 +221,25 @@ class TrackingGuiBase( LayerViewerGui ):
         
         roi = SubRegion(self.mainOperator.LabelImage, key)
         labelImage = self.mainOperator.LabelImage.get(roi).wait()
+        labelImage = labelImage[0,...,0]
+        
         
         write_events([], str(directory), 0, labelImage)
-        
+            
         events = self.mainOperator.events
         print "Saving events..."
         print "Length of events " + str(len(events))
         
         for i, events_at in enumerate(events):
-            self._write_events(events_at, str(directory), i+1)
+            key[0] = slice(i+1,i+2)
+            roi = SubRegion(self.mainOperator.LabelImage, key)
+            labelImage = self.mainOperator.LabelImage.get(roi).wait()
+            labelImage = labelImage[0,...,0]
+            if self.withMergers:                
+                write_events(events_at, str(directory), i+1, labelImage, self.mainOperator.mergers)
+            else:
+                write_events(events_at, str(directory), i+1, labelImage)
+            
             
             
     def _onExportTifButtonPressed(self):

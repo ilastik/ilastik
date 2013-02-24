@@ -6,9 +6,11 @@ from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class ConservationTrackingGui( TrackingGuiBase ):
-                
-    def _setMergerLegend(self, labels, selection):        
+class ConservationTrackingGui( TrackingGuiBase ):     
+    
+    withMergers = True
+    
+    def _setMergerLegend(self, labels, selection):   
         for i in range(1,len(labels)+1):
             if i <= selection:
                 labels[i-1].setVisible(True)
