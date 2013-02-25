@@ -32,6 +32,7 @@ class TestOpPrecomputedInput(object):
         op.SlowInput.connect(opSlow.Output)
 
         # Should use slow input if no fast input is provided.
+        computeCount[0] = 0
         result = op.Output[...].wait()
         assert (result == precomputedData).all()
         assert computeCount[0] == 1
@@ -92,6 +93,7 @@ class TestOpPrecomputedInput(object):
         opSlow.Function[2].setValue( partial(compute, 12) )
         opSlow.Input.setValue( data )
         
+        computeCount[0] = 0
         assert opSlow.Output.ready()
         assert opSlow.Output[0].ready()
         assert opSlow.Output[1].ready()
