@@ -56,4 +56,6 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
                     ep_gap=epGap)
     
         self._setLayerVisible("Objects", False)
+        self._drawer.exportButton.setEnabled(True)
+        self._drawer.exportTifButton.setEnabled(True)
     
