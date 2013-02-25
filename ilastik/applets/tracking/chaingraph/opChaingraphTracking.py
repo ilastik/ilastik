@@ -25,7 +25,8 @@ class OpChaingraphTracking(OpTrackingBase):
             fixed_detections = False,
             mdd = 0,
             min_angle = 0,
-            ep_gap = 0.2):
+            ep_gap = 0.2,
+            nneighbors = 6):
 
         tracker = pgmlink.ChaingraphTracking(rf_fn,
                                         app,
@@ -39,7 +40,8 @@ class OpChaingraphTracking(OpTrackingBase):
                                         fixed_detections,
                                         mdd,
                                         min_angle,
-                                        ep_gap)
+                                        ep_gap,
+                                        nneighbors)
 
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         

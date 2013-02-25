@@ -37,7 +37,8 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()        
+        to_size = self._drawer.to_size.value()
+        nneighbors = self._drawer.knn.value()
 
         self.mainOperator.track(
                     time_range = range(from_t, to_t + 1),
@@ -53,7 +54,10 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
                     opp=opp,
                     det=det,
                     mdet=mdet,
-                    ep_gap=epGap)
+                    ep_gap=epGap,
+                    nneighbors=nneighbors)
     
         self._setLayerVisible("Objects", False)
+        self._drawer.exportButton.setEnabled(True)
+        self._drawer.exportTifButton.setEnabled(True)
     
