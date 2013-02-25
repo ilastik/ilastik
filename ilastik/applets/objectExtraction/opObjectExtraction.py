@@ -7,7 +7,7 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache
+from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 from ilastik.applets.objectExtraction import config
 
@@ -347,7 +347,7 @@ class OpObjectExtraction(Operator):
     #                 \            /
     # BinaryImage ---> opLabelImage ---> opRegFeats ---> opRegFeatsAdaptOutput ---> RegionFeatures
     #                                   /                                     \
-    # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> ObjectCenterImage
+    # RawImage--------------------------                      BinaryImage ---> opObjectCenterImage --> opCenterCache --> ObjectCenterImage
 
     def __init__(self, *args, **kwargs):
 
@@ -373,13 +373,22 @@ class OpObjectExtraction(Operator):
         self._opObjectCenterImage.BinaryImage.connect(self.BinaryImage)
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeatsAdaptOutput.Output)
 
+        self._opCenterCache = OpCompressedCache(parent=self)
+        self._opCenterCache.Input.connect( self._opObjectCenterImage.Output )
+
         # connect outputs
         self.LabelImage.connect(self._opLabelImage.Output)
-        self.ObjectCenterImage.connect(self._opObjectCenterImage.Output)
+        self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
 
     def setupOutputs(self):
-        pass
+        taggedShape = self.Input.meta.getTaggeddShape()
+        for k in taggedShape.keys():
+            if k == 't' or k == 'c':
+                taggedShape[k] = 1
+            else:
+                taggedShape[k] = 256
+        self._opCenterCache.BlockShape.setValue( tuple( taggedShape.values() ) )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
