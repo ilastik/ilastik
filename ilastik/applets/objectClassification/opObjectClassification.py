@@ -1,22 +1,14 @@
 import numpy
-import h5py
 import vigra
-import vigra.analysis
-import copy
-from collections import defaultdict
 import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import Everything, SubRegion, List
-from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
-from lazyflow.operators import OperatorWrapper, OpBlockedSparseLabelArray, OpValueCache, \
-OpMultiArraySlicer2, OpSlicedBlockedArrayCache, OpPrecomputedInput
+from lazyflow.rtype import List
+from lazyflow.operators import OpValueCache
 from lazyflow.request import Request, Pool
 from functools import partial
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpShapeReader, OpMaxValue
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 
@@ -42,7 +34,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     ObjectFeatures = InputSlot(rtype=List, level=1)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
-    FreezePredictions = InputSlot(stype='bool')
 
     ################
     # Output slots #
@@ -79,7 +70,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
-        self.opPredict.inputs["LabelsCount"].setValue(_MAXLABELS)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -239,7 +229,7 @@ class OpObjectTrain(Operator):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
                     result[number].learnRF(featMatrix.astype(numpy.float32),
                                            labelsMatrix.astype(numpy.uint32))
-                req = pool.request(partial(train_and_store, i))
+                req = Request( partial(train_and_store, i) )
                 pool.add( req )
             pool.wait()
             pool.clean()
@@ -247,7 +237,6 @@ class OpObjectTrain(Operator):
             print ("couldn't learn classifier")
             raise
 
-        slcs = (slice(0, self.ForestCount.value, None),)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -267,7 +256,6 @@ class OpObjectPredict(Operator):
     name = "OpObjectPredict"
 
     Features = InputSlot(rtype=List)
-    LabelsCount = InputSlot(stype='integer')
     Classifier = InputSlot()
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
@@ -320,7 +308,8 @@ class OpObjectPredict(Operator):
             if t in self.cache:
                 continue
             for i, f in enumerate(forests):
-                req = pool.request(partial(predict_forest, t, i))
+                req = Request( partial(predict_forest, t, i) )
+                pool.add(req)
 
         pool.wait()
         pool.clean()
@@ -364,8 +353,7 @@ class OpRelabelSegmentation(Operator):
         self.Output.meta.assignFrom(self.Image.meta)
 
     def execute(self, slot, subindex, roi, result):
-        slc = roi.toSlice()
-        img = self.Image[slc].wait()
+        img = self.Image(roi.start, roi.stop).wait()
 
         for t in range(roi.start[0], roi.stop[0]):
             map_ = self.ObjectMap([t]).wait()

@@ -2,23 +2,69 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from objectClassificationWorkflow import ObjectClassificationWorkflow as pixel_workflow
 from objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary as binary_workflow
 
-    rawInfo = DatasetInfo()
-    rawInfo.filePath = '/magnetic/synapse_small.npy'
-    #info.filePath = '/magnetic/singleslice.h5'
+def debug_with_existing(shell):
+    """
+    (Function for debug and testing.)
+    """
+    #projFilePath = "/magnetic/test_project.ilp"
+    #projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
+    projFilePath = "/home/bergs/MyProject.ilp"
+    #projFilePath = '/magnetic/gigacube.ilp'
+    #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
+    #projFilePath = '/magnetic/250-2.ilp'
+    # Open a project
+    shell.openProjectFile(projFilePath)
 
-    opDataSelection = workflow.rawDataSelectionApplet.topLevelOperator
-    opDataSelection.Dataset.resize(1)
-    opDataSelection.Dataset[0].setValue(rawInfo)
+    # Select a default drawer
+    shell.setSelectedAppletDrawer(5)
 
-    binaryInfo = DatasetInfo()
+def debug_with_new(shell):
+    """
+    (Function for debug and testing.)
+    """
+    projFilePath = "/magnetic/test_project.ilp"
+
+    # New project
+    shell.createAndLoadNewProject(projFilePath)
+
+    workflow = shell.projectManager.workflow
+
+    # Add a file
+    from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+    info = DatasetInfo()
     #info.filePath = '/magnetic/gigacube.h5'
-    binaryInfo.filePath = '/magnetic/synapse_small_binary.npy'
-    opDataSelection.Dataset[0].setValue(binaryInfo)
-    #featureGui = workflow.featureSelectionApplet._gui
-    #opFeatures = workflow.featureSelectionApplet.topLevelOperator
-    #opFeatures.SelectionMatrix.setValue(selections)
-    #shell.setSelectedAppletDrawer(2)
-    #shell.setSelectedAppletDrawer(3)
+    info.filePath = '/magnetic/synapse_small.npy'
+    #info.filePath = '/magnetic/singleslice.h5'
+    opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+    opDataSelection.Dataset.resize(1)
+    opDataSelection.Dataset[0].setValue(info)
+    
+    # Set some features
+    import numpy
+    featureGui = workflow.featureSelectionApplet._gui
+    opFeatures = workflow.featureSelectionApplet.topLevelOperator
+    #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
+#    selections = numpy.array( [[True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True]] )
+    selections = numpy.array( [[True, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False]] )
+    opFeatures.SelectionMatrix.setValue(selections)
+
+    # Select the feature drawer
+    shell.setSelectedAppletDrawer(2)
+    shell.setSelectedAppletDrawer(3)
+
+#    # Save the project
+#    shell.onSaveProjectActionTriggered()
+
 
 if __name__=="__main__":
 
@@ -47,5 +93,6 @@ if __name__=="__main__":
         startShellGui(workflow, loadProject)
     elif len(args) == 0:
         startShellGui(workflow)
+        #startShellGui(workflow, debug_with_new)
     else:
         parser.error("incorrect number of arguments")

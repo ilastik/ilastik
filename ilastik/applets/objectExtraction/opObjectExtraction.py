@@ -382,7 +382,7 @@ class OpObjectExtraction(Operator):
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
 
     def setupOutputs(self):
-        taggedShape = self.Input.meta.getTaggeddShape()
+        taggedShape = self.Input.meta.getTaggedShape()
         for k in taggedShape.keys():
             if k == 't' or k == 'c':
                 taggedShape[k] = 1
