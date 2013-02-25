@@ -263,7 +263,7 @@ class OpMultiArraySlicer2(Operator):
             assert False, "Unknown dirty input slot."
 
 class OpMultiArrayStacker(Operator):
-    inputSlots = [InputSlot("Images", level=1), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
+    inputSlots = [InputSlot("Images", level=1), InputSlot("AxisFlag"), InputSlot("AxisIndex", optional=True)]
     outputSlots = [OutputSlot("Output")]
 
     name = "Multi Array Stacker"
@@ -279,8 +279,6 @@ class OpMultiArrayStacker(Operator):
     def setRightShape(self):
         c = 0
         flag = self.inputs["AxisFlag"].value
-        axistype = axisType(flag)
-        axisindex = self.inputs["AxisIndex"].value
 
         self.intervals = []
 
@@ -296,6 +294,10 @@ class OpMultiArrayStacker(Operator):
                 outTagKeys = [ax.key for ax in self.outputs["Output"].meta.axistags]
 
                 if not flag in outTagKeys:
+                    if self.AxisIndex.ready():
+                        axisindex = self.AxisIndex.value
+                    else:
+                        axisindex = len( outTagKeys )
                     self.outputs["Output"].meta.axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
 
                 old_c = c
@@ -309,7 +311,7 @@ class OpMultiArrayStacker(Operator):
             newshape = list(self.inputs["Images"][0].meta.shape)
             if flag in inTagKeys:
                 #here we assume that all axis are present
-                axisindex = self.outputs["Output"].meta.axistags.index(flag)
+                axisindex = self.Output.meta.axistags.index(flag)
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
@@ -386,7 +388,8 @@ class OpMultiArrayStacker(Operator):
 
         elif inputSlot == self.Images:
             imageIndex = subindex[0]
-            axisIndex = self.AxisIndex.value
+            axisflag = self.AxisFlag.value
+            axisIndex = self.Output.meta.axistags.index(axisflag)
             roi.start[axisIndex] += self.intervals[imageIndex][0] 
             roi.stop[axisIndex] += self.intervals[imageIndex][0] 
             self.Output.setDirty( roi )
