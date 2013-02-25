@@ -436,7 +436,6 @@ class Slot(object):
         """
         self._sig_value_changed.unsubscribe(function)
 
-
     def unregisterReady(self, function):
         """
         unregister a ready callback
@@ -565,6 +564,11 @@ class Slot(object):
                            partner.getRealOperator().name,
                            partner.name, partner.level)
                 raise RuntimeError(msg)
+
+            # propagate value changed signals from inner to outer
+            # operators.
+            if self._type == partner._type == "output":
+                partner.notifyValueChanged(self._sig_value_changed)
 
     def disconnect(self):
         """
