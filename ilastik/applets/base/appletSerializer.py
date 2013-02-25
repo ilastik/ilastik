@@ -121,9 +121,11 @@ class SerialSlot(object):
 
         def doMulti(slot, index, size):
             slot[index].notifyDirty(self.setDirty)
+            slot[index].notifyValueChanged(self.setDirty)
 
         if slot.level == 0:
             slot.notifyDirty(self.setDirty)
+            slot.notifyValueChanged(self.setDirty)
         else:
             slot.notifyInserted(doMulti)
             slot.notifyRemoved(self.setDirty)
@@ -344,21 +346,6 @@ class SerialClassifierSlot(SerialSlot):
         if self.subname is None:
             self.subname = "Forest{:04d}"
         self._bind(cache.Output)
-
-    def _bind(self, slot=None):
-        # FIXME: code duplication
-        slot = maybe(slot, self.slot)
-
-        def doMulti(slot, index, size):
-            slot[index].notifyDirty(self.setDirty)
-            slot[index].notifyValueChanged(self.setDirty)
-
-        if slot.level == 0:
-            slot.notifyDirty(self.setDirty)
-            slot.notifyValueChanged(self.setDirty)
-        else:
-            slot.notifyInserted(doMulti)
-            slot.notifyRemoved(self.setDirty)
 
     def unload(self):
         self.cache.Input.setDirty(slice(None))
