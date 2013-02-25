@@ -39,14 +39,12 @@ class OpConservationTracking(OpTrackingBase):
             maxDist=30,     
             maxObj=2,       
             divThreshold=0.5,
-            avgSize=[0],
-            fixedDetections=False,
-            withAppearance=True,
-            withDisappearance=True,
+            avgSize=[0],                        
             withTracklets=False,
             sizeDependent=True,
-            divWeight=1.0,
-            transWeight=1.0
+            divWeight=10.0,
+            transWeight=10.0,
+            withDivisions=True
             ):
         
         median_obj_size = [0]
@@ -71,15 +69,12 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          sizeDependent,   # size_dependent_detection_prob
                                          0,       # forbidden_cost
-                                         True,    # with_constraints
-                                         fixedDetections,   # fixed_detections
                                          float(ep_gap), # ep_gap
                                          float(median_obj_size[0]), # median_object_size
-                                         withAppearance,
-                                         withDisappearance,
                                          withTracklets,
                                          divWeight,
-                                         transWeight
+                                         transWeight,
+                                         withDivisions
                                          )
         
         try:

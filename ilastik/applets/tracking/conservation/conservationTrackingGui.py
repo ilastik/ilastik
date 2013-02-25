@@ -37,20 +37,10 @@ class ConservationTrackingGui( TrackingGuiBase ):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
-        self._drawer.appBox.stateChanged.connect(self._onAppDisappBoxChanged)
-        self._drawer.disappBox.stateChanged.connect(self._onAppDisappBoxChanged)
-        self._onAppDisappBoxChanged()
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
 
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
-    
-    def _onAppDisappBoxChanged(self):
-        if self._drawer.appBox.isChecked() or self._drawer.disappBox.isChecked():
-            self._drawer.fixDetectionsBox.setEnabled(True)
-        else:
-            self._drawer.fixDetectionsBox.setChecked(False)
-            self._drawer.fixDetectionsBox.setEnabled(False)
         
     def _onTrackButtonPressed( self ):        
         maxDist = self._drawer.maxDistBox.value()
@@ -70,14 +60,12 @@ class ConservationTrackingGui( TrackingGuiBase ):
         
         self.time_range =  range(from_t, to_t + 1)
         avgSize = [self._drawer.avgSizeBox.value()]
-        
-        withAppearance = self._drawer.appBox.isChecked()
-        withDisappearance = self._drawer.disappBox.isChecked()
-        fixedDetections = self._drawer.fixDetectionsBox.isChecked()
+                
         withTracklets = self._drawer.trackletsBox.isChecked()
         sizeDependent = self._drawer.sizeDepBox.isChecked()
         divWeight = self._drawer.divWeightBox.value()
         transWeight = self._drawer.transWeightBox.value()
+        withDivisions = self._drawer.divisionsBox.isChecked()
         
         try:
             self.mainOperator.track(
@@ -92,14 +80,12 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 maxDist=maxDist,         
                 maxObj = maxObj,               
                 divThreshold=divThreshold,
-                avgSize=avgSize,
-                fixedDetections=fixedDetections,
-                withAppearance=withAppearance,
-                withDisappearance=withDisappearance,
+                avgSize=avgSize,                
                 withTracklets=withTracklets,
                 sizeDependent=sizeDependent,
                 divWeight=divWeight,
-                transWeight=transWeight
+                transWeight=transWeight,
+                withDivisions=withDivisions
                 )
         except Exception as e:
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        
