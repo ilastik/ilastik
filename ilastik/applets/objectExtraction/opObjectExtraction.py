@@ -82,6 +82,7 @@ class OpLabelImage(Operator):
                             dest = self._labeled_image
                         dest[t,...,c] = f(a, background_value=backgroundLabel)
                 self._processedTimeSteps.add(t)
+                self.LabelImage._sig_value_changed()
 
     def execute(self, slot, subindex, roi, destination):
         with self._lock:
@@ -171,6 +172,7 @@ class OpRegionFeatures(Operator):
                     labels = labels[0,...,0] # assumes t,x,y,z,c
                     feats_at.append(self.extract(image, labels))
                 self._cache[t] = feats_at
+                self.Output._sig_value_changed()
             feats[t] = feats_at
         return feats
 
