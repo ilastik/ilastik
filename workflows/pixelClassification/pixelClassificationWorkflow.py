@@ -87,7 +87,7 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Connect Operators ## 
         
-        # Provide dataset paths from data selection applet to the batch export applet via an attribute selector
+        # Provide dataset paths from data selection applet to the batch export applet
         opBatchResults.DatasetPath.connect( opBatchInputs.ImageName )
         
         # Connect (clone) the feature operator inputs from 
