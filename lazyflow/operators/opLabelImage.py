@@ -19,8 +19,8 @@ class OpLabelImage(Operator):
 
     # Schematic:
     # 
-    # BackgroundLabels -> opBgTimeSlicer -> opBgChannelSlicer --
-    #                                                           \
+    # BackgroundLabels -> opBgTimeSlicer -> opBgChannelSlicer ----
+    #                                                             \
     # Input ------------> opTimeSlicer ---> opChannelSlicer -----> opLabelers -> opChannelStacker -> opTimeStacker -> Output
 
     def __init__(self, *args, **kwargs):
