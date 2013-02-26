@@ -52,7 +52,7 @@ class OpConservationTracking(OpTrackingBase):
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
-                                                                      with_div=True)
+                                                                      with_div=withDivisions)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
