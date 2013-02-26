@@ -7,7 +7,7 @@ from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 
 
 class OpConservationTracking(OpTrackingBase):
-    ClassMapping = InputSlot(stype=Opaque, rtype=List)   
+    ClassMapping = InputSlot(stype=Opaque, rtype=List, optional=True)   
     MergerOutput = OutputSlot()
     
     def setupOutputs(self):
