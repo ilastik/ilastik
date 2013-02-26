@@ -201,6 +201,7 @@ class OpCompressedCache(Operator):
         """
         block_file = self._getCacheFile(entire_block_roi, block_start)
         if block_start in self._dirtyBlocks:
+            updated_cache = False
             with self._blockLocks[block_start]:
                 # Check AGAIN now that we have the lock.
                 # (Avoid doing this twice in parallel requests.)
@@ -212,6 +213,11 @@ class OpCompressedCache(Operator):
                     block_file['data'][...] = data
                     with self._lock:
                         self._dirtyBlocks.remove( block_start )
+                    updated_cache = True
+
+            if updated_cache:
+                # Now that the lock is released, signal that the cache was updated. 
+                self.Output._sig_value_changed() 
 
 
     def _getBlockDataset(self, entire_block_roi, block_start):

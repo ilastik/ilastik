@@ -648,6 +648,11 @@ class OpArrayCache(OpArrayPiper):
         #wait for all requests to finish
         self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyPool)) )
         dirtyPool.wait()
+        if len( dirtyPool ) > 0:
+            # Signal that something was updated.
+            # Note that we don't need to do this for the 'in process' queries (below)  
+            #  because they are already in the dirtyPool in some other thread
+            self.Output._sig_value_changed()
         dirtyPool.clean()
         self.traceLogger.debug( "All cache input requests received." )
 
@@ -1311,6 +1316,9 @@ class OpBlockedArrayCache(Operator):
                         self._cache_list[b_ind].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
                         self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
                         # we dont register a callback for dirtyness, since we already forward the signal
+                        
+                        # Forward value changed notifications to our own output.
+                        self._cache_list[b_ind].Output.notifyValueChanged( self.Output._sig_value_changed )
 
             if self._cache_list.has_key(b_ind):
                 op = self._cache_list[b_ind]
@@ -1429,6 +1437,9 @@ class OpSlicedBlockedArrayCache(Operator):
                 self._innerOps.append(op)
                 
                 op.inputs["Input"].connect(self.inputs["Input"])
+                
+                # Forward "value changed" notifications to our own output
+                op.Output.notifyValueChanged( self.Output._sig_value_changed )
 
         for i,innershape in enumerate(self._innerShapes):
             op = self._innerOps[i]
