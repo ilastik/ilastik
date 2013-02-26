@@ -240,6 +240,7 @@ class OpObjectTrain(Operator):
                     result[number].learnRF(featMatrix.astype(numpy.float32),
                                            labelsMatrix.astype(numpy.uint32))
                 req = pool.request(partial(train_and_store, i))
+                pool.add( req )
             pool.wait()
             pool.clean()
         except:

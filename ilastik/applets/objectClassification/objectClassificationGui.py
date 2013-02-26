@@ -199,7 +199,6 @@ class ObjectClassificationGui(LabelingGui):
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
-        self.op.FreezePredictions.setValue(not checked)
 
         # Auto-set the "show predictions" state according to what the
         # user just clicked.
