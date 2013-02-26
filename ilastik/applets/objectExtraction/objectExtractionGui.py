@@ -91,6 +91,7 @@ class ObjectExtractionGui( QWidget ):
         self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
         layer = ColortableLayer( self.binaryimagesrc, ct )
         layer.name = "Binary Image"
+        layer.visible = False
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
