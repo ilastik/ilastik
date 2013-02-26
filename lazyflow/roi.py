@@ -193,11 +193,15 @@ def roiFromShape(shape):
     stop = TinyVector(shape)
     return ( start, stop )
 
-def getIntersection( roiA, roiB ):    
+def getIntersection( roiA, roiB, assertIntersect=True ):    
     start = numpy.maximum( roiA[0], roiB[0] )    
     stop = numpy.minimum( roiA[1], roiB[1] )
 
-    assert numpy.prod(stop - start) > 0, "Rois do not intersect!"    
+    if numpy.prod(stop - start) <= 0:
+        if assertIntersect:
+            assert numpy.prod(stop - start) > 0, "Rois do not intersect!"
+        else:
+            return None    
     return (start, stop)
 
 rTsl1 = lambda x,y:slice(x.__int__(),y.__int__())
