@@ -65,8 +65,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         opkwargs = dict(parent=self)
         self.opTrain = OpObjectTrain(parent=self)
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
-        self.opLabelsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
-        self.opPredictionsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
+        self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
 
         self.classifier_cache = OpValueCache(parent=self)
 
@@ -346,7 +346,7 @@ class OpObjectPredict(Operator):
         self.Predictions.setDirty(())
 
 
-class OpToImage(Operator):
+class OpRelabelSegmentation(Operator):
     """Takes a segmentation image and a mapping and returns the
     mapped image.
 
