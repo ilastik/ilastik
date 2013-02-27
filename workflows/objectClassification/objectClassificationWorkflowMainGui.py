@@ -29,42 +29,21 @@ def debug_with_new(shell):
 
     workflow = shell.projectManager.workflow
 
-    # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
-    info = DatasetInfo()
-    #info.filePath = '/magnetic/gigacube.h5'
-    info.filePath = '/magnetic/synapse_small.npy'
-    #info.filePath = '/magnetic/singleslice.h5'
+
+    rawInfo = DatasetInfo()
+    rawInfo.filePath = '/magnetic/synapse_small.npy'
+    opDataSelection = workflow.rawDataSelectionApplet.topLevelOperator
+    opDataSelection.Dataset.resize(1)
+    opDataSelection.Dataset[0].setValue(rawInfo)
+    
+    binaryInfo = DatasetInfo()
+    binaryInfo.filePath = '/magnetic/synapse_small_binary.npy'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
-    opDataSelection.Dataset[0].setValue(info)
+    opDataSelection.Dataset[0].setValue(binaryInfo)
     
-    # Set some features
-    import numpy
-    featureGui = workflow.featureSelectionApplet._gui
-    opFeatures = workflow.featureSelectionApplet.topLevelOperator
-    #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-#    selections = numpy.array( [[True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True]] )
-    selections = numpy.array( [[True, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False]] )
-    opFeatures.SelectionMatrix.setValue(selections)
-
-    # Select the feature drawer
-    shell.setSelectedAppletDrawer(2)
-    shell.setSelectedAppletDrawer(3)
-
-#    # Save the project
-#    shell.onSaveProjectActionTriggered()
-
+    #shell.setSelectedAppletDrawer(2)
 
 if __name__=="__main__":
 
