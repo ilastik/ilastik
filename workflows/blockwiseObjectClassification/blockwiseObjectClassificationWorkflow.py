@@ -2,10 +2,8 @@ import warnings
 
 from lazyflow.graph import OperatorWrapper
 from workflows.objectClassification.objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary
-from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification
-
+from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.batchIo import BatchIoApplet
 
 class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
     """
@@ -38,7 +36,7 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
                                                      supportIlastik05Import=False,
                                                      batchDataGui=True)
 
-        self.batchResultsApplet = BatchIoApplet(self, "Batch Output Locations")
+        self.batchResultsApplet = BlockwiseObjectClassificationBatchApplet(self, "Batch Output Locations")
 
         # Expose in shell        
         self._applets.append(self.rawBatchInputApplet)
@@ -79,13 +77,21 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
         opBatchClassify.BinaryImage.connect( opBinaryBatchInput.Image )
         opBatchClassify.Classifier.connect( opTrainingTopLevel.Classifier )
         
+        self.opBatchClassify = opBatchClassify
+
+        warnings.warn("Instead of hard-coding blockshape/halo, use a GUI?  Or choose them automatically?  Or maybe use a config file?")
+        opBatchClassify.BlockShape.setValue( (1,256,256,256,1) )
+        opBatchClassify.HaloPadding.setValue( (1,50,50,50,1) )
+        
         # Connect the batch OUTPUT applet
         opBatchOutput = self.batchResultsApplet.topLevelOperator
         opBatchOutput.DatasetPath.connect( opRawBatchInput.ImageName )
         opBatchOutput.RawImage.connect( opRawBatchInput.Image )
-        opBatchOutput.ImageToExport.connect( opBatchClassify.PredictionImage )        
+        opBatchOutput.ImageToExport.connect( opBatchClassify.PredictionImage )
 
     def getHeadlessOutputSlot(self, slotId):
+        if slotId == "BatchPredictionImage":
+            return self.opBatchClassify.PredictionImage
         
         raise Exception("Unknown headless output slot")
     
