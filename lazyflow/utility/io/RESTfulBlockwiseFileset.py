@@ -155,25 +155,25 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         :returns: The requested data.  If out_array was provided, returns out_array.
         """
         assert (numpy.array(roi[1]) <= numpy.array(self.localDescription.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.localDescription.view_shape) 
-        # Before reading the data, check each of the needed blocks and download them first
+
+        # Before reading the data, make sure all the blocks we'll need to access are available on disk.
         block_starts = getIntersectingBlocks(self.localDescription.block_shape, roi)
-
-        missing_blocks = []
-        for block_start in block_starts:
-            # Offset to get the global (non-view) coordinates of the block.
-            if self.getBlockStatus(block_start) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
-                missing_blocks.append( block_start )
-
-        self._waitForBlocks( missing_blocks )
+        self._waitForBlocks( block_starts )
         
         return super( RESTfulBlockwiseFileset, self ).readData( roi, out_array )
 
-    def _waitForBlocks(self, missing_blocks):
+    def _waitForBlocks(self, block_starts):
         """
         Initiate downloads for those blocks that need it.
         (Some blocks in the list may already be downloading.)
         Then wait for all necessary downloads to complete (including the ones that we didn't initiate).
         """
+        # Only wait for those that are missing.
+        missing_blocks = []
+        for block_start in block_starts:
+            if self.getBlockStatus(block_start) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
+                missing_blocks.append( block_start )
+
         # Start by creating all necessary directories.
         # If the directory already exists, ignore the resulting error.
         for block_start in missing_blocks:
