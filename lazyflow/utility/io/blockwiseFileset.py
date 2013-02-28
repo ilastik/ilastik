@@ -386,6 +386,8 @@ class BlockwiseFileset(object):
             blockFilePathComponents = self.getDatasetPathComponents( block_start )
             fileLock = FileLock( blockFilePathComponents.externalPath )
             found_lock |= fileLock.purge()
+            if found_lock:
+                logger.warn( "Purged lock for block: {}".format( tuple(block_start) ) )
         
         return found_lock
 
