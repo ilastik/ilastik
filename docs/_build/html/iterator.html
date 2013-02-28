@@ -1,0 +1,336 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Axis Iterator &mdash; lazyflow v0.1 documentation</title>
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="lazyflow v0.1 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="axis-iterator">
+<span id="id1"></span><h1>Axis Iterator<a class="headerlink" href="#axis-iterator" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The Axisiterator has been designed to provide a way to iterate through two volumes which is easy on the eye. An example of a typical use ist:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">it</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span><span class="n">srcGrid</span><span class="p">,</span><span class="n">trgtGrid</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">src</span><span class="p">,</span><span class="n">trgt</span><span class="p">,</span><span class="n">mask</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+        <span class="n">target</span><span class="p">[</span><span class="n">trgt</span><span class="p">]</span> <span class="o">=</span> <span class="n">operation_on_source</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="n">src</span><span class="p">])[</span><span class="n">mask</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><tt class="docutils literal"><span class="pre">trgt</span></tt>, <tt class="docutils literal"><span class="pre">src</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> represent slicings which can be applied to anything that implements the <tt class="docutils literal"><span class="pre">__getitem__(key)</span></tt> method, usually an n-dimensional array.
+<tt class="docutils literal"><span class="pre">trgt</span></tt> specifies the slice in the target array, <tt class="docutils literal"><span class="pre">src</span></tt> specifies the slice in the source array. If the operation should inflate the data from the source slice, <tt class="docutils literal"><span class="pre">mask</span></tt> cuts it down to the appropriate size. <tt class="docutils literal"><span class="pre">mask</span></tt> and <tt class="docutils literal"><span class="pre">trgt</span></tt> slices are always congruent.</p>
+</div>
+<div class="section" id="id2">
+<h2>Inner Mechanics<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>Consider the following example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">roi</span> <span class="o">=</span> <span class="n">Roi</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),(</span><span class="mi">90</span><span class="p">,</span><span class="mi">50</span><span class="p">))</span>
+<span class="n">srcGrid</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">40</span><span class="p">)</span>
+<span class="n">trgtGrid</span> <span class="o">=</span> <span class="p">(</span><span class="mi">40</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">it</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span><span class="n">srcGrid</span><span class="p">,</span><span class="n">trgtGrid</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It could be visualized like this:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_exposition.svg"><object data="_images/iterator_exposition.svg" type="image/svg+xml"><embed src="_images/iterator_exposition.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>Using this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">for</span> <span class="n">src</span><span class="p">,</span><span class="n">trgt</span><span class="p">,</span><span class="n">mask</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;src &#39;</span><span class="p">,</span><span class="n">src</span>
+        <span class="k">print</span> <span class="s">&#39;trgt &#39;</span><span class="p">,</span><span class="n">trgt</span>
+        <span class="k">print</span> <span class="s">&#39;mask &#39;</span><span class="p">,</span><span class="n">mask</span>
+        <span class="k">print</span> <span class="s">&#39;--------------------------------------------------&#39;</span>
+</pre></div>
+</div>
+<p>One will get the following output:</p>
+<div class="highlight-python"><pre>src  (slice(0, 20, None), slice(0, 40, None))
+trgt  (slice(0, 30, None), slice(0, 10, None))
+mask  (slice(0, 30, None), slice(0, 10, None))
+--------------------------------------------------
+src  (slice(20, 40, None), slice(40, 80, None))
+trgt  (slice(30, 70, None), slice(10, 30, None))
+mask  (slice(0, 40, None), slice(0, 20, None))
+--------------------------------------------------
+src  (slice(40, 60, None), slice(80, 120, None))
+trgt  (slice(70, 80, None), slice(30, 40, None))
+mask  (slice(0, 10, None), slice(0, 10, None))
+--------------------------------------------------
+src  (slice(20, 40, None), slice(80, 120, None))
+trgt  (slice(30, 70, None), slice(30, 40, None))
+mask  (slice(0, 40, None), slice(0, 10, None))
+--------------------------------------------------
+src  (slice(40, 60, None), slice(40, 80, None))
+trgt  (slice(70, 80, None), slice(10, 30, None))
+mask  (slice(0, 10, None), slice(0, 20, None))
+--------------------------------------------------
+src  (slice(0, 20, None), slice(40, 80, None))
+trgt  (slice(0, 30, None), slice(10, 30, None))
+mask  (slice(0, 30, None), slice(0, 20, None))
+--------------------------------------------------
+src  (slice(0, 20, None), slice(80, 120, None))
+trgt  (slice(0, 30, None), slice(30, 40, None))
+mask  (slice(0, 30, None), slice(0, 10, None))
+--------------------------------------------------
+src  (slice(20, 40, None), slice(0, 40, None))
+trgt  (slice(30, 70, None), slice(0, 10, None))
+mask  (slice(0, 40, None), slice(0, 10, None))
+--------------------------------------------------
+src  (slice(40, 60, None), slice(0, 40, None))
+trgt  (slice(70, 80, None), slice(0, 10, None))
+mask  (slice(0, 10, None), slice(0, 10, None))
+--------------------------------------------------</pre>
+</div>
+<p>As you can see, for every <tt class="docutils literal"><span class="pre">trgt</span></tt> slice there is a correspondig <tt class="docutils literal"><span class="pre">src</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> slice. In the first step the <tt class="docutils literal"><span class="pre">roi</span></tt> gets broken down in a number of <tt class="docutils literal"><span class="pre">trgt</span></tt> slices:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_roiToTrgtSlices.svg"><object data="_images/iterator_roiToTrgtSlices.svg" type="image/svg+xml"><embed src="_images/iterator_roiToTrgtSlices.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>This is achieved by <tt class="docutils literal"><span class="pre">getSubRois(self,point,grid,roi)</span></tt>,which calls <tt class="docutils literal"><span class="pre">nextStop(self,start,grid,roi)</span></tt> and <tt class="docutils literal"><span class="pre">nextStarts(self,point,grid,roi)</span> <span class="pre">``</span> <span class="pre">repeatedly.</span> <span class="pre">For</span> <span class="pre">each</span> <span class="pre">point</span> <span class="pre">``nextStarts()</span></tt> returns
+the next points where either the grid intersects the grid itself or the <tt class="docutils literal"><span class="pre">roi</span></tt>. <tt class="docutils literal"><span class="pre">nextStop()</span></tt> returns for each starting point the stopping point, meaning the next point where the grid intersects itself or the <tt class="docutils literal"><span class="pre">roi</span></tt> AND the point where the volume of `` [start,stop]`` is greater than zero. Visualized:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_nextStarts.svg"><object data="_images/iterator_nextStarts.svg" type="image/svg+xml"><embed src="_images/iterator_nextStarts.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>When you have all starting points, <tt class="docutils literal"><span class="pre">nextStop()</span></tt> can be used to find the next stopping point, IF there is one. Two examples:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_nextStop.svg"><object data="_images/iterator_nextStop.svg" type="image/svg+xml"><embed src="_images/iterator_nextStop.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>The last step is of course merely conceptual. Once the <tt class="docutils literal"><span class="pre">trgt</span></tt> space is segmented into <tt class="docutils literal"><span class="pre">trgt</span></tt> slices, each <tt class="docutils literal"><span class="pre">trgt</span></tt> slice is mapped to a <tt class="docutils literal"><span class="pre">src</span></tt> slice. This is done using the <tt class="docutils literal"><span class="pre">mapRoiToSource()</span></tt> method. HOW this mapping is done is up to the developer. In the current implementation it fits the needs of image filtering. An illustration:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_mapToSrc.svg"><object data="_images/iterator_mapToSrc.svg" type="image/svg+xml"><embed src="_images/iterator_mapToSrc.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>Now all that has to be done is to create the <tt class="docutils literal"><span class="pre">mask</span></tt> slice. Why is there a need for this? Sometimes the filter operation inflates the image and returns e.g. 3 channels even if you requested just one. The <tt class="docutils literal"><span class="pre">mask</span></tt>
+slice cuts out the desired part. Here is an illustration:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/iterator_mask.svg"><object data="_images/iterator_mask.svg" type="image/svg+xml"><embed src="_images/iterator_mask.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<p>Finally <tt class="docutils literal"><span class="pre">src</span></tt>, <tt class="docutils literal"><span class="pre">trgt</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> slices are grouped together and returned.</p>
+</div>
+<div class="section" id="a-real-world-example">
+<h2>A real world example<a class="headerlink" href="#a-real-world-example" title="Permalink to this headline">¶</a></h2>
+<p>To illustrate how the iterator is used we consider this example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OpStructureTensorEigenvaluesSummedChannels</span><span class="p">(</span><span class="n">OpBaseVigraFilter</span><span class="p">):</span>
+        <span class="n">inputSlots</span> <span class="o">=</span> <span class="p">[</span><span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Input&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma2&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">)]</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;StructureTensorEigenvalues&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="nb">super</span><span class="p">(</span><span class="n">OpStructureTensorEigenvaluesSummedChannels</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">getChannelResolution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">channelIndex</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">calculateHalo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+                <span class="n">sigma1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">sigma2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma2</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">sigma1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">))</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">sigma2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">setupFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">innerScale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">outerScale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Sigma2&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+                <span class="k">def</span> <span class="nf">tmpFilter</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+                        <span class="n">tmpfilter</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">structureTensorEigenvalues</span>
+                        <span class="k">return</span> <span class="n">tmpfilter</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">innerScale</span><span class="o">=</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="o">=</span><span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">))</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">vigraFilter</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">tmpFilter</span><span class="p">,</span> <span class="n">innerScale</span><span class="o">=</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="o">=</span><span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">setupIterator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">iterator</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s">&#39;spatial&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="s">&#39;spatial&#39;</span><span class="p">,</span> <span class="p">[(),</span> <span class="p">({</span><span class="s">&#39;c&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">channelsPerChannel</span><span class="p">()})])</span>
+
+        <span class="k">def</span> <span class="nf">resultingChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">axisTypeCount</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">AxisType</span><span class="o">.</span><span class="n">Space</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">channelsPerChannel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">axisTypeCount</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">AxisType</span><span class="o">.</span><span class="n">Space</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This operator mimics the natural behavior of the <tt class="docutils literal"><span class="pre">vigra.filters.structureTensorEigenvalus</span></tt> filter. The operator class is a subclass of <tt class="docutils literal"><span class="pre">OpBaseVigraFilter</span></tt>. While <tt class="docutils literal"><span class="pre">OpBaseVigraFilter</span></tt> holds the general functionality for filter operations, the subclasses implement the individual filter features.</p>
+<p>This operator filters all input channels and sums them up. Each output channel holds the same information (this is kind of useless, but as already pointed out, it mimics the behavior of the vigra library). The method <tt class="docutils literal"><span class="pre">channelsPerChannel()</span></tt> tells the <tt class="docutils literal"><span class="pre">OpBaseVigraFilter</span></tt> how many result channels are generated by the filter per source channel. The <tt class="docutils literal"><span class="pre">getChannelResolution()</span></tt> method tells the <tt class="docutils literal"><span class="pre">OpBaseVigraFilter</span></tt> how many source channels are necessary to generate one/or more result channel. In <tt class="docutils literal"><span class="pre">setupFilter()</span></tt> the filter is setup as a partial function. In <tt class="docutils literal"><span class="pre">calculateHalo()</span></tt> the halo for the filter is calculated, the method of calculation varies from filter to filter. Lastly the <tt class="docutils literal"><span class="pre">resultingChannels()</span></tt> method determines the size of the output channel dimensions.</p>
+<p>Let us have a look at the <tt class="docutils literal"><span class="pre">execute()</span></tt> method of <tt class="docutils literal"><span class="pre">OpBaseVigraFilter</span></tt> to see how the iterator is set up:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+    <span class="c">#request,set or compute the necessary parameters</span>
+    <span class="n">axistags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+    <span class="n">inputShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">channelIndex</span> <span class="o">=</span> <span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+    <span class="n">channelsPerC</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">channelsPerChannel</span><span class="p">()</span>
+    <span class="n">channelRes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getChannelResolution</span><span class="p">()</span>
+    <span class="n">timeIndex</span> <span class="o">=</span> <span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">timeIndex</span> <span class="o">&gt;=</span> <span class="n">roi</span><span class="o">.</span><span class="n">dim</span><span class="p">:</span>
+        <span class="n">timeIndex</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">roi</span><span class="o">.</span><span class="n">setInputShape</span><span class="p">(</span><span class="n">inputShape</span><span class="p">)</span>
+    <span class="n">origRoi</span> <span class="o">=</span> <span class="n">roi</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setupFilter</span><span class="p">()</span>
+    <span class="n">halo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculateHalo</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+
+    <span class="c">#set up the roi to get the necessary source</span>
+    <span class="n">roi</span><span class="o">.</span><span class="n">expandByShape</span><span class="p">(</span><span class="n">halo</span><span class="p">,</span> <span class="n">channelIndex</span><span class="p">,</span> <span class="n">timeIndex</span><span class="p">)</span><span class="o">.</span><span class="n">adjustChannel</span><span class="p">(</span><span class="n">channelsPerC</span><span class="p">,</span> <span class="n">channelIndex</span><span class="p">,</span> <span class="n">channelRes</span><span class="p">)</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">VigraArray</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">axistags</span><span class="o">=</span><span class="n">axistags</span><span class="p">)</span>
+
+    <span class="c">#set up the grid for the iterator, and the iterator</span>
+    <span class="n">srcGrid</span> <span class="o">=</span> <span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">channelIndex</span> <span class="k">else</span> <span class="n">channelRes</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">))]</span>
+    <span class="n">trgtGrid</span> <span class="o">=</span> <span class="p">[</span><span class="n">inputShape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>  <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">channelIndex</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">channelsPerChannel</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">))]</span>
+    <span class="k">if</span> <span class="n">timeIndex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">srcGrid</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">trgtGrid</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">nIt</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">origRoi</span><span class="p">,</span> <span class="n">srcGrid</span><span class="p">,</span> <span class="n">trgtGrid</span><span class="p">,</span> <span class="n">timeIndex</span><span class="o">=</span><span class="n">timeIndex</span><span class="p">,</span> <span class="n">channelIndex</span><span class="o">=</span><span class="n">channelIndex</span><span class="p">)</span>
+
+    <span class="c">#set up roi to work with vigra filters</span>
+    <span class="k">if</span> <span class="n">timeIndex</span> <span class="o">&gt;</span> <span class="n">channelIndex</span> <span class="ow">and</span> <span class="n">timeIndex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">origRoi</span><span class="o">.</span><span class="n">popDim</span><span class="p">(</span><span class="n">timeIndex</span><span class="p">)</span>
+        <span class="n">origRoi</span><span class="o">.</span><span class="n">popDim</span><span class="p">(</span><span class="n">channelIndex</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">timeIndex</span> <span class="o">&lt;</span> <span class="n">channelIndex</span> <span class="ow">and</span> <span class="n">timeIndex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">origRoi</span><span class="o">.</span><span class="n">popDim</span><span class="p">(</span><span class="n">channelIndex</span><span class="p">)</span>
+        <span class="n">origRoi</span><span class="o">.</span><span class="n">popDim</span><span class="p">(</span><span class="n">timeIndex</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">origRoi</span><span class="o">.</span><span class="n">popDim</span><span class="p">(</span><span class="n">channelIndex</span><span class="p">)</span>
+    <span class="n">origRoi</span><span class="o">.</span><span class="n">adjustRoi</span><span class="p">(</span><span class="n">halo</span><span class="p">)</span>
+
+    <span class="c">#iterate over the requested volumes</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">trgt</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">nIt</span><span class="p">:</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">,</span> <span class="n">trgt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vigraFilter</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">[</span><span class="n">src</span><span class="p">],</span> <span class="n">window_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="n">origRoi</span><span class="p">)[</span><span class="n">mask</span><span class="p">]))</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+</div>
+<p>As one can see the <tt class="docutils literal"><span class="pre">execute()</span></tt> method is fairly general, the individual features of the filter operation is expressed at two points: when the halo gets calculated and when the iterator is setup. Let us have a look at the iterator setup:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c">#set up the grid for the iterator, and the iterator</span>
+<span class="n">srcGrid</span> <span class="o">=</span> <span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">channelIndex</span> <span class="k">else</span> <span class="n">channelRes</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">))]</span>
+<span class="n">trgtGrid</span> <span class="o">=</span> <span class="p">[</span><span class="n">inputShape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>  <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">channelIndex</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">channelsPerChannel</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">shape</span><span class="p">))]</span>
+<span class="k">if</span> <span class="n">timeIndex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+    <span class="n">srcGrid</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">trgtGrid</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">nIt</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">origRoi</span><span class="p">,</span> <span class="n">srcGrid</span><span class="p">,</span> <span class="n">trgtGrid</span><span class="p">,</span> <span class="n">timeIndex</span><span class="o">=</span><span class="n">timeIndex</span><span class="p">,</span> <span class="n">channelIndex</span><span class="o">=</span><span class="n">channelIndex</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">src</span> <span class="pre">grid</span></tt> is identical to the shape except in the channel dimension, which is equal to the channel resolution. In this example it is equal to the magnitude of the source channel dimension, since all channels are needed for the calculation of the sum. The <tt class="docutils literal"><span class="pre">trgt</span></tt> grid has the same property, except that the channel dimensions equal the return value of the <tt class="docutils literal"><span class="pre">channelsPerChannel()</span></tt> method. This is also equal to the source channel dimension, since this is expected of the filter. The spatial and time like dimensions are equal to the shape, so that the volume does not get segmented ?- only the channel dimension.</p>
+<p>Let us take a second example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OpStructureTensorEigenvalues</span><span class="p">(</span><span class="n">OpBaseVigraFilter</span><span class="p">):</span>
+        <span class="n">inputSlots</span> <span class="o">=</span> <span class="p">[</span><span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Input&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma2&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">)]</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;StructureTensorEigenvalues&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="nb">super</span><span class="p">(</span><span class="n">OpStructureTensorEigenvalues</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">calculateHalo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+                <span class="n">sigma1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">sigma2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma2</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">sigma1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">))</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">sigma2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">setupFilter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">innerScale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Sigma</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">outerScale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Sigma2&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+                <span class="k">def</span> <span class="nf">tmpFilter</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+                        <span class="n">tmpfilter</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">structureTensorEigenvalues</span>
+                        <span class="k">return</span> <span class="n">tmpfilter</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">innerScale</span><span class="o">=</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="o">=</span><span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="n">window_size</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">))</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">vigraFilter</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">tmpFilter</span><span class="p">,</span> <span class="n">innerScale</span><span class="o">=</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="o">=</span><span class="n">outerScale</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">windowSize</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">innerScale</span><span class="p">,</span> <span class="n">outerScale</span><span class="p">)</span>
+
+
+        <span class="k">def</span> <span class="nf">resultingChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">axisTypeCount</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">AxisType</span><span class="o">.</span><span class="n">Space</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">channelIndex</span><span class="p">]</span>
+
+        <span class="k">def</span> <span class="nf">channelsPerChannel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">axisTypeCount</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">AxisType</span><span class="o">.</span><span class="n">Space</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This filter produces one result for each spatial axis and for each source channel. Consequently <tt class="docutils literal"><span class="pre">channelPerChannel()</span></tt> returns <tt class="docutils literal"><span class="pre">self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)</span></tt>. <tt class="docutils literal"><span class="pre">getChannelResolution()</span></tt> returns its default, 1, since each source channel gets evaluated separately.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Axis Iterator</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#id2">Inner Mechanics</a></li>
+<li><a class="reference internal" href="#a-real-world-example">A real world example</a></li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/iterator.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
