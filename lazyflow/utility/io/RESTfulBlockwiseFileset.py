@@ -251,7 +251,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         while len(block_starts) > 0:
             batch = []
             for _ in range( max_parallel ):
-                batch.append( block_starts.pop() )
+                batch.append( block_starts.pop(0) ) # Start from left.
             logger.debug( "Next batch: {}".format(batch) )
             self._waitForBlocks( batch )
             logger.debug( "Finished {}/{}".format( num_blocks-len(block_starts), num_blocks ) )
