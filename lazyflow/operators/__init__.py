@@ -36,6 +36,7 @@ except:
     from opCompressedCache import OpCompressedCache
     from opLabelImage import OpLabelImage
     from opCachedLabelImage import OpCachedLabelImage
+    from opInterpMissingData import OpInterpMissingData
 
     ops = list(itersubclasses(Operator))
     '''
