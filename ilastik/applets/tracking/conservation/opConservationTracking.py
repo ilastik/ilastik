@@ -62,6 +62,7 @@ class OpConservationTracking(OpTrackingBase):
             median_obj_size = avgSize
         
         print 'median_obj_size = ', median_obj_size
+        print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
@@ -74,7 +75,9 @@ class OpConservationTracking(OpTrackingBase):
                                          withTracklets,
                                          divWeight,
                                          transWeight,
-                                         withDivisions
+                                         withDivisions,
+                                         500.0,
+                                         500.0
                                          )
         
         try:
