@@ -4,6 +4,7 @@ import errno
 import functools
 import threading
 import numpy
+import Queue
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
@@ -175,14 +176,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
                 missing_blocks.append( block_start )
 
         # Start by creating all necessary directories.
-        # If the directory already exists, ignore the resulting error.
-        for block_start in missing_blocks:
-            blockDir = self.getDatasetDirectory( block_start )
-            try:
-                os.makedirs( blockDir )
-            except OSError, e:
-                if e.errno != errno.EEXIST:
-                    raise
+        self._ensureDirectoriesExist( missing_blocks )
 
         # Attempt to lock each path we need to create.
         # Locks we fail to obtain are already being fetched by other processes, which is okay.
@@ -218,7 +212,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         for block_roi, fileLock in unobtained_locks:
             while self.getBlockStatus(block_roi[0]) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
                 time.sleep(5)
-    
+
     def _downloadBlock(self, fileLock, entire_block_roi, blockFilePathComponents):
         """
         Download the data for the given block, then release its file lock.
@@ -234,36 +228,103 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             translated_roi.append( numpy.add( entire_block_roi[0], self.description.view_origin ) )
             translated_roi.append( numpy.add( entire_block_roi[1], self.description.view_origin ) )
 
+            logger.debug( "Downloading block: {}".format( entire_block_roi[0] ) )
             self._remoteVolume.downloadSubVolume( translated_roi, blockFilePathComponents.totalPath() )
             self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_AVAILABLE)
         finally:
             fileLock.release()
 
-    def downloadAllBlocks(self, max_parallel):
+    def downloadAllBlocks(self, max_parallel, skip_preparation=False):
         """
         Download all blocks in the local view.
+        This is used in utility scripts for downloading an entire volume at once.
+        This function is NOT intended to be used by multiple threads in parallel
+        (i.e. it doesn't protect against downloading the same block twice.)
         """
         view_shape = self.localDescription.view_shape
         view_roi = ([0]*len(view_shape), view_shape)
         block_starts = list( getIntersectingBlocks(self.localDescription.block_shape, view_roi) )
-        num_blocks = len(block_starts)
+        
+        if not skip_preparation:
+            self._ensureDirectoriesExist( block_starts )
+
+        # Only wait for those that are missing.
+        blockQueue = Queue.Queue()
+        for block_start in block_starts:
+            if self.getBlockStatus(block_start) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
+                blockQueue.put( block_start )
+
+        num_blocks = blockQueue.qsize()
         logger.debug( "Preparing to download {} blocks".format( num_blocks ) )
-        while len(block_starts) > 0:
-            batch = []
-            for _ in range( max_parallel ):
-                batch.append( block_starts.pop(0) ) # Start from left.
-            logger.debug( "Next batch: {}".format(batch) )
-            self._waitForBlocks( batch )
-            logger.debug( "Finished {}/{}".format( num_blocks-len(block_starts), num_blocks ) )
-            
+
+        failedBlockQueue = Queue.Queue()
+
+        threads = []
+        for _ in range(max_parallel):
+            th = threading.Thread( target=functools.partial( self._downloadFromQueue, num_blocks, blockQueue, failedBlockQueue ) )
+            threads.append(th)
+            th.start()
+
+        for th in threads:
+            th.join()
+
+        errors = not failedBlockQueue.empty()
+        while not failedBlockQueue.empty():
+            logger.error( "Failed to download block {}.  Does it have a leftover lockfile?".format( failedBlockQueue.get() ) )
+        
+        logger.debug("FINISHED DOWNLOADING.")
+        if errors:
+            logger.error("There were errors during the download process.  Check error log output!")
+
+    def _downloadFromQueue(self, num_blocks, blockQueue, failedBlockQueue):
+        """
+        Helper function for downloadAllBlocks(), above.
+        """
+        try:
+            while not blockQueue.empty():
+                block_start = blockQueue.get(block=False)
+                entire_block_roi = self.getEntireBlockRoi(block_start) # Roi of this whole block within the whole dataset
+                blockFilePathComponents = self.getDatasetPathComponents( block_start )
+                
+                # Obtain lock
+                fileLock = FileLock( blockFilePathComponents.externalPath )
+                if not fileLock.acquire(False):
+                    failedBlockQueue.put( block_start )
+                else:
+                    try:
+                        # Download the block
+                        # (This function releases the lock for us.)
+                        self._downloadBlock(fileLock, entire_block_roi, blockFilePathComponents)
+                        logger.debug( "Finished downloading {}/{}".format( num_blocks-blockQueue.qsize(), num_blocks ) )
+                    except:
+                        if fileLock.locked():
+                            fileLock.release()
+                        failedBlockQueue.put( block_start )
+                        raise
+        except Queue.Empty:
+            return
+
+    def _ensureDirectoriesExist(self, block_starts):
+        """
+        Create all directories that the provided blocks will be stored in.
+        """
+        # If the directory already exists, ignore the resulting error.
+        for block_start in block_starts:
+            blockDir = self.getDatasetDirectory( block_start )
+            try:
+                os.makedirs( blockDir )
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
+
 if __name__ == "__main__":
     import sys
     logger.addHandler( logging.StreamHandler( sys.stdout ) )
     logger.setLevel( logging.DEBUG )
 
-    vol = RESTfulBlockwiseFileset('/home/bergs/bock11/description-256.json')
+    vol = RESTfulBlockwiseFileset('/home/bergs/bock/bock11/description-256.json')
     vol.purgeAllLocks()
-    vol.downloadAllBlocks(10)
+    vol.downloadAllBlocks(2)
 
 
 
