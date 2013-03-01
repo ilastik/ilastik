@@ -135,8 +135,12 @@ class MetaDict(dict):
         """
         assert self.axistags is not None
         assert self.shape is not None
-        keys = [tag.key for tag in self.axistags]
+        keys = self.getAxisKeys()
         return collections.OrderedDict(zip(keys, self.shape))
+
+    def getAxisKeys(self):
+        assert self.axistags is not None
+        return [tag.key for tag in self.axistags]
 
 class ValueRequest(object):
     """Pseudo request that behaves like a request.Request object.
