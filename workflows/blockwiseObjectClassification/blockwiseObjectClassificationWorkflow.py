@@ -59,13 +59,10 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
         opBlockwiseObjectClassification.BinaryImage.connect( opTrainingTopLevel.BinaryImages )
         opBlockwiseObjectClassification.Classifier.connect( opTrainingTopLevel.Classifier )
 
-        warnings.warn("Instead of hard-coding blockshape/halo, use a GUI?  Or choose them automatically?  Or maybe use a config file?")
-        opBlockwiseObjectClassification.BlockShape.setValue( (1,256,256,256,1) )
-        opBlockwiseObjectClassification.HaloPadding.setValue( (1,50,50,50,1) )
-
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
         opTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
+        opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
 
         # Access the batch INPUT applets
         opRawBatchInput = self.rawBatchInputApplet.topLevelOperator
@@ -76,12 +73,10 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
         opBatchClassify.RawImage.connect( opRawBatchInput.Image )
         opBatchClassify.BinaryImage.connect( opBinaryBatchInput.Image )
         opBatchClassify.Classifier.connect( opTrainingTopLevel.Classifier )
+        opBatchClassify.BlockShape3dDict.connect( opBlockwiseObjectClassification.BlockShape3dDict )
+        opBatchClassify.HaloPadding3dDict.connect( opBlockwiseObjectClassification.HaloPadding3dDict )
         
         self.opBatchClassify = opBatchClassify
-
-        warnings.warn("Instead of hard-coding blockshape/halo, use a GUI?  Or choose them automatically?  Or maybe use a config file?")
-        opBatchClassify.BlockShape.setValue( (1,256,256,256,1) )
-        opBatchClassify.HaloPadding.setValue( (1,50,50,50,1) )
         
         # Connect the batch OUTPUT applet
         opBatchOutput = self.batchResultsApplet.topLevelOperator

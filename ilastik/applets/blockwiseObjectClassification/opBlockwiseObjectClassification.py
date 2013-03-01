@@ -1,6 +1,6 @@
 # Built-in
 import logging
-from functools import partial
+import collections
 
 # Third-party
 import numpy
@@ -12,6 +12,7 @@ from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection,
 from lazyflow.operators import OpSubRegion
 
 # ilastik
+from ilastik.utility import bind
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation
 
@@ -168,8 +169,8 @@ class OpBlockwiseObjectClassification( Operator ):
     RawImage = InputSlot()
     BinaryImage = InputSlot()
     Classifier = InputSlot()
-    BlockShape = InputSlot()
-    HaloPadding = InputSlot()
+    BlockShape3dDict = InputSlot( value={'x' : 512, 'y' : 512, 'z' : 512} ) # A dict of SPATIAL block dims
+    HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
     PredictionImage = OutputSlot()
     
@@ -181,12 +182,16 @@ class OpBlockwiseObjectClassification( Operator ):
     def setupOutputs(self):
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint32 # (dtype ultimately comes from OpVigraLabelVolume)
+
+        self._block_shape_dict = self.BlockShape3dDict.value
+        self._halo_padding_dict = self.HaloPadding3dDict.value
+
         
     def execute(self, slot, subindex, roi, destination):
         assert slot == self.PredictionImage, "Unknown Output Slot"
 
         # Determine intersecting blocks
-        block_shape = self.BlockShape.value
+        block_shape = self._getFullShape( self.BlockShape3dDict.value )
         block_starts = getIntersectingBlocks( block_shape, (roi.start, roi.stop) )
         block_starts = map( lambda x: tuple(x), block_starts )
 
@@ -210,6 +215,7 @@ class OpBlockwiseObjectClassification( Operator ):
 
         return destination
 
+
     def _ensurePipelineExists(self, block_start):
         if block_start in self._blockPipelines:
             return
@@ -219,9 +225,9 @@ class OpBlockwiseObjectClassification( Operator ):
 
             logger.debug( "Creating pipeline for block: {}".format( block_start ) )
 
-            # Compute parameters
-            block_shape = self.BlockShape.value
-            halo_padding = self.HaloPadding.value
+            block_shape = self._getFullShape( self._block_shape_dict )
+            halo_padding = self._getFullShape( self._halo_padding_dict )
+
             input_shape = self.RawImage.meta.shape
             block_stop = getBlockBounds( input_shape, block_shape, block_start )[1]
             block_roi = (block_start, block_stop)
@@ -233,12 +239,35 @@ class OpBlockwiseObjectClassification( Operator ):
             opBlockPipeline.Classifier.connect( self.Classifier )
             
             # Forward dirtyness
-            opBlockPipeline.PredictionImage.notifyDirty( partial(self._handleDirtyBlock, block_start ) )
+            opBlockPipeline.PredictionImage.notifyDirty( bind(self._handleDirtyBlock, block_start ) )
             
             self._blockPipelines[block_start] = opBlockPipeline
+
+    
+    def _getFullShape(self, spatialShapeDict):
+        axiskeys = self.RawImage.meta.getAxisKeys()
+        # xyz block shape comes from input slot, but other axes are 1
+        shape = [1] * len(axiskeys)
+        for i, k in enumerate(axiskeys):
+            if k in 'xyz':
+                shape[i] = spatialShapeDict[k]
+        return shape
+
+    
+    def _deleteAllPipelines(self):
+        logger.debug("Deleting all pipelines.")
+        oldBlockPipelines = self._blockPipelines
+        self._blockPipelines = {}
+        with self._lock:
+            for opBlockPipeline in oldBlockPipelines.values():
+                opBlockPipeline.cleanUp()
+    
     
     def propagateDirty(self, slot, subindex, roi):
-        pass # Dirtyness from each block is propagated via our notifyDirty handler (below)
+        if slot == self.BlockShape3dDict or slot == self.HaloPadding3dDict:
+            self._deleteAllPipelines()
+            self.PredictionImage.setDirty( slice(None) )
+    
     
     def _handleDirtyBlock(self, block_start, slot, roi):
         # Convert roi from block coords to global coords

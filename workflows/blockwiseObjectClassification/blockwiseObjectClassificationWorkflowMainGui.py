@@ -46,5 +46,5 @@ def debug_with_new(shell):
     shell.setSelectedAppletDrawer(4)
 
 if __name__=="__main__":
-    #startShellGui(BlockwiseObjectClassificationWorkflow)
-    startShellGui(BlockwiseObjectClassificationWorkflow, debug_with_new)
+    startShellGui(BlockwiseObjectClassificationWorkflow)
+    #startShellGui(BlockwiseObjectClassificationWorkflow, debug_with_new)

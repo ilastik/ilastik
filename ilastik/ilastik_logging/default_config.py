@@ -111,6 +111,7 @@ def get_default_config(prefix=""):
             "TRACE.lazyflow.operators.valueProviders.OpValueCache":     { "level":"INFO" },
             "TRACE.ilastik.clusterOps":                                 { "level":"INFO" },
             "TRACE.ilastik.applets":                                    { "level":"INFO" },
+            "TRACE.ilastik.applets.blockwiseObjectClassification":      { "level":"INFO" },
             "TRACE.ilastik.shell":                                      { "level":"INFO" },
             "TRACE.volumina":                                           { "level":"INFO" },
             "TRACE.volumina.imageScene2D":                              { "level":"INFO" }
