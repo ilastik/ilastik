@@ -35,45 +35,50 @@ class OpInterpMissingData(Operator):
  
     def _interpMissingLayer(self, data):
         """
-        Description: TODO
+        Description: Interpolates empty layers and stacks of layers in which all values are zero.
         
         :param data: Must be 3d, in xyz order.
         """
-        fl=data.sum(0).sum(0)==0 #Full Layer Array
+        fl=data.sum(0).sum(0)==0 #False Layer Array
 
         #Interpolate First Block
-        pos=-1
         if fl[0]==1:
             for i in range(fl.shape[0]):
                 if fl[i]==0:
-                    pos=i
+                    data[:,:,0:i+1]=self._firstBlock(data[:,:,0:i+1])
                     break
-        data[:,:,0:pos+1]=self._firstBlock(data[:,:,0:pos+1])
 
+        
         #Interpolate Center Leyers
         pos0=0
         pos1=0
-        for i in range(fl.shape[0]-1):
-            if fl[i]==0 and fl[i-1]==1:
-                pos1=i
-                if pos0!=0 and pos1!=0:
-                    data[:,:,pos0:pos1+1]=self._centerBlock(data[:,:,pos0:pos1+1])
-            if fl[i]==0 and fl[i+1]==1:
-                pos0=i
+        for i in range(1,fl.shape[0]-1):
+           if fl[i]==1:
+              if fl[i-1]==0:
+                pos0=i-1
+              if fl[i+1]==0:
+                pos1=i+1
+              if pos1!=0:
+                data[:,:,pos0:pos1+1]=self._centerBlock(data[:,:,pos0:pos1+1])
+                pos1=0
+
 
         #Interpolate Last Block 
         if fl[fl.shape[0]-1]==1:
             for i in range(fl.shape[0]):
                 i_rev=fl.shape[0]-i-1
                 if fl[i_rev]==0:
-                    pos=i_rev
+                    data[:,:,i_rev:data.shape[2]]=self._lastBlock(data[:,:,i_rev:data.shape[2]])
                     break
-        data[:,:,pos:data.shape[2]]=self._lastBlock(data[:,:,pos:data.shape[2]])
     
     def _firstBlock(self,data):
         """
-        Description: TODO
-        
+        Description: set the values of the first few empty layers to these of the first correct one
+
+                     [first correct layer]
+                            |
+                     e.g 000764 --> 777764
+
         :param data: Must be 3d, in xyz order.
         """
         for i in range(data.shape[2]-1):
@@ -82,8 +87,10 @@ class OpInterpMissingData(Operator):
      
     def _centerBlock(self,sub_data):
         """
-        Description: TODO
-        
+        Description: interpolates all layers between the first and the last slice od the data
+
+                     e.g 80004 --> 87654
+
         :param sub_data: Must be 3d, in xyz order.
         """
         sub_data = sub_data.transpose()
@@ -97,8 +104,12 @@ class OpInterpMissingData(Operator):
 
     def _lastBlock(self,data):
         """
-        Description: TODO
-        
+        Description: set the value of the last few empty layers to these of the last correct one
+
+                     [last correct layer]
+                            |
+                     e.g. 467000 --> 467777
+
         :param data: Must be 3d, in xyz order.
         """
         for i in range(data.shape[2]):
