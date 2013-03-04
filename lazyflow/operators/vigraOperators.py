@@ -179,16 +179,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                 featureNameArray.append([])
 
             self.newScales = []
-            #FIXME, FIXME, FIXME: remove this, just a test
-            '''
-            for j in range(dimCol):
-                destSigma = 1.0
-                if self.scales[j] > destSigma:
-                    self.newScales.append((destSigma, destSigma, destSigma))
-                else:
-                    self.newScales.append((self.scales[j], self.scales[j], min(1, 0.2*self.scales[j])ifconfig))
-                #self.newScales.append((self.scales[j], self.scales[j], 0.2*self.scales[j]))
-            '''
             
             for j in range(dimCol):
                 destSigma = 1.0
@@ -370,10 +360,13 @@ class OpPixelFeaturesPresmoothed(Operator):
 
 
             inShape  = self.inputs["Input"].meta.shape
-
+            hasChannelAxis = (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) > 0)
+            #if (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0):
+            #    noChannels = True
+            inAxistags = self.inputs["Input"].meta.axistags
+                
             shape = self.outputs["Output"].meta.shape
-
-            axistags = self.inputs["Input"].meta.axistags
+            axistags = self.outputs["Output"].meta.axistags
 
             result = result.view(vigra.VigraArray)
             result.axistags = copy.copy(axistags)
@@ -393,12 +386,19 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             start, stop = roi.sliceToRoi(subkey,subkey)
             maxSigma = max(0.7,self.maxSigma)
-
+            #maxSigma = max(1., self.maxSigma)
+            window_size = 3.5
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
+            # 0.7, because the features receive a pre-smoothed array and don't need much of a neighborhood 
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window_size)
+            
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window_size)
+            
+            newStartSmoother = roi.TinyVector(start - vigOpSourceStart)
+            newStopSmoother = roi.TinyVector(stop - vigOpSourceStart)
+            roiSmoother = roi.roiToSlice(newStartSmoother, newStopSmoother)
 
             # Translate coordinates (now in terms of smoothed image coordinates)
             vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
@@ -406,10 +406,8 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             readKey = roi.roiToSlice(newStart, newStop)
 
-
             writeNewStart = start - newStart
             writeNewStop = writeNewStart +  stop - start
-
 
             treadKey=list(readKey)
 
@@ -426,26 +424,29 @@ class OpPixelFeaturesPresmoothed(Operator):
             treadKey=tuple(treadKey)
 
             req = self.inputs["Input"][treadKey].allocate()
-
+            
             sourceArray = req.wait()
             req.clean()
             #req.result = None
             req.destination = None
             if sourceArray.dtype != numpy.float32:
                 sourceArrayF = sourceArray.astype(numpy.float32)
-                sourceArray.resize((1,), refcheck = False)
+                try:
+                    sourceArray.resize((1,), refcheck = False)
+                except:
+                    pass
                 del sourceArray
                 sourceArray = sourceArrayF
+                
+            #if (self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0):
+                #add a channel dimension to make the code afterwards more uniform
+            #    sourceArray = sourceArray.view(numpy.ndarray)
+            #    sourceArray = sourceArray.reshape(sourceArray.shape+(1,))
             sourceArrayV = sourceArray.view(vigra.VigraArray)
-            sourceArrayV.axistags =  copy.copy(axistags)
-
-
-
-
-
+            sourceArrayV.axistags =  copy.copy(inAxistags)
+            
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
-
 
             sourceArraysForSigmas = [None]*dimCol
 
@@ -479,9 +480,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
                     droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                    #print droi, sourceArray.shape, tempSigma,self.scales[j]
                     sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
-                    #sourceArrayForSigma = sourceArrayForSigma.view(numpy.ndarray)
 
             del sourceArrayV
             try:
@@ -491,7 +490,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                 logger.debug("Failed to free array memory.")                
             del sourceArray
 
-            
             closures = []
 
             #connect individual operators
@@ -502,8 +500,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         vop= self.featureOps[i][j]
                         oslot = vop.outputs["Output"]
                         req = None
-                        inTagKeys = [ax.key for ax in oslot.meta.axistags]
-                        if flag in inTagKeys:
+                        #inTagKeys = [ax.key for ax in oslot.meta.axistags]
+                        #print inTagKeys, flag
+                        if hasChannelAxis:
                             slices = oslot.meta.shape[axisindex]
                             if cnt + slices >= rroi.start[axisindex] and rroi.start[axisindex]-cnt<slices and rroi.start[axisindex]+written<rroi.stop[axisindex]:
                                 begin = 0
@@ -516,24 +515,34 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 key_.insert(axisindex, slice(begin, end, None))
                                 reskey = [slice(None, None, None) for x in range(len(result.shape))]
                                 reskey[axisindex] = slice(written, written+end-begin, None)
-
+                                
                                 destArea = result[tuple(reskey)]
-                                roi_ = SubRegion(self.Input, pslice=key_)                                
-                                closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j])
+                                #readjust the roi for the new source array
+                                roiSmootherList = list(roiSmoother)
+                                
+                                roiSmootherList.insert(axisindex, slice(begin, end, None))
+                                
+                                if hasTimeAxis:
+                                    roiSmootherList.insert(timeAxis, self.Input.meta.shape[timeAxis])
+                                roiSmootherRegion = SubRegion(self.Input, pslice=roiSmootherList)
+                                
+                                closure = partial(oslot.operator.execute, oslot, (), roiSmootherRegion, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin
                             cnt += slices
                         else:
                             if cnt>=rroi.start[axisindex] and rroi.start[axisindex] + written < rroi.stop[axisindex]:
-                                reskey = copy.copy(oldkey)
-                                reskey.insert(axisindex, written)
-                                #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
-                                #print "result: ", result.shape, "inslot:", inSlot.shape
-
+                                reskey = [slice(None, None, None) for x in range(len(result.shape))]
+                                slices = oslot.meta.shape[axisindex]
+                                reskey[axisindex]=slice(written, written+slices, None)
+                                #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey, "resshape:", result.shape
+                                #print "roiSmoother:", roiSmoother
                                 destArea = result[tuple(reskey)]
+                                #print "destination area:", destArea.shape
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
                                 oldroi = SubRegion(self.Input, pslice=oldkey)
+                                #print "passing roi:", oldroi
                                 closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
@@ -611,16 +620,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                 featureNameArray.append([])
 
             self.newScales = []
-            #FIXME, FIXME, FIXME: remove this, just a test
-            '''
-            for j in range(dimCol):
-                destSigma = 1.0
-                if self.scales[j] > destSigma:
-                    self.newScales.append((destSigma, destSigma, destSigma))
-                else:
-                    self.newScales.append((self.scales[j], self.scales[j], min(1, 0.2*self.scales[j])ifconfig))
-                #self.newScales.append((self.scales[j], self.scales[j], 0.2*self.scales[j]))
-            '''
             
             for j in range(dimCol):
                 destSigma = 1.0
@@ -654,9 +653,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  you must make a new feature (with a new feature ID) and
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.5 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
                         featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
@@ -682,9 +678,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  feature (with a new feature ID) and leave this feature here
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.66 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
@@ -801,8 +794,11 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             cnt = 0
             written = 0
             assert (rroi.stop<=self.outputs["Output"].meta.shape).all()
+            assert self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels)!=0, "Data without channels is not yet supported"
             flag = 'c'
             channelAxis=self.inputs["Input"].meta.axistags.index('c')
+            assert self.inputs["Input"].meta.shape[channelAxis]==1, "Multichannel data is not yet supported"
+            assert len(self.inputs["Input"].meta.shape)==4, "Only 3d data, as the interpolation is in z"
             axisindex = channelAxis
             oldkey = list(key)
             oldkey.pop(axisindex)
@@ -827,37 +823,71 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             oldstart, oldstop = roi.sliceToRoi(key, shape)
 
             start, stop = roi.sliceToRoi(subkey,subkey)
-            maxSigma = max(0.7,self.maxSigma)
-
-            # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
-            #print "vigOpSourceStart", vigOpSourceStart
-            vigOpOffset = start - vigOpSourceStart
             
+            maxSigma = max(0.7,self.maxSigma)
+            #maxSigma = max(1., self.maxSigma)
+            window_size = 3.5
+            # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
+            # all this has to be done for the interpolated array!
+            zaxis = axistags.index('z')
+            scaleZ = self.InterpolationScaleZ.value
+            newRangeZ = scaleZ*(shape[zaxis]-1)+1
+            interpShape = list(copy.copy(popFlagsFromTheKey(shape, axistags, 'c')))
+            interpShape[zaxis] = numpy.long(newRangeZ)
+            interp_start = copy.copy(start)
+            interp_stop = copy.copy(stop)
+            interp_start[zaxis] = scaleZ*interp_start[zaxis]
+            interp_stop[zaxis] = scaleZ*interp_stop[zaxis]-1
+            
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(interp_start, interp_stop, interpShape, 0.7, window_size)
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
-
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, interpShape, maxSigma, window = 3.5)
+            
+            vigOpOffset = start - vigOpSourceStart
+            newStartSmoother = roi.TinyVector(interp_start - vigOpSourceStart)
+            newStopSmoother = roi.TinyVector(interp_stop - vigOpSourceStart)
+            roiSmoother = roi.roiToSlice(newStartSmoother, newStopSmoother)
+            
             # Translate coordinates (now in terms of smoothed image coordinates)
             vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
             vigOpSourceStop = roi.TinyVector(vigOpSourceStop - newStart)
 
-            readKey = roi.roiToSlice(newStart, newStop)
+            #adjust the readkey, as we read from the non-interpolated image
+            newStartNI = copy.copy(newStart)
+            newStopNI = copy.copy(newStop)
+            newStartNI[zaxis] = numpy.floor(newStart[zaxis]/scaleZ)
+            newStopNI[zaxis] = numpy.ceil(newStop[zaxis]/scaleZ)
+            readKey = roi.roiToSlice(newStartNI, newStopNI)
+            
+            #interpolation is applied on a region read with the above key. In x-y it should just read everything
+            newStartI = copy.copy(newStart)
+            newStopI = copy.copy(newStop)
+            newStopI = newStopI - newStartI
+            newStartI = newStartI - newStartI
+            newStartI[zaxis] = newStart[zaxis]-scaleZ*newStartNI[zaxis]
+            newStopI[zaxis] = newStop[zaxis]-scaleZ*newStartNI[zaxis]
+            readKeyInterp = roi.roiToSlice(newStartI, newStopI)
 
             writeNewStart = start - newStart
             writeNewStop = writeNewStart +  stop - start
 
             treadKey=list(readKey)
+            treadKeyInterp = list(readKeyInterp)
 
             if hasTimeAxis:
                 if timeAxis < channelAxis:
                     treadKey.insert(timeAxis, key[timeAxis])
+                    treadKeyInterp.insert(timeAxis, key[timeAxis])
                 else:
+                    treadKey.insert(timeAxis-1, key[timeAxis])
                     treadKey.insert(timeAxis-1, key[timeAxis])
             if  self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
                 treadKey =  popFlagsFromTheKey(treadKey,axistags,'c')
+                treadKeyInterp =  popFlagsFromTheKey(treadKeyInterp,axistags,'c')
             else:
                 treadKey.insert(channelAxis, slice(None,None,None))
+                treadKeyInterp.insert(channelAxis, slice(None,None,None))
 
             treadKey=tuple(treadKey)
             req = self.inputs["Input"][treadKey].allocate()
@@ -882,18 +912,15 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             interpShape[zaxis] = numpy.long(newRangeZ)
             interpShape = popFlagsFromTheKey(interpShape, axistags, 'c')
             interpShape = popFlagsFromTheKey(interpShape, at2, 't')
-            #print sourceArrayV.shape, sourceArrayV.dtype, interpShape
             #FIXME: this won't work with multichannel data. Don't care for now.
+            
             sourceArrayVInterp = vigra.sampling.resizeVolumeSplineInterpolation(sourceArrayV.squeeze(), shape=interpShape)
-            #print "interpolated array shape:", sourceArrayVInterp.shape
-            sourceArrayVInterp.resize(sourceArrayVInterp.shape+(1,))
+            sourceArrayVInterp = numpy.ndarray.reshape(sourceArrayVInterp, sourceArrayVInterp.shape+(1,))
             sourceArrayVInterp.axistags = copy.copy(axistags)
-
-            #print "interpolated array:", sourceArrayVInterp[0, 0, 10, 0]
+            sourceArrayVInterp = sourceArrayVInterp[treadKeyInterp]
 
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
-
 
             sourceArraysForSigmas = [None]*dimCol
 
@@ -926,30 +953,14 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                         sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
-                    #change the z to the new value
-                    #print "old value:", vigOpSourceStart[zaxis], vigOpSourceStop[zaxis]
-                    newzstart = vigOpSourceStart[zaxis]*scaleZ
-                    newzstop = vigOpSourceStop[zaxis]*scaleZ
-                    #vigOpSourceStart[zaxis]=newzstart
-                    #vigOpSourceStop[zaxis]=newzstop-1
-                    newVigStart = [int(x) for x in vigOpSourceStart]
-                    newVigStop = [int(x) for x in vigOpSourceStop]
-                    #newVigStart = numpy.array(vigOpSourceStart).astype(int)
-                    #newVigStop = numpy.array(vigOpSourceStop).astype(int)
-                    newVigStart[zaxis]*=scaleZ
-                    newVigStop[zaxis]=min(newVigStop[zaxis]*scaleZ-1, sourceArrayVInterp.shape[zaxis])
-                    droi = (tuple(newVigStart), tuple(newVigStop))
-                    #droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                    #print "smoothing with roi:", droi, "an array of shape:", sourceArrayVInterp.shape
-                    
-                    #print droi, sourceArray.shape, tempSigma,self.scales[j]
-                    
-                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
-                    #print "smoothed an array to get something of size", sourceArraysForSigmas[j].shape
-                    #print "here is the smoothed thing", sourceArraysForSigmas[j][0, 0, :, 0]
-                    
-                    #sourceArrayForSigma = sourceArrayForSigma.view(numpy.ndarray)
-
+                    droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                    try:
+                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
+                    except RuntimeError:
+                        print "interpolated array:", sourceArrayVInterp.shape, sourceArrayVInterp.axistags
+                        print "source array:", sourceArrayV.shape, sourceArrayV.axistags
+                        print "droi:", droi
+                        raise RuntimeError
             del sourceArrayV
             del sourceArrayVInterp
             try:
@@ -959,7 +970,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                 logger.debug("Failed to free array memory.")                
             del sourceArray
 
-            
             closures = []
 
             #connect individual operators
@@ -983,29 +993,40 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     
                                 #call feature computation per slice, only for the original data slices
                                 nz = scaleZ*(oldkey[zaxis].stop-oldkey[zaxis].start)
-                                for iz in range(0, nz, scaleZ):
-                                    #print iz
+                                roiSmootherList = list(roiSmoother)
+                                zrange = range(roiSmootherList[zaxis].start, roiSmootherList[zaxis].stop, scaleZ)
+                                
+                                for iz, z in enumerate(zrange):
+                                    
                                     #key_ = copy.copy(oldkey)
                                     key_ = list(oldkey)
                                     key_.insert(axisindex, slice(begin, end, None))
-                                    offset = vigOpOffset[zaxis]*scaleZ
-                                    zStart, zStop = roi.extendSlice(iz+offset, iz+offset+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window = 2)
-                                    #print "new zstart, zstop", zStart, zStop
                                     
-                                    zslice = slice(iz+vigOpSourceStart[zaxis], iz+vigOpSourceStart[zaxis]+1, None)
-                                    key_[zaxis] = zslice
+                                    #readjust the roi for the new source array?
+                                    
+                                    newRoi = copy.copy(roiSmootherList)
+                                    newRoi.insert(axisindex, slice(begin, end, None))
+                                    newRoi[zaxis] = slice(z, z+1, None)
+                                    newRoi = SubRegion(self.Input, pslice=newRoi)
+                                    #print "roi smoother:", roiSmoother
+                                    
+                                    zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window_size)
                                     
                                     sourceKey = []
                                     sourceKey.insert(axistags.index('x'), slice(None, None, None))
                                     sourceKey.insert(axistags.index('y'), slice(None, None, None))
                                     sourceKey.insert(zaxis, slice(zStart, zStop, None))
+                                    
                                     reskey = [slice(None, None, None) for x in range(len(result.shape))]
                                     reskey[axisindex] = slice(written, written+end-begin, None)
-                                    reskey[zaxis] = slice(iz/scaleZ, iz/scaleZ+1, None)
+                                    reskey[zaxis] = slice(iz, iz+1, None)
+                                    
                                     destArea = result[tuple(reskey)]
                                     roi_ = SubRegion(self.Input, pslice=key_)
+                                    
                                     #print "passing to filter:", sourceArraysForSigmas[j][0, 0, zStart:zStop, 0]                                
-                                    closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j][sourceKey])
+                                    #closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j][sourceKey])
+                                    closure = partial(oslot.operator.execute, oslot, (), newRoi, destArea, sourceArraysForSigmas[j][sourceKey])
                                     closures.append(closure)
                                     
                                 written += end - begin
@@ -1056,16 +1077,14 @@ class OpBaseVigraFilter(OpArrayPiper):
     outputDtype = numpy.float32
     inputDtype = numpy.float32
     supportsOut = True
-    window_size=2
+    window_size_feature = 2
+    window_size_smoother = 3.5
     supportsRoi = False
     supportsWindow = False
 
     def execute(self, slot, subindex, rroi, result, sourceArray=None):
         assert len(subindex) == self.Output.level == 0
         key = roiToSlice(rroi.start, rroi.stop)
-
-        #print "inside execute of baseVigraFilter", rroi, result.shape, sourceArray.shape
-        #print sourceArray[0, 0, :, 0]
 
         kwparams = {}
         for islot in self.inputs.values():
@@ -1081,12 +1100,13 @@ class OpBaseVigraFilter(OpArrayPiper):
         elif self.inputs.has_key("innerScale"):
             sigma = self.inputs["innerScale"].value
 
-        windowSize = 4.0
+        windowSize = 3.5
         if self.supportsWindow:
-            kwparams['window_size']=self.window_size
-            windowSize = self.window_size
+            kwparams['window_size']=self.window_size_feature
+            windowSize = self.window_size_smoother
 
-        largestSigma = sigma #ensure enough context for the vigra operators
+        #largestSigma = sigma #ensure enough context for the vigra operators
+        largestSigma = max(0.7,sigma)
 
         shape = self.outputs["Output"].meta.shape
 
@@ -1107,12 +1127,13 @@ class OpBaseVigraFilter(OpArrayPiper):
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         
         start, stop = roi.sliceToRoi(subkey,subkey)
+        
         if sourceArray is not None and zAxis<len(axistags):
             if timeAxis>zAxis:
                 subshape[at2.index('z')]=sourceArray.shape[zAxis]
             else:
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
-        #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        
         newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         
         readKey = roi.roiToSlice(newStart, newStop)
@@ -1142,21 +1163,24 @@ class OpBaseVigraFilter(OpArrayPiper):
 
         i2 = 0
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
-            treadKey=list(readKey)
-
+            newReadKey = list(readKey) #add channel and time axis if needed
             if hasTimeAxis:
                 if channelAxis > timeAxis:
-                    treadKey.insert(timeAxis, key[timeAxis])
+                    newReadKey.insert(timeAxis, key[timeAxis])
                 else:
-                    treadKey.insert(timeAxis-1, key[timeAxis])
-            treadKey.insert(channelAxis, slice(i,i+1,None))
-            treadKey=tuple(treadKey)
-
+                    newReadKey.insert(timeAxis-1, key[timeAxis])
+            if hasChannelAxis:
+                newReadKey.insert(channelAxis, slice(i, i+1, None))
+                
             if sourceArray is None:
-                req = self.inputs["Input"][treadKey].allocate()
+                req = self.inputs["Input"][newReadKey].allocate()
                 t = req.wait()
             else:
-                t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
+                if hasChannelAxis:
+                    t = sourceArray[getAllExceptAxis(len(newReadKey),channelAxis,slice(i,i+1,None) )]
+                else:
+                    fullkey = [slice(None, None, None)]*len(newReadKey)
+                    t = sourceArray[fullkey]
 
             t = numpy.require(t, dtype=self.inputDtype)
             t = t.view(vigra.VigraArray)
@@ -1172,8 +1196,6 @@ class OpBaseVigraFilter(OpArrayPiper):
                 sourceEnd = channelsPerChannel - ((i+1) * channelsPerChannel - oldstop[channelAxis])
             destBegin = i2
             destEnd = i2 + sourceEnd - sourceBegin
-
-
 
             if channelsPerChannel>1:
                 tkey=getAllExceptAxis(len(shape),channelAxis,slice(destBegin,destEnd,None))
@@ -1224,6 +1246,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
+                            
                         except Exception, e:
                             print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
                             traceback.print_exc(e)
