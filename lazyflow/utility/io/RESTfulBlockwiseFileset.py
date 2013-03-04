@@ -299,6 +299,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
                     except:
                         if fileLock.locked():
                             fileLock.release()
+                            self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_NOT_AVAILABLE)
                         failedBlockQueue.put( block_start )
                         raise
         except Queue.Empty:
