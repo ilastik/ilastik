@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Axis Iterator &mdash; lazyflow v0.1 documentation</title>
+    <title>Axis Iterator &mdash; lazyflow 0.1 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="lazyflow v0.1 documentation" href="index.html" /> 
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -31,7 +34,10 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -53,8 +59,8 @@
 <p><tt class="docutils literal"><span class="pre">trgt</span></tt>, <tt class="docutils literal"><span class="pre">src</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> represent slicings which can be applied to anything that implements the <tt class="docutils literal"><span class="pre">__getitem__(key)</span></tt> method, usually an n-dimensional array.
 <tt class="docutils literal"><span class="pre">trgt</span></tt> specifies the slice in the target array, <tt class="docutils literal"><span class="pre">src</span></tt> specifies the slice in the source array. If the operation should inflate the data from the source slice, <tt class="docutils literal"><span class="pre">mask</span></tt> cuts it down to the appropriate size. <tt class="docutils literal"><span class="pre">mask</span></tt> and <tt class="docutils literal"><span class="pre">trgt</span></tt> slices are always congruent.</p>
 </div>
-<div class="section" id="id2">
-<h2>Inner Mechanics<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="inner-mechanics">
+<span id="id2"></span><h2>Inner Mechanics<a class="headerlink" href="#inner-mechanics" title="Permalink to this headline">¶</a></h2>
 <p>Consider the following example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">roi</span> <span class="o">=</span> <span class="n">Roi</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),(</span><span class="mi">90</span><span class="p">,</span><span class="mi">50</span><span class="p">))</span>
 <span class="n">srcGrid</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">40</span><span class="p">)</span>
@@ -64,8 +70,7 @@
 </div>
 <p>It could be visualized like this:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_exposition.svg"><object data="_images/iterator_exposition.svg" type="image/svg+xml"><embed src="_images/iterator_exposition.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_exposition.svg"><img alt="iterator exposition" src="_images/iterator_exposition.svg" /></a>
 </div>
 <p>Using this:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">for</span> <span class="n">src</span><span class="p">,</span><span class="n">trgt</span><span class="p">,</span><span class="n">mask</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
@@ -76,74 +81,70 @@
 </pre></div>
 </div>
 <p>One will get the following output:</p>
-<div class="highlight-python"><pre>src  (slice(0, 20, None), slice(0, 40, None))
-trgt  (slice(0, 30, None), slice(0, 10, None))
-mask  (slice(0, 30, None), slice(0, 10, None))
---------------------------------------------------
-src  (slice(20, 40, None), slice(40, 80, None))
-trgt  (slice(30, 70, None), slice(10, 30, None))
-mask  (slice(0, 40, None), slice(0, 20, None))
---------------------------------------------------
-src  (slice(40, 60, None), slice(80, 120, None))
-trgt  (slice(70, 80, None), slice(30, 40, None))
-mask  (slice(0, 10, None), slice(0, 10, None))
---------------------------------------------------
-src  (slice(20, 40, None), slice(80, 120, None))
-trgt  (slice(30, 70, None), slice(30, 40, None))
-mask  (slice(0, 40, None), slice(0, 10, None))
---------------------------------------------------
-src  (slice(40, 60, None), slice(40, 80, None))
-trgt  (slice(70, 80, None), slice(10, 30, None))
-mask  (slice(0, 10, None), slice(0, 20, None))
---------------------------------------------------
-src  (slice(0, 20, None), slice(40, 80, None))
-trgt  (slice(0, 30, None), slice(10, 30, None))
-mask  (slice(0, 30, None), slice(0, 20, None))
---------------------------------------------------
-src  (slice(0, 20, None), slice(80, 120, None))
-trgt  (slice(0, 30, None), slice(30, 40, None))
-mask  (slice(0, 30, None), slice(0, 10, None))
---------------------------------------------------
-src  (slice(20, 40, None), slice(0, 40, None))
-trgt  (slice(30, 70, None), slice(0, 10, None))
-mask  (slice(0, 40, None), slice(0, 10, None))
---------------------------------------------------
-src  (slice(40, 60, None), slice(0, 40, None))
-trgt  (slice(70, 80, None), slice(0, 10, None))
-mask  (slice(0, 10, None), slice(0, 10, None))
---------------------------------------------------</pre>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="mi">120</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">70</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+<span class="n">src</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">trgt</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="n">mask</span>  <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">None</span><span class="p">))</span>
+<span class="o">--------------------------------------------------</span>
+</pre></div>
 </div>
 <p>As you can see, for every <tt class="docutils literal"><span class="pre">trgt</span></tt> slice there is a correspondig <tt class="docutils literal"><span class="pre">src</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> slice. In the first step the <tt class="docutils literal"><span class="pre">roi</span></tt> gets broken down in a number of <tt class="docutils literal"><span class="pre">trgt</span></tt> slices:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_roiToTrgtSlices.svg"><object data="_images/iterator_roiToTrgtSlices.svg" type="image/svg+xml"><embed src="_images/iterator_roiToTrgtSlices.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_roiToTrgtSlices.svg"><img alt="roi being broken down into trgt slices" src="_images/iterator_roiToTrgtSlices.svg" /></a>
 </div>
 <p>This is achieved by <tt class="docutils literal"><span class="pre">getSubRois(self,point,grid,roi)</span></tt>,which calls <tt class="docutils literal"><span class="pre">nextStop(self,start,grid,roi)</span></tt> and <tt class="docutils literal"><span class="pre">nextStarts(self,point,grid,roi)</span> <span class="pre">``</span> <span class="pre">repeatedly.</span> <span class="pre">For</span> <span class="pre">each</span> <span class="pre">point</span> <span class="pre">``nextStarts()</span></tt> returns
 the next points where either the grid intersects the grid itself or the <tt class="docutils literal"><span class="pre">roi</span></tt>. <tt class="docutils literal"><span class="pre">nextStop()</span></tt> returns for each starting point the stopping point, meaning the next point where the grid intersects itself or the <tt class="docutils literal"><span class="pre">roi</span></tt> AND the point where the volume of `` [start,stop]`` is greater than zero. Visualized:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_nextStarts.svg"><object data="_images/iterator_nextStarts.svg" type="image/svg+xml"><embed src="_images/iterator_nextStarts.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_nextStarts.svg"><img alt="getting all start points" src="_images/iterator_nextStarts.svg" /></a>
 </div>
 <p>When you have all starting points, <tt class="docutils literal"><span class="pre">nextStop()</span></tt> can be used to find the next stopping point, IF there is one. Two examples:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_nextStop.svg"><object data="_images/iterator_nextStop.svg" type="image/svg+xml"><embed src="_images/iterator_nextStop.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_nextStop.svg"><img alt="assigning stopping points" src="_images/iterator_nextStop.svg" /></a>
 </div>
 <p>The last step is of course merely conceptual. Once the <tt class="docutils literal"><span class="pre">trgt</span></tt> space is segmented into <tt class="docutils literal"><span class="pre">trgt</span></tt> slices, each <tt class="docutils literal"><span class="pre">trgt</span></tt> slice is mapped to a <tt class="docutils literal"><span class="pre">src</span></tt> slice. This is done using the <tt class="docutils literal"><span class="pre">mapRoiToSource()</span></tt> method. HOW this mapping is done is up to the developer. In the current implementation it fits the needs of image filtering. An illustration:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_mapToSrc.svg"><object data="_images/iterator_mapToSrc.svg" type="image/svg+xml"><embed src="_images/iterator_mapToSrc.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_mapToSrc.svg"><img alt="mapping a trgt roi to the src roi" src="_images/iterator_mapToSrc.svg" /></a>
 </div>
 <p>Now all that has to be done is to create the <tt class="docutils literal"><span class="pre">mask</span></tt> slice. Why is there a need for this? Sometimes the filter operation inflates the image and returns e.g. 3 channels even if you requested just one. The <tt class="docutils literal"><span class="pre">mask</span></tt>
 slice cuts out the desired part. Here is an illustration:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/iterator_mask.svg"><object data="_images/iterator_mask.svg" type="image/svg+xml"><embed src="_images/iterator_mask.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/iterator_mask.svg"><img alt="mapping a trgt roi to the src roi" src="_images/iterator_mask.svg" /></a>
 </div>
 <p>Finally <tt class="docutils literal"><span class="pre">src</span></tt>, <tt class="docutils literal"><span class="pre">trgt</span></tt> and <tt class="docutils literal"><span class="pre">mask</span></tt> slices are grouped together and returned.</p>
 </div>
 <div class="section" id="a-real-world-example">
-<h2>A real world example<a class="headerlink" href="#a-real-world-example" title="Permalink to this headline">¶</a></h2>
+<span id="real-world-example"></span><h2>A real world example<a class="headerlink" href="#a-real-world-example" title="Permalink to this headline">¶</a></h2>
 <p>To illustrate how the iterator is used we consider this example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OpStructureTensorEigenvaluesSummedChannels</span><span class="p">(</span><span class="n">OpBaseVigraFilter</span><span class="p">):</span>
         <span class="n">inputSlots</span> <span class="o">=</span> <span class="p">[</span><span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Input&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma2&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">)]</span>
@@ -243,7 +244,7 @@ slice cuts out the desired part. Here is an illustration:</p>
 <span class="n">nIt</span> <span class="o">=</span> <span class="n">AxisIterator</span><span class="p">(</span><span class="n">origRoi</span><span class="p">,</span> <span class="n">srcGrid</span><span class="p">,</span> <span class="n">trgtGrid</span><span class="p">,</span> <span class="n">timeIndex</span><span class="o">=</span><span class="n">timeIndex</span><span class="p">,</span> <span class="n">channelIndex</span><span class="o">=</span><span class="n">channelIndex</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">src</span> <span class="pre">grid</span></tt> is identical to the shape except in the channel dimension, which is equal to the channel resolution. In this example it is equal to the magnitude of the source channel dimension, since all channels are needed for the calculation of the sum. The <tt class="docutils literal"><span class="pre">trgt</span></tt> grid has the same property, except that the channel dimensions equal the return value of the <tt class="docutils literal"><span class="pre">channelsPerChannel()</span></tt> method. This is also equal to the source channel dimension, since this is expected of the filter. The spatial and time like dimensions are equal to the shape, so that the volume does not get segmented ?- only the channel dimension.</p>
+<p>The <tt class="docutils literal"><span class="pre">src</span> <span class="pre">grid</span></tt> is identical to the shape except in the channel dimension, which is equal to the channel resolution. In this example it is equal to the magnitude of the source channel dimension, since all channels are needed for the calculation of the sum. The <tt class="docutils literal"><span class="pre">trgt</span></tt> grid has the same property, except that the channel dimensions equal the return value of the <tt class="docutils literal"><span class="pre">channelsPerChannel()</span></tt> method. This is also equal to the source channel dimension, since this is expected of the filter. The spatial and time like dimensions are equal to the shape, so that the volume does not get segmented - only the channel dimension.</p>
 <p>Let us take a second example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OpStructureTensorEigenvalues</span><span class="p">(</span><span class="n">OpBaseVigraFilter</span><span class="p">):</span>
         <span class="n">inputSlots</span> <span class="o">=</span> <span class="p">[</span><span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Input&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">),</span> <span class="n">InputSlot</span><span class="p">(</span><span class="s">&quot;Sigma2&quot;</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&quot;float&quot;</span><span class="p">)]</span>
@@ -291,7 +292,7 @@ slice cuts out the desired part. Here is an illustration:</p>
   <ul>
 <li><a class="reference internal" href="#">Axis Iterator</a><ul>
 <li><a class="reference internal" href="#overview">Overview</a></li>
-<li><a class="reference internal" href="#id2">Inner Mechanics</a></li>
+<li><a class="reference internal" href="#inner-mechanics">Inner Mechanics</a></li>
 <li><a class="reference internal" href="#a-real-world-example">A real world example</a></li>
 </ul>
 </li>
@@ -305,7 +306,7 @@ slice cuts out the desired part. Here is an illustration:</p>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" size="18" />
+      <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
@@ -325,12 +326,15 @@ slice cuts out the desired part. Here is an illustration:</p>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

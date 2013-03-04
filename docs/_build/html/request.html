@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Lazyflow Request Framework &mdash; lazyflow v0.1 documentation</title>
+    <title>Lazyflow Request Framework &mdash; lazyflow 0.1 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="lazyflow v0.1 documentation" href="index.html" />
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
     <link rel="next" title="Utilities" href="utilities.html" />
     <link rel="prev" title="Advanced Concepts" href="advanced.html" /> 
   </head>
@@ -42,7 +45,7 @@
         <li class="right" >
           <a href="advanced.html" title="Advanced Concepts"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -107,8 +110,7 @@ Internally, requests are scheduled for execution in a fixed-size threadpool.  Wh
 complete in other requests, it is temporarily suspended so that its OS thread can be used to perform other work.</p>
 <p>This dependency diagram shows how user-defined workloads depend on the parts of the request system.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_framework_structure.svg"><object data="_images/request_framework_structure.svg" type="image/svg+xml"><embed src="_images/request_framework_structure.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_framework_structure.svg"><img alt="request framework dependencies" src="_images/request_framework_structure.svg" /></a>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -197,8 +199,7 @@ Anyway, we have more observations to make note of:</p>
 <h2><a class="toc-backref" href="#id7">Dependencies</a><a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
 <p>Here&#8217;s a visualization of the dependencies between the requests from the quickstart example:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_dependency.svg"><object data="_images/request_dependency.svg" type="image/svg+xml"><embed src="_images/request_dependency.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_dependency.svg"><img alt="request dependency diagram" src="_images/request_dependency.svg" /></a>
 </div>
 <p>As you can see, r1 depends on BOTH r2 and r3.  In a typical use case, request dependencies form a tree, but this isn&#8217;t always true.
 Let&#8217;s tweak our example even further.  In the new version, we don&#8217;t already have the input image.  Instead, we compute it in a separate request.</p>
@@ -229,8 +230,7 @@ Let&#8217;s tweak our example even further.  In the new version, we don&#8217;t 
 <p>Now our example is getting a little contrived for such a simple computation, but bear with us.
 The request dependencies are visualized in the following diagram:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_dependency_shared.svg"><object data="_images/request_dependency_shared.svg" type="image/svg+xml"><embed src="_images/request_dependency_shared.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_dependency_shared.svg"><img alt="request dependency diagram" src="_images/request_dependency_shared.svg" /></a>
 </div>
 </div>
 <div class="section" id="cancellation">
@@ -262,13 +262,11 @@ In such an environment, it may be necessary to <em>cancel</em> a request that ha
 <p>But a request will not be cancelled unless ALL of the requests that were waiting for it have already been cancelled.
 For example, suppose the dependency graph for some group of requests looked like this:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_cancellation_example_before.svg"><object data="_images/request_cancellation_example_before.svg" type="image/svg+xml"><embed src="_images/request_cancellation_example_before.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_cancellation_example_before.svg"><img alt="request dependency diagram" src="_images/request_cancellation_example_before.svg" /></a>
 </div>
 <p>Now suppose that we call <tt class="docutils literal"><span class="pre">r1.cancel()</span></tt>.  The following diagram shows all cancelled requests in red.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_cancellation_example_after.svg"><object data="_images/request_cancellation_example_after.svg" type="image/svg+xml"><embed src="_images/request_cancellation_example_after.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_cancellation_example_after.svg"><img alt="request dependency diagram" src="_images/request_cancellation_example_after.svg" /></a>
 </div>
 <p>Notice that r3 and subsequent requests were <strong>not</strong> cancelled because there is a non-cancelled request (r2) still waiting for it.</p>
 <div class="section" id="handling-cancellation">
@@ -338,33 +336,26 @@ There is an interesting consequence of this behavior: For the special case where
 a single exception may propagate through multiple callstacks.</p>
 <p>Consider this request dependency graph:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><object data="_images/request_exception_propagation_before.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_before.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_before.svg" /></a>
 </div>
 <p>Suppose an exception is raised in r1.  The following series of diagrams highlights the requests in which the exception will be seen.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><object data="_images/request_exception_propagation_before.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_before.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_before.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_before.svg" /></a>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_step1.svg"><object data="_images/request_exception_propagation_step1.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step1.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step1.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step1.svg" /></a>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_step2.svg"><object data="_images/request_exception_propagation_step2.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step2.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step2.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step2.svg" /></a>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_step3.svg"><object data="_images/request_exception_propagation_step3.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step3.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step3.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step3.svg" /></a>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_step4.svg"><object data="_images/request_exception_propagation_step4.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step4.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step4.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step4.svg" /></a>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_exception_propagation_step5.svg"><object data="_images/request_exception_propagation_step5.svg" type="image/svg+xml"><embed src="_images/request_exception_propagation_step5.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_exception_propagation_step5.svg"><img alt="request dependency diagram" src="_images/request_exception_propagation_step5.svg" /></a>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -388,27 +379,28 @@ downgrading the &#8220;failed&#8221; status of some requests into a &#8220;cance
 <li>Use <tt class="docutils literal"><span class="pre">Request.notify_cancelled()</span></tt> to be notified when a request has been <strong>cancelled</strong>.</li>
 </ul>
 <p>Here&#8217;s an example:</p>
-<div class="highlight-python"><pre>def some_work():
-    """Do some work."""
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">some_work</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Do some work.&quot;&quot;&quot;</span>
 
-def handle_result(result)
-    print "The result was:", result
+<span class="k">def</span> <span class="nf">handle_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;The result was:&quot;</span><span class="p">,</span> <span class="n">result</span>
 
-def handle_failure(ex):
-    print "The request failed due a {} exception".format( type(ex) )
+<span class="k">def</span> <span class="nf">handle_failure</span><span class="p">(</span><span class="n">ex</span><span class="p">):</span>
+    <span class="k">print</span> <span class="s">&quot;The request failed due a {} exception&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span> <span class="p">)</span>
 
-def handle_cancelled():
-    print "The request was cancelled"
+<span class="k">def</span> <span class="nf">handle_cancelled</span><span class="p">():</span>
+    <span class="k">print</span> <span class="s">&quot;The request was cancelled&quot;</span>
 
-req = Request( some_work )
-req.notify_finished( handle_result )
-req.notify_failed( handle_failure )
-req.notify_cancelled( handle_cancelled )
+<span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">some_work</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_finished</span><span class="p">(</span> <span class="n">handle_result</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_failed</span><span class="p">(</span> <span class="n">handle_failure</span> <span class="p">)</span>
+<span class="n">req</span><span class="o">.</span><span class="n">notify_cancelled</span><span class="p">(</span> <span class="n">handle_cancelled</span> <span class="p">)</span>
 
-try:
-    req.wait()
-finally:
-    print "Request is no longer executing."</pre>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">&quot;Request is no longer executing.&quot;</span>
+</pre></div>
 </div>
 <div class="section" id="callback-timing-guarantee">
 <h3><a class="toc-backref" href="#id13">Callback Timing Guarantee</a><a class="headerlink" href="#callback-timing-guarantee" title="Permalink to this headline">¶</a></h3>
@@ -458,8 +450,7 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 <h3><a class="toc-backref" href="#id18">Request Lifetime</a><a class="headerlink" href="#request-lifetime" title="Permalink to this headline">¶</a></h3>
 <p>We&#8217;ll use the following diagram to track the state of a request throughout its lifetime.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_blank.svg"><object data="_images/request_lifetime_blank.svg" type="image/svg+xml"><embed src="_images/request_lifetime_blank.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_blank.svg"><img alt="empty request lifetime diagram" src="_images/request_lifetime_blank.svg" /></a>
 </div>
 <p>Let&#8217;s consider the first example we used in the <a class="reference internal" href="#quick-start"><em>Quick Start</em></a> section from above:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">some_img_lib</span> <span class="kn">import</span> <span class="n">smooth</span>
@@ -490,8 +481,7 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 </div>
 <p>Since it hasn&#8217;t been submitted yet, it isn&#8217;t yet known to the ThreadPool:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_not_submitted.svg"><object data="_images/request_lifetime_r1_not_submitted.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_not_submitted.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_not_submitted.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r1_not_submitted.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>The next line (implicitly) submits the request and immediately blocks for it.</p>
@@ -500,14 +490,12 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 </div>
 <p>When the request is submitted, it is given to the ThreadPool.  Since the ThreadPool hasn&#8217;t seen this request previously, it ends up in the shared task queue.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_unassigned.svg"><object data="_images/request_lifetime_r1_unassigned.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_unassigned.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_unassigned.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r1_unassigned.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Next, it is picked up by one of the ThreadPool&#8217;s worker threads:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_A.svg"><object data="_images/request_lifetime_r1_executing_A.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_executing_A.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_A.svg"><img alt="r1 executing" src="_images/request_lifetime_r1_executing_A.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>When r1 starts executing, it creates two new requests:</p>
@@ -516,8 +504,7 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_r3_not_submitted.svg"><object data="_images/request_lifetime_r2_r3_not_submitted.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_r3_not_submitted.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_r3_not_submitted.svg"><img alt="r2 and r3 not yet submitted" src="_images/request_lifetime_r2_r3_not_submitted.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>First, it submits r3:</p>
@@ -526,19 +513,16 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r3_submitted.svg"><object data="_images/request_lifetime_r3_submitted.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r3_submitted.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_submitted.svg"><img alt="r1 not yet submitted" src="_images/request_lifetime_r3_submitted.svg" /></a>
 </div>
 <p>...which is eventually picked up by a ThreadPool Worker thread:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r3_executing_A.svg"><object data="_images/request_lifetime_r3_executing_A.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r3_executing_A.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_executing_A.svg"><img alt="r3 executing" src="_images/request_lifetime_r3_executing_A.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>For the sake of illustration, let&#8217;s suppose that some other part of our app has also just submitted some requests:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_extra_requests_submitted.svg"><object data="_images/request_lifetime_extra_requests_submitted.svg" type="image/svg+xml"><embed src="_images/request_lifetime_extra_requests_submitted.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_extra_requests_submitted.svg"><img alt="r2 submitted" src="_images/request_lifetime_extra_requests_submitted.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Back in r1, we submit and wait for r2.</p>
@@ -547,56 +531,47 @@ Worker thread for each subsequent call to <tt class="docutils literal"><span cla
 </div>
 <p>This happens in two steps.  First, r2 is submitted:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_submitted.svg"><object data="_images/request_lifetime_r2_submitted.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_submitted.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_submitted.svg"><img alt="r2 submitted" src="_images/request_lifetime_r2_submitted.svg" /></a>
 </div>
 <p>Next, r1 is <em>suspended</em> (since it is now waiting for r2).</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended.svg"><object data="_images/request_lifetime_r1_suspended.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_suspended.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended.svg"><img alt="r1 suspended" src="_images/request_lifetime_r1_suspended.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>This next step exhibits the advantage of the Request Framework over a simple ThreadPool.
 Since r1 has been suspended, it <em>no longer ties up a Thread</em>.
 The newly available worker now picks up a request from the shared queue:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended_B.svg"><object data="_images/request_lifetime_r1_suspended_B.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_suspended_B.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_suspended_B.svg"><img alt="r1 suspended" src="_images/request_lifetime_r1_suspended_B.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Eventually, each request either completes or is suspended, and r2 makes it to the front of the shared queue:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_front_of_queue.svg"><object data="_images/request_lifetime_r2_front_of_queue.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_front_of_queue.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_front_of_queue.svg"><img alt="r1 suspended" src="_images/request_lifetime_r2_front_of_queue.svg" /></a>
 </div>
 <p>...and gets picked up by a free worker:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing.svg"><object data="_images/request_lifetime_r2_executing.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_executing.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing.svg"><img alt="r1 suspended" src="_images/request_lifetime_r2_executing.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Meanwhile, r3 finishes execution:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r3_finished.svg"><object data="_images/request_lifetime_r3_finished.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r3_finished.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r3_finished.svg"><img alt="r1 suspended" src="_images/request_lifetime_r3_finished.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>After a while, suppose other requests (from other parts of the app) continue to be submitted:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing_other_requests_woken.svg"><object data="_images/request_lifetime_r2_executing_other_requests_woken.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_executing_other_requests_woken.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_executing_other_requests_woken.svg"><img alt="r2 executing, other requests woken" src="_images/request_lifetime_r2_executing_other_requests_woken.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Eventually, r2 finishes execution:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r2_finished.svg"><object data="_images/request_lifetime_r2_finished.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r2_finished.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r2_finished.svg"><img alt="r2 finished" src="_images/request_lifetime_r2_finished.svg" /></a>
 </div>
 <hr class="docutils" />
 <p>Since r2 and r3 are both complete, r1 can finally be woken up again:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_woken_up.svg"><object data="_images/request_lifetime_r1_woken_up.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_woken_up.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_woken_up.svg"><img alt="r1 woken up" src="_images/request_lifetime_r1_woken_up.svg" /></a>
 </div>
 <p>The last figure shows something important.  Did you catch it?  When r1 was <strong>initially</strong> submitted to the ThreadPool, it didn&#8217;t matter which Worker was chosen to execute it in.
 But now that it is being re-awoken, it <strong>must</strong> execute on the same Worker that it used previously.
@@ -607,13 +582,11 @@ See also: <a class="reference internal" href="#thread-context-guarantee"><em>Thr
 <hr class="docutils" />
 <p>When the first worker becomes free, r1 can finally resume execution:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_B.svg"><object data="_images/request_lifetime_r1_executing_B.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_executing_B.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_executing_B.svg"><img alt="r1 executing again" src="_images/request_lifetime_r1_executing_B.svg" /></a>
 </div>
 <p>...and eventually r1 finishes execution.</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/request_lifetime_r1_finished.svg"><object data="_images/request_lifetime_r1_finished.svg" type="image/svg+xml"><embed src="_images/request_lifetime_r1_finished.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/request_lifetime_r1_finished.svg"><img alt="r1 finished" src="_images/request_lifetime_r1_finished.svg" /></a>
 </div>
 </div>
 <div class="section" id="optimization-direct-execution">
@@ -627,13 +600,20 @@ See also: <a class="reference internal" href="#thread-context-guarantee"><em>Thr
 Instead of submitting the request to the ThreadPool, the request is simply executed <em>synchronously</em>.
 There is no need to incur the overhead of creating a new greenlet, queueing the request, and so on.
 With this optimization, we don&#8217;t have to pay a significant penalty for using requests in cases where no parallelism was needed in the first place.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This optimization avoids some overhead of starting new requests in their own greenlets, but it has a side-effect worth noting:
+When a subrequest is directly executed, it &#8220;skips in line&#8221;.  It does not sit in the ThreadPool shared queue.
+It is executed immediately, even if higher priority requests are waiting in the shared queue.
+Before experimenting with alternative request prioritization schemes, it might be worth disabling this optimization.</p>
+</div>
 </div>
 <div class="section" id="foreign-thread-context-vs-request-context">
 <h3><a class="toc-backref" href="#id20">Foreign Thread Context vs. Request Context</a><a class="headerlink" href="#foreign-thread-context-vs-request-context" title="Permalink to this headline">¶</a></h3>
 <p>Internally, the Request Framework distinguishes between two types of execution contexts: <tt class="docutils literal"><span class="pre">request.RequestGreenlet</span></tt> and &#8220;normal&#8221; a.k.a &#8220;foreign&#8221; threads.
 If a Request is waited upon from within a foreign thread, we don&#8217;t attempt to suspend the foreign thread.
 Instead, we simply use a regular threading.Event to wait for the Request to complete.
-The current context is obtained by calling the classmethod <tt class="docutils literal"><span class="pre">Request.current_request()</span></tt>.  It returns <tt class="xref docutils literal"><span class="pre">None</span></tt> if the current context is a &#8220;foreign&#8221; thread.</p>
+The current context is obtained by calling the classmethod <tt class="docutils literal"><span class="pre">Request.current_request()</span></tt>.  It returns <tt class="docutils literal"><span class="pre">None</span></tt> if the current context is a &#8220;foreign&#8221; thread.</p>
 </div>
 <div class="section" id="request-priority">
 <h3><a class="toc-backref" href="#id21">Request Priority</a><a class="headerlink" href="#request-priority" title="Permalink to this headline">¶</a></h3>
@@ -725,6 +705,12 @@ See <tt class="docutils literal"><span class="pre">Request.wait()</span></tt> fo
 </dd></dl>
 
 <dl class="method">
+<dt id="lazyflow.request.Request.block">
+<tt class="descclassname">Request.</tt><tt class="descname">block</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.block" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like wait, but does not return a result.  Can be used even if the request has already been cleaned.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="lazyflow.request.Request.cancel">
 <tt class="descclassname">Request.</tt><tt class="descname">cancel</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.cancel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attempt to cancel this request and all requests that it spawned.
@@ -734,7 +720,7 @@ No request will be cancelled if other non-cancelled requests are waiting for its
 <dl class="method">
 <dt id="lazyflow.request.Request.clean">
 <tt class="descclassname">Request.</tt><tt class="descname">clean</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.clean" title="Permalink to this definition">¶</a></dt>
-<dd><p>Delete all state from the request, for cleanup purposes.</p>
+<dd><p>Delete all state from the request, for cleanup purposes.  Removes references to callbacks, children, and the result.</p>
 </dd></dl>
 
 <dl class="method">
@@ -746,7 +732,7 @@ If we&#8217;re already finished and cancelled, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request is cancelled.  Signature: fn()</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request is cancelled.  Signature: fn()</td>
 </tr>
 </tbody>
 </table>
@@ -761,7 +747,7 @@ If we&#8217;re already failed, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception)</td>
 </tr>
 </tbody>
 </table>
@@ -776,16 +762,10 @@ If we&#8217;re already finished, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to be notified.  Signature: fn(result)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to be notified.  Signature: fn(result)</td>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="lazyflow.request.Request.result">
-<tt class="descclassname">Request.</tt><tt class="descname">result</tt><a class="headerlink" href="#lazyflow.request.Request.result" title="Permalink to this definition">¶</a></dt>
-<dd><p>After this request finishes execution, this attribute holds the return value from the workload function.</p>
 </dd></dl>
 
 <dl class="method">
@@ -802,7 +782,7 @@ If we&#8217;re already finished, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> &#8211; If running within a request, this parameter must be None.
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> &#8211; If running within a request, this parameter must be None.
 If running within the context of a foreign (non-request) thread, 
 a timeout may be specified in seconds (floating-point).
 If the request does not complete within the timeout period, 
@@ -835,7 +815,7 @@ If <cite>blocking</cite> is False, don&#8217;t wait and return False if the lock
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>blocking</strong> &#8211; Same as in threading.Lock</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>blocking</strong> &#8211; Same as in threading.Lock</td>
 </tr>
 </tbody>
 </table>
@@ -923,7 +903,7 @@ Not threadsafe (don&#8217;t add requests from more than one thread).</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>num_workers</strong> &#8211; The number of worker threads to create.</li>
 <li><strong>queue_type</strong> &#8211; The type of queue to use for prioritizing tasks.  Possible queue types include <a class="reference internal" href="#lazyflow.request.threadPool.PriorityQueue" title="lazyflow.request.threadPool.PriorityQueue"><tt class="xref py py-class docutils literal"><span class="pre">PriorityQueue</span></tt></a>,
 <a class="reference internal" href="#lazyflow.request.threadPool.FifoQueue" title="lazyflow.request.threadPool.FifoQueue"><tt class="xref py py-class docutils literal"><span class="pre">FifoQueue</span></tt></a>, and <a class="reference internal" href="#lazyflow.request.threadPool.LifoQueue" title="lazyflow.request.threadPool.LifoQueue"><tt class="xref py py-class docutils literal"><span class="pre">LifoQueue</span></tt></a>, or any class with <tt class="docutils literal"><span class="pre">push()</span></tt>, <tt class="docutils literal"><span class="pre">pop()</span></tt>, and <tt class="docutils literal"><span class="pre">__len__()</span></tt> methods.</li>
@@ -1061,12 +1041,12 @@ If it has no assigned worker yet, assign it to the first worker that becomes ava
         <li class="right" >
           <a href="advanced.html" title="Advanced Concepts"
              >previous</a> |</li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

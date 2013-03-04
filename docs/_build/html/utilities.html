@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utilities &mdash; lazyflow v0.1 documentation</title>
+    <title>Utilities &mdash; lazyflow 0.1 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,7 +25,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="lazyflow v0.1 documentation" href="index.html" />
+    <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
+    <link rel="next" title="Maintaining this Documentation" href="documentation_maintenance.html" />
     <link rel="prev" title="Lazyflow Request Framework" href="request.html" /> 
   </head>
   <body>
@@ -36,9 +40,12 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
+          <a href="documentation_maintenance.html" title="Maintaining this Documentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
           <a href="request.html" title="Lazyflow Request Framework"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -93,7 +100,7 @@ If the callable is already subscribed to the signal, it is relocated to the end 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>fn</strong> &#8211; The callable to add to this signal&#8217;s list of callbacks.</li>
 <li><strong>kwargs</strong> &#8211; <strong>DEPRECATED</strong>.  Additional parameters to include when the signal calls the function. 
 Instead of using this parameter, consider binding arguments to your callable 
@@ -114,7 +121,7 @@ If the callable was not found in the list, this function returns silently.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callable to remove from the subscription list.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callable to remove from the subscription list.</td>
 </tr>
 </tbody>
 </table>
@@ -223,7 +230,7 @@ Uses the the <a class="reference internal" href="#lazyflow.utility.Tracer" title
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>totalPath</strong> &#8211; The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
 For example, <tt class="docutils literal"><span class="pre">totalPath='/some/path/to/file.h5/with/internal/dataset'</span></tt></li>
 <li><strong>cwd</strong> &#8211; If provided, relative paths will be converted to absolute paths using this arg as the working directory.</li>
@@ -236,49 +243,49 @@ For example, <tt class="docutils literal"><span class="pre">totalPath='/some/pat
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.extension">
-<tt class="descname">extension</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extension</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.externalDirectory">
-<tt class="descname">externalDirectory</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.externalPath">
-<tt class="descname">externalPath</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalPath</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.filename">
-<tt class="descname">filename</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filename</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.filenameBase">
-<tt class="descname">filenameBase</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filenameBase</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.internalDatasetName">
-<tt class="descname">internalDatasetName</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDatasetName</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">dataset</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.internalDirectory">
-<tt class="descname">internalDirectory</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5/with/internal</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.PathComponents.internalPath">
-<tt class="descname">internalPath</tt><a class="headerlink" href="#lazyflow.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalPath</tt><em class="property"> = None</em><a class="headerlink" href="#lazyflow.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/with/internal/dataset</span></tt></p>
 </dd></dl>
 
@@ -323,13 +330,13 @@ The original code was released under the BSD License, as is this modified versio
 </dl>
 <dl class="class">
 <dt id="lazyflow.utility.fileLock.FileLock">
-<em class="property">class </em><tt class="descclassname">lazyflow.utility.fileLock.</tt><tt class="descname">FileLock</tt><big>(</big><em>protected_file_path</em>, <em>timeout=None</em>, <em>delay=1</em><big>)</big><a class="reference internal" href="_modules/lazyflow/utility/fileLock.html#FileLock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.utility.fileLock.FileLock" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">lazyflow.utility.fileLock.</tt><tt class="descname">FileLock</tt><big>(</big><em>protected_file_path</em>, <em>timeout=None</em>, <em>delay=1</em>, <em>lock_file_contents=None</em><big>)</big><a class="reference internal" href="_modules/lazyflow/utility/fileLock.html#FileLock"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.utility.fileLock.FileLock" title="Permalink to this definition">¶</a></dt>
 <dd><p>A file locking mechanism that has context-manager support so 
 you can use it in a <tt class="docutils literal"><span class="pre">with</span></tt> statement. This should be relatively cross
 compatible as it doesn&#8217;t rely on <tt class="docutils literal"><span class="pre">msvcrt</span></tt> or <tt class="docutils literal"><span class="pre">fcntl</span></tt> for the locking.</p>
 <dl class="method">
 <dt id="lazyflow.utility.fileLock.FileLock.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>protected_file_path</em>, <em>timeout=None</em>, <em>delay=1</em><big>)</big><a class="reference internal" href="_modules/lazyflow/utility/fileLock.html#FileLock.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.utility.fileLock.FileLock.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>protected_file_path</em>, <em>timeout=None</em>, <em>delay=1</em>, <em>lock_file_contents=None</em><big>)</big><a class="reference internal" href="_modules/lazyflow/utility/fileLock.html#FileLock.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.utility.fileLock.FileLock.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prepare the file locker. Specify the file to lock and optionally
 the maximum timeout and the delay between each attempt to lock.</p>
 </dd></dl>
@@ -523,7 +530,7 @@ The parent directory of the description file is considered to be the top-most di
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>descriptionFilePath</strong> &#8211; The path to the .json file that describes the dataset.</li>
 <li><strong>mode</strong> &#8211; Set to <tt class="docutils literal"><span class="pre">'r'</span></tt> if the fileset should be read-only.</li>
 <li><strong>preparsedDescription</strong> &#8211; (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.</li>
@@ -542,7 +549,7 @@ The parent directory of the description file is considered to be the top-most di
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.BlockwiseFileset.DescriptionFields">
-<tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">DescriptionFields</tt><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">DescriptionFields</tt><em class="property"> = {'block_file_name_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x108935a50&gt;, 'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935910&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x1089358d0&gt;, 'chunks': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935950&gt;, 'view_origin': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x1089359d0&gt;, 'name': &lt;type 'str'&gt;, 'dataset_root_dir': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, '_schema_name': 'blockwise-fileset-description', 'block_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935990&gt;, 'view_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935a10&gt;, 'hash_id': &lt;type 'str'&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>These fields describe the schema of the description file.
 See the source code comments for a description of each field.</p>
 </dd></dl>
@@ -592,6 +599,15 @@ Returns a status code of either <tt class="docutils literal"><span class="pre">B
 </dd></dl>
 
 <dl class="method">
+<dt id="lazyflow.utility.io.BlockwiseFileset.purgeAllLocks">
+<tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">purgeAllLocks</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.purgeAllLocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears all .lock files from the local blockwise fileset.
+This may be necessary if previous processes crashed or were killed while some blocks were downloading.
+You must ensure that this is NOT called while more than one process (or thread) has access to the fileset.
+For example, in a master/worker situation, call this only from the master, before the workers have been started.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="lazyflow.utility.io.BlockwiseFileset.readData">
 <tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">readData</tt><big>(</big><em>roi</em>, <em>out_array=None</em><big>)</big><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.readData" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read data from the fileset.</p>
@@ -599,13 +615,13 @@ Returns a status code of either <tt class="docutils literal"><span class="pre">B
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>roi</strong> &#8211; The region of interest to read from the dataset.  Must be a tuple of iterables: (start, stop).</li>
 <li><strong>out_array</strong> &#8211; The location to store the read data.  Must be the correct size for the given roi.  If not provided, an array is created for you.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The requested data.  If out_array was provided, returns out_array.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The requested data.  If out_array was provided, returns out_array.</p>
 </td>
 </tr>
 </tbody>
@@ -622,7 +638,7 @@ The file will be parsed according to the schema given by <a class="reference int
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
 </tr>
 </tbody>
 </table>
@@ -637,7 +653,7 @@ We use a simple convention: If the status file exists, the block is available.  
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>status</strong> &#8211; Must be either <tt class="docutils literal"><span class="pre">BlockwiseFileset.BLOCK_AVAILABLE</span></tt> or <tt class="docutils literal"><span class="pre">BlockwiseFileset.BLOCK_NOT_AVAILABLE</span></tt>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>status</strong> &#8211; Must be either <tt class="docutils literal"><span class="pre">BlockwiseFileset.BLOCK_AVAILABLE</span></tt> or <tt class="docutils literal"><span class="pre">BlockwiseFileset.BLOCK_NOT_AVAILABLE</span></tt>.</td>
 </tr>
 </tbody>
 </table>
@@ -651,7 +667,7 @@ We use a simple convention: If the status file exists, the block is available.  
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>roi</strong> &#8211; The region of interest to write the data to.  Must be a tuple of iterables: (start, stop).</li>
 <li><strong>data</strong> &#8211; The data to write.  Must be the correct size for the given roi.</li>
 </ul>
@@ -669,7 +685,7 @@ We use a simple convention: If the status file exists, the block is available.  
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>descriptionFilePath</strong> &#8211; The path to overwrite with the description fields.</li>
 <li><strong>descriptionFields</strong> &#8211; The fields to write.</li>
 </ul>
@@ -709,7 +725,7 @@ For automatic blockwise local caching of remote datasets, see <a class="referenc
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>descriptionFilePath</strong> &#8211; The path to the .json file that describes the remote volume.</li>
 <li><strong>preparsedDescription</strong> &#8211; (Optional) Provide pre-parsed description fields, in which 
 case the provided description file will not be parsed.</li>
@@ -722,7 +738,7 @@ case the provided description file will not be parsed.</li>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.RESTfulVolume.DescriptionFields">
-<tt class="descname">DescriptionFields</tt><a class="headerlink" href="#lazyflow.utility.io.RESTfulVolume.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DescriptionFields</tt><em class="property"> = {'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935c10&gt;, 'hdf5_dataset': &lt;type 'str'&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935c90&gt;, 'name': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, 'bounds': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935c50&gt;, '_schema_name': 'RESTful-volume-description', 'origin_offset': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x108935cd0&gt;, 'url_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x108935d10&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulVolume.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>These fields describe the schema of the description file.
 See the source code comments for a description of each field.</p>
 </dd></dl>
@@ -735,7 +751,7 @@ See the source code comments for a description of each field.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>roi</strong> &#8211; The subset of the volume to download, specified as a tuple of coordinates: <tt class="docutils literal"><span class="pre">(start,</span> <span class="pre">stop)</span></tt></li>
 <li><strong>outputDatasetPath</strong> &#8211; The path to overwrite with the downloaded hdf5 file.</li>
 </ul>
@@ -756,7 +772,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
 </tr>
 </tbody>
 </table>
@@ -778,7 +794,7 @@ them with default values, based on the other description fields.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>descriptionFilePath</strong> &#8211; The path to overwrite with the description fields.</li>
 <li><strong>descriptionFields</strong> &#8211; The fields to write.</li>
 </ul>
@@ -858,7 +874,7 @@ storage format, provided in a JSON file with a composite schema specified by
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>compositeDescriptionPath</strong> &#8211; The path to a JSON file that describes both the remote 
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>compositeDescriptionPath</strong> &#8211; The path to a JSON file that describes both the remote 
 volume and local storage structure.  The JSON file schema is specified by 
 <a class="reference internal" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields" title="lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields"><tt class="xref py py-data docutils literal"><span class="pre">RESTfulBlockwiseFileset.DescriptionFields</span></tt></a>.</td>
 </tr>
@@ -868,7 +884,7 @@ volume and local storage structure.  The JSON file schema is specified by
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields">
-<tt class="descname">DescriptionFields</tt><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DescriptionFields</tt><em class="property"> = {'_schema_version': 1.0, 'local_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x108935f90&gt;, '_schema_name': 'RESTful-blockwise-fileset-description', 'remote_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x108935f50&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>This member specifies the schema of the description file.
 It is merely a composite of two nested schemas: one that describes the remote volume,
 and another that describes the local storage format.  See the source code to see the field names.</p>
@@ -881,15 +897,6 @@ and another that describes the local storage format.  See the source code to see
 </dd></dl>
 
 <dl class="method">
-<dt id="lazyflow.utility.io.RESTfulBlockwiseFileset.purgeAllLocks">
-<tt class="descname">purgeAllLocks</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.purgeAllLocks" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clears all .lock files from the local blockwise fileset.
-This may be necessary if previous processes crashed or were killed while some blocks were downloading.
-You must ensure that this is NOT called while more than one process (or thread) has access to the fileset.
-For example, in a master/worker situation, call this only from the master, before the workers have been started.</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="lazyflow.utility.io.RESTfulBlockwiseFileset.readData">
 <tt class="descname">readData</tt><big>(</big><em>roi</em>, <em>out_array=None</em><big>)</big><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.readData" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read data from the fileset.  If any of the requested data is not yet available locally, download it first.</p>
@@ -897,13 +904,13 @@ For example, in a master/worker situation, call this only from the master, befor
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>roi</strong> &#8211; The region of interest to read from the dataset.  Must be a tuple of iterables: (start, stop).</li>
 <li><strong>out_array</strong> &#8211; The location to store the read data.  Must be the correct size for the given roi.  If not provided, an array is created for you.</li>
 </ul>
 </td>
 </tr>
-<tr class="field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The requested data.  If out_array was provided, returns out_array.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The requested data.  If out_array was provided, returns out_array.</p>
 </td>
 </tr>
 </tbody>
@@ -921,7 +928,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>descriptionFilePath</strong> &#8211; The path to the description file to parse.</td>
 </tr>
 </tbody>
 </table>
@@ -935,7 +942,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>descriptionFilePath</strong> &#8211; The path to overwrite with the description fields.</li>
 <li><strong>descriptionFields</strong> &#8211; The fields to write.</li>
 </ul>
@@ -980,6 +987,9 @@ Any optional parameters not provided by the user are filled in automatically.</p
   <h4>Previous topic</h4>
   <p class="topless"><a href="request.html"
                         title="previous chapter">Lazyflow Request Framework</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="documentation_maintenance.html"
+                        title="next chapter">Maintaining this Documentation</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/utilities.txt"
@@ -1012,14 +1022,17 @@ Any optional parameters not provided by the user are filled in automatically.</p
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
+          <a href="documentation_maintenance.html" title="Maintaining this Documentation"
+             >next</a> |</li>
+        <li class="right" >
           <a href="request.html" title="Lazyflow Request Framework"
              >previous</a> |</li>
-        <li><a href="index.html">lazyflow v0.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

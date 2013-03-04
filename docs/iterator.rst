@@ -21,8 +21,9 @@ The Axisiterator has been designed to provide a way to iterate through two volum
 ``trgt`` specifies the slice in the target array, ``src`` specifies the slice in the source array. If the operation should inflate the data from the source slice, ``mask`` cuts it down to the appropriate size. ``mask`` and ``trgt`` slices are always congruent.
 
 .. _inner-mechanics:
+
 Inner Mechanics
-============
+===============
 
 Consider the following example:
 
@@ -128,8 +129,10 @@ slice cuts out the desired part. Here is an illustration:
 Finally ``src``, ``trgt`` and ``mask`` slices are grouped together and returned.
 
 .. _real-world-example:
+
 A real world example
-============
+====================
+
 To illustrate how the iterator is used we consider this example:
 
 .. code-block:: python
@@ -239,7 +242,7 @@ As one can see the ``execute()`` method is fairly general, the individual featur
         nIt = AxisIterator(origRoi, srcGrid, trgtGrid, timeIndex=timeIndex, channelIndex=channelIndex)
 
 
-The ``src grid`` is identical to the shape except in the channel dimension, which is equal to the channel resolution. In this example it is equal to the magnitude of the source channel dimension, since all channels are needed for the calculation of the sum. The ``trgt`` grid has the same property, except that the channel dimensions equal the return value of the ``channelsPerChannel()`` method. This is also equal to the source channel dimension, since this is expected of the filter. The spatial and time like dimensions are equal to the shape, so that the volume does not get segmented –- only the channel dimension.
+The ``src grid`` is identical to the shape except in the channel dimension, which is equal to the channel resolution. In this example it is equal to the magnitude of the source channel dimension, since all channels are needed for the calculation of the sum. The ``trgt`` grid has the same property, except that the channel dimensions equal the return value of the ``channelsPerChannel()`` method. This is also equal to the source channel dimension, since this is expected of the filter. The spatial and time like dimensions are equal to the shape, so that the volume does not get segmented - only the channel dimension.
 
 Let us take a second example:
 
