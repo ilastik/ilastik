@@ -31,6 +31,11 @@ class TestOpFilterLabels(object):
         expectedData[0,1, 50:52, 50:52, 0] = 0 # 4 voxels, should be gone
         
         assert (filtered == expectedData).all()
+        
+        op.MaxLabelSize.setValue(8)
+        expectedData[0, 0, 50:53, 50:53, 0] = 0
+        filtered2 = op.Output[:].wait()
+        assert (filtered2 == expectedData).all()
 
 
 if __name__ == "__main__":

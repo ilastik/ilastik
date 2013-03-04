@@ -14,7 +14,8 @@ class OpFilterLabels(Operator):
     category = "generic"
 
     Input = InputSlot() 
-    MinLabelSize = InputSlot()
+    MinLabelSize = InputSlot(stype='int')
+    MaxLabelSize = InputSlot(optional=True, stype='int')
         
     Output = OutputSlot()
     
@@ -23,16 +24,19 @@ class OpFilterLabels(Operator):
         
     def execute(self, slot, subindex, roi, result):
         minSize = self.MinLabelSize.value
+        maxSize = None
+        if self.MaxLabelSize.ready():
+            maxSize = self.MaxLabelSize.value
         self.Input.get(roi, result).wait()
-        self.remove_small_connected_components(result, min_size=minSize, in_place=True)
+        self.remove_small_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
         # Both input slots can affect the entire output
-        assert inputSlot == self.Input or inputSlot == self.MinLabelSize
+        assert inputSlot == self.Input or inputSlot == self.MinLabelSize or inputSlot == self.MaxLabelSize
         self.Output.setDirty( slice(None) )
 
-    def remove_small_connected_components(self, a, min_size, in_place):
+    def remove_small_connected_components(self, a, min_size, max_size, in_place):
         """
         Adapted from http://github.com/jni/ray/blob/develop/ray/morpho.py
         (MIT License)
@@ -46,5 +50,9 @@ class OpFilterLabels(Operator):
         too_small = component_sizes < min_size
         too_small_locations = too_small[a]
         a[too_small_locations] = 0
+        if max_size is not None:
+            too_large = component_sizes > max_size
+            too_large_locations = too_large[a]
+            a[too_large_locations]=0
         return a.astype(original_dtype)
 
