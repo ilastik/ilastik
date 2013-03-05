@@ -24,7 +24,7 @@ class OpInterpMissingData(Operator):
     def execute(self, slot, subindex, roi, result):
 
         data = self.InputVolume.get(roi).wait()
-        depth= self.InputSearchDepth.get(roi).wait()[0]
+        depth= self.InputSearchDepth.value
 
         data = data.view( vigra.VigraArray )
         data.axistags = self.InputVolume.meta.axistags
