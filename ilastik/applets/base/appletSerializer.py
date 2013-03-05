@@ -7,6 +7,7 @@ import tempfile
 import vigra
 import h5py
 import numpy
+import warnings
 
 #######################
 # Convenience methods #
@@ -120,12 +121,14 @@ class SerialSlot(object):
 
         def doMulti(slot, index, size):
             slot[index].notifyDirty(self.setDirty)
+            slot[index].notifyValueChanged(self.setDirty)
 
         if slot.level == 0:
             slot.notifyDirty(self.setDirty)
+            slot.notifyValueChanged(self.setDirty)
         else:
             slot.notifyInserted(doMulti)
-            slot.notifyRemoved( self.setDirty )
+            slot.notifyRemoved(self.setDirty)
 
     def shouldSerialize(self, group):
         """Whether to serialize or not."""
@@ -175,7 +178,10 @@ class SerialSlot(object):
 
         """
         if slot.level == 0:
-            self._saveValue(group, name, slot.value)
+            try:
+                self._saveValue(group, name, slot.value)
+            except:
+                self._saveValue(group, name, slot(()).wait())
         else:
             subgroup = group.create_group(name)
             for i, subslot in enumerate(slot):
@@ -213,7 +219,8 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            slot.resize(len(subgroup))
+            if len(slot) < len(subgroup):
+                slot.resize(len(subgroup))
             for i, key in enumerate(subgroup):
                 assert key == self.subname.format(i)
                 self._deserialize(subgroup[key], slot[i])
@@ -320,7 +327,8 @@ class SerialBlockSlot(SerialSlot):
 
     def _deserialize(self, mygroup, slot):
         num = len(mygroup)
-        self.inslot.resize(num)
+        if len(self.inslot) < num:
+            self.inslot.resize(num)
         for index, t in enumerate(sorted(mygroup.items())):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
@@ -330,19 +338,23 @@ class SerialBlockSlot(SerialSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cacheslot, **kwargs):
+    def __init__(self, slot, cache, **kwargs):
         super(SerialClassifierSlot, self).__init__(slot, **kwargs)
-        self.cacheslot = cacheslot
+        self.cache = cache
         if self.name is None:
             self.name = slot.name
         if self.subname is None:
             self.subname = "Forest{:04d}"
+        self._bind(cache.Output)
 
     def unload(self):
-        self.cacheslot.Input.setDirty(slice(None))
+        self.cache.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
-        classifier_forests = slot.value
+        if self.cache._dirty:
+            return
+
+        classifier_forests = self.cache._value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:
@@ -398,7 +410,7 @@ class SerialClassifierSlot(SerialSlot):
         # consistent with the images and labels that we just
         # loaded. As soon as training input changes, it will be
         # retrained.)
-        self.cacheslot.forceValue(numpy.array(forests))
+        self.cache.forceValue(numpy.array(forests))
 
 
 class SerialDictSlot(SerialSlot):
@@ -424,7 +436,10 @@ class SerialDictSlot(SerialSlot):
         result = {}
         for key in subgroup.keys():
             result[self.transform(key)] = subgroup[key][()]
-        slot.setValue(result)
+        try:
+            slot.setValue(result)
+        except AssertionError as e:
+            warnings.warn('setValue() failed. message: {}'.format(e.message))
 
 
 ####################################
@@ -481,7 +496,7 @@ class AppletSerializer(object):
         self.base_initialized = True
         self.topGroupName = topGroupName
         self.serialSlots = maybe(slots, [])
-        self.operator=operator
+        self.operator = operator
 
     def isDirty(self):
         """Returns true if the current state of this item (in memory)

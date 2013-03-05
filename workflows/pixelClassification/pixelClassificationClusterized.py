@@ -1,17 +1,9 @@
 #!/usr/bin/env python2.7
 
 # Standard libs
-from ilastik.clusterConfig import parseClusterConfigFile
-from ilastik.clusterOps import OpClusterize, OpTaskWorker
-from ilastik.shell.headless.headlessShell import HeadlessShell
-from ilastik.utility.pathHelpers import getPathVariants
-from ilastik.workflow import Workflow
-from lazyflow.graph import OperatorWrapper
 import Queue
 import argparse
 import functools
-import ilastik.ilastik_logging
-import ilastik.utility.monkey_patches
 import logging
 import os
 import shutil
@@ -19,20 +11,32 @@ import subprocess
 import sys
 import threading
 import traceback
-import workflows # Load all known workflow modules
+import datetime
 
+# Start with logging so other import warnings are logged.
+import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
-
-# ilastik
-
-
-
 logger = logging.getLogger(__name__)
 
+# HCI
+from lazyflow.graph import OperatorWrapper
 
+# ilastik
+import ilastik.utility.monkey_patches
+from ilastik.utility.timer import timeLogged
+from ilastik.clusterConfig import parseClusterConfigFile
+from ilastik.clusterOps import OpClusterize, OpTaskWorker
+from ilastik.shell.headless.headlessShell import HeadlessShell
+from ilastik.utility.pathHelpers import getPathVariants
+from ilastik.workflow import Workflow
+
+import workflows # Load all known workflow modules
+
+@timeLogged(logger, logging.INFO)
 def main(argv):
-    logger.debug( "Launching with sys.argv: {}".format(sys.argv) )
+    logger.info("Starting at {}".format( datetime.datetime.now() ))
+    logger.info( "Launching with sys.argv: {}".format(sys.argv) )
     parser = getArgParser()
 
     ilastik.utility.monkey_patches.extend_arg_parser(parser)
@@ -45,6 +49,8 @@ def main(argv):
         tb = traceback.print_exc()
         logger.error(tb)
         return 1
+    finally:
+        logger.info("Finished at {}".format( datetime.datetime.now() ))
     
     return 0
 
@@ -111,7 +117,7 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell = HeadlessShell( functools.partial(Workflow.getSubclass(config.workflow_type), appendBatchOperators=False) )
+    shell = HeadlessShell( functools.partial(Workflow.getSubclass(config.workflow_type) ) )
     
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
@@ -224,7 +230,8 @@ if __name__ == "__main__":
 
         # RESTful TEST
         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
         args.append( "--sys_tmp_dir=/scratch/bergs")
 

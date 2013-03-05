@@ -112,7 +112,7 @@ class LabelingGui(LayerViewerGui):
             self.labelsAllowed = None # labelsAllowed.value == True
 
     @traceLogged(traceLogger)
-    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None ):
+    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
         Constructor.
 
@@ -143,7 +143,9 @@ class LabelingGui(LayerViewerGui):
         self._initLabelUic(drawerUiPath)
 
         # Init base class
-        super(LabelingGui, self).__init__( topLevelOperatorView, [labelingSlots.labelInput, labelingSlots.labelOutput] )
+        super(LabelingGui, self).__init__(topLevelOperatorView,
+                                          [labelingSlots.labelInput, labelingSlots.labelOutput],
+                                          crosshair=crosshair)
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)

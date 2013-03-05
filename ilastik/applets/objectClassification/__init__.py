@@ -1,0 +1,1 @@
+from objectClassificationApplet import ObjectClassificationApplet

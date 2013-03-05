@@ -6,9 +6,9 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 
-from lazyflow.graph import Graph, Operator, OperatorWrapper
-from lazyflow.operators import OpPredictRandomForest
+from lazyflow.graph import Graph, OperatorWrapper
 
 class PixelClassificationWorkflow(Workflow):
 
@@ -83,7 +83,7 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, parent=self, promotedSlotNames=['InputImage'] )
-        opBatchPredictor = OperatorWrapper( OpPredictRandomForest, parent=self, promotedSlotNames=['Image'])
+        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
         ## Connect Operators ## 
         
@@ -97,8 +97,9 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
         
         # Classifier and LabelsCount are provided by the interactive workflow
-        opBatchPredictor.Classifier.connect( opClassify.Classifier )
-        opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
+        opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
+        opBatchPredictionPipeline.MaxLabel.connect( opClassify.MaxLabelValue )
+        opBatchPredictionPipeline.FreezePredictions.setValue( False )
         
         # Provide these for the gui
         opBatchResults.RawImage.connect( opBatchInputs.Image )
@@ -108,18 +109,26 @@ class PixelClassificationWorkflow(Workflow):
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-        opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
-        opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+        opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
+        opBatchResults.ImageToExport.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
 
-        self.opBatchPredictor = opBatchPredictor
+        # We don't actually need the cached path in the batch pipeline.
+        # Just connect the uncached features here to satisfy the operator.
+        opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
+
+        self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
     def getHeadlessOutputSlot(self, slotId):
+        # "Regular" (i.e. with the images that the user selected as input data)
         if slotId == "Predictions":
             return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
         elif slotId == "PredictionsUint8":
-            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilitiesUint8
-        if slotId == "Batch_Predictions":
-            return self.opBatchPredictor.PMaps
+            return self.pcApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
+        # "Batch" (i.e. with the images that the user selected as batch inputs).
+        elif slotId == "BatchPredictions":
+            return self.opBatchPredictionPipeline.HeadlessPredictionProbabilities
+        if slotId == "BatchPredictionsUint8":
+            return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
         
         raise Exception("Unknown headless output slot")
     

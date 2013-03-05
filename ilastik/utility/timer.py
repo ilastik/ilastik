@@ -1,5 +1,6 @@
 import datetime
 import functools
+import logging
 
 class Timer(object):
     """
@@ -65,3 +66,54 @@ def timed(func):
     wrapper.prev_run_timer = prev_run_timer
     wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
     return wrapper
+
+def timeLogged(logger, level=logging.DEBUG):
+    """
+    Decorator. Times the decorated function and logs a message to the provided logger.
+    
+    For Example:
+
+    .. code-block:: python
+    
+        import sys
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.addHandler( logging.StreamHandler(sys.stdout) )
+        logger.setLevel( logging.INFO )
+        
+        @timeLogged(logger, logging.INFO)
+        def myfunc(x):
+            print x**100
+        
+        myfunc(2)
+        
+        # Output:
+        # 1267650600228229401496703205376
+        # myfunc execution took 3.1e-05 seconds
+
+    """
+    def _timelogged(func):
+        f = timed(func)
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            finally:
+                logger.log( level, "{} execution took {} seconds".format( f.__name__, f.prev_run_timer.seconds() ) )
+        return wrapper
+    return _timelogged
+
+if __name__ == "__main__":
+    import sys    
+    logger = logging.getLogger(__name__)
+    logger.addHandler( logging.StreamHandler(sys.stdout) )
+    logger.setLevel( logging.INFO )
+    
+    @timeLogged(logger, logging.INFO)
+    def myfunc(x):
+        print x**100
+
+    print "Calling..."
+    myfunc(2)
+    print "Finished."
+    

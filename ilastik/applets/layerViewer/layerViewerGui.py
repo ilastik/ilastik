@@ -86,7 +86,7 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False):
+    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
@@ -135,13 +135,13 @@ class LayerViewerGui(QMainWindow):
         self.layerstack = LayerStackModel()
 
         self._initCentralUic()
-        self._initEditor()
+        self._initEditor(crosshair=crosshair)
         self.__viewerControlWidget = None
         if not centralWidgetOnly:
             self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
             self._drawer = QWidget( self )
             self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
-        
+
     def _after_init(self):
         self._initialized = True
         self.updateAllLayers()
@@ -523,11 +523,11 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
 
     @traceLogged(traceLogger)
-    def _initEditor(self):
+    def _initEditor(self, crosshair):
         """
         Initialize the Volume Editor GUI.
         """
-        self.editor = VolumeEditor(self.layerstack)
+        self.editor = VolumeEditor(self.layerstack, crosshair=crosshair)
 
         # Replace the editor's navigation interpreter with one that has extra functionality
         self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )

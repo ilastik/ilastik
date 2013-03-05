@@ -4,7 +4,9 @@ import os
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpPixelFeaturesPresmoothed, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+from lazyflow.operators import OpPixelFeaturesPresmoothed
+#from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed
 
 class OpFeatureSelection(Operator):
     """

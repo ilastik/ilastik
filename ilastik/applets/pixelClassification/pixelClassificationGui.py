@@ -418,7 +418,8 @@ class PixelClassificationGui(LabelingGui):
         if self.topLevelOperatorView.MaxLabelValue.ready():
             enabled = True
             enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
-            enabled &= numpy.prod(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0
+            enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
+            # FIXME: also check that each label has scribbles?
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self._viewerControlUi.liveUpdateButton.setEnabled(enabled)
@@ -513,6 +514,14 @@ class PixelClassificationGui(LabelingGui):
         new = map(mapf, self.labelListData)
         old = slot.value
         slot.setValue(_listReplace(old, new))
+
+    def _onLabelRemoved(self, parent, start, end):
+        super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
+        op = self.topLevelOperatorView
+        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
+            value = slot.value
+            value.pop(start)
+            slot.setValue(value)
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,

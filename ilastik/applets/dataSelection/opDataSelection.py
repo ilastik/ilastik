@@ -60,8 +60,9 @@ class OpDataSelection(Operator):
     # When the shell detects that this slot has been resized, it assumes all the others have already been resized.
     ImageName = OutputSlot(stype='string') #: The name of the output image
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, force5d=False, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
+        self.force5d = force5d
         self._opReaders = []
     
     def setupOutputs(self):
@@ -96,6 +97,12 @@ class OpDataSelection(Operator):
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
 
+        if self.force5d:
+            op5 = Op5ifyer(parent=self)
+            op5.input.connect(providerSlot)
+            providerSlot = op5.output
+            self._opReaders.append(op5)
+
         # If there is no channel axis, use an Op5ifyer to append one.
         if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
             op5 = Op5ifyer( parent=self )
@@ -118,8 +125,13 @@ class OpDataSelection(Operator):
 
 class OpMultiLaneDataSelection( OperatorWrapper ):
     
-    def __init__(self, parent):
-        super( OpMultiLaneDataSelection, self ).__init__(OpDataSelection, parent=parent, broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
+    def __init__(self, parent, **kwargs):
+        super( OpMultiLaneDataSelection, self).__init__(
+            OpDataSelection,
+            parent=parent,
+            broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup',
+                                   'WorkingDirectory'],
+            operator_kwargs=kwargs)
     
     def addLane(self, laneIndex):
         """

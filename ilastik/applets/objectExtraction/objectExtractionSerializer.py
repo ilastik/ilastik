@@ -1,62 +1,102 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup
+    deleteIfPresent, getOrCreateGroup, SerialSlot
+
+import numpy
+
+
+class SerialLabelImageSlot(SerialSlot):
+
+    def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+        deleteIfPresent(group, self.name)
+        group = getOrCreateGroup(group, self.name)
+        mainOperator = self.slot.getRealOperator()
+        for i, op in enumerate(mainOperator.innerOperators):
+            oplabel = op._opLabelImage
+            ts = oplabel._processedTimeSteps
+            if len(ts) > 0:
+                subgroup = getOrCreateGroup(group, str(i))
+                subgroup.create_dataset(name='timesteps', data=list(ts))
+
+                if oplabel.compressed:
+                    src = oplabel._mem_h5
+                    subgroup.copy(src['/LabelImage'], subgroup, name='data')
+                else:
+                    src = oplabel._labeled_image
+                    subgroup.create_dataset(name='data', data=src)
+        self.dirty = False
+
+    def deserialize(self, group):
+        if not self.name in group:
+            return
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        opgroup = group[self.name]
+        for inner in opgroup.keys():
+            mygroup = opgroup[inner]
+            oplabel = innerops[int(inner)]._opLabelImage
+            ts = set(numpy.array(mygroup['timesteps'][:]).flat)
+            oplabel._processedTimeSteps = ts
+            oplabel._fixed = False
+
+            if oplabel.compressed:
+                dest = oplabel._mem_h5
+                del dest['LabelImage']
+                dest.copy(mygroup['data'], dest, name='LabelImage')
+            else:
+                oplabel._labeled_image[:] = mygroup['data'][:]
+
+        self.dirty = False
+
+
+class SerialObjectFeaturesSlot(SerialSlot):
+
+    def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+        deleteIfPresent(group, self.name)
+        group = getOrCreateGroup(group, self.name)
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        for i, op in enumerate(innerops):
+            opgroup = getOrCreateGroup(group, str(i))
+            for t in op._opRegFeats._cache.keys():
+                t_gr = opgroup.create_group(str(t))
+                for ch in range(len(op._opRegFeats._cache[t])):
+                    ch_gr = t_gr.create_group(str(ch))
+                    feats = op._opRegFeats._cache[t][ch]
+                    for key, val in feats.iteritems():
+                        ch_gr.create_dataset(name=key, data=val)
+        self.dirty = False
+
+    def deserialize(self, group):
+        if not self.name in group:
+            return
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        opgroup = group[self.name]
+        for inner in opgroup.keys():
+            gr = opgroup[inner]
+            op = innerops[int(inner)]
+            cache = {}
+            for t in gr.keys():
+                cache[int(t)] = []
+                for ch in sorted(gr[t].keys()):
+                    feat = dict()
+                    for key in gr[t][ch].keys():
+                        feat[key] = gr[t][ch][key].value
+                    cache[int(t)].append(feat)
+            op._opRegFeats._cache = cache
+        self.dirty = False
+
 
 class ObjectExtractionSerializer(AppletSerializer):
-    """
-    """
-    def __init__(self, mainOperator, projectFileGroupName):
-        super( ObjectExtractionSerializer, self ).__init__( projectFileGroupName )
-        self.mainOperator = mainOperator
+    def __init__(self, operator, projectFileGroupName):
+        slots = [
+            SerialLabelImageSlot(operator.LabelImage, name="LabelImage"),
+            SerialObjectFeaturesSlot(operator.RegionFeatures, name="samples"),
+        ]
 
-    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        op = self.mainOperator.innerOperators[0]
-        print "object extraction: serializeToHdf5", topGroup, hdf5File, projectFilePath
-        print "object extraction: saving label image"
-        src = op._opLabelImage._mem_h5
-        deleteIfPresent( topGroup, "LabelImage")
-        src.copy('/LabelImage', topGroup) 
-
-        print "object extraction: saving region features"
-        deleteIfPresent( topGroup, "samples")
-        samples_gr = getOrCreateGroup( topGroup, "samples" )
-        for t in op._opRegFeats._cache.keys():
-            t_gr = samples_gr.create_group(str(t))
-            for ch in range(len(op._opRegFeats._cache[t])):            
-                ch_gr = t_gr.create_group(str(ch))
-                ch_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t][ch]['RegionCenter'])
-                ch_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t][ch]['Count'])            
-            
-
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        print "objectExtraction: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
-
-        print "objectExtraction: loading label image"
-        dest = self.mainOperator.innerOperators[0]._opLabelImage._mem_h5        
-        if 'LabelImage' in topGroup.keys():            
-            del dest['LabelImage']
-            topGroup.copy('LabelImage', dest)            
-            self.mainOperator.innerOperators[0]._opLabelImage._fixed = False        
-            self.mainOperator.innerOperators[0]._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
-
-
-        print "objectExtraction: loading region features"
-        if "samples" in topGroup.keys():            
-
-            cache = {}
-            for t in topGroup["samples"].keys():
-                cache[int(t)] = []
-                for ch in sorted(topGroup["samples"][t].keys()):
-                    feat = dict()                            
-                    if 'RegionCenter' in topGroup["samples"][t][ch].keys():
-                        feat['RegionCenter'] = topGroup["samples"][t][ch]['RegionCenter'].value
-                    if 'Count' in topGroup["samples"][t][ch].keys():                    
-                        feat['Count'] = topGroup["samples"][t][ch]['Count'].value                    
-                    cache[int(t)].append(feat)                    
-            self.mainOperator.innerOperators[0]._opRegFeats._cache = cache
-
-    def isDirty(self):
-        return True
-
-    def unload(self):
-        print "ObjExtraction.unload not implemented" 
-
+        super(ObjectExtractionSerializer, self).__init__(projectFileGroupName,
+                                                         slots=slots)

@@ -69,7 +69,7 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
-        super(FeatureSelectionGui, self).__init__(topLevelOperatorView)
+        super(FeatureSelectionGui, self).__init__(topLevelOperatorView, crosshair=False)
 
         self.topLevelOperatorView.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
         self.topLevelOperatorView.FeatureListFilename.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
