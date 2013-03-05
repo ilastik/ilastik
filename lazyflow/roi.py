@@ -1,7 +1,7 @@
 import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
 from math import ceil, floor
-
+import collections
 
 class TinyVector(list):
     __slots__ = []
@@ -229,9 +229,13 @@ def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
     if hasattr(sigma, "__iter__"):
         sigma = TinyVector(sigma)
-    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( type(start[0]) )
+    if isinstance( start, collections.Iterable ):
+        ret_type = type(start[0])
+    else:
+        ret_type = type(start)
+    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( ret_type )
     sa = numpy.array(shape)
-    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( type(start[0]) )
+    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( ret_type )
     return newStart, newStop
 
 
