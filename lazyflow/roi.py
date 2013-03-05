@@ -227,7 +227,7 @@ def roiToSlice(start, stop, hardBind=False):
 
 def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
-    if hasattr(sigma, "__iter__"):
+    if isinstance( sigma, collections.Iterable ):
         sigma = TinyVector(sigma)
     if isinstance( start, collections.Iterable ):
         ret_type = type(start[0])

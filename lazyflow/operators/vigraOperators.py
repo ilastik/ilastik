@@ -960,7 +960,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         print "interpolated array:", sourceArrayVInterp.shape, sourceArrayVInterp.axistags
                         print "source array:", sourceArrayV.shape, sourceArrayV.axistags
                         print "droi:", droi
-                        raise RuntimeError
+                        raise
             del sourceArrayV
             del sourceArrayVInterp
             try:
