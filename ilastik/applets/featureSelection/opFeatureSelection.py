@@ -5,7 +5,9 @@ import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
-from lazyflow.operators import OpPixelFeaturesPresmoothed
+from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
+from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
+from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
 #from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed
 
 class OpFeatureSelection(Operator):
@@ -35,12 +37,26 @@ class OpFeatureSelection(Operator):
     CachedOutputImage = OutputSlot()
 
     FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
+
+    # For ease of development and testing, the underlying feature computation implementation 
+    #  can be switched via a constructor argument.  These are the possible choices.
+    FilterImplementations = ['Original', 'Refactored', 'Interpolated']
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filter_implementation, *args, **kwargs):
         super(OpFeatureSelection, self).__init__(*args, **kwargs)
 
-        # Two internal operators: features and cache
-        self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
+        # Create the operator that actually generates the features
+        if filter_implementation == 'Original':
+            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Original(parent=self)
+        elif filter_implementation == 'Refactored':
+            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Refactored(parent=self)
+        elif filter_implementation == 'Interpolated':
+            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
+            self.opPixelFeatures.InterpolationScaleZ.setValue(2)
+        else:
+            assert False, "Unknown filter implementation option: {}".format( filter_implementation )
+
+        # Create the cache
         self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
