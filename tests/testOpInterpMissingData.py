@@ -5,7 +5,6 @@ import vigra
 from lazyflow.operators.opInterpMissingData import OpInterpMissingData
 
 class TestInterpMissingData(object):
-
     def setUp(self):
 
         #Large block and one single Layer is empty
@@ -13,11 +12,26 @@ class TestInterpMissingData(object):
         for i in range(100): d1[:,:,i]*=(i+1)
         d1[:,:,30:50]=0
         d1[:,:,70]=0
-        
+
         #Fist block is empty
         d2=np.ones((10,10,100))
         for i in range(100): d2[:,:,i]*=(i+1)
         d2[:,:,0:10]=0
+
+        d21=np.ones((10,10,100))
+        for i in range(100): d21[:,:,i]*=(i+1)
+        d21[:,:,0:10]=0
+
+        d22=np.ones((10,10,100))
+        for i in range(100): d22[:,:,i]*=(i+1)
+        d22[:,:,0:10]=0
+
+
+
+        d23=np.ones((10,10,100))
+        for i in range(100): d23[:,:,i]*=(i+1)
+        d23[:,:,0:10]=0
+
 
         #Last layer is empty
         d3=np.ones((10,10,100))
@@ -49,6 +63,9 @@ class TestInterpMissingData(object):
 
         self.d1 = d1
         self.d2 = d2
+        self.d21 = d21
+        self.d22 = d22
+        self.d23 = d23
         self.d3 = d3
         self.d4 = d4
         self.d5 = d5
@@ -70,11 +87,13 @@ class TestInterpMissingData(object):
         g=Graph()
         op = OpInterpMissingData(graph = g)
         op.InputVolume.setValue( d1 )
-        
+        op.InputSearchDepth.setValue(0)
+
+
         assert np.any(op.Output[:].wait()[:,:,40]==Ones*41)==True
 
         assert np.any(op.Output[:].wait()[:,:,70]==Ones*71)==True
-    
+
         op.InputVolume.setValue( d2 )
         assert np.any(op.Output[:].wait()[:,:,4]==Ones*11)==True
 
@@ -112,11 +131,15 @@ class TestInterpMissingData(object):
         g=Graph()
         op = OpInterpMissingData(graph = g)
         op.InputVolume.setValue( d1 )
-        
+        op.InputSearchDepth.setValue(0)
+
+
+
+
         assert np.any(op.Output[:].wait()[40,:,:]==Ones*41)==True
 
         assert np.any(op.Output[:].wait()[70,:,:]==Ones*71)==True
-    
+
         op.InputVolume.setValue( d2 )
         assert np.any(op.Output[:].wait()[4,:,:]==Ones*11)==True
 
@@ -137,8 +160,85 @@ class TestInterpMissingData(object):
 
         op.InputVolume.setValue( d8 )
         assert np.any(op.Output[:].wait()[98,:,:]==Ones*99)==True
-         
-          
+
+    def testRoi(self):
+        d1 = self.d1
+        d21 = self.d21
+        d22 = self.d22
+        d23 = self.d23
+
+        g=Graph()
+        op = OpInterpMissingData(graph = g)
+        op.InputVolume.setValue( d1 )
+        op.InputSearchDepth.setValue(100)
+
+        res=op.Output(start = (0,0,35), stop = (10,10,45)).wait()
+        assert res[1,1,0]==36
+        assert res[1,1,-1]==45
+
+        res=op.Output(start = (0,0,30), stop = (10,10,45)).wait()
+        assert res[1,1,0]==31
+        assert res[1,1,-1]==45
+
+        res=op.Output(start = (0,0,29), stop = (10,10,45)).wait()
+        assert res[1,1,0]==30
+        assert res[1,1,-1]==45
+
+        res=op.Output(start = (0,0,0), stop = (10,10,45)).wait()
+        assert res[1,1,0]==1
+        assert res[1,1,-1]==45
+
+        res=op.Output(start = (0,0,0), stop = (10,10,50)).wait()
+        assert res[1,1,0]==1
+        assert res[1,1,-1]==50
+
+        res=op.Output(start = (0,0,35), stop = (10,10,51)).wait()
+        assert res[1,1,0]==36
+        assert res[1,1,-1]==51
+
+        res=op.Output(start = (0,0,35), stop = (10,10,70)).wait()
+        assert res[1,1,0]==36
+        assert res[1,1,-1]==70
+
+        op.InputVolume.setValue( d21 )
+        res=op.Output(start = (0,0,0), stop = (10,10,20)).wait()
+        assert res[1,1,3]==11
+
+        op.InputVolume.setValue( d22 )
+        res=op.Output(start = (0,0,0), stop = (10,10,6)).wait()
+        assert res[1,1,0]==11
+        assert res[1,1,-1]==11
+
+        op.InputVolume.setValue( d23 )
+        res=op.Output(start = (0,0,1), stop = (10,10,2)).wait()
+        assert res[1,1,0]==11
+        assert res[1,1,-1]==11
+
+    def testdepthsearch(self):
+        d1 = self.d1
+        g=Graph()
+        op = OpInterpMissingData(graph = g)
+        op.InputVolume.setValue( d1 )
+
+        op.InputSearchDepth.setValue(0)
+        res=op.Output(start = (0,0,32), stop = (10,10,45)).wait()
+        assert res[1,1,0]==0
+        assert res[1,1,-1]==0
+
+        op.InputSearchDepth.setValue(3)
+        res=op.Output(start = (0,0,32), stop = (10,10,40)).wait()
+        assert res[1,1,1]==30
+        assert res[1,1,-1]==30
+
+        op.InputSearchDepth.setValue(2)
+        res=op.Output(start = (0,0,46), stop = (10,10,49)).wait()
+        assert res[1,1,1]==51
+        assert res[1,1,-1]==51
+
+
+
+
+
 if __name__ == "__main__":
     import sys
     import nose
