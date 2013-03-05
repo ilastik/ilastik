@@ -3,6 +3,7 @@ from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.operators.generic import OpSubRegion
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+from ilastik.applets.objectExtraction import config
 import numpy
 import h5py
 import vigra
@@ -31,15 +32,17 @@ class OpObjectExtractionMultiClass(Operator):
     divisionChannel = 2
     
     def __init__(self, parent=None, graph=None):        
-        super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
+        super(OpObjectExtractionMultiClass, self).__init__(parent)
     
-        self._opThresholding = OpThresholding(parent=self,graph=graph)
+        self._opThresholding = OpThresholding(parent=self)
         self._opThresholding.Threshold.setValue(0.5)
         self._opThresholding.Input.connect(self.Images)
-                
-        self._opObjectExtraction = OpObjectExtraction(parent=self,graph=graph)
+        
+        config.vigra_features = ['RegionCenter', 'Count', 'Coord<ArgMaxWeight>']
+        self._opObjectExtraction = OpObjectExtraction(parent=self)
         self._opObjectExtraction.BinaryImage.connect(self._opThresholding.BinaryImage)
         self._opObjectExtraction.RawImage.connect(self.RawImage)
+        
         
         # set the background label for each channel: label 1 for channel 0, label 0 for channel 2, 
         # the labelimage of channel 1 will not be computed, set to -1
@@ -52,7 +55,7 @@ class OpObjectExtractionMultiClass(Operator):
 #        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.DistanceTransformImage)
 #        self._opRegionalMaximum.LabelImage.connect(self._opObjectExtraction.LabelImage)   
                         
-        self._opClassExtraction = OpClassExtraction(parent=self,graph=graph)
+        self._opClassExtraction = OpClassExtraction(parent=self)
         self._opClassExtraction.LabelImage.connect(self._opObjectExtraction.LabelImage)
         self._opClassExtraction.RegionFeatures.connect(self._opObjectExtraction.RegionFeatures)
         

@@ -159,18 +159,18 @@ class OpRegionFeatures(Operator):
                 for c in range(numChannels):
                     tcroi = SubRegion(self.LabelImage,
                                       start = [t,] + (len(lshape) - 2) * [0,] + [c,],
-                                      stop = [t+1,] + list(lshape[1:-1]) + [c+1,])
-
-                    image = self.RawImage.get(tcroi).wait()
-                    axiskeys = self.RawImage.meta.getTaggedShape().keys()
-                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
-                    image = image[0,...,0] # assumes t,x,y,z,c
+                                      stop = [t+1,] + list(lshape[1:-1]) + [c+1,])                    
+#                    image = self.RawImage.get(tcroi).wait()
+#                    axiskeys = self.RawImage.meta.getTaggedShape().keys()
+#                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
+#                    image = image[0,...,0] # assumes t,x,y,z,c
 
                     labels = self.LabelImage.get(tcroi).wait()
                     axiskeys = self.LabelImage.meta.getTaggedShape().keys()
                     assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     labels = labels[0,...,0] # assumes t,x,y,z,c
-                    feats_at.append(self.extract(image, labels))
+#                    feats_at.append(self.extract(image, labels))
+                    feats_at.append(self.extract(labels, labels))
                 self._cache[t] = feats_at
                 self.Output._sig_value_changed()
             feats[t] = feats_at
