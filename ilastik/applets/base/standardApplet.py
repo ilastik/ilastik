@@ -48,6 +48,10 @@ class StandardApplet( Applet ):
         return NotImplemented
 
     @property
+    def singleLaneOperatorInitArgs(self):
+        return ((), {}) # args, kwargs
+
+    @property
     def broadcastingSlots(self):
         """
         Slots that should be connected to all image lanes are referred to as "broadcasting" slots.
@@ -120,6 +124,8 @@ class StandardApplet( Applet ):
         """
         assert self.__topLevelOperator is None
         operatorClass = self.singleLaneOperatorClass
+        operatorInitArgs, operatorInitKwargs = self.singleLaneOperatorInitArgs
+        
         broadcastingSlots = self.broadcastingSlots
         if operatorClass is NotImplemented or broadcastingSlots is NotImplemented:
             message = "Could not create top-level operator for {}\n".format( self.__class__ )
@@ -132,7 +138,9 @@ class StandardApplet( Applet ):
             message += "Please initialize StandardApplet base class with a workflow object."
             raise NotImplementedError(message)
         
-        self.__topLevelOperator = OpMultiLaneWrapper(self.singleLaneOperatorClass,
-                                                  parent=self.__workflow,
-                                                  broadcastingSlotNames=self.broadcastingSlots)
+        self.__topLevelOperator = OpMultiLaneWrapper( self.singleLaneOperatorClass,
+                                                      operator_args=operatorInitArgs,
+                                                      operator_kwargs=operatorInitKwargs,
+                                                      parent=self.__workflow,
+                                                      broadcastingSlotNames=self.broadcastingSlots )
 
