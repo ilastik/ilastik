@@ -106,7 +106,8 @@ class OpFeatureSelection(Operator):
             self.CachedOutputImage.meta.dtype    = dtype 
             self.CachedOutputImage.meta.axistags = axistags 
             return
-           
+       
+       
         # Connect our external outputs to our internal operators
         self.OutputImage.connect( self.opPixelFeatures.Output )
         self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )

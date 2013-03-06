@@ -13,6 +13,7 @@ class OpFillMissingSlices(Operator):
         # Set up interpolation
         self._opInterp = OpInterpMissingData( parent=self )
         self._opInterp.InputVolume.connect( self.Input )
+        self._opInterp.InputSearchDepth.setValue(100)
 
         # The cache serves two purposes:
         # 1) Determine shape of accesses to the interpolation operator
@@ -35,6 +36,8 @@ class OpFillMissingSlices(Operator):
         blockshape = map( blockdims.get, self.Input.meta.getTaggedShape().keys() )        
         self._opCache.innerBlockShape.setValue( tuple(blockshape) )        
         self._opCache.outerBlockShape.setValue( tuple(blockshape) )
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.CachedOutput.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"

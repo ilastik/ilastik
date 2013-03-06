@@ -17,8 +17,8 @@ class SynapsePixelClassificationWorkflow(Workflow):
     This is the first half of the synapse detection pipeline for the Bock11 dataset.
     """
 
-    FEATURE_IMPLEMENTATION = 'Original'
-    #FEATURE_IMPLEMENTATION = 'Interpolated'
+    #FEATURE_IMPLEMENTATION = 'Original'
+    FEATURE_IMPLEMENTATION = 'Interpolated'
 
     @property
     def applets(self):
