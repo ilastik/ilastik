@@ -82,7 +82,7 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, parent=self, promotedSlotNames=['InputImage'] )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
         ## Connect Operators ## 

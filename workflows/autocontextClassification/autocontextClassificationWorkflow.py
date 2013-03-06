@@ -92,7 +92,7 @@ class AutocontextClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, parent=self, promotedSlotNames=['InputImage'] )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictor = OperatorWrapper(OpAutocontextBatch, parent=self, promotedSlotNames=['FeatureImage'])
         
         ## Connect Operators ## 
