@@ -14,8 +14,8 @@ class OpFilterLabels(Operator):
     category = "generic"
 
     Input = InputSlot() 
-    MinLabelSize = InputSlot()
-    MaxLabelSize = InputSlot(optional=True)
+    MinLabelSize = InputSlot(stype='int')
+    MaxLabelSize = InputSlot(optional=True, stype='int')
         
     Output = OutputSlot()
     
@@ -28,15 +28,15 @@ class OpFilterLabels(Operator):
         if self.MaxLabelSize.ready():
             maxSize = self.MaxLabelSize.value
         self.Input.get(roi, result).wait()
-        self.remove_outlier_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
+        self.remove_small_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
         # Both input slots can affect the entire output
-        assert inputSlot == self.Input or inputSlot == self.MinLabelSize
+        assert inputSlot == self.Input or inputSlot == self.MinLabelSize or inputSlot == self.MaxLabelSize
         self.Output.setDirty( slice(None) )
 
-    def remove_outlier_connected_components(self, a, min_size, max_size, in_place):
+    def remove_small_connected_components(self, a, min_size, max_size, in_place):
         """
         Adapted from http://github.com/jni/ray/blob/develop/ray/morpho.py
         (MIT License)

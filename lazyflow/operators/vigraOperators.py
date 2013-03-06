@@ -212,6 +212,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  you must make a new feature (with a new feature ID) and
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.5 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
                         featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
@@ -237,6 +240,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  feature (with a new feature ID) and leave this feature here
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.66 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
