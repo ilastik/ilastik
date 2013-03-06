@@ -24,6 +24,7 @@ class OpRegionFeatures3d(Operator):
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
         self._featureNames = featureNames
+        self.margin = 30
         
     def setupOutputs(self):
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape
@@ -118,9 +119,9 @@ class OpRegionFeatures3d(Operator):
                 
             ccbboxexcl = passed-ccbboxobject
             
-            feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self.features, ignoreLabel=0)
-            feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self.features, ignoreLabel=0)
-            feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self.features, ignoreLabel=0)
+            feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
             
             features_incl.append(feats_incl)
             features_excl.append(feats_excl)

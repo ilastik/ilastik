@@ -113,11 +113,11 @@ class OpThresholdTwoLevels(Operator):
     
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=100)
-    MaxSize = InputSlot(stype='int', value=1000)
+    MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.1)
     SmootherSigma = InputSlot(value={ 'x':3.5, 'y':3.5, 'z':1.0})
-    Channel = InputSlot(value=1)
+    Channel = InputSlot(value=2)
     
     Output = OutputSlot()
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
