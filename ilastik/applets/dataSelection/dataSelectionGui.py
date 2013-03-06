@@ -352,6 +352,16 @@ class DataSelectionGui(QMainWindow):
         with Tracer(traceLogger):
             # Allocate additional subslots in the operator inputs.
             oldNumFiles = len(self.topLevelOperator.Dataset)
+
+            # HACK: If the filePath isn't valid, replace it
+            # This is to work around the scenario where two independent data selection applets are coupled, causing mutual resizes.
+            # This will be fixed when a multi-file data selection applet gui replaces this gui.            
+            for i in reversed( range( oldNumFiles ) ):
+                if not self.topLevelOperator.Dataset[i].ready():
+                    oldNumFiles -= 1
+                else:
+                    break
+            
             self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
     
             # Assign values to the new inputs we just allocated.

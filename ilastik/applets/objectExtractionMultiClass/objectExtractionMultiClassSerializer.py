@@ -15,6 +15,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         op = self.mainOperator.innerOperators[0]
         print "object extraction multi class: serializeToHdf5", topGroup, hdf5File, projectFilePath
         
+        assert False, "FIXME: OpLabelImage implementation has changed, not longer has _processedTimeSteps member"
         if len(self.mainOperator.innerOperators[0]._opObjectExtraction._opLabelImage._processedTimeSteps) > 0:
             print "object extraction multi class: saving label image"        
             src = op._opObjectExtraction._opLabelImage._mem_h5
@@ -68,12 +69,14 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         print "objectExtraction multi class: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
         
         print "objectExtraction multi class: loading label image"
+        assert False, "FIXME: OpLabelImage implementation has changed, not longer has _mem_h5 member"
         dest = self.mainOperator.innerOperators[0]._opObjectExtraction._opLabelImage._mem_h5                
         if 'LabelImage' in topGroup.keys():            
             del dest['LabelImage']
             topGroup.copy('LabelImage', dest)
             # TODO: only deserialize the label image if all the time steps are processed?
             self.mainOperator.innerOperators[0]._opObjectExtraction._opLabelImage._fixed = False        
+            assert False, "FIXME: OpLabelImage implementation has changed, not longer has _processedTimeSteps member"
             self.mainOperator.innerOperators[0]._opObjectExtraction._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
 
 

@@ -1,6 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from objectClassificationWorkflow import ObjectClassificationWorkflow as pixel_workflow
-from objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary as binary_workflow
+from blockwiseObjectClassificationWorkflow import BlockwiseObjectClassificationWorkflow
 
 def debug_with_existing(shell):
     """
@@ -26,52 +25,26 @@ def debug_with_new(shell):
 
     # New project
     shell.createAndLoadNewProject(projFilePath)
-
     workflow = shell.projectManager.workflow
 
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 
+    # Add raw data file
     rawInfo = DatasetInfo()
     rawInfo.filePath = '/magnetic/synapse_small.npy'
     opDataSelection = workflow.rawDataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
     opDataSelection.Dataset[0].setValue(rawInfo)
-    
+
+    # Add binary image file
     binaryInfo = DatasetInfo()
     binaryInfo.filePath = '/magnetic/synapse_small_binary.npy'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
     opDataSelection.Dataset[0].setValue(binaryInfo)
-    
-    #shell.setSelectedAppletDrawer(2)
+
+    shell.setSelectedAppletDrawer(4)
 
 if __name__=="__main__":
-
-    from optparse import OptionParser
-    usage = "%prog [options] filename"
-    parser = OptionParser(usage)
-    parser.add_option("-b", "--binary",
-                      action="store_true",
-                      dest="binary",
-                      default=False,
-                      help="use binary workflow")
-
-    (options, args) = parser.parse_args()
-
-    #options.binary = True
-
-    if options.binary:
-        workflow = binary_workflow
-    else:
-        workflow = pixel_workflow
-
-    # Start the GUI
-    if len(args) == 1:
-        def loadProject(shell):
-            shell.openProjectFile(args[0])
-        startShellGui(workflow, loadProject)
-    elif len(args) == 0:
-        startShellGui(workflow)
-        #startShellGui(workflow, debug_with_new)
-    else:
-        parser.error("incorrect number of arguments")
+    startShellGui(BlockwiseObjectClassificationWorkflow)
+    #startShellGui(BlockwiseObjectClassificationWorkflow, debug_with_new)
