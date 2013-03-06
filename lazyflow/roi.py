@@ -227,11 +227,16 @@ def roiToSlice(start, stop, hardBind=False):
 
 def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
+    newtype = None
     if hasattr(sigma, "__iter__"):
         sigma = TinyVector(sigma)
-    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( type(start[0]) )
+    if hasattr(start, "__iter__"):
+        newtype = type(start[0])
+    else:
+        newtype = type(start)
+    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( newtype )
     sa = numpy.array(shape)
-    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( type(start[0]) )
+    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( newtype )
     return newStart, newStop
 
 
