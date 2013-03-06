@@ -74,10 +74,96 @@ class OpRegionFeatures3d(Operator):
     def _extract(self, image, labels):
         image = numpy.asarray(image, dtype=numpy.float32)
         labels = numpy.asarray(labels, dtype=numpy.uint32)
-        return vigra.analysis.extractRegionFeatures(image,
-                                                    labels,
-                                                    features=self._featureNames,
-                                                    ignoreLabel=0)
+        
+        minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
+    
+        mins = minmax["Coord<Minimum>"]
+        maxs = minmax["Coord<Maximum>"]
+        counts = minmax["Count"]
+        #ccbboxesexcl = numpy.zeros(raw.shape, dtype=numpy.uint32)
+        #ccbboxesincl = numpy.zeros(cc.shape, dtype=numpy.uint32)
+        nobj = mins.shape[0]
+        features_obj = [None] #don't compute for the 0-th object (the background)
+        features_incl = [None]
+        features_excl = [None]
+        first_good = 1
+        for i in range(1,nobj):
+            print "processing object ", i
+            if counts[i]>1000000:
+                #avoid computing features for over-large objects which are clearly not synapses
+                features_incl.append(None)
+                features_excl.append(None)
+                features_obj.append(None)
+                if first_good<=i:
+                    first_good=i+1
+                continue
+            minx = max(mins[i][0]-self.margin, 0)
+            miny = max(mins[i][1]-self.margin, 0)
+            minz = max(mins[i][2], 0)
+            maxx = min(maxs[i][0]+self.margin, image.shape[0])
+            maxy = min(maxs[i][1]+self.margin, image.shape[1])
+            maxz = min(maxs[i][2], image.shape[2])
+            
+            ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
+            rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
+            rawbbox = rawbbox.squeeze()
+            ccbboxobject = numpy.where(ccbbox==i, 1, 0)
+            
+            passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
+            
+            for iz in range(maxz-minz):
+                
+                dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
+                passed[:, :, iz] = dt<self.margin
+                
+            ccbboxexcl = passed-ccbboxobject
+            
+            feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self.features, ignoreLabel=0)
+            feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self.features, ignoreLabel=0)
+            feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self.features, ignoreLabel=0)
+            
+            features_incl.append(feats_incl)
+            features_excl.append(feats_excl)
+            features_obj.append(feats_obj)
+            
+        feature_keys = features_incl[first_good].keys()
+        feature_dict = {}
+        feature_dict["Coord<Minimum>"]=mins
+        feature_dict["Coord<Maximum>"]=maxs
+        feature_dict["Count"]=counts
+        for key in feature_keys:
+            
+            nchannels = 0
+            #we always have two objects, background is first
+            try:
+                nchannels = len(features_incl[first_good][key][0])
+            except TypeError:
+                nchannels = 1
+            #print "assembling key:", key, "nchannels:", nchannels
+            #print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
+            #FIXME: find the maximum number of channels and pre-allocate
+            feature_obj = numpy.zeros((nobj, nchannels))
+            feature_incl = numpy.zeros((nobj, nchannels))
+            feature_excl = numpy.zeros((nobj, nchannels))
+            
+            for i in range(nobj):
+                if features_obj[i] is not None:
+                    #print features_obj[i][key]
+                    feature_obj[i] = features_obj[i][key][1]
+                    feature_incl[i] = features_incl[i][key][1]
+                    feature_excl[i] = features_excl[i][key][1]
+                else:
+                    feature_obj[i]=0
+                    feature_incl[i]=0
+                    feature_excl[i]=0
+            
+            
+            feature_dict[key+"_obj"]=feature_obj
+            feature_dict[key+"_incl"]=feature_incl
+            feature_dict[key+"_excl"]=feature_excl
+            #print key, feature_obj.shape, feature_incl.shape, feature_excl.shape
+        
+        return feature_dict
 
     def propagateDirty(self, slot, subindex, roi):
         axes = self.RawVolume.meta.getTaggedShape().keys()
