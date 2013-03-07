@@ -18,6 +18,7 @@
         "lazyflow.operators.vigraOperators":		                { "level":"INFO" },
         "lazyflow.operators.vigraOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                  	{ "level":"INFO" },
+        "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
         "lazyflow.utility.io.RESTfulVolume":                        { "level":"DEBUG" },
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"DEBUG" },

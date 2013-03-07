@@ -83,6 +83,7 @@ def get_default_config(prefix=""):
             "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
             "lazyflow.operators.vigraOperators.OpH5WriterBigDataset":   { "level":"INFO" },
             "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
+            "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
             "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
             "ilastik":                                                  { "level":"INFO" },
             "ilastik.clusterOps":                                       { "level":"INFO" },
