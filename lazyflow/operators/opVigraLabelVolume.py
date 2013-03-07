@@ -1,9 +1,9 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+import logging
 
 import numpy
 import vigra
-import logging
-from lazyflow.roi import extendSlice
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,9 @@ class OpVigraLabelVolume(Operator):
     def execute(self, slot, subindex, roi, destination):
         assert slot == self.Output
         
+        resultView = destination.view( vigra.VigraArray )
+        resultView.axistags = self.Input.meta.axistags
+        
         inputData = self.Input(roi.start, roi.stop).wait()
         inputData = inputData.view(vigra.VigraArray)
         inputData.axistags = self.Input.meta.axistags
@@ -44,10 +47,12 @@ class OpVigraLabelVolume(Operator):
         axiskeys = [tag.key for tag in inputData.axistags]        
         if 't' in axiskeys:
             inputData = inputData.bindAxis('t', 0)
+            resultView = resultView.bindAxis('t', 0)
 
         # Drop the channel axis, too.
         if 'c' in axiskeys:
             inputData = inputData.bindAxis('c', 0)
+            resultView = resultView.bindAxis('c', 0)
 
         inputData = inputData.view(numpy.ndarray)
 
@@ -61,10 +66,11 @@ class OpVigraLabelVolume(Operator):
                 bg = float(bg)
             else:
                 bg = int(bg)
-            result =  vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg).view(numpy.ndarray)
+            vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg, out=resultView)
         else:
-            result =  vigra.analysis.labelVolumeWithBackground(inputData).view(numpy.ndarray)
-        return result.reshape(destination.shape)
+            vigra.analysis.labelVolumeWithBackground(inputData, out=resultView)
+        
+        return destination
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
