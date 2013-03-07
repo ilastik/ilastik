@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, OpCompressedCache
+from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, OpCompressedCache, OpColorizeLabels
 from lazyflow.roi import extendSlice, TinyVector
 
 import numpy
@@ -80,6 +80,7 @@ class OpSelectLabels(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.BigLabels.meta )
         self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.drange = (0,1)
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
@@ -93,7 +94,6 @@ class OpSelectLabels(Operator):
         smallLabels = smallLabelReq.wait()
         bigLabels = bigLabelReq.wait()
         
-        # Re-use result array to save memory
         prod = (smallLabels != 0) * bigLabels
         passed = numpy.unique(prod)
         
@@ -111,6 +111,8 @@ class OpSelectLabels(Operator):
 class OpThresholdTwoLevels(Operator):
     name = "opThresholdTwoLevels"
     
+    RawInput = InputSlot(optional=True) # Display only
+    
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=100)
     MaxSize = InputSlot(stype='int', value=1000000)
@@ -123,6 +125,7 @@ class OpThresholdTwoLevels(Operator):
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
     
     # Debug outputs
+    InputChannels = OutputSlot(level=1)
     Smoothed = OutputSlot()
     BigRegions = OutputSlot()
     SmallRegions = OutputSlot()
@@ -130,7 +133,7 @@ class OpThresholdTwoLevels(Operator):
 
     # Schematic:
     #
-    #                                 HighThreshold                         MinSize,MaxSize                       --(cache)--> FilteredSmallLabels
+    #                                 HighThreshold                         MinSize,MaxSize                       --(cache)--> opColorize -> FilteredSmallLabels
     #                                              \                                       \                     /
     #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                  Output
     #               \                   \          /                 \                                            \               /
@@ -178,8 +181,9 @@ class OpThresholdTwoLevels(Operator):
         self.Output.connect( self._opSelectLabels.Output )
         self.CachedOutput.connect( self._opCache.Output )
         
-        # Debug output.
+        # Debug outputs.
         self.Smoothed.connect( self._opSmoother.Output )
+        self.InputChannels.connect( self._opChannelSlicer.Slices )
         
         # More debug outputs.  These all go through their own caches
         self._opBigRegionCache = OpCompressedCache( parent=self )
@@ -189,10 +193,12 @@ class OpThresholdTwoLevels(Operator):
         self._opSmallRegionCache = OpCompressedCache( parent=self )
         self._opSmallRegionCache.Input.connect( self._opHighThresholder.Output )
         self.SmallRegions.connect( self._opSmallRegionCache.Output )
-                
+        
         self._opFilteredSmallLabelsCache = OpCompressedCache( parent=self )
         self._opFilteredSmallLabelsCache.Input.connect( self._opHighLabelSizeFilter.Output )
-        self.FilteredSmallLabels.connect( self._opFilteredSmallLabelsCache.Output )
+        self._opColorizeSmallLabels = OpColorizeLabels( parent=self )
+        self._opColorizeSmallLabels.Input.connect( self._opFilteredSmallLabelsCache.Output )
+        self.FilteredSmallLabels.connect( self._opColorizeSmallLabels.Output )
 
     def setupOutputs(self):
         assert len(self.InputImage.meta.shape) <= 4, "This operator doesn't support 5D data."
