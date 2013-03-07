@@ -4,7 +4,10 @@ import random
 import nose
 import numpy
 import h5py
+import gc
 from functools import partial
+
+import psutil
 
 from lazyflow.utility.tracer import traceLogged
 
@@ -15,14 +18,10 @@ handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
 handler.setFormatter(formatter)
 
-# Root
-logging.getLogger().addHandler( handler )
 # Test
-logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG)
-# Trace
-traceLogger = logging.getLogger("TRACE." + __name__)
-#traceLogger.setLevel(logging.DEBUG)
+logger = logging.getLogger("tests.testRequestRewrite")
+# Test Trace
+traceLogger = logging.getLogger("TRACE." + logger.name)
 
 class TestRequest(object):
 
@@ -635,8 +634,76 @@ class TestRequestExceptions(object):
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
         
+    def testMemoryLeaks(self):
+        """
+        As requests become inaccessible, they should be freed immediately, along with any data they held.
+        
+        Note that objects within greenlet stack frames are not considered by the cyclical garbage collector,
+        so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
+        are broken.  Preferably, requests should be deleted early as possible.
+        """
+        def getMemoryUsageMb():
+            # Collect garbage first
+            gc.collect()
+            vmem = psutil.virtual_memory()
+            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
+            return mem_usage_mb
+        
+        starting_usage_mb = getMemoryUsageMb()
+        def getMemoryIncreaseMb():
+            return getMemoryUsageMb() - starting_usage_mb
+
+        resultShape = (500,1000,1000)
+        resultSize = numpy.prod(resultShape)
+        def getBigArray(directExecute, recursionDepth):
+            """
+            Simulate the memory footprint of a series of computation steps.
+            """
+            logger.debug( "Usage delta before depth {}: {} MB".format(recursionDepth, getMemoryIncreaseMb() ) )
+
+            if recursionDepth == 0:
+                # A 500GB result
+                result = numpy.zeros(shape=resultShape, dtype=numpy.uint8)
+            else:
+                req = Request( partial(getBigArray, directExecute=directExecute, recursionDepth=recursionDepth-1) )
+                if not directExecute:
+                    # Force this request to be submitted to the thread pool,
+                    # not executed synchronously in this thread.
+                    req.submit()
+                result = req.wait() + 1
+            
+            # Note that we expect there to be 2X memory usage here:
+            #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
+            memory_increase_mb = getMemoryIncreaseMb()
+            logger.debug( "Usage delta after depth {}: {} MB".format(recursionDepth, memory_increase_mb ) )
+            assert memory_increase_mb < 2.5*resultSize, "Memory from finished requests didn't get freed!"
+            
+            return result
+
+        # Run tests via a separate function so its stack is cleaned up
+        def test_impl(directExecute):
+            rootReq = Request( partial( getBigArray, directExecute, recursionDepth=5 ) )
+            result = rootReq.wait()
+            assert (result == 5).all()
+
+        test_impl(True)
+        test_impl(False)
+
+        memory_increase_mb = getMemoryIncreaseMb()
+        logger.debug( "Finished test with memory usage delta at: {} MB".format( memory_increase_mb ) )
+        assert memory_increase_mb < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
+
 
 if __name__ == "__main__":
+
+    # Logging is OFF by default when running from command-line nose, i.e.:
+    # nosetests thisFile.py)
+    # but ON by default if running this test directly, i.e.:
+    # python thisFile.py
+    logging.getLogger().addHandler( handler )
+    logger.setLevel(logging.DEBUG)
+    traceLogger.setLevel(logging.DEBUG)
+
     import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.

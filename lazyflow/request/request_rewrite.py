@@ -28,16 +28,19 @@ class SimpleSignal(object):
     """
     def __init__(self):
         self.callbacks = []
+        self._cleaned = False
 
     def subscribe(self, fn):
         self.callbacks.append(fn)
 
     def __call__(self, *args, **kwargs):
         """Emit the signal."""
+        assert not self._cleaned, "Can't emit a signal after it's already been cleaned!"
         for f in self.callbacks:
             f(*args, **kwargs)
         
     def clean(self):
+        self._cleaned = True
         self.callbacks = []
 
 class Request( object ):
@@ -143,23 +146,26 @@ class Request( object ):
         """
         return self._priority < other._priority
 
-    def clean(self):
+    def clean(self, _fullClean=True):
         """
-        Delete all state from the request, for cleanup purposes.  Removes references to callbacks, children, and the result.
+        Delete all state from the request, for cleanup purposes.
+        Removes references to callbacks, children, and the result.
+        
+        :param _fullClean: Internal use only.  If False, only clean internal bookkeeping members.
+                           Otherwise, delete everything, including the result.
         """
-        self._cleaned = True
         self._sig_cancelled.clean()
         self._sig_finished.clean()
         self._sig_failed.clean()
-        self._sig_execution_complete.clean()
-        self._result = None
 
         with self._lock:
             for child in self.child_requests:
                 child.parent_request = None
             self.child_requests.clear()
-        
-        self._result = None
+
+        if _fullClean:
+            self._cleaned = True
+            self._result = None
         
     @property
     def assigned_worker(self):
@@ -218,14 +224,11 @@ class Request( object ):
             elif self.exception is not None:
                 self._sig_failed( self.exception )
             else:
-                assert not self._cleaned, "This request has been cleaned() already."
                 self._sig_finished(self._result)
 
-            # Once the signals have fired, there's no need to keep their callbacks around
-            # (Callbacks, especially functools.partial, may contain parameters that should be collected.)
-            self._sig_finished.clean()
-            self._sig_failed.clean()
-            self._sig_cancelled.clean()
+            # Now that we're complete, the signals have fired and any requests we needed to wait for have completed.
+            # To free memory (and child requests), we can clean up everything but the result.
+            self.clean( _fullClean=False )
 
             # Unconditionally signal (internal use only)
             with self._lock:
