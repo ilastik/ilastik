@@ -69,6 +69,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
 
         # Connect Predictions -> Thresholding
         opTwoLevelThreshold.InputImage.connect( opPredictionData.Image )
+        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
 
         # FIXME: For now, the object extraction and classification applets REQUIRE 5D data.
         # (But the two-level thresholding applet CAN'T HANDLE 5d data.)

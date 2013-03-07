@@ -18,14 +18,16 @@ def debug_with_new(shell):
 
     rawInfo = DatasetInfo()
     #rawInfo.filePath = '/magnetic/synapse_debug_data/block256.h5/cube'
-    rawInfo.filePath = '/magnetic/synapse_small_4d.h5/volume/data'
+    #rawInfo.filePath = '/magnetic/synapse_small_4d.h5/volume/data'
+    rawInfo.filePath = '/magnetic/validation_slices_20_40_3200_4000_1200_2000.h5/volume/data'
     opRawDataSelection = workflow.rawDataSelectionApplet.topLevelOperator
     opRawDataSelection.Dataset.resize(1)
     opRawDataSelection.Dataset[0].setValue(rawInfo)
 
     predictionInfo = DatasetInfo()
     #predictionInfo.filePath = '/magnetic/synapse_debug_data/block256_spots_predictions.h5/cube'
-    predictionInfo.filePath = '/magnetic/synapse_small_4d_synapse_predictions.h5/volume/data'
+    #predictionInfo.filePath = '/magnetic/synapse_small_4d_synapse_predictions.h5/volume/data'
+    predictionInfo.filePath = '/magnetic/validation_slices_20_40_3200_4000_1200_2000_pred.h5/volume/data'
     opPredDataSelection = workflow.predictionSelectionApplet.topLevelOperator
     opPredDataSelection.Dataset.resize(1)
     opPredDataSelection.Dataset[0].setValue(predictionInfo)
