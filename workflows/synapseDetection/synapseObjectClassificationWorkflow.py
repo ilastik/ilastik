@@ -15,7 +15,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
     def __init__( self, headless, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(self.__class__, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(SynapseObjectClassificationWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
 
         ######################
         # Interactive workflow
