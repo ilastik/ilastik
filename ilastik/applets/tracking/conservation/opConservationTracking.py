@@ -64,6 +64,16 @@ class OpConservationTracking(OpTrackingBase):
         print 'median_obj_size = ', median_obj_size
         print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
+        
+        means = []
+        sigma2s = []
+        meanVector = pgmlink.VectorOfDouble()
+        sigma2Vector = pgmlink.VectorOfDouble()
+        for m in means:
+            meanVector.append(m)
+        for s in sigma2s:
+            sigma2Vector.append(s)
+            
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
@@ -76,8 +86,10 @@ class OpConservationTracking(OpTrackingBase):
                                          divWeight,
                                          transWeight,
                                          withDivisions,
-                                         500.0,
-                                         500.0
+                                         500.0, # disappearance cost
+                                         500.0, # appearance cost
+                                         meanVector, # means vector
+                                         sigma2Vector # sigma2 vector
                                          )
         
         try:
