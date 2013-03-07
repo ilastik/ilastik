@@ -120,12 +120,7 @@ class OpCompressedCache(Operator):
         taggedBlockshape = collections.OrderedDict( zip(axes, self._blockshape) )
         taggedChunkshape = copy.copy( taggedBlockshape )
 
-        dtype = self.Input.meta.dtype
-        if type(dtype) is numpy.dtype:
-            # Make sure we're dealing with a type (e.g. numpy.float64),
-            #  not a numpy.dtype
-            dtype = dtype.type
-        dtypeBytes = dtype().nbytes
+        dtypeBytes = self._getDtypeBytes(self.Input.meta.dtype)
 
         # How much xyz space can a chunk occupy and still fit within 100k?
         desiredSpace = 100000.0 / dtypeBytes
@@ -164,6 +159,12 @@ class OpCompressedCache(Operator):
         logger.debug("Using chunk shape: {}".format( chunkshape ))
         return chunkshape
 
+    def _getDtypeBytes(self, dtype):
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type
+        return dtype().nbytes
 
     def _getCacheFile(self, entire_block_roi, block_start):
         """
@@ -211,6 +212,11 @@ class OpCompressedCache(Operator):
                     # We must use a temporary numpy array to hold the data.
                     data = self.Input(*entire_block_roi).wait()
                     block_file['data'][...] = data
+                    
+                    if logger.isEnabledFor(logging.DEBUG):
+                        uncompressed_size = numpy.prod(data.shape) * self._getDtypeBytes(data.dtype)
+                        storage_size = block_file["data"].id.get_storage_size()
+                        logger.debug("Storage for block: {} is {}. ({}% of original)".format( block_start, storage_size, 100*storage_size/uncompressed_size ))
                     with self._lock:
                         self._dirtyBlocks.remove( block_start )
                     updated_cache = True
