@@ -76,7 +76,10 @@ class SynapseObjectClassificationWorkflow(Workflow):
         op5Raw.input.connect( opRawData.Image )
         
         op5Predictions = Op5ifyer( parent=self )
-        op5Predictions.input.connect( opTwoLevelThreshold.Output )
+        #op5Predictions.input.connect( opTwoLevelThreshold.Output )
+        
+        # Use cached output so that the BinaryImage layer is correct in the GUI.
+        op5Predictions.input.connect( opTwoLevelThreshold.CachedOutput )
         
         # connect raw data -> extraction
         opObjExtraction.RawImage.connect(op5Raw.output)
