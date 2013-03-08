@@ -104,7 +104,8 @@ class OpColorizeLabels(Operator):
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
         # channellessInput % self.colortable.shape[0]
         channellessInput &= self.colortable.shape[0]-1 # Cheaper than mod for 2**X
-        return self.colortable[:, channelSlice][channellessInput]
+        result[...] = self.colortable[:, channelSlice][channellessInput]
+        return result
 
     @staticmethod
     def generateColortable(size):

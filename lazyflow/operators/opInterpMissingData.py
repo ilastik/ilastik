@@ -1,3 +1,4 @@
+import warnings
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy as np
 import vigra
@@ -22,6 +23,7 @@ class OpInterpMissingData(Operator):
             assert taggedShape['c'] == 1, "Non-spatial dimensions must be of length 1"
 
     def execute(self, slot, subindex, roi, result):
+        warnings.warn("FIXME: This operator should be memory-optimized using request.writeInto()")
 
         data = self.InputVolume.get(roi).wait()
         depth= self.InputSearchDepth.value

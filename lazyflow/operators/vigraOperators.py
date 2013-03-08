@@ -52,7 +52,8 @@ class OpXToMulti(Operator):
             slot = self.inputs[sname]
             if slot.ready():
                 if i == index:
-                    return slot[key].allocate().wait()
+                    slot[key].writeInto(result).wait()
+                    return result
                 i += 1
 
     def propagateDirty(self, islot, subindex, roi):

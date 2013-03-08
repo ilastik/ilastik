@@ -1,5 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+import warnings
 import numpy
 import vigra
 import logging
@@ -115,8 +116,10 @@ class OpVigraWatershed(Operator):
             seedImage = seedImage.view(vigra.VigraArray)
             seedImage.axistags = tags
             seedImage = seedImage.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
+            warnings.warn("FIXME: memory-optimize this by providing result as the out parameter")
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion, seeds=seedImage)
         else:
+            warnings.warn("FIXME: memory-optimize this by providing result as the out parameter")
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
         logger.debug( "Finished Watershed" )
         

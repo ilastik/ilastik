@@ -174,7 +174,6 @@ class OpMultiArraySlicer2(Operator):
         self.inputShape = None
 
     def setupOutputs(self):
-        dtype=self.inputs["Input"].meta.dtype
         flag=self.inputs["AxisFlag"].value
 
         indexAxis=self.inputs["Input"].meta.axistags.index(flag)
@@ -186,12 +185,10 @@ class OpMultiArraySlicer2(Operator):
 
         outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
 
-        #del outaxistags[flag]
-
         sliceIndexes = self.getSliceIndexes()
         self.outputs["Slices"].resize( len(sliceIndexes) )
 
-        for i, oslot in enumerate(self.Slices):
+        for oslot in self.Slices:
             # Output metadata is a modified copy of the input's metadata
             oslot.meta.assignFrom( self.Input.meta )
             oslot.meta.axistags = outaxistags
@@ -202,7 +199,7 @@ class OpMultiArraySlicer2(Operator):
         inputShape = self.Input.meta.shape
         if self.inputShape != inputShape:
             self.inputShape = inputShape
-            for i, oslot in enumerate(self.Slices):
+            for oslot in self.Slices:
                 oslot.setDirty(slice(None))
 
     def getSliceIndexes(self):
@@ -224,7 +221,6 @@ class OpMultiArraySlicer2(Operator):
 
         outshape = self.outputs["Slices"][index].meta.shape
         start,stop=roi.sliceToRoi(key,outshape)
-        oldstart,oldstop=start,stop
 
         start=list(start)
         stop=list(stop)
@@ -240,8 +236,8 @@ class OpMultiArraySlicer2(Operator):
 
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
-        ttt = self.inputs["Input"][newKey].allocate().wait()
-        return ttt[:]
+        self.inputs["Input"][newKey].writeInto(result).wait()
+        return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.SliceIndexes:
@@ -414,16 +410,14 @@ class OpSingleChannelSelector(Operator):
             self.Output.meta.drange = self.Input.meta.drange
 
     def execute(self, slot, subindex, roi, result):
-        key = roiToSlice(roi.start,roi.stop)
-
         index=self.inputs["Index"].value
         assert self.inputs["Input"].meta.shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
 
         # Only ask for the channel we need
+        key = roiToSlice(roi.start,roi.stop)
         newKey = key[:-1] + (slice(index,index+1),)
-
-        im=self.inputs["Input"][newKey].wait()
-        return im[...,0:1] # Copy into the (only) channel of our result
+        self.inputs["Input"][newKey].writeInto(result).wait()
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
@@ -482,27 +476,21 @@ class OpSubRegion(Operator):
                 temp += (stop[i]-start[i],)
 
         readStart, readStop = sliceToRoi(key, temp)
-
-
-
         newKey = ()
-        resultKey = ()
         i = 0
         i2 = 0
         for kkk in xrange(len(start)):
             e = stop[kkk] - start[kkk]
             if e > 0:
                 newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
-                resultKey += (slice(0,temp[i2],None),)
                 i +=1
             else:
                 newKey += (slice(start[i2], start[i2], None),)
-                resultKey += (0,)
             i2 += 1
 
-        res = self.inputs["Input"][newKey].allocate().wait()
-        result[:] = res[resultKey]
-
+        self.inputs["Input"][newKey].writeInto(result).wait()
+        return result
+        
     def propagateDirty(self, dirtySlot, subindex, roi):
         if self._propagate_dirty and dirtySlot == self.Input:
             # Translate the input key to a small subregion key
@@ -603,10 +591,13 @@ class OpPixelOperator(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
-        matrix = self.inputs["Input"][key].allocate().wait()
-        matrix = self.function(matrix)
-
-        return matrix[:]
+        req = self.inputs["Input"][key]
+        # Re-use the result array as a temporary variable (if possible)
+        if self.Input.meta.dtype == self.Output.meta.dtype:
+            req.writeInto(result)
+        matrix = req.wait()
+        result[:] = self.function(matrix)
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
