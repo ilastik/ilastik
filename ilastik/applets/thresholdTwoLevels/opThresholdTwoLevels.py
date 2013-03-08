@@ -1,10 +1,30 @@
+# Built-in
+import gc
+import warnings
+import logging
+
+# Third-party
+import numpy
+import vigra
+import psutil
+
+# Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, OpCompressedCache, OpColorizeLabels
 from lazyflow.roi import extendSlice, TinyVector
 
-import numpy
-import vigra
-import warnings
+logger = logging.getLogger(__name__)
+
+def getMemoryUsageMb():
+    """
+    Get the current memory usage for the whole system (not just python).
+    """
+    # Collect garbage first
+    gc.collect()
+    vmem = psutil.virtual_memory()
+    mem_usage_mb = (vmem.total - vmem.available) / 1e6
+    return mem_usage_mb
+
 
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
@@ -85,17 +105,47 @@ class OpSelectLabels(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
 
-        smallLabelReq = self.SmallLabels(roi.start, roi.stop)
-        bigLabelReq = self.BigLabels(roi.start, roi.stop)
+        # This operator is typically used with very big rois, so be extremely memory-conscious:
+        # - Don't request the small and big inputs in parallel. 
+        # - Clean finished requests immediately (don't wait for this function to exit)
+        # - Delete intermediate results as soon as possible.
         
-        smallLabelReq.submit()
-        bigLabelReq.submit()
+        if logger.isEnabledFor(logging.DEBUG):
+            dtypeBytes = self.SmallLabels.meta.getDtypeBytes()
+            inputShape = self.SmallLabels.meta.shape
+            logger.debug( "Input image size is {} = {} MB".format( inputShape, numpy.prod(inputShape) * dtypeBytes / 1e6 ) )
+            starting_memory_usage_mb = getMemoryUsageMb()
+            logger.debug("Starting with memory usage: {} MB".format( starting_memory_usage_mb ))
+
+        smallLabelsReq = self.SmallLabels(roi.start, roi.stop)
+        smallLabels = smallLabelsReq.wait()
+        smallLabelsReq.clean()
+
+        if logger.isEnabledFor(logging.DEBUG):
+            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+            logger.debug("After obtaining small labels, memory increase is: {} MB".format( memory_increase_mb ))
+
+        smallNonZero = numpy.ndarray(shape=smallLabels.shape, dtype=bool)
+        smallNonZero[...] = (smallLabels != 0)
+        del smallLabels
+
+        if logger.isEnabledFor(logging.DEBUG):
+            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+            logger.debug("Before obtaining big labels, memory increase is: {} MB".format( memory_increase_mb ))
         
-        smallLabels = smallLabelReq.wait()
-        bigLabels = bigLabelReq.wait()
+        bigLabels = self.BigLabels(roi.start, roi.stop).wait()
+
+        if logger.isEnabledFor(logging.DEBUG):
+            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+            logger.debug("After obtaining big labels, memory increase is: {} MB".format( memory_increase_mb ))
         
-        prod = (smallLabels != 0) * bigLabels
+        prod = smallNonZero * bigLabels
+        del smallNonZero
         passed = numpy.unique(prod)
+        if logger.isEnabledFor(logging.DEBUG):
+            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+            logger.debug("After prod, memory increase is: {} MB".format( memory_increase_mb ))
+        del prod
         
         all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint8 )
         for l in passed:
@@ -103,6 +153,11 @@ class OpSelectLabels(Operator):
         all_label_values[0] = 0
         
         result[:] = all_label_values[ bigLabels ]
+
+        if logger.isEnabledFor(logging.DEBUG):
+            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+            logger.debug("Just before return, memory increase is: {} MB".format( memory_increase_mb ))
+        
         return result        
 
     def propagateDirty(self, slot, subindex, roi):
