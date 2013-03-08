@@ -73,6 +73,8 @@ class OpRegionFeatures3d(Operator):
         return result
 
     def _extract(self, image, labels):
+        assert len(image.shape) == len(labels.shape) == 3, "Images must be 3D.  Shapes were: {} and {}".format( image.shape, labels.shape )
+        
         image = numpy.asarray(image, dtype=numpy.float32)
         labels = numpy.asarray(labels, dtype=numpy.uint32)
         
@@ -107,7 +109,6 @@ class OpRegionFeatures3d(Operator):
             
             ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
             rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
-            rawbbox = rawbbox.squeeze()
             ccbboxobject = numpy.where(ccbbox==i, 1, 0)
             
             passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
