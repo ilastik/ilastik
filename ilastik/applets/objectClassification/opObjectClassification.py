@@ -371,7 +371,7 @@ class OpToImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             map_ = self.ObjectMap([t]).wait()
             tmap = map_[t]
-
+            
             # FIXME: necessary because predictions are returned
             # enclosed in a list.
             if isinstance(tmap, list):
@@ -385,7 +385,7 @@ class OpToImage(Operator):
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
 
-            img[t] = tmap[img[t]]
+            img[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
 
         return img
 
