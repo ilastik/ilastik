@@ -9,7 +9,12 @@ from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
+from lazyflow.request import Request, Pool
+
 from ilastik.applets.objectExtraction import config
+
+import time
+from functools import partial
 
 class OpRegionFeatures3d(Operator):
     """
@@ -90,6 +95,7 @@ class OpRegionFeatures3d(Operator):
         features_incl = [None]
         features_excl = [None]
         first_good = 1
+        pool = Pool()
         for i in range(1,nobj):
             print "processing object ", i
             if counts[i]>1000000:
@@ -100,7 +106,6 @@ class OpRegionFeatures3d(Operator):
                 if first_good<=i:
                     first_good=i+1
                 continue
-
             minx = max(mins[i][0]-self.margin, 0)
             miny = max(mins[i][1]-self.margin, 0)
             minz = max(mins[i][2], 0)
@@ -124,13 +129,28 @@ class OpRegionFeatures3d(Operator):
                 
             ccbboxexcl = passed-ccbboxobject
             
-            feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
-            feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
-            feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
+            feats = [None, None, None]
+            for i, bbox in enumerate(labeled_bboxes):
+                def extractObjectFeatures(i):
+                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), bbox.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+                req = pool.request(partial(extractObjectFeatures, i))
+            pool.wait()
             
-            features_incl.append(feats_incl)
-            features_excl.append(feats_excl)
-            features_obj.append(feats_obj)
+            #start2 = time.clock()
+            #feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            #feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            #feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+            #end2 = time.clock()
+            #print "vigra calls:", end2-start2, "bbox size:", rawbbox.shape
+            
+            
+            #features_incl.append(feats_incl)
+            #features_excl.append(feats_excl)
+            #features_obj.append(feats_obj)
+            features_incl.append(feats[0])
+            features_excl.append(feats[1])
+            features_obj.append(feats[2])
             
         feature_keys = features_incl[first_good].keys()
         feature_dict = {}
@@ -168,7 +188,7 @@ class OpRegionFeatures3d(Operator):
             feature_dict[key+"_incl"]=feature_incl
             feature_dict[key+"_excl"]=feature_excl
             #print key, feature_obj.shape, feature_incl.shape, feature_excl.shape
-        
+        end1 = time.clock()
         return feature_dict
 
     def propagateDirty(self, slot, subindex, roi):
