@@ -33,8 +33,24 @@ def debug_with_new(shell):
 
     # Select the feature drawer
     shell.setSelectedAppletDrawer(2)
+
+def debug_with_existing(shell):
+    """
+    (Function for debug and testing.)
+    """
+    # Open an existing project
+    #projFilePath = "/magnetic/objectLabels_good.ilp"
+    #projFilePath = "/magnetic/object_prediction.ilp"
+    projFilePath = "/magnetic/data/validation/stuart_object_predictions.ilp"
+    
+    shell.openProjectFile(projFilePath)
+
+    # Select a default drawer
+    shell.setSelectedAppletDrawer(2)
+    
     
 if __name__ == '__main__':
     startShellGui( SynapseBlockwiseWorkflow )
     #startShellGui( SynapseBlockwiseWorkflow, debug_with_new )
+    #startShellGui( SynapseBlockwiseWorkflow, debug_with_existing )
 
