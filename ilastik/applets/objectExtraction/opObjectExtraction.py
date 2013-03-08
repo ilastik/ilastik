@@ -100,12 +100,16 @@ class OpRegionFeatures3d(Operator):
                 if first_good<=i:
                     first_good=i+1
                 continue
+
             minx = max(mins[i][0]-self.margin, 0)
             miny = max(mins[i][1]-self.margin, 0)
             minz = max(mins[i][2], 0)
-            maxx = min(maxs[i][0]+self.margin, image.shape[0])
-            maxy = min(maxs[i][1]+self.margin, image.shape[1])
-            maxz = min(maxs[i][2], image.shape[2])
+            # Coord<Minimum> and Coord<Maximum> give us the [min,max] 
+            # coords of the object, but we want the bounding box: [min,max), so add 1
+            maxx = min(maxs[i][0]+1+self.margin, image.shape[0])
+            maxy = min(maxs[i][1]+1+self.margin, image.shape[1])
+            maxz = min(maxs[i][2]+1, image.shape[2])
+            
             
             ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
             rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
