@@ -1,0 +1,2 @@
+from objectClassificationWorkflow import ObjectClassificationWorkflow
+from objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary

@@ -1,0 +1,3 @@
+from synapsePixelClassificationWorkflow import SynapsePixelClassificationWorkflow
+from synapseObjectClassificationWorkflow import SynapseObjectClassificationWorkflow
+from synapseBlockwiseWorkflow import SynapseBlockwiseWorkflow

@@ -1,6 +1,17 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from synapseObjectClassificationWorkflow import SynapseObjectClassificationWorkflow
 
+def debug_with_existing(shell):
+    """
+    (Function for debug and testing.)
+    """
+    # Open an existing project
+    #projFilePath = "/magnetic/objectLabels_good.ilp"
+    projFilePath = "/magnetic/object_prediction.ilp"
+    shell.openProjectFile(projFilePath)
+
+    # Select a default drawer
+    shell.setSelectedAppletDrawer(2)
 
 def debug_with_new(shell):
     """
@@ -38,4 +49,5 @@ def debug_with_new(shell):
 if __name__ == '__main__':
     startShellGui( SynapseObjectClassificationWorkflow )
     #startShellGui( SynapseObjectClassificationWorkflow, debug_with_new )
+    #startShellGui( SynapseObjectClassificationWorkflow, debug_with_existing )
 

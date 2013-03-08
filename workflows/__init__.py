@@ -3,6 +3,9 @@ logger = logging.getLogger(__name__)
 
 import pixelClassification
 import vigraWatershed
+import objectClassification
+import blockwiseObjectClassification
+import synapseDetection
 
 try:
     import autocontextClassification
@@ -12,4 +15,4 @@ except:
 try:
     import carving
 except:
-    logger.warn( "Failed to import carving workflow.  Check context dependencies." )
+    logger.warn( "Failed to import carving workflow.  Check cylemon dependency." )
