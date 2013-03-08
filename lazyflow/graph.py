@@ -142,6 +142,18 @@ class MetaDict(dict):
         assert self.axistags is not None
         return [tag.key for tag in self.axistags]
 
+    def getDtypeBytes(self):
+        """
+        For numpy dtypes only, return the size of the dtype in bytes.
+        """
+        dtype = self.dtype
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type        
+        return dtype().nbytes
+
+
 class ValueRequest(object):
     """Pseudo request that behaves like a request.Request object.
 
