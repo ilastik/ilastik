@@ -862,8 +862,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             #adjust the readkey, as we read from the non-interpolated image
             newStartNI = copy.copy(newStart)
             newStopNI = copy.copy(newStop)
-            newStartNI[zaxis] = numpy.floor(newStart[zaxis]/scaleZ)
-            newStopNI[zaxis] = numpy.ceil(newStop[zaxis]/scaleZ)
+            newStartNI[zaxis] = numpy.floor(float(newStart[zaxis])/scaleZ)
+            newStopNI[zaxis] = numpy.ceil(float(newStop[zaxis])/scaleZ)
             readKey = roi.roiToSlice(newStartNI, newStopNI)
             
             #interpolation is applied on a region read with the above key. In x-y it should just read everything
