@@ -55,7 +55,7 @@ def main(argv):
     return 0
 
 def getArgParser():
-    parser = argparse.ArgumentParser( description="Pixel Classification Prediction Workflow" )
+    parser = argparse.ArgumentParser( description="Ilastik Cluster Workload Launcher" )
     parser.add_argument('--process_name', default="MASTER", help='A name for this process (for logging purposes)', required=False)
     parser.add_argument('--option_config_file', help='A json file with various settings', required=True)
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
@@ -228,11 +228,17 @@ if __name__ == "__main__":
 #        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
-        # RESTful TEST
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
-        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        # RESTful TEST
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+#        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+
+        # Object classification
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_object_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik_trials/stuart_object_predictions.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_results/results_description.json")
         args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
