@@ -1,10 +1,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from opObjectClassification import OpObjectClassification
-from objectClassificationGui import ObjectClassificationGui
 from objectClassificationSerializer import ObjectClassificationSerializer
-
-from lazyflow.graph import OperatorWrapper
 
 class ObjectClassificationApplet(StandardApplet):
     def __init__(self,
@@ -28,6 +25,7 @@ class ObjectClassificationApplet(StandardApplet):
         return self._serializableItems
 
     def createSingleLaneGui(self, imageLaneIndex):
+        from objectClassificationGui import ObjectClassificationGui
         singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
         return ObjectClassificationGui(singleImageOperator,
                                        self.shellRequestSignal,
