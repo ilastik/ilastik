@@ -118,7 +118,7 @@ class BlockwiseFileset(object):
         if self._description.view_shape is None:
             self._description.view_shape = numpy.subtract( self._description.shape, self._description.view_origin )
         view_roi = (self._description.view_origin, numpy.add(self._description.view_origin, self._description.view_shape))
-        assert (numpy.subtract( self._description.shape, view_roi[1] ) >= 0).all(), "View ROI must not exceed on-disk shape."
+        assert (numpy.subtract( self._description.shape, view_roi[1] ) >= 0).all(), "View ROI must not exceed on-disk shape: View roi: {}, on-disk shape: {}".format( view_roi, self._description.shape )
 
         if self._description.dataset_root_dir is None:
             # Default to same directory as the description file

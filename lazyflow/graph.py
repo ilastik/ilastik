@@ -914,10 +914,16 @@ class Slot(object):
             return self._subSlots[key]
         else:
             if self.meta.shape is None:
-                assert self.ready(), \
-                    ("This slot ({}.{}) isn't ready yet, which means"
-                     " you can't ask for its data.  Is it connected?".format(
-                         self.getRealOperator().name, self.name))
+                if not self.ready():
+                    msg = "This slot ({}.{}) isn't ready yet, which means " \
+                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
+                    self.logger.error(msg)
+                    slotInfoMsg = ""
+                    for slot in self.getRealOperator().inputs.values():
+                        if not slot.ready() and not slot._optional:
+                            slotInfoMsg += "Slot '{}' isn't ready\n".format( slot.name )
+                    self.logger.error(slotInfoMsg)
+                    assert False, "Slot isn't ready.  See error message above."
                 assert self.meta.shape is not None, \
                     ("Can't ask for slices of this slot yet:"
                      " self.meta.shape is None!"
