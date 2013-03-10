@@ -19,28 +19,28 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         if op.CachedOutput.ready():
             outputLayer = self.createStandardLayerFromSlot( op.CachedOutput )
             outputLayer.name = "Output (Cached)"
-            outputLayer.visible = True
+            outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
         if op.BigRegions.ready():
             lowThresholdLayer = self.createStandardLayerFromSlot( op.BigRegions )
             lowThresholdLayer.name = "Big Regions"
-            lowThresholdLayer.visible = True
+            lowThresholdLayer.visible = False
             lowThresholdLayer.opacity = 1.0
             layers.append(lowThresholdLayer)
 
         if op.FilteredSmallLabels.ready():
             filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels, lastChannelIsAlpha=True )
             filteredSmallLabelsLayer.name = "Filtered Small Labels"
-            filteredSmallLabelsLayer.visible = True
+            filteredSmallLabelsLayer.visible = False
             filteredSmallLabelsLayer.opacity = 1.0
             layers.append(filteredSmallLabelsLayer)
 
         if op.SmallRegions.ready():
             lowThresholdLayer = self.createStandardLayerFromSlot( op.SmallRegions )
             lowThresholdLayer.name = "Small Regions"
-            lowThresholdLayer.visible = True
+            lowThresholdLayer.visible = False
             lowThresholdLayer.opacity = 1.0
             layers.append(lowThresholdLayer)
 
