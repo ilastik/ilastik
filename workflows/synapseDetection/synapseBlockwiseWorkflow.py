@@ -49,7 +49,7 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
 
 
     def connectLane(self, laneIndex):
-        super( self.__class__, self ).connectLane( laneIndex )
+        super( SynapseBlockwiseWorkflow, self ).connectLane( laneIndex )
 
         # Get the correct lane from each operator
         opTrainingTopLevel = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
