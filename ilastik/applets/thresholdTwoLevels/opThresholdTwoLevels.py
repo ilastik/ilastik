@@ -2,6 +2,7 @@
 import gc
 import warnings
 import logging
+from functools import partial
 
 # Third-party
 import numpy
@@ -34,6 +35,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
     
     def execute(self, slot, subindex, roi, result):
@@ -43,12 +45,16 @@ class OpAnisotropicGaussianSmoothing(Operator):
         # Obtain the input data
         data = self.Input( *inputRoi ).wait()
         
+        # Must be float32
+        if data.dtype != numpy.float32:
+            data = data.astype(numpy.float32)
+        
         axiskeys = self.Input.meta.getAxisKeys()
         spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
         sigma = map( self._sigmas.get, spatialkeys )
         
         # Smooth the input data
-        smoothed = vigra.filters.gaussianSmoothing(data.astype(numpy.float32), sigma, window_size=2.0, roi=computeRoi, out=result[...,0]) # FIXME: Assumes channel is last axis
+        smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[...,0]) # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
         assert tuple(smoothed.shape) == expectedShape, "Smoothed data shape {} didn't match expected shape {}".format( smoothed.shape, roi.stop - roi.start )
         return result
@@ -259,8 +265,21 @@ class OpThresholdTwoLevels(Operator):
         assert len(self.InputImage.meta.shape) <= 4, "This operator doesn't support 5D data."
 
         self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ self.Channel.value ] )
-        self._opLowThresholder.Function.setValue( lambda a: (a > self.LowThreshold.value).astype( numpy.uint8 ) )
-        self._opHighThresholder.Function.setValue( lambda a: (a > self.HighThreshold.value).astype( numpy.uint8 ) )
+        
+        def thresholdToUint8(thresholdValue, a):
+            drange = self._opSmoother.Output.meta.drange
+            if drange is not None:
+                assert drange[0] == 0, "Don't know how to threshold data with this drange."
+                thresholdValue *= drange[1]
+            if a.dtype == numpy.uint8:
+                # In-place (does numpy optimize cases like this?)
+                a[:] = (a > thresholdValue)
+                return a
+            else:
+                return (a > thresholdValue).astype(numpy.uint8)
+        
+        self._opLowThresholder.Function.setValue( partial( thresholdToUint8, self.LowThreshold.value ) )
+        self._opHighThresholder.Function.setValue( partial( thresholdToUint8, self.HighThreshold.value ) )
 
         # Copy the input metadata to the output
         self.Output.meta.assignFrom( self.InputImage.meta )
