@@ -259,6 +259,10 @@ class OpClusterize(Operator):
         # Modify description fields as needed
         # -- axes
         datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
+        assert set(originalDescription.axes) == set( datasetDescription.axes ), \
+            "Can't prepare destination dataset: original dataset description listed " \
+            "axes as {}, but actual output axes are {}".format( originalDescription.axes, datasetDescription.axes )
+
         # -- shape
         datasetDescription.view_shape = list(self.Input.meta.shape)
         # -- block_shape
