@@ -58,7 +58,7 @@ class Roi(object):
         for cls in Roi.all_subclasses:
             if s.startswith(cls.__name__):
                 return cls._fromString( s[len(cls.__name__)+1:] )
-        assert False, "Class name does not refer to any Roi subclasses."
+        assert False, "Class name within '{}' does not refer to any Roi subclasses.".format(s)
 
 class Everything(Roi):
     '''Fallback Roi for Slots that can't operate on subsets of their input data.'''
