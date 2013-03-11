@@ -198,18 +198,28 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     #debug = None
-    #debug = 'Master'
     debug = 'Master'
+    #debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
         args = []
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+        
+        # Object classification
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_object_cluster_options.json" )
+        args.append( "--project=/nobackup/bock/ilastik_trials/stuart_object_predictions.ilp" )
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+        args.append( "--process_name=JOB02" )
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/results_description.json" )
         args.append( "--sys_tmp_dir=/scratch/bergs")
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
-        args.append( "--process_name=JOB00" )
+
+        # pixel classification
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+#        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
+#        args.append( "--process_name=JOB00" )
 
         sys.argv += args
 
@@ -235,17 +245,18 @@ if __name__ == "__main__":
 #        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
-        # Synapse Pixel Classification
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_pixel_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/pixel_results/results_description.json")
-        args.append( "--sys_tmp_dir=/scratch/bergs")
-
-#        # Synapse Object classification
-#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_object_cluster_options.json")
-#        args.append( "--project=/nobackup/bock/ilastik_trials/stuart_object_predictions.ilp")
-#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_results/results_description.json")
+#        # Synapse Pixel Classification
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_pixel_cluster_options.json")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/pixel_results/results_description.json")
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
+
+        # Synapse Object classification
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_object_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik_trials/stuart_object_predictions.ilp")
+        #args.append( "--output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/results_description.json")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_results/results_description.json")
+        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
 
