@@ -54,7 +54,9 @@ class OpVigraLabelVolume(Operator):
             inputData = inputData.bindAxis('c', 0)
             resultView = resultView.bindAxis('c', 0)
 
-        inputData = inputData.view(numpy.ndarray)
+        # I have no idea why, but vigra sometimes throws a precondition error if this line is present.
+        # ...on the other hand, I can't remember why I added this line in the first place...
+        # inputData = inputData.view(numpy.ndarray)
 
         if self.BackgroundValue.ready():
             bg = self.BackgroundValue.value
