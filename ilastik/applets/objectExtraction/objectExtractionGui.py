@@ -185,7 +185,7 @@ class ObjectExtractionGui(QWidget):
 
     def _calculateFeaturesButtonPressed(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]
-        progress = QProgressDialog("Calculating featuers...", "Stop", 0, maxt)
+        progress = QProgressDialog("Calculating features...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())

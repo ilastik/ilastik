@@ -1,6 +1,7 @@
 import numpy
 import h5py
 import vigra.analysis
+import math
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -134,15 +135,20 @@ class OpRegionFeatures(Operator):
 
     def extract(self, image, labels):
         image = numpy.asarray(image, dtype=numpy.float32)
-        labels = numpy.asarray(labels, dtype=numpy.uint32)
+        labels = numpy.asarray(labels, dtype=numpy.uint32)        
         feats = vigra.analysis.extractRegionFeatures(image,
                                                      labels,
                                                      features=self.features,
-                                                     ignoreLabel=0)
+                                                     ignoreLabel=0)        
         return feats
-
+    
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
+        
+        if "RegionCenter" not in self.features:
+            print "appending RegionCenter to the features to be calculated for division detection"
+            self.features.append("RegionCenter")
+               
         feats = {}
         if len(roi) == 0:
             roi = range(self.LabelImage.meta.shape[0])
@@ -170,10 +176,12 @@ class OpRegionFeatures(Operator):
                     axiskeys = self.LabelImage.meta.getTaggedShape().keys()
                     assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                     labels = labels[0,...,0] # assumes t,x,y,z,c
-                    feats_at.append(self.extract(image, labels))
-                self._cache[t] = feats_at
+                    feats_at.append(self.extract(image, labels))                     
+                    
+                self._cache[t] = feats_at                
                 self.Output._sig_value_changed()
             feats[t] = feats_at
+            
         return feats
 
     def propagateDirty(self, slot, subindex, roi):

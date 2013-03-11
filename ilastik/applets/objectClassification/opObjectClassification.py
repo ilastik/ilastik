@@ -229,6 +229,9 @@ class OpObjectTrain(Operator):
         featMatrix = _concatenate(featMatrix, axis=0)
         labelsMatrix = _concatenate(labelsMatrix, axis=0)
 
+        print 'featMatrix = ' + str(featMatrix)
+        print 'labelsMatrix = ' + str(labelsMatrix)
+        
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
@@ -236,11 +239,13 @@ class OpObjectTrain(Operator):
         try:
             # train and store forests in parallel
             pool = Pool()
+            oobs = []
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    result[number].learnRF(featMatrix.astype(numpy.float32),
+                    oob = result[number].learnRF(featMatrix.astype(numpy.float32),
                                            labelsMatrix.astype(numpy.uint32))
+                    oobs.append(oob)
                 req = pool.request(partial(train_and_store, i))
             pool.wait()
             pool.clean()
@@ -248,6 +253,8 @@ class OpObjectTrain(Operator):
             print ("couldn't learn classifier")
             raise
 
+        print 'Object Classification Random Forest: oob = ' + str(numpy.mean(oobs)) + ' +- ' + str(numpy.std(oobs))
+        
         slcs = (slice(0, self.ForestCount.value, None),)
         return result
 
