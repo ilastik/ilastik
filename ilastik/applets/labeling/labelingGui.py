@@ -169,8 +169,9 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
 
         # Connect Applet GUI to our event handlers
-        _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
-        _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
+        if hasattr(_labelControlUi, "AddLabelButton"):
+            _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
+            _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(self.onLabelListDataChanged)
 
         # Initialize the arrow tool button with an icon and handler
@@ -244,11 +245,12 @@ class LabelingGui(LayerViewerGui):
         mgr = ShortcutManager()
         shortcutGroupName = "Labeling"
 
-        addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
-        mgr.register( shortcutGroupName,
-                      "Add New Label Class",
-                      addLabel,
-                      self.labelingDrawerUi.AddLabelButton )
+        if hasattr(self.labelingDrawerUi, "AddLabelButton"):
+            addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
+            mgr.register( shortcutGroupName,
+                          "Add New Label Class",
+                          addLabel,
+                          self.labelingDrawerUi.AddLabelButton )
 
         navMode = QShortcut( QKeySequence("n"), self, member=self.labelingDrawerUi.arrowToolButton.click )
         mgr.register( shortcutGroupName,
@@ -354,11 +356,12 @@ class LabelingGui(LayerViewerGui):
         if labelsAllowedSlot.ready():
             labelsAllowed = labelsAllowedSlot.value
 
-            self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
-            if labelsAllowed:
-                self._labelControlUi.AddLabelButton.setText("Add Label")
-            else:
-                self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+            if hasattr(self._labelControlUi, "AddLabelButton"):
+                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+                if labelsAllowed:
+                    self._labelControlUi.AddLabelButton.setText("Add Label")
+                else:
+                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
         if labelsAllowed:
             self._labelControlUi.arrowToolButton.show()
