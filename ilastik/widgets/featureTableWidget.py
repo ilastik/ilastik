@@ -311,7 +311,10 @@ class FeatureTableWidget(QTableWidget):
         self.itemSelectionChanged.connect(self._tableItemSelectionChanged)
         self.cellDoubleClicked.connect(self._featureTableItemDoubleClicked)
         self.verticalHeader().sectionClicked.connect(self._expandOrCollapseVHeader)
-        self.horizontalHeader().sectionDoubleClicked.connect(self._hHeaderDoubleclicked)
+       
+        #FIXME: this feature is disabled for now because it needs proper support
+        #in the feature selection operator 
+        #self.horizontalHeader().sectionDoubleClicked.connect(self._hHeaderDoubleclicked)
         
 #        self.setFeatureGroups(featureMgr.ilastikFeatureGroups.groups)
 #        self.setSigmas(self.defaultGroupScaleValues)
@@ -547,7 +550,7 @@ class FeatureTableWidget(QTableWidget):
     
     def _addVHeader(self):
         row = 0
-        for group, features in self._featureGroupMapping:
+        for group, features in self._featureGroupMapping.iteritems():
             self.insertRow(row)
             vGroupHeader = FeatureTableWidgetVHeader()
             vGroupHeader.setGroupVHeader(group)
