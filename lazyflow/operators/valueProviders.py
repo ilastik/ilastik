@@ -280,7 +280,9 @@ class OpValueCache(Operator):
         
 class OpPrecomputedInput(Operator):
     """
-    This operator uses its precomputed
+    Think of this operator like a railroad switch.  The output is connected to one of the two inputs.
+    If the 'PrecomputedInput' slot is clean, then output comes directly from there.
+    Otherwise, the output slot is connected to the 'SlowInput' slot.
     """
     name = "OpPrecomputedInput"
     category = "Value provider"
