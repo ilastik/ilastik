@@ -148,6 +148,8 @@ class IlastikShell( QMainWindow ):
 
         localDir = os.path.split(__file__)[0]
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        self.imageSelectionGroup.setHidden(True)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
@@ -371,6 +373,8 @@ class IlastikShell( QMainWindow ):
         self.populatingImageSelectionCombo = True
         self.imageSelectionCombo.insertItem(index, "uninitialized")
         self.populatingImageSelectionCombo = False
+        if self.imageSelectionCombo.count() > 1:
+            self.imageSelectionGroup.setHidden(False)
         multislot[index].notifyDirty( bind( self.insertImageName, index) )
 
     @threadRouted
@@ -380,7 +384,8 @@ class IlastikShell( QMainWindow ):
         self.imageSelectionCombo.removeItem(index)
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
-
+        if self.imageSelectionCombo.count() <= 1:
+            self.imageSelectionGroup.setHidden(True)
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
