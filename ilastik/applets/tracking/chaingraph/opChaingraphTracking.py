@@ -27,26 +27,29 @@ class OpChaingraphTracking(OpTrackingBase):
             min_angle = 0,
             ep_gap = 0.2):
 
-        tracker = pgmlink.ChaingraphTracking(rf_fn,
-                                        app,
-                                        dis,
-                                        det,
-                                        mdet,
-                                        use_rf,
-                                        opp,
-                                        forb,
-                                        with_constr,
-                                        fixed_detections,
-                                        mdd,
-                                        min_angle,
-                                        ep_gap)
-
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         
         if empty_frame:
-            print 'cannot track frames with 0 objects, abort.'
-            return
+            raise Exception, 'Cannot track frames with 0 objects, abort.'
         
-        self.events = tracker(ts)
+        tracker = pgmlink.ChaingraphTracking(rf_fn,
+                                app,
+                                dis,
+                                det,
+                                mdet,
+                                use_rf,
+                                opp,
+                                forb,
+                                with_constr,
+                                fixed_detections,
+                                mdd,
+                                min_angle,
+                                ep_gap)
+
+        try:
+            self.events = tracker(ts)
+        except Exception as e:
+            raise Exception, 'Tracking terminated unsucessfully: ' + str(e)
+        
         self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range)
         
