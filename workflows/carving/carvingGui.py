@@ -174,6 +174,8 @@ class CarvingGui(LabelingGui):
         addLayerToggleShortcut("done seg", "b")
         addLayerToggleShortcut("hints","h")
 
+        '''
+        #For benchmarking, this shows the time it took each tile to arrive.
         def updateLayerTimings():
             s = "Layer timings:\n"
             for l in self.layerstack:
@@ -183,6 +185,7 @@ class CarvingGui(LabelingGui):
         t.setInterval(1*1000) # 10 seconds
         t.start()
         t.timeout.connect(updateLayerTimings)
+        '''
 
         def makeColortable():
             self._doneSegmentationColortable = [QColor(0,0,0,0).rgba()]
