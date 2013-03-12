@@ -134,10 +134,10 @@ class OpClusterize(Operator):
         blockwiseFileset, taskInfos = self._prepareDestination()
 
         try:
-            # Figure out which work doens't need to be recomputed (if any)
+            # Figure out which work doesn't need to be recomputed (if any)
             unneeded_rois = []
             for roi in taskInfos.keys():
-                if blockwiseFileset.getBlockStatus == BlockwiseFileset.BLOCK_AVAILABLE:
+                if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE:
                     unneeded_rois.append( roi )
     
             # Remove any tasks that we don't need to compute (they were finished in a previous run)
