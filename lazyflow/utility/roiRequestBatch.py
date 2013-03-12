@@ -92,8 +92,9 @@ class RoiRequestBatch( object ):
                 return (None, None)
 
     def _handleCompletedRequest(self, roi, req, result):
-        # Add a new request to the batch to replace this finished one.
-        self._activateNewRequest()
+        # Clean it now to free up any child request data.
+        #  We already have a handle to the result, which is all we need.
+        req.clean()
 
         with self._lock:
             # Signal the user with the result
@@ -105,7 +106,11 @@ class RoiRequestBatch( object ):
                 progress =  100 * self._processedVolume / self._totalVolume
                 self.progressSignal( progress )
 
-        req.clean()
+        # Add a new request to the batch to replace this finished one.
+        # We activate the new request AFTER we signaled the result,
+        #  to avoid letting lots of requests pile up if the result processing 
+        #  is temporarily slower than the actual request executions.
+        self._activateNewRequest()
 
     def _activateNewRequest(self):
         """
