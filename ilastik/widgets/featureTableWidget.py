@@ -550,7 +550,7 @@ class FeatureTableWidget(QTableWidget):
     
     def _addVHeader(self):
         row = 0
-        for group, features in self._featureGroupMapping.iteritems():
+        for group, features in self._featureGroupMapping:
             self.insertRow(row)
             vGroupHeader = FeatureTableWidgetVHeader()
             vGroupHeader.setGroupVHeader(group)
@@ -685,12 +685,8 @@ if __name__ == '__main__':
     app = QApplication([])
     t = FeatureTableWidget()
     t.createTableForFeatureDlg( \
-        {"Color": [FeatureEntry("Banana")],
-         "Edge": [FeatureEntry("Mango"),
-                  FeatureEntry("Cherry")] \
-        }, \
-        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] \
-    )
+        (("Color", [FeatureEntry("Banana")] ), ("Edge",  [FeatureEntry("Mango"), FeatureEntry("Cherry")] )),
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
     t.show()
     app.exec_()
 
