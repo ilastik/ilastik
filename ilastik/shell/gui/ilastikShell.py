@@ -504,6 +504,7 @@ class IlastikShell( QMainWindow ):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
+        self.menuBar().addMenu(self._helpMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
