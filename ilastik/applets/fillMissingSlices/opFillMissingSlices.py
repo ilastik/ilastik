@@ -1,19 +1,35 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 
-class OpFillMissingSlices(Operator):
+class OpFillMissingSlicesNoCache(Operator):
     Input = InputSlot()
-    
     Output = OutputSlot()
-    CachedOutput = OutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super( self.__class__, self ).__init__(*args, **kwargs)
+        super( OpFillMissingSlicesNoCache, self ).__init__(*args, **kwargs)
         
         # Set up interpolation
         self._opInterp = OpInterpMissingData( parent=self )
         self._opInterp.InputVolume.connect( self.Input )
         self._opInterp.InputSearchDepth.setValue(100)
+
+        self.Output.connect( self._opInterp.Output )
+        
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here"
+    
+    def propagateDirty(self, slot, subindex, roi):
+        pass # Nothing to do here.
+
+class OpFillMissingSlices(OpFillMissingSlicesNoCache):
+    """
+    Extends the cacheless operator above with a cached output.
+    Suitable for use in a GUI, but not in a headless workflow.
+    """
+    CachedOutput = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpFillMissingSlices, self ).__init__(*args, **kwargs)
 
         # The cache serves two purposes:
         # 1) Determine shape of accesses to the interpolation operator
@@ -22,11 +38,8 @@ class OpFillMissingSlices(Operator):
         self._opCache.Input.connect( self._opInterp.Output )
         self._opCache.fixAtCurrent.setValue( False )
 
-        # Regular output is for headless operation,
-        # Cached output is for the GUI        
-        self.Output.connect( self._opInterp.Output )
         self.CachedOutput.connect( self._opCache.Output )
-        
+
     def setupOutputs(self):
         blockdims = { 't' : 1,
                       'x' : 256,
@@ -36,12 +49,4 @@ class OpFillMissingSlices(Operator):
         blockshape = map( blockdims.get, self.Input.meta.getTaggedShape().keys() )        
         self._opCache.innerBlockShape.setValue( tuple(blockshape) )        
         self._opCache.outerBlockShape.setValue( tuple(blockshape) )
-        self.Output.meta.assignFrom(self.Input.meta)
-        self.CachedOutput.meta.assignFrom(self.Input.meta)
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here"
-    
-    def propagateDirty(self, slot, subindex, roi):
-        pass # Nothing to do here.
 

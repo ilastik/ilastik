@@ -5,9 +5,9 @@ from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationBatchResultsApplet
 
-from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlices
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
+from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelectionNoCache
+from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipelineNoCache
 
 from lazyflow.graph import Graph, OperatorWrapper
 
@@ -97,11 +97,11 @@ class SynapsePixelClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         ## Create additional batch workflow operators
-        opBatchFillMissingSlices = OperatorWrapper( OpFillMissingSlices, parent=self )
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection,
+        opBatchFillMissingSlices = OperatorWrapper( OpFillMissingSlicesNoCache, parent=self )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelectionNoCache,
                                            operator_kwargs={'filter_implementation' : self.FEATURE_IMPLEMENTATION},
                                            parent=self, promotedSlotNames=['InputImage'] )
-        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
+        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipelineNoCache, parent=self )
         
         ## Connect Operators ## 
         
@@ -130,10 +130,6 @@ class SynapsePixelClassificationWorkflow(Workflow):
         opBatchFeatures.InputImage.connect( opBatchFillMissingSlices.Output )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
-
-        # We don't actually need the cached path in the batch pipeline.
-        # Just connect the uncached features here to satisfy the operator.
-        opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
