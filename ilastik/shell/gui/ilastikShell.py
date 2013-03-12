@@ -159,8 +159,10 @@ class IlastikShell( QMainWindow ):
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
-        self.menuBar().addMenu( self._projectMenu )
+        self._helpMenu = self._createHelpMenu()
+        self.menuBar().addMenu( self._projectMenu  )
         self.menuBar().addMenu( self._settingsMenu )
+        self.menuBar().addMenu( self._helpMenu    )
         
         self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
@@ -236,6 +238,11 @@ class IlastikShell( QMainWindow ):
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
         return (menu, shellActions)
+   
+    def _createHelpMenu(self):
+        menu = QMenu("&Help", self)
+        aboutIlastikAction = menu.addAction("&About ilastik")
+        return menu
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
