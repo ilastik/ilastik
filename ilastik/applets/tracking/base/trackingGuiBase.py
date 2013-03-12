@@ -55,15 +55,10 @@ class TrackingGuiBase( LayerViewerGui ):
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
 
-                maxt = slot.meta.shape[0]
-                self._drawer.from_time.setRange(0,maxt-1)
-                self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setRange(0,maxt-2)
-                self._drawer.to_time.setValue(maxt-2)
-#                self._drawer.lineageFromBox.setRange(0,maxt-1)
-#                self._drawer.lineageToBox.setRange(0,maxt-2)
-#                self._drawer.lineageFromBox.setValue(0)
-#                self._drawer.lineageToBox.setValue(maxt-2)
+                maxt = slot.meta.shape[0] - 1
+                self._setRanges()
+                self._drawer.from_time.setValue(0)                
+                self._drawer.to_time.setValue(maxt)
             
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
@@ -102,7 +97,7 @@ class TrackingGuiBase( LayerViewerGui ):
         trackingLayer = ColortableLayer( self.trackingsrc, ct )
         trackingLayer.name = "Tracking"
         trackingLayer.visible = True
-        trackingLayer.opacity = 0.5
+        trackingLayer.opacity = 0.8
         layers.append(trackingLayer)
         
         
@@ -112,7 +107,7 @@ class TrackingGuiBase( LayerViewerGui ):
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
-        objLayer.opacity = 0.3
+        objLayer.opacity = 0.8
         objLayer.visible = True
         layers.append(objLayer)
 
@@ -128,29 +123,20 @@ class TrackingGuiBase( LayerViewerGui ):
         if self.topLevelOperatorView.LabelImage.meta.shape:
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
 
-            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0]
-            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1]
-            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2]
-            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3]            
-            self._drawer.from_time.setRange(0,maxt-1)
-            self._drawer.from_time.setValue(0)
-            self._drawer.to_time.setRange(0,maxt-2)
-            self._drawer.to_time.setValue(maxt-2)   
-
-            self._drawer.from_x.setRange(0,maxx-1)
-            self._drawer.from_x.setValue(0)
-            self._drawer.to_x.setRange(0,maxx-1)
-            self._drawer.to_x.setValue(maxx-1)       
+            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
         
-            self._drawer.from_y.setRange(0,maxy-1)
+            self._setRanges()
+            self._drawer.from_time.setValue(0)
+            self._drawer.to_time.setValue(maxt) 
+            self._drawer.from_x.setValue(0)
+            self._drawer.to_x.setValue(maxx)
             self._drawer.from_y.setValue(0)
-            self._drawer.to_y.setRange(0,maxy-1)
-            self._drawer.to_y.setValue(maxy-1)       
-
-            self._drawer.from_z.setRange(0,maxz-1)
-            self._drawer.from_z.setValue(0)
-            self._drawer.to_z.setRange(0,maxz-1)
-            self._drawer.to_z.setValue(maxz-1)
+            self._drawer.to_y.setValue(maxy)   
+            self._drawer.from_z.setValue(0)    
+            self._drawer.to_z.setValue(maxz)
             
 #            self._drawer.lineageFromBox.setRange(0,maxt-1)
 #            self._drawer.lineageFromBox.setValue(0)
@@ -162,6 +148,34 @@ class TrackingGuiBase( LayerViewerGui ):
         
         return layers
 
+
+    def _setRanges(self):
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+        maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+        maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
+        
+        from_time = self._drawer.from_time
+        to_time = self._drawer.to_time
+        from_x = self._drawer.from_x
+        to_x = self._drawer.to_x
+        from_y = self._drawer.from_y
+        to_y = self._drawer.to_y
+        from_z = self._drawer.from_z
+        to_z = self._drawer.to_z
+                
+        from_time.setRange(0, to_time.value()-1)        
+        to_time.setRange(from_time.value()+1,maxt)      
+        
+        from_x.setRange(0,to_x.value())
+        to_x.setRange(from_x.value(),maxx)
+        
+        from_y.setRange(0,to_y.value())
+        to_y.setRange(from_y.value(),maxy)
+        
+        from_z.setRange(0,to_z.value())
+        to_z.setRange(from_z.value(),maxz)
+        
 
     def _initColors(self):
         self.mergerColors = [
@@ -196,6 +210,16 @@ class TrackingGuiBase( LayerViewerGui ):
 #        self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
 #        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
 #        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
+
+        self._drawer.from_time.valueChanged.connect(self._setRanges)
+        self._drawer.from_x.valueChanged.connect(self._setRanges)
+        self._drawer.from_y.valueChanged.connect(self._setRanges)
+        self._drawer.from_z.valueChanged.connect(self._setRanges)
+        self._drawer.to_time.valueChanged.connect(self._setRanges)
+        self._drawer.to_x.valueChanged.connect(self._setRanges)
+        self._drawer.to_y.valueChanged.connect(self._setRanges)
+        self._drawer.to_z.valueChanged.connect(self._setRanges)
+        
 
 
     def _onExportButtonPressed(self):
