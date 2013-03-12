@@ -572,7 +572,6 @@ class IlastikShell( QMainWindow ):
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
         appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
-        appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
         drawerItem = QTreeWidgetItem(appletNameItem)
         drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
 #            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
