@@ -22,6 +22,8 @@ class TrackingGuiBase( LayerViewerGui ):
     """
     """
     
+    withMergers=False
+    
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################        
@@ -90,9 +92,9 @@ class TrackingGuiBase( LayerViewerGui ):
             layers.append(mergerLayer)     
             
             
-        ct = colortables.create_random_8bit()
+        ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[255] = QColor(255,255,255,230).rgba() # misdetections
+        ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
         self.trackingsrc = LazyflowSource( self.topLevelOperatorView.Output )
         trackingLayer = ColortableLayer( self.trackingsrc, ct )
         trackingLayer.name = "Tracking"
@@ -103,7 +105,7 @@ class TrackingGuiBase( LayerViewerGui ):
         
         self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
 #        ct = colortables.create_default_8bit()
-        ct = colortables.create_random_8bit()
+        ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
@@ -229,11 +231,18 @@ class TrackingGuiBase( LayerViewerGui ):
             print "cancelled."
             return
         
+        # determine from_time (it could has been changed in the GUI meanwhile)
+        for t_from, label2color_at in enumerate(self.mainOperator.label2color):
+            if len(label2color_at) == 0:                
+                continue
+            else:
+                break
+            
         print "Saving first label image..."
         key = []
         for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
             if flag is 't':
-                key.append(slice(0,1))
+                key.append(slice(t_from,t_from+1))
             elif flag is 'c':
                 key.append(slice(0,1))                
             else:
@@ -241,15 +250,24 @@ class TrackingGuiBase( LayerViewerGui ):
         
         roi = SubRegion(self.mainOperator.LabelImage, key)
         labelImage = self.mainOperator.LabelImage.get(roi).wait()
+        labelImage = labelImage[0,...,0]
         
-        write_events([], str(directory), 0, labelImage)
+        write_events([], str(directory), t_from, labelImage)
         
         events = self.mainOperator.events
         print "Saving events..."
         print "Length of events " + str(len(events))
         
         for i, events_at in enumerate(events):
-            self._write_events(events_at, str(directory), i+1)
+            t = t_from + i            
+            key[0] = slice(t+1,t+2)
+            roi = SubRegion(self.mainOperator.LabelImage, key)
+            labelImage = self.mainOperator.LabelImage.get(roi).wait()
+            labelImage = labelImage[0,...,0]
+            if self.withMergers:                
+                write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
+            else:
+                write_events(events_at, str(directory), t+1, labelImage)
             
             
     def _onExportTifButtonPressed(self):
@@ -265,6 +283,8 @@ class TrackingGuiBase( LayerViewerGui ):
         lshape = list(self.mainOperator.LabelImage.meta.shape)
     
         for t, label2color_at in enumerate(label2color):
+            if len(label2color_at) == 0:                
+                continue
             print 'exporting tiffs for t = ' + str(t)            
             
             roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
@@ -272,8 +292,8 @@ class TrackingGuiBase( LayerViewerGui ):
             relabeled = relabel(labelImage[0,...,0],label2color_at)
             for i in range(relabeled.shape[2]):
                 out_im = relabeled[:,:,i]
-                out_fn = str(directory) + '/vis_' + str(t).zfill(4) + '_' + str(i).zfill(4) + '.tif'
-                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint8), out_fn)
+                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint32), out_fn)
         
         print 'Tiffs exported.'
                     
@@ -305,8 +325,10 @@ class TrackingGuiBase( LayerViewerGui ):
         self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing, from_t=from_t, to_t=to_t)
         print 'Lineage Trees saved.'
         
+        
     def _onTrackButtonPressed( self ):
         raise NotImplementedError        
+        
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):

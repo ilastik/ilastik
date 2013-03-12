@@ -59,5 +59,7 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)
             return
     
+        self._drawer.exportButton.setEnabled(True)
+        self._drawer.exportTifButton.setEnabled(True)
         self._setLayerVisible("Objects", False)
     
