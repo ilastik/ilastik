@@ -21,7 +21,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <property name="spacing">
-    <number>-1</number>
+    <number>6</number>
    </property>
    <property name="margin">
     <number>6</number>
@@ -153,7 +153,7 @@
              </property>
              <property name="icon">
               <iconset>
-               <normaloff>icons/go-up.png</normaloff>icons/go-up.png</iconset>
+               <normaloff>../../shell/gui/icons/16x16/actions/go-up.png</normaloff>../../shell/gui/icons/16x16/actions/go-up.png</iconset>
              </property>
             </widget>
            </item>
@@ -167,7 +167,7 @@
              </property>
              <property name="icon">
               <iconset>
-               <normaloff>icons/go-down.png</normaloff>icons/go-down.png</iconset>
+               <normaloff>../../shell/gui/icons/16x16/actions/go-down.png</normaloff>../../shell/gui/icons/16x16/actions/go-down.png</iconset>
              </property>
             </widget>
            </item>
@@ -194,7 +194,7 @@
              </property>
              <property name="icon">
               <iconset>
-               <normaloff>icons/list-remove.png</normaloff>icons/list-remove.png</iconset>
+               <normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</iconset>
              </property>
             </widget>
            </item>
