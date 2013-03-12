@@ -370,6 +370,28 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>divDistBox</tabstop>
+  <tabstop>movDistBox</tabstop>
+  <tabstop>divThreshBox</tabstop>
+  <tabstop>splitterHandlingBox</tabstop>
+  <tabstop>TrackButton</tabstop>
+  <tabstop>from_time</tabstop>
+  <tabstop>to_time</tabstop>
+  <tabstop>from_x</tabstop>
+  <tabstop>to_x</tabstop>
+  <tabstop>from_y</tabstop>
+  <tabstop>to_y</tabstop>
+  <tabstop>from_z</tabstop>
+  <tabstop>to_z</tabstop>
+  <tabstop>from_size</tabstop>
+  <tabstop>to_size</tabstop>
+  <tabstop>x_scale</tabstop>
+  <tabstop>y_scale</tabstop>
+  <tabstop>z_scale</tabstop>
+  <tabstop>exportButton</tabstop>
+  <tabstop>exportTifButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
