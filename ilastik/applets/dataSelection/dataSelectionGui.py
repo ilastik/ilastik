@@ -89,12 +89,13 @@ class DataSelectionGui(QMainWindow):
             if(len(self.topLevelOperator.Dataset) != laneIndex+1):
                 import warnings
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
+        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
         if self.guiMode != GuiMode.Batch:
             assert len(self.topLevelOperator.Dataset) == finalLength
-
+        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
         
     ###########################################
     ###########################################
@@ -173,6 +174,7 @@ class DataSelectionGui(QMainWindow):
             self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
             self.drawer.addStackFilesButton.setIcon( QIcon(ilastikIcons.AddSel) )
 
+            self.drawer.removeFileButton.setEnabled(False)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
             self.drawer.removeFileButton.setIcon( QIcon(ilastikIcons.RemSel) )
     
@@ -363,9 +365,9 @@ class DataSelectionGui(QMainWindow):
 
                 # Relative by default, unless the file is in a totally different tree from the working directory.
                 if len(os.path.commonprefix([cwd, absPath])) > 1: 
-                   datasetInfo.filePath = relPath
+                    datasetInfo.filePath = relPath
                 else:
-                   datasetInfo.filePath = absPath
+                    datasetInfo.filePath = absPath
 
                 h5Exts = ['.ilp', '.h5', '.hdf5']
                 if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
