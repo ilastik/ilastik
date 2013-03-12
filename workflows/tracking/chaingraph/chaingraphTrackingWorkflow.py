@@ -14,9 +14,20 @@ class ChaingraphTrackingWorkflow( Workflow ):
         super(ChaingraphTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input: Segmentation", "Input Segmentation", batchDataGui=False)
-        self.rawDataSelectionApplet = DataSelectionApplet(self, "Input: Raw Data", "Input Raw", batchDataGui=False)
-        self.objectExtractionApplet = ObjectExtractionApplet( name="Object Extraction", workflow=self )
+        self.rawDataSelectionApplet = DataSelectionApplet(self,
+                                                       "Input: Raw",
+                                                       "Input Raw",
+                                                       batchDataGui=False,
+                                                       force5d=True)
+        
+        self.dataSelectionApplet = DataSelectionApplet(self,
+                                                       "Input: Segmentation",
+                                                       "Input Segmentation",
+                                                       batchDataGui=False,
+                                                       force5d=True)
+                
+        self.objectExtractionApplet = ObjectExtractionApplet( workflow=self )
+        
         self.trackingApplet = ChaingraphTrackingApplet( workflow=self )
         
         self._applets = []                
@@ -42,7 +53,7 @@ class ChaingraphTrackingWorkflow( Workflow ):
         ## Connect operators ##
         opObjExtraction.RawImage.connect( opRawData.Image )
         opObjExtraction.BinaryImage.connect( opData.Image )
-        opObjExtraction.BackgroundLabels.setValue( [0,] )
+#        opObjExtraction.BackgroundLabels.setValue( [0,] )
 
         opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
