@@ -310,6 +310,10 @@ class TestMultiSlotResize(object):
     def testResizeToSmaller(self):
         self.op1.Input.resize(5)
         self.op1.Input.resize(0)
+    
+    def testDefaultValuesInWrappedOperator(self):
+        self.op1.Input.resize(1)
+        assert self.wrappedOp.Input3.value == 3
 
 class OpDirectConnection(graph.Operator):
     Input = graph.InputSlot()
