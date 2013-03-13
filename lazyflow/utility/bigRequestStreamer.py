@@ -12,10 +12,13 @@ class BigRequestStreamer(object):
     This class encapsulates the logic for dividing big rois into smaller ones to be executed separately.
     It relies on a RoiRequestBatch object, which is responsible for creating and scheduling the request for each roi.
     """
-    def __init__(self, outputSlot, roi, minBlockShape):
+    def __init__(self, outputSlot, roi, minBlockShape, batchSize=None):
         self._outputSlot = outputSlot
         self._bigRoi = roi
         self._minBlockShape = minBlockShape
+        
+        if batchSize is None:
+            batchSize=10
 
         # Align the blocking with the start of the roi
         offsetRoi = ([0] * len(roi[0]), numpy.subtract(roi[1], roi[0]))
