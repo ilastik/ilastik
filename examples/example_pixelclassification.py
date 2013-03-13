@@ -10,9 +10,9 @@ if __name__ == "__main__":
     
     d = {a.name : a for a in workflow.applets}
     
-    d["Project Metadata"].projectName = "Test project"
-    d["Project Metadata"].labeler     = "Mr. Labeler"
-    d["Project Metadata"].description = "Automatically generated"
+    d["Project Metadata"]._projectMetadata.projectName = "Test project"
+    d["Project Metadata"]._projectMetadata.labeler     = "Mr. Labeler"
+    d["Project Metadata"]._projectMetadata.description = "Automatically generated"
     
     shell.projectManager.saveProject() 
     
