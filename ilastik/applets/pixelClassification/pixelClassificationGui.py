@@ -1,7 +1,6 @@
 # Built-in
 import os
 import logging
-import warnings
 import threading
 from functools import partial
 
@@ -12,7 +11,7 @@ from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
-from lazyflow.utility import Tracer, traceLogged
+from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 

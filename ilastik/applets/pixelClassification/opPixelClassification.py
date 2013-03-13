@@ -1,7 +1,7 @@
 from functools import partial
 import numpy
 import vigra
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility.operatorSubView import OperatorSubView
 
 from ilastik.utility import OpMultiLaneWrapper
