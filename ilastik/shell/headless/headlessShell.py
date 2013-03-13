@@ -17,6 +17,11 @@ class HeadlessShell(object):
     def workflow(self):
         return self.projectManager.workflow
 
+    def createBlankProjectFile(self, projectFilePath):
+        hdf5File = ProjectManager.createBlankProjectFile(projectFilePath)
+        readOnly = False
+        self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, headless=True )
+
     def openProjectPath(self, projectFilePath):
         try:
             # Open the project file
