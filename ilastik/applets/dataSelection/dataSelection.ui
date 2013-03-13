@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1339</width>
-    <height>907</height>
+    <width>539</width>
+    <height>154</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -89,7 +89,7 @@
         </sizepolicy>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page"/>
        <widget class="QWidget" name="page_2"/>
@@ -98,7 +98,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpenFile">
    <property name="icon">
     <iconset>
