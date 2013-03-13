@@ -182,9 +182,6 @@ class IlastikShell( QMainWindow ):
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
         
-        # By default, make the splitter control expose a reasonable width of the applet bar
-        self.mainSplitter.setSizes([300,1])
-        
         self.currentAppletIndex = 0
 
         self.currentImageIndex = -1
@@ -813,6 +810,11 @@ class IlastikShell( QMainWindow ):
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            #switch away from the startup screen to show the loaded project
+            self.mainStackedWidget.setCurrentIndex(1)
+            # By default, make the splitter control expose a reasonable width of the applet bar
+            self.mainSplitter.setSizes([300,1])
+            
             self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
 
             # Add all the applets from the workflow
