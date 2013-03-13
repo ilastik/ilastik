@@ -129,9 +129,11 @@ class JsonConfigEncoder( json.JSONEncoder ):
 
 class JsonConfigParser( object ):
     """
-    Simple config schema for json config files.
+    Parser for json config files that match a specific schema.
     Currently, only a very small set of json is supported.
-    The schema fields must be a single non-nested dictionary of name : type (or pseudo-type) pairs.
+    The schema fields must be a dictionary of name : type (or pseudo-type) pairs.
+    
+    A schema dict is also allowed as a pseudo-type value, which permits nested schemas.
     
     >>> # Specify schema as a dict
     >>> SchemaFields = {
@@ -266,7 +268,12 @@ class JsonConfigParser( object ):
             msg = "File schema '{}' does not match required schema '{}'".format( namespace._schema_name, self._requiredSchemaName )
             raise JsonConfigParser.SchemaError( msg )
 
-        # Schema versions with the same integer (not fraction) are considered backwards compatible.
+        # Schema versions with the same integer (not fraction) are considered backwards compatible,
+        # but not forwards-compatible.  For example:
+        #     - expected 1.1, got 1.1 --> okay
+        #     - expected 1.1, got 1.0 --> also okay
+        #     - expected 1.1, got 1.2 --> error (can't understand versions from the future)
+        #     - expected 1.1, got 0.9 --> error (integer changed, not backwards compatible)
         if namespace._schema_version > self._expectedSchemaVersion \
         or int(namespace._schema_version) < int(self._expectedSchemaVersion):
             msg = "File schema version '{}' is not compatible with expected schema version '{}'".format( namespace._schema_version, self._expectedSchemaVersion )
