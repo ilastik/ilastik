@@ -3,11 +3,12 @@ import sys
 import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
-from tests.helpers import ShellGuiTestCaseBase
-from workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.utility.timer import Timer
+
+from tests.helpers import ShellGuiTestCaseBase
 
 import logging
 logger = logging.getLogger(__name__)
