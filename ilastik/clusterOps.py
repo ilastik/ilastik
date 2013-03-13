@@ -1,29 +1,21 @@
 import os
-import math
 import copy
-import numpy
 import subprocess
-from lazyflow.rtype import Roi, SubRegion
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-import itertools
-import h5py
 import time
-import warnings
 import collections
-import tempfile
-import shutil
 import hashlib
 import functools
-from ilastik.clusterConfig import parseClusterConfigFile
-from ilastik.utility.timer import Timer, timed
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
-from lazyflow.roi import getIntersectingBlocks
 
-from ilastik.utility.pathHelpers import getPathVariants
+import numpy
 
-from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
-
+from lazyflow.rtype import Roi, SubRegion
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.utility import BigRequestStreamer
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+
+from ilastik.clusterConfig import parseClusterConfigFile
+from ilastik.utility.timer import Timer
+from ilastik.utility.pathHelpers import getPathVariants
 
 import logging
 logger = logging.getLogger(__name__)
@@ -137,7 +129,8 @@ class OpClusterize(Operator):
             # Figure out which work doesn't need to be recomputed (if any)
             unneeded_rois = []
             for roi in taskInfos.keys():
-                if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE:
+                if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE \
+                or blockwiseFileset.isBlockLocked(roi[0]): # We don't attempt to process currently locked blocks.
                     unneeded_rois.append( roi )
     
             # Remove any tasks that we don't need to compute (they were finished in a previous run)
