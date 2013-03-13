@@ -61,7 +61,6 @@
     <addaction name="actionToggleSelectedHud"/>
     <addaction name="actionCenterImage"/>
     <addaction name="actionReset_zoom"/>
-    <addaction name="actionRubberBandZoom"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
@@ -217,17 +216,6 @@
    </property>
    <property name="shortcut">
     <string>W</string>
-   </property>
-  </action>
-  <action name="actionRubberBandZoom">
-   <property name="text">
-    <string>Rubber band zoom</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom selected area</string>
-   </property>
-   <property name="shortcut">
-    <string>R</string>
    </property>
   </action>
   <action name="actionOpenStack">

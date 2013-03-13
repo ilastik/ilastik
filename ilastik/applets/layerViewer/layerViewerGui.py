@@ -476,6 +476,7 @@ class LayerViewerGui(QMainWindow):
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
 
+        '''
         def rubberBandZoom():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
@@ -485,6 +486,7 @@ class LayerViewerGui(QMainWindow):
                 else:
                     self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
                     self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
+        '''
 
         def hideHud():
             hide = not self.editor.imageViews[0]._hud.isVisible()
@@ -523,7 +525,8 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
         self.menuGui.actionFitImage.triggered.connect(fitImage)
         self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+        #FIXME: this needs bug fixing
+        #self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
         self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
 

@@ -189,17 +189,6 @@
     <string>W</string>
    </property>
   </action>
-  <action name="actionRubberBandZoom">
-   <property name="text">
-    <string>Rubber band zoom</string>
-   </property>
-   <property name="toolTip">
-    <string>Zoom selected area</string>
-   </property>
-   <property name="shortcut">
-    <string>R</string>
-   </property>
-  </action>
   <action name="actionOpenStack">
    <property name="icon">
     <iconset>
