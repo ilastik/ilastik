@@ -16,6 +16,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from lazyflow.utility import Tracer, traceLogged
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.config import cfg as ilastik_config
 
 class FeatureSelectionGui(LayerViewerGui):
     """
@@ -95,6 +96,9 @@ class FeatureSelectionGui(LayerViewerGui):
         self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.drawer.UsePrecomputedFeaturesButton.clicked.connect(self.onUsePrecomputedFeaturesButtonClicked)
+        dbg = ilastik_config.getboolean("ilastik", "debug") 
+        if not dbg:
+            self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
