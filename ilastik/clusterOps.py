@@ -72,10 +72,10 @@ class OpTaskWorker(Operator):
     
             # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
             subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
-    
+
             with Timer() as computeTimer:
                 # Stream the data out to disk.
-                streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape )
+                streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape, config.task_parallel_subrequests )
                 streamer.progressSignal.subscribe( self.progressSignal )
                 streamer.resultSignal.subscribe( blockwiseFileset.writeData )
                 streamer.execute()

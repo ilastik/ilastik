@@ -12,6 +12,7 @@ ClusterConfigFields = \
 
     "sys_tmp_dir" : str,
     "task_subrequest_shape" : dict,
+    "task_parallel_subrequests" : AutoEval(int),
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,
     "use_master_local_scratch" : bool,
