@@ -1,43 +1,45 @@
+#Python
+import re
+import traceback
+import os
+from functools import partial
+import weakref
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
+
+#SciPy
+import numpy
+import platform
+import threading
+
+#PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt, QSize
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
                         QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
-from PyQt4 import QtCore
 
-import re
-import h5py
-import traceback
-import os
-from functools import partial
-import weakref
-
-from volumina.utility import PreferencesManager, ShortcutManagerDlg
-from ilastik.utility import bind
-from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-
-import sys
-import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
+#lazyflow
 from lazyflow.utility import Tracer
-
-import ilastik.ilastik_logging
-
-from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
-
-from ilastik.shell.projectManager import ProjectManager
-
-import platform
-import numpy
-
-import threading
-
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
+
+#volumina
+from volumina.utility import PreferencesManager, ShortcutManagerDlg
+
+#ilastik
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
+import ilastik.ilastik_logging
+from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.shell.projectManager import ProjectManager
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== ShellActions                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class ShellActions(object):
     """
@@ -51,11 +53,19 @@ class ShellActions(object):
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
+        
+#===----------------------------------------------------------------------------------------------------------------===
+#=== SideSplitterSizePolicy                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class SideSplitterSizePolicy(object):
-    Manual = 0
+    Manual            = 0
     AutoCurrentDrawer = 1
     AutoLargestDrawer = 2
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== ProgressDisplayManager                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class ProgressDisplayManager(QObject):
     """
@@ -133,12 +143,16 @@ class ProgressDisplayManager(QObject):
                     self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
+#===----------------------------------------------------------------------------------------------------------------===
+#=== IlastikShell                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
+
 class IlastikShell( QMainWindow ):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflowClass, parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
+    def __init__( self, workflowClass, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -573,7 +587,7 @@ class IlastikShell( QMainWindow ):
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
         
-        appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
+        appletNameItem = QTreeWidgetItem( self.appletBar, QStringList( controlName ) )
         drawerItem = QTreeWidgetItem(appletNameItem)
         drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
 #            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
@@ -985,9 +999,9 @@ class IlastikShell( QMainWindow ):
             if applet_index < self.appletBar.invisibleRootItem().childCount():
                 drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
                 if enabled and self.enableWorkflow:
-                    drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
+                    drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
-                    drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
+                    drawerTitleItem.setFlags( Qt.NoItemFlags )
 
 #    def scrollToTop(self):
 #        #self.appletBar.verticalScrollBar().setValue( 0 )
@@ -1002,6 +1016,10 @@ class IlastikShell( QMainWindow ):
 #        animation.start()
 #
 #        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== __name__ == "__main__"                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 #
 # Simple standalone test for the IlastikShell
