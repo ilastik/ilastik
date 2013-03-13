@@ -274,12 +274,12 @@ class ArrayCacheMemoryMgr(threading.Thread):
         while True:
             vmem = psutil.virtual_memory()
             mem_usage = vmem.percent
-            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
+            mem_usage_gb = (vmem.total - vmem.available) / (1e9)
             delta = abs(self._last_usage - mem_usage)
             if delta > 10 or self.logger.level == logging.DEBUG:
                 cpu_usages = psutil.cpu_percent(interval=1, percpu=True)
                 avg = sum(cpu_usages) / len(cpu_usages)
-                self.logger.info( "RAM: {:d} MB ({:02.2f}%), CPU: Avg={}%, {}".format( mem_usage_mb, mem_usage, avg, cpu_usages ))
+                self.logger.info( "RAM: {:1.3f} GB ({:02.0f}%), CPU: Avg={:02.0f}%, {}".format( mem_usage_gb, mem_usage, avg, cpu_usages ))
             if delta > 10:
                 self._last_usage = mem_usage
 
