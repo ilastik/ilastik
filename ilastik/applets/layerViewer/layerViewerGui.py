@@ -199,9 +199,11 @@ class LayerViewerGui(QMainWindow):
         * If *slot* has 1 channel, a GrayscaleLayer is created.
         * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
         * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
+        * If *slot* has 4 channels, an RGBA layer is created
 
         :param slot: The slot to generate a layer from
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
+                                   If slot has 4 channels, this parameter has no effect.
         """
         def getRange(meta):
             if 'drange' in meta:
@@ -226,6 +228,9 @@ class LayerViewerGui(QMainWindow):
         except:
             numChannels = 1
 
+        if numChannels == 4:
+            lastChannelIsAlpha = True
+            
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
         else:
