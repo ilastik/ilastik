@@ -216,7 +216,8 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featMatrix, axis=0)
         labelsMatrix = _concatenate(labelsMatrix, axis=0)
-
+        print "training on matrix:", featMatrix.shape
+        
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return

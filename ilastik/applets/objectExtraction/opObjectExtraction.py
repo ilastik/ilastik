@@ -28,7 +28,8 @@ class OpRegionFeatures3d(Operator):
     
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
-        self._featureNames = featureNames
+        self._vigraFeatureNames = featureNames[0]
+        self._moreFeatureNames = featureNames[1]
         self.margin = 30
         
     def setupOutputs(self):
@@ -88,14 +89,14 @@ class OpRegionFeatures3d(Operator):
         mins = minmax["Coord<Minimum>"]
         maxs = minmax["Coord<Maximum>"]
         counts = minmax["Count"]
-        #ccbboxesexcl = numpy.zeros(raw.shape, dtype=numpy.uint32)
-        #ccbboxesincl = numpy.zeros(cc.shape, dtype=numpy.uint32)
+        
         nobj = mins.shape[0]
         features_obj = [None] #don't compute for the 0-th object (the background)
         features_incl = [None]
         features_excl = [None]
         first_good = 1
         pool = Pool()
+        
         for i in range(1,nobj):
             print "processing object ", i
             if counts[i]>1000000:
@@ -123,7 +124,6 @@ class OpRegionFeatures3d(Operator):
             passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
             
             for iz in range(maxz-minz):
-                
                 dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
                 passed[:, :, iz] = dt<self.margin
                 
@@ -133,19 +133,20 @@ class OpRegionFeatures3d(Operator):
             feats = [None, None, None]
             for i, bbox in enumerate(labeled_bboxes):
                 def extractObjectFeatures(i):
-                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), bbox.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
+                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), bbox.astype(numpy.uint32), self._vigraFeatureNames, ignoreLabel=0)
                 req = pool.request(partial(extractObjectFeatures, i))
             pool.wait()
 
-            if "lbp" in self._featureNames:
+            if "lbp" in self._moreFeatureNames:
+                print "computing lbp features"
                 #compute lbp features
                 import skimage.feature as ft
                 P=8
                 R=1
-                lbp_total = numpy.zeros(passed.shape+(P,))
+                lbp_total = numpy.zeros(passed.shape)
                 for iz in range(maxz-minz): 
                     #an lbp image
-                    lbp_total[:, :, iz, :] = ft.local_binary_pattern(rawbbox[:, :, iz], P, R, "uniform")
+                    lbp_total[:, :, iz] = ft.local_binary_pattern(rawbbox[:, :, iz], P, R, "uniform")
                 #extract relevant parts
                 lbp_incl = lbp_total[passed]
                 lbp_excl = lbp_total[ccbboxexcl]
@@ -171,12 +172,14 @@ class OpRegionFeatures3d(Operator):
             
             nchannels = 0
             #we always have two objects, background is first
+            #sometimes, vigra returns one-dimensional features as (nobj, 1) and sometimes as (nobj,)
+            #the following try-except is for this case
             try:
                 nchannels = len(features_incl[first_good][key][0])
             except TypeError:
                 nchannels = 1
-            #print "assembling key:", key, "nchannels:", nchannels
-            #print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
+            print "assembling key:", key, "nchannels:", nchannels
+            print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
             #FIXME: find the maximum number of channels and pre-allocate
             feature_obj = numpy.zeros((nobj, nchannels))
             feature_incl = numpy.zeros((nobj, nchannels))
@@ -476,7 +479,9 @@ class OpObjectExtraction(Operator):
         super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         features = list(set(config.vigra_features).union(set(self.default_features)))
+        features = [features, config.more_features]
 
+        print "features:", features
         # internal operators
         self._opLabelImage = OpCachedLabelImage(parent=self)
         self._opRegFeats = OpCachedRegionFeatures(features, parent=self)
