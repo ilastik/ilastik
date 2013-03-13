@@ -1,4 +1,4 @@
-from PyQt4.QtCore import Qt, QVariant
+from PyQt4.QtCore import Qt, QVariant, QString
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
@@ -237,7 +237,10 @@ class DataSelectionGui(QMainWindow):
         # If the user didn't cancel        
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
-            self.addFileNames(fileNames)
+            try:
+                self.addFileNames(fileNames)
+            except RuntimeError as e:
+                QMessageBox.critical(self, "Error loading file", str(e))
     
     def handleAddStackButtonClicked(self):
         """
@@ -352,9 +355,7 @@ class DataSelectionGui(QMainWindow):
         Add the given filenames to both the GUI table and the top-level operator inputs.
         """
         with Tracer(traceLogger):
-            # Allocate additional subslots in the operator inputs.
-            oldNumFiles = len(self.topLevelOperator.Dataset)
-            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
+            infos = []
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
@@ -375,11 +376,16 @@ class DataSelectionGui(QMainWindow):
                     if len(datasetNames) > 0:
                         datasetInfo.filePath += str(datasetNames[0])
                     else:
-                        raise RuntimeError("HDF5 file has no image datasets")
+                        raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+                infos.append(datasetInfo)
 
+            #if no exception was thrown, set up the operator now
+            oldNumFiles = len(self.topLevelOperator.Dataset)
+            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
+            for i in range(len(infos)):
                 self.topLevelOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     @threadRouted
