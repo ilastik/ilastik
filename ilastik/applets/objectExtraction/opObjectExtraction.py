@@ -136,18 +136,28 @@ class OpRegionFeatures3d(Operator):
                     feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), bbox.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
                 req = pool.request(partial(extractObjectFeatures, i))
             pool.wait()
-            
-            #start2 = time.clock()
-            #feats_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
-            #feats_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
-            #feats_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32), self._featureNames, ignoreLabel=0)
-            #end2 = time.clock()
-            #print "vigra calls:", end2-start2, "bbox size:", rawbbox.shape
-            
-            
-            #features_incl.append(feats_incl)
-            #features_excl.append(feats_excl)
-            #features_obj.append(feats_obj)
+
+            if "lbp" in self._featureNames:
+                #compute lbp features
+                import skimage.feature as ft
+                P=8
+                R=1
+                lbp_total = numpy.zeros(passed.shape+(P,))
+                for iz in range(maxz-minz): 
+                    #an lbp image
+                    lbp_total[:, :, iz, :] = ft.local_binary_pattern(rawbbox[:, :, iz], P, R, "uniform")
+                #extract relevant parts
+                lbp_incl = lbp_total[passed]
+                lbp_excl = lbp_total[ccbboxexcl]
+                lbp_obj = lbp_total[ccbboxobject]
+                lbp_hist_incl, _ = numpy.histogram(lbp_incl, normed=True, bins=P+2, range=(0, P+2))
+                lbp_hist_excl, _ = numpy.histogram(lbp_excl, normed=True, bins=P+2, range=(0, P+2))
+                lbp_hist_obj, _ = numpy.histogram(lbp_obj, normed=True, bins=P+2, range=(0, P+2))
+                feats[0]["lbp"] = lbp_hist_incl
+                feats[1]["lbp"] = lbp_hist_excl
+                feats[2]["lbp"] = lbp_hist_obj
+
+
             features_incl.append(feats[0])
             features_excl.append(feats[1])
             features_obj.append(feats[2])
