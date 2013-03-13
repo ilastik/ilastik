@@ -24,6 +24,7 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         noiserate = self._drawer.noiseRateSpinBox.value()
         noiseweight = self._drawer.noiseWeightSpinBox.value()
         epGap = self._drawer.epGapSpinBox.value()
+        n_neighbors = self._drawer.nNeighborsSpinBox.value()
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
@@ -54,7 +55,8 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
                         opp=opp,
                         det=det,
                         mdet=mdet,
-                        ep_gap=epGap)
+                        ep_gap=epGap,
+                        n_neighbors=n_neighbors)
         except Exception as e:
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)
             return

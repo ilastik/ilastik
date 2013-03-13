@@ -154,6 +154,29 @@
          </property>
         </widget>
        </item>
+       <item row="6" column="0">
+	 <widget class="QLabel" name="label_23">
+	   <property name="toolTip">
+	     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of nearest neighbors for building hypotheses graph. Less neighbors speed up optimization time, but might have negative impact on tracking results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+	   </property>
+	   <property name="text">
+	     <string>Number of Neighbors</string>
+	   </property>
+	 </widget>
+       </item>
+       <item row="6" column="1">
+	 <widget class="QSpinBox" name="nNeighborsSpinBox">
+	   <property name="minimum">
+	     <number>1</number>
+	   </property>
+	   <property name="singleStep">
+	     <number>1</number>
+	   </property>
+	   <property name="value">
+	     <number>2</number>
+	   </property>
+	 </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
          <property name="toolTip">
