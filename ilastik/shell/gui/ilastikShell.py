@@ -164,7 +164,7 @@ class IlastikShell( QMainWindow ):
         self.menuBar().addMenu( self._settingsMenu )
         self.menuBar().addMenu( self._helpMenu    )
         
-        self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
+        self.appletBar.expanded.connect(self.handleAppletBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
         
@@ -429,7 +429,7 @@ class IlastikShell( QMainWindow ):
                     appletTitleItem = rootItem.child(applet_index)
                     appletTitleItem.setText( 0, updatedDrawerTitle )
 
-    def handleAppleBarItemExpanded(self, modelIndex):
+    def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
         """
