@@ -143,7 +143,6 @@ class LabelListView(QStackedWidget):
         
         h = hHeader.height() + contentH + doubleFrame;
         from PyQt4.QtCore import QSize
-        print "minimumSizeHint = %d, %d" % (w,h)
         return QSize(w,h)
 
     def sizeHint(self):
