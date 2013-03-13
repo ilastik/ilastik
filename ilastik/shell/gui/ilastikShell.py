@@ -20,7 +20,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
-                        QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
+                        QBrush, QColor, QAbstractItemView, QProgressBar, QApplication, QDialog
 
 #lazyflow
 from lazyflow.utility import Tracer
@@ -255,8 +255,15 @@ class IlastikShell( QMainWindow ):
    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
-        aboutIlastikAction = menu.addAction("&About ilastik")
+        aboutIlastikAction = menu.addAction("&About ilastik...")
+        aboutIlastikAction.triggered.connect(self._showAboutDialog)
         return menu
+    
+    def _showAboutDialog(self):
+        localDir = os.path.split(__file__)[0]
+        dlg = QDialog()
+        uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
+        dlg.exec_() 
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
