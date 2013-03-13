@@ -6,6 +6,7 @@ import glob
 import threading
 import h5py
 import logging
+import concurrent.futures
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -344,11 +345,17 @@ class DataSelectionGui(QMainWindow):
         def importStack():
             self.guiControlSignal.emit( ControlCommand.DisableAll )
             # Serializer will update the operator for us, which will propagate to the GUI.
-            self.serializer.importStackAsLocalDataset( info )
-            self.guiControlSignal.emit( ControlCommand.Pop )
+            try:
+                self.serializer.importStackAsLocalDataset( info )
+            finally:
+                self.guiControlSignal.emit( ControlCommand.Pop )
 
-        importThread = threading.Thread( target=importStack )
-        importThread.start()
+        try: 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(importStack)
+                return future.result()
+        except Exception as e:
+            QMessageBox.critical(self, "Error loading stack", str(e))
 
 
     def addFileNames(self, fileNames):
