@@ -693,6 +693,23 @@ class TestRequestExceptions(object):
         logger.debug( "Finished test with memory usage delta at: {} MB".format( memory_increase_mb ) )
         assert memory_increase_mb < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
 
+    def testThreadPoolReset(self):
+        Request.reset_thread_pool(num_workers=1)
+        
+        lock = threading.Lock()
+        def check_for_contention():
+            assert lock.acquire(False), "Should not be contention for this lock!"
+            time.sleep(0.1)
+            lock.release()
+        
+        reqs = map( lambda x: Request( check_for_contention ), range(10) )
+        for req in reqs:
+            req.submit()
+        for req in reqs:
+            req.wait()
+        
+        # Set it back to what it was
+        Request.reset_thread_pool()
 
 if __name__ == "__main__":
 

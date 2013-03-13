@@ -46,7 +46,20 @@ class SimpleSignal(object):
 class Request( object ):
     
     # One thread pool shared by all requests.
-    global_thread_pool = threadPool.ThreadPool( num_workers = multiprocessing.cpu_count() )
+    # See initialization after this class definition (below)
+    global_thread_pool = None
+    
+    @classmethod
+    def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
+        """
+        Change the number of threads allocated to the request system.
+        
+        .. note:: It is only valid to call this during startup.
+                  Any existing requests will be dropped from the pool.
+        """
+        if cls.global_thread_pool is not None:
+            cls.global_thread_pool.stop()
+        cls.global_thread_pool = threadPool.ThreadPool( num_workers )
     
     class CancellationException(Exception):
         """
@@ -592,6 +605,8 @@ class Request( object ):
 # The __call__ method used to be a synonym for wait(), but now it is used by the worker to start/resume the request.
 #    def __call__(self):
 #        return self.wait()
+
+Request.reset_thread_pool()
 
 class RequestLock(object):
     """
