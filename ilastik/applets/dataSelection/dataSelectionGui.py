@@ -1,37 +1,38 @@
-from PyQt4.QtCore import Qt, QVariant, QString
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from opDataSelection import OpDataSelection, DatasetInfo
-
+#Python
 from functools import partial
 import os
 import copy
 import glob
 import threading
 import h5py
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger('TRACE.' + __name__)
 
+#SciPy
+import vigra
+
+#PyQt
+from PyQt4.QtCore import Qt, QVariant
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
+from lazyflow.utility import Tracer
+
+#volumina
 from volumina.utility import PreferencesManager
-from volumina.volumeEditor import VolumeEditor
-from volumina.volumeEditorWidget import VolumeEditorWidget
-from volumina.api import LayerStackModel
-from volumina.adaptors import Op5ifyer
 
+#ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
-
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
 from ilastik.applets.base.applet import ControlCommand
+from opDataSelection import OpDataSelection, DatasetInfo
 
-import vigra
-
-import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import Tracer
+#===----------------------------------------------------------------------------------------------------------------===
 
 class Column():
     """ Enum for table column positions """
@@ -722,46 +723,3 @@ class DataSelectionGui(QMainWindow):
 
         # Show the right one
         self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
