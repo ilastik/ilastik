@@ -304,13 +304,6 @@ class LayerViewerGui(QMainWindow):
             self.editor.posModel.slicingPos = midpos3d
             self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
 
-            # If one of the xyz dimensions is 1, the data is 2d.
-            singletonDims = filter( lambda (i,dim): dim == 1, enumerate(newDataShape[1:4]) )
-            if len(singletonDims) == 1:
-                # Maximize the slicing view for this axis
-                axis = singletonDims[0][0]
-                self.volumeEditorWidget.quadview.ensureMaximized(axis)
-
         # Old layers are deleted if
         # (1) They are not in the new set or
         # (2) Their data has changed
