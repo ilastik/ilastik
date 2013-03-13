@@ -6,7 +6,6 @@ import glob
 import threading
 import h5py
 import logging
-import concurrent.futures
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -20,6 +19,7 @@ from PyQt4 import uic
 
 #lazyflow
 from lazyflow.utility import Tracer
+from lazyflow.request import Request
 
 #volumina
 from volumina.utility import PreferencesManager
@@ -350,13 +350,15 @@ class DataSelectionGui(QMainWindow):
             finally:
                 self.guiControlSignal.emit( ControlCommand.Pop )
 
-        try: 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(importStack)
-                return future.result()
-        except Exception as e:
-            QMessageBox.critical(self, "Error loading stack", str(e))
+        req = Request( importStack )
+        req.notify_failed( partial(self.handleFailedStackLoad, globString ) )
+        req.submit()
 
+    @threadRouted
+    def handleFailedStackLoad(self, globString, exc):
+        msg = "Failed to load stack: {}\n".format(globString)
+        msg += "Due to the following error:\n{}".format( exc )
+        QMessageBox.critical(self, "Failed to load image stack", msg)
 
     def addFileNames(self, fileNames):
         """
