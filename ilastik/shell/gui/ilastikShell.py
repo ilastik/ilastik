@@ -572,6 +572,7 @@ class IlastikShell( QMainWindow ):
         # Add all of the applet bar's items to the toolbox widget
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
+        
         appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
         drawerItem = QTreeWidgetItem(appletNameItem)
         drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
