@@ -16,11 +16,9 @@ import threading
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
-from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
-                        QMenuBar, QFrame, QLabel, QStackedLayout, \
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QMenuBar, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
-                        QBrush, QColor, QAbstractItemView, QProgressBar, QApplication, QDialog
+                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog
 
 #lazyflow
 from lazyflow.utility import Tracer
