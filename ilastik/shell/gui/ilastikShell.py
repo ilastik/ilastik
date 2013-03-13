@@ -36,6 +36,7 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
+from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -271,37 +272,40 @@ class IlastikShell( QMainWindow ):
         shortcutsAction = menu.addAction("&Keyboard Shortcuts")
         shortcutsAction.triggered.connect(editShortcuts)
 
-        exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-        export0 = exportDebugSubmenu.addAction("Lowest Detail")
-        export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
+        dbg = ilastik_config.getboolean("ilastik", "debug")
 
-        export1 = exportDebugSubmenu.addAction("Some Detail")
-        export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
-
-        export2 = exportDebugSubmenu.addAction("More Detail")
-        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
-
-        export2 = exportDebugSubmenu.addAction("Even More Detail")
-        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
-
-        export3 = exportDebugSubmenu.addAction("Unlimited Detail")
-        export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
-
-        exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-        exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
-        exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
-
-        exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
-        exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
-
-        exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
-        exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
-
-        exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
-        exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
-
-        exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
-        exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
+        if dbg:
+            exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
+            export0 = exportDebugSubmenu.addAction("Lowest Detail")
+            export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
+    
+            export1 = exportDebugSubmenu.addAction("Some Detail")
+            export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
+    
+            export2 = exportDebugSubmenu.addAction("More Detail")
+            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
+    
+            export2 = exportDebugSubmenu.addAction("Even More Detail")
+            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
+    
+            export3 = exportDebugSubmenu.addAction("Unlimited Detail")
+            export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
+    
+            exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
+            exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
+            exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
+    
+            exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
+            exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
+    
+            exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
+            exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
+    
+            exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
+            exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
+    
+            exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
+            exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
 
         return menu
 
