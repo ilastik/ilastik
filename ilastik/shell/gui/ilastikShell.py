@@ -255,7 +255,7 @@ class IlastikShell( QMainWindow ):
    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
-        aboutIlastikAction = menu.addAction("&About ilastik...")
+        aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(self._showAboutDialog)
         return menu
     
