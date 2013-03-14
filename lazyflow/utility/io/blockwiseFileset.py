@@ -40,7 +40,7 @@ class BlockwiseFileset(object):
         "name" : str,
         "format" : str,
         "axes" : str,
-        "shape" : AutoEval(numpy.array), # This is the shape of the VIEW
+        "shape" : AutoEval(numpy.array), # This is the shape of the dataset on disk
         "dtype" : AutoEval(),
         "chunks" : AutoEval(numpy.array), # Optional.  If null, no chunking. Only used when writing data.
         "block_shape" : AutoEval(numpy.array),
@@ -51,8 +51,9 @@ class BlockwiseFileset(object):
         "view_shape" : AutoEval(numpy.array), # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
-        "hash_id" : str # Not user-defined (clients may use this)
+        "hash_id" : str, # Not user-defined (clients may use this)
     }
+
     DescriptionSchema = JsonConfigParser( DescriptionFields )
 
     @classmethod
@@ -225,6 +226,16 @@ class BlockwiseFileset(object):
         else:
             return BlockwiseFileset.BLOCK_AVAILABLE
 
+    def isBlockLocked(self, blockstart):
+        """
+        Return True if the block is locked for writing.
+        Note that both 'available' and 'not available' blocks might be locked.
+        """
+        datasetPathComponents = self.getDatasetPathComponents(blockstart)
+        hdf5FilePath = datasetPathComponents.externalPath
+        testLock = FileLock( hdf5FilePath )
+        return not testLock.available()
+        
     def setBlockStatus(self, blockstart, status):
         """
         Set a block status on disk.
