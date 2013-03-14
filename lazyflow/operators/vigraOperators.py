@@ -1,28 +1,25 @@
-import numpy, vigra, h5py
+#Python
+import os
+from collections import deque
+import math
 import traceback
+from functools import partial
+import logging
+import copy
+logger = logging.getLogger(__name__)
+
+#SciPy
+import numpy, vigra
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi
-import copy
 from lazyflow.request import Pool
-
 from operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
-
-import os
-from collections import deque
-
 from generic import OpMultiArrayStacker, popFlagsFromTheKey
-
-import math
-
-from threading import Lock
 from lazyflow.roi import roiToSlice
-from functools import partial
-
-import logging
-logger = logging.getLogger(__name__)
-
 
 class OpXToMulti(Operator):
 
@@ -1503,15 +1500,20 @@ class OpImageReader(Operator):
                 oslot.meta.axistags = tags
         else:
             oslot = self.outputs["Image"]
-            oslot.meta.shape = None
-            oslot.meta.dtype = None
+            oslot.meta.shape    = None
+            oslot.meta.dtype    = None
             oslot.meta.axistags = None
+            oslot.meta.drange   = None
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
-        index = 0
         taggedShape = self.Image.meta.getTaggedShape()
+       
+        drange = self.outputs["Image"].meta.drange 
+        m = -999999 if drange is None else drange[0] 
+        M = 999999  if drange is None else drange[1]
+        
         if 'z' in taggedShape.keys():
             zIndex = taggedShape.keys().index('z')
             tempShape = list(self.Image.meta.shape)
@@ -1522,12 +1524,16 @@ class OpImageReader(Operator):
                 tempKey = list(key)
                 tempKey[zIndex] = i
                 temp[tempKey] = vigra.impex.readImage(filename, index=z)
+                m,M = max(m, temp[tempKey].min()), min(M, temp[tempKey].max()) 
 
             key = list(key)
             key[zIndex] = slice(0, rroi.stop[zIndex] - rroi.start[zIndex] )
             key = tuple(key)
         else:
             temp = vigra.impex.readImage(filename)
+            m,M = max(m, temp.min()), min(M, temp.max()) 
+           
+        self.outputs["Image"].meta.drange = (m,M)
 
         return temp[key]
 
