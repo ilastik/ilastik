@@ -1,28 +1,25 @@
-import numpy, vigra, h5py
+#Python
+import os
+from collections import deque
+import math
 import traceback
+from functools import partial
+import logging
+import copy
+logger = logging.getLogger(__name__)
+
+#SciPy
+import numpy, vigra
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi
-import copy
 from lazyflow.request import Pool
-
 from operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
-
-import os
-from collections import deque
-
 from generic import OpMultiArrayStacker, popFlagsFromTheKey
-
-import math
-
-from threading import Lock
 from lazyflow.roi import roiToSlice
-from functools import partial
-
-import logging
-logger = logging.getLogger(__name__)
-
 
 class OpXToMulti(Operator):
 
@@ -1503,15 +1500,15 @@ class OpImageReader(Operator):
                 oslot.meta.axistags = tags
         else:
             oslot = self.outputs["Image"]
-            oslot.meta.shape = None
-            oslot.meta.dtype = None
+            oslot.meta.shape    = None
+            oslot.meta.dtype    = None
             oslot.meta.axistags = None
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
-        index = 0
         taggedShape = self.Image.meta.getTaggedShape()
+       
         if 'z' in taggedShape.keys():
             zIndex = taggedShape.keys().index('z')
             tempShape = list(self.Image.meta.shape)
