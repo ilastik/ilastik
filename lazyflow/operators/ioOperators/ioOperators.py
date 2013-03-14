@@ -207,7 +207,8 @@ class OpStackLoader(Operator):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
         for fileName in self.fileNameList[key[2]]:
             traceLogger.debug( "Reading image: {}".format(fileName) )
-            assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
+            if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
+                raise RuntimeError('not all files have the same shape')
             # roi is in xyzc order.
             # Copy each z-slice one at a time.
             result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
