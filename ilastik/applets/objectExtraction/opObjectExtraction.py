@@ -143,7 +143,12 @@ class OpRegionFeatures3d(Operator):
             feats = [None, None, None]
             for i, bbox in enumerate(labeled_bboxes):
                 def extractObjectFeatures(i):
-                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), bbox.astype(numpy.uint32), self._vigraFeatureNames, ignoreLabel=0)
+                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
+                                                                    bbox.astype(numpy.uint32), \
+                                                                    self._vigraFeatureNames, \
+                                                                    histogramRange=[0, 255], \
+                                                                    binCount = 10,\
+                                                                    ignoreLabel=0)
                 req = pool.request(partial(extractObjectFeatures, i))
             pool.wait()
 
@@ -204,14 +209,17 @@ class OpRegionFeatures3d(Operator):
             
             nchannels = 0
             #we always have two objects, background is first
+            #unless, of course, it's a global measurement, and then it's just one element, grrrh
+            
             #sometimes, vigra returns one-dimensional features as (nobj, 1) and sometimes as (nobj,)
             #the following try-except is for this case
+            
             try:
                 nchannels = len(features_incl[first_good][key][0])
             except TypeError:
                 nchannels = 1
-            #print "assembling key:", key, "nchannels:", nchannels
-            #print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
+            print "assembling key:", key, "nchannels:", nchannels
+            print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
             #FIXME: find the maximum number of channels and pre-allocate
             feature_obj = numpy.zeros((nobj, nchannels))
             feature_incl = numpy.zeros((nobj, nchannels))
@@ -219,10 +227,15 @@ class OpRegionFeatures3d(Operator):
             
             for i in range(nobj):
                 if features_obj[i] is not None:
-                    #print features_obj[i][key]
-                    feature_obj[i] = features_obj[i][key][1]
-                    feature_incl[i] = features_incl[i][key][1]
-                    feature_excl[i] = features_excl[i][key][1]
+                    try:
+                        feature_obj[i] = features_obj[i][key][1]
+                        feature_incl[i] = features_incl[i][key][1]
+                        feature_excl[i] = features_excl[i][key][1]
+                    except:
+                        #global number, not a list, haha
+                        feature_obj[i] = features_obj[i][key]
+                        feature_incl[i] = features_incl[i][key]
+                        feature_excl[i] = features_excl[i][key]
             
             feature_dict[key+"_obj"]=feature_obj
             feature_dict[key+"_incl"]=feature_incl
