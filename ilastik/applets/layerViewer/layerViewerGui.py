@@ -1,29 +1,33 @@
-import numpy
-
-from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor
-
-from lazyflow.graph import OperatorWrapper
-from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
-
+#Python
 import os
-from functools import partial
-from volumina.utility import ShortcutManager
-from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted
-
-from volumina.adaptors import Op5ifyer
-
-from volumina.interpreter import ClickReportingInterpreter
-
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import traceLogged, Tracer
+
+#SciPy
+import numpy
+
+#PyQt
+from PyQt4.QtCore import QRectF
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
+from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
+from lazyflow.utility import traceLogged
+
+#volumina
+from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
+                         LayerStackModel, VolumeEditor
+from volumina.utility import ShortcutManager
+from volumina.adaptors import Op5ifyer
+from volumina.interpreter import ClickReportingInterpreter
+
+#ilastik
+from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class LayerViewerGuiMetaclass(type(QMainWindow)):
     """
