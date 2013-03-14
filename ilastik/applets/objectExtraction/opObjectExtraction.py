@@ -29,7 +29,7 @@ class OpRegionFeatures3d(Operator):
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
         self._vigraFeatureNames = featureNames[0]
-        self._moreFeatureNames = featureNames[1]
+        self._otherFeatureNames = featureNames[1]
         self.margin = 30
         
     def setupOutputs(self):
@@ -96,7 +96,14 @@ class OpRegionFeatures3d(Operator):
         features_excl = [None]
         first_good = 1
         pool = Pool()
-        
+        if len(self._otherFeatureNames)>0:
+            #there are non-vigra features. let's make room for them
+            #we can't do that for vigra features, because vigra computes more than 
+            #we specify in featureNames and we want to keep that
+            otherFeatures_dict = {}
+            for key in self._otherFeatureNames:
+                otherFeatures_dict[key]=[None]
+            
         for i in range(1,nobj):
             print "processing object ", i
             if counts[i]>1000000:
@@ -104,6 +111,9 @@ class OpRegionFeatures3d(Operator):
                 features_incl.append(None)
                 features_excl.append(None)
                 features_obj.append(None)
+                for key in otherFeatures_dict.keys():
+                    otherFeatures_dict[key].append(None)
+                
                 if first_good<=i:
                     first_good=i+1
                 continue
@@ -137,8 +147,14 @@ class OpRegionFeatures3d(Operator):
                 req = pool.request(partial(extractObjectFeatures, i))
             pool.wait()
 
-            if "lbp" in self._moreFeatureNames:
-                print "computing lbp features"
+            features_incl.append(feats[0])
+            features_excl.append(feats[1])
+            features_obj.append(feats[2])
+
+            if "lbp_obj" in self._otherFeatureNames:
+                #FIXME: there is a mess about which of the lbp features are computed
+                
+                #print "computing lbp features"
                 #compute lbp features
                 import skimage.feature as ft
                 P=8
@@ -148,26 +164,42 @@ class OpRegionFeatures3d(Operator):
                     #an lbp image
                     lbp_total[:, :, iz] = ft.local_binary_pattern(rawbbox[:, :, iz], P, R, "uniform")
                 #extract relevant parts
+                #print "computed lbp for volume:", lbp_total.shape,
+                #print "extracting pieces:", passed.shape, ccbboxexcl.shape, ccbboxobject.shape
                 lbp_incl = lbp_total[passed]
-                lbp_excl = lbp_total[ccbboxexcl]
-                lbp_obj = lbp_total[ccbboxobject]
+                lbp_excl = lbp_total[ccbboxexcl.astype(bool)]
+                lbp_obj = lbp_total[ccbboxobject.astype(bool)]
+                #print "extracted pieces", lbp_incl.shape, lbp_excl.shape, lbp_obj.shape
                 lbp_hist_incl, _ = numpy.histogram(lbp_incl, normed=True, bins=P+2, range=(0, P+2))
                 lbp_hist_excl, _ = numpy.histogram(lbp_excl, normed=True, bins=P+2, range=(0, P+2))
                 lbp_hist_obj, _ = numpy.histogram(lbp_obj, normed=True, bins=P+2, range=(0, P+2))
-                feats[0]["lbp"] = lbp_hist_incl
-                feats[1]["lbp"] = lbp_hist_excl
-                feats[2]["lbp"] = lbp_hist_obj
+                #print "computed histogram"
+                otherFeatures_dict["lbp_incl"].append(lbp_hist_incl)
+                otherFeatures_dict["lbp_excl"].append(lbp_hist_excl)
+                otherFeatures_dict["lbp_obj"].append(lbp_hist_obj)
 
-
-            features_incl.append(feats[0])
-            features_excl.append(feats[1])
-            features_obj.append(feats[2])
+            
             
         feature_keys = features_incl[first_good].keys()
         feature_dict = {}
         feature_dict["Coord<Minimum>"]=mins
         feature_dict["Coord<Maximum>"]=maxs
         feature_dict["Count"]=counts
+        #copy over non-vigra features and turn them into numpy arrays
+        for key in otherFeatures_dict.keys():
+            #print otherFeatures_dict[key]
+            #find the number of channels
+            feature = otherFeatures_dict[key]
+            nchannels = feature[first_good].shape[0]
+            for irow, row in enumerate(feature):
+                if row is None:
+                    #print "NaNs in row", irow
+                    feature[irow]=numpy.zeros((nchannels,))
+            
+            feature_dict[key]=numpy.vstack(otherFeatures_dict[key])
+            assert feature_dict[key].shape[0]==nobj, "didn't compute features for all objects"
+            #print key, feature_dict[key].shape
+            
         for key in feature_keys:
             
             nchannels = 0
@@ -178,8 +210,8 @@ class OpRegionFeatures3d(Operator):
                 nchannels = len(features_incl[first_good][key][0])
             except TypeError:
                 nchannels = 1
-            print "assembling key:", key, "nchannels:", nchannels
-            print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
+            #print "assembling key:", key, "nchannels:", nchannels
+            #print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
             #FIXME: find the maximum number of channels and pre-allocate
             feature_obj = numpy.zeros((nobj, nchannels))
             feature_incl = numpy.zeros((nobj, nchannels))
@@ -191,17 +223,13 @@ class OpRegionFeatures3d(Operator):
                     feature_obj[i] = features_obj[i][key][1]
                     feature_incl[i] = features_incl[i][key][1]
                     feature_excl[i] = features_excl[i][key][1]
-                else:
-                    feature_obj[i]=0
-                    feature_incl[i]=0
-                    feature_excl[i]=0
-            
             
             feature_dict[key+"_obj"]=feature_obj
             feature_dict[key+"_incl"]=feature_incl
             feature_dict[key+"_excl"]=feature_excl
             #print key, feature_obj.shape, feature_incl.shape, feature_excl.shape
         end1 = time.clock()
+        #print "computed the following features:", feature_dict.keys()
         return feature_dict
 
     def propagateDirty(self, slot, subindex, roi):
@@ -479,7 +507,7 @@ class OpObjectExtraction(Operator):
         super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         features = list(set(config.vigra_features).union(set(self.default_features)))
-        features = [features, config.more_features]
+        features = [features, config.other_features]
 
         print "features:", features
         # internal operators
