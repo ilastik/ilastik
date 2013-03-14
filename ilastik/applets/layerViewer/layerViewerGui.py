@@ -208,12 +208,14 @@ class LayerViewerGui(QMainWindow):
         def getRange(meta):
             if 'drange' in meta:
                 return meta.drange
-            if numpy.issubdtype(meta.dtype, numpy.integer):
-                # We assume that ints range up to their max possible value,
-                return (0, numpy.iinfo( meta.dtype ).max)
+            if meta.dtype == numpy.uint8:
+                return (0, 255)
             else:
                 # If we don't know the range of the data, create a layer that is auto-normalized.
                 # See volumina.pixelpipeline.datasources for details.
+                #
+                # Even in the case of integer data, which has more than 255 possible values,
+                # (like uint16), it seems reasonable to use this setting as default
                 return 'autoPercentiles'
 
         # Examine channel dimension to determine Grayscale vs. RGB
