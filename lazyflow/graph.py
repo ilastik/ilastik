@@ -1992,6 +1992,9 @@ class OperatorWrapper(Operator):
     def __getitem__(self, key):
         return self.innerOperators[key]
 
+    def __len__(self):
+        return len(self.innerOperators)
+
     def _callbackInserted(self, slot, index, size):
         with Tracer(self.traceLogger, msg=self.name):
             self._insertInnerOperator(index, size)
