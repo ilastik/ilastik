@@ -1,14 +1,18 @@
+#Python
 import numpy, h5py
-import time
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-
-from ilastik.applets.labeling import OpLabelingSingleLane
-
 import copy
 
+#carving
 from cylemon.segmentation import MSTSegmentor
+
+#Lazyflow
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.stype import Opaque
+from lazyflow.rtype import SubRegion, List
+
+#ilastik
+from ilastik.applets.labeling import OpLabelingSingleLane
+
 
 class OpCarving(Operator):
     name = "Carving"
@@ -52,6 +56,8 @@ class OpCarving(Operator):
     DoneSegmentation = OutputSlot()
     
     CurrentObjectName = OutputSlot(stype='string')
+    
+    AllObjectNames = OutputSlot(rtype=List, stype=Opaque)
     
     #current object has an actual segmentation
     HasSegmentation   = OutputSlot(stype='bool')
@@ -154,6 +160,10 @@ class OpCarving(Operator):
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
+       
+        objects = self._mst.object_names.keys()
+        self.AllObjectNames.meta.shape = len(objects)
+        self.AllObjectNames.meta.dtype = object
 
     def hasCurrentObject(self):
         """
@@ -336,6 +346,10 @@ class OpCarving(Operator):
         self.Trigger.setDirty(slice(None))
         self._dirtyObjects.add(name)
         
+        objects = self._mst.object_names.keys()
+        print "save: len = ", len(object)
+        self.AllObjectNames.meta.shape = len(objects)
+        
         return True
     
     @Operator.forbidParallelExecute
@@ -397,6 +411,10 @@ class OpCarving(Operator):
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
 
+        objects = self._mst.object_names.keys()
+        print "save: len = ", len(objects)
+        self.AllObjectNames.meta.shape = len(objects)
+
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
     
@@ -442,10 +460,12 @@ class OpCarving(Operator):
         self._dirtyObjects.add(name)
 
     def execute(self, slot, subindex, roi, result):
-        start = time.time()
-
         if self._mst is None:
             return
+        if slot == self.AllObjectNames:
+            ret = self._mst.object_names.keys()
+            return ret
+        
         sl = roi.toSlice()
         if slot == self.Segmentation:
             #avoid data being copied

@@ -81,12 +81,16 @@ class CarvingGui(LabelingGui):
                 name = str(name)
                 if not ok:
                     return
+                objects = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
+                if name in objects:
+                    QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
+                    return
                 self.topLevelOperatorView.opCarving.saveObjectAs(name)
                 print "save object as %s" % name
             else:
                 msgBox = QMessageBox(self)
                 msgBox.setText("The data does not seem fit to be stored.")
-                msgBox.setWindowTitle("Lousy Data")
+                msgBox.setWindowTitle("Problem with Data")
                 msgBox.setIcon(2)
                 msgBox.exec_()
                 print "object not saved due to faulty data."

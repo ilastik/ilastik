@@ -470,7 +470,8 @@ class LabelingGui(LayerViewerGui):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self._addNewLabel()
 
-        self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
+        if hasattr(self._labelControlUi, "AddLabelButton"):
+            self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
     @traceLogged(traceLogger)
     def _addNewLabel(self):
