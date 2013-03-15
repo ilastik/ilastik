@@ -343,13 +343,6 @@ class LabelingGui(LayerViewerGui):
                       Tool.Paint        : "brushing",
                       Tool.Erase        : "brushing" }
 
-        # Hide everything by default
-        self._labelControlUi.arrowToolButton.hide()
-        self._labelControlUi.paintToolButton.hide()
-        self._labelControlUi.eraserToolButton.hide()
-        self._labelControlUi.brushSizeComboBox.hide()
-        self._labelControlUi.brushSizeCaption.hide()
-
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
 
@@ -364,55 +357,63 @@ class LabelingGui(LayerViewerGui):
                 else:
                     self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
+        e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
+        self._gui_enableLabeling(e)
+        
         if labelsAllowed:
-            self._labelControlUi.arrowToolButton.show()
-            self._labelControlUi.paintToolButton.show()
-            self._labelControlUi.eraserToolButton.show()
             # Update the applet bar caption
             if toolId == Tool.Navigation:
-                # Make sure the arrow button is pressed
-                self._labelControlUi.arrowToolButton.setChecked(True)
-                # Hide the brush size control
-                self._labelControlUi.brushSizeCaption.hide()
-                self._labelControlUi.brushSizeComboBox.hide()
+                # update GUI 
+                self._gui_setNavigation()
+                
             elif toolId == Tool.Paint:
-                # Make sure the paint button is pressed
-                self._labelControlUi.paintToolButton.setChecked(True)
-                # Show the brush size control and set its caption
-                self._labelControlUi.brushSizeCaption.show()
-                self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Size:")
-
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
                 brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(brushSize)
-
-                # Make sure the GUI reflects the correct size
-                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+                # update GUI 
+                self._gui_setBrushing()
 
             elif toolId == Tool.Erase:
-                # Make sure the erase button is pressed
-                self._labelControlUi.eraserToolButton.setChecked(True)
-                # Show the brush size control and set its caption
-                self._labelControlUi.brushSizeCaption.show()
-                self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Size:")
-
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
                 # Set the brushing size
                 eraserSize = self.brushSizes[self.eraserSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(eraserSize)
-
-                # Make sure the GUI reflects the correct size
-                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+                # update GUI 
+                self._gui_setErasing()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
+        
+    def _gui_setErasing(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(True)
+        self._labelControlUi.brushSizeCaption.setEnabled(True)
+        self._labelControlUi.eraserToolButton.setChecked(True)
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+    def _gui_setNavigation(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+    def _gui_setBrushing(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(True)
+        self._labelControlUi.brushSizeCaption.setEnabled(True)
+        # Make sure the paint button is pressed
+        self._labelControlUi.paintToolButton.setChecked(True)
+        # Show the brush size control and set its caption
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        # Make sure the GUI reflects the correct size
+        self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+    def _gui_enableLabeling(self, enable):
+        self._labelControlUi.paintToolButton.setEnabled(enable)
+        self._labelControlUi.eraserToolButton.setEnabled(enable)
+        self._labelControlUi.brushSizeCaption.setEnabled(enable)
+        self._labelControlUi.brushSizeComboBox.setEnabled(enable)
 
     @traceLogged(traceLogger)
     def _onBrushSizeChange(self, index):
@@ -501,6 +502,9 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.select(selectedRow)
 
         self._updateLabelShortcuts()
+       
+        e = self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
 
     def getNextLabelName(self):
         """
@@ -608,6 +612,9 @@ class LabelingGui(LayerViewerGui):
         #  Otherwise, you can never delete the same label twice in a row.
         #  (Only *changes* to the input are acted upon.)
         self._labelingSlots.labelDelete.setValue(-1)
+       
+        e =  self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
 
     def _getLabelLayer(self):
         # Find the labellayer in the viewer stack
