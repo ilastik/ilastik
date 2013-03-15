@@ -29,7 +29,7 @@ class SerialLabelImageSlot(SerialSlot):
                 #  instead of somehow directly copying the h5py datasets in their compressed form.
                 # We could maybe speed this up, but we'll lose some abstraction in the cache interface.
                 data = opLabel.Output( *roi ).wait()
-                subgroup.create_dataset(name=str(roi), data=data)
+                subgroup.create_dataset(name=str(roi), data=data, compression='lzf')
 
         self.dirty = False
 
