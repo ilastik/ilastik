@@ -96,6 +96,7 @@ class OpRegionFeatures3d(Operator):
         features_excl = [None]
         first_good = 1
         pool = Pool()
+        otherFeatures_dict = {}
         if len(self._otherFeatureNames)>0:
             #there are non-vigra features. let's make room for them
             #we can't do that for vigra features, because vigra computes more than 
@@ -358,13 +359,18 @@ class OpRegionFeatures(Operator):
 class OpCachedRegionFeatures(Operator):
     RawImage = InputSlot()
     LabelImage = InputSlot()
-    Output = OutputSlot(stype=Opaque, rtype=List)
+    CacheInput = InputSlot(optional=True)
+    
+    Output = OutputSlot()
+    CleanBlocks = OutputSlot()
 
     # Schematic:
     #
     # RawImage -----   blockshape=(t,c)=(1,1)
     #               \                        \
     # LabelImage ----> OpRegionFeatures ----> OpArrayCache --> Output
+    #                                                     \
+    #                                                      --> CleanBlocks
 
     def __init__(self, featureNames, *args, **kwargs):
         super(OpCachedRegionFeatures, self).__init__(*args, **kwargs)
@@ -378,8 +384,9 @@ class OpCachedRegionFeatures(Operator):
         self._opCache = OpArrayCache( parent=self )
         self._opCache.Input.connect( self._opRegionFeatures.Output )
         
-        # Hook up our output slot
+        # Hook up our output slots
         self.Output.connect( self._opCache.Output )
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
     
     def setupOutputs(self):
         assert self.LabelImage.meta.shape == self.RawImage.meta.shape
@@ -388,6 +395,11 @@ class OpCachedRegionFeatures(Operator):
         # Every value in the regionfeatures output is cached seperately as it's own "block"
         blockshape = (1,) * len( self._opRegionFeatures.Output.meta.shape )
         self._opCache.blockShape.setValue( blockshape )
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.CacheInput
+        # Forward to our cache to force label values in from an external source.
+        self._opCache.setInSlot(self._opCache.Input, subindex, roi, value)
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."

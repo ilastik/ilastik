@@ -1,9 +1,14 @@
+import logging
 import warnings
 
 import numpy
 
+from lazyflow.rtype import SubRegion
+
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot
+
+logger = logging.getLogger(__name__)
 
 class SerialLabelImageSlot(SerialSlot):
 
@@ -13,44 +18,38 @@ class SerialLabelImageSlot(SerialSlot):
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
-        for i, op in enumerate(mainOperator.innerOperators):
-            oplabel = op._opLabelImage
-            warnings.warn("FIXME: Not serializing label images")
-#            assert False, "FIXME: OpLabelImage implementation has changed, no longer has _processedTimeSteps member"
-#            ts = oplabel._processedTimeSteps
-#            if len(ts) > 0:
-#                subgroup = getOrCreateGroup(group, str(i))
-#                subgroup.create_dataset(name='timesteps', data=list(ts))
-#
-#                if oplabel.compressed:
-#                    src = oplabel._mem_h5
-#                    subgroup.copy(src['/LabelImage'], subgroup, name='data')
-#                else:
-#                    src = oplabel._labeled_image
-#                    subgroup.create_dataset(name='data', data=src)
+        for i in range(len(mainOperator)):
+            opLabel = mainOperator.getLane(i)._opLabelImage
+            subgroup = getOrCreateGroup(group, str(i))
+
+            cleanBlockRois = opLabel.CleanBlocks.value
+            for roi in cleanBlockRois:
+                logger.debug('Saving labels into dataset: "{}/{}"'.format( subgroup.name, str(roi) ))
+                # This will be a little slow because the data is passing through a numpy array
+                #  instead of somehow directly copying the h5py datasets in their compressed form.
+                # We could maybe speed this up, but we'll lose some abstraction in the cache interface.
+                data = opLabel.Output( *roi ).wait()
+                subgroup.create_dataset(name=str(roi), data=data)
+
         self.dirty = False
 
     def deserialize(self, group):
         if not self.name in group:
             return
+        
         mainOperator = self.slot.getRealOperator()
-        innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
-            mygroup = opgroup[inner]
-            oplabel = innerops[int(inner)]._opLabelImage
-            ts = set(numpy.array(mygroup['timesteps'][:]).flat)
-            warnings.warn("FIXME: Not serializing label images")
-#            assert False, "FIXME: OpLabelImage implementation has changed, no longer has _processedTimeSteps member"
-#            oplabel._processedTimeSteps = ts
-#            oplabel._fixed = False
-#
-#            if oplabel.compressed:
-#                dest = oplabel._mem_h5
-#                del dest['LabelImage']
-#                dest.copy(mygroup['data'], dest, name='LabelImage')
-#            else:
-#                oplabel._labeled_image[:] = mygroup['data'][:]
+        for i, (_, subgroup) in enumerate( sorted(opgroup.items() ) ):
+            opLabel = mainOperator.getLane(i)._opLabelImage
+
+            for roiString, dataset in subgroup.items():
+                logger.debug('Loading labels from dataset: "{}/{}"'.format( subgroup.name, dataset.name ))
+                # This will be a little slow because the data is passing through a numpy array
+                #  instead of somehow directly copying the h5py datasets in their compressed form.
+                # We could maybe speed this up, but we'll lose some abstraction in the cache interface.
+                roi = eval(roiString)
+                slotRoi = SubRegion( opLabel.Input, *roi )
+                opLabel.setInSlot( opLabel.Input, (), slotRoi, dataset[...] )
 
         self.dirty = False
 
@@ -63,38 +62,42 @@ class SerialObjectFeaturesSlot(SerialSlot):
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
-        innerops = mainOperator.innerOperators
-        for i, op in enumerate(innerops):
-            opgroup = getOrCreateGroup(group, str(i))
-            warnings.warn("FIXME: Not serializing object features")
-#            for t in op._opRegFeats._cache.keys():
-#                t_gr = opgroup.create_group(str(t))
-#                for ch in range(len(op._opRegFeats._cache[t])):
-#                    ch_gr = t_gr.create_group(str(ch))
-#                    feats = op._opRegFeats._cache[t][ch]
-#                    for key, val in feats.iteritems():
-#                        ch_gr.create_dataset(name=key, data=val)
+
+        for i in range(len(mainOperator)):
+            opRegFeats = mainOperator.getLane(i)._opRegFeats
+            subgroup = getOrCreateGroup(group, str(i))
+
+            cleanBlockRois = opRegFeats.CleanBlocks.value
+            for roi in cleanBlockRois:
+                region_features_arr = opRegFeats.Output( *roi ).wait()
+                assert region_features_arr.shape == (1,1)
+                region_features = region_features_arr[0,0]
+                roi_grp = subgroup.create_group(name=str(roi))
+                logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
+                for key, val in region_features.iteritems():
+                    roi_grp.create_dataset(name=key, data=val)
+
         self.dirty = False
 
     def deserialize(self, group):
         if not self.name in group:
             return
         mainOperator = self.slot.getRealOperator()
-        innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
-            gr = opgroup[inner]
-            op = innerops[int(inner)]
-            cache = {}
-            for t in gr.keys():
-                cache[int(t)] = []
-                for ch in sorted(gr[t].keys()):
-                    feat = dict()
-                    for key in gr[t][ch].keys():
-                        feat[key] = gr[t][ch][key].value
-                    cache[int(t)].append(feat)
-            warnings.warn("FIXME: Not deserializing object features")
-            #op._opRegFeats._cache = cache
+        for i, (_, subgroup) in enumerate( sorted(opgroup.items() ) ):
+            opRegFeats = mainOperator.getLane(i)._opRegFeats
+
+            for roiString, roi_grp in subgroup.items():
+                logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
+                roi = eval(roiString)
+                
+                region_features = {}
+                for key, val in roi_grp.items():
+                    region_features[key] = val[...]
+                
+                slotRoi = SubRegion( opRegFeats.CacheInput, *roi )
+                opRegFeats.setInSlot( opRegFeats.CacheInput, (), slotRoi, numpy.array( [[region_features]] ) )
+        
         self.dirty = False
 
 
