@@ -33,7 +33,7 @@ class OpRegionFeatures3d(Operator):
         self.margin = 30
         
     def setupOutputs(self):
-        assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape
+        assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
         assert self.LabelVolume.meta.axistags == self.RawVolume.meta.axistags
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
@@ -80,7 +80,7 @@ class OpRegionFeatures3d(Operator):
 
     def _extract(self, image, labels):
         assert len(image.shape) == len(labels.shape) == 3, "Images must be 3D.  Shapes were: {} and {}".format( image.shape, labels.shape )
-        
+        print "starting feature extraction..." 
         image = numpy.asarray(image, dtype=numpy.float32)
         labels = numpy.asarray(labels, dtype=numpy.uint32)
         
@@ -140,22 +140,37 @@ class OpRegionFeatures3d(Operator):
                 
             ccbboxexcl = passed-ccbboxobject
             
-            labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
-            feats = [None, None, None]
-            for i, bbox in enumerate(labeled_bboxes):
-                def extractObjectFeatures(i):
-                    feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
-                                                                    bbox.astype(numpy.uint32), \
-                                                                    self._vigraFeatureNames, \
-                                                                    histogramRange=[0, 255], \
-                                                                    binCount = 10,\
-                                                                    ignoreLabel=0)
-                req = pool.request(partial(extractObjectFeatures, i))
-            pool.wait()
+            #labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
+            #feats = [None, None, None]
+            #for i, bbox in enumerate(labeled_bboxes):
+            #    def extractObjectFeatures(i):
+            #        feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
+            #                                                        bbox.astype(numpy.uint32), \
+            #                                                        self._vigraFeatureNames, \
+            #                                                        histogramRange=[0, 255], \
+            #                                                        binCount = 10,\
+            #                                                        ignoreLabel=0)
+            #    req = pool.request(partial(extractObjectFeatures, i))
+            #pool.wait()
 
-            features_incl.append(feats[0])
-            features_excl.append(feats[1])
-            features_obj.append(feats[2])
+            #features_incl.append(feats[0])
+            #features_excl.append(feats[1])
+            #features_obj.append(feats[2])
+            f_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32),\
+                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+                                                          ignoreLabel=0)
+
+            f_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32),\
+                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+                                                          ignoreLabel=0)
+
+            f_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32),\
+                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+                                                          ignoreLabel=0)
+            features_incl.append(f_incl)
+            features_excl.append(f_excl)
+            features_obj.append(f_obj)
+
 
             if "lbp_obj" in self._otherFeatureNames:
                 #FIXME: there is a mess about which of the lbp features are computed

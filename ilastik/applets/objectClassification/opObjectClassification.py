@@ -221,15 +221,16 @@ class OpObjectTrain(Operator):
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
-
+        oob = [0]*self.ForestCount.value
         try:
             # train and store forests in parallel
             pool = Pool()
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    result[number].learnRF(featMatrix.astype(numpy.float32),
+                    oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32),
                                            labelsMatrix.astype(numpy.uint32))
+                    print "intermediate oob:", oob[number]
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
             pool.wait()
@@ -237,7 +238,8 @@ class OpObjectTrain(Operator):
         except:
             print ("couldn't learn classifier")
             raise
-
+        oob_total = numpy.mean(oob)
+        print "training finished, out of bag error:", oob_total
         return result
 
     def propagateDirty(self, slot, subindex, roi):
