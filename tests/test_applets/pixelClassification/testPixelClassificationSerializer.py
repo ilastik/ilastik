@@ -5,7 +5,6 @@ import vigra
 from lazyflow.roi import roiToSlice
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
-from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
 
 import ilastik.ilastik_logging
@@ -101,7 +100,7 @@ class OpMockPixelClassifier(Operator):
         if slot.name == "NonzeroLabelBlocks":
             # Split into 10 chunks
             blocks = []
-            slicing = [slice(0,max) for max in self.dataShape]
+            slicing = [slice(0,maximum) for maximum in self.dataShape]
             for i in range(10):
                 slicing[2] = slice(i*10, (i+1)*10)
                 if not (self._data[index][slicing] == 0).all():

@@ -64,8 +64,6 @@ class TestOpObjectTrain(unittest.TestCase):
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 1, 1, 2])}
         self.op.Labels.setValue(labels)
-        classifier = self.op.Classifier.value
-
 
 class TestOpObjectPredict(unittest.TestCase):
     def setUp(self):

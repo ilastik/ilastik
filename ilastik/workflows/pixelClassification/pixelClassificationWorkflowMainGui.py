@@ -1,6 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
-import functools
 
 def debug_with_existing(shell):
     """
@@ -63,7 +62,6 @@ def debug_with_new(shell, workflow):
     shell.onSaveProjectActionTriggered()
 
 def debug_with_imported(shell, workflow):
-    import os
     import ilastik.utility.globals
     ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
     
@@ -115,4 +113,3 @@ if __name__ == "__main__":
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )
- 

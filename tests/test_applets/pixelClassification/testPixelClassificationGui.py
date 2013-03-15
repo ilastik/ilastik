@@ -90,7 +90,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opDataSelection.Dataset[0].setValue(info)
             
             # Set some features
-            featureGui = workflow.featureSelectionApplet.getMultiLaneGui()
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
             opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )

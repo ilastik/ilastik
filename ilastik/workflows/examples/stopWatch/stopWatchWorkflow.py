@@ -1,6 +1,6 @@
 from ilastik.workflow import Workflow
 
-from lazyflow.graph import Graph, Operator, OutputSlot, Slot, OperatorWrapper
+from lazyflow.graph import Graph, Operator, OutputSlot
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.stopWatch import StopWatchApplet
 

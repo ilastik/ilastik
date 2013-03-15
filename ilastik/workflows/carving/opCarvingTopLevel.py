@@ -1,12 +1,8 @@
-from collections import defaultdict
-import numpy
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from volumina.adaptors import Op5ifyer
 
 from opCarving import OpCarving
-
 from ilastik.utility import OperatorSubView, OpMultiLaneWrapper
 
 class OpCarvingTopLevel(Operator):

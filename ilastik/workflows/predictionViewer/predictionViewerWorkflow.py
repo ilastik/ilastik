@@ -3,10 +3,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.predictionViewer import PredictionViewerApplet
 
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-
-from lazyflow.graph import Graph, Operator, OperatorWrapper
-from lazyflow.operators import OpPredictRandomForest
+from lazyflow.graph import Graph
 
 class PredictionViewerWorkflow(Workflow):
 

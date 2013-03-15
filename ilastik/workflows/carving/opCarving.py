@@ -8,7 +8,7 @@ from cylemon.segmentation import MSTSegmentor
 #Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import SubRegion, List
+from lazyflow.rtype import List
 
 #ilastik
 from ilastik.applets.labeling import OpLabelingSingleLane
@@ -100,8 +100,7 @@ class OpCarving(Operator):
             try:
                 f = h5py.File(pmapOverlayFile,"r")
             except Exception as e:
-                print "Could not open pmap overlay '%s'" % pmapOverlayFile
-                raise e
+                raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap  = f["/data"].value[numpy.newaxis, :,:,:, numpy.newaxis]
 
         self._setCurrObjectName("")
@@ -132,7 +131,7 @@ class OpCarving(Operator):
         self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
         self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
         print "building done"
-        for i, (name, objectSupervoxels) in enumerate(self._mst.object_lut.iteritems()):
+        for name, objectSupervoxels in self._mst.object_lut.iteritems():
             if name == self._currObjectName:
                 continue
             self._done_lut[objectSupervoxels] += 1
@@ -141,7 +140,6 @@ class OpCarving(Operator):
         print ""
 
     def dataIsStorable(self):
-        seed = 2
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
         bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
