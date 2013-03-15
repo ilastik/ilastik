@@ -6,17 +6,20 @@ class OpCachedLabelImage(Operator):
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
     """
     Input = InputSlot()
-
+    
     BackgroundLabels = InputSlot(optional=True) # Optional. See OpLabelImage for details.
     BlockShape = InputSlot(optional=True)   # If not provided, blockshape is 1 time slice, 1 channel slice, 
                                             #  and the entire volume in xyz.
     Output = OutputSlot()
+    CleanBlocks = OutputSlot()
     
     # Schematic:
     #
     # BackgroundLabels --     BlockShape --
     #                    \                 \
-    # Input ------------> OpLabelImage ---> OpCompressedCache -> Output
+    # Input ------------> OpLabelImage ---> OpCompressedCache --> Output
+    #                                                        \
+    #                                                         --> CleanBlocks
 
     def __init__(self, *args, **kwargs):
         super(OpCachedLabelImage, self).__init__(*args, **kwargs)
@@ -30,8 +33,9 @@ class OpCachedLabelImage(Operator):
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.Input.connect( self._opLabelImage.Output )
         
-        # Hook up our output slot
+        # Hook up our output slots
         self.Output.connect( self._opCache.Output )
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
     
     def setupOutputs(self):
         if self.BlockShape.ready():
@@ -49,3 +53,7 @@ class OpCachedLabelImage(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         pass # Nothing to do...
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Forward to our cache to force label values in from an external source.
+        self._opCache.setInSlot(self._opCache.Input, subindex, roi, value)

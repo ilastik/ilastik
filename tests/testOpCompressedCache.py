@@ -8,6 +8,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
+from lazyflow.utility.slicingtools import slicing2shape
 
 logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")
@@ -184,6 +185,37 @@ class TestOpCompressedCache( object ):
         for i, data in results.items():
             assert (data == expectedData).all(), "Incorrect output for index {]".format( i )
 
+    def testSetInSlot(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( vigra.VigraArray )
+        sampleData.axistags = vigra.defaultAxistags('xyz')
+        
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.setValue( sampleData )
+        
+        op = OpCompressedCache( parent=None, graph=graph )
+        logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [100, 75, 50] )
+        op.Input.connect( opData.Output )
+        
+        assert op.Output.ready()
+        
+        slicing = numpy.s_[ 0:100, 0:75, 0:50 ]
+        expectedData = numpy.ones( slicing2shape(slicing), dtype=int )
+
+        # This is what we're testing.
+        logger.debug("Forcing external data...")
+        op.Input[slicing] = expectedData
+        
+        logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+        
+        logger.debug("Checking data...")    
+        assert (readData == expectedData).all(), "Incorrect output!"
+
+        
 
 if __name__ == "__main__":
     # Set up logging for debug

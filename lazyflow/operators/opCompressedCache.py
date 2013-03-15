@@ -1,7 +1,7 @@
 # Built-in
 import copy
 import logging
-import functools
+from functools import partial
 import collections
 
 # Third-party
@@ -11,7 +11,7 @@ import h5py
 # Lazyflow
 from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
+from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,11 @@ class OpCompressedCache(Operator):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
     """
-    Input = InputSlot()
+    Input = InputSlot() # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
     BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
+    
     Output = OutputSlot()
+    CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
     
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
@@ -30,7 +32,7 @@ class OpCompressedCache(Operator):
         self._dirtyBlocks = set()
         self._lock = RequestLock()
         self._blockLocks = {}
-    
+
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
@@ -41,6 +43,8 @@ class OpCompressedCache(Operator):
     def setupOutputs(self):
         self._closeAllCacheFiles()
         self.Output.meta.assignFrom(self.Input.meta)
+        self.CleanBlocks.meta.shape = (1,)
+        self.CleanBlocks.meta.dtype = object
 
         # Clip blockshape to image bounds
         if self.BlockShape.ready():
@@ -53,7 +57,15 @@ class OpCompressedCache(Operator):
 
 
     def execute(self, slot, subindex, roi, destination):
-        assert slot == self.Output, "Uknown output slot"
+        if slot == self.Output:
+            return self._executeOutput(roi, destination)
+        elif slot == self.CleanBlocks:
+            return self._executeCleanBlocks(destination)
+        else:
+            assert False, "Unknown output slot: {}".format( slot.name )
+        
+
+    def _executeOutput(self, roi, destination):
         assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
         assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
         
@@ -64,7 +76,7 @@ class OpCompressedCache(Operator):
         reqPool = RequestPool() # (Do the work in parallel.)
         for block_start in block_starts:
             entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
-            f = functools.partial( self._ensureCached, entire_block_roi, block_start )
+            f = partial( self._ensureCached, entire_block_roi)
             reqPool.add( Request(f) )
         logger.debug( "Waiting for {} blocks...".format( len(block_starts) ) )
         reqPool.wait()
@@ -83,9 +95,25 @@ class OpCompressedCache(Operator):
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
             
             # Copy from block to destination
-            dataset = self._getBlockDataset( entire_block_roi, block_start )
+            dataset = self._getBlockDataset( entire_block_roi )
             destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
         return destination
+
+
+    def _executeCleanBlocks(self, destination):
+        """
+        Execute function for the CleanBlocks output slot, which produces 
+        an *unsorted* list of block rois that the cache currently holds.
+        """
+        # Set difference: clean = existing - dirty
+        clean_block_starts = set( self._cacheFiles.keys() ) - self._dirtyBlocks
+        
+        inputShape = self.Input.meta.shape
+        clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockshape ),
+                                clean_block_starts )
+        destination[0] = map( partial(map, TinyVector), clean_block_rois )
+        return destination
+
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
@@ -166,11 +194,13 @@ class OpCompressedCache(Operator):
             dtype = dtype.type
         return dtype().nbytes
 
-    def _getCacheFile(self, entire_block_roi, block_start):
+
+    def _getCacheFile(self, entire_block_roi):
         """
         Get the cache file for the block that starts at block_start.
         If it doesn't exist yet, create it first.
         """
+        block_start = tuple(entire_block_roi[0])
         if block_start in self._cacheFiles:
             return self._cacheFiles[block_start]
         with self._lock:
@@ -195,12 +225,13 @@ class OpCompressedCache(Operator):
             return self._cacheFiles[block_start]
 
 
-    def _ensureCached(self, entire_block_roi, block_start):
+    def _ensureCached(self, entire_block_roi):
         """
         Ensure that the cache file for the given block is up-to-date.
         (Refresh it if it's dirty.)
         """
-        block_file = self._getCacheFile(entire_block_roi, block_start)
+        block_start = tuple(entire_block_roi[0])
+        block_file = self._getCacheFile(entire_block_roi)
         if block_start in self._dirtyBlocks:
             updated_cache = False
             with self._blockLocks[block_start]:
@@ -223,15 +254,32 @@ class OpCompressedCache(Operator):
 
             if updated_cache:
                 # Now that the lock is released, signal that the cache was updated. 
-                self.Output._sig_value_changed() 
+                self.Output._sig_value_changed()
 
 
-    def _getBlockDataset(self, entire_block_roi, block_start):
+    def setInSlot(self, slot, subindex, roi, value):
+        """
+        Overridden from Operator
+        """
+        assert slot == self.Input, "OpCompressedCache: Only the main Input slot supports setInSlot"
+        assert ((roi.stop - roi.start) == self._blockshape).all(), "OpCompressedCache: setInSlot requires roi to be exactly one block"
+        inputShape = self.Input.meta.shape
+        block_start = tuple( roi.start )
+        entire_block_roi = getBlockBounds( inputShape, self._blockshape, block_start )
+        assert (entire_block_roi == numpy.array([roi.start, roi.stop])).all, "OpCompressedCache: setInSlot requires roi to be aligned to a block"
+
+        dataset = self._getBlockDataset(entire_block_roi)
+        dataset[...] = value[...]
+        self._dirtyBlocks.discard( block_start )
+        self.Output._sig_value_changed()
+
+
+    def _getBlockDataset(self, entire_block_roi):
         """
         Get the correct cache file and return the *dataset* handle,
         not a numpy array of its contents.
         """
-        block_file = self._getCacheFile(entire_block_roi, block_start)
+        block_file = self._getCacheFile(entire_block_roi)
         return block_file['data']
 
 
