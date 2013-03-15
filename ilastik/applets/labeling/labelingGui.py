@@ -8,8 +8,8 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QWidget
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -28,11 +28,13 @@ from ilastik.applets.layerViewer import LayerViewerGui
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
+#===----------------------------------------------------------------------------------------------------------------===
+
 class Tool():
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
-    Paint = 1
-    Erase = 2
+    Paint      = 1
+    Erase      = 2
 
 class LabelingGui(LayerViewerGui):
     """
@@ -232,7 +234,6 @@ class LabelingGui(LayerViewerGui):
 
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
-            pmapColor = self._labelControlUi.labelListModel[firstRow].pmapColor()
             self._colorTable16[firstRow+1] = color.rgba()
             self.editor.brushingModel.setBrushColor(color)
 
@@ -679,10 +680,8 @@ class LabelingGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def _createDefault16ColorColorTable(self):
         colors = []
-
         # Transparent for the zero label
         colors.append(QColor(0,0,0,0))
-
         # ilastik v0.5 colors
         colors.append( QColor( Qt.red ) )
         colors.append( QColor( Qt.green ) )
@@ -691,7 +690,6 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor( Qt.magenta ) )
         colors.append( QColor( Qt.darkYellow ) )
         colors.append( QColor( Qt.lightGray ) )
-
         # Additional colors
         colors.append( QColor(255, 105, 180) ) #hot pink
         colors.append( QColor(102, 205, 170) ) #dark aquamarine
@@ -701,11 +699,5 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(173, 255,  47) ) #green-yellow
         colors.append( QColor(128,0, 128) )    #purple
         colors.append( QColor(240, 230, 140) ) #khaki
-
-#        colors.append( QColor(192, 192, 192) ) #silver
-#        colors.append( QColor(69, 69, 69) )    # dark grey
-#        colors.append( QColor( Qt.cyan ) )
-
         assert len(colors) == 16
-
         return [c.rgba() for c in colors]
