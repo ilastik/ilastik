@@ -2,7 +2,7 @@ import lazyflow
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector
+from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector, getBlockBounds
 from Queue import Empty
 from collections import deque
 import greenlet, threading
@@ -335,7 +335,7 @@ class OpArrayCache(OpArrayPiper):
     category = "misc"
 
     inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("CleanBlocks")]
 
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
@@ -348,24 +348,23 @@ class OpArrayCache(OpArrayPiper):
     FIXED_DIRTY = 3
 
     def __init__(self, *args, **kwargs):
-        with Tracer(self.traceLogger):
-            super( OpArrayPiper, self ).__init__(*args, **kwargs)
-            self._origBlockShape = 64
-            self._blockShape = None
-            self._dirtyShape = None
-            self._blockState = None
-            self._dirtyState = None
-            self._fixed = False
-            self._cache = None
-            self._lock = Lock()
-            #self._cacheLock = request.Lock()#greencall.Lock()
-            self._cacheLock = Lock()
-            self._lazyAlloc = True
-            self._cacheHits = 0
-            self.graph._registerCache(self)
-            self._has_fixed_dirty_blocks = False
-            self._memory_manager = ArrayCacheMemoryMgr.instance
-            self._running = 0
+        super( OpArrayPiper, self ).__init__(*args, **kwargs)
+        self._origBlockShape = 64
+        self._blockShape = None
+        self._dirtyShape = None
+        self._blockState = None
+        self._dirtyState = None
+        self._fixed = False
+        self._cache = None
+        self._lock = Lock()
+        #self._cacheLock = request.Lock()#greencall.Lock()
+        self._cacheLock = Lock()
+        self._lazyAlloc = True
+        self._cacheHits = 0
+        self.graph._registerCache(self)
+        self._has_fixed_dirty_blocks = False
+        self._memory_manager = ArrayCacheMemoryMgr.instance
+        self._running = 0
 
     def _memorySize(self):
         if self._cache is not None:
@@ -447,24 +446,26 @@ class OpArrayCache(OpArrayPiper):
             self._memory_manager.add(self)
 
     def setupOutputs(self):
-        with Tracer(self.traceLogger):
-            reconfigure = False
-            if  self.inputs["fixAtCurrent"].ready():
-                self._fixed =  self.inputs["fixAtCurrent"].value
-    
-            if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
-                newBShape = self.inputs["blockShape"].value
-                if self._origBlockShape != newBShape and self.inputs["Input"].ready():
-                    reconfigure = True
-                self._origBlockShape = newBShape
-                OpArrayPiper.setupOutputs(self)
-    
-            if reconfigure and self.shape is not None:
-                self._lock.acquire()
-                self._allocateManagementStructures()
-                if not self._lazyAlloc:
-                    self._allocateCache()
-                self._lock.release()
+        self.CleanBlocks.meta.shape = (1,)
+        self.CleanBlocks.meta.dtype = object
+
+        reconfigure = False
+        if  self.inputs["fixAtCurrent"].ready():
+            self._fixed =  self.inputs["fixAtCurrent"].value
+
+        if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
+            newBShape = self.inputs["blockShape"].value
+            if self._origBlockShape != newBShape and self.inputs["Input"].ready():
+                reconfigure = True
+            self._origBlockShape = newBShape
+            OpArrayPiper.setupOutputs(self)
+
+        if reconfigure and self.shape is not None:
+            self._lock.acquire()
+            self._allocateManagementStructures()
+            if not self._lazyAlloc:
+                self._allocateCache()
+            self._lock.release()
 
 
 
@@ -535,6 +536,12 @@ class OpArrayCache(OpArrayPiper):
 
 
     def execute(self, slot, subindex, roi, result):
+        if slot == self.Output:
+            return self._executeOutput(slot, subindex, roi, result)
+        elif slot == self.CleanBlocks:
+            return self._executeCleanBlocks(slot, subindex, roi, result)
+        
+    def _executeOutput(self, slot, subindex, roi, result):
         #return
         key = roi.toSlice()
 
@@ -693,7 +700,7 @@ class OpArrayCache(OpArrayPiper):
         ch = self._cacheHits
         ch += 1
         self._cacheHits = ch
-        start, stop = sliceToRoi(key, self.shape)
+        start, stop = roi.start, roi.stop
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
         blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
@@ -711,6 +718,16 @@ class OpArrayCache(OpArrayPiper):
             self._blockState[blockKey] = self._dirtyState
             self._blockQuery[blockKey] = None
             self._lock.release()
+
+    def _executeCleanBlocks(self, slot, subindex, roi, destination):
+        indexCols = numpy.where(self._blockState == OpArrayCache.CLEAN)
+        clean_block_starts = numpy.array(indexCols).transpose()
+            
+        inputShape = self.Input.meta.shape
+        clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockShape ),
+                                clean_block_starts )
+        destination[0] = map( partial(map, TinyVector), clean_block_rois )
+        return destination
 
 if has_blist:
     class OpSparseLabelArray(Operator):
