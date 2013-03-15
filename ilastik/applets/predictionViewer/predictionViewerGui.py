@@ -101,7 +101,8 @@ class PredictionViewerGui( LayerViewerGui ):
 
         assert len(colors) == 16
 
-        return [c.rgba() for c in colors]
+        #return [c.rgba() for c in colors]
+        return colors
 
     DefaultColors = _createDefault16ColorColorTable()
 
