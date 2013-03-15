@@ -202,7 +202,7 @@ class CarvingGui(LabelingGui):
                 self._doneSegmentationLayer.colorTable = self._doneSegmentationColortable
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
-        self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
+        #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
         
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.opCarving.doneObjectNamesForPosition(position5d[1:4])
