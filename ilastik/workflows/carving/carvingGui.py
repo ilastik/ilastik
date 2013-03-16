@@ -1,23 +1,27 @@
+#Python
 import os
 import numpy
-import time
 import random
 
-from PyQt4.QtCore import QTimer
+#PyQt
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
 from PyQt4.QtGui import QInputDialog, QMessageBox
 
+#volumina
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
+from volumina.utility import ShortcutManager
 from volumina import colortables
-
 try:
     from volumina.view3d.volumeRendering import RenderingManager
 except:
     pass
 
+#ilastik
 from ilastik.applets.labeling.labelingGui import LabelingGui
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
     def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None ):
@@ -29,8 +33,13 @@ class CarvingGui(LabelingGui):
 
         super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, carvingDrawerUiPath, rawInputSlot)
         
+        mgr = ShortcutManager()
+        
         #set up keyboard shortcuts
-        c = QShortcut(QKeySequence("3"), self, member=self.labelingDrawerUi.segment.click, ambiguousMember=self.labelingDrawerUi.segment.click)
+        segmentShortcut = QShortcut(QKeySequence("3"), self, member=self.labelingDrawerUi.segment.click,
+                                    ambiguousMember=self.labelingDrawerUi.segment.click)
+        mgr.register("Carving", "Run interactive segmentation", segmentShortcut, self.labelingDrawerUi.segment)
+        
 
         self._doneSegmentationLayer = None
 
@@ -156,8 +165,10 @@ class CarvingGui(LabelingGui):
 
         self._labelControlUi.labelListModel.allowRemove(False)
 
-        QShortcut(QKeySequence("1"), self, member=labelBackground, ambiguousMember=labelBackground)
-        QShortcut(QKeySequence("2"), self, member=labelObject, ambiguousMember=labelObject)
+        bg = QShortcut(QKeySequence("1"), self, member=labelBackground, ambiguousMember=labelBackground)
+        mgr.register("Carving", "Select background label", bg)
+        fg = QShortcut(QKeySequence("2"), self, member=labelObject, ambiguousMember=labelObject)
+        mgr.register("Carving", "Select object label", fg)
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
@@ -169,13 +180,13 @@ class CarvingGui(LabelingGui):
                 layer = self.layerstack[row]
                 layer.visible = not layer.visible
                 self.viewerControlWidget().layerWidget.setFocus()
-            QShortcut(QKeySequence(shortcut), self, member=toggle, ambiguousMember=toggle)
+            shortcut = QShortcut(QKeySequence(shortcut), self, member=toggle, ambiguousMember=toggle)
+            mgr.register("Carving", "Toggle layer %s" % layername, shortcut)
 
         addLayerToggleShortcut("done", "d")
         addLayerToggleShortcut("segmentation", "s")
         addLayerToggleShortcut("raw", "r")
         addLayerToggleShortcut("pmap", "v")
-        addLayerToggleShortcut("done seg", "b")
         addLayerToggleShortcut("hints","h")
 
         '''
