@@ -20,8 +20,6 @@ from ilastik.utility.pathHelpers import getPathVariants
 import logging
 logger = logging.getLogger(__name__)
 
-OUTPUT_FILE_NAME_FORMAT = "{} output {}.h5"
-
 class OpTaskWorker(Operator):
     Input = InputSlot()
     RoiString = InputSlot(stype='string')
@@ -92,9 +90,6 @@ class OpClusterize(Operator):
     ConfigFilePath = InputSlot(stype='filestring')
     
     ReturnCode = OutputSlot()
-
-    # Constants
-    FINAL_DATASET_NAME = 'cluster_result'
 
     class TaskInfo():
         taskName = None
@@ -215,7 +210,6 @@ class OpClusterize(Operator):
             taskInfo.subregion = SubRegion( None, start=roi[0], stop=roi[1] )
             
             taskName = "JOB{:02}".format(roiIndex)
-            outputFileName = OUTPUT_FILE_NAME_FORMAT.format( taskName, str(roi) )
 
             commandArgs = []
             commandArgs.append( "--option_config_file=" + self.ConfigFilePath.value )
