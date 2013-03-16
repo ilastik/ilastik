@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.utility import PathComponents, getPathVariants, FileLock
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, TinyVector
 
 try:
     import vigra
@@ -292,9 +292,10 @@ class BlockwiseFileset(object):
             block_relative_roi = ( transfer_block_roi[0] - block_start, transfer_block_roi[1] - block_start ) # Roi of needed data from this block, relative to the block itself
             array_data_roi = (transfer_block_roi[0] - roi[0], transfer_block_roi[1] - roi[0]) # Roi of data needed from this block within array_data
 
-            self._transferBlockData( entire_block_roi, block_relative_roi, array_data[ roiToSlice( *array_data_roi ) ], read )
+            array_slicing = roiToSlice( *array_data_roi )
+            self._transferBlockData( entire_block_roi, block_relative_roi, array_data, array_slicing, read )
 
-    def _transferBlockData( self, entire_block_roi, block_relative_roi, array_data, read ):
+    def _transferBlockData( self, entire_block_roi, block_relative_roi, array_data, array_slicing, read ):
         """
         Read or write data to a single block in the fileset.
         
@@ -307,14 +308,16 @@ class BlockwiseFileset(object):
         datasetPathComponents = self.getDatasetPathComponents(entire_block_roi[0])
 
         if self._description.format == "hdf5":
-            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, read, datasetPathComponents )
+            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents )
         else:
             assert False, "Unknown format"        
 
-    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, read, datasetPathComponents ):
+    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents ):
         """
         Transfer a block of data to/from an hdf5 dataset.
         See _transferBlockData() for details.
+        
+        We use separate parameters for array_data and array_slicing to allow users to pass an hdf5 dataset for array_data.
         """
         # For the hdf5 format, the full path format INCLUDES the dataset name, e.g. /path/to/myfile.h5/volume/data
         path_parts = datasetPathComponents
@@ -330,7 +333,11 @@ class BlockwiseFileset(object):
                 raise BlockwiseFileset.BlockNotReadyError( block_start )
 
             hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
-            array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
+
+            if isinstance(array_data, numpy.ndarray) and array_data.flags.c_contiguous:
+                hdf5File[ path_parts.internalPath ].read_direct( array_data, roiToSlice( *block_relative_roi ), array_slicing )
+            else:
+                array_data[ array_slicing ] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
         else:
             # Create the directory
             if not os.path.exists( datasetDir ):
@@ -352,7 +359,7 @@ class BlockwiseFileset(object):
                                          chunks=chunks )
                 if _use_vigra:
                     dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
-            hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
+            hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[ array_slicing ]
 
     def _getOpenHdf5Blockfile(self, blockFilePath):
         """
@@ -402,12 +409,30 @@ class BlockwiseFileset(object):
         
         return found_lock
 
+    def exportRoiToHdf5(self, roi, exportDirectory):
+        """
+        Export an arbitrary roi to a single hdf5 file.  The file will be placed in the given exportDirectory, and will be named according to the exported roi.
+        """
+        roi = map( TinyVector, roi )
+        roiString = "{}".format( (list(roi[0]), list(roi[1]) ) )
+        datasetPath = self._description.block_file_name_format.format( roiString=roiString )
+        fullDatasetPath = os.path.join( exportDirectory, datasetPath )
+        path_parts = PathComponents( fullDatasetPath )
+        
+        with h5py.File(path_parts.externalPath) as f:
+            chunks = self._description.chunks
+            if chunks is not None:
+                chunks = tuple(chunks)
+            dataset = f.create_dataset( path_parts.internalPath,
+                                     shape=( roi[1] - roi[0] ),
+                                     dtype=self._description.dtype,
+                                     chunks=chunks )
+            if _use_vigra:
+                dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
 
+            self.readData( roi, dataset )
 
-
-
-
-
+        return fullDatasetPath
 
 
 

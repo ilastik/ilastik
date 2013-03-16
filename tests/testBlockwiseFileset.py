@@ -2,10 +2,13 @@ import os
 import sys
 import shutil
 import tempfile
-import random
+
 import numpy
+import h5py
+
+from lazyflow.utility import PathComponents
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
-from lazyflow.roi import sliceToRoi, getIntersectingBlocks
+from lazyflow.roi import sliceToRoi, roiToSlice, getIntersectingBlocks
 
 import logging
 logger = logging.getLogger(__name__)
@@ -104,7 +107,27 @@ class TestBlockwiseFileset(object):
             assert self.data[slicing].shape == read_data.shape
             assert (self.data[slicing] == read_data).all(), "Data didn't match."
 
-    def test_5_ManySmallWritesToOneBlock(self):
+    def test_5_TestExport(self):
+        roi = ( (0, 25, 25, 25, 0), (1, 75, 75, 75, 1) )
+        exportDir = tempfile.mkdtemp()
+        datasetPath = self.bfs.exportRoiToHdf5( roi, exportDir )
+        path_parts = PathComponents( datasetPath )
+
+        try:        
+            assert path_parts.externalDirectory == exportDir, "Dataset was not exported to the correct directory"
+            
+            expected_data = self.data[ roiToSlice(*roi) ]
+            with h5py.File(path_parts.externalPath, 'r') as f:
+                read_data = f[path_parts.internalPath][...]
+    
+            assert read_data.shape == expected_data.shape, "Exported data had wrong shape"
+            assert read_data.dtype == expected_data.dtype, "Exported data had wrong dtype"
+            assert (read_data == expected_data).all(), "Exported data did not match expected data"
+        
+        finally:
+            shutil.rmtree(exportDir)
+        
+    def test_6_ManySmallWritesToOneBlock(self):
         for _ in range(100):
             x = numpy.random.randint(49) + 1
             y = numpy.random.randint(49) + 1
@@ -116,10 +139,10 @@ class TestBlockwiseFileset(object):
             random_data = numpy.random.random( roiShape )
             self.bfs.writeData( roi, random_data )
 
-    def test_6_CloseBfs(self):
+    def test_7_CloseBfs(self):
         self.bfs.close()
 
-    def test_7_TestView(self):
+    def test_8_TestView(self):
         """
         Load some of the dataset again; this time with an offset view.
         Note: The original blockwise fileset must be closed before this test starts.
@@ -154,6 +177,8 @@ class TestBlockwiseFileset(object):
         
         finally:
             bfs.close()
+
+        
 
 if __name__ == "__main__":
     import sys
