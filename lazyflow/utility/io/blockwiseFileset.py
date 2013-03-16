@@ -43,6 +43,8 @@ class BlockwiseFileset(object):
         "shape" : AutoEval(numpy.array), # This is the shape of the dataset on disk
         "dtype" : AutoEval(),
         "chunks" : AutoEval(numpy.array), # Optional.  If null, no chunking. Only used when writing data.
+        "compression" : str, # Optional.  Options include 'lzf' and 'gzip', among others.  Note: h5py automatically enables chunking on compressed datasets.
+        "compression_opts" : AutoEval(int), # Optional. Hdf5-specific
         "block_shape" : AutoEval(numpy.array),
         "view_origin" : AutoEval(numpy.array), # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
                                 # For example, if the offset is [100, 200, 300], then a request for roi([0,0,0],[2,2,2]) 
@@ -110,12 +112,17 @@ class BlockwiseFileset(object):
         else:
             self._description = BlockwiseFileset.readDescription( descriptionFilePath )
 
-        assert self._description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
-        
+        # Check for errors
+        assert self._description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."        
+        if self._description.compression_opts is not None:
+            assert self._description.compression is not None, "You specified compression_opts={} without specifying a compression type".format( self._description.compression )
+
+        # default view_origin        
         if self._description.view_origin is None:
             self._description.view_origin = (0,) * len(self._description.shape)
         assert (numpy.mod( self._description.view_origin, self._description.block_shape ) == 0).all(), "view_origin is not compatible with block_shape.  Must be a multiple!"
 
+        # default view_shape        
         if self._description.view_shape is None:
             self._description.view_shape = numpy.subtract( self._description.shape, self._description.view_origin )
         view_roi = (self._description.view_origin, numpy.add(self._description.view_origin, self._description.view_shape))
@@ -353,10 +360,14 @@ class BlockwiseFileset(object):
                 chunks = self._description.chunks
                 if chunks is not None:
                     chunks = tuple(chunks)
+                compression=self._description.compression
+                compression_opts=self._description.compression_opts
                 dataset = hdf5File.create_dataset( path_parts.internalPath,
                                          shape=( entire_block_roi[1] - entire_block_roi[0] ),
                                          dtype=self._description.dtype,
-                                         chunks=chunks )
+                                         chunks=chunks,
+                                         compression=compression,
+                                         compression_opts=compression_opts )
                 if _use_vigra:
                     dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
             hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[ array_slicing ]
@@ -423,10 +434,14 @@ class BlockwiseFileset(object):
             chunks = self._description.chunks
             if chunks is not None:
                 chunks = tuple(chunks)
+            compression = self._description.compression
+            compression_opts = self._description.compression_opts
             dataset = f.create_dataset( path_parts.internalPath,
                                      shape=( roi[1] - roi[0] ),
                                      dtype=self._description.dtype,
-                                     chunks=chunks )
+                                     chunks=chunks,
+                                     compression=compression,
+                                     compression_opts=compression_opts )
             if _use_vigra:
                 dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
 

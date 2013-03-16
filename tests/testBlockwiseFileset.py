@@ -32,6 +32,7 @@ class TestBlockwiseFileset(object):
             "axes" : "txyzc",
             "shape" : [1,400,400,200,1],
             "dtype" : "numpy.uint8",
+            "compression" : "lzf",
             "block_shape" : [1, 50, 50, 50, 100],
             "block_file_name_format" : "cube{roiString}.h5/volume/data"
         }
