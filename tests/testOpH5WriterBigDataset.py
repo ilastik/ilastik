@@ -20,7 +20,7 @@ class TestOpH5WriterBigDataset(object):
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') )
+        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'), order='C' )
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
@@ -62,7 +62,7 @@ class TestOpH5WriterBigDataset_2(object):
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') )
+        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):

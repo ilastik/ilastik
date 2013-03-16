@@ -95,9 +95,15 @@ class OpStreamingHdf5Reader(Operator):
 
         if len(key) > len(hdf5File[internalPath].shape):
             key = key[:len(hdf5File[internalPath].shape)]
-            result[...,0] = hdf5File[internalPath][key]
+            if result.flags.c_contiguous:
+                hdf5File[internalPath].read_direct( result[...,0], key )
+            else:
+                result[...,0] = hdf5File[internalPath][key]
         else:
-            result[...] = hdf5File[internalPath][key]
+            if result.flags.c_contiguous:
+                hdf5File[internalPath].read_direct( result[...], key )
+            else:
+                result[...] = hdf5File[internalPath][key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:

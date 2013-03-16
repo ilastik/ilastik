@@ -1644,7 +1644,10 @@ class OpH5WriterBigDataset(Operator):
             req = activeRequests.popleft()
             s=activeSlicings.popleft()
             data = req.wait()
-            self.d[s]=data
+            if data.flags.c_contiguous:
+                self.d.write_direct(data.view(numpy.ndarray), dest_sel=s)
+            else:
+                self.d[s] = data
             
             req.clean() # Discard the data in the request and allow its children to be garbage collected.
 
