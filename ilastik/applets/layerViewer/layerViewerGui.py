@@ -29,7 +29,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 
 #===----------------------------------------------------------------------------------------------------------------===
 
-class LayerViewerGuiMetaclass(type(QMainWindow)):
+class LayerViewerGuiMetaclass(type(QWidget)):
     """
     Custom metaclass to enable the _after_init function.
     """
@@ -44,7 +44,7 @@ class LayerViewerGuiMetaclass(type(QMainWindow)):
         instance._after_init()
         return instance
 
-class LayerViewerGui(QMainWindow):
+class LayerViewerGui(QWidget):
     """
     Implements an applet GUI whose central widget is a VolumeEditor
     and whose layer controls simply contains a layer list widget.

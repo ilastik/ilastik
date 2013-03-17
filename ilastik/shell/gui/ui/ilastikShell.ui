@@ -15,6 +15,21 @@
   </property>
   <widget class="QWidget" name="mainLayout">
    <layout class="QVBoxLayout" name="verticalLayout_4">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>5</number>
+    </property>
+    <property name="topMargin">
+     <number>5</number>
+    </property>
+    <property name="rightMargin">
+     <number>5</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="QStackedWidget" name="mainStackedWidget">
       <property name="currentIndex">
@@ -22,6 +37,12 @@
       </property>
       <widget class="QWidget" name="startupPage">
        <layout class="QVBoxLayout" name="verticalLayout_5">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="margin">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QTextBrowser" name="textBrowser">
           <property name="enabled">
@@ -40,6 +61,12 @@ p, li { white-space: pre-wrap; }
       </widget>
       <widget class="QWidget" name="contentPage">
        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="margin">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QWidget" name="widget" native="true">
           <layout class="QVBoxLayout" name="verticalLayout_2">

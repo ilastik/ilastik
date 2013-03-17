@@ -54,7 +54,7 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
-class DataSelectionGui(QMainWindow):
+class DataSelectionGui(QWidget):
     """
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.

@@ -29,7 +29,7 @@ class Column():
     ExportLocation = 1
     Action = 2
 
-class BatchIoGui(QMainWindow):
+class BatchIoGui(QWidget):
     """
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
