@@ -1041,7 +1041,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt4.QtGui import QApplication
     import sys
-    from applet import Applet
+    from ilastik.applets.base.applet import Applet
 
     qapp = QApplication(sys.argv)
     
