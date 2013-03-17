@@ -235,7 +235,7 @@ class DataSelectionGui(QWidget):
 
         # Launch the "Open File" dialog
         fileNames = self.getImageFileNamesToOpen(defaultDirectory)
-
+        
         # If the user didn't cancel        
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
@@ -396,7 +396,7 @@ class DataSelectionGui(QWidget):
             oldNumFiles = len(self.topLevelOperator.Dataset)
             self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
             for i in range(len(infos)):
-                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
+                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( infos[i] )
 
     @threadRouted
     def updateTableForSlot(self, slot, *args):
