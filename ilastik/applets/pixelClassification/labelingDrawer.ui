@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>311</height>
+    <height>342</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -49,12 +49,25 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="AddLabelButton">
+    <widget class="QToolButton" name="AddLabelButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="styleSheet">
       <string notr="true"/>
      </property>
      <property name="text">
       <string>New Label Class</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>../../shell/gui/icons/16x16/actions/list-add.png</normaloff>../../shell/gui/icons/16x16/actions/list-add.png</iconset>
+     </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonTextBesideIcon</enum>
      </property>
     </widget>
    </item>
@@ -124,6 +137,25 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QToolButton" name="liveUpdateButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Live update</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonTextBesideIcon</enum>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QPushButton" name="savePredictionsButton">
