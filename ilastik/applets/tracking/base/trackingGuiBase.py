@@ -22,6 +22,8 @@ class TrackingGuiBase( LayerViewerGui ):
     """
     """
     
+    withMergers=False
+    
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################        
@@ -55,15 +57,10 @@ class TrackingGuiBase( LayerViewerGui ):
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
 
-                maxt = slot.meta.shape[0]
-                self._drawer.from_time.setRange(0,maxt-1)
-                self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setRange(0,maxt-2)
-                self._drawer.to_time.setValue(maxt-2)
-#                self._drawer.lineageFromBox.setRange(0,maxt-1)
-#                self._drawer.lineageToBox.setRange(0,maxt-2)
-#                self._drawer.lineageFromBox.setValue(0)
-#                self._drawer.lineageToBox.setValue(maxt-2)
+                maxt = slot.meta.shape[0] - 1
+                self._setRanges()
+                self._drawer.from_time.setValue(0)                
+                self._drawer.to_time.setValue(maxt)
             
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
@@ -95,24 +92,24 @@ class TrackingGuiBase( LayerViewerGui ):
             layers.append(mergerLayer)     
             
             
-        ct = colortables.create_random_8bit()
+        ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[255] = QColor(255,255,255,230).rgba() # misdetections
+        ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
         self.trackingsrc = LazyflowSource( self.topLevelOperatorView.Output )
         trackingLayer = ColortableLayer( self.trackingsrc, ct )
         trackingLayer.name = "Tracking"
         trackingLayer.visible = True
-        trackingLayer.opacity = 0.5
+        trackingLayer.opacity = 0.8
         layers.append(trackingLayer)
         
         
         self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
 #        ct = colortables.create_default_8bit()
-        ct = colortables.create_random_8bit()
+        ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
-        objLayer.opacity = 0.3
+        objLayer.opacity = 0.8
         objLayer.visible = True
         layers.append(objLayer)
 
@@ -128,29 +125,20 @@ class TrackingGuiBase( LayerViewerGui ):
         if self.topLevelOperatorView.LabelImage.meta.shape:
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
 
-            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0]
-            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1]
-            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2]
-            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3]            
-            self._drawer.from_time.setRange(0,maxt-1)
-            self._drawer.from_time.setValue(0)
-            self._drawer.to_time.setRange(0,maxt-2)
-            self._drawer.to_time.setValue(maxt-2)   
-
-            self._drawer.from_x.setRange(0,maxx-1)
-            self._drawer.from_x.setValue(0)
-            self._drawer.to_x.setRange(0,maxx-1)
-            self._drawer.to_x.setValue(maxx-1)       
+            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
         
-            self._drawer.from_y.setRange(0,maxy-1)
+            self._setRanges()
+            self._drawer.from_time.setValue(0)
+            self._drawer.to_time.setValue(maxt) 
+            self._drawer.from_x.setValue(0)
+            self._drawer.to_x.setValue(maxx)
             self._drawer.from_y.setValue(0)
-            self._drawer.to_y.setRange(0,maxy-1)
-            self._drawer.to_y.setValue(maxy-1)       
-
-            self._drawer.from_z.setRange(0,maxz-1)
-            self._drawer.from_z.setValue(0)
-            self._drawer.to_z.setRange(0,maxz-1)
-            self._drawer.to_z.setValue(maxz-1)
+            self._drawer.to_y.setValue(maxy)   
+            self._drawer.from_z.setValue(0)    
+            self._drawer.to_z.setValue(maxz)
             
 #            self._drawer.lineageFromBox.setRange(0,maxt-1)
 #            self._drawer.lineageFromBox.setValue(0)
@@ -162,6 +150,34 @@ class TrackingGuiBase( LayerViewerGui ):
         
         return layers
 
+
+    def _setRanges(self):
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+        maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+        maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
+        
+        from_time = self._drawer.from_time
+        to_time = self._drawer.to_time
+        from_x = self._drawer.from_x
+        to_x = self._drawer.to_x
+        from_y = self._drawer.from_y
+        to_y = self._drawer.to_y
+        from_z = self._drawer.from_z
+        to_z = self._drawer.to_z
+                
+        from_time.setRange(0, to_time.value()-1)        
+        to_time.setRange(from_time.value()+1,maxt)      
+        
+        from_x.setRange(0,to_x.value())
+        to_x.setRange(from_x.value(),maxx)
+        
+        from_y.setRange(0,to_y.value())
+        to_y.setRange(from_y.value(),maxy)
+        
+        from_z.setRange(0,to_z.value())
+        to_z.setRange(from_z.value(),maxz)
+        
 
     def _initColors(self):
         self.mergerColors = [
@@ -197,6 +213,16 @@ class TrackingGuiBase( LayerViewerGui ):
 #        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
 #        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
 
+        self._drawer.from_time.valueChanged.connect(self._setRanges)
+        self._drawer.from_x.valueChanged.connect(self._setRanges)
+        self._drawer.from_y.valueChanged.connect(self._setRanges)
+        self._drawer.from_z.valueChanged.connect(self._setRanges)
+        self._drawer.to_time.valueChanged.connect(self._setRanges)
+        self._drawer.to_x.valueChanged.connect(self._setRanges)
+        self._drawer.to_y.valueChanged.connect(self._setRanges)
+        self._drawer.to_z.valueChanged.connect(self._setRanges)
+        
+
 
     def _onExportButtonPressed(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
@@ -205,11 +231,18 @@ class TrackingGuiBase( LayerViewerGui ):
             print "cancelled."
             return
         
+        # determine from_time (it could has been changed in the GUI meanwhile)
+        for t_from, label2color_at in enumerate(self.mainOperator.label2color):
+            if len(label2color_at) == 0:                
+                continue
+            else:
+                break
+            
         print "Saving first label image..."
         key = []
         for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
             if flag is 't':
-                key.append(slice(0,1))
+                key.append(slice(t_from,t_from+1))
             elif flag is 'c':
                 key.append(slice(0,1))                
             else:
@@ -217,15 +250,24 @@ class TrackingGuiBase( LayerViewerGui ):
         
         roi = SubRegion(self.mainOperator.LabelImage, key)
         labelImage = self.mainOperator.LabelImage.get(roi).wait()
+        labelImage = labelImage[0,...,0]
         
-        write_events([], str(directory), 0, labelImage)
+        write_events([], str(directory), t_from, labelImage)
         
         events = self.mainOperator.events
         print "Saving events..."
         print "Length of events " + str(len(events))
         
         for i, events_at in enumerate(events):
-            self._write_events(events_at, str(directory), i+1)
+            t = t_from + i            
+            key[0] = slice(t+1,t+2)
+            roi = SubRegion(self.mainOperator.LabelImage, key)
+            labelImage = self.mainOperator.LabelImage.get(roi).wait()
+            labelImage = labelImage[0,...,0]
+            if self.withMergers:                
+                write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
+            else:
+                write_events(events_at, str(directory), t+1, labelImage)
             
             
     def _onExportTifButtonPressed(self):
@@ -241,6 +283,8 @@ class TrackingGuiBase( LayerViewerGui ):
         lshape = list(self.mainOperator.LabelImage.meta.shape)
     
         for t, label2color_at in enumerate(label2color):
+            if len(label2color_at) == 0:                
+                continue
             print 'exporting tiffs for t = ' + str(t)            
             
             roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
@@ -248,8 +292,8 @@ class TrackingGuiBase( LayerViewerGui ):
             relabeled = relabel(labelImage[0,...,0],label2color_at)
             for i in range(relabeled.shape[2]):
                 out_im = relabeled[:,:,i]
-                out_fn = str(directory) + '/vis_' + str(t).zfill(4) + '_' + str(i).zfill(4) + '.tif'
-                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint8), out_fn)
+                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint32), out_fn)
         
         print 'Tiffs exported.'
                     
@@ -281,8 +325,10 @@ class TrackingGuiBase( LayerViewerGui ):
         self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing, from_t=from_t, to_t=to_t)
         print 'Lineage Trees saved.'
         
+        
     def _onTrackButtonPressed( self ):
         raise NotImplementedError        
+        
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):

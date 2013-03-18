@@ -1,4 +1,3 @@
-from PyQt4.QtGui import QWidget, QVBoxLayout
 from PyQt4 import uic
 
 import os

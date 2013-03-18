@@ -1,37 +1,39 @@
-from PyQt4.QtCore import Qt, QVariant
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from opDataSelection import OpDataSelection, DatasetInfo
-
+#Python
 from functools import partial
 import os
 import copy
 import glob
 import threading
 import h5py
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger('TRACE.' + __name__)
 
+#SciPy
+import vigra
+
+#PyQt
+from PyQt4.QtCore import Qt, QVariant
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
+from lazyflow.utility import Tracer
+from lazyflow.request import Request
+
+#volumina
 from volumina.utility import PreferencesManager
-from volumina.volumeEditor import VolumeEditor
-from volumina.volumeEditorWidget import VolumeEditorWidget
-from volumina.api import LayerStackModel
-from volumina.adaptors import Op5ifyer
 
+#ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
-
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
 from ilastik.applets.base.applet import ControlCommand
+from opDataSelection import OpDataSelection, DatasetInfo
 
-import vigra
-
-import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import Tracer
+#===----------------------------------------------------------------------------------------------------------------===
 
 class Column():
     """ Enum for table column positions """
@@ -52,7 +54,7 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
-class DataSelectionGui(QMainWindow):
+class DataSelectionGui(QWidget):
     """
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
@@ -89,12 +91,13 @@ class DataSelectionGui(QMainWindow):
             if(len(self.topLevelOperator.Dataset) != laneIndex+1):
                 import warnings
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
+        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
         if self.guiMode != GuiMode.Batch:
             assert len(self.topLevelOperator.Dataset) == finalLength
-
+        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
         
     ###########################################
     ###########################################
@@ -173,6 +176,7 @@ class DataSelectionGui(QMainWindow):
             self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
             self.drawer.addStackFilesButton.setIcon( QIcon(ilastikIcons.AddSel) )
 
+            self.drawer.removeFileButton.setEnabled(False)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
             self.drawer.removeFileButton.setIcon( QIcon(ilastikIcons.RemSel) )
     
@@ -231,11 +235,14 @@ class DataSelectionGui(QMainWindow):
 
         # Launch the "Open File" dialog
         fileNames = self.getImageFileNamesToOpen(defaultDirectory)
-
+        
         # If the user didn't cancel        
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
-            self.addFileNames(fileNames)
+            try:
+                self.addFileNames(fileNames)
+            except RuntimeError as e:
+                QMessageBox.critical(self, "Error loading file", str(e))
     
     def handleAddStackButtonClicked(self):
         """
@@ -338,21 +345,27 @@ class DataSelectionGui(QMainWindow):
         def importStack():
             self.guiControlSignal.emit( ControlCommand.DisableAll )
             # Serializer will update the operator for us, which will propagate to the GUI.
-            self.serializer.importStackAsLocalDataset( info )
-            self.guiControlSignal.emit( ControlCommand.Pop )
+            try:
+                self.serializer.importStackAsLocalDataset( info )
+            finally:
+                self.guiControlSignal.emit( ControlCommand.Pop )
 
-        importThread = threading.Thread( target=importStack )
-        importThread.start()
+        req = Request( importStack )
+        req.notify_failed( partial(self.handleFailedStackLoad, globString ) )
+        req.submit()
 
+    @threadRouted
+    def handleFailedStackLoad(self, globString, exc):
+        msg = "Failed to load stack: {}\n".format(globString)
+        msg += "Due to the following error:\n{}".format( exc )
+        QMessageBox.critical(self, "Failed to load image stack", msg)
 
     def addFileNames(self, fileNames):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         """
         with Tracer(traceLogger):
-            # Allocate additional subslots in the operator inputs.
-            oldNumFiles = len(self.topLevelOperator.Dataset)
-            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
+            infos = []
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
@@ -363,9 +376,9 @@ class DataSelectionGui(QMainWindow):
 
                 # Relative by default, unless the file is in a totally different tree from the working directory.
                 if len(os.path.commonprefix([cwd, absPath])) > 1: 
-                   datasetInfo.filePath = relPath
+                    datasetInfo.filePath = relPath
                 else:
-                   datasetInfo.filePath = absPath
+                    datasetInfo.filePath = absPath
 
                 h5Exts = ['.ilp', '.h5', '.hdf5']
                 if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
@@ -373,12 +386,17 @@ class DataSelectionGui(QMainWindow):
                     if len(datasetNames) > 0:
                         datasetInfo.filePath += str(datasetNames[0])
                     else:
-                        raise RuntimeError("HDF5 file has no image datasets")
+                        raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+                infos.append(datasetInfo)
 
-                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
+            #if no exception was thrown, set up the operator now
+            oldNumFiles = len(self.topLevelOperator.Dataset)
+            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
+            for i in range(len(infos)):
+                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( infos[i] )
 
     @threadRouted
     def updateTableForSlot(self, slot, *args):
@@ -714,46 +732,3 @@ class DataSelectionGui(QMainWindow):
 
         # Show the right one
         self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -2,9 +2,8 @@ import os
 import sys
 import numpy
 from PyQt4.QtGui import QApplication
-from volumina.layer import AlphaModulatedLayer
 from tests.helpers import ShellGuiTestCaseBase
-from workflows.pixelClassification import PixelClassificationWorkflow
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.utility.timer import Timer
@@ -89,7 +88,6 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             opDataSelection.Dataset[0].setValue(info)
             
             # Set some features
-            featureGui = workflow.featureSelectionApplet.getMultiLaneGui()
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
             opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )

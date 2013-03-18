@@ -1,4 +1,4 @@
-from PyQt4 import uic
+from PyQt4 import uic, QtGui
 
 import os
 import math
@@ -24,6 +24,7 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         noiserate = self._drawer.noiseRateSpinBox.value()
         noiseweight = self._drawer.noiseWeightSpinBox.value()
         epGap = self._drawer.epGapSpinBox.value()
+        n_neighbors = self._drawer.nNeighborsSpinBox.value()
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
@@ -39,21 +40,28 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         from_size = self._drawer.from_size.value()
         to_size = self._drawer.to_size.value()        
 
-        self.mainOperator.track(
-                    time_range = range(from_t, to_t + 1),
-                    x_range = (from_x, to_x + 1),
-                    y_range = (from_y, to_y + 1),
-                    z_range = (from_z, to_z + 1),
-                    size_range = (from_size, to_size + 1),
-                    x_scale = self._drawer.x_scale.value(),
-                    y_scale = self._drawer.y_scale.value(),
-                    z_scale = self._drawer.z_scale.value(),
-                    app=app,
-                    dis=dis,
-                    opp=opp,
-                    det=det,
-                    mdet=mdet,
-                    ep_gap=epGap)
+        try:
+            self.mainOperator.track(
+                        time_range = range(from_t, to_t + 1),
+                        x_range = (from_x, to_x + 1),
+                        y_range = (from_y, to_y + 1),
+                        z_range = (from_z, to_z + 1),
+                        size_range = (from_size, to_size + 1),
+                        x_scale = self._drawer.x_scale.value(),
+                        y_scale = self._drawer.y_scale.value(),
+                        z_scale = self._drawer.z_scale.value(),
+                        app=app,
+                        dis=dis,
+                        opp=opp,
+                        det=det,
+                        mdet=mdet,
+                        ep_gap=epGap,
+                        n_neighbors=n_neighbors)
+        except Exception as e:
+            QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)
+            return
     
+        self._drawer.exportButton.setEnabled(True)
+        self._drawer.exportTifButton.setEnabled(True)
         self._setLayerVisible("Objects", False)
     

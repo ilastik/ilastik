@@ -1,7 +1,6 @@
 import sys
 import nose
 import threading
-import platform
 import traceback
 import atexit
 from functools import partial
@@ -25,7 +24,6 @@ def run_shell_nosetest(filename):
     assert threading.current_thread() == threading.enumerate()[0]
 
     def run_nose():
-        import sys
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
         sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
         nose.run(defaultTest=filename)

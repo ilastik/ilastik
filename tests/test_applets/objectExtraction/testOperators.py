@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 from lazyflow.graph import Graph
-from ilastik.applets.objectExtraction.opObjectExtraction import \
-    OpObjectExtraction, OpLabelImage, OpRegionFeatures
+from ilastik.applets.objectExtraction.opObjectExtraction import OpLabelImage, OpRegionFeatures
 
 FEATURES = [
     'Count',

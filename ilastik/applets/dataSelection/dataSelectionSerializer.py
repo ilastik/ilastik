@@ -122,7 +122,7 @@ class DataSelectionSerializer( AppletSerializer ):
         Create a datainfo and append it to our operator.
         """
         with Tracer(traceLogger):
-
+            exception = None
             try:
                 self.progressSignal.emit(0)
                 
@@ -140,16 +140,18 @@ class DataSelectionSerializer( AppletSerializer ):
 
                 # Forward progress from the writer directly to our applet                
                 opWriter.progressSignal.subscribe( self.progressSignal.emit )
-                
+               
                 success = opWriter.WriteImage.value
-                
                 numDatasets = len(self.topLevelOperator.Dataset)
+                
                 self.topLevelOperator.Dataset.resize( numDatasets + 1 )
                 self.topLevelOperator.Dataset[numDatasets].setValue(info)
+            except RuntimeError as e:
+                exception = e
             finally:
                 self.progressSignal.emit(100)
-
-            return success
+            if exception:
+                raise exception
 
     @traceLogged(traceLogger)
     def initWithoutTopGroup(self, hdf5File, projectFilePath):

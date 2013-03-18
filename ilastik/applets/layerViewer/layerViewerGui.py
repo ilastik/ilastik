@@ -1,31 +1,35 @@
-import numpy
-
-from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor
-
-from lazyflow.graph import OperatorWrapper
-from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
-
+#Python
 import os
-from functools import partial
-from volumina.utility import ShortcutManager
-from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted
-
-from volumina.adaptors import Op5ifyer
-
-from volumina.interpreter import ClickReportingInterpreter
-
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import traceLogged, Tracer
 
-class LayerViewerGuiMetaclass(type(QMainWindow)):
+#SciPy
+import numpy
+
+#PyQt
+from PyQt4.QtCore import QRectF
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
+from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
+from lazyflow.utility import traceLogged
+
+#volumina
+from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
+                         LayerStackModel, VolumeEditor
+from volumina.utility import ShortcutManager
+from volumina.adaptors import Op5ifyer
+from volumina.interpreter import ClickReportingInterpreter
+
+#ilastik
+from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
+
+#===----------------------------------------------------------------------------------------------------------------===
+
+class LayerViewerGuiMetaclass(type(QWidget)):
     """
     Custom metaclass to enable the _after_init function.
     """
@@ -40,7 +44,7 @@ class LayerViewerGuiMetaclass(type(QMainWindow)):
         instance._after_init()
         return instance
 
-class LayerViewerGui(QMainWindow):
+class LayerViewerGui(QWidget):
     """
     Implements an applet GUI whose central widget is a VolumeEditor
     and whose layer controls simply contains a layer list widget.
@@ -199,19 +203,23 @@ class LayerViewerGui(QMainWindow):
         * If *slot* has 1 channel, a GrayscaleLayer is created.
         * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
         * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
+        * If *slot* has 4 channels, an RGBA layer is created
 
         :param slot: The slot to generate a layer from
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
+                                   If slot has 4 channels, this parameter has no effect.
         """
         def getRange(meta):
             if 'drange' in meta:
                 return meta.drange
-            if numpy.issubdtype(meta.dtype, numpy.integer):
-                # We assume that ints range up to their max possible value,
-                return (0, numpy.iinfo( meta.dtype ).max)
+            if meta.dtype == numpy.uint8:
+                return (0, 255)
             else:
                 # If we don't know the range of the data, create a layer that is auto-normalized.
                 # See volumina.pixelpipeline.datasources for details.
+                #
+                # Even in the case of integer data, which has more than 255 possible values,
+                # (like uint16), it seems reasonable to use this setting as default
                 return 'autoPercentiles'
 
         # Examine channel dimension to determine Grayscale vs. RGB
@@ -226,6 +234,9 @@ class LayerViewerGui(QMainWindow):
         except:
             numChannels = 1
 
+        if numChannels == 4:
+            lastChannelIsAlpha = True
+            
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
         else:
@@ -298,13 +309,6 @@ class LayerViewerGui(QMainWindow):
             # Start in the center of the volume
             self.editor.posModel.slicingPos = midpos3d
             self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
-
-            # If one of the xyz dimensions is 1, the data is 2d.
-            singletonDims = filter( lambda (i,dim): dim == 1, enumerate(newDataShape[1:4]) )
-            if len(singletonDims) == 1:
-                # Maximize the slicing view for this axis
-                axis = singletonDims[0][0]
-                self.volumeEditorWidget.quadview.ensureMaximized(axis)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -471,6 +475,7 @@ class LayerViewerGui(QMainWindow):
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
 
+        '''
         def rubberBandZoom():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
@@ -480,6 +485,7 @@ class LayerViewerGui(QMainWindow):
                 else:
                     self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
                     self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
+        '''
 
         def hideHud():
             hide = not self.editor.imageViews[0]._hud.isVisible()
@@ -518,7 +524,8 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
         self.menuGui.actionFitImage.triggered.connect(fitImage)
         self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+        #FIXME: this needs bug fixing
+        #self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
         self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
 

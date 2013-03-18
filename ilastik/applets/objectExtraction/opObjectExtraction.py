@@ -28,8 +28,8 @@ class OpLabelImage(Operator):
     # file instead of allocating space for all the requests.
     LabelImageComputation = OutputSlot(stype="float")
 
-    def __init__(self, parent):
-        super(OpLabelImage, self).__init__(parent)
+    def __init__(self, parent=None, graph=None):
+        super(OpLabelImage, self).__init__(parent=parent, graph=graph)
         # whether to use in-memory compressed hdf5 or a numpy array
         self.compressed = config.compress_labels
         if self.compressed:
@@ -122,8 +122,8 @@ class OpRegionFeatures(Operator):
     LabelImage = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
 
-    def __init__(self, features, parent):
-        super(OpRegionFeatures, self).__init__(parent)
+    def __init__(self, features, parent=None, graph=None):
+        super(OpRegionFeatures, self).__init__(parent=parent, graph=graph)
         self._cache = {}
         self.fixed = False
         self.features = features

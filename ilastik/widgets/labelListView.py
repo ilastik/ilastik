@@ -1,7 +1,8 @@
 import os
 from PyQt4.QtGui import QTableView, QColorDialog, \
     QAbstractItemView, QVBoxLayout, QPushButton, \
-    QColor, QWidget, QHeaderView, QDialog
+    QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
+    QLabel, QSizePolicy
 from PyQt4.QtCore import Qt
 from PyQt4 import uic
 from labelListModel import LabelListModel, Label, ColumnID
@@ -39,14 +40,24 @@ class ColorDialog(QDialog):
         return self._pmapColor
 
 
-class LabelListView(QTableView):
+class LabelListView(QStackedWidget):
+    PAGE_EMPTY    = 0 
+    PAGE_LISTVIEW = 1
 
     def __init__(self, parent = None):
-        QTableView.__init__(self, parent)
-        self.clicked.connect(self.tableViewCellClicked)
-        self.doubleClicked.connect(self.tableViewCellDoubleClicked)
-        self.verticalHeader().sectionMoved.connect(self.rowMovedTest)
-        self.setShowGrid(False)
+        super(LabelListView, self).__init__(parent=parent)
+        
+        self.emptyMessage = QLabel("no labels defined yet")
+        self.emptyMessage.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter )
+        self.emptyMessage.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.addWidget(self.emptyMessage)
+        
+        self._table = QTableView()
+        self.addWidget(self._table)
+        self._table.clicked.connect(self.tableViewCellClicked)
+        self._table.doubleClicked.connect(self.tableViewCellDoubleClicked)
+        self._table.verticalHeader().sectionMoved.connect(self.rowMovedTest)
+        self._table.setShowGrid(False)
         self._colorDialog = ColorDialog()
 
     def tableViewCellDoubleClicked(self, modelIndex):
@@ -65,49 +76,77 @@ class LabelListView(QTableView):
         print "{} {} {}".format(logicalIndex, oldVisualIndex, newVisualIndex)
 
     def _setListViewLook(self):
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setFocusPolicy(Qt.NoFocus)
-        self.setShowGrid(False)
-        self.horizontalHeader().hide()
-        self.verticalHeader().hide()
-        self.resizeColumnToContents(ColumnID.Color)
-        self.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
-        self.resizeColumnToContents(ColumnID.Delete)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table = self._table
+        table.setDragEnabled(True)
+        table.setAcceptDrops(True)
+        table.setFocusPolicy(Qt.NoFocus)
+        table.setShowGrid(False)
+        table.horizontalHeader().hide()
+        table.verticalHeader().hide()
+        table.resizeColumnToContents(ColumnID.Color)
+        table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
+        table.resizeColumnToContents(ColumnID.Delete)
+        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+     
+    def selectRow(self, *args, **kwargs):
+        self._table.selectRow(*args, **kwargs)
+        
+    def _onRowsChanged(self, parent, start, end):
+        model = self._table.model()
+        if model and model.rowCount() > 0:
+            self.setCurrentIndex(self.PAGE_LISTVIEW)
+        else:
+            self.setCurrentIndex(self.PAGE_EMPTY)
+        self.parent().updateGeometry()
 
     def setModel(self, model):
-        QTableView.setModel(self, model)
-        self.setSelectionModel(model._selectionModel)
+        QTableView.setModel(self._table, model)
+        self._table.setSelectionModel(model._selectionModel)
+        
+        if model.rowCount() > 0:
+            self.setCurrentIndex(self.PAGE_LISTVIEW)
+        else:
+            self.setCurrentIndex(self.PAGE_EMPTY)
+            
+        model.rowsInserted.connect(self._onRowsChanged)
+        model.rowsRemoved.connect(self._onRowsChanged)
+        
         self._setListViewLook()
-
+        
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == ColumnID.Delete and
-            not self.model().flags(modelIndex) == Qt.NoItemFlags):
-            self.model().removeRow(modelIndex.row())
+            not self._table.model().flags(modelIndex) == Qt.NoItemFlags):
+            self._table.model().removeRow(modelIndex.row())
 
     @property
     def allowDelete(self):
-        return not self.isColumnHidden(ColumnID.Delete)
+        return not self._table.isColumnHidden(ColumnID.Delete)
 
     @allowDelete.setter
     def allowDelete(self, allow):
-        self.setColumnHidden(ColumnID.Delete, not allow)
+        self._table.setColumnHidden(ColumnID.Delete, not allow)
 
     def minimumSizeHint(self):
         #http://www.qtcentre.org/threads/14764-QTableView-sizeHint%28%29-issues
-        vHeader = self.verticalHeader()
-        hHeader = self.horizontalHeader()
-        doubleFrame = 2 * self.frameWidth()
+        t = self._table
+        vHeader = t.verticalHeader()
+        hHeader = t.horizontalHeader()
+        doubleFrame = 2 * t.frameWidth()
         w = hHeader.length() + vHeader.width() + doubleFrame;
-        h = vHeader.length() + hHeader.height() + doubleFrame;
+     
+        contentH = 0
+        if self._table.model(): 
+            for i in range(self._table.model().rowCount()):
+                contentH += self._table.rowHeight(i)
+        contentH = max(90, contentH) 
+        
+        h = hHeader.height() + contentH + doubleFrame;
         from PyQt4.QtCore import QSize
         return QSize(w,h)
 
     def sizeHint(self):
         return self.minimumSizeHint()
-
 
 if __name__ == '__main__':
     import numpy
@@ -119,9 +158,10 @@ if __name__ == '__main__':
     red   = QColor(255,0,0)
     green = QColor(0,255,0)
     blue  = QColor(0,0,255)
-    model = LabelListModel([Label("Label 1", red),
-                            Label("Label 2", green),
-                            Label("Label 3", blue)])
+    #model = LabelListModel([Label("Label 1", red),
+    #                        Label("Label 2", green),
+    #                        Label("Label 3", blue)])
+    model = LabelListModel()
 
     l = QVBoxLayout()
     w = QWidget(None)
@@ -146,7 +186,7 @@ if __name__ == '__main__':
 
     tableView2 = LabelListView()
     tableView2.setModel(model)
-    tableView2.setShowGrid(True)
+    tableView2._table.setShowGrid(True)
     l.addWidget(tableView2)
 
     sys.exit(app.exec_())
