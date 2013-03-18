@@ -16,6 +16,22 @@ try:
 except:
     _use_vigra = False
 
+class BlockwiseFilesetFactory(object):
+    
+    creationFns = set()
+    
+    @classmethod
+    def register(cls, creationFn ):
+        BlockwiseFilesetFactory.creationFns.add(creationFn)
+    
+    @classmethod
+    def create(cls, descriptionPath, mode):
+        for fn in BlockwiseFilesetFactory.creationFns:
+            bfs = fn(descriptionPath, mode)
+            if bfs is not None:
+                return bfs
+        raise RuntimeError( "Wasn't able to create a blockwise fileset from your file: {} ".format(descriptionPath) )
+
 class BlockwiseFileset(object):
     """
     This class handles writing and reading a 'blockwise file set'.
@@ -92,6 +108,14 @@ class BlockwiseFileset(object):
         The :py:class:`jsonConfig.Namespace` object that describes this dataset.
         """
         return self._description
+
+    @classmethod
+    def _createAndReturnBlockwiseFileset(self, descriptionFilePath, mode):
+        try:
+            bfs = BlockwiseFileset( descriptionFilePath, mode )
+        except JsonConfigParser.SchemaError:
+            bfs = None
+        return bfs
 
     def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
         """
@@ -461,6 +485,6 @@ class BlockwiseFileset(object):
 
         return fullDatasetPath
 
-
+BlockwiseFilesetFactory.register( BlockwiseFileset._createAndReturnBlockwiseFileset )
 
 

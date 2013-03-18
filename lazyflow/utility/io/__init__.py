@@ -1,3 +1,3 @@
-from blockwiseFileset import BlockwiseFileset
+from blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
 from RESTfulVolume import RESTfulVolume
 from RESTfulBlockwiseFileset import RESTfulBlockwiseFileset

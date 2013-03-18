@@ -5,7 +5,7 @@ import functools
 import threading
 import numpy
 import Queue
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
 from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility import FileLock
@@ -117,6 +117,15 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         """
         RESTfulBlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
 
+    @classmethod
+    def _createAndReturnBlockwiseFileset(self, descriptionFilePath, mode):
+        try:
+            rbfs = RESTfulBlockwiseFileset( descriptionFilePath )
+            assert mode == 'r', "RESTfulBlockwiseFilesets may only be opened in read-only mode."
+        except JsonConfigParser.SchemaError:
+            rbfs = None
+        return rbfs
+    
     def __init__(self, compositeDescriptionPath ):
         """
         Constructor.  Uses `readDescription` interally.
@@ -317,6 +326,9 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
+
+BlockwiseFilesetFactory.register( RESTfulBlockwiseFileset._createAndReturnBlockwiseFileset )
+
 
 if __name__ == "__main__":
     import sys
