@@ -140,6 +140,12 @@ class BlockwiseFileset(object):
     def __del__(self):
         if hasattr(self, '_closed') and not self._closed:
             self.close()
+            
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def close(self):
         """
@@ -357,13 +363,16 @@ class BlockwiseFileset(object):
             # Write the block data file
             hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
             if path_parts.internalPath not in hdf5File:
+                shape = tuple( entire_block_roi[1] - entire_block_roi[0] )
                 chunks = self._description.chunks
                 if chunks is not None:
+                    # chunks must not be bigger than the data in any dim
+                    chunks = numpy.minimum( chunks, shape )
                     chunks = tuple(chunks)
                 compression=self._description.compression
                 compression_opts=self._description.compression_opts
                 dataset = hdf5File.create_dataset( path_parts.internalPath,
-                                         shape=( entire_block_roi[1] - entire_block_roi[0] ),
+                                         shape=shape,
                                          dtype=self._description.dtype,
                                          chunks=chunks,
                                          compression=compression,
@@ -430,14 +439,17 @@ class BlockwiseFileset(object):
         fullDatasetPath = os.path.join( exportDirectory, datasetPath )
         path_parts = PathComponents( fullDatasetPath )
         
-        with h5py.File(path_parts.externalPath) as f:
+        with h5py.File(path_parts.externalPath, 'w') as f:
+            shape = tuple(roi[1] - roi[0])            
             chunks = self._description.chunks
             if chunks is not None:
+                # chunks must not be bigger than the data in any dim
+                chunks = numpy.minimum( chunks, shape )
                 chunks = tuple(chunks)
             compression = self._description.compression
             compression_opts = self._description.compression_opts
             dataset = f.create_dataset( path_parts.internalPath,
-                                     shape=( roi[1] - roi[0] ),
+                                     shape=shape,
                                      dtype=self._description.dtype,
                                      chunks=chunks,
                                      compression=compression,
