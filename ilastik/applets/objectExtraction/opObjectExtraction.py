@@ -140,36 +140,36 @@ class OpRegionFeatures3d(Operator):
                 
             ccbboxexcl = passed-ccbboxobject
             
-            #labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
-            #feats = [None, None, None]
-            #for i, bbox in enumerate(labeled_bboxes):
-            #    def extractObjectFeatures(i):
-            #        feats[i] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
-            #                                                        bbox.astype(numpy.uint32), \
-            #                                                        self._vigraFeatureNames, \
-            #                                                        histogramRange=[0, 255], \
-            #                                                        binCount = 10,\
-            #                                                        ignoreLabel=0)
-            #    req = pool.request(partial(extractObjectFeatures, i))
-            #pool.wait()
+            labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
+            feats = [None, None, None]
+            for ibox, bbox in enumerate(labeled_bboxes):
+                def extractObjectFeatures(ibox):
+                    feats[ibox] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
+                                                                    bbox.astype(numpy.uint32), \
+                                                                    self._vigraFeatureNames, \
+                                                                    histogramRange=[0, 255], \
+                                                                    binCount = 10,\
+                                                                    ignoreLabel=0)
+                req = pool.request(partial(extractObjectFeatures, ibox))
+            pool.wait()
 
-            #features_incl.append(feats[0])
-            #features_excl.append(feats[1])
-            #features_obj.append(feats[2])
-            f_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32),\
-                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-                                                          ignoreLabel=0)
+            features_incl.append(feats[0])
+            features_excl.append(feats[1])
+            features_obj.append(feats[2])
+            #f_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32),\
+            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+            #                                              ignoreLabel=0)
 
-            f_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32),\
-                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-                                                          ignoreLabel=0)
+            #f_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32),\
+            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+            #                                              ignoreLabel=0)
 
-            f_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32),\
-                                                          self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-                                                          ignoreLabel=0)
-            features_incl.append(f_incl)
-            features_excl.append(f_excl)
-            features_obj.append(f_obj)
+            #f_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32),\
+            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
+            #                                              ignoreLabel=0)
+            #features_incl.append(f_incl)
+            #features_excl.append(f_excl)
+            #features_obj.append(f_obj)
 
 
             if "lbp_obj" in self._otherFeatureNames:
@@ -199,7 +199,43 @@ class OpRegionFeatures3d(Operator):
                 otherFeatures_dict["lbp_excl"].append(lbp_hist_excl)
                 otherFeatures_dict["lbp_obj"].append(lbp_hist_obj)
 
-            
+            if "bad_slices" in self._otherFeatureNames:
+                #compute the quality score of an object. lower is better
+                nbadslices = 0
+                for iz in range(maxz-minz):
+                    nblack = numpy.sum(rawbbox[:, :, iz]==0)
+                    if nblack>0.5*rawbbox.shape[0]*rawbbox.shape[1]:
+                        nbadslices = nbadslices+1
+                otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
+
+            if "lapl_obj" in self._otherFeatureNames:
+                #compute mean and variance of laplacian in the object and its neighborhood
+                lapl = None
+                try:
+                    lapl = vigra.filters.laplacianOfGaussian(rawbbox)
+                except RuntimeError:
+                    #kernel longer than line. who cares?
+                    otherFeatures_dict["lapl_incl"].append(None)
+                    otherFeatures_dict["lapl_excl"].append(None)
+                    otherFeatures_dict["lapl_obj"].append(None)
+                else:
+                    lapl_incl = lapl[passed]
+                    lapl_excl = lapl[ccbboxexcl.astype(bool)]
+                    lapl_obj = lapl[ccbboxobject.astype(bool)]
+                    lapl_mean_incl = numpy.mean(lapl_incl)
+                    lapl_var_incl = numpy.var(lapl_incl)
+                    lapl_mean_excl = numpy.mean(lapl_excl)
+                    lapl_var_excl = numpy.var(lapl_excl)
+                    lapl_mean_obj = numpy.mean(lapl_obj)
+                    lapl_var_obj = numpy.var(lapl_obj)
+                    otherFeatures_dict["lapl_incl"].append(numpy.array([lapl_mean_incl, lapl_var_incl]))
+                    otherFeatures_dict["lapl_excl"].append(numpy.array([lapl_mean_excl, lapl_var_excl]))
+                    otherFeatures_dict["lapl_obj"].append(numpy.array([lapl_mean_obj, lapl_var_obj]))
+                
+           
+                    
+                    
+                
             
         feature_keys = features_incl[first_good].keys()
         feature_dict = {}
@@ -218,7 +254,7 @@ class OpRegionFeatures3d(Operator):
                     feature[irow]=numpy.zeros((nchannels,))
             
             feature_dict[key]=numpy.vstack(otherFeatures_dict[key])
-            assert feature_dict[key].shape[0]==nobj, "didn't compute features for all objects"
+            assert feature_dict[key].shape[0]==nobj, "didn't compute features for all objects {}".format(key)
             #print key, feature_dict[key].shape
             
         for key in feature_keys:

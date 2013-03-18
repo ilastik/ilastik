@@ -29,7 +29,7 @@ def getMemoryUsageMb():
 
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
-    Sigmas = InputSlot( value={'x':3.5, 'y':3.5, 'z':1.0} )
+    Sigmas = InputSlot( value={'x':1.0, 'y':1.0, 'z':1.0} )
     
     Output = OutputSlot()
 
@@ -178,8 +178,8 @@ class OpThresholdTwoLevels(Operator):
     MinSize = InputSlot(stype='int', value=100)
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
-    LowThreshold = InputSlot(stype='float', value=0.1)
-    SmootherSigma = InputSlot(value={ 'x':3.5, 'y':3.5, 'z':1.0})
+    LowThreshold = InputSlot(stype='float', value=0.2)
+    SmootherSigma = InputSlot(value={ 'x':1.0, 'y':1.0, 'z':1.0})
     Channel = InputSlot(value=2)
     
     Output = OutputSlot()
