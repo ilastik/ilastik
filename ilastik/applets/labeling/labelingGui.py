@@ -617,14 +617,17 @@ class LabelingGui(LayerViewerGui):
         e =  self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
 
-    def _getLabelLayer(self):
-        # Find the labellayer in the viewer stack
+    def getLayer(self, name):
+        """find a layer by name"""
         try:
-            labellayer = itertools.ifilter(lambda l: l.name == "Labels", self.layerstack).next()
+            labellayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
         except StopIteration:
             return None
         else:
             return labellayer
+
+    def _getLabelLayer(self):
+        return self.getLayer('Labels')
 
     @traceLogged(traceLogger)
     def createLabelLayer(self, direct=False):
