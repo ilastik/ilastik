@@ -215,7 +215,7 @@ class OpObjectTrain(Operator):
                 index = numpy.nonzero(lab)
                 labelsMatrix_tmp.append(lab[index])
 
-                for channel in sorted(feats[t]):
+                for channel in feats[t]:
                     for featname in sorted(channel.keys()):
                         value = channel[featname]
                         if not featname in config.selected_features:
