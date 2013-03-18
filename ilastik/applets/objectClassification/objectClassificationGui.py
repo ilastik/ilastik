@@ -24,6 +24,8 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
+from ilastik.applets.objectExtraction import config
+
 
 class ObjectClassificationGui(LabelingGui):
 
@@ -123,8 +125,6 @@ class ObjectClassificationGui(LabelingGui):
             labellayer.zeroIsTransparent  = False
             labellayer.colortableIsRandom = True
 
-            # FIXME: labeling only possible after some strange
-            # combination of selecting labels and layers
             clickInt = ClickInterpreter(self.editor, labellayer,
                                         self.onClick, right=False,
                                         double=False)
@@ -233,7 +233,13 @@ class ObjectClassificationGui(LabelingGui):
                 if "Segmentation" in layer.name:
                     layer.visible = False
 
-    def onClick(self, layer, pos5D, pos):
+    @staticmethod
+    def _getObject(slot, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        arr = slot[slicing].wait()
+        return arr.flat[0]
+
+    def onClick(self, layer, pos5d, pos):
         """Extracts the object index that was clicked on and updates
         that object's label.
 
@@ -242,13 +248,12 @@ class ObjectClassificationGui(LabelingGui):
         if label == self.editor.brushingModel.erasingNumber:
             label = 0
         assert 0 <= label <= self._labelingSlots.maxLabelValue.value
-        slicing = tuple(slice(i, i+1) for i in pos5D)
 
-        arr = layer.segmentationImageSlot[slicing].wait()
-        obj = arr.flat[0]
+        obj = self._getObject(layer.segmentationImageSlot, pos5d)
         if obj == 0: # background; FIXME: do not hardcode
             return
-        t = pos5D[0]
+
+        t = pos5d[0]
 
         labelslot = layer._datasources[0]._inputSlot
         labelsdict = labelslot.value
@@ -263,3 +268,47 @@ class ObjectClassificationGui(LabelingGui):
         labelsdict[t] = labels
         labelslot.setValue(labelsdict)
         labelslot.setDirty([(t, obj)])
+
+
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
+        layer = self.getLayer('Labels')
+        obj = self._getObject(layer.segmentationImageSlot, position5d)
+        if obj == 0:
+            return
+
+        menu = QMenu(self)
+        text = "print info for object {}".format(obj)
+        menu.addAction(text)
+        action = menu.exec_(globalWindowCoordinate)
+        if action is not None and action.text() == text:
+            t = position5d[0]
+            labels = self.op.LabelInputs([t]).wait()[t]
+            if len(labels) > obj:
+                label = labels[obj]
+            else:
+                label = "none"
+
+            feats = self.op.ObjectFeatures([t]).wait()[t]
+            vector = []
+            names = []
+            for i, channel in enumerate(feats):
+                for featname in sorted(channel.keys()):
+                    value = channel[featname]
+                    if not featname in config.selected_features:
+                        continue
+                    ft = numpy.asarray(value.squeeze())[obj]
+                    vector.append(ft)
+                    names.append("{} {}".format(featname, i))
+            vector = numpy.array(vector)
+
+            preds = self.op.Predictions([t]).wait()[t]
+            if len(preds) < obj:
+                pred = 'none'
+            else:
+                pred = preds[obj]
+
+            print "report for object {}".format(obj)
+            print "label: {}".format(label)
+            print "features: {}".format(vector)
+            print "prediction: {}".format(pred)
+            print "feature names and channels: {}".format(names)
