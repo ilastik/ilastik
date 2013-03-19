@@ -166,10 +166,10 @@ class OpRegionFeatures(Operator):
                     tcroi = SubRegion(self.LabelImage,
                                       start = [t,] + (len(lshape) - 2) * [0,] + [c,],
                                       stop = [t+1,] + list(lshape[1:-1]) + [c+1,])                    
-#                    image = self.RawImage.get(tcroi).wait()
-#                    axiskeys = self.RawImage.meta.getTaggedShape().keys()
-#                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
-#                    image = image[0,...,0] # assumes t,x,y,z,c
+                    image = self.RawImage.get(tcroi).wait()
+                    axiskeys = self.RawImage.meta.getTaggedShape().keys()
+                    assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
+                    image = image[0,...,0] # assumes t,x,y,z,c
 
                     labels = self.LabelImage.get(tcroi).wait()
                     axiskeys = self.LabelImage.meta.getTaggedShape().keys()

@@ -38,8 +38,7 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()
-        nneighbors = self._drawer.knn.value()
+        to_size = self._drawer.to_size.value()        
 
         try:
             self.mainOperator.track(
