@@ -302,6 +302,12 @@ class LayerViewerGui(QWidget):
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
+           
+            #if  the image is 2D, do not show the HUD action (issue #190) 
+            is2D = numpy.sum(numpy.asarray(newDataShape[1:4]) == 1) == 1
+            self.menuGui.actionToggleSelectedHud.setVisible(not is2D)
+            self.menuGui.actionToggleAllHuds.setVisible(not is2D)
+            
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
             midpos3d = midpos5d[1:4]
@@ -503,12 +509,12 @@ class LayerViewerGui(QWidget):
         def centerImage():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
-                self.actionOnly_for_current_view.setEnabled(True)
+                self.menuGui.actionOnly_for_current_view.setEnabled(True)
 
         def resetAxes():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageScenes[self.editor._lastImageViewFocus].resetAxes()
-                self.actionOnly_for_current_view.setEnabled(True)
+                self.menuGui.actionOnly_for_current_view.setEnabled(True)
 
         def resetAllAxes():
             for i, s in enumerate(self.editor.imageScenes):
@@ -558,7 +564,7 @@ class LayerViewerGui(QWidget):
         In the "Only for Current View" menu item of the View menu,
         show the user which axis is the current one by changing the menu item icon.
         """
-        self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
+        self.menuGui.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
     @traceLogged(traceLogger)
     def _convertPositionToDataSpace(self, voluminaPosition):
