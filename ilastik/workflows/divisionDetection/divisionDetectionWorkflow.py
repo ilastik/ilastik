@@ -13,6 +13,7 @@ from lazyflow.stype import Opaque
 from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 from lazyflow.operators import OpAttributeSelector
 from ilastik.applets.divisionFeatureExtraction.divisionFeatureExtractionApplet import DivisionFeatureExtractionApplet
+from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 
 class DivisionDetectionWorkflow(Workflow):
     name = "Division Detection Workflow"
@@ -39,6 +40,10 @@ class DivisionDetectionWorkflow(Workflow):
                                                        batchDataGui=False,
                                                        force5d=True)
         
+#        self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet(self, 
+#                                                                 "Threshold & Size Filter", 
+#                                                                 "ThresholdTwoLevels" )
+        
 #        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectExtractionApplet = DivisionFeatureExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self,
@@ -48,6 +53,7 @@ class DivisionDetectionWorkflow(Workflow):
         self._applets = []
         self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
+#        self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
@@ -63,11 +69,14 @@ class DivisionDetectionWorkflow(Workflow):
         ## Access applet operators
         opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+#        opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         # connect data -> extraction
-        opObjExtraction.RawImage.connect(opRawData.Image)
+        opObjExtraction.RawImage.connect(opRawData.Image)        
+#        opTwoLevelThreshold.InputImage.connect(opData.Image)        
+#        opObjExtraction.BinaryImage.connect(opTwoLevelThreshold.Output)
         opObjExtraction.BinaryImage.connect(opData.Image)
 
         # connect data -> classification

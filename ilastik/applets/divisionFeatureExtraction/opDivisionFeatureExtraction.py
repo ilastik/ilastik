@@ -51,9 +51,11 @@ class OpDivisionFeatures(Operator):
     DivisionFeatures = OutputSlot(stype=Opaque, rtype=List)
     
     divisionFeatures = ['SquaredDistance%02d', 'AngleDaughters', 'ChildrenSizeRatio',\
-                         'SquaredDistanceRatio']
-    numNeighbors = 3
+                         'SquaredDistanceRatio', 'ParentChildrenSizeRatio', \
+                         'ChildrenMeanRatio', 'ParentChildrenMeanRatio']
+    numNeighbors = 2
     templateSize = 100 
+    size_filter_from = 5
     
     defaultSquaredDistance = 1000
     
@@ -100,14 +102,9 @@ class OpDivisionFeatures(Operator):
                                 self.divisionFeatures.remove('SquaredDistance%02d')
                         name = 'SquaredDistance%02d' % n        
                         feats_at_c[name] = numpy.ones([num,1]) * self.defaultSquaredDistance
-                    if 'AngleDaughters' in self.divisionFeatures:
-                        feats_at_c['AngleDaughters'] = numpy.zeros([num,1])
-                    if 'ChildrenSizeRatio' in self.divisionFeatures:
-                        feats_at_c['ChildrenSizeRatio'] = numpy.zeros([num,1])
-#                    if 'NumNeighborsDifference' in self.divisionFeatures:
-#                        feats_at_c['NumNeighborsDifference'] = numpy.zeros([num,1])
-                    if 'SquaredDistanceRatio' in self.divisionFeatures:
-                        feats_at_c['SquaredDistanceRatio'] = numpy.zeros([num,1])
+                    
+                    for name in self.divisionFeatures:
+                        feats_at_c[name] = numpy.zeros([num,1])                    
                         
                     if t < self.LabelImage.meta.shape[0] - 1:
                         region_feats_next = self.RegionFeaturesVigra.get([t+1]).wait()[t+1]
@@ -126,7 +123,8 @@ class OpDivisionFeatures(Operator):
                         assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                         labels_next = labels_next[0,...,0] # assumes t,x,y,z,c
                         
-                        self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, numNeighbors=self.numNeighbors)
+                        self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
+                                                     numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from)
                     
                     feats_at.append(feats_at_c)    
 
@@ -136,7 +134,8 @@ class OpDivisionFeatures(Operator):
         return feats     
     
     
-    def extractDivisionFeatures(self, feats_at_cur, feats_at_next, img_at_next, divFeatures, numNeighbors = 3):
+    def extractDivisionFeatures(self, feats_at_cur, feats_at_next, img_at_next, divFeatures, 
+                                numNeighbors = 3, size_filter_from = 4):
         ''' adds division features to feats_at_cur '''        
         for label_cur, com_cur in enumerate(feats_at_cur['RegionCenter']):
             if label_cur == 0:
@@ -170,12 +169,15 @@ class OpDivisionFeatures(Operator):
             subimg_next = img_at_next[roi]
             labels_next = numpy.unique(subimg_next)
             coms_next = {}
+            sizes_next_all = {}            
             for l in labels_next:
                 if l != 0:
                     coms_next[l] = feats_at_next['RegionCenter'][l]
+                    sizes_next_all[l] = feats_at_next['Count'][l]
                         
-            sqDist = self.getSquaredDistances(com_cur, coms_next, numNeighbors)
+            sqDist = self.getSquaredDistances(com_cur, coms_next, sizes_next_all, numNeighbors, size_filter_from)
             coms_next_reduced = {}
+            labels_next_reduced = []
             for idx,row in enumerate(sqDist):
                 l = row[0]
                 dist = row[1]
@@ -183,6 +185,7 @@ class OpDivisionFeatures(Operator):
                 if name in divFeatures:
                     feats_at_cur[name][label_cur][0] = dist
                 coms_next_reduced[l] = coms_next[l]
+                labels_next_reduced.append(l)
             
             if 'AngleDaughters' in divFeatures:
                 feats_at_cur['AngleDaughters'][label_cur][0] = self.getMaxAngle(com_cur, coms_next_reduced)     
@@ -196,7 +199,23 @@ class OpDivisionFeatures(Operator):
             if 'SquaredDistanceRatio' in divFeatures:
                 feats_at_cur['SquaredDistanceRatio'][label_cur][0] = self.getSquaredDistanceRatio(sqDist)
             
+            if 'ParentChildrenSizeRatio' in divFeatures:
+                size_cur = feats_at_cur['Count'][label_cur]
+                feats_at_cur['ParentChildrenSizeRatio'][label_cur][0] = self.getParentChildrenSizeRatio(size_cur, sizes_next)
     
+            means_next = []
+            for l in labels_next_reduced:
+                means_next.append(feats_at_next['Mean'][l])
+            
+            mean_cur = feats_at_cur['Mean'][label_cur]
+                
+            if 'ChildrenMeanRatio' in divFeatures:
+                feats_at_cur['ChildrenMeanRatio'][label_cur][0] = self.getChildrenMeanRatio(means_next)
+            
+            if 'ParentChildrenMeanRatio' in divFeatures:
+                feats_at_cur['ParentChildrenMeanRatio'][label_cur][0] = self.getParentChildrenMeanRatio(mean_cur, means_next)
+                
+                
     def dotproduct(self, v1, v2):
         return sum((a*b) for a, b in zip(v1, v2))
     
@@ -226,29 +245,31 @@ class OpDivisionFeatures(Operator):
         if len(angles) == 0:
             angles = [0]
         
-        print 'max(angles) =', max(angles)
+#        print 'max(angles) =', max(angles)
         return max(angles)
 
     
-    def getSquaredDistances(self, com_cur, coms_next, num_best = 3, size_filter_from = 4):
+    def getSquaredDistances(self, com_cur, coms_next, sizes_next = None, 
+                            num_best = 3, size_filter_from = 4):
         ''' returns the squared distances to the objects in the neighborhood of com_curr '''  
         squaredDistances = []
         
         for label_next in coms_next.keys():
-            dist = numpy.linalg.norm(coms_next[label_next] - com_cur)
-            squaredDistances.append([label_next,dist])
+            if sizes_next is not None and sizes_next[label_next] >= size_filter_from:
+                dist = numpy.linalg.norm(coms_next[label_next] - com_cur)
+                squaredDistances.append([label_next,dist])
         
         squaredDistances = numpy.array(squaredDistances)
         # sort the array in the second column in ascending order
-        squaredDistances = numpy.array(sorted(squaredDistances, key=lambda a_entry: a_entry[1]))
+        squaredDistances = numpy.array(sorted(squaredDistances, key=lambda a_entry: a_entry[1]))        
         if num_best > squaredDistances.shape[0]:
             num_best = squaredDistances.shape[0]
         
         if len(squaredDistances) == 0:
-            print 'squaredDistances = ', []
+#            print 'squaredDistances = ', []
             return []
         
-        print 'squaredDistances = ', squaredDistances[0:num_best,:]
+#        print 'squaredDistances = ', squaredDistances[0:num_best,:]
         return squaredDistances[0:num_best,:]
         
     
@@ -265,25 +286,56 @@ class OpDivisionFeatures(Operator):
         if len(size_ratios) == 0:
             size_ratios.append(0)
         
-        print 'childrenSizeRatio = ', max(size_ratios)
+#        print 'childrenSizeRatio = ', max(size_ratios)
         return max(size_ratios)
     
+    def getSquaredDistanceRatio(self, squaredDistancesSorted):
+        if len(squaredDistancesSorted) < 2:
+            return 0.
+        dist1 = squaredDistancesSorted[0][1]
+        dist2 = squaredDistancesSorted[1][1]                
+        
+        ratio = float(dist1)/dist2                                    
+        if math.isnan(ratio):
+            return 0.
+        assert ratio <= 1, "the squared distances are not sorted"
+                            
+        return ratio
+
+    def getParentChildrenSizeRatio(self, size_cur, sizes_next):
+        if len(sizes_next) < 2:
+            return 0
+        result = float(size_cur) / (sizes_next[0] + sizes_next[1])
+        if math.isnan(result):
+            return 0
+        return result 
+        
+    def getChildrenMeanRatio(self, means_next):
+        if len(means_next) < 2:
+            return 0
+        ratio = means_next[0] / float(means_next[1])
+        if math.isnan(ratio):
+            return 0
+        if ratio > 1 and ratio != 0:
+            return 1./ratio
+        return ratio
+
+    def getParentChildrenMeanRatio(self, mean_cur, means_next):
+        if len(means_next) == 0:
+            return 0.
+        ratios = []
+        abs_max_idx = 0
+        abs_max = 0
+        for idx,m_n in enumerate(means_next):
+            r = mean_cur / float(m_n)
+            if math.isnan(r):
+                r = 0.       
+            r = r-1  # shift ratio to 0            
+            ratios.append(r)
+            if numpy.abs(r) > abs_max:
+                abs_max_idx = idx
+                abs_max = r
+                
+        return ratios[abs_max_idx]
     
-    def getSquaredDistanceRatio(self, squaredDistances):
-        dist_ratios = []
-        
-        for idx,row1 in enumerate(squaredDistances):            
-            dist1 = row1[1]
-            for row2 in squaredDistances[idx+1:]:
-                dist2 = row2[1]
-                ratio = float(dist1)/dist2                
-                if ratio > 1:
-                    ratio = 1./ratio
-                if math.isnan(ratio):
-                    ratio = 0.
-                dist_ratios.append(ratio)
-        if len(dist_ratios) == 0:
-            dist_ratios.append(0)
-        
-        print 'squaredDistanceRatio = ', max(dist_ratios)
-        return max(dist_ratios)
+    

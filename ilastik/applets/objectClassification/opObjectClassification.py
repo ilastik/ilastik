@@ -189,7 +189,7 @@ class OpObjectTrain(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
-        self._tree_count = 100
+        self._tree_count = 255
         self.FixClassifier.setValue(False)
 
     def setupOutputs(self):
@@ -229,10 +229,7 @@ class OpObjectTrain(Operator):
                 labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
 
         featMatrix = _concatenate(featMatrix, axis=0)
-        labelsMatrix = _concatenate(labelsMatrix, axis=0)
-
-        print 'featMatrix = ' + str(featMatrix)
-        print 'labelsMatrix = ' + str(labelsMatrix)
+        labelsMatrix = _concatenate(labelsMatrix, axis=0)        
         
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
