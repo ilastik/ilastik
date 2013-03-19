@@ -1,15 +1,108 @@
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor
+import os
+import logging
+from functools import partial
 
+from PyQt4 import uic
+from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtGui import QColor
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.applets.layerViewer import LayerViewerGui
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
 class ThresholdTwoLevelsGui( LayerViewerGui ):
     
     def __init__(self, *args, **kwargs):
         super( self.__class__, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
+    
+    def initAppletDrawerUi(self):
+        """
+        Reimplemented from LayerViewerGui base class.
+        """
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        
+        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
+
+        self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
+                                 'y' : self._drawer.sigmaSpinBox_Y,
+                                 'z' : self._drawer.sigmaSpinBox_Z }
+
+        self._allWatchedWidgets = self._sigmaSpinBoxes.values() + \
+        [
+            self._drawer.inputChannelSpinBox,
+            self._drawer.lowThresholdSpinBox,
+            self._drawer.highThresholdSpinBox,
+            self._drawer.minSizeSpinBox,
+            self._drawer.maxSizeSpinBox
+        ]
+        
+        for widget in self._allWatchedWidgets:
+            # If the user pressed enter inside a spinbox, auto-click "Apply"
+            widget.installEventFilter( self )
+
+        self._updateGuiFromOperator()
+    
+    def _updateGuiFromOperator(self):
+        op = self.topLevelOperatorView
+        
+        # Channel
+        channelIndex = op.InputImage.meta.axistags.index('c')
+        numChannels = op.InputImage.meta.shape[channelIndex]
+        self._drawer.inputChannelSpinBox.setRange( 0, numChannels-1 )
+        self._drawer.inputChannelSpinBox.setValue( op.Channel.value )
+
+        # Sigmas
+        sigmaDict = self.topLevelOperatorView.SmootherSigma.value
+        for axiskey, spinBox in self._sigmaSpinBoxes.items():
+            spinBox.setValue( sigmaDict[axiskey] )
+
+        # Thresholds
+        self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
+        self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
+
+        # Size filters
+        self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
+        self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
+    
+    def _updateOperatorFromGui(self):
+        op = self.topLevelOperatorView
+        
+        # Channel
+        op.Channel.setValue( self._drawer.inputChannelSpinBox.value() )
+        
+        # Sigmas
+        sigmaSlot = self.topLevelOperatorView.SmootherSigma
+        block_shape_dict = dict( sigmaSlot.value )
+        block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
+        block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
+        block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
+        sigmaSlot.setValue( block_shape_dict )
+
+        # Thresholds
+        op.LowThreshold.setValue( self._drawer.lowThresholdSpinBox.value() )
+        op.HighThreshold.setValue( self._drawer.highThresholdSpinBox.value() )
+        
+        # Size filters
+        op.MinSize.setValue( self._drawer.minSizeSpinBox.value() )
+        op.MaxSize.setValue( self._drawer.maxSizeSpinBox.value() )
+
+    def _onApplyButtonClicked(self):
+        self._updateOperatorFromGui()
+
+    def eventFilter(self, watched, event):
+        """
+        If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
+        """
+        if watched in self._allWatchedWidgets:
+            if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Enter:
+                self._drawer.applyButton.click()
+                return True
+        return False
     
     def setupLayers(self):
         layers = []        
