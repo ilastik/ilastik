@@ -284,7 +284,7 @@ class ObjectClassificationGui(LabelingGui):
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
             if len(labels) > obj:
-                label = labels[obj]
+                label = int(labels[obj])
             else:
                 label = "none"
 
@@ -305,10 +305,21 @@ class ObjectClassificationGui(LabelingGui):
             if len(preds) < obj:
                 pred = 'none'
             else:
-                pred = preds[obj]
+                pred = int(preds[obj])
 
-            print "report for object {}".format(obj)
-            print "label: {}".format(label)
-            print "features: {}".format(vector)
-            print "prediction: {}".format(pred)
-            print "feature names and channels: {}".format(names)
+            probs = self.op.Probabilities([t]).wait()[t]
+            if len(probs) < obj:
+                prob = 'none'
+            else:
+                prob = probs[obj]
+
+            numpy.set_printoptions(precision=4)
+
+            print "------------------------------------------------------------"
+            print "object:         {}".format(obj)
+            print "label:          {}".format(label)
+            print "feature values: {}".format(vector)
+            print "features names: {}".format(names)
+            print "probabilities:  {}".format(prob)
+            print "prediction:     {}".format(pred)
+            print "------------------------------------------------------------"

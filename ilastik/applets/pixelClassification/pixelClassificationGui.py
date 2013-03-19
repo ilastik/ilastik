@@ -89,7 +89,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
         self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
         
-        self.labelingDrawerUi.liveUpdateButton.setEnabled(True)
+        self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
