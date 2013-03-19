@@ -50,6 +50,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     Classifier = OutputSlot()
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
+    Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
     PredictionImages = OutputSlot(level=1)
     SegmentationImagesOut = OutputSlot(level=1)
 
@@ -95,6 +96,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.NumLabels.setValue(_MAXLABELS)
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
+        self.Probabilities.connect(self.opPredict.Probabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
         self.Classifier.connect(self.opTrain.Classifier)
 
@@ -272,15 +274,30 @@ class OpObjectPredict(Operator):
     Classifier = InputSlot()
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
+    Probabilities = OutputSlot(stype=Opaque, rtype=List)
 
     def setupOutputs(self):
         self.Predictions.meta.shape = self.Features.meta.shape
         self.Predictions.meta.dtype = object
         self.Predictions.meta.axistags = None
 
-        self.cache = dict()
+        self.Probabilities.meta.shape = self.Features.meta.shape
+        self.Probabilities.meta.dtype = object
+        self.Probabilities.meta.axistags = None
+
+        self.pred_cache = dict()
+        self.prob_cache = dict()
 
     def execute(self, slot, subindex, roi, result):
+        if slot is self.Predictions:
+            probs = False
+            cache = self.pred_cache
+        elif slot is self.Probabilities:
+            probs = True
+            cache = self.prob_cache
+        else:
+            raise Exception('unknown slot: {}'.format(slot))
+
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
@@ -294,7 +311,7 @@ class OpObjectPredict(Operator):
         feats = {}
         predictions = {}
         for t in times:
-            if t in self.cache:
+            if t in cache:
                 continue
 
             ftsMatrix = []
@@ -311,17 +328,25 @@ class OpObjectPredict(Operator):
             feats[t] = _concatenate(ftsMatrix, axis=1)
             predictions[t]  = [0] * len(forests)
 
+        def prob_forest(t, number):
+            predictions[t][number] = forests[number].predictProbabilities(feats[t])
+
         def predict_forest(t, number):
             predictions[t][number] = forests[number].predictLabels(feats[t]).reshape(1, -1)
+
+        if probs:
+            func = prob_forest
+        else:
+            func = predict_forest
 
         # predict the data with all the forests in parallel
         pool = Pool()
 
         for t in times:
-            if t in self.cache:
+            if t in cache:
                 continue
             for i, f in enumerate(forests):
-                req = pool.request(partial(predict_forest, t, i))
+                req = pool.request(partial(func, t, i))
 
         pool.wait()
         pool.clean()
@@ -329,23 +354,27 @@ class OpObjectPredict(Operator):
         final_predictions = dict()
 
         for t in times:
-            if t not in self.cache:
+            if t not in cache:
                 # shape (ForestCount, number of objects)
                 prediction = numpy.vstack(predictions[t])
 
-                # take mode of each column
-                m, _ = mode(prediction, axis=0)
-                m = m.squeeze()
-                assert m.ndim == 1
-                m[0] = 0
-                self.cache[t] = m
-            final_predictions[t] = self.cache[t]
+                if not probs:
+                    # take mode of each column
+                    m, _ = mode(prediction, axis=0)
+                    m = m.squeeze()
+                    assert m.ndim == 1
+                    m[0] = 0
+                    prediction = m
+                cache[t] = prediction
+            final_predictions[t] = cache[t]
 
         return final_predictions
 
     def propagateDirty(self, slot, subindex, roi):
-        self.cache = dict()
+        self.pred_cache = dict()
+        self.prob_cache = dict()
         self.Predictions.setDirty(())
+        self.Probabilities.setDirty(())
 
 
 class OpToImage(Operator):
