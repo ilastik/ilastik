@@ -37,6 +37,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
+        assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
+        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
         
         self.Output.setDirty( slice(None) )
     
