@@ -64,6 +64,19 @@ class CarvingGui(LabelingGui):
             self.topLevelOperatorView.opCarving.BackgroundPriority.setValue(value)
         self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
 
+        def onuncertaintyCombo(value):
+            if value == 0:
+                value = "none"
+            if value == 1:
+                value = "localMargin"
+            if value == 2:
+                value = "exchangeCount"
+            if value == 3:
+                value = "gabow"
+            print "uncertainty changed to %r" % value
+            self.topLevelOperatorView.opCarving.UncertaintyType.setValue(value)
+        self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onuncertaintyCombo)
+
         def onBackgroundPriorityDirty(slot, roi):
             oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
             newValue = self.topLevelOperatorView.opCarving.BackgroundPriority.value
@@ -317,6 +330,21 @@ class CarvingGui(LabelingGui):
             layers.append(labellayer)
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
+
+        #uncertainty
+        uncert = self.topLevelOperatorView.opCarving.Uncertainty
+        if uncert.ready():
+            colortable = []
+            for i in range(256-len(colortable)):
+                r,g,b,a = i,0,0,i
+                colortable.append(QColor(r,g,b,a).rgba())
+
+            layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+            layer.name = "uncertainty"
+            layer.visible = True
+            layer.opacity = 0.3
+            layers.append(layer)
+
        
         #segmentation 
         seg = self.topLevelOperatorView.opCarving.Segmentation

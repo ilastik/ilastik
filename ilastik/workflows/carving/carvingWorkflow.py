@@ -54,6 +54,7 @@ class CarvingWorkflow(Workflow):
         ## Connect operators ##
         opCarvingTopLevel.RawData.connect( opData.Image )
         opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
+        opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
 
     def setCarvingGraphFile(self, fname):
         self.carvingApplet.topLevelOperator.opCarving.CarvingGraphFile.setValue(fname)

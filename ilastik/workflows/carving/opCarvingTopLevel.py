@@ -15,6 +15,7 @@ class OpCarvingTopLevel(Operator):
     HintOverlay = OutputSlot(level=1)
     DoneSegmentation = OutputSlot(level=1)
     Supervoxels = OutputSlot(level=1)
+    Uncertainty = OutputSlot(level=1)
 
     ###
     # Multi-lane Operator
@@ -56,3 +57,5 @@ class OpCarvingTopLevel(Operator):
         self.HintOverlay.connect( self.opCarving.HintOverlay )
         self.DoneSegmentation.connect( self.opCarving.DoneSegmentation )
         self.Supervoxels.connect( self.opCarving.Supervoxels )
+        self.Supervoxels.connect( self.opCarving.Supervoxels )
+        self.Uncertainty.connect( self.opCarving.Uncertainty )

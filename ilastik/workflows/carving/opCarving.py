@@ -41,12 +41,17 @@ class OpCarving(Operator):
     #below the number, no background bias will be applied to the edge weights
     NoBiasBelow        = InputSlot()
 
+    # uncertainty type
+    UncertaintyType = InputSlot()
+
     # O u t p u t s #
 
     #current object + background
     Segmentation = OutputSlot()
 
     Supervoxels  = OutputSlot()
+
+    Uncertainty = OutputSlot()
 
     #contains an array with the object labels done so far, one label for each
     #object
@@ -155,6 +160,7 @@ class OpCarving(Operator):
         self.DoneSegmentation.meta.assignFrom(self.RawData.meta)
         self.HintOverlay.meta.assignFrom(self.RawData.meta)
         self.PmapOverlay.meta.assignFrom(self.RawData.meta)
+        self.Uncertainty.meta.assignFrom(self.RawData.meta)
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
@@ -502,6 +508,9 @@ class OpCarving(Operator):
             else:
                 result[:] = self._pmap[roi.toSlice()]
                 return result
+        elif slot == self.Uncertainty:
+            temp = self._mst.uncertainty[sl[1:4]]
+            temp.shape = (1,) + temp.shape + (1,)
         else:
             raise RuntimeError("unknown slot")
 
@@ -526,7 +535,7 @@ class OpCarving(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
-        if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow:
+        if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow or slot == self.UncertaintyType:
             if self._mst is None:
                 return
             if not self.BackgroundPriority.ready():
@@ -542,7 +551,7 @@ class OpCarving(Operator):
 
             params = dict()
             params["prios"] = [1.0, bgPrio, 1.0]
-            params["uncertainty"] = "none"
+            params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
 
             unaries =  numpy.zeros((self._mst.numNodes,labelCount+1)).astype(numpy.float32)
