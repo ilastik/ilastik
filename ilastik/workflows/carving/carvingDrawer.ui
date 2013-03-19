@@ -221,6 +221,37 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Uncertainty</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QComboBox" name="uncertaintyCombo">
+           <item>
+            <property name="text">
+             <string>None</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Local Margin</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Exchange Count</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Gabow</string>
+            </property>
+           </item>
+          </widget>
+         </item>
         </layout>
        </item>
        <item>
