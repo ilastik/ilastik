@@ -262,15 +262,33 @@ class OpCompressedCache(Operator):
         Overridden from Operator
         """
         assert slot == self.Input, "OpCompressedCache: Only the main Input slot supports setInSlot"
-        assert ((roi.stop - roi.start) == self._blockshape).all(), "OpCompressedCache: setInSlot requires roi to be exactly one block"
-        inputShape = self.Input.meta.shape
-        block_start = tuple( roi.start )
-        entire_block_roi = getBlockBounds( inputShape, self._blockshape, block_start )
-        assert (entire_block_roi == numpy.array([roi.start, roi.stop])).all, "OpCompressedCache: setInSlot requires roi to be aligned to a block"
+        assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
+        
+        block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
+        block_starts = map( lambda x: tuple(x), block_starts )
 
-        dataset = self._getBlockDataset(entire_block_roi)
-        dataset[...] = value[...]
-        self._dirtyBlocks.discard( block_start )
+        # Copy data to each block
+        logger.debug( "Copying data from {} blocks...".format( len(block_starts) ) )
+        for block_start in block_starts:
+            entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+
+            # This block's portion of the roi
+            intersecting_roi = getIntersection( (roi.start, roi.stop), entire_block_roi )
+            
+            # Compute slicing within source array and slicing within this block
+            source_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
+            block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+            
+            # Copy from source to block
+            dataset = self._getBlockDataset( entire_block_roi )
+            dataset[ roiToSlice( *block_relative_intersection ) ] = value[ roiToSlice(*source_relative_intersection) ]
+
+            # Here, we assume that if this function is used to update ANY PART of a 
+            #  block, he is responsible for updating the ENTIRE block.
+            # Therefore, this block is no longer 'dirty'
+            self._dirtyBlocks.discard( block_start )
+
         self.Output._sig_value_changed()
 
 
