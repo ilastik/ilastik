@@ -154,7 +154,7 @@ class OpTrackingBase(Operator):
         feats = self.ObjectFeatures(time_range).wait()        
         
         if with_div:
-            divProbs = self.ClassMapping(time_range).wait()
+            divProbs = self.DivisionProbabilities(time_range).wait()
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
