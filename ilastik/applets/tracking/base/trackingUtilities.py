@@ -6,7 +6,7 @@ import pgmlink
 
 def relabel(volume, replace):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
-    mp[1:] = 255
+    mp[1:] = 1
     labels = np.unique(volume)
     for label in labels:
         if label > 0:
@@ -39,13 +39,13 @@ def write_events(events, directory, t, labelImage, mergers=None):
         app = []
         div = []
         mov = []
-        merger = []       
-            
+        merger = []
+        
         print "-- Writing results to " + path.basename(fn)
         if mergers is not None:
             for m in mergers[t].keys():
                 merger.append((m,mergers[t][m],0.0))
-                 
+                
         for event in events:
             if event.type == pgmlink.EventType.Appearance:
                 app.append((event.traxel_ids[0], event.energy))
@@ -75,7 +75,6 @@ def write_events(events, directory, t, labelImage, mergers=None):
             
             seg = f_curr.create_group("segmentation")            
             # write label image
-#            seg.create_dataset("labels", data = labelImage[t,...,0], dtype=np.uint32, compression=1)
             seg.create_dataset("labels", data = labelImage, dtype=np.uint32, compression=1)
             
             # delete old tracking

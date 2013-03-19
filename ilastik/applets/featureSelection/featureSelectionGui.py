@@ -1,21 +1,32 @@
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from ilastik.widgets.featureTableWidget import FeatureEntry
-from ilastik.widgets.featureDlg import FeatureDlg
-
+#Python
 import os
-import numpy
-import h5py
-from ilastik.utility import bind
-
 import logging
 from lazyflow.operators.generic import OpSubRegion
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+#SciPy
+import numpy
+import h5py
+
+#PyQt
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
+from lazyflow.operators import OpSubRegion
 from lazyflow.utility import Tracer, traceLogged
+
+#ilastik
+from ilastik.widgets.featureTableWidget import FeatureEntry
+from ilastik.widgets.featureDlg import FeatureDlg
+from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.config import cfg as ilastik_config
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== FeatureSelectionGui                                                                                            ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class FeatureSelectionGui(LayerViewerGui):
     """
@@ -98,6 +109,9 @@ class FeatureSelectionGui(LayerViewerGui):
         self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.drawer.UsePrecomputedFeaturesButton.clicked.connect(self.onUsePrecomputedFeaturesButtonClicked)
+        dbg = ilastik_config.getboolean("ilastik", "debug") 
+        if not dbg:
+            self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
@@ -113,37 +127,49 @@ class FeatureSelectionGui(LayerViewerGui):
         self._viewerControlWidget = uic.loadUi(os.path.split(__file__)[0] + "/viewerControls.ui")
         
         layerListWidget = self._viewerControlWidget.featureListWidget
+        layerListWidget.setSelectionMode(QAbstractItemView.SingleSelection)
 
         # Need to handle data changes because the layerstack model hasn't 
         # updated his data yet by the time he calls the rowsInserted signal
         def handleLayerStackDataChanged(startIndex, stopIndex):
             row = startIndex.row()
             layerListWidget.item(row).setText(self.layerstack[row].name)
-        self.layerstack.dataChanged.connect(handleLayerStackDataChanged)
         
+        def handleSelectionChanged(row):
+            print "selection changed for row = %d" % row
+            # Only one layer is visible at a time
+            for i, layer in enumerate(self.layerstack):
+                layer.visible = (i == row)
+                
         def handleInsertedLayers(parent, start, end):
             for i in range(start, end+1):
                 layerListWidget.insertItem(i, self.layerstack[i].name)
-        self.layerstack.rowsInserted.connect( handleInsertedLayers )
+                if layerListWidget.model().rowCount() == 1:
+                    layerListWidget.item(0).setSelected(True)
 
         def handleRemovedLayers(parent, start, end):
             for i in reversed(range(start, end+1)):
                 layerListWidget.takeItem(i)
-        self.layerstack.rowsRemoved.connect( handleRemovedLayers )
         
-        def handleSelectionChanged(row):
-            # Only one layer is visible at a time
-            for i, layer in enumerate(self.layerstack):
-                layer.visible = (i == row)
+        self.layerstack.dataChanged.connect(handleLayerStackDataChanged)
+        self.layerstack.rowsRemoved.connect( handleRemovedLayers )
+        self.layerstack.rowsInserted.connect( handleInsertedLayers )
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
     @traceLogged(traceLogger)
     def setupLayers(self):
-        layers = []
-        
         opFeatureSelection = self.topLevelOperatorView
-
         inputSlot = opFeatureSelection.InputImage
+        
+        layers = []
+       
+        if inputSlot.ready(): 
+            rawLayer = self.createStandardLayerFromSlot(inputSlot)
+            rawLayer.visible = True
+            rawLayer.opacity = 1.0
+            rawLayer.name = "raw data" 
+            layers.append(rawLayer)
+
         featureMultiSlot = opFeatureSelection.FeatureLayers
         if inputSlot.ready() and featureMultiSlot.ready():
             for featureIndex, featureSlot in enumerate(featureMultiSlot):

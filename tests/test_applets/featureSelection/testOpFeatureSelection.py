@@ -18,7 +18,7 @@ class TestOpFeatureSelection(object):
         graph = Graph()
         
         # Define operators
-        opFeatures = OperatorWrapper( OpFeatureSelection, graph=graph )
+        opFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, graph=graph )
         opReader = OpInputDataReader(graph=graph)
         
         # Set input data

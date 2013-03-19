@@ -50,6 +50,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     Classifier = OutputSlot()
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
+    Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
     PredictionImages = OutputSlot(level=1)
     SegmentationImagesOut = OutputSlot(level=1)
 
@@ -95,6 +96,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.NumLabels.setValue(_MAXLABELS)
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
+        self.Probabilities.connect(self.opPredict.Probabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
         self.Classifier.connect(self.opTrain.Classifier)
 
@@ -187,7 +189,7 @@ class OpObjectTrain(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
-        self._tree_count = 100
+        self._tree_count = 255
         self.FixClassifier.setValue(False)
 
     def setupOutputs(self):
@@ -215,7 +217,7 @@ class OpObjectTrain(Operator):
                 index = numpy.nonzero(lab)
                 labelsMatrix_tmp.append(lab[index])
 
-                for channel in sorted(feats[t]):
+                for channel in feats[t]:
                     for featname in sorted(channel.keys()):
                         value = channel[featname]
                         if not featname in config.selected_features:
@@ -227,8 +229,8 @@ class OpObjectTrain(Operator):
                 labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
 
         featMatrix = _concatenate(featMatrix, axis=0)
-        labelsMatrix = _concatenate(labelsMatrix, axis=0)
-
+        labelsMatrix = _concatenate(labelsMatrix, axis=0)        
+        
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
@@ -236,11 +238,13 @@ class OpObjectTrain(Operator):
         try:
             # train and store forests in parallel
             pool = Pool()
+            oobs = []
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    result[number].learnRF(featMatrix.astype(numpy.float32),
+                    oob = result[number].learnRF(featMatrix.astype(numpy.float32),
                                            labelsMatrix.astype(numpy.uint32))
+                    oobs.append(oob)
                 req = pool.request(partial(train_and_store, i))
             pool.wait()
             pool.clean()
@@ -248,6 +252,8 @@ class OpObjectTrain(Operator):
             print ("couldn't learn classifier")
             raise
 
+        print 'Object Classification Random Forest: oob = ' + str(numpy.mean(oobs)) + ' +- ' + str(numpy.std(oobs))
+        
         slcs = (slice(0, self.ForestCount.value, None),)
         return result
 
@@ -272,15 +278,30 @@ class OpObjectPredict(Operator):
     Classifier = InputSlot()
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
+    Probabilities = OutputSlot(stype=Opaque, rtype=List)
 
     def setupOutputs(self):
         self.Predictions.meta.shape = self.Features.meta.shape
         self.Predictions.meta.dtype = object
         self.Predictions.meta.axistags = None
 
-        self.cache = dict()
+        self.Probabilities.meta.shape = self.Features.meta.shape
+        self.Probabilities.meta.dtype = object
+        self.Probabilities.meta.axistags = None
+
+        self.pred_cache = dict()
+        self.prob_cache = dict()
 
     def execute(self, slot, subindex, roi, result):
+        if slot is self.Predictions:
+            probs = False
+            cache = self.pred_cache
+        elif slot is self.Probabilities:
+            probs = True
+            cache = self.prob_cache
+        else:
+            raise Exception('unknown slot: {}'.format(slot))
+
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
@@ -294,7 +315,7 @@ class OpObjectPredict(Operator):
         feats = {}
         predictions = {}
         for t in times:
-            if t in self.cache:
+            if t in cache:
                 continue
 
             ftsMatrix = []
@@ -311,17 +332,25 @@ class OpObjectPredict(Operator):
             feats[t] = _concatenate(ftsMatrix, axis=1)
             predictions[t]  = [0] * len(forests)
 
+        def prob_forest(t, number):
+            predictions[t][number] = forests[number].predictProbabilities(feats[t])
+
         def predict_forest(t, number):
             predictions[t][number] = forests[number].predictLabels(feats[t]).reshape(1, -1)
+
+        if probs:
+            func = prob_forest
+        else:
+            func = predict_forest
 
         # predict the data with all the forests in parallel
         pool = Pool()
 
         for t in times:
-            if t in self.cache:
+            if t in cache:
                 continue
             for i, f in enumerate(forests):
-                req = pool.request(partial(predict_forest, t, i))
+                req = pool.request(partial(func, t, i))
 
         pool.wait()
         pool.clean()
@@ -329,23 +358,27 @@ class OpObjectPredict(Operator):
         final_predictions = dict()
 
         for t in times:
-            if t not in self.cache:
+            if t not in cache:
                 # shape (ForestCount, number of objects)
                 prediction = numpy.vstack(predictions[t])
 
-                # take mode of each column
-                m, _ = mode(prediction, axis=0)
-                m = m.squeeze()
-                assert m.ndim == 1
-                m[0] = 0
-                self.cache[t] = m
-            final_predictions[t] = self.cache[t]
+                if not probs:
+                    # take mode of each column
+                    m, _ = mode(prediction, axis=0)
+                    m = m.squeeze()
+                    assert m.ndim == 1
+                    m[0] = 0
+                    prediction = m
+                cache[t] = prediction
+            final_predictions[t] = cache[t]
 
         return final_predictions
 
     def propagateDirty(self, slot, subindex, roi):
-        self.cache = dict()
+        self.pred_cache = dict()
+        self.prob_cache = dict()
         self.Predictions.setDirty(())
+        self.Probabilities.setDirty(())
 
 
 class OpToImage(Operator):
@@ -371,7 +404,7 @@ class OpToImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             map_ = self.ObjectMap([t]).wait()
             tmap = map_[t]
-
+            
             # FIXME: necessary because predictions are returned
             # enclosed in a list.
             if isinstance(tmap, list):
@@ -385,7 +418,7 @@ class OpToImage(Operator):
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
 
-            img[t] = tmap[img[t]]
+            img[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
 
         return img
 

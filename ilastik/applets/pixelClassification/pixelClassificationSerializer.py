@@ -1,7 +1,6 @@
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, stringToSlicing, slicingToString, \
-    deleteIfPresent, SerialSlot, SerialClassifierSlot, SerialBlockSlot, \
-    SerialListSlot
+    AppletSerializer, deleteIfPresent, SerialSlot, SerialClassifierSlot, \
+    SerialBlockSlot, SerialListSlot
 from lazyflow.operators import OpH5WriterBigDataset
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
 import threading

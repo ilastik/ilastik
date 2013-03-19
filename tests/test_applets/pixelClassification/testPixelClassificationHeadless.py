@@ -8,9 +8,8 @@ from ilastik.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
-from workflows.pixelClassification import PixelClassificationWorkflow
-
-import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+import ilastik.workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
 import logging
 logger = logging.getLogger(__name__)

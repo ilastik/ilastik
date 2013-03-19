@@ -1,13 +1,9 @@
 import os
-import numpy
-import numpy.testing
 import h5py
-import vigra
 import unittest
 import shutil
 import tempfile
-from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 
 from ilastik.applets.base.appletSerializer import \

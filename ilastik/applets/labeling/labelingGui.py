@@ -8,8 +8,8 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QWidget
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -28,11 +28,13 @@ from ilastik.applets.layerViewer import LayerViewerGui
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
+#===----------------------------------------------------------------------------------------------------------------===
+
 class Tool():
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
-    Paint = 1
-    Erase = 2
+    Paint      = 1
+    Erase      = 2
 
 class LabelingGui(LayerViewerGui):
     """
@@ -169,8 +171,9 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
 
         # Connect Applet GUI to our event handlers
-        _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
-        _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
+        if hasattr(_labelControlUi, "AddLabelButton"):
+            _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
+            _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(self.onLabelListDataChanged)
 
         # Initialize the arrow tool button with an icon and handler
@@ -231,7 +234,6 @@ class LabelingGui(LayerViewerGui):
 
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
-            pmapColor = self._labelControlUi.labelListModel[firstRow].pmapColor()
             self._colorTable16[firstRow+1] = color.rgba()
             self.editor.brushingModel.setBrushColor(color)
 
@@ -244,11 +246,12 @@ class LabelingGui(LayerViewerGui):
         mgr = ShortcutManager()
         shortcutGroupName = "Labeling"
 
-        addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
-        mgr.register( shortcutGroupName,
-                      "Add New Label Class",
-                      addLabel,
-                      self.labelingDrawerUi.AddLabelButton )
+        if hasattr(self.labelingDrawerUi, "AddLabelButton"):
+            addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
+            mgr.register( shortcutGroupName,
+                          "Add New Label Class",
+                          addLabel,
+                          self.labelingDrawerUi.AddLabelButton )
 
         navMode = QShortcut( QKeySequence("n"), self, member=self.labelingDrawerUi.arrowToolButton.click )
         mgr.register( shortcutGroupName,
@@ -340,13 +343,6 @@ class LabelingGui(LayerViewerGui):
                       Tool.Paint        : "brushing",
                       Tool.Erase        : "brushing" }
 
-        # Hide everything by default
-        self._labelControlUi.arrowToolButton.hide()
-        self._labelControlUi.paintToolButton.hide()
-        self._labelControlUi.eraserToolButton.hide()
-        self._labelControlUi.brushSizeComboBox.hide()
-        self._labelControlUi.brushSizeCaption.hide()
-
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
 
@@ -354,61 +350,70 @@ class LabelingGui(LayerViewerGui):
         if labelsAllowedSlot.ready():
             labelsAllowed = labelsAllowedSlot.value
 
-            self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
-            if labelsAllowed:
-                self._labelControlUi.AddLabelButton.setText("Add Label")
-            else:
-                self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+            if hasattr(self._labelControlUi, "AddLabelButton"):
+                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+                if labelsAllowed:
+                    self._labelControlUi.AddLabelButton.setText("Add Label")
+                else:
+                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
+        e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
+        self._gui_enableLabeling(e)
+        
         if labelsAllowed:
-            self._labelControlUi.arrowToolButton.show()
-            self._labelControlUi.paintToolButton.show()
-            self._labelControlUi.eraserToolButton.show()
             # Update the applet bar caption
             if toolId == Tool.Navigation:
-                # Make sure the arrow button is pressed
-                self._labelControlUi.arrowToolButton.setChecked(True)
-                # Hide the brush size control
-                self._labelControlUi.brushSizeCaption.hide()
-                self._labelControlUi.brushSizeComboBox.hide()
+                # update GUI 
+                self._gui_setNavigation()
+                
             elif toolId == Tool.Paint:
-                # Make sure the paint button is pressed
-                self._labelControlUi.paintToolButton.setChecked(True)
-                # Show the brush size control and set its caption
-                self._labelControlUi.brushSizeCaption.show()
-                self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Size:")
-
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
                 brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(brushSize)
-
-                # Make sure the GUI reflects the correct size
-                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+                # update GUI 
+                self._gui_setBrushing()
 
             elif toolId == Tool.Erase:
-                # Make sure the erase button is pressed
-                self._labelControlUi.eraserToolButton.setChecked(True)
-                # Show the brush size control and set its caption
-                self._labelControlUi.brushSizeCaption.show()
-                self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Size:")
-
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
                 # Set the brushing size
                 eraserSize = self.brushSizes[self.eraserSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(eraserSize)
-
-                # Make sure the GUI reflects the correct size
-                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+                # update GUI 
+                self._gui_setErasing()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
+        
+    def _gui_setErasing(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(True)
+        self._labelControlUi.brushSizeCaption.setEnabled(True)
+        self._labelControlUi.eraserToolButton.setChecked(True)
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+    def _gui_setNavigation(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+    def _gui_setBrushing(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(True)
+        self._labelControlUi.brushSizeCaption.setEnabled(True)
+        # Make sure the paint button is pressed
+        self._labelControlUi.paintToolButton.setChecked(True)
+        # Show the brush size control and set its caption
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        # Make sure the GUI reflects the correct size
+        self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+    def _gui_enableLabeling(self, enable):
+        self._labelControlUi.paintToolButton.setEnabled(enable)
+        self._labelControlUi.eraserToolButton.setEnabled(enable)
+        self._labelControlUi.brushSizeCaption.setEnabled(enable)
+        self._labelControlUi.brushSizeComboBox.setEnabled(enable)
 
     @traceLogged(traceLogger)
     def _onBrushSizeChange(self, index):
@@ -465,7 +470,8 @@ class LabelingGui(LayerViewerGui):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self._addNewLabel()
 
-        self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
+        if hasattr(self._labelControlUi, "AddLabelButton"):
+            self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
     @traceLogged(traceLogger)
     def _addNewLabel(self):
@@ -497,6 +503,9 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.select(selectedRow)
 
         self._updateLabelShortcuts()
+       
+        e = self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
 
     def getNextLabelName(self):
         """
@@ -604,15 +613,21 @@ class LabelingGui(LayerViewerGui):
         #  Otherwise, you can never delete the same label twice in a row.
         #  (Only *changes* to the input are acted upon.)
         self._labelingSlots.labelDelete.setValue(-1)
+       
+        e =  self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
 
-    def _getLabelLayer(self):
-        # Find the labellayer in the viewer stack
+    def getLayer(self, name):
+        """find a layer by name"""
         try:
-            labellayer = itertools.ifilter(lambda l: l.name == "Labels", self.layerstack).next()
+            labellayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
         except StopIteration:
             return None
         else:
             return labellayer
+
+    def _getLabelLayer(self):
+        return self.getLayer('Labels')
 
     @traceLogged(traceLogger)
     def createLabelLayer(self, direct=False):
@@ -676,10 +691,8 @@ class LabelingGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def _createDefault16ColorColorTable(self):
         colors = []
-
         # Transparent for the zero label
         colors.append(QColor(0,0,0,0))
-
         # ilastik v0.5 colors
         colors.append( QColor( Qt.red ) )
         colors.append( QColor( Qt.green ) )
@@ -688,7 +701,6 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor( Qt.magenta ) )
         colors.append( QColor( Qt.darkYellow ) )
         colors.append( QColor( Qt.lightGray ) )
-
         # Additional colors
         colors.append( QColor(255, 105, 180) ) #hot pink
         colors.append( QColor(102, 205, 170) ) #dark aquamarine
@@ -698,11 +710,5 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(173, 255,  47) ) #green-yellow
         colors.append( QColor(128,0, 128) )    #purple
         colors.append( QColor(240, 230, 140) ) #khaki
-
-#        colors.append( QColor(192, 192, 192) ) #silver
-#        colors.append( QColor(69, 69, 69) )    # dark grey
-#        colors.append( QColor( Qt.cyan ) )
-
         assert len(colors) == 16
-
         return [c.rgba() for c in colors]

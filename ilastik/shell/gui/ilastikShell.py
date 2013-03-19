@@ -1,43 +1,44 @@
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt, QSize
-from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
-                        QMenuBar, QFrame, QLabel, QStackedLayout, \
-                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
-                        QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
-from PyQt4 import QtCore
-
+#Python
 import re
-import h5py
 import traceback
 import os
 from functools import partial
 import weakref
-
-from volumina.utility import PreferencesManager, ShortcutManagerDlg
-from ilastik.utility import bind
-from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-
-import sys
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.utility import Tracer
 
-import ilastik.ilastik_logging
-
-from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
-
-from ilastik.shell.projectManager import ProjectManager
-
-import platform
+#SciPy
 import numpy
-
+import platform
 import threading
 
+#PyQt
+from PyQt4 import uic
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QMenuBar, \
+                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
+                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog
+
+#lazyflow
+from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
+
+#volumina
+from volumina.utility import PreferencesManager, ShortcutManagerDlg
+
+#ilastik
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
+import ilastik.ilastik_logging
+from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.shell.projectManager import ProjectManager
+from ilastik.config import cfg as ilastik_config
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== ShellActions                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class ShellActions(object):
     """
@@ -51,11 +52,19 @@ class ShellActions(object):
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
+        
+#===----------------------------------------------------------------------------------------------------------------===
+#=== SideSplitterSizePolicy                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class SideSplitterSizePolicy(object):
-    Manual = 0
+    Manual            = 0
     AutoCurrentDrawer = 1
     AutoLargestDrawer = 2
+
+#===----------------------------------------------------------------------------------------------------------------===
+#=== ProgressDisplayManager                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
 
 class ProgressDisplayManager(QObject):
     """
@@ -133,12 +142,16 @@ class ProgressDisplayManager(QObject):
                     self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
+#===----------------------------------------------------------------------------------------------------------------===
+#=== IlastikShell                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
+
 class IlastikShell( QMainWindow ):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflowClass, parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
+    def __init__( self, workflowClass, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -148,6 +161,8 @@ class IlastikShell( QMainWindow ):
 
         localDir = os.path.split(__file__)[0]
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        self.imageSelectionGroup.setHidden(True)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
@@ -157,15 +172,14 @@ class IlastikShell( QMainWindow ):
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
-        self.menuBar().addMenu( self._projectMenu )
+        self._helpMenu = self._createHelpMenu()
+        self.menuBar().addMenu( self._projectMenu  )
         self.menuBar().addMenu( self._settingsMenu )
+        self.menuBar().addMenu( self._helpMenu    )
         
-        self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
+        self.appletBar.expanded.connect(self.handleAppletBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
-        
-        # By default, make the splitter control expose a reasonable width of the applet bar
-        self.mainSplitter.setSizes([300,1])
         
         self.currentAppletIndex = 0
 
@@ -234,6 +248,18 @@ class IlastikShell( QMainWindow ):
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
         return (menu, shellActions)
+   
+    def _createHelpMenu(self):
+        menu = QMenu("&Help", self)
+        aboutIlastikAction = menu.addAction("&About ilastik")
+        aboutIlastikAction.triggered.connect(self._showAboutDialog)
+        return menu
+    
+    def _showAboutDialog(self):
+        localDir = os.path.split(__file__)[0]
+        dlg = QDialog()
+        uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
+        dlg.exec_() 
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
@@ -244,37 +270,40 @@ class IlastikShell( QMainWindow ):
         shortcutsAction = menu.addAction("&Keyboard Shortcuts")
         shortcutsAction.triggered.connect(editShortcuts)
 
-        exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-        export0 = exportDebugSubmenu.addAction("Lowest Detail")
-        export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
+        dbg = ilastik_config.getboolean("ilastik", "debug")
 
-        export1 = exportDebugSubmenu.addAction("Some Detail")
-        export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
-
-        export2 = exportDebugSubmenu.addAction("More Detail")
-        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
-
-        export2 = exportDebugSubmenu.addAction("Even More Detail")
-        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
-
-        export3 = exportDebugSubmenu.addAction("Unlimited Detail")
-        export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
-
-        exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-        exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
-        exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
-
-        exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
-        exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
-
-        exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
-        exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
-
-        exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
-        exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
-
-        exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
-        exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
+        if dbg:
+            exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
+            export0 = exportDebugSubmenu.addAction("Lowest Detail")
+            export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
+    
+            export1 = exportDebugSubmenu.addAction("Some Detail")
+            export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
+    
+            export2 = exportDebugSubmenu.addAction("More Detail")
+            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
+    
+            export2 = exportDebugSubmenu.addAction("Even More Detail")
+            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
+    
+            export3 = exportDebugSubmenu.addAction("Unlimited Detail")
+            export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
+    
+            exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
+            exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
+            exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
+    
+            exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
+            exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
+    
+            exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
+            exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
+    
+            exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
+            exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
+    
+            exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
+            exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
 
         return menu
 
@@ -371,6 +400,8 @@ class IlastikShell( QMainWindow ):
         self.populatingImageSelectionCombo = True
         self.imageSelectionCombo.insertItem(index, "uninitialized")
         self.populatingImageSelectionCombo = False
+        if self.imageSelectionCombo.count() > 1:
+            self.imageSelectionGroup.setHidden(False)
         multislot[index].notifyDirty( bind( self.insertImageName, index) )
 
     @threadRouted
@@ -380,7 +411,8 @@ class IlastikShell( QMainWindow ):
         self.imageSelectionCombo.removeItem(index)
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
-
+        if self.imageSelectionCombo.count() <= 1:
+            self.imageSelectionGroup.setHidden(True)
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
@@ -417,7 +449,7 @@ class IlastikShell( QMainWindow ):
                     appletTitleItem = rootItem.child(applet_index)
                     appletTitleItem.setText( 0, updatedDrawerTitle )
 
-    def handleAppleBarItemExpanded(self, modelIndex):
+    def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
         """
@@ -492,6 +524,7 @@ class IlastikShell( QMainWindow ):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
+        self.menuBar().addMenu(self._helpMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
@@ -559,8 +592,8 @@ class IlastikShell( QMainWindow ):
         # Add all of the applet bar's items to the toolbox widget
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
-        appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
-        appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
+        
+        appletNameItem = QTreeWidgetItem( self.appletBar, QStringList( controlName ) )
         drawerItem = QTreeWidgetItem(appletNameItem)
         drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
 #            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
@@ -779,6 +812,11 @@ class IlastikShell( QMainWindow ):
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            #switch away from the startup screen to show the loaded project
+            self.mainStackedWidget.setCurrentIndex(1)
+            # By default, make the splitter control expose a reasonable width of the applet bar
+            self.mainSplitter.setSizes([300,1])
+            
             self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
 
             # Add all the applets from the workflow
@@ -972,9 +1010,9 @@ class IlastikShell( QMainWindow ):
             if applet_index < self.appletBar.invisibleRootItem().childCount():
                 drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
                 if enabled and self.enableWorkflow:
-                    drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
+                    drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
-                    drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
+                    drawerTitleItem.setFlags( Qt.NoItemFlags )
 
 #    def scrollToTop(self):
 #        #self.appletBar.verticalScrollBar().setValue( 0 )
@@ -990,6 +1028,10 @@ class IlastikShell( QMainWindow ):
 #
 #        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
 
+#===----------------------------------------------------------------------------------------------------------------===
+#=== __name__ == "__main__"                                                                                         ===
+#===----------------------------------------------------------------------------------------------------------------===
+
 #
 # Simple standalone test for the IlastikShell
 #
@@ -999,7 +1041,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt4.QtGui import QApplication
     import sys
-    from applet import Applet
+    from ilastik.applets.base.applet import Applet
 
     qapp = QApplication(sys.argv)
     

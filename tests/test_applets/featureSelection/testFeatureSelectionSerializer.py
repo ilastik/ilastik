@@ -23,7 +23,7 @@ class TestFeatureSelectionSerializer(object):
             
             # Create an operator to work with and give it some input
             graph = Graph()
-            operatorToSave = OpFeatureSelection(graph=graph)
+            operatorToSave = OpFeatureSelection(graph=graph, filter_implementation='Original')
         
             # Configure scales        
             scales = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -53,7 +53,7 @@ class TestFeatureSelectionSerializer(object):
             assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
         
             # Deserialize into a fresh operator
-            operatorToLoad = OpFeatureSelection(graph=graph)
+            operatorToLoad = OpFeatureSelection(graph=graph, filter_implementation='Original')
             deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
             deserializer.deserializeFromHdf5(testProject, testProjectName)
             

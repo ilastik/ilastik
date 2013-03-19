@@ -51,8 +51,11 @@
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="3" column="1">
         <widget class="QDoubleSpinBox" name="noiseRateSpinBox">
+         <property name="minimum">
+          <double>0.010000000000000</double>
+         </property>
          <property name="maximum">
-          <double>1.000000000000000</double>
+          <double>0.990000000000000</double>
          </property>
          <property name="singleStep">
           <double>0.010000000000000</double>
@@ -64,6 +67,9 @@
        </item>
        <item row="0" column="1">
         <widget class="QSpinBox" name="appSpinBox">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -74,6 +80,9 @@
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥1000) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Disappearance</string>
          </property>
@@ -104,6 +113,9 @@
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_4">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The estimated &lt;span style=&quot; font-weight:600;&quot;&gt;rate of false detections&lt;/span&gt; coming from the segmentation step. Small values (≈0.01) treat every detected object as a true detection, if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Noise rate</string>
          </property>
@@ -111,6 +123,9 @@
        </item>
        <item row="1" column="1">
         <widget class="QSpinBox" name="disSpinBox">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -121,6 +136,9 @@
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_5">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs for the lost &lt;span style=&quot; font-weight:600;&quot;&gt;opportunity &lt;/span&gt;to explain more of the data, i.e. the costs for not tracking one object and treating it as false detections. High values (≥1000) lead to more tracks (but could also include the tracking of noise objects).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Opportunity</string>
          </property>
@@ -128,32 +146,42 @@
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="label_6">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The guaranteed upper bound for a solution to deviate from the exact solution of the tracking model. Low values (≤ 0.05) lead to better solutions but may lead to long optimization times. Higher values (≥0.1) speed up optimization time but lead to approximate solutions only.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Optimality Gap</string>
          </property>
         </widget>
        </item>
-       
        <item row="6" column="0">
-	 <widget class="QLabel" name="label_nn">
+	 <widget class="QLabel" name="label_23">
+	   <property name="toolTip">
+	     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of nearest neighbors for building hypotheses graph. Less neighbors speed up optimization time, but might have negative impact on tracking results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+	   </property>
 	   <property name="text">
-	     <string>kNN: k</string>
+	     <string>Number of Neighbors</string>
 	   </property>
 	 </widget>
        </item>
        <item row="6" column="1">
-	 <widget class="QSpinBox" name="knn">
-	   <property name="maximum">
-	     <number>100</number>
+	 <widget class="QSpinBox" name="nNeighborsSpinBox">
+	   <property name="minimum">
+	     <number>1</number>
+	   </property>
+	   <property name="singleStep">
+	     <number>1</number>
 	   </property>
 	   <property name="value">
-	     <number>6</number>
+	     <number>2</number>
 	   </property>
 	 </widget>
-       </item>	     
-	 
+       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥1000) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Appearance</string>
          </property>
@@ -161,6 +189,9 @@
        </item>
        <item row="4" column="0">
         <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Noise weight</string>
          </property>
@@ -210,8 +241,11 @@
          <bold>true</bold>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Field of view selection.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Filter</string>
+        <string>Field of View Selection:</string>
        </property>
       </widget>
      </item>
@@ -244,9 +278,6 @@
        <item row="1" column="1">
         <widget class="QSpinBox" name="from_time"/>
        </item>
-       <item row="1" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_time"/>
-       </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_16">
          <property name="text">
@@ -256,9 +287,6 @@
        </item>
        <item row="2" column="1">
         <widget class="QSpinBox" name="from_x"/>
-       </item>
-       <item row="2" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_x"/>
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_17">
@@ -286,13 +314,6 @@
        <item row="4" column="2" colspan="2">
         <widget class="QSpinBox" name="to_z"/>
        </item>
-       <item row="5" column="1" colspan="2">
-        <widget class="QSpinBox" name="from_size">
-         <property name="maximum">
-          <number>100000</number>
-         </property>
-        </widget>
-       </item>
        <item row="5" column="3">
         <widget class="QSpinBox" name="to_size">
          <property name="maximum">
@@ -303,14 +324,29 @@
          </property>
         </widget>
        </item>
+       <item row="2" column="2" colspan="2">
+        <widget class="QSpinBox" name="to_x"/>
+       </item>
+       <item row="1" column="2" colspan="2">
+        <widget class="QSpinBox" name="to_time"/>
+       </item>
        <item row="5" column="0">
         <widget class="QLabel" name="label_19">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only track objects with sizes within the given range.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Size</string>
          </property>
         </widget>
        </item>
-
+       <item row="5" column="1" colspan="2">
+        <widget class="QSpinBox" name="from_size">
+         <property name="maximum">
+          <number>100000</number>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
     </layout>
@@ -332,8 +368,11 @@
          <bold>true</bold>
         </font>
        </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Configure here the scales of the dimensions. For instance, if the resolution of the pixels is (dx,dy,dz) = (1µm,0.8µm,0.5µm), then the scales to enter should be (x,y,z)=(1,1.25,2).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Data scales</string>
+        <string>Data Scales</string>
        </property>
       </widget>
      </item>
@@ -431,6 +470,30 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>appSpinBox</tabstop>
+  <tabstop>disSpinBox</tabstop>
+  <tabstop>oppSpinBox</tabstop>
+  <tabstop>noiseRateSpinBox</tabstop>
+  <tabstop>noiseWeightSpinBox</tabstop>
+  <tabstop>epGapSpinBox</tabstop>
+  <tabstop>TrackButton</tabstop>
+  <tabstop>from_time</tabstop>
+  <tabstop>to_time</tabstop>
+  <tabstop>from_x</tabstop>
+  <tabstop>to_x</tabstop>
+  <tabstop>from_y</tabstop>
+  <tabstop>to_y</tabstop>
+  <tabstop>from_z</tabstop>
+  <tabstop>to_z</tabstop>
+  <tabstop>from_size</tabstop>
+  <tabstop>to_size</tabstop>
+  <tabstop>x_scale</tabstop>
+  <tabstop>y_scale</tabstop>
+  <tabstop>z_scale</tabstop>
+  <tabstop>exportButton</tabstop>
+  <tabstop>exportTifButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

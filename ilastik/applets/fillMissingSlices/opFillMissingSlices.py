@@ -3,7 +3,9 @@ from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 
 class OpFillMissingSlices(Operator):
     Input = InputSlot()
+    
     Output = OutputSlot()
+    CachedOutput = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( self.__class__, self ).__init__(*args, **kwargs)
@@ -11,15 +13,18 @@ class OpFillMissingSlices(Operator):
         # Set up interpolation
         self._opInterp = OpInterpMissingData( parent=self )
         self._opInterp.InputVolume.connect( self.Input )
-        
+
         # The cache serves two purposes:
         # 1) Determine shape of accesses to the interpolation operator
         # 2) Avoid duplicating work
         self._opCache = OpBlockedArrayCache( parent=self )
         self._opCache.Input.connect( self._opInterp.Output )
         self._opCache.fixAtCurrent.setValue( False )
-        
-        self.Output.connect( self._opCache.Output )
+
+        # Regular output is for headless operation,
+        # Cached output is for the GUI        
+        self.Output.connect( self._opInterp.Output )
+        self.CachedOutput.connect( self._opCache.Output )
         
     def setupOutputs(self):
         blockdims = { 't' : 1,

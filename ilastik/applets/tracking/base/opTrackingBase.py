@@ -44,11 +44,13 @@ class OpTrackingBase(Operator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 
-    def _setLabel2Color(self, events, time_range, filtered_labels, x_range, y_range, z_range):        
+    def _setLabel2Color(self, events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True):        
         label2color = []
         label2color.append({})
         mergers = []
         mergers.append({})
+        
+        maxId = 1 #  misdetections have id 1
 
         # handle start time offsets
         for i in range(time_range[0]):
@@ -85,16 +87,28 @@ class OpTrackingBase(Operator):
             mergers.append({})
                         
             for e in app:
-                label2color[-1][e[0]] = np.random.randint(1, 255)
+                if successive_ids:
+                    label2color[-1][e[0]] = maxId
+                    maxId += 1
+                else:
+                    label2color[-1][e[0]] = np.random.randint(1, 255)
 
             for e in mov:                
                 if not label2color[-2].has_key(e[0]):
-                    label2color[-2][e[0]] = np.random.randint(1, 255)
+                    if successive_ids:
+                        label2color[-2][e[0]] = maxId
+                        maxId += 1
+                    else:
+                        label2color[-2][e[0]] = np.random.randint(1, 255)
                 label2color[-1][e[1]] = label2color[-2][e[0]]
 
             for e in div:
                 if not label2color[-2].has_key(e[0]):
-                    label2color[-2][e[0]] = np.random.randint(1, 255)
+                    if successive_ids:
+                        label2color[-2][e[0]] = maxId
+                        maxId += 1
+                    else:
+                        label2color[-2][e[0]] = np.random.randint(1, 255)
                 ancestor_color = label2color[-2][e[0]]
                 label2color[-1][e[1]] = ancestor_color
                 label2color[-1][e[2]] = ancestor_color
@@ -107,7 +121,7 @@ class OpTrackingBase(Operator):
             fl_at = filtered_labels[t]
             for l in fl_at:
                 assert(l not in label2color[int(t)])
-                label2color[int(t)][l] = 0  
+                label2color[int(t)][l] = 0                
 
         self.label2color = label2color
         self.mergers = mergers
