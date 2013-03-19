@@ -233,7 +233,7 @@ class OpThresholdTwoLevels(Operator):
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
         self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
-        self._opSelectLabels.SmallLabels.connect( self._opHighLabeler.Output )
+        self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.Input.connect( self._opSelectLabels.Output )
@@ -263,8 +263,17 @@ class OpThresholdTwoLevels(Operator):
 
     def setupOutputs(self):
         assert len(self.InputImage.meta.shape) <= 4, "This operator doesn't support 5D data."
+        
+        #FIXME: this happens when someone deletes the other prediction channels to save space
+        #we should find a better way to handle this
+        channelAxis = self.InputImage.meta.axistags.index('c')
+        hackChannel = self.Channel.value
+        if hackChannel > self.InputImage.meta.shape[channelAxis]:
+            hackChannel = 0
 
-        self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ self.Channel.value ] )
+        self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ hackChannel ] )
+
+        #self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ self.Channel.value ] )
         
         def thresholdToUint8(thresholdValue, a):
             drange = self._opSmoother.Output.meta.drange

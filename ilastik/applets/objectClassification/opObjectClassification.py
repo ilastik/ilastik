@@ -84,7 +84,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
-        self.Classifier.connect(self.opTrain.Classifier)
+        #self.Classifier.connect(self.opTrain.Classifier)
+        self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
 
