@@ -37,6 +37,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
+        
+        self.Output.setDirty( slice(None) )
     
     def execute(self, slot, subindex, roi, result):
         # Determine how much input data we'll need, and where the result will be relative to that input roi
@@ -89,9 +91,14 @@ class OpAnisotropicGaussianSmoothing(Operator):
         return inputRoi, computeRoi
         
     def propagateDirty(self, slot, subindex, roi):
-        # Halo calculation is bidirectional, so we can re-use the function that computes the halo during execute()
-        inputRoi, _ = self._getInputComputeRois(roi)
-        self.Output.setDirty( inputRoi[0], inputRoi[1] )
+        if slot == self.Input:
+            # Halo calculation is bidirectional, so we can re-use the function that computes the halo during execute()
+            inputRoi, _ = self._getInputComputeRois(roi)
+            self.Output.setDirty( inputRoi[0], inputRoi[1] )
+        elif slot == self.Sigmas:
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown input slot: {}".format( slot.name )
 
 class OpSelectLabels(Operator):
     """
