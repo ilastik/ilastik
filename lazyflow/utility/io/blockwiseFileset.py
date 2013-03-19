@@ -51,7 +51,7 @@ class BlockwiseFileset(object):
     DescriptionFields = \
     {
         "_schema_name" : "blockwise-fileset-description",
-        "_schema_version" : 1.0,
+        "_schema_version" : 1.1,
 
         "name" : str,
         "format" : str,
@@ -71,6 +71,9 @@ class BlockwiseFileset(object):
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
         "hash_id" : str, # Not user-defined (clients may use this)
+
+        # Added in schema v1.1
+        "sub_block_shape" : AutoEval(numpy.array) # Optional.  Must divide evenly into the block shape.
     }
 
     DescriptionSchema = JsonConfigParser( DescriptionFields )
@@ -145,6 +148,11 @@ class BlockwiseFileset(object):
         if drange is not None:
             assert len(drange) == 2, "Invalid drange: {}".format(drange)
             assert drange[0] <= drange[1], "Invalid drange: {}".format(drange)
+
+        sub_block_shape = self._description.sub_block_shape
+        if sub_block_shape is not None:
+            block_shape = self._description.block_shape
+            assert ( numpy.mod(block_shape / sub_block_shape) == 0 ).all(), "sub_block_shape must divide evenly into block_shape"
 
         # default view_origin        
         if self._description.view_origin is None:
@@ -384,6 +392,11 @@ class BlockwiseFileset(object):
             # Create the directory
             if not os.path.exists( datasetDir ):
                 os.makedirs( datasetDir )
+                # For debug purposes, output a copy of the settings 
+                #  that were active **when this block was created**
+                descriptionFileName = os.path.split(self._descriptionFilePath)[1]
+                debugDescriptionFileCopyPath = os.path.join(datasetDir, descriptionFileName)
+                BlockwiseFileset.writeDescription(debugDescriptionFileCopyPath, self._description)
 
             # Clear the block status.
             # The CALLER is responsible for setting it again.
