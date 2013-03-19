@@ -37,6 +37,9 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
         self.Output.meta.shape = localDescription.view_shape
         self.Output.meta.dtype = localDescription.dtype
         self.Output.meta.axistags = vigra.defaultAxistags(localDescription.axes)
+        drange = localDescription.drange
+        if drange is not None:
+            self.Output.meta.drange = drange
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"

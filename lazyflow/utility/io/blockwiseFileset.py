@@ -58,6 +58,7 @@ class BlockwiseFileset(object):
         "axes" : str,
         "shape" : AutoEval(numpy.array), # This is the shape of the dataset on disk
         "dtype" : AutoEval(),
+        "drange" : AutoEval(tuple), # Optional. Data range, e.g. (0.0, 1.0)
         "chunks" : AutoEval(numpy.array), # Optional.  If null, no chunking. Only used when writing data.
         "compression" : str, # Optional.  Options include 'lzf' and 'gzip', among others.  Note: h5py automatically enables chunking on compressed datasets.
         "compression_opts" : AutoEval(int), # Optional. Hdf5-specific
@@ -140,6 +141,10 @@ class BlockwiseFileset(object):
         assert self._description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."        
         if self._description.compression_opts is not None:
             assert self._description.compression is not None, "You specified compression_opts={} without specifying a compression type".format( self._description.compression )
+        drange = self._description.drange
+        if drange is not None:
+            assert len(drange) == 2, "Invalid drange: {}".format(drange)
+            assert drange[0] <= drange[1], "Invalid drange: {}".format(drange)
 
         # default view_origin        
         if self._description.view_origin is None:
@@ -387,23 +392,31 @@ class BlockwiseFileset(object):
             # Write the block data file
             hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
             if path_parts.internalPath not in hdf5File:
-                shape = tuple( entire_block_roi[1] - entire_block_roi[0] )
-                chunks = self._description.chunks
-                if chunks is not None:
-                    # chunks must not be bigger than the data in any dim
-                    chunks = numpy.minimum( chunks, shape )
-                    chunks = tuple(chunks)
-                compression=self._description.compression
-                compression_opts=self._description.compression_opts
-                dataset = hdf5File.create_dataset( path_parts.internalPath,
-                                         shape=shape,
-                                         dtype=self._description.dtype,
-                                         chunks=chunks,
-                                         compression=compression,
-                                         compression_opts=compression_opts )
-                if _use_vigra:
-                    dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
-            hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[ array_slicing ]
+                self._createDatasetInFile( hdf5File, path_parts.internalPath, entire_block_roi )
+            dataset = hdf5File[ path_parts.internalPath ]
+            dataset[ roiToSlice( *block_relative_roi ) ] = array_data[ array_slicing ]
+
+    def _createDatasetInFile(self, hdf5File, datasetName, roi):
+        shape = tuple( roi[1] - roi[0] )
+        chunks = self._description.chunks
+        if chunks is not None:
+            # chunks must not be bigger than the data in any dim
+            chunks = numpy.minimum( chunks, shape )
+            chunks = tuple(chunks)
+        compression=self._description.compression
+        compression_opts=self._description.compression_opts
+        dataset = hdf5File.create_dataset( datasetName,
+                                 shape=shape,
+                                 dtype=self._description.dtype,
+                                 chunks=chunks,
+                                 compression=compression,
+                                 compression_opts=compression_opts )
+
+        # Set data attributes
+        if self._description.drange is not None:
+            dataset.attrs['drange'] = self._description.drange
+        if _use_vigra:
+            dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
 
     def _getOpenHdf5Blockfile(self, blockFilePath):
         """
@@ -464,23 +477,8 @@ class BlockwiseFileset(object):
         path_parts = PathComponents( fullDatasetPath )
         
         with h5py.File(path_parts.externalPath, 'w') as f:
-            shape = tuple(roi[1] - roi[0])            
-            chunks = self._description.chunks
-            if chunks is not None:
-                # chunks must not be bigger than the data in any dim
-                chunks = numpy.minimum( chunks, shape )
-                chunks = tuple(chunks)
-            compression = self._description.compression
-            compression_opts = self._description.compression_opts
-            dataset = f.create_dataset( path_parts.internalPath,
-                                     shape=shape,
-                                     dtype=self._description.dtype,
-                                     chunks=chunks,
-                                     compression=compression,
-                                     compression_opts=compression_opts )
-            if _use_vigra:
-                dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
-
+            self._createDatasetInFile( f, path_parts.internalPath, roi )
+            dataset = f[ path_parts.internalPath ]
             self.readData( roi, dataset )
 
         return fullDatasetPath
