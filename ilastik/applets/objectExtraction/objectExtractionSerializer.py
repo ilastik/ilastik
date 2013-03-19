@@ -4,14 +4,18 @@ import warnings
 import numpy
 
 from lazyflow.rtype import SubRegion
+from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiToSlice
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot
+
+from ilastik.utility.timer import timeLogged
 
 logger = logging.getLogger(__name__)
 
 class SerialLabelImageSlot(SerialSlot):
 
+    @timeLogged(logger)
     def serialize(self, group):
         if not self.shouldSerialize(group):
             return
@@ -33,6 +37,7 @@ class SerialLabelImageSlot(SerialSlot):
 
         self.dirty = False
 
+    @timeLogged(logger)
     def deserialize(self, group):
         if not self.name in group:
             return
@@ -44,12 +49,25 @@ class SerialLabelImageSlot(SerialSlot):
 
             for roiString, dataset in subgroup.items():
                 logger.debug('Loading labels from dataset: "{}/{}"'.format( subgroup.name, dataset.name ))
-                # This will be a little slow because the data is passing through a numpy array
-                #  instead of somehow directly copying the h5py datasets in their compressed form.
-                # We could maybe speed this up, but we'll lose some abstraction in the cache interface.
                 roi = eval(roiString)
-                slotRoi = SubRegion( opLabel.Input, *roi )
-                opLabel.setInSlot( opLabel.Input, (), slotRoi, dataset[...] )
+
+                roiShape = TinyVector(roi[1]) - TinyVector(roi[0])
+                assert roiShape == dataset.shape
+
+                # Further subdivide the roi into small blocks that can be applied one at a time.
+                # This avoids allocating an enormous temporary numpy array
+                chunk_shape = dataset.chunks
+                assert chunk_shape is not None
+                block_shape = TinyVector(chunk_shape) * 3
+                block_shape = numpy.minimum(block_shape, dataset.shape)
+                block_starts = getIntersectingBlocks(block_shape, roi)
+
+                for block_start in block_starts:
+                    block_roi = getBlockBounds( roi[1], block_shape, block_start )
+                    dataset_relative_roi = numpy.array(block_roi) - roi[0]
+
+                    slotRoi = SubRegion( opLabel.Input, *block_roi )
+                    opLabel.setInSlot( opLabel.Input, (), slotRoi, dataset[roiToSlice( *dataset_relative_roi )] )
 
         self.dirty = False
 
