@@ -7,7 +7,7 @@ from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 
 
 class OpFastApproximateTracking(OpTrackingBase): 
-    ClassMapping = InputSlot(stype=Opaque, rtype=List)            
+    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)            
     
     def track(self,
             time_range,
