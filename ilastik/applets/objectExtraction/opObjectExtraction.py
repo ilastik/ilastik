@@ -658,6 +658,10 @@ class OpObjectExtraction(Operator):
     ObjectCenterImage = OutputSlot()
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
+    BlockwiseRegionFeatures = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
+                                           # has rtype=List, indexed by t.
+                                           # For other workflows, output has rtype=ArrayLike, indexed by (t,c)
+
     # these features are needed by classification applet.
     default_features = [
         'RegionCenter',
@@ -706,6 +710,7 @@ class OpObjectExtraction(Operator):
         self.LabelImage.connect(self._opLabelImage.Output)
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
+        self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
 
     def setupOutputs(self):
         taggedShape = self.Input.meta.getTaggedShape()
