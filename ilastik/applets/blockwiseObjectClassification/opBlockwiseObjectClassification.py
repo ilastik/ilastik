@@ -26,6 +26,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     Classifier = InputSlot()
     
     PredictionImage = OutputSlot()
+    BlockwiseRegionFeatures = OutputSlot() # Indexed by (t,c)
 
     # Schematic:
     #
@@ -85,6 +86,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opExtract = OpObjectExtraction( parent=self )
         self._opExtract.BinaryImage.connect( self._opBinarySubRegion.Output )
         self._opExtract.RawImage.connect( self._opRawSubRegion.Output )
+        self.BlockwiseRegionFeatures.connect( self._opExtract.BlockwiseRegionFeatures )
         
         self._opPredict = OpObjectPredict( parent=self )
         self._opPredict.Features.connect( self._opExtract.RegionFeatures )
@@ -173,6 +175,7 @@ class OpBlockwiseObjectClassification( Operator ):
     HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
     PredictionImage = OutputSlot()
+    BlockwiseRegionFeatures = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( self.__class__, self ).__init__(*args, **kwargs)
@@ -188,8 +191,14 @@ class OpBlockwiseObjectClassification( Operator ):
 
         
     def execute(self, slot, subindex, roi, destination):
-        assert slot == self.PredictionImage, "Unknown Output Slot"
+        if slot == self.PredictionImage:
+            return self._executePredictionImage( roi, destination )
+        elif slot == self.BlockwiseRegionFeatures:
+            return self._executeBlockwiseRegionFeatures( roi, destination )
+        else:
+            assert False, "Unknown output slot: {}".format( slot.name )
 
+    def _executePredictionImage(self, roi, destination):
         # Determine intersecting blocks
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
         block_starts = getIntersectingBlocks( block_shape, (roi.start, roi.stop) )
@@ -215,6 +224,41 @@ class OpBlockwiseObjectClassification( Operator ):
 
         return destination
 
+    def _executeBlockwiseRegionFeatures(self, roi, destination):
+        """
+        Provide data for the BlockwiseRegionFeatures slot.
+        Note: Each block produces a single element of this slot's output.  Construct requested roi coordinates accordingly.
+              e.g. if block_shape is (1,10,10,10,1), the features for the block starting at 
+                   (1,20,30,40,5) should be requested via roi [(1,2,3,4,5),(2,3,4,5,6)]
+        
+        Note: It is assumed that you will request these features for debug purposes, AFTER requesting the prediction image.
+              Therefore, it is considered an error to request features that are not already computed.
+        """
+        axiskeys = self.RawImage.meta.getAxisKeys()
+        # Find the corresponding block start coordinates
+        block_shape = self._getFullShape( self.BlockShape3dDict.value )
+        pixel_roi = numpy.array(block_shape) * (roi.start, roi.stop)
+        block_starts = getIntersectingBlocks( block_shape, pixel_roi )
+        block_starts = map( lambda x: tuple(x), block_starts )
+        
+        for block_start in block_starts:
+            assert block_start in self._blockPipelines, "Not allowed to request region features for blocks that haven't yet been processed." # See note above
+
+            # Discard spatial axes to get (t,c) index for region slot roi
+            tagged_block_start = zip( axiskeys, block_start )
+            tagged_block_start_tc = filter( lambda (k,v): k in 'tc', tagged_block_start )
+            block_start_tc = map( lambda (k,v): v, tagged_block_start_tc )
+            block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
+
+            destination_start = numpy.array(block_start) / block_shape - roi[0]
+            destination_stop = destination_start + numpy.ones( [1]*len(axiskeys) )
+
+            opBlockPipeline = self._blockPipelines[block_start]
+            req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_tc )
+            req.writeInto( destination[ roiToSlice( destination_start, destination_stop ) ] )
+            req.wait()
+        
+        return destination
 
     def _ensurePipelineExists(self, block_start):
         if block_start in self._blockPipelines:
