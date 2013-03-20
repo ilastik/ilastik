@@ -81,8 +81,12 @@ class OpRegionFeatures3d(Operator):
     def _extract(self, image, labels):
         assert len(image.shape) == len(labels.shape) == 3, "Images must be 3D.  Shapes were: {} and {}".format( image.shape, labels.shape )
         print "starting feature extraction..." 
+        xAxis = image.axistags.index('x')
+        yAxis = image.axistags.index('y')
+        zAxis = image.axistags.index('z')
         image = numpy.asarray(image, dtype=numpy.float32)
         labels = numpy.asarray(labels, dtype=numpy.uint32)
+        
         
         minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
     
@@ -109,6 +113,8 @@ class OpRegionFeatures3d(Operator):
             print "processing object ", i
             if counts[i]>1000000:
                 #avoid computing features for over-large objects which are clearly not synapses
+                #this can happen despite the size filtering in two-level thresholding, as one giant object
+                #can break into many smaller pieces at higher threshold and then get merged again at lower
                 features_incl.append(None)
                 features_excl.append(None)
                 features_obj.append(None)
@@ -118,34 +124,75 @@ class OpRegionFeatures3d(Operator):
                 if first_good<=i:
                     first_good=i+1
                 continue
-            minx = max(mins[i][0]-self.margin, 0)
-            miny = max(mins[i][1]-self.margin, 0)
-            minz = max(mins[i][2], 0)
+            minx = max(mins[i][xAxis]-self.margin, 0)
+            miny = max(mins[i][yAxis]-self.margin, 0)
+            minz = max(mins[i][zAxis], 0)
             # Coord<Minimum> and Coord<Maximum> give us the [min,max] 
             # coords of the object, but we want the bounding box: [min,max), so add 1
-            maxx = min(maxs[i][0]+1+self.margin, image.shape[0])
-            maxy = min(maxs[i][1]+1+self.margin, image.shape[1])
-            maxz = min(maxs[i][2]+1, image.shape[2])
+            maxx = min(maxs[i][xAxis]+1+self.margin, image.shape[xAxis])
+            maxy = min(maxs[i][yAxis]+1+self.margin, image.shape[yAxis])
+            maxz = min(maxs[i][zAxis]+1, image.shape[zAxis])
             
+            #FIXME: there must be a better way
+            key = 3*[None]
+            key[xAxis] = slice(minx, maxx, None)
+            key[yAxis] = slice(miny, maxy, None)
+            key[zAxis] = slice(minz, maxz, None)
+            key = tuple(key)
             
-            ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
-            rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
+            ccbbox = labels[key]
+            rawbbox = image[key]
             ccbboxobject = numpy.where(ccbbox==i, 1, 0)
             
-            passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
+            #ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
+            #rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
+            #ccbboxobject = numpy.where(ccbbox==i, 1, 0)
+            
+            bboxshape = 3*[None]
+            bboxshape[xAxis] = maxx-minx
+            bboxshape[yAxis] = maxy-miny
+            bboxshape[zAxis] = maxz-minz
+            bboxshape = tuple(bboxshape)
+            passed = numpy.zeros(bboxshape, dtype=bool)
+            #passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
             
             for iz in range(maxz-minz):
-                dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
-                passed[:, :, iz] = dt<self.margin
+                #FIXME: shoot me, axistags
+                bboxkey = 3*[None]
+                bboxkey[xAxis] = slice(None, None, None)
+                bboxkey[yAxis] = slice(None, None, None)
+                bboxkey[zAxis] = iz
+                bboxkey = tuple(bboxkey)
+                #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
+                dt = vigra.filters.distanceTransform2D(ccbbox[bboxkey].astype(numpy.float32))
+                passed[bboxkey] = dt<self.margin
+                #dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
+                #passed[:, :, iz] = dt<self.margin
                 
             ccbboxexcl = passed-ccbboxobject
-            
+            if "bad_slices" in self._otherFeatureNames:
+                #compute the quality score of an object. lower is better
+                nbadslices = 0
+                badslices = []
+                area = rawbbox.shape[xAxis]*rawbbox.shape[yAxis]
+                for iz in range(maxz-minz):
+                    bboxkey = 3*[None]
+                    bboxkey[xAxis] = slice(None, None, None)
+                    bboxkey[yAxis] = slice(None, None, None)
+                    bboxkey[zAxis] = iz
+                    bboxkey = tuple(bboxkey)
+                    nblack = numpy.sum(rawbbox[bboxkey]==0)
+                    if nblack>0.5*area:
+                        nbadslices = nbadslices+1
+                        badslices.append(iz)
+                otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
+                
             labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
             feats = [None, None, None]
             for ibox, bbox in enumerate(labeled_bboxes):
                 def extractObjectFeatures(ibox):
                     feats[ibox] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
-                                                                    bbox.astype(numpy.uint32), \
+                                                                    labeled_bboxes[ibox].astype(numpy.uint32), \
                                                                     self._vigraFeatureNames, \
                                                                     histogramRange=[0, 255], \
                                                                     binCount = 10,\
@@ -183,7 +230,12 @@ class OpRegionFeatures3d(Operator):
                 lbp_total = numpy.zeros(passed.shape)
                 for iz in range(maxz-minz): 
                     #an lbp image
-                    lbp_total[:, :, iz] = ft.local_binary_pattern(rawbbox[:, :, iz], P, R, "uniform")
+                    bboxkey = 3*[None]
+                    bboxkey[xAxis] = slice(None, None, None)
+                    bboxkey[yAxis] = slice(None, None, None)
+                    bboxkey[zAxis] = iz
+                    bboxkey = tuple(bboxkey)
+                    lbp_total[bboxkey] = ft.local_binary_pattern(rawbbox[bboxkey], P, R, "uniform")
                 #extract relevant parts
                 #print "computed lbp for volume:", lbp_total.shape,
                 #print "extracting pieces:", passed.shape, ccbboxexcl.shape, ccbboxobject.shape
@@ -199,14 +251,7 @@ class OpRegionFeatures3d(Operator):
                 otherFeatures_dict["lbp_excl"].append(lbp_hist_excl)
                 otherFeatures_dict["lbp_obj"].append(lbp_hist_obj)
 
-            if "bad_slices" in self._otherFeatureNames:
-                #compute the quality score of an object. lower is better
-                nbadslices = 0
-                for iz in range(maxz-minz):
-                    nblack = numpy.sum(rawbbox[:, :, iz]==0)
-                    if nblack>0.5*rawbbox.shape[0]*rawbbox.shape[1]:
-                        nbadslices = nbadslices+1
-                otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
+           
 
             if "lapl_obj" in self._otherFeatureNames:
                 #compute mean and variance of laplacian in the object and its neighborhood
@@ -270,8 +315,8 @@ class OpRegionFeatures3d(Operator):
                 nchannels = len(features_incl[first_good][key][0])
             except TypeError:
                 nchannels = 1
-            print "assembling key:", key, "nchannels:", nchannels
-            print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
+            #print "assembling key:", key, "nchannels:", nchannels
+            #print "feature arrays:", len(features_incl), len(features_excl), len(features_obj)
             #FIXME: find the maximum number of channels and pre-allocate
             feature_obj = numpy.zeros((nobj, nchannels))
             feature_incl = numpy.zeros((nobj, nchannels))
