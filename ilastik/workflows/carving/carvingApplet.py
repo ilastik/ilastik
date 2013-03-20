@@ -27,7 +27,7 @@ class CarvingApplet(LabelingApplet):
         Override from base class.
         """
         return self._topLevelOperator
-
+    
     def createSingleLaneGui(self, laneIndex):
         """
         Override from base class.

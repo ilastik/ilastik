@@ -8,7 +8,6 @@ class CarvingSerializer( AppletSerializer ):
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
-        
         for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
             mst = opCarving._mst 
             for name in opCarving._dirtyObjects:
