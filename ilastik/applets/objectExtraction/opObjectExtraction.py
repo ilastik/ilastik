@@ -175,17 +175,67 @@ class OpRegionFeatures3d(Operator):
                 nbadslices = 0
                 badslices = []
                 area = rawbbox.shape[xAxis]*rawbbox.shape[yAxis]
+                bboxkey = 3*[None]
+                bboxkey[xAxis] = slice(None, None, None)
+                bboxkey[yAxis] = slice(None, None, None)
                 for iz in range(maxz-minz):
-                    bboxkey = 3*[None]
-                    bboxkey[xAxis] = slice(None, None, None)
-                    bboxkey[yAxis] = slice(None, None, None)
                     bboxkey[zAxis] = iz
-                    bboxkey = tuple(bboxkey)
-                    nblack = numpy.sum(rawbbox[bboxkey]==0)
+                    nblack = numpy.sum(rawbbox[tuple(bboxkey)]==0)
                     if nblack>0.5*area:
                         nbadslices = nbadslices+1
                         badslices.append(iz)
                 otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
+                #interpolate the raw data
+                imagekey = 3*[None]
+                imagekey[xAxis] = slice(minx, maxx, None)
+                imagekey[yAxis] = slice(miny, maxy, None)
+                try:
+                    for sl in badslices:
+                        if sl==0:
+                            if minz==0:
+                                continue
+                            slprev=minz
+                            slprevsum = area
+                            while slprevsum>0.5*area and slprev>0:
+                                slprev = slprev-1
+                                imagekey[zAxis]=slprev
+                                slprevsum = numpy.sum(image[tuple(imagekey)])
+                        else:
+                            slprev = sl+minz
+                            while slprev-minz in badslices and slprev>=0:
+                                slprev = slprev-1
+                                
+                        if sl==maxz-1:
+                            if sl==image.shape[zAxis]-1:
+                                continue
+                            slnext = maxz-1
+                            slnextsum = area
+                            while slnextsum>0.5*area and slnext<image.shape[zAxis]-1:
+                                slnext = slnext+1
+                                imagekey[zAxis] = slnext
+                                slnextsum = numpy.sum(image[tuple(imagekey)])
+                        else:
+                            slnext = sl+minz
+                            while slnext-minz in badslices and slnext<maxz:
+                                slnext = slnext+1
+                            
+                            
+                        interval = slnext-slprev
+                        weightnext = float(slnext-sl)/interval
+                        weightprev = float(sl-slprev)/interval
+                        bboxkey[zAxis] = sl
+                        keycurrent = tuple(bboxkey)
+                        imagekey[zAxis] = slprev
+                        keyprev = tuple(imagekey)
+                        imagekey[zAxis] = slnext
+                        keynext = tuple(imagekey)
+                        rawbbox[keycurrent] = weightnext*image[keynext] + weightprev*image[keyprev]
+                except:
+                    #interpolation didn't work. just go on.
+                    print "interpolation failed"
+                    
+                    
+                
                 
             labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
             feats = [None, None, None]
