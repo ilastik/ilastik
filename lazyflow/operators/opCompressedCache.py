@@ -269,7 +269,7 @@ class OpCompressedCache(Operator):
         block_starts = map( lambda x: tuple(x), block_starts )
 
         # Copy data to each block
-        logger.debug( "Copying data from {} blocks...".format( len(block_starts) ) )
+        logger.debug( "Copying data INTO {} blocks...".format( len(block_starts) ) )
         for block_start in block_starts:
             entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
 
