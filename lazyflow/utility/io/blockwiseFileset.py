@@ -152,7 +152,11 @@ class BlockwiseFileset(object):
         sub_block_shape = self._description.sub_block_shape
         if sub_block_shape is not None:
             block_shape = self._description.block_shape
-            assert ( numpy.mod(block_shape / sub_block_shape) == 0 ).all(), "sub_block_shape must divide evenly into block_shape"
+            block_shape_mods = (numpy.mod(block_shape , sub_block_shape) != 0)
+            nonfull_block_shape_dims = (block_shape != self._description.view_shape)
+            invalid_sub_block_dims = numpy.logical_and(nonfull_block_shape_dims, block_shape_mods)
+            assert ( invalid_sub_block_dims == False ).all(), "Each dimension of sub_block_shape must divide evenly into block_shape,"\
+                                    " unless the total dataset is only one block wide in that dimension."
 
         # default view_origin        
         if self._description.view_origin is None:
