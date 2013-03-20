@@ -61,6 +61,7 @@ def getArgParser():
     parser.add_argument('--option_config_file', help='A json file with various settings', required=True)
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--output_description_file', help='The JSON file that describes the output dataset', required=False)
+    parser.add_argument('--secondary_output_description_file', help='A secondary output description file, which will be used if the workflow supports secondary outputs.', required=False, action='append')
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
 
     return parser
@@ -135,11 +136,24 @@ def runWorkflow(parsed_args):
     resultSlot = None
     finalOutputSlot = workflow.getHeadlessOutputSlot( config.output_slot_id )
     assert finalOutputSlot is not None
+
+    secondaryOutputSlots = workflow.getSecondaryHeadlessOutputSlots( config.output_slot_id )
+    secondaryOutputDescriptions = args.secondary_output_description_file # This is a list (see 'action' above)
+    if len(secondaryOutputDescriptions) != len(secondaryOutputSlots):
+        raise RuntimeError( "This workflow produces exactly {} SECONDARY outputs.  You provided {}.".format( len(secondaryOutputSlots), len(secondaryOutputDescriptions) ) )
+    
     clusterOperator = None
     try:
         if args._node_work_ is not None:
             # We're doing node work
             opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
+            
+            opClusterTaskWorker.SecondaryInputs.resize( len( secondaryOutputSlots ) )
+            opClusterTaskWorker.SecondaryOutputDescriptions.resize( len( secondaryOutputSlots ) )
+            for i in range( len(secondaryOutputSlots) ):
+                opClusterTaskWorker.SeconaryInputs[i].connect( secondaryOutputSlots[i] )
+                opClusterTaskWorker.SeconaryOutputDescriptions[i].setValue( secondaryOutputDescriptions[i] )
+
             opClusterTaskWorker.Input.connect( finalOutputSlot )
             opClusterTaskWorker.TaskName.setValue( task_name )
             opClusterTaskWorker.RoiString.setValue( args._node_work_ )
@@ -162,6 +176,13 @@ def runWorkflow(parsed_args):
         else:
             # We're the master
             opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
+
+            opClusterizeMaster.SecondaryInputs.resize( len( secondaryOutputSlots ) )
+            opClusterizeMaster.SecondaryOutputDescriptions.resize( len( secondaryOutputSlots ) )
+            for i in range( len(secondaryOutputSlots) ):
+                opClusterizeMaster.SeconaryInputs[i].connect( secondaryOutputSlots[i] )
+                opClusterizeMaster.SeconaryOutputDescriptions[i].setValue( secondaryOutputDescriptions[i] )    
+
             opClusterizeMaster.Input.connect( finalOutputSlot )
             opClusterizeMaster.ProjectFilePath.setValue( args.project )
             opClusterizeMaster.OutputDatasetDescription.setValue( args.output_description_file )
@@ -217,6 +238,7 @@ if __name__ == "__main__":
 #        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
 #        args.append( "--process_name=JOB02" )
 #        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/results_description.json" )
+#        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/debug_feature_output_description.json")
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         # pixel classification

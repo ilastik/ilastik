@@ -106,9 +106,12 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         opBatchOutput.RawImage.connect( opRawBatchInput.Image )
         opBatchOutput.ImageToExport.connect( opBatchClassify.PredictionImage )
 
-    def getHeadlessOutputSlot(self, slotId):
+    def getHeadlessOutputSlots(self, slotId):
         if slotId == "BatchPredictionImage":
             return self.opBatchClassify.PredictionImage
-        
         raise Exception("Unknown headless output slot")
     
+    def getSecondaryHeadlessOutputSlots(self, slotId):
+        if slotId == "BatchPredictionImage":
+            return [self.opBatchClassify.BlockwiseRegionFeatures]        
+        raise Exception("Unknown headless output slot")
