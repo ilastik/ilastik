@@ -76,7 +76,7 @@ class PreprocessingGui(QMainWindow):
             # Load the ui file (find it in our own directory)
             localDir = os.path.split(__file__)[0]+'/'
             # (We don't pass self here because we keep the drawer ui in a separate object.)
-            self.drawer = uic.loadUi(localDir+"/PreprocessingDrawer.ui")
+            self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
             
             # Set up radiobox layout
             self.filterbuttons = [self.drawer.filter1,

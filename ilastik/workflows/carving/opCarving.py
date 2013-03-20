@@ -481,13 +481,13 @@ class OpCarving(Operator):
         start = time.time()
         
         self._mst = self.MST.value
-        print self._mst
         
-        sl = roi.toSlice()
         if slot == self.AllObjectNames:
             ret = self._mst.object_names.keys()
             return ret
-        elif slot == self.Segmentation:
+        
+        sl = roi.toSlice()
+        if slot == self.Segmentation:
             #avoid data being copied
             temp = self._mst.segmentation[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)

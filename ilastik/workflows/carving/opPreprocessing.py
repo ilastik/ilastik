@@ -1,3 +1,5 @@
+import sys
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from ilastik.utility.operatorSubView import OperatorSubView
@@ -135,9 +137,10 @@ class OpPreprocessing(Operator):
         volume_ma = numpy.max(volume_feat)
         volume_mi = numpy.min(volume_feat)
         volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
-        print "Watershed..."
+        sys.stdout.write("Watershed..."); sys.stdout.flush()
         self.applet.progressSignal.emit(0)
         labelVolume = vigra.analysis.watersheds(volume_feat)[0].astype(numpy.int32)
+        sys.stdout.write("done"); sys.stdout.flush()
         
         
         self.applet.progress = 0

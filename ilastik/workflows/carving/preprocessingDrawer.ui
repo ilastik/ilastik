@@ -92,7 +92,7 @@
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>sigmaSpin</string>
+          <string>sigma</string>
          </property>
         </widget>
        </item>

@@ -9,7 +9,6 @@ from opCarvingTopLevel import OpCarvingTopLevel
 from carvingSerializer import CarvingSerializer
 from carvingGui import CarvingGui
 from preprocessingSerializer import PreprocessingSerializer
-from opPreprocessingTopLevel import OpPreprocessingTopLevel
 from preprocessingGui import PreprocessingGui
 from opPreprocessing import OpPreprocessing
 import functools
