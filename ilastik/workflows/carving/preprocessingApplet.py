@@ -13,9 +13,6 @@ from preprocessingGui import PreprocessingGui
 from opPreprocessing import OpPreprocessing
 import functools
 
-#just for Thorben, who wants to add already preprocessed files
-from cylemon.segmentation import MSTSegmentor
-
 class PreprocessingApplet(StandardApplet):
 
     def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False):
@@ -31,9 +28,6 @@ class PreprocessingApplet(StandardApplet):
         self.writeprotected = False
         self._enabledDS = True
         self._enabledReset = False
-        
-        #temp Var: Thorben wants to add already preprocessed Files
-        self.ThorbenGraph = None
     
     def enableReset(self,er):
         if self._enabledReset != er:
@@ -62,20 +56,6 @@ class PreprocessingApplet(StandardApplet):
         self._gui.enableReset(self._enabledReset)
         
         return self._gui
-    
-    #  temp - temp - temp - temp - temp - temp - temp - temp - temp
-    def ThorbenWantsToAddAlreadyPreprocessedFilesDirectly(self,thorbensfile):
-        print '''
-            *~*~*~*~*~*~*~*~*~*~*~*~*~
-            ~Do not try this at home!*
-            *  this is just a hack   ~
-            ~                        *
-            * To use the preprocessed~
-            ~  File, just hit "run"  *
-            *~*~*~*~*~*~*~*~*~*~*~*~*~'''
-        graph = MSTSegmentor.loadH5(thorbensfile,"graph")
-        self.ThorbenGraph = graph
-    #  /temp - temp - temp - temp - temp - temp - temp - temp - temp
     
     @property
     def dataSerializers(self):

@@ -34,8 +34,19 @@ class PreprocessingSerializer( AppletSerializer ):
             
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         
+        assert "sigma" in topGroup.keys()
+        assert "filter" in topGroup.keys()
+        
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
+        
+        if "graph" in topGroup.keys():
+            graphgroup = topGroup["graph"]
+        else:
+            assert "graphfile" in topGroup.keys()
+            #feature: load preprocessed graph from file
+            graphgroup = h5py.File(topGroup["graphfile"].value,"r")["graph"]
+            
         
         for opPre in self._o.innerOperators:
             
@@ -44,7 +55,7 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
             
-            mst = MSTSegmentor.loadH5G(topGroup["graph"])
+            mst = MSTSegmentor.loadH5G(graphgroup)
             opPre._prepData = numpy.array([mst])
         
             opPre.enableDownstream(True)

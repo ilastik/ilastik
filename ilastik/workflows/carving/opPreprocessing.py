@@ -93,13 +93,6 @@ class OpPreprocessing(Operator):
         if self._prepData[0] is not None and not self._dirty:
             return self._prepData
         
-        #temp - temp - temp - temp - temp - temp - temp - temp
-        if self.applet.ThorbenGraph is not None:
-            result[0] = self.applet.ThorbenGraph
-            self._prepData = result
-            return result
-        #/temp - temp - temp - temp - temp - temp - temp - temp 
-        
         volume5d = self.RawData.value
         sigma = self.Sigma.value
         
