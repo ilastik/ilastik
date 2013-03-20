@@ -28,7 +28,7 @@ class OpFilterLabels(Operator):
         if self.MaxLabelSize.ready():
             maxSize = self.MaxLabelSize.value
         self.Input.get(roi, result).wait()
-        self.remove_small_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
+        self.remove_wrongly_sized_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -36,7 +36,7 @@ class OpFilterLabels(Operator):
         assert inputSlot == self.Input or inputSlot == self.MinLabelSize or inputSlot == self.MaxLabelSize
         self.Output.setDirty( slice(None) )
 
-    def remove_small_connected_components(self, a, min_size, max_size, in_place):
+    def remove_wrongly_sized_connected_components(self, a, min_size, max_size, in_place):
         """
         Adapted from http://github.com/jni/ray/blob/develop/ray/morpho.py
         (MIT License)
@@ -44,7 +44,7 @@ class OpFilterLabels(Operator):
         original_dtype = a.dtype
         if not in_place:
             a = a.copy()
-        if min_size == 0: # shortcut for efficiency
+        if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
             return a
         component_sizes = numpy.bincount( a.ravel() )
         bad_sizes = component_sizes < min_size
