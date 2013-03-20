@@ -1,4 +1,5 @@
 #Python
+import time
 import numpy, h5py
 import copy
 
@@ -12,20 +13,25 @@ from lazyflow.rtype import List
 
 #ilastik
 from ilastik.applets.labeling import OpLabelingSingleLane
+from preprocessfile import preprocess
 
+import os.path
+import copy
+
+from cylemon.segmentation import MSTSegmentor
 
 class OpCarving(Operator):
     name = "Carving"
     category = "interactive segmentation"
 
     # I n p u t s #
-
-    #filename of the pre-processed carving graph file
-    CarvingGraphFile = InputSlot()
-
+    
+    #MST of preprocessed Graph
+    MST = InputSlot()
+    
     #raw data on which carving works
     RawData      = InputSlot()
-
+    
     #write the seeds that the users draw into this slot
     WriteSeeds   = InputSlot()
 
@@ -75,17 +81,16 @@ class OpCarving(Operator):
 
     def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
-   
         blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
         self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
-        
         self.opLabeling.LabelInput.connect( self.RawData )
         self.opLabeling.InputImage.connect( self.RawData )
         self.opLabeling.LabelDelete.setValue(-1)
         
-        print "[Carving id=%d] CONSTRUCTOR" % id(self) 
-        self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
+        print "[Carving id=%d] CONSTRUCTOR" % id(self)
+        
         self._hintOverlayFile = hintOverlayFile
+        self._mst = None
 
         #supervoxels of finished and saved objects
         self._done_lut = None
@@ -99,8 +104,7 @@ class OpCarving(Operator):
                 print "Could not open hint overlay '%s'" % hintOverlayFile
                 raise e
             self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
-            
-        print "xxxxx ", pmapOverlayFile
+        
         if pmapOverlayFile is not None:
             try:
                 f = h5py.File(pmapOverlayFile,"r")
@@ -143,7 +147,14 @@ class OpCarving(Operator):
             assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
             self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         print ""
-
+    
+    '''
+    def setCarvingGraphFile(self,path):
+        self.CarvingGraphFile.setValue(path)
+        self._mst = MSTSegmentor.loadH5(path,  "graph")
+        print self._mst
+    '''
+    
     def dataIsStorable(self):
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
@@ -165,8 +176,12 @@ class OpCarving(Operator):
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
        
-        objects = self._mst.object_names.keys()
-        self.AllObjectNames.meta.shape = len(objects)
+        if self._mst is not None:
+            objects = self._mst.object_names.keys()
+            self.AllObjectNames.meta.shape = len(objects)
+        else: 
+            self.AllObjectNames.meta.shape = 0
+        
         self.AllObjectNames.meta.dtype = object
 
     def hasCurrentObject(self):
@@ -463,14 +478,16 @@ class OpCarving(Operator):
         self._dirtyObjects.add(name)
 
     def execute(self, slot, subindex, roi, result):
-        if self._mst is None:
-            return
+        start = time.time()
+        
+        self._mst = self.MST.value
+        print self._mst
+        
+        sl = roi.toSlice()
         if slot == self.AllObjectNames:
             ret = self._mst.object_names.keys()
             return ret
-        
-        sl = roi.toSlice()
-        if slot == self.Segmentation:
+        elif slot == self.Segmentation:
             #avoid data being copied
             temp = self._mst.segmentation[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
@@ -513,7 +530,6 @@ class OpCarving(Operator):
             temp.shape = (1,) + temp.shape + (1,)
         else:
             raise RuntimeError("unknown slot")
-
         return temp #avoid copying data
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -560,18 +576,7 @@ class OpCarving(Operator):
 
             self.Segmentation.setDirty(slice(None))
             self.HasSegmentation.setValue(True)
-
-        elif slot == self.CarvingGraphFile:
-            if self._mst is not None:
-                objects = self._mst.object_names.keys()
-                self.AllObjectNames.meta.shape = len(objects)
-                #if the carving graph file is not valid, all outputs must be invalid
-                for output in self.outputs.values():
-                    if output is self.AllObjectNames:
-                        continue
-                    output.setDirty(slice(0,None))
-
-            self.Segmentation.setDirty(slice(None))
-
+        elif slot == self.MST:
+			self._mst = self.MST.value
         else:
             super(OpCarving, self).notifyDirty(slot, key)

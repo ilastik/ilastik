@@ -239,10 +239,9 @@ class ProjectManager(object):
         2) touch Old.ilp
         3) copycontents New.ilp -> Old.ilp
         4) Save current applet state to current project (New.ilp)
-        
         Postconditions: - Original project state is saved to a new file with the original name.
-                        - Current project file is still open, but has a new name.
-                        - Current project file has been saved (it is in sync with the applet states)
+        - Current project file is still open, but has a new name.
+        - Current project file has been saved (it is in sync with the applet states)
         """
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
@@ -252,7 +251,11 @@ class ProjectManager(object):
 
         oldPath = self.currentProjectPath
         try:
+            self.currentProjectFile.close()
+            if os.path.isfile(newPath):
+                os.remove(newPath)
             os.rename( oldPath, newPath )
+            self.currentProjectFile = h5py.File(newPath)
         except OSError, err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
@@ -264,12 +267,12 @@ class ProjectManager(object):
 
         # The file has been renamed
         self.currentProjectPath = newPath
-
-        # Copy the contents of the current project file to a newly-created file (with the old name)        
-        with h5py.File(oldPath, 'w') as oldFile:
+        
+        # Copy the contents of the current project file to a newly-created file (with the old name)
+        with h5py.File(oldPath, 'a') as oldFile:
             for key in self.currentProjectFile.keys():
                 oldFile.copy(self.currentProjectFile[key], key)
-
+        
         # Save the current project state
         self.saveProject()
         
