@@ -9,6 +9,7 @@ from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
 from lazyflow.utility import traceLogged
+from ilastik.utility.gui import threadRouted
 from volumina.api import LazyflowSource, ColortableLayer
 from ilastik.applets.layerViewer import LayerViewerGui
 
@@ -45,11 +46,6 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         self._haloSpinBoxes = { 'x' : self._drawer.haloSpinBox_X,
                                 'y' : self._drawer.haloSpinBox_Y,
                                 'z' : self._drawer.haloSpinBox_Z }
-
-        blockShapeSlot = self.topLevelOperatorView.BlockShape3dDict
-        if blockShapeSlot.ready():
-            block_shape_dict = blockShapeSlot.value
-            self._drawer.blockSpinBox_X.setValue( block_shape_dict['x'] )
 
         for spinBoxes in ( self._blockSpinBoxes, self._haloSpinBoxes ):
             for spinBox in spinBoxes.values():
@@ -103,17 +99,18 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         block_shape_dict['x'] = self._drawer.blockSpinBox_X.value()
         block_shape_dict['y'] = self._drawer.blockSpinBox_Y.value()
         block_shape_dict['z'] = self._drawer.blockSpinBox_Z.value()
-        blockShapeSlot.setValue( block_shape_dict )
 
         haloPaddingSlot = self.topLevelOperatorView.HaloPadding3dDict
         halo_padding_dict = dict(self.topLevelOperatorView.HaloPadding3dDict.value)
         halo_padding_dict['x'] = self._drawer.haloSpinBox_X.value()
         halo_padding_dict['y'] = self._drawer.haloSpinBox_Y.value()
         halo_padding_dict['z'] = self._drawer.haloSpinBox_Z.value()
+
+        blockShapeSlot.setValue( block_shape_dict )
         haloPaddingSlot.setValue( halo_padding_dict )
-        
         self._drawer.applyButton.setEnabled( False )
 
+    @threadRouted
     def _updateGuiFromOperator(self, *args):
         blockShapeDict = self.topLevelOperatorView.BlockShape3dDict.value
         for axiskey, spinBox in self._blockSpinBoxes.items():

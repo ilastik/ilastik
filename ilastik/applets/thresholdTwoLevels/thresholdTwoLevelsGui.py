@@ -8,6 +8,7 @@ from PyQt4.QtGui import QColor
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.utility.gui import threadRouted
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -47,6 +48,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self._updateGuiFromOperator()
     
+    @threadRouted
     def _updateGuiFromOperator(self):
         op = self.topLevelOperatorView
         
@@ -71,25 +73,37 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
+
+        # Read all gui settings before updating the operator
+        # (The gui is still responding to operator changes, 
+        #  and we don't want it to update until we've read all gui values.)
         
-        # Channel
-        op.Channel.setValue( self._drawer.inputChannelSpinBox.value() )
+        # Read Channel
+        channel = self._drawer.inputChannelSpinBox.value()
         
-        # Sigmas
+        # Read Sigmas
         sigmaSlot = self.topLevelOperatorView.SmootherSigma
         block_shape_dict = dict( sigmaSlot.value )
         block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
         block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
-        sigmaSlot.setValue( block_shape_dict )
 
-        # Thresholds
-        op.LowThreshold.setValue( self._drawer.lowThresholdSpinBox.value() )
-        op.HighThreshold.setValue( self._drawer.highThresholdSpinBox.value() )
+        # Read Thresholds
+        lowThreshold = self._drawer.lowThresholdSpinBox.value()
+        highThreshold = self._drawer.highThresholdSpinBox.value()
         
-        # Size filters
-        op.MinSize.setValue( self._drawer.minSizeSpinBox.value() )
-        op.MaxSize.setValue( self._drawer.maxSizeSpinBox.value() )
+        # Read Size filters
+        minSize = self._drawer.minSizeSpinBox.value()
+        maxSize = self._drawer.maxSizeSpinBox.value()
+
+        # Apply new settings to the operator
+        op.Channel.setValue( channel )
+        sigmaSlot.setValue( block_shape_dict )
+        op.LowThreshold.setValue( lowThreshold )
+        op.HighThreshold.setValue( highThreshold )
+        op.MinSize.setValue( minSize )
+        op.MaxSize.setValue( maxSize )
+
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
