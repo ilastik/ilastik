@@ -263,6 +263,8 @@ class OpObjectPredict(Operator):
     Classifier = InputSlot()
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
+    
+    SegmentationThreshold = 0.5
 
     def setupOutputs(self):
         self.Predictions.meta.shape = self.Features.meta.shape
@@ -284,6 +286,7 @@ class OpObjectPredict(Operator):
 
         feats = {}
         predictions = {}
+        prob_predictions = {}
         for t in times:
             if t in self.cache:
                 continue
@@ -301,9 +304,11 @@ class OpObjectPredict(Operator):
 
             feats[t] = _concatenate(ftsMatrix, axis=1)
             predictions[t]  = [0] * len(forests)
+            prob_predictions[t] = [0] * len(forests)
 
         def predict_forest(t, number):
             predictions[t][number] = forests[number].predictLabels(feats[t]).reshape(1, -1)
+            prob_predictions[t][number] = forests[number].predictProbabilities(feats[t])
 
         # predict the data with all the forests in parallel
         pool = Pool()
@@ -323,14 +328,31 @@ class OpObjectPredict(Operator):
         for t in times:
             if t not in self.cache:
                 # shape (ForestCount, number of objects)
+                labels = [0]*len(forests)
+                for ip, pred_vector in enumerate(prob_predictions[t]):
+                    #find the majority class
+                    #FIXME: we are limiting it to two labels again
+                    labels[ip] = 1 + (pred_vector[:,1]>self.SegmentationThreshold).astype(numpy.uint8)
+                    labels[ip][0] = 0
+                    #print labels[ip].shape
+                
                 prediction = numpy.vstack(predictions[t])
-
+                all_labels = numpy.vstack(labels[t])
+                #print "all_labels.shape:", all_labels.shape
+                #print "prediction shape:", prediction.shape
                 # take mode of each column
                 m, _ = mode(prediction, axis=0)
                 m = m.squeeze()
                 assert m.ndim == 1
                 m[0] = 0
-                self.cache[t] = m
+                l, _ = mode(all_labels, axis=1)
+                l = l.squeeze()
+                l[0] = 0
+                #labels[0] = 0
+                #print l.shape, m.shape
+                #assert numpy.all(labels==m)
+                #self.cache[t] = m
+                self.cache[t] = l
             final_predictions[t] = self.cache[t]
 
         return final_predictions

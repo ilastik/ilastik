@@ -5,6 +5,8 @@ from ilastik.applets.thresholdTwoLevels import OpThresholdTwoLevels
 from ilastik.applets.blockwiseObjectClassification \
     import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
+from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 
 class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
     """
@@ -69,6 +71,8 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         # Access the batch INPUT applets
         opRawBatchInput = self.rawBatchInputApplet.topLevelOperator
         opPredictionBatchInput = self.predictionBatchInputApplet.topLevelOperator
+        
+        opBatchFillMissingSlices = OperatorWrapper( OpFillMissingSlicesNoCache, parent=self )
 
         # Connect the thresholding operator.
         # Parameter inputs are cloned from the interactive workflow,
@@ -89,9 +93,11 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         opBatchClassify.Classifier.connect( opTrainingTopLevel.Classifier )
         opBatchClassify.BlockShape3dDict.connect( opBlockwiseObjectClassification.BlockShape3dDict )
         opBatchClassify.HaloPadding3dDict.connect( opBlockwiseObjectClassification.HaloPadding3dDict )
+        
         #  but image pathway is from the batch pipeline
+        opBatchFillMissingSlices.Input.connect( opRawBatchInput.Image )
         op5Raw = OperatorWrapper( Op5ifyer, parent=self )
-        op5Raw.input.connect( opRawBatchInput.Image )
+        op5Raw.input.connect( opBatchFillMissingSlices.Output )
         op5Binary = OperatorWrapper( Op5ifyer, parent=self )
         op5Binary.input.connect( opBatchThreshold.Output )
         

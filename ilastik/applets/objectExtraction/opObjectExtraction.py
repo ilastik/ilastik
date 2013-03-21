@@ -80,7 +80,6 @@ class OpRegionFeatures3d(Operator):
 
     def _extract(self, image, labels):
         assert len(image.shape) == len(labels.shape) == 3, "Images must be 3D.  Shapes were: {} and {}".format( image.shape, labels.shape )
-        print "starting feature extraction..." 
         xAxis = image.axistags.index('x')
         yAxis = image.axistags.index('y')
         zAxis = image.axistags.index('z')
@@ -166,6 +165,7 @@ class OpRegionFeatures3d(Operator):
                 #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
                 dt = vigra.filters.distanceTransform2D(ccbbox[bboxkey].astype(numpy.float32))
                 passed[bboxkey] = dt<self.margin
+                
                 #dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
                 #passed[:, :, iz] = dt<self.margin
                 
@@ -184,6 +184,7 @@ class OpRegionFeatures3d(Operator):
                     if nblack>0.5*area:
                         nbadslices = nbadslices+1
                         badslices.append(iz)
+                
                 otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
                 #interpolate the raw data
                 imagekey = 3*[None]
@@ -221,6 +222,7 @@ class OpRegionFeatures3d(Operator):
                             
                             
                         interval = slnext-slprev
+                        
                         weightnext = float(slnext-sl)/interval
                         weightprev = float(sl-slprev)/interval
                         bboxkey[zAxis] = sl
@@ -253,20 +255,6 @@ class OpRegionFeatures3d(Operator):
             features_incl.append(feats[0])
             features_excl.append(feats[1])
             features_obj.append(feats[2])
-            #f_incl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), passed.astype(numpy.uint32),\
-            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-            #                                              ignoreLabel=0)
-
-            #f_excl = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxexcl.astype(numpy.uint32),\
-            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-            #                                              ignoreLabel=0)
-
-            #f_obj = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), ccbboxobject.astype(numpy.uint32),\
-            #                                              self._vigraFeatureNames, histogramRange=[0, 255], binCount=10,\
-            #                                              ignoreLabel=0)
-            #features_incl.append(f_incl)
-            #features_excl.append(f_excl)
-            #features_obj.append(f_obj)
 
 
             if "lbp_obj" in self._otherFeatureNames:
