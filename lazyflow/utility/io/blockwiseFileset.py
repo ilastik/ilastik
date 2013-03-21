@@ -5,6 +5,27 @@ import h5py
 import logging
 logger = logging.getLogger(__name__)
 
+import cPickle as pickle
+
+# The natural thing to do here is to use numpy.vectorize,
+#  but that somehow interacts strangely with pickle.
+#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str] )
+#vectorized_pickle_loads = numpy.vectorize( pickke.loads, otypes=[object] )
+
+def vectorized_pickle_dumps(a):
+    out = numpy.ndarray(shape=a.shape, dtype='O')
+    for i,x in enumerate(a.flat):
+        # Must use protocol 0 to avoid null bytes in the h5py dataset
+        out.flat[i] = pickle.dumps(x)
+    return out
+
+def vectorized_pickle_loads(a):
+    out = numpy.ndarray(shape=a.shape, dtype=object)
+    for i,s in enumerate(a.flat):
+        out.flat[i] = pickle.loads(s)
+    return out
+
+
 from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.utility import PathComponents, getPathVariants, FileLock
@@ -388,10 +409,15 @@ class BlockwiseFileset(object):
 
             hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
 
-            if isinstance(array_data, numpy.ndarray) and array_data.flags.c_contiguous:
+            if self._description.dtype != object and isinstance(array_data, numpy.ndarray) and array_data.flags.c_contiguous:
                 hdf5File[ path_parts.internalPath ].read_direct( array_data, roiToSlice( *block_relative_roi ), array_slicing )
+            elif self._description.dtype == object:
+                # We store arrays of dtype=object as arrays of pickle strings.
+                array_pickled_data = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
+                array_data[ array_slicing ] = vectorized_pickle_loads(array_pickled_data)
             else:
                 array_data[ array_slicing ] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
+                
         else:
             # Create the directory
             if not os.path.exists( datasetDir ):
@@ -411,7 +437,14 @@ class BlockwiseFileset(object):
             if path_parts.internalPath not in hdf5File:
                 self._createDatasetInFile( hdf5File, path_parts.internalPath, entire_block_roi )
             dataset = hdf5File[ path_parts.internalPath ]
-            dataset[ roiToSlice( *block_relative_roi ) ] = array_data[ array_slicing ]
+            data = array_data[ array_slicing ]
+            if data.dtype == object:
+                # hdf5 can't handle datasets with dtype=object,
+                #  so we have to pickle each item first.
+                dataset[ roiToSlice( *block_relative_roi ) ] = vectorized_pickle_dumps(data)
+            else:
+                dataset[ roiToSlice( *block_relative_roi ) ] = data
+            
 
     def _createDatasetInFile(self, hdf5File, datasetName, roi):
         shape = tuple( roi[1] - roi[0] )
@@ -420,11 +453,15 @@ class BlockwiseFileset(object):
             # chunks must not be bigger than the data in any dim
             chunks = numpy.minimum( chunks, shape )
             chunks = tuple(chunks)
-        compression=self._description.compression
-        compression_opts=self._description.compression_opts
+        compression = self._description.compression
+        compression_opts = self._description.compression_opts
+        
+        dtype=self._description.dtype
+        if dtype == object:
+            dtype = h5py.new_vlen(str)
         dataset = hdf5File.create_dataset( datasetName,
                                  shape=shape,
-                                 dtype=self._description.dtype,
+                                 dtype=dtype,
                                  chunks=chunks,
                                  compression=compression,
                                  compression_opts=compression_opts )
