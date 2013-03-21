@@ -171,8 +171,8 @@ class OpBlockwiseObjectClassification( Operator ):
     RawImage = InputSlot()
     BinaryImage = InputSlot()
     Classifier = InputSlot()
-    BlockShape3dDict = InputSlot( value={'x' : 1024, 'y' : 1024, 'z' : 256} ) # A dict of SPATIAL block dims
-    HaloPadding3dDict = InputSlot( value={'x' : 200, 'y' : 200, 'z' : 40} ) # A dict of spatial block dims
+    BlockShape3dDict = InputSlot( value={'x' : 512, 'y' : 512, 'z' : 512} ) # A dict of SPATIAL block dims
+    HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
     PredictionImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot()

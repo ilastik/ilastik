@@ -380,32 +380,26 @@ class OpRelabelSegmentation(Operator):
 
     def execute(self, slot, subindex, roi, result):
         img = self.Image(roi.start, roi.stop).wait()
-        idx = img.max()
+
         for t in range(roi.start[0], roi.stop[0]):
-            try:
-                map_ = self.ObjectMap([t]).wait()
-            except:
-                #something failed in prediction. relabel everything as background
-                tmap = numpy.zeros((idx+1,))
-                img[t] = tmap[img[t]]
-            else:
-                tmap = map_[t]
+            map_ = self.ObjectMap([t]).wait()
+            tmap = map_[t]
 
-                # FIXME: necessary because predictions are returned
-                # enclosed in a list.
-                if isinstance(tmap, list):
-                    tmap = tmap[0]
+            # FIXME: necessary because predictions are returned
+            # enclosed in a list.
+            if isinstance(tmap, list):
+                tmap = tmap[0]
 
-                tmap = tmap.squeeze()
+            tmap = tmap.squeeze()
 
-                warnings.warn("FIXME: This should be cached (and reset when the input becomes dirty)")
+            warnings.warn("FIXME: This should be cached (and reset when the input becomes dirty)")
+            idx = img.max()
+            if len(tmap) <= idx:
+                newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
+                newTmap[:len(tmap)] = tmap[:]
+                tmap = newTmap
 
-                if len(tmap) <= idx:
-                    newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
-                    newTmap[:len(tmap)] = tmap[:]
-                    tmap = newTmap
-
-                img[t] = tmap[img[t]]
+            img[t] = tmap[img[t]]
 
         return img
     
