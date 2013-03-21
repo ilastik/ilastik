@@ -443,7 +443,7 @@ class OpArrayCache(OpArrayPiper):
                 if self._blockState is None:
                     self._allocateManagementStructures()
                 self._cache = mem
-            self._memory_manager.add(self)
+        self._memory_manager.add(self)
 
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
