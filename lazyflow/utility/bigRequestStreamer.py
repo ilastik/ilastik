@@ -18,7 +18,7 @@ class BigRequestStreamer(object):
         self._minBlockShape = minBlockShape
         
         if batchSize is None:
-            batchSize=10
+            batchSize=2
 
         # Align the blocking with the start of the roi
         offsetRoi = ([0] * len(roi[0]), numpy.subtract(roi[1], roi[0]))
@@ -44,7 +44,7 @@ class BigRequestStreamer(object):
                 logger.debug( "Requesting Roi: {}".format( block_bounds ) )
                 yield block_bounds
         
-        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, 2 )
+        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize )
 
     @property
     def progressSignal(self):

@@ -28,7 +28,7 @@ class RoiRequestBatch( object ):
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
     The result of each requested roi is provided as a signal, which the user should subscribe() to.
     """
-    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=10 ):
+    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=2 ):
         """
         Constructor.
 
