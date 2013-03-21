@@ -1,10 +1,12 @@
 import logging
 import warnings
+from functools import partial
 
 import numpy
 
 from lazyflow.rtype import SubRegion
 from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiToSlice
+from lazyflow.request import Request, RequestLock, RequestPool
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot
@@ -58,17 +60,17 @@ class SerialLabelImageSlot(SerialSlot):
                 # This avoids allocating an enormous temporary numpy array
                 chunk_shape = dataset.chunks
                 assert chunk_shape is not None
-                block_shape = TinyVector(chunk_shape) * 3
+                block_shape = TinyVector(chunk_shape) * 10
                 block_shape = numpy.minimum(block_shape, dataset.shape)
                 block_starts = getIntersectingBlocks(block_shape, roi)
 
                 for block_start in block_starts:
                     block_roi = getBlockBounds( roi[1], block_shape, block_start )
                     dataset_relative_roi = numpy.array(block_roi) - roi[0]
-
                     slotRoi = SubRegion( opLabel.Input, *block_roi )
-                    opLabel.setInSlot( opLabel.Input, (), slotRoi, dataset[roiToSlice( *dataset_relative_roi )] )
-
+                    sub_block_data = dataset[roiToSlice( *dataset_relative_roi )]
+                    opLabel.setInSlot( opLabel.Input, (), slotRoi, sub_block_data )
+                    
         self.dirty = False
 
 
