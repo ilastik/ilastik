@@ -58,7 +58,7 @@ class OpLabelImage(Operator):
             self._mem_h5.close()
         super( OpLabelImage, self ).cleanUp()
 
-    def _computeLabelImage(self, roi, destination):
+    def _computeLabelImage(self, roi, result):
         shape = self.BinaryImage.meta.shape
         channels = shape[-1]
         for t in range(roi.start[0], roi.stop[0]):

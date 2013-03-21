@@ -9,5 +9,6 @@ class OpticalTranslationSerializer(AppletSerializer):
 #                 SerialDictSlot(operator.SmootherSigma, autodepends=True),
 #                 SerialSlot(operator.Channel, autodepends=True),
 #                ]
-#        
+#
+        slots = []
         super(self.__class__, self).__init__(projectFileGroupName, slots=slots)
