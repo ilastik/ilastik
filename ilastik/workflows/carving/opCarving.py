@@ -366,7 +366,7 @@ class OpCarving(Operator):
         self._dirtyObjects.add(name)
         
         objects = self._mst.object_names.keys()
-        print "save: len = ", len(object)
+        print "save: len = ", len(objects)
         self.AllObjectNames.meta.shape = len(objects)
         
         return True
