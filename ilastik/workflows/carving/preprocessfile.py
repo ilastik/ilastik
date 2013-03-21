@@ -1,5 +1,6 @@
 import numpy
 import time
+import matplotlib.pyplot as plt
 import sys
 import h5py
 from cylemon.segmentation import MSTSegmentor
@@ -9,7 +10,19 @@ import vigra
 import numpy
 
 
-
+def h5ToStack(inputf):
+    h5f = h5py.File(inputf,"r")
+    for i in xrange(10):
+        vol = h5f["raw"][:,:,][i]
+        f = 1.0/256
+        volume = numpy.array([[[x*f,0,0] for x in y] for y in vol])
+        print volume
+        plt.imshow(volume)
+        print volume
+        file_ = open("C:/Users/Ben/Desktop/carvingData/imageStack/pic"+str(i)+".png","w+")
+        print "C:/Users/Ben/Desktop/carvingData/imageStack/pic"+str(i)+".png"
+        plt.savefig(file_)
+        file_.close()
 
 def preprocess(inputf,outputf,sigma = 1.6):
     
@@ -38,5 +51,5 @@ def preprocess(inputf,outputf,sigma = 1.6):
     mst.saveH5("C:/Users/Ben/Desktop/carvingData/unprecarv_part35.h5","graph")
     #mst2 = MSTSegmentor.loadH5("C:/Users/Ben/Desktop/carvingData/test1.ilp","preprocessing/graph")
     
-    
+#h5ToStack("C:/Users/Ben/Desktop/carvingData/unprecarv_part.h5")
 #preprocess("C:/Users/Ben/Desktop/carvingData/unprecarv.h5","C:/Users/Ben/Desktop/carvingData/temp.h5",1)
