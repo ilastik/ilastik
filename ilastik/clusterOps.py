@@ -87,6 +87,10 @@ class OpTaskWorker(Operator):
 
         # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
         subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
+        primary_subrequest_shape = self._primaryBlockwiseFileset.description.sub_block_shape
+        if primary_subrequest_shape is not None:
+            # If the output dataset specified a sub_block_shape, override the cluster config
+            subrequest_shape = primary_subrequest_shape
 
         with Timer() as computeTimer:
             # Stream the data out to disk.
@@ -151,7 +155,7 @@ class OpClusterize(Operator):
         assert primary_sub_block_shape is not None, "Primary output description file must specify a sub_block_shape"
 
         # Ratio of blocks to sub-blocks for all secondaries must match the primary.
-        primary_sub_block_factor = primary_block_shape / primary_sub_block_shape
+        primary_sub_block_factor = (primary_block_shape + primary_sub_block_shape - 1) / primary_sub_block_shape
         
         for i, slot in enumerate( self.SecondaryOutputDescriptions ):
             descriptionPath = slot.value
@@ -160,8 +164,8 @@ class OpClusterize(Operator):
             sub_block_shape = secondaryDescription.sub_block_shape
             assert sub_block_shape is not None, "Secondary output description #{} doesn't specify a sub_block_shape".format( i )
             
-            sub_block_factor = block_shape / sub_block_shape
-            if (primary_sub_block_factor != sub_block_factor):
+            sub_block_factor = (block_shape + sub_block_shape - 1) / sub_block_shape
+            if (tuple(primary_sub_block_factor) != tuple(sub_block_factor)):
                 msg = "Error: Ratio of sub_block_shape to block_shape must be the same in the primary output dataset and in all secondary datasets.\n"
                 msg += "Secondary dataset {} has a factor of {}, which doesn't match primary factor of {}".format( i, sub_block_factor, primary_sub_block_factor )
                 raise RuntimeError(msg)
