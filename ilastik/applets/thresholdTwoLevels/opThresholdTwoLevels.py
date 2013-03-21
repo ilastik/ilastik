@@ -14,6 +14,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, OpCompressedCache, OpColorizeLabels
 from lazyflow.roi import extendSlice, TinyVector
 
+# ilastik
+from ilastik.utility.timer import Timer
+
 logger = logging.getLogger(__name__)
 
 def getMemoryUsageMb():
@@ -47,7 +50,9 @@ class OpAnisotropicGaussianSmoothing(Operator):
         inputRoi, computeRoi = self._getInputComputeRois(roi)
 
         # Obtain the input data
-        data = self.Input( *inputRoi ).wait()
+        with Timer() as resultTimer:
+            data = self.Input( *inputRoi ).wait()
+        logger.debug("Obtaining input data took {} seconds for roi {}".format( resultTimer.seconds(), inputRoi ))
         
         # Must be float32
         if data.dtype != numpy.float32:
@@ -127,8 +132,8 @@ class OpSelectLabels(Operator):
         
         if logger.isEnabledFor(logging.DEBUG):
             dtypeBytes = self.SmallLabels.meta.getDtypeBytes()
-            inputShape = self.SmallLabels.meta.shape
-            logger.debug( "Input image size is {} = {} MB".format( inputShape, numpy.prod(inputShape) * dtypeBytes / 1e6 ) )
+            roiShape = roi.stop - roi.start
+            logger.debug( "Roi shape is {} = {} MB".format( roiShape, numpy.prod(roiShape) * dtypeBytes / 1e6 ) )
             starting_memory_usage_mb = getMemoryUsageMb()
             logger.debug("Starting with memory usage: {} MB".format( starting_memory_usage_mb ))
 
