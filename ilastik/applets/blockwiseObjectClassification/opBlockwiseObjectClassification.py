@@ -189,6 +189,12 @@ class OpBlockwiseObjectClassification( Operator ):
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value
 
+        block_shape = self._getFullShape( self._block_shape_dict )
+        
+        region_feature_output_shape = ( numpy.array( self.PredictionImage.meta.shape ) + block_shape - 1 ) / block_shape
+        self.BlockwiseRegionFeatures.meta.shape = tuple(region_feature_output_shape)
+        self.BlockwiseRegionFeatures.meta.dtype = object
+        self.BlockwiseRegionFeatures.meta.axistags = self.PredictionImage.meta.axistags
         
     def execute(self, slot, subindex, roi, destination):
         if slot == self.PredictionImage:
@@ -250,8 +256,8 @@ class OpBlockwiseObjectClassification( Operator ):
             block_start_tc = map( lambda (k,v): v, tagged_block_start_tc )
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
 
-            destination_start = numpy.array(block_start) / block_shape - roi[0]
-            destination_stop = destination_start + numpy.ones( [1]*len(axiskeys) )
+            destination_start = numpy.array(block_start) / block_shape - roi.start
+            destination_stop = destination_start + numpy.array( [1]*len(axiskeys) )
 
             opBlockPipeline = self._blockPipelines[block_start]
             req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_tc )
