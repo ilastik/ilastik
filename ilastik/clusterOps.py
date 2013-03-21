@@ -44,7 +44,8 @@ class OpTaskWorker(Operator):
         self._closeFiles()
         self._primaryBlockwiseFileset = BlockwiseFileset( self.OutputFilesetDescription.value, 'a' )        
         self._secondaryBlockwiseFilesets = []
-        for descriptionPath in self.SecondaryOutputDescriptions.value:
+        for slot in self.SecondaryOutputDescriptions:
+            descriptionPath = slot.value
             self._secondaryBlockwiseFilesets.append( BlockwiseFileset( descriptionPath, 'a' ) )
     
     def cleanUp(self):
@@ -52,9 +53,12 @@ class OpTaskWorker(Operator):
         super( OpTaskWorker, self ).cleanUp()
 
     def _closeFiles(self):
-        self._primaryBlockwiseFileset.close()
+        if self._primaryBlockwiseFileset is not None:
+            self._primaryBlockwiseFileset.close()
         for fileset in self._secondaryBlockwiseFilesets:
             fileset.close()
+        self._primaryBlockwiseFileset = None
+        self._secondaryBlockwiseFilesets = []
 
     def execute(self, slot, subindex, ignored_roi, result):
         configFilePath = self.ConfigFilePath.value
@@ -70,6 +74,9 @@ class OpTaskWorker(Operator):
         
         roiString = self.RoiString.value
         roi = Roi.loads(roiString)
+        if len( roi.start ) != len( self.Input.meta.shape ):
+            assert False, "Task roi: {} is not valid for this input.  Did the master launch this task correctly?".format( roiString )
+
         logger.info( "Executing for roi: {}".format(roi) )
 
         if config.use_node_local_scratch:
@@ -102,15 +109,16 @@ class OpTaskWorker(Operator):
         # First write the primary
         self._primaryBlockwiseFileset.writeData(roi, result)
 
+        # Get this block's index with respect to the primary dataset
         sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
         
         # Now request the secondaries
-        for i, (slot, fileset) in enumerate( zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets) ):
+        for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
             # Compute the corresponding sub_block in this output dataset
-            sub_block_shape = fileset[i].description.sub_block_shape
+            sub_block_shape = fileset.description.sub_block_shape
             sub_block_start = sub_block_index * sub_block_shape
             sub_block_stop = sub_block_start + sub_block_shape
-            sub_block_stop = numpy.minimum( sub_block_stop, fileset[i].description.shape )
+            sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
             sub_block_roi = (sub_block_start, sub_block_stop)
             
             secondary_result = slot( *sub_block_roi ).wait()
@@ -145,7 +153,8 @@ class OpClusterize(Operator):
         # Ratio of blocks to sub-blocks for all secondaries must match the primary.
         primary_sub_block_factor = primary_block_shape / primary_sub_block_shape
         
-        for i, descriptionPath in enumerate( self.SecondaryOutputDescriptions.value ):
+        for i, slot in enumerate( self.SecondaryOutputDescriptions ):
+            descriptionPath = slot.value
             secondaryDescription = BlockwiseFileset.readDescription(descriptionPath)
             block_shape = secondaryDescription.block_shape
             sub_block_shape = secondaryDescription.sub_block_shape
