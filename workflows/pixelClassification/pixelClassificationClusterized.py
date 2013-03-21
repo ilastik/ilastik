@@ -296,8 +296,8 @@ if __name__ == "__main__":
 
         # Synapse Object classification
         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
-        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
-        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
+        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
+        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
         args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
         args.append( "--sys_tmp_dir=/scratch/bergs")
