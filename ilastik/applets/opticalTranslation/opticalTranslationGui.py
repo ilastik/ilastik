@@ -65,15 +65,23 @@ class OpticalTranslationGui( LayerViewerGui ):
         opSubRegion.Start.setValue( tuple(start) )
         opSubRegion.Stop.setValue( tuple(stop) )
         translationLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
-
-#        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)
-#        
+#        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)#        
 #        translationLayer = RGBALayer(self.translationsrc)
-
         translationLayer.name = "Translation Vector"
         translationLayer.opacity = 0.8
         translationLayer.visible = False
         layers.append(translationLayer)
+
+        ct = colortables.create_default_8bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        ct[1] = QColor(0,255,0,255).rgba() # foreground is green
+        self.warpedSrc = LazyflowSource( self.mainOperator.WarpedImage )
+        warpedLayer = ColortableLayer( self.warpedSrc, ct )
+        warpedLayer.name = "Warped Image"
+        warpedLayer.visible = False
+        warpedLayer.opacity = 0.4
+        layers.append(warpedLayer)
+
 
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
@@ -119,6 +127,7 @@ class OpticalTranslationGui( LayerViewerGui ):
             self.mainOperator.Parameters.value['method'] = 'nxcorr'
         elif self._drawer.methodBox.currentIndex() == 2:
             self.mainOperator.Parameters.value['method'] = 'xcorr'
+        self.mainOperator.Parameters.setDirty([])
             
     def _onComputeTranslationButtonPressed(self):        
         self._onMethodChanged()
