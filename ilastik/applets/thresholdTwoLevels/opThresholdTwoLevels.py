@@ -46,6 +46,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self.Output.setDirty( slice(None) )
     
     def execute(self, slot, subindex, roi, result):
+        assert all(roi.stop <= self.Input.meta.shape), "Requested roi {} is too large for this input image of shape {}.".format( roi, self.Input.meta.shape )
         # Determine how much input data we'll need, and where the result will be relative to that input roi
         inputRoi, computeRoi = self._getInputComputeRois(roi)
 

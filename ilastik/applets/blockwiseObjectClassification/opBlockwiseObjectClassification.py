@@ -183,6 +183,9 @@ class OpBlockwiseObjectClassification( Operator ):
         self._lock = RequestLock()
         
     def setupOutputs(self):
+        # Check for preconditions.
+        assert self.RawImage.meta.shape == self.BinaryImage.meta.shape, "Raw and binary images must have the same shape!"
+        
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint32 # (dtype ultimately comes from OpVigraLabelVolume)
 
