@@ -283,7 +283,8 @@ class PixelClassificationGui(LabelingGui):
                 QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
                 inputLayer )
             layers.append(inputLayer)
-
+        
+        self.handleLabelSelectionChange()
         return layers
 
     @traceLogged(traceLogger)
