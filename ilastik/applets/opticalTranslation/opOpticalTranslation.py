@@ -32,7 +32,7 @@ class OpOpticalTranslation(Operator):
         self._lock_warped = lazyflow.request.RequestLock()
         
     def setupOutputs(self):
-        assert(self.BinaryImage.meta.shape[-1] == 1, "this operator does only work with binary labels yet")
+        assert self.BinaryImage.meta.shape[-1] == 1, "this operator does only work with binary labels yet"
         
         self.TranslationVectors.meta.assignFrom(self.BinaryImage.meta)
         self.TranslationVectors.meta.dtype = numpy.int8
@@ -75,7 +75,7 @@ class OpOpticalTranslation(Operator):
             print ("Calculating TranslationVectors at t={}".format(t))
             dest = self._mem_h5['TranslationVectors']
             
-            if t == 0:
+            if t == shape[0]-1:
                 dest[t,...][:] = [0]
                 self._processedTimeSteps.add(t)
                 self.TranslationVectors._sig_value_changed()
@@ -85,20 +85,19 @@ class OpOpticalTranslation(Operator):
             sroi_cur = SubRegion(self.BinaryImage,
                              start=[t,0,0,0,0],
                              stop=[t+1,] + list(shape[1:]))
-            sroi_prev = SubRegion(self.BinaryImage,
-                             start=[t-1,0,0,0,0],
-                             stop=[t,] + list(shape[1:]))
+            sroi_next = SubRegion(self.BinaryImage,
+                             start=[t+1,0,0,0,0],
+                             stop=[t+2,] + list(shape[1:]))
             img_cur = self.BinaryImage.get(sroi_cur).wait()
-            img_prev = self.BinaryImage.get(sroi_prev).wait()
+            img_next = self.BinaryImage.get(sroi_next).wait()
             
             # since txyc images are pumped up to txyzc, we have to handle that case            
-            if self.twospacedim:
-                twospacedim = True
+            if self.twospacedim:                
                 img_cur = numpy.array(img_cur[0,...,0,0], dtype=numpy.float)            
-                img_prev = numpy.array(img_prev[0,...,0,0], dtype=numpy.float)
+                img_next = numpy.array(img_next[0,...,0,0], dtype=numpy.float)
             else:
                 img_cur = numpy.array(img_cur[0,...,0], dtype=numpy.float)                                
-                img_prev = numpy.array(img_prev[0,...,0], dtype=numpy.float)
+                img_next = numpy.array(img_next[0,...,0], dtype=numpy.float)
             
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
@@ -110,9 +109,9 @@ class OpOpticalTranslation(Operator):
             method = paras['method']   
             maxDiffVals = paras['maxDiffVals']                                 
             
-            print 'img_prev.shape, img_cur.shape, templateSize, maxTranslation, overlap, method, maxDiffVals = ',img_prev.shape, img_cur.shape, templateSize, maxTranslation, overlap, method, maxDiffVals
-            res = pgmlink.patchedOpticalTranslation(img_prev,
-                                                    img_cur,
+            print 'img_next.shape, img_cur.shape, templateSize, maxTranslation, overlap, method, maxDiffVals = ',img_next.shape, img_cur.shape, templateSize, maxTranslation, overlap, method, maxDiffVals
+            res = pgmlink.patchedOpticalTranslation(img_cur,
+                                                    img_next,
                                                     int(templateSize),
                                                     int(maxTranslation),
                                                     int(overlap),
@@ -156,8 +155,8 @@ class OpOpticalTranslation(Operator):
                 return result
             elif slot is self.WarpedImage:
                 start, stop = roi.start[0], roi.stop[0]
-                assert (stop-start == 1, "only implemented for single timesteps yet")
-                if start == 0:
+                assert stop-start == 1, "only implemented for single timesteps yet"
+                if start == self.WarpedImage.meta.shape[0]-1:
                     result[:] = 0
                     return result 
             
@@ -170,8 +169,8 @@ class OpOpticalTranslation(Operator):
                         
                         
                         sroi = SubRegion(self.BinaryImage,
-                                         start = [roi.start[0]-1,] + [0,0,0,0,],
-                                         stop = [roi.stop[0]-1,] + list(self.BinaryImage.meta.shape[1:]))
+                                         start = [roi.start[0],] + [0,0,0,0,],
+                                         stop = [roi.stop[0],] + list(self.BinaryImage.meta.shape[1:]))
                         img_cur = (self.BinaryImage.get(sroi).wait()).astype(numpy.float)
                         
                         if self.twospacedim:
@@ -186,8 +185,7 @@ class OpOpticalTranslation(Operator):
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.BinaryImage or slot is self.Parameters:            
-            start, stop = 0, self.BinaryImage.meta.shape[0]
-            print 'opOpticalTranslation: propagateDirty: ', start, stop
+            start, stop = 0, self.BinaryImage.meta.shape[0]            
             self.TranslationVectors.setDirty(slice(start,stop))
             self.TranslationVectorsDisplay.setDirty(slice(start,stop))
             self.WarpedImage.setDirty(slice(start,stop))

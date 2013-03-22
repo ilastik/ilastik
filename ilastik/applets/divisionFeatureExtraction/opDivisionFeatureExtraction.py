@@ -13,6 +13,8 @@ from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtracti
 class OpDivisionFeatureExtraction(OpObjectExtraction):
     name = "Division Feature Extraction"
 
+    TranslationVectors = InputSlot(optional=True)
+    
     RegionFeaturesVigra = OutputSlot(stype=Opaque, rtype=List)
         
     def __init__(self, parent):
@@ -21,10 +23,11 @@ class OpDivisionFeatureExtraction(OpObjectExtraction):
         self.RegionFeaturesVigra.connect(self._opRegFeats.Output)
         
         self.RegionFeatures.disconnect()
-            
+        
         self._opDivFeats = OpDivisionFeatures(parent=self)
         self._opDivFeats.LabelImage.connect(self.LabelImage)
         self._opDivFeats.RawImage.connect(self.RawImage)
+        self._opDivFeats.TranslationVectors.connect(self.TranslationVectors)
         self._opDivFeats.RegionFeaturesVigra.connect(self.RegionFeaturesVigra)
         
         self.RegionFeatures.connect(self._opDivFeats.DivisionFeatures)
@@ -37,7 +40,8 @@ class OpDivisionFeatureExtraction(OpObjectExtraction):
         assert False, "Shouldn't get here."
 
     def propagateDirty(self, inputSlot, subindex, roi):
-        pass
+        if inputSlot is self.TranslationVectors:
+            self.RegionFeatures.setDirty(slice(None))
 
 
 
@@ -45,9 +49,10 @@ class OpDivisionFeatures(Operator):
     name = "Division Features"
     
     LabelImage = InputSlot()
-    RawImage = InputSlot()
+    RawImage = InputSlot()    
     RegionFeaturesVigra = InputSlot(stype=Opaque, rtype=List)
-    
+    TranslationVectors = InputSlot(optional=True)
+        
     DivisionFeatures = OutputSlot(stype=Opaque, rtype=List)
     
     divisionFeatures = ['SquaredDistance%02d', 'AngleDaughters', 'ChildrenSizeRatio',\
@@ -56,8 +61,11 @@ class OpDivisionFeatures(Operator):
     numNeighbors = 2
     templateSize = 100 
     size_filter_from = 5
-    
+    with_uncorrected_features = True # plain features
+    with_corrected_features = True   # the region centers are corrected by translation vector
     defaultSquaredDistance = 1000
+    
+    transl_corr_suffix = "_corr"
     
     def __init__(self, parent):
         super(OpDivisionFeatures,self).__init__(parent=parent)
@@ -66,9 +74,15 @@ class OpDivisionFeatures(Operator):
         
     def setupOutputs(self):
         self.DivisionFeatures.meta.assignFrom(self.RegionFeaturesVigra.meta)        
-
+        if self.with_corrected_features and not self.TranslationVectors.ready():
+            raise Exception("TranslationVectors slot is not ready, cannot compute translation corrected features")
+        
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is self.TranslationVectors:
+            self.DivisionFeatures.setDirty([0,self.TranslationVectors.meta.shape[0]])
+                        
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.DivisionFeatures
+        assert slot == self.DivisionFeatures        
         
         feats = {}
         if len(roi) == 0:
@@ -89,22 +103,43 @@ class OpDivisionFeatures(Operator):
                 for c in range(numChannels):
                     feats_at_c = {} 
                     
-                    for name in region_feats_cur[c].keys():
+                    for name in region_feats_cur[c].keys():                        
                         feats_at_c[name] = region_feats_cur[c][name]
-                    
+                        
+                    if self.with_corrected_features:
+                        name = 'RegionCenter'+self.transl_corr_suffix
+                        feats_at_c[name] = numpy.zeros(feats_at_c['RegionCenter'].shape)
+                        
+                        for label in range(1,feats_at_c['RegionCenter'].shape[0]):
+                            coord = feats_at_c['RegionCenter'][label]
+                            coord = [int(round(x)) for x in coord]
+                            coord_end = [x+1 for x in coord]
+                            coord_roi = SubRegion(self.TranslationVectors, 
+                                                 start=[t,] + coord + [0,],
+                                                 stop=[t+1,] + coord_end + [3,])
+                            translation = self.TranslationVectors.get(coord_roi).wait()[0][0][0][0] 
+                            feats_at_c[name][label] = coord + translation
+                        
                     num = region_feats_cur[c]['RegionCenter'].shape[0]
                     
                     for n in range(self.numNeighbors):
                         if 'SquaredDistance%02d' in self.divisionFeatures:                            
-                            name = 'SquaredDistance%02d' % n                            
+                            name = 'SquaredDistance%02d' % n   
                             self.divisionFeatures.append(name)
                             if n == self.numNeighbors - 1:
                                 self.divisionFeatures.remove('SquaredDistance%02d')
-                        name = 'SquaredDistance%02d' % n        
-                        feats_at_c[name] = numpy.ones([num,1]) * self.defaultSquaredDistance
+                        name = 'SquaredDistance%02d' % n
+                        if self.with_uncorrected_features:
+                            feats_at_c[name] = numpy.ones([num,1]) * self.defaultSquaredDistance
+                        if self.with_corrected_features:
+                            feats_at_c[name+self.transl_corr_suffix] = numpy.ones([num,1]) * self.defaultSquaredDistance
                     
                     for name in self.divisionFeatures:
-                        feats_at_c[name] = numpy.zeros([num,1])                    
+                        if self.with_uncorrected_features:
+                            feats_at_c[name] = numpy.zeros([num,1])
+                        if self.with_corrected_features:     
+                            feats_at_c[name+self.transl_corr_suffix] = numpy.zeros([num,1])
+                        
                         
                     if t < self.LabelImage.meta.shape[0] - 1:
                         region_feats_next = self.RegionFeaturesVigra.get([t+1]).wait()[t+1]
@@ -123,8 +158,15 @@ class OpDivisionFeatures(Operator):
                         assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                         labels_next = labels_next[0,...,0] # assumes t,x,y,z,c
                         
-                        self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
-                                                     numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from)
+                        if self.with_uncorrected_features:
+                            self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
+                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,
+                                                         suffix='')
+                        
+                        if self.with_corrected_features:
+                            self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
+                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,                                                         
+                                                         suffix=self.transl_corr_suffix)
                     
                     feats_at.append(feats_at_c)    
 
@@ -135,9 +177,10 @@ class OpDivisionFeatures(Operator):
     
     
     def extractDivisionFeatures(self, feats_at_cur, feats_at_next, img_at_next, divFeatures, 
-                                numNeighbors = 3, size_filter_from = 4):
+                                numNeighbors = 3, size_filter_from = 4, 
+                                suffix=''):
         ''' adds division features to feats_at_cur '''        
-        for label_cur, com_cur in enumerate(feats_at_cur['RegionCenter']):
+        for label_cur, com_cur in enumerate(feats_at_cur['RegionCenter' + suffix]):
             if label_cur == 0:
                 continue
                     
@@ -183,25 +226,25 @@ class OpDivisionFeatures(Operator):
                 dist = row[1]
                 name = 'SquaredDistance%02d' % idx
                 if name in divFeatures:
-                    feats_at_cur[name][label_cur][0] = dist
+                    feats_at_cur[name+suffix][label_cur][0] = dist
                 coms_next_reduced[l] = coms_next[l]
                 labels_next_reduced.append(l)
             
             if 'AngleDaughters' in divFeatures:
-                feats_at_cur['AngleDaughters'][label_cur][0] = self.getMaxAngle(com_cur, coms_next_reduced)     
+                feats_at_cur['AngleDaughters'+suffix][label_cur][0] = self.getMaxAngle(com_cur, coms_next_reduced)     
             
             if 'ChildrenSizeRatio' in divFeatures:
                 sizes_next = []
                 for label in coms_next_reduced.keys(): 
                     sizes_next.append(feats_at_next['Count'][label])
-                feats_at_cur['ChildrenSizeRatio'][label_cur][0] = self.getChildrenSizeRatio(sizes_next)
+                feats_at_cur['ChildrenSizeRatio'+suffix][label_cur][0] = self.getChildrenSizeRatio(sizes_next)
             
             if 'SquaredDistanceRatio' in divFeatures:
-                feats_at_cur['SquaredDistanceRatio'][label_cur][0] = self.getSquaredDistanceRatio(sqDist)
+                feats_at_cur['SquaredDistanceRatio'+suffix][label_cur][0] = self.getSquaredDistanceRatio(sqDist)
             
             if 'ParentChildrenSizeRatio' in divFeatures:
                 size_cur = feats_at_cur['Count'][label_cur]
-                feats_at_cur['ParentChildrenSizeRatio'][label_cur][0] = self.getParentChildrenSizeRatio(size_cur, sizes_next)
+                feats_at_cur['ParentChildrenSizeRatio'+suffix][label_cur][0] = self.getParentChildrenSizeRatio(size_cur, sizes_next)
     
             means_next = []
             for l in labels_next_reduced:
@@ -210,10 +253,10 @@ class OpDivisionFeatures(Operator):
             mean_cur = feats_at_cur['Mean'][label_cur]
                 
             if 'ChildrenMeanRatio' in divFeatures:
-                feats_at_cur['ChildrenMeanRatio'][label_cur][0] = self.getChildrenMeanRatio(means_next)
+                feats_at_cur['ChildrenMeanRatio'+suffix][label_cur][0] = self.getChildrenMeanRatio(means_next)
             
             if 'ParentChildrenMeanRatio' in divFeatures:
-                feats_at_cur['ParentChildrenMeanRatio'][label_cur][0] = self.getParentChildrenMeanRatio(mean_cur, means_next)
+                feats_at_cur['ParentChildrenMeanRatio'+suffix][label_cur][0] = self.getParentChildrenMeanRatio(mean_cur, means_next)
                 
                 
     def dotproduct(self, v1, v2):

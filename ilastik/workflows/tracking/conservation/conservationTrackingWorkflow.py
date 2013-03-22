@@ -68,6 +68,7 @@ class ConservationTrackingWorkflow( Workflow ):
         ## Connect operators ##        
         opObjExtraction.RawImage.connect( opRawData.Image )
         opObjExtraction.BinaryImage.connect( opData.Image )
+        opObjExtraction.TranslationVectors.connect( opOptTranslation.TranslationVectors )
         
         opDivDetection.BinaryImages.connect(opData.Image)
         opDivDetection.RawImages.connect(opRawData.Image)

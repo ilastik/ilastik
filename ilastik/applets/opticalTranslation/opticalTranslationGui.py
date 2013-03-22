@@ -77,7 +77,7 @@ class OpticalTranslationGui( LayerViewerGui ):
         ct[1] = QColor(0,255,0,255).rgba() # foreground is green
         self.warpedSrc = LazyflowSource( self.mainOperator.WarpedImage )
         warpedLayer = ColortableLayer( self.warpedSrc, ct )
-        warpedLayer.name = "Warped Image"
+        warpedLayer.name = "Translation Corrected Binary Image"
         warpedLayer.visible = False
         warpedLayer.opacity = 0.4
         layers.append(warpedLayer)
