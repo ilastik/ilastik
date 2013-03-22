@@ -314,7 +314,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
-          <widget class="QToolButton" name="load">
+          <widget class="QPushButton" name="namesButton">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -322,34 +322,11 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Load ...</string>
+            <string>Browse objects</string>
            </property>
            <property name="icon">
             <iconset>
              <normaloff>../../shell/gui/icons/16x16/actions/document-open.png</normaloff>../../shell/gui/icons/16x16/actions/document-open.png</iconset>
-           </property>
-           <property name="toolButtonStyle">
-            <enum>Qt::ToolButtonTextBesideIcon</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QToolButton" name="deleteObject">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Delete ...</string>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>../../shell/gui/icons/16x16/actions/edit-delete.png</normaloff>../../shell/gui/icons/16x16/actions/edit-delete.png</iconset>
-           </property>
-           <property name="toolButtonStyle">
-            <enum>Qt::ToolButtonTextBesideIcon</enum>
            </property>
           </widget>
          </item>

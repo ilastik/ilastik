@@ -34,7 +34,7 @@ class DatasetInfo(object):
     
     @property
     def datasetId(self):
-        return self._datasetId        
+        return self._datasetId
 
 class OpDataSelection(Operator):
     """
@@ -70,6 +70,7 @@ class OpDataSelection(Operator):
             self.Image.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
+            self._opReaders = []
         
         datasetInfo = self.Dataset.value
 

@@ -264,7 +264,7 @@ class DataSelectionGui(QWidget):
         # If the user didn't cancel
         if not directoryName.isNull():
             PreferencesManager().set('DataSelection', 'recent stack directory', str(directoryName))
-            globString = self.getGlobString( str(directoryName) )                
+            globString = self.getGlobString( str(directoryName).replace("\\","/" ) )        
             if globString is not None:
                 self.importStackFromGlobString( globString )
 
@@ -336,12 +336,11 @@ class DataSelectionGui(QWidget):
         """
         The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
         """
+        globString = globString.replace("\\","/")
         info = DatasetInfo()
         info.filePath = globString
-        
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
-        
         def importStack():
             self.guiControlSignal.emit( ControlCommand.DisableAll )
             # Serializer will update the operator for us, which will propagate to the GUI.
@@ -473,7 +472,7 @@ class DataSelectionGui(QWidget):
             newDatasetInfo.allowLabels = ( checked == Qt.Checked )
             
             # Only update if necessary
-            if newDatasetInfo != slot.value:
+            if newDatasetInfo.allowLabels != slot.value.allowLabels:
                 slot.setValue( newDatasetInfo )
     
     def updateStorageOptionComboBox(self, row, filePath):

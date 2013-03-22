@@ -137,13 +137,11 @@ class DataSelectionSerializer( AppletSerializer ):
                 opWriter.hdf5Group.setValue(localDataGroup)
                 opWriter.hdf5Path.setValue(info.datasetId)
                 opWriter.GlobString.setValue(globstring)
-
+                
                 # Forward progress from the writer directly to our applet                
                 opWriter.progressSignal.subscribe( self.progressSignal.emit )
-               
                 success = opWriter.WriteImage.value
                 numDatasets = len(self.topLevelOperator.Dataset)
-                
                 self.topLevelOperator.Dataset.resize( numDatasets + 1 )
                 self.topLevelOperator.Dataset[numDatasets].setValue(info)
             except RuntimeError as e:

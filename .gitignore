@@ -2,6 +2,7 @@
 build
 tests/*.h5
 *.pyc
+*.goutputstream
 *.pyo
 *.kdev4
 .DS_Store

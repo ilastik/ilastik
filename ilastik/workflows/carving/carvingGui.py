@@ -4,9 +4,11 @@ import numpy
 import random
 
 #PyQt
+from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
 from PyQt4.QtGui import QInputDialog, QMessageBox
+from PyQt4 import uic
 
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -119,21 +121,6 @@ class CarvingGui(LabelingGui):
 
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
 
-        def onDeleteButton():
-            print "delete which object?"
-            name, ok = QInputDialog.getText(self, 'Delete Object', 'object name')
-            name = str(name)
-            print "delete object %s" % name
-            if not ok:
-                return
-            success = self.topLevelOperatorView.opCarving.deleteObject(name)
-            if not success:
-                QMessageBox.critical(self, "Delete Object", "Could not delete object named '%s'" % name)
-            if self.render and self._renderMgr.ready:
-                self._update_rendering()
-
-        self.labelingDrawerUi.deleteObject.clicked.connect(onDeleteButton)
-
         def onSaveButton():
             if self.topLevelOperatorView.opCarving.dataIsStorable():
                 if self.topLevelOperatorView.opCarving.hasCurrentObject():
@@ -158,19 +145,31 @@ class CarvingGui(LabelingGui):
             self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
         self.labelingDrawerUi.clear.clicked.connect(onClearButton)
         self.labelingDrawerUi.clear.setEnabled(True)
-
-        def onLoadObjectButton():
-            print "load which object?"
-            name, ok = QInputDialog.getText(self, 'Load Object', 'object name')
-            name = str(name)
-            print "load object %s" % name
-            if ok:
-                success = self.topLevelOperatorView.opCarving.loadObject(name)
-                if not success:
-                    QMessageBox.critical(self, "Load Object", "Could not load object named '%s'" % name)
-
-        self.labelingDrawerUi.load.clicked.connect(onLoadObjectButton)
-
+        
+        def onShowObjectNames():
+            '''show object names and allow user to load/delete them'''
+            dialog = uic.loadUi(os.path.join(directory, 'carvingObjectManagement.ui'))
+            listOfItems = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
+            dialog.objectNames.addItems(sorted(listOfItems))
+            
+            def loadSelection():
+                for name in dialog.objectNames.selectedItems():
+                    objectname = str(name.text())
+                    self.topLevelOperatorView.opCarving.loadObject(objectname)
+            
+            def deleteSelection():
+                for name in dialog.objectNames.selectedItems():
+                    objectname = str(name.text())
+                    self.topLevelOperatorView.opCarving.deleteObject(objectname)
+                    name.setHidden(True)
+            
+            dialog.loadButton.clicked.connect(loadSelection)
+            dialog.deleteButton.clicked.connect(deleteSelection)
+            dialog.cancelButton.clicked.connect(dialog.close)
+            dialog.exec_()
+        
+        self.labelingDrawerUi.namesButton.clicked.connect(onShowObjectNames)
+        
         def labelBackground():
             self.selectLabel(0)
         def labelObject():
@@ -203,7 +202,6 @@ class CarvingGui(LabelingGui):
         addLayerToggleShortcut("hints","h")
 
         '''
-        #For benchmarking, this shows the time it took each tile to arrive.
         def updateLayerTimings():
             s = "Layer timings:\n"
             for l in self.layerstack:
@@ -271,18 +269,18 @@ class CarvingGui(LabelingGui):
 
         op = self.topLevelOperatorView.opCarving
         if not self._renderMgr.ready:
-            self._renderMgr.setup(op._mst.raw.shape)
+            self._renderMgr.setup(op.MST.value.raw.shape)
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
-                                    if k in op._mst.object_lut.keys())
+                                    if k in op.MST.value.object_lut.keys())
 
-        lut = numpy.zeros(len(op._mst.objects.lut), dtype=numpy.int32)
+        lut = numpy.zeros(len(op.MST.value.objects.lut), dtype=numpy.int32)
         for name, label in self._shownObjects3D.iteritems():
-            objectSupervoxels = op._mst.object_lut[name]
+            objectSupervoxels = op.MST.value.object_lut[name]
             lut[objectSupervoxels] = label
 
-        self._renderMgr.volume = lut[op._mst.regionVol]
+        self._renderMgr.volume = lut[op.MST.value.regionVol]
         self._update_colors()
         self._renderMgr.update()
 
@@ -291,7 +289,7 @@ class CarvingGui(LabelingGui):
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.iteritems():
-            color = QColor(ctable[op._mst.object_names[name]])
+            color = QColor(ctable[op.MST.value.object_names[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
@@ -349,8 +347,8 @@ class CarvingGui(LabelingGui):
         #segmentation 
         seg = self.topLevelOperatorView.opCarving.Segmentation
         
-        #seg = self.topLevelOperatorView.opCarving._mst.segmentation
-        #temp = self._done_lut[self._mst.regionVol[sl[1:4]]]
+        #seg = self.topLevelOperatorView.opCarving.MST.value.segmentation
+        #temp = self._done_lut[self.MST.value.regionVol[sl[1:4]]]
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
@@ -433,7 +431,9 @@ class CarvingGui(LabelingGui):
         #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
         #
-        raw = self.topLevelOperatorView.opCarving._mst.raw
+        
+        #
+        raw = numpy.add.reduce(self.topLevelOperatorView.RawData.value,3)
         raw5D = numpy.zeros((1,)+raw.shape+(1,), dtype=raw.dtype)
         raw5D[0,:,:,:,0] = raw[:,:,:]
         layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
