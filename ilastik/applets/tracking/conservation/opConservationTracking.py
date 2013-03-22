@@ -7,7 +7,8 @@ from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 
 
 class OpConservationTracking(OpTrackingBase):
-    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
+    
     MergerOutput = OutputSlot()
     
     def setupOutputs(self):
@@ -44,7 +45,8 @@ class OpConservationTracking(OpTrackingBase):
             sizeDependent=True,
             divWeight=10.0,
             transWeight=10.0,
-            withDivisions=True
+            withDivisions=True,
+            withOpticalCorrection=True
             ):
         
         median_obj_size = [0]
@@ -52,7 +54,8 @@ class OpConservationTracking(OpTrackingBase):
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
-                                                                      with_div=withDivisions)
+                                                                      with_div=withDivisions,
+                                                                      with_opt_correction=withOpticalCorrection)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'

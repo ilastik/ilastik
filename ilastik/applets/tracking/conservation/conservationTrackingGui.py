@@ -65,7 +65,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
         sizeDependent = self._drawer.sizeDepBox.isChecked()
         divWeight = self._drawer.divWeightBox.value()
         transWeight = self._drawer.transWeightBox.value()
-        withDivisions = self._drawer.divisionsBox.isChecked()
+        withDivisions = self._drawer.divisionsBox.isChecked()        
+        withOpticalCorrection = self._drawer.opticalBox.isChecked()
         
         try:
             self.mainOperator.track(
@@ -85,7 +86,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 sizeDependent=sizeDependent,
                 divWeight=divWeight,
                 transWeight=transWeight,
-                withDivisions=withDivisions
+                withDivisions=withDivisions,
+                withOpticalCorrection=withOpticalCorrection
                 )
         except Exception as e:
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        

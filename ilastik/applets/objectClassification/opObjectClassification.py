@@ -189,7 +189,7 @@ class OpObjectTrain(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
-        self._tree_count = 255
+        self._tree_count = 30
         self.FixClassifier.setValue(False)
 
     def setupOutputs(self):

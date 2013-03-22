@@ -147,7 +147,8 @@ class OpTrackingBase(Operator):
                                with_div=False,
                                with_local_centers=False,
                                median_object_size=None,
-                               max_traxel_id_at=None):
+                               max_traxel_id_at=None,
+                               with_opt_correction=False):
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -158,7 +159,7 @@ class OpTrackingBase(Operator):
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
-        
+                
         print "filling traxelstore"
         ts = pgmlink.TraxelStore()
                 
@@ -171,6 +172,14 @@ class OpTrackingBase(Operator):
             rc = feats[t][0]['RegionCenter']
             if rc.size:
                 rc = rc[1:, ...]
+                
+            if with_opt_correction:
+                try:
+                    rc_corr = feats[t][0]['RegionCenter_corr']
+                except:
+                    raise Exception, 'cannot consider optical correction since it has not been computed before'
+                if rc_corr.size:
+                    rc_corr = rc_corr[1:,...]
 
             ct = feats[t][0]['Count']
             if ct.size:
@@ -201,6 +210,11 @@ class OpTrackingBase(Operator):
                 for i, v in enumerate(rc[idx]):
                     tr.set_feature_value('com', i, float(v))
                 
+                if with_opt_correction:
+                    tr.add_feature_array("com_corrected", len(rc_corr[idx]))
+                    for i, v in enumerate(rc_corr[idx]):
+                        tr.set_feature_value("com_corrected", i, float(v))
+                        
                 if with_div:
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
