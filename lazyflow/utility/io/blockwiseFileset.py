@@ -181,7 +181,7 @@ class BlockwiseFileset(object):
 
         # default view_origin        
         if self._description.view_origin is None:
-            self._description.view_origin = (0,) * len(self._description.shape)
+            self._description.view_origin = numpy.array( (0,) * len(self._description.shape) )
         assert (numpy.mod( self._description.view_origin, self._description.block_shape ) == 0).all(), "view_origin is not compatible with block_shape.  Must be a multiple!"
 
         # default view_shape        
@@ -520,20 +520,37 @@ class BlockwiseFileset(object):
         
         return found_lock
 
-    def exportRoiToHdf5(self, roi, exportDirectory):
+    def exportRoiToHdf5(self, roi, exportDirectory, use_view_coordinates=True):
         """
-        Export an arbitrary roi to a single hdf5 file.  The file will be placed in the given exportDirectory, and will be named according to the exported roi.
+        Export an arbitrary roi to a single hdf5 file.
+        The file will be placed in the given exportDirectory,
+        and will be named according to the exported roi.
+        
+        :param roi: The roi to export
+        :param exportDirectory: The directory in which the result should be placed.
+        :param use_view_coordinates: If True, assume the roi was given relative to the view start.
+                                     Otherwise, assume it was given relative to the on-disk coordinates.
         """
         roi = map( TinyVector, roi )
-        roiString = "{}".format( (list(roi[0]), list(roi[1]) ) )
+        if not use_view_coordinates:
+            abs_roi = roi
+            assert (abs_roi[0] >= self.description.view_origin), \
+                "Roi {} is out-of-bounds: must not span lower than the view origin: ".format( roi, self.description.origin )
+            view_roi = roi - self.description.view_origin
+        else:
+            view_roi = roi
+            abs_roi = view_roi + self.description.view_origin
+        
+        # Always name the file according to the absolute roi
+        roiString = "{}".format( (list(abs_roi[0]), list(abs_roi[1]) ) )
         datasetPath = self._description.block_file_name_format.format( roiString=roiString )
         fullDatasetPath = os.path.join( exportDirectory, datasetPath )
         path_parts = PathComponents( fullDatasetPath )
         
         with h5py.File(path_parts.externalPath, 'w') as f:
-            self._createDatasetInFile( f, path_parts.internalPath, roi )
+            self._createDatasetInFile( f, path_parts.internalPath, view_roi )
             dataset = f[ path_parts.internalPath ]
-            self.readData( roi, dataset )
+            self.readData( view_roi, dataset )
 
         return fullDatasetPath
 
