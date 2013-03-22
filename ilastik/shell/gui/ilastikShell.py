@@ -33,6 +33,8 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.standardApplet import StandardApplet
+
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 
@@ -160,6 +162,7 @@ class IlastikShell( QMainWindow ):
         self._workflowClass = workflowClass
 
         localDir = os.path.split(__file__)[0]
+        if localDir == "":localDir = os.getcwd()
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
         self.imageSelectionGroup.setHidden(True)
@@ -1042,31 +1045,27 @@ if __name__ == "__main__":
     from PyQt4.QtGui import QApplication
     import sys
     from ilastik.applets.base.applet import Applet
+    from ilastik.utility import OpMultiLaneWrapper
 
     qapp = QApplication(sys.argv)
     
-    # Create some simple applets to load
-    defaultApplet = Applet()
-    trackingApplet = Applet("Tracking")
-
-    # Normally applets would provide their own menu items,
-    # but for this test we'll add them here (i.e. from the outside).
-    defaultApplet._menuWidget = QMenuBar()
-    defaultApplet._menuWidget.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
-    defaultMenu = QMenu("Default Applet", defaultApplet._menuWidget)
-    defaultMenu.addAction("Default Action 1")
-    defaultMenu.addAction("Default Action 2")
-    defaultApplet._menuWidget.addMenu(defaultMenu)
+    from ilastik.workflow import Workflow
+    from lazyflow.graph import Graph
+    from ilastik.applets.dataSelection import DataSelectionApplet
     
-    trackingApplet._menuWidget = QMenuBar()
-    trackingApplet._menuWidget.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
-    trackingMenu = QMenu("Tracking Applet", trackingApplet._menuWidget)
-    trackingMenu.addAction("Tracking Options...")
-    trackingMenu.addAction("Track...")
-    trackingApplet._menuWidget.addMenu(trackingMenu)
-
-    # Create a shell with our test applets    
-    shell = IlastikShell( [defaultApplet, trackingApplet] )
+    class StandardWorkflow(Workflow):
+        @property
+        def applets(self):return self._applets
+        @property
+        def imageNameListSlot(self):return self._applets[0].topLevelOperator.ImageName
+        def connectLane(self,lane):pass
+        def __init__(self,*args, **kwargs):
+            graph = Graph()
+            super(StandardWorkflow, self).__init__(graph = graph ,*args, **kwargs)
+            self._applets = [DataSelectionApplet(self, "Input Data", "Input Data")]
+    
+    # Create a shell with our test applets 
+    shell = IlastikShell( StandardWorkflow )
 
     shell.show()
     qapp.exec_()

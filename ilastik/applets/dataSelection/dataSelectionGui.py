@@ -28,7 +28,7 @@ from volumina.utility import PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.utility.pathHelpers import getPathVariants
+from ilastik.utility.pathHelpers import getPathVariants,areOnSameDrive
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import ControlCommand
 from opDataSelection import OpDataSelection, DatasetInfo
@@ -382,8 +382,13 @@ class DataSelectionGui(QWidget):
             for i, filePath in enumerate(fileNames):
                 datasetInfo = DatasetInfo()
                 cwd = self.topLevelOperator.WorkingDirectory.value
+                
+                if not areOnSameDrive(filePath,cwd):
+                    QMessageBox.critical(self, "Drive Error","Data must be on same drive as working directory.")
+                    return
+                    
                 absPath, relPath = getPathVariants(filePath, cwd)
-
+                
                 # Relative by default, unless the file is in a totally different tree from the working directory.
                 if len(os.path.commonprefix([cwd, absPath])) > 1: 
                     datasetInfo.filePath = relPath

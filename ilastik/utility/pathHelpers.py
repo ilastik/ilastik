@@ -80,6 +80,11 @@ class PathComponents(object):
             total += self.internalPath
         return total
 
+def areOnSameDrive(path1,path2):
+    drive1,path1 = os.path.splitdrive(path1)
+    drive2,path2 = os.path.splitdrive(path2)
+    return drive1==drive2
+
 def getPathVariants(originalPath, workingDirectory):
     """
     Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
@@ -93,6 +98,7 @@ def getPathVariants(originalPath, workingDirectory):
     
     if os.path.isabs(originalPath):
         absPath = originalPath
+        assert areOnSameDrive(originalPath,workingDirectory)
         relPath = os.path.relpath(absPath, workingDirectory)
     else:
         relPath = originalPath
@@ -104,7 +110,7 @@ if __name__ == "__main__":
     
     abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
     assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '../ddd.txt'
+    assert rel == '..\\ddd.txt'
 
     abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
     assert abs == '/aaa/bbb/ccc/ddd.txt'

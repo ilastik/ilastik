@@ -5,6 +5,7 @@ from lazyflow.operators import OpH5WriterBigDataset
 import os
 import copy
 from ilastik.utility import bind, PathComponents
+from ilastik.utility.pathHelpers import areOnSameDrive
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -194,6 +195,8 @@ class DataSelectionSerializer( AppletSerializer ):
 
             # If the data is supposed to exist outside the project, make sure it really does.
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                    if not areOnSameDrive(datasetInfo.filePath,projectFilePath):
+                        raise RuntimeError("External data must be an same drive as working directory")
                 filePath = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0] ).externalPath
                 if not os.path.exists(filePath):
                     raise RuntimeError("Could not find external data: " + filePath)
