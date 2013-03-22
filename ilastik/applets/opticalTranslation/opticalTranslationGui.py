@@ -1,6 +1,6 @@
 from ilastik.applets.layerViewer import LayerViewerGui
 from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.layer import GrayscaleLayer, ColortableLayer
+from volumina.layer import GrayscaleLayer, ColortableLayer, RGBALayer
 import volumina.colortables as colortables
 from lazyflow.rtype import SubRegion
 
@@ -55,7 +55,8 @@ class OpticalTranslationGui( LayerViewerGui ):
     def setupLayers( self ):        
         layers = []
         
-        self.translationsrc = self.mainOperator.TranslationVectors   
+        self.translationsrc = self.mainOperator.TranslationVectorsDisplay   
+#        self.translationsrc = self.mainOperator.TranslationVectors
         opSubRegion = OpSubRegion(graph=self.topLevelOperatorView.graph)
         opSubRegion.Input.connect( self.translationsrc )
         start = [0] * len(self.translationsrc.meta.shape)        
@@ -64,6 +65,11 @@ class OpticalTranslationGui( LayerViewerGui ):
         opSubRegion.Start.setValue( tuple(start) )
         opSubRegion.Stop.setValue( tuple(stop) )
         translationLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
+
+#        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)
+#        
+#        translationLayer = RGBALayer(self.translationsrc)
+
         translationLayer.name = "Translation Vector"
         translationLayer.opacity = 0.8
         translationLayer.visible = False
@@ -104,8 +110,19 @@ class OpticalTranslationGui( LayerViewerGui ):
         self._drawer = self._loadUiFile()
         
         self._drawer.computeTranslationButton.pressed.connect(self._onComputeTranslationButtonPressed)
+        self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)    
     
-    def _onComputeTranslationButtonPressed(self):
+    def _onMethodChanged(self):
+        if self._drawer.methodBox.currentIndex() == 0:
+            self.mainOperator.Parameters.value['method'] = 'xor'
+        elif self._drawer.methodBox.currentIndex() == 1:
+            self.mainOperator.Parameters.value['method'] = 'nxcorr'
+        elif self._drawer.methodBox.currentIndex() == 2:
+            self.mainOperator.Parameters.value['method'] = 'xcorr'
+            
+    def _onComputeTranslationButtonPressed(self):        
+        self._onMethodChanged()
+        
         m = self.mainOperator.TranslationVectors.meta
         maxt = m.shape[0]
         progress = QProgressDialog("Computing Translation Vectors...", "Stop", 0, maxt)
