@@ -39,6 +39,9 @@ class PathComponents(object):
             absPath, relPath = getPathVariants( totalPath, cwd )
             totalPath = absPath
         
+        #convention for Windows: use "/"
+        totalPath = totalPath.replace("\\","/")
+        
         for x in h5Exts:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
@@ -81,6 +84,8 @@ class PathComponents(object):
         return total
 
 def areOnSameDrive(path1,path2):
+    if not os.path.exists(path1) or not os.path.exists(path2):
+        return True
     drive1,path1 = os.path.splitdrive(path1)
     drive2,path2 = os.path.splitdrive(path2)
     return drive1==drive2
@@ -99,7 +104,7 @@ def getPathVariants(originalPath, workingDirectory):
     if os.path.isabs(originalPath):
         absPath = originalPath
         assert areOnSameDrive(originalPath,workingDirectory)
-        relPath = os.path.relpath(absPath, workingDirectory)
+        relPath = os.path.relpath(absPath, workingDirectory).replace("\\","/")
     else:
         relPath = originalPath
         absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )

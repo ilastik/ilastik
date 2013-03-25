@@ -28,7 +28,7 @@ class PreprocessingApplet(StandardApplet):
         self.writeprotected = False
         self._enabledDS = True
         self._enabledReset = False
-    
+        
     def enableReset(self,er):
         if self._enabledReset != er:
             self._enabledReset = er
@@ -51,8 +51,8 @@ class PreprocessingApplet(StandardApplet):
         
         if self.writeprotected:
             self._gui.setWriteprotect()
-        if not self._enabledDS:
-            self.guiControlSignal.emit(ControlCommand.DisableDownstream)
+        
+        self.enableDownstream(self._enabledDS)
         self._gui.enableReset(self._enabledReset)
         
         return self._gui

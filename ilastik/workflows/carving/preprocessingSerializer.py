@@ -58,11 +58,12 @@ class PreprocessingSerializer( AppletSerializer ):
             mst = MSTSegmentor.loadH5G(graphgroup)
             opPre._prepData = numpy.array([mst])
         
-            opPre.enableDownstream(True)
+            
             opPre._dirty = False
             opPre.applet.writeprotected = True
             
             opPre.PreprocessedData.setDirty()
+            opPre.enableDownstream(True)
             
            
     def isDirty(self):

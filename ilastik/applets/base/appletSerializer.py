@@ -669,10 +669,17 @@ class AppletSerializer(object):
     #######################
     # Optional methods    #
     #######################
-
+    
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """Optional override for subclasses. Called when there is no
         top group to deserialize.
 
         """
+        pass
+    
+    def updateWorkingDirectory(self,newdir,olddir):
+        """Optional override for subclasses. Called when the
+        working directory is changed and relative paths have
+        to be updated. Child Classes should overwrite this method
+        if they store relative paths."""
         pass

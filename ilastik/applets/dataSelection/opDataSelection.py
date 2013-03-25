@@ -93,7 +93,7 @@ class OpDataSelection(Operator):
             opReader = OpInputDataReader(parent=self)
             if datasetInfo.axisorder is not None:
                 opReader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
-            opReader.WorkingDirectory.connect( self.WorkingDirectory )
+            opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
             opReader.FilePath.setValue(datasetInfo.filePath)
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
@@ -126,14 +126,14 @@ class OpDataSelection(Operator):
 
 class OpMultiLaneDataSelection( OperatorWrapper ):
     
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, applet , **kwargs):
         super( OpMultiLaneDataSelection, self).__init__(
             OpDataSelection,
             parent=parent,
             broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup',
                                    'WorkingDirectory'],
             operator_kwargs=kwargs)
-    
+        self.applet = applet
     def addLane(self, laneIndex):
         """
         Add an image lane.

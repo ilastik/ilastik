@@ -44,7 +44,8 @@ class OpPreprocessing(Operator):
     def setupOutputs(self):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
-    
+        self.enableDownstream(False)
+        
     def propagateDirty(self,slot,subindex,roi):
         if slot == self.RawData:
             #complete restart
@@ -61,8 +62,10 @@ class OpPreprocessing(Operator):
             self.enableDownstream(True)
         else:
             self._dirty = True
-            self.enableReset(True)
             self.enableDownstream(False)
+            # is there a stored preprocessed graph?
+            if self._prepData[0] is not None:
+                self.enableReset(True)
     
     def AreSettingsInitial(self):
         '''analyse settings for sigma and filter
@@ -71,7 +74,6 @@ class OpPreprocessing(Operator):
             return False        
         if self.Filter.value != self.initialFilter:
             return False
-        print self.Sigma.value
         if abs(self.Sigma.value - self.initialSigma)>0.005:
             return False
         return True

@@ -68,4 +68,6 @@ class BatchIoSerializer(AppletSerializer):
         #  paths from relative paths is the project file's directory.
         self.initWithoutTopGroup(hdf5File, projectFilePath)
 
-        
+    def updateWorkingDirectory(self,newpath,oldpath):
+        oldpath = PathComponents(oldpath).externalDirectory
+        self.topLevelOperator.WorkingDirectory.setValue( oldpath )

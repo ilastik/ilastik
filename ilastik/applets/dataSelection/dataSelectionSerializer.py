@@ -5,7 +5,7 @@ from lazyflow.operators import OpH5WriterBigDataset
 import os
 import copy
 from ilastik.utility import bind, PathComponents
-from ilastik.utility.pathHelpers import areOnSameDrive
+from ilastik.utility.pathHelpers import areOnSameDrive,getPathVariants
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -196,7 +196,7 @@ class DataSelectionSerializer( AppletSerializer ):
             # If the data is supposed to exist outside the project, make sure it really does.
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                     if not areOnSameDrive(datasetInfo.filePath,projectFilePath):
-                        raise RuntimeError("External data must be an same drive as working directory")
+                        raise RuntimeError("External data must be on same drive as working directory")
                 filePath = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0] ).externalPath
                 if not os.path.exists(filePath):
                     raise RuntimeError("Could not find external data: " + filePath)
@@ -205,7 +205,35 @@ class DataSelectionSerializer( AppletSerializer ):
             self.topLevelOperator.Dataset[index].setValue(datasetInfo)
 
         self._dirty = False
-
+    
+    def updateWorkingDirectory(self,newpath,oldpath):
+        
+        newpath,oldpath = PathComponents(newpath).externalDirectory,PathComponents(oldpath).externalDirectory
+        
+        if newpath==oldpath:
+            return
+        
+        for slot in self.topLevelOperator.Dataset:
+            datasetInfo = slot.value
+            if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                
+                #construct absolute path and recreate relative to the new path
+                fp = PathComponents(datasetInfo.filePath,oldpath).totalPath()
+                abspath,relpath = getPathVariants(fp,newpath)
+                
+                # Same convention as in dataSelectionGui:
+                # Relative by default, unless the file is in a totally different tree from the working directory.
+                if len(os.path.commonprefix([fp, abspath])) > 1: datasetInfo.filePath = relpath
+                else:datasetInfo.filePath = abspath
+                
+                slot.setValue(datasetInfo)
+        
+        self.topLevelOperator.WorkingDirectory.setValue(newpath)
+        self._projectFilePath = newpath
+        
+        for slot in self.topLevelOperator.Dataset:
+            self.topLevelOperator.applet._gui.updateTableForSlot(slot = slot)
+    
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.

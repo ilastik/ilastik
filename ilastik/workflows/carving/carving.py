@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_option("--hintoverlay",
                   dest="hintoverlayFile", default=None,
                   help="specify a file which adds a hint overlay")
-    
+    5
     parser.add_option("--pmapoverlay",
                   dest="pmapoverlayFile", default=None,
                   help="specify a file which adds a pmap overlay")

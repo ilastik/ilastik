@@ -273,6 +273,10 @@ class ProjectManager(object):
             for key in self.currentProjectFile.keys():
                 oldFile.copy(self.currentProjectFile[key], key)
         
+        for aplt in self._applets:
+            for item in aplt.dataSerializers:
+                item.updateWorkingDirectory(newPath,oldPath)
+        
         # Save the current project state
         self.saveProject()
         
