@@ -28,6 +28,8 @@ class OpRegionFeatures3d(Operator):
     
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
+        assert not isinstance(featureNames[0], str), "Features must be given as a list-of-lists.  You gave just one list: {}".format( featureNames )
+        self._featureNames = featureNames # Saved here for debugging.
         self._vigraFeatureNames = featureNames[0]
         self._otherFeatureNames = featureNames[1]
         self.margin = 30
@@ -409,6 +411,7 @@ class OpRegionFeatures(Operator):
 
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures, self ).__init__( *args, **kwargs )
+        self._featureNames = featureNames # Saved here for debugging.
 
         # Distribute the raw data
         self.opRawTimeSlicer = OpMultiArraySlicer2( parent=self )
@@ -443,6 +446,7 @@ class OpRegionFeatures(Operator):
 
             def __init__(self, featureNames, *args, **kwargs):
                 super( OpWrappedRegionFeatures3d, self ).__init__( *args, **kwargs )
+                self._featureNames = featureNames # Saved here for debugging.
                 self._innerOperator = OperatorWrapper( OpRegionFeatures3d, operator_args=[featureNames], parent=self )
                 self._innerOperator.RawVolume.connect( self.RawVolume )
                 self._innerOperator.LabelVolume.connect( self.LabelVolume )
@@ -508,6 +512,7 @@ class OpCachedRegionFeatures(Operator):
 
     def __init__(self, featureNames, *args, **kwargs):
         super(OpCachedRegionFeatures, self).__init__(*args, **kwargs)
+        self._featureNames = featureNames # Saved here for debugging.
         
         # Hook up the labeler
         self._opRegionFeatures = OpRegionFeatures(featureNames, parent=self )
@@ -574,7 +579,7 @@ class OpAdaptTimeListRoi(Operator):
             start = [0] * len(taggedShape)
             stop = taggedShape.values()
             start[timeIndex] = t
-            stop[timeIndex] = 1
+            stop[timeIndex] = t+1
             a = self.Input(start, stop).wait()
             # Result is provided as a list of arrays by channel
             channelResults = numpy.split(a, numChannels, channelIndex)
@@ -591,7 +596,7 @@ class OpAdaptTimeListRoi(Operator):
 class OpObjectCenterImage(Operator):
     """A cross in the center of each connected component."""
     BinaryImage = InputSlot()
-    RegionCenters = InputSlot(rtype=List)
+    RegionCenters = InputSlot(rtype=List, stype=Opaque)
     Output = OutputSlot()
 
     def setupOutputs(self):
@@ -670,6 +675,7 @@ class OpObjectExtraction(Operator):
         super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         features = list(set(config.vigra_features).union(set(self.default_features)))
+        #features = config.vigra_features
         features = [features, config.other_features]
 
         print "features:", features
@@ -701,7 +707,7 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
 
     def setupOutputs(self):
-        taggedShape = self.Input.meta.getTaggedShape()
+        taggedShape = self.RawImage.meta.getTaggedShape()
         for k in taggedShape.keys():
             if k == 't' or k == 'c':
                 taggedShape[k] = 1
