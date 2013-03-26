@@ -211,7 +211,7 @@ class OpBlockwiseObjectClassification( Operator ):
         # Determine intersecting blocks
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
         block_starts = getIntersectingBlocks( block_shape, (roi.start, roi.stop) )
-        block_starts = map( lambda x: tuple(x), block_starts )
+        block_starts = map( tuple, block_starts )
 
         # Ensure that block pipelines exist (create first if necessary)
         for block_start in block_starts:
@@ -248,7 +248,7 @@ class OpBlockwiseObjectClassification( Operator ):
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
         pixel_roi = numpy.array(block_shape) * (roi.start, roi.stop)
         block_starts = getIntersectingBlocks( block_shape, pixel_roi )
-        block_starts = map( lambda x: tuple(x), block_starts )
+        block_starts = map( tuple, block_starts )
         
         for block_start in block_starts:
             assert block_start in self._blockPipelines, "Not allowed to request region features for blocks that haven't yet been processed." # See note above

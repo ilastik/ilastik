@@ -89,8 +89,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
         
         # For some reason, vigra.filters.gaussianSmoothing will raise an exception if this parameter doesn't have the correct integer type.
         # (for example, if we give it as a numpy.ndarray with dtype=int64, we get an error)
-        computeRoi = ( tuple(map(lambda x: int(x), computeRoi[0])),
-                       tuple(map(lambda x: int(x), computeRoi[1])) )
+        computeRoi = ( tuple(map(int, computeRoi[0])),
+                       tuple(map(int, computeRoi[1])) )
         
         inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
         inputRoi[0].insert( axiskeys.index('c'), 0 )
