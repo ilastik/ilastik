@@ -252,12 +252,19 @@ class OpObjectTrain(Operator):
             return
         oob = [0]*self.ForestCount.value
         try:
+            # Ensure there are no NaNs in the feature matrix
+            # TODO: There should probably be a better way to fix this...
+            featMatrix = featMatrix.astype(numpy.float32)
+            nanFeatMatrix = numpy.isnan(featMatrix)
+            if nanFeatMatrix.any():
+                warnings.warn("Feature matrix has NaN values!  Replacing with 0.0...")
+                featMatrix[numpy.where(nanFeatMatrix)] = 0.0
             # train and store forests in parallel
             pool = Pool()
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32),
+                    oob[number] = result[number].learnRF(featMatrix,
                                            labelsMatrix.astype(numpy.uint32))
                     print "intermediate oob:", oob[number]
                 req = Request( partial(train_and_store, i) )
