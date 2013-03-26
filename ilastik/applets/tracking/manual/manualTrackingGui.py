@@ -1,5 +1,5 @@
 from PyQt4.QtGui import *
-from PyQt4 import uic
+from PyQt4 import uic, QtGui
 from PyQt4.QtCore import pyqtSlot
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -46,7 +46,9 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer = self._loadUiFile()
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
+        self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
+        
         
     ###########################################
     ###########################################
@@ -63,6 +65,9 @@ class ManualTrackingGui(LayerViewerGui):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        
+        self.divLock = False
+        self.divs = []
             
 
     def _onMetaChanged( self, slot ):
@@ -136,35 +141,71 @@ class ManualTrackingGui(LayerViewerGui):
 
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
-        oid = self._getObject(self.mainOperator.LabelImage, position5d)
-        if oid == 0:
-            return
+        if self.divLock:
+            oid = self._getObject(self.mainOperator.LabelImage, position5d)
+            item = (position5d[0], oid)
+            if len(self.divs) == 0:                
+                self.divs.append(item)
+                self.editor.posModel.time = self.editor.posModel.time + 1                
+            elif len(self.divs) > 0:
+                if position5d[0] != self.divs[0][0] + 1:
+                    print 'the daughter cells must be in timestep', self.divs[0][0] + 1
+                    return
+                if item not in self.divs:
+                    self.divs.append(item)
                 
-        activeTrack = self.mainOperator.ActiveTrack
-        if not activeTrack.ready() or activeTrack.value == 0:
-            print 'ActiveTrack slot not ready'
-            return        
-        activeTrack = activeTrack.value
-        
-        t = position5d[0]
-
-#        labelslot = self.mainOperator.Labels
-#        if not labelslot.ready():
-#            print 'Label slot not ready'
-#            return
-#        labels = labelslot.value
+            if len(self.divs) == 3:                
+                activeTrack = self._getActiveTrack()
+                if activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]:                    
+                    QtGui.QMessageBox.critical(self, "Error", "Error: The mother cell must have the active track as a label.", QtGui.QMessageBox.Ok)
+                    self.divLock = False
+                    self.divs = []
+                    self._drawer.divEvent.setChecked(False)
+                    return
+#                self._addObjectToTrack(activeTrack, self.divs[0][1], self.divs[0][0])
+                div = [activeTrack,]
                 
+                for i in range(1,3):
+                    activeTrack = self._addNewTrack()
+                    self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
+                    div += [activeTrack,]
+                
+                self.mainOperator.divisions.append(div)
+                print 'divisions = ', self.mainOperator.divisions
+                
+                roi = SubRegion(self.mainOperator.TrackImage, start=[self.divs[0][0],] + 4*[0,], stop=[self.divs[0][0]+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
+                self.mainOperator.TrackImage.setDirty(roi)
+                
+                # release the division lock
+                self.divLock = False
+                self.divs = []
+                self._drawer.divEvent.setChecked(False)
+        else:
+            oid = self._getObject(self.mainOperator.LabelImage, position5d)
+            if oid == 0:
+                return
+                    
+            activeTrack = self.mainOperator.ActiveTrack
+            if not activeTrack.ready() or activeTrack.value == 0:
+                QtGui.QMessageBox.critical(self, "Error", "Error: There is no active track.", QtGui.QMessageBox.Ok)            
+                return        
+            activeTrack = activeTrack.value
+            
+            t = position5d[0]
+    
+            self._addObjectToTrack(activeTrack,oid,t)
+            print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
+            
+            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
+            self.mainOperator.TrackImage.setDirty(roi)
+    
+            self.editor.posModel.time = self.editor.posModel.time + 1
 
-        self._addObjectToTrack(activeTrack,oid,t)
-        print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
-        
-        roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-        self.mainOperator.TrackImage.setDirty(roi)
-
-        self.editor.posModel.time = self.editor.posModel.time + 1
-#        self.editor.posModel.time( t+1 )
         
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
+        if self.divLock:
+            return
+                
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
         if oid == 0:
             return
@@ -235,7 +276,7 @@ class ManualTrackingGui(LayerViewerGui):
         else:
             return 0
     
-    def _onNewTrackPressed(self):
+    def _addNewTrack(self):
         activeTrackBox = self._drawer.activeTrackBox
         allTracks = [int(activeTrackBox.itemText(i)) for i in range(activeTrackBox.count())]
         if len(allTracks) == 0:
@@ -243,6 +284,10 @@ class ManualTrackingGui(LayerViewerGui):
         else:
             activeTrackBox.addItem(str(max(allTracks)+1))
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
+        return self._getActiveTrack()
+        
+    def _onNewTrackPressed(self):
+        self._addNewTrack()
     
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
@@ -265,7 +310,12 @@ class ManualTrackingGui(LayerViewerGui):
                 if track2remove in self.mainOperator.labels[t][oid]:
                     self.mainOperator.labels[t][oid].remove(track2remove)
                     affectedT.append(t)
-                    
+        
+        # delete the track from division events if present:
+        for row in self.mainOperator.divisions:
+            if track2remove in row:
+                self.mainOperator.divisions.remove(row)
+                
         if len(affectedT) > 0:
             roi = SubRegion(self.mainOperator.TrackImage, start=[min(affectedT),] + 4*[0,], stop=[max(affectedT)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
             self.mainOperator.TrackImage.setDirty(roi)
@@ -275,11 +325,15 @@ class ManualTrackingGui(LayerViewerGui):
         if activeTrack == 0:
             print 'activeTrack is 0'
             return
-        
+                
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
         if oid not in self.mainOperator.labels[t].keys():
             self.mainOperator.labels[t][oid] = set()
+        for tracklist in self.mainOperator.labels[t].values():
+            if activeTrack in tracklist:                
+                QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this timeslice", QtGui.QMessageBox.Ok)            
+                return -1
                         
         self.mainOperator.labels[t][oid].add(activeTrack)
 #        labelslot.setValue(labels)
@@ -293,10 +347,12 @@ class ManualTrackingGui(LayerViewerGui):
         t_start = position5d[0]
         activeTrack = self._getActiveTrack()
         if activeTrack == 0:
-            print 'active track is 0'
+            QtGui.QMessageBox.critical(self, "Error", "Error: There is no active track.", QtGui.QMessageBox.Ok)
             return 
         
-        self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
+        res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
+        if res == -1:
+            return
                 
         sroi = [slice(0,1),]
         for idx,p in enumerate(position5d[1:-1]):
@@ -306,8 +362,8 @@ class ManualTrackingGui(LayerViewerGui):
         key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
         roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
         li_prev = self.mainOperator.LabelImage.get(roi).wait()[sroi]
-
         oid_prev = oid
+        t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
         
         for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):
             key_start[0] = t
@@ -322,9 +378,12 @@ class ManualTrackingGui(LayerViewerGui):
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
                 print 'the tracking is ambiguous, abort at t =', t, ', label candidates = ', uniqueLabels
+                t_end = t-1
                 break
             
-            self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+            res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+            if res == -1:
+                return
             
             oid_prev = uniqueLabels[0]
             li_prev = li_cur
@@ -334,5 +393,13 @@ class ManualTrackingGui(LayerViewerGui):
         self.mainOperator.TrackImage.setDirty(roi)
 
         if t > 1:
-            self.editor.posModel.time = t - 1
+            self.editor.posModel.time = t_end
+    
+    def _onDivEventPressed(self):
+        print 'divlock before: ', self.divLock
+        self.divLock = not self.divLock       
+        print 'divlock after: ', self.divLock
+#        self._drawer.divEvent.setCheckable(True)             
+        self._drawer.divEvent.setChecked(not self.divLock)
+        self.divs = []
         
