@@ -15,7 +15,7 @@ class OpManualTracking(Operator):
     BinaryImage = InputSlot()
     LabelImage = InputSlot()    
     RawImage = InputSlot()
-    Labels = InputSlot(stype=Opaque, rtype=List, value=[])
+#    Labels = InputSlot(stype=Opaque, rtype=List, value=[])
     ActiveTrack = InputSlot(stype='int', value=0)
     
     Tracks = OutputSlot(stype=Opaque, rtype=List)
@@ -24,12 +24,20 @@ class OpManualTracking(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
         self.tracks = {}
+        self.labels = {}
         
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.Tracks.meta.shape = [self.LabelImage.meta.shape[0]]
         self.Tracks.meta.dtype = object
         self.Tracks.meta.axistags = None
+                
+        for t in range(self.LabelImage.meta.shape[0]):
+            if t not in self.labels.keys():
+                self.labels[t]={}  
+#        self.Labels.setValue(labels)        
+        print 'OpManualTracking::setupOutputs: Labels = ', self.labels
+        
 
     
     def execute(self, slot, subindex, roi, result):
@@ -47,10 +55,10 @@ class OpManualTracking(Operator):
             assert roi.stop[0] - roi.start[0], 'only implemented for single time steps'
             t = roi.start[0]
             
-            if not self.Labels.ready():
-                result[:] = 0
-                return result
-            oid2tid = self.Labels.value
+#            if not self.Labels.ready():
+#                result[:] = 0
+#                return result
+            oid2tid = self.labels
             print 'opManualTracking::execute: oid2tid =',oid2tid
             if t not in oid2tid.keys():
                 result[:] = 0
@@ -64,14 +72,14 @@ class OpManualTracking(Operator):
         
     def propagateDirty(self, inputSlot, subindex, roi):
         print 'opManualTracking::propagateDirty: roi =', roi        
-        if inputSlot is self.Labels:
-            if len(roi._l) == 0:
-                self.TrackImage.setDirty(slice(None))
-            elif isinstance(roi._l[0], int):
-                for t in roi._l:
-                    self.TrackImage.setDirty(slice(t))
-            else:
-                print 'cannot propagate dirtyness: ', roi
+#        if inputSlot is self.Labels:
+#            if len(roi._l) == 0:
+#                self.TrackImage.setDirty(slice(None))
+#            elif isinstance(roi._l[0], int):
+#                for t in roi._l:
+#                    self.TrackImage.setDirty(slice(t))
+#            else:
+#                print 'cannot propagate dirtyness: ', roi
                 
 #        if inputSlot is self.LabelImage:
 #            self.Output.setDirty(roi)
@@ -84,5 +92,5 @@ class OpManualTracking(Operator):
         for label in labels:
             if label > 0:
                 if label in replace and len(replace[label]) > 0:
-                    mp[label] = list(replace[label])[0]
+                    mp[label] = list(replace[label])[-1]
         return mp[volume]
