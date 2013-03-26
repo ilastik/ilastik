@@ -25,6 +25,7 @@ class OpManualTracking(Operator):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
         self.tracks = {}
         self.labels = {}
+        self.divisions = []
         
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
@@ -36,7 +37,7 @@ class OpManualTracking(Operator):
             if t not in self.labels.keys():
                 self.labels[t]={}  
 #        self.Labels.setValue(labels)        
-        print 'OpManualTracking::setupOutputs: Labels = ', self.labels
+#        print 'OpManualTracking::setupOutputs: Labels = ', self.labels
         
 
     
@@ -59,7 +60,7 @@ class OpManualTracking(Operator):
 #                result[:] = 0
 #                return result
             oid2tid = self.labels
-            print 'opManualTracking::execute: oid2tid =',oid2tid
+#            print 'opManualTracking::execute: oid2tid =',oid2tid
             if t not in oid2tid.keys():
                 result[:] = 0
                 return result
