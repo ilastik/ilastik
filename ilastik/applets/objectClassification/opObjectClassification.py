@@ -372,7 +372,9 @@ class OpObjectPredict(Operator):
                     #print labels[ip].shape
                 
                 prediction = numpy.vstack(predictions[t])
-                all_labels = numpy.vstack(labels[t])
+                warnings.warn("FIXME: This was broken if more than one time slice was present.  Is it correct now?")
+                #all_labels = numpy.vstack(labels[t])
+                all_labels = numpy.vstack(labels[0])
                 #print "all_labels.shape:", all_labels.shape
                 #print "prediction shape:", prediction.shape
                 # take mode of each column
