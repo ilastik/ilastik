@@ -48,6 +48,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
+        self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         
         
     ###########################################
@@ -65,6 +66,8 @@ class ManualTrackingGui(LayerViewerGui):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        
+        self.ct = colortables.create_random_16bit()
         
         self.divLock = False
         self.divs = []
@@ -93,11 +96,10 @@ class ManualTrackingGui(LayerViewerGui):
     
     def setupLayers( self ):        
         layers = []
-        
-        ct = colortables.create_random_16bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+                
+        self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
-        trackingLayer = ColortableLayer( self.trackingsrc, ct )
+        trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
         trackingLayer.name = "Manual Tracking"
         trackingLayer.visible = True
         trackingLayer.opacity = 0.8
@@ -156,7 +158,7 @@ class ManualTrackingGui(LayerViewerGui):
                 
             if len(self.divs) == 3:                
                 activeTrack = self._getActiveTrack()
-                if activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]:                    
+                if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
                     QtGui.QMessageBox.critical(self, "Error", "Error: The mother cell must have the active track as a label.", QtGui.QMessageBox.Ok)
                     self.divLock = False
                     self.divs = []
@@ -170,7 +172,13 @@ class ManualTrackingGui(LayerViewerGui):
                     self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
                     div += [activeTrack,]
                 
-                self.mainOperator.divisions.append(div)
+                divItem = QListWidgetItem("%d: %d, %d" % tuple(div))
+                divItem.setBackground(QColor(self.ct[div[0]]))     
+                divItem.setCheckState(False)           
+                self._drawer.divisionsList.addItem(divItem)
+                
+                
+                self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
                 print 'divisions = ', self.mainOperator.divisions
                 
                 roi = SubRegion(self.mainOperator.TrackImage, start=[self.divs[0][0],] + 4*[0,], stop=[self.divs[0][0]+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
@@ -269,6 +277,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
+        self._setStyleSheet(self._drawer.activeTrackBox, QColor(self.ct[self._getActiveTrack()]))
         
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:
@@ -280,9 +289,9 @@ class ManualTrackingGui(LayerViewerGui):
         activeTrackBox = self._drawer.activeTrackBox
         allTracks = [int(activeTrackBox.itemText(i)) for i in range(activeTrackBox.count())]
         if len(allTracks) == 0:
-            activeTrackBox.addItem(str(1))
+            activeTrackBox.addItem(str(1), self.ct[1])
         else:
-            activeTrackBox.addItem(str(max(allTracks)+1))
+            activeTrackBox.addItem(str(max(allTracks)+1), self.ct[max(allTracks)+1])
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
         return self._getActiveTrack()
         
@@ -312,9 +321,9 @@ class ManualTrackingGui(LayerViewerGui):
                     affectedT.append(t)
         
         # delete the track from division events if present:
-        for row in self.mainOperator.divisions:
-            if track2remove in row:
-                self.mainOperator.divisions.remove(row)
+        for key in self.mainOperator.divisions.keys():
+            if track2remove in key or track2remove in self.mainOperator.divisions[key][0]:
+                self.mainOperator.divisions.remove(key)
                 
         if len(affectedT) > 0:
             roi = SubRegion(self.mainOperator.TrackImage, start=[min(affectedT),] + 4*[0,], stop=[max(affectedT)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
@@ -402,4 +411,42 @@ class ManualTrackingGui(LayerViewerGui):
 #        self._drawer.divEvent.setCheckable(True)             
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
+
+
+
+    def _setStyleSheet(self, widget, qcolor):        
+#        widget.setAutoFillBackground(True)                 
+        values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
+                                     g = qcolor.green(),
+                                     b = qcolor.blue(),
+                                     a = qcolor.alpha()
+                                     )
+#        widget.setStyleSheet("QLabel { color: rgba(0,0,0,255); background-color: rgba("+values+"); }")
+        widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
+    
+    def _onDivisionsListActivated(self):        
+        div = tuple(str(self._drawer.divisionsList.currentItem().text()).split(" :,"))
+        t = self.mainOperator.divisions[int(div[0][0])][1]        
+        
+        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+        li = self.mainOperator.LabelImage.get(roi).wait()
+        
+        found = False
+        for oid in self.mainOperator.labels[t].keys():
+            if int(div[0][0]) in self.mainOperator.labels[t][oid]:
+                found = True
+                break
+        
+        if not found:
+            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find the division label.", QtGui.QMessageBox.Ok)
+            return
+        
+        coords = numpy.where(li == oid)
+#        print 'coords = ', coords
+#        print '[coords[1][0], coords[2][0], coords[3][0]] = ', [coords[1][0], coords[2][0], coords[3][0]]
+#        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]
+
+        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]
+        
+        self.editor.posModel.time = t
         

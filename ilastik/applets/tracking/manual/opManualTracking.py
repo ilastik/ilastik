@@ -25,7 +25,7 @@ class OpManualTracking(Operator):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
         self.tracks = {}
         self.labels = {}
-        self.divisions = []
+        self.divisions = {}
         
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)

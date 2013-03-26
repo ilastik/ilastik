@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>264</height>
+    <height>415</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -97,11 +97,20 @@
     </widget>
    </item>
    <item>
-    <widget class="Line" name="line_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+    <widget class="QLabel" name="label_2">
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Divisions:</string>
      </property>
     </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="divisionsList"/>
    </item>
    <item>
     <widget class="Line" name="line_3">
