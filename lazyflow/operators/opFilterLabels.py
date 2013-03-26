@@ -27,7 +27,9 @@ class OpFilterLabels(Operator):
         maxSize = None
         if self.MaxLabelSize.ready():
             maxSize = self.MaxLabelSize.value
-        self.Input.get(roi, result).wait()
+        req = self.Input.get(roi)
+        req.writeInto(result)
+        req.wait()
         self.remove_wrongly_sized_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
         return result
         

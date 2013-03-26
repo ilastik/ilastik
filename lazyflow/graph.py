@@ -730,7 +730,7 @@ class Slot(object):
         # call after-remove callbacks
         self._sig_removed(self, position, finalsize)
 
-    def get(self, roi, destination=None):
+    def get(self, roi):
         """This method is used to retrieve the actual content of a Slot.
 
         :param roi: the region of interest, e.g. a subregion in the
@@ -748,12 +748,12 @@ class Slot(object):
             # this handles the case of an inputslot
             # having a ._value
             # --> construct cheaper request object for this case
-            result = self.stype.writeIntoDestination(destination, self._value, roi)
+            result = self.stype.writeIntoDestination(None, self._value, roi)
             return ValueRequest(result)
         elif self.partner is not None:
             # this handles the case of an inputslot
             # --> just relay the request
-            return self.partner.get(roi, destination)
+            return self.partner.get(roi)
         else:
             assert self.ready(), ("Can't get data from slot {}.{} yet."
                                   " It isn't ready.".format(
@@ -764,7 +764,7 @@ class Slot(object):
             assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
-            execWrapper = Slot.RequestExecutionWrapper(self, roi, destination)
+            execWrapper = Slot.RequestExecutionWrapper(self, roi)
             request = Request(execWrapper)
 
             # We must decrement the execution count even if the
@@ -773,22 +773,18 @@ class Slot(object):
             return request
 
     class RequestExecutionWrapper(object):
-        def __init__(self, slot, roi, destination):
+        def __init__(self, slot, roi):
             self.started = False
             self.finished = False
             self.slot = slot
             self.operator = slot.operator
             self.lock = threading.Lock()
             self.roi = roi
-            self.destination = destination
 
         def __call__(self, destination=None):
             # store whether the user wants the results in a given
             # destination area
-            destination_given = (destination is not None or self.destination is not None)
-
-            if destination is None:
-                destination = self.destination
+            destination_given = destination is not None
 
             if destination is None:
                 destination = self.slot.stype.allocateDestination(self.roi)
@@ -1523,7 +1519,7 @@ class Operator(object):
         ##
         # before __init__
         ##
-        obj = super(Operator, cls).__new__(cls)
+        obj = object.__new__(cls, *args, **kwargs)
         obj.inputs = InputDict(obj)
         obj.outputs = OutputDict(obj)
         return obj
