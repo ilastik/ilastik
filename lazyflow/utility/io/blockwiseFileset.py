@@ -1,4 +1,6 @@
 import os
+import copy
+import shutil
 import threading
 import numpy
 import h5py
@@ -222,8 +224,14 @@ class BlockwiseFileset(object):
                 if self.mode == 'a':
                     fileLock = self._fileLocks[path]
                     fileLock.release()
+            self._openBlockFiles = {}
+            self._fileLocks = {}
             self._closed = True
-            
+    
+    def reopen(self, mode):
+        assert self._closed, "Can't reopen a fileset that isn't closed."
+        self.mode = mode
+        self._closed = False
 
     def readData(self, roi, out_array=None):
         """
@@ -235,7 +243,9 @@ class BlockwiseFileset(object):
         """
         if out_array is None:
             out_array = numpy.ndarray( shape=numpy.subtract(roi[1], roi[0]), dtype=self._description.dtype )
-        assert ( numpy.subtract(roi[1], roi[0]) == out_array.shape ).all(), "out_array must match roi shape"
+        roi_shape = numpy.subtract(roi[1], roi[0])
+        assert ( roi_shape == out_array.shape ).all(), "out_array must match roi shape"
+        assert (roi_shape != 0).all(), "Requested roi {} has zero volume!".format( roi )
         self._transferData(roi, out_array, read=True)
         return out_array
 
@@ -247,6 +257,8 @@ class BlockwiseFileset(object):
         :param data: The data to write.  Must be the correct size for the given roi.
         """
         assert self.mode != 'r'
+        assert (numpy.subtract(roi[1], roi[0]) != 0).all(), "Requested roi {} has zero volume!".format( roi )
+
         self._transferData(roi, data, read=False)
 
     def getDatasetDirectory( self, blockstart ):
@@ -327,6 +339,11 @@ class BlockwiseFileset(object):
         elif os.path.exists( statusFilePath ):
             # Remove the status file
             os.remove( statusFilePath )
+
+    def setBlockStatusesForRoi(self, roi, status):
+        block_starts = getIntersectingBlocks(self._description.block_shape, roi)
+        for block_start in block_starts:
+            self.setBlockStatus(block_start, status)
 
     def getEntireBlockRoi(self, block_start):
         """
@@ -554,6 +571,117 @@ class BlockwiseFileset(object):
 
         return fullDatasetPath
 
+    def exportSubset(self, roi, exportDirectory, use_view_coordinates=True):
+        """
+        Create a new blockwise fileset by copying a subset of this blockwise fileset.
+        
+        :param roi: The portion to export.  Must be along block boundaries, in ABSOLUTE coordinates.
+        :param exportDirectory: The directory to copy the new blockwise fileset to.
+        """
+        # For now, this implementation assumes it can simply copy EVERYTHING in the block directories,
+        #  including lock files.  Therefore, we require that the fileset be opened in read-only mode.
+        # If that's a problem, change this function to ignore lock files when copying (or purge them afterwards).
+        roi = map( TinyVector, roi )
+        if not use_view_coordinates:
+            abs_roi = roi
+            assert (abs_roi[0] >= self.description.view_origin), \
+                "Roi {} is out-of-bounds: must not span lower than the view origin: ".format( roi, self.description.origin )
+        else:
+            abs_roi = roi + self.description.view_origin
+
+        assert self.mode == 'r', "Can't export from a fileset that is open in read/write mode."
+        
+        block_shape = self._description.block_shape
+        abs_shape = self._description.shape
+        view_origin = self._description.view_origin
+
+        assert (abs_roi[0] % block_shape == 0).all(), "exportSubset() requires roi to start on a block boundary"
+        assert (( abs_roi[1] % block_shape == 0) | ( abs_roi[1] == abs_shape )).all(), "exported subset must end on block or dataset boundary."
+        
+        if not os.path.exists( exportDirectory ):
+            os.makedirs( exportDirectory )
+        
+        source_desc_path = self._descriptionFilePath
+        source_desc_dir, source_desc_filename = os.path.split( source_desc_path )
+        source_root_dir = self.description.dataset_root_dir
+        
+        # Copy/update description file
+        dest_desc_path = os.path.join(exportDirectory, source_desc_filename)
+        if os.path.exists( dest_desc_path ):
+            dest_description = BlockwiseFileset.readDescription(dest_desc_path)
+        else:
+            dest_description = copy.copy(self._description)
+            dest_description.view_shape = abs_roi[1] - view_origin
+            dest_description.hash_id = None
+        
+        BlockwiseFileset.writeDescription(dest_desc_path, dest_description)
+
+        # Determine destination root block dir        
+        if os.path.isabs(source_root_dir):
+            source_root_dir = os.path.normpath(source_root_dir)
+            source_root_dir_name = os.path.split(source_root_dir)[1]
+            dest_root_dir = os.path.join( exportDirectory, source_root_dir_name )
+        else:
+            dest_root_dir = os.path.join( exportDirectory, source_root_dir )
+
+        source_root_dir, _ = getPathVariants( source_root_dir, source_desc_dir )
+
+        view_roi = abs_roi - view_origin
+        block_starts = getIntersectingBlocks( block_shape, view_roi )
+        for block_start in block_starts:
+            source_block_dir = self.getDatasetDirectory( block_start )
+            rel_block_dir = os.path.relpath( source_block_dir, source_root_dir )
+            dest_block_dir = os.path.join( dest_root_dir, rel_block_dir )
+
+            if os.path.exists( dest_block_dir ):
+                logger.info( "Skipping existing block directory: {}".format( dest_block_dir ) )
+            elif not os.path.exists( source_block_dir ):
+                logger.info( "Skipping missing block directory: {}".format( source_block_dir ) )
+            else:
+                # Copy the entire block directory
+                assert dest_block_dir[-1] != '/'
+                dest_block_dir_parent = os.path.split( dest_block_dir )[0]
+                if not os.path.exists(dest_block_dir_parent):
+                    os.makedirs( dest_block_dir_parent )
+                shutil.copytree( source_block_dir, dest_block_dir )
+        
+        return dest_desc_path
+
 BlockwiseFilesetFactory.register( BlockwiseFileset._createAndReturnBlockwiseFileset )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

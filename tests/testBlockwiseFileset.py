@@ -38,12 +38,12 @@ class TestBlockwiseFileset(object):
         }
         """
         cls.tempDir = tempfile.mkdtemp()
-        cls.configpath = os.path.join(cls.tempDir, "config.json")
-        with open(cls.configpath, 'w') as f:
+        cls.description_path = os.path.join(cls.tempDir, "description.json")
+        with open(cls.description_path, 'w') as f:
             f.write(testConfig)
     
         logger.debug( "Loading config file..." )
-        cls.bfs = BlockwiseFileset( cls.configpath, 'a' )
+        cls.bfs = BlockwiseFileset( cls.description_path, 'a' )
         cls.dataShape = tuple(cls.bfs.description.shape)
     
         logger.debug( "Creating random test data..." )
@@ -108,7 +108,7 @@ class TestBlockwiseFileset(object):
             assert self.data[slicing].shape == read_data.shape
             assert (self.data[slicing] == read_data).all(), "Data didn't match."
 
-    def test_5_TestExport(self):
+    def test_5_TestExportRoi(self):
         roi = ( (0, 25, 25, 25, 0), (1, 75, 75, 75, 1) )
         exportDir = tempfile.mkdtemp()
         datasetPath = self.bfs.exportRoiToHdf5( roi, exportDir )
@@ -127,8 +127,31 @@ class TestBlockwiseFileset(object):
         
         finally:
             shutil.rmtree(exportDir)
+
+    def test_6_TestExportSubset(self):
+        roi = ( (0, 0, 50, 100, 0), (1, 100, 200, 200, 1) )
+        exportDir = tempfile.mkdtemp()
+        self.bfs.close()
+        self.bfs.reopen( 'r' )
+        exported_description_path = self.bfs.exportSubset( roi, exportDir )
+
+        try:        
+            exported_bfs = BlockwiseFileset( exported_description_path, 'r' )
+            assert os.path.exists( exported_description_path ), "Couldn't even find the exported description file."
+
+            read_data = exported_bfs.readData( roi )
+            expected_data = self.data[ roiToSlice(*roi) ]
+    
+            assert read_data.shape == expected_data.shape, "Exported data had wrong shape"
+            assert read_data.dtype == expected_data.dtype, "Exported data had wrong dtype"
+            assert (read_data == expected_data).all(), "Exported data did not match expected data"
         
-    def test_6_ManySmallWritesToOneBlock(self):
+        finally:
+            shutil.rmtree(exportDir)
+        
+    def test_7_ManySmallWritesToOneBlock(self):
+        self.bfs.close()
+        self.bfs.reopen( 'a' )
         for _ in range(100):
             x = numpy.random.randint(49) + 1
             y = numpy.random.randint(49) + 1
@@ -139,20 +162,21 @@ class TestBlockwiseFileset(object):
             
             random_data = numpy.random.random( roiShape )
             self.bfs.writeData( roi, random_data )
+            self.bfs.setBlockStatusesForRoi( roi, BlockwiseFileset.BLOCK_AVAILABLE )
 
-    def test_7_CloseBfs(self):
+    def test_8_CloseBfs(self):
         self.bfs.close()
 
-    def test_8_TestView(self):
+    def test_9_TestView(self):
         """
         Load some of the dataset again; this time with an offset view.
         Note: The original blockwise fileset must be closed before this test starts.
         """
         # Create a copy of the original description, but specify a translated (and smaller) view
-        desc = BlockwiseFileset.readDescription(self.configpath)
+        desc = BlockwiseFileset.readDescription(self.description_path)
         desc.view_origin = [0, 300, 200, 100, 0]
         desc.view_shape = [1, 50, 50, 50, 1]
-        offsetConfigPath = self.configpath + '_offset'
+        offsetConfigPath = self.description_path + '_offset'
         BlockwiseFileset.writeDescription(offsetConfigPath, desc)
         
         # Open the fileset using the special description file
@@ -201,12 +225,12 @@ class TestObjectBlockwiseFileset(object):
         }
         """
         cls.tempDir = tempfile.mkdtemp()
-        cls.configpath = os.path.join(cls.tempDir, "config.json")
-        with open(cls.configpath, 'w') as f:
+        cls.description_path = os.path.join(cls.tempDir, "config.json")
+        with open(cls.description_path, 'w') as f:
             f.write(testConfig)
     
         logger.debug( "Loading config file..." )
-        cls.bfs = BlockwiseFileset( cls.configpath, 'a' )
+        cls.bfs = BlockwiseFileset( cls.description_path, 'a' )
         cls.dataShape = tuple(cls.bfs.description.shape)
 
         def make_dummy_dict(x):
