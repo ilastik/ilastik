@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>726</height>
+    <height>264</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,34 +63,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="delSubtrack">
-       <property name="text">
-        <string>Remove Active Track From Here</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="addToTrack">
-       <property name="text">
-        <string>Add to Active Track</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="delFromTrack">
-       <property name="text">
-        <string>Remove from Active Track</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>Mark as Division</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="pushButton_2">
        <property name="text">
         <string>Go to next Division</string>
@@ -107,197 +79,11 @@
     </widget>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_3">
-     <item>
-      <widget class="QLabel" name="label_12">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Field of view selection.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Field of View Selection:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_13">
-         <property name="text">
-          <string>From</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_14">
-         <property name="text">
-          <string>To</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_15">
-         <property name="text">
-          <string>Time</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="from_time"/>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_16">
-         <property name="text">
-          <string>X</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QSpinBox" name="from_x"/>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_17">
-         <property name="text">
-          <string>Y</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QSpinBox" name="from_y"/>
-       </item>
-       <item row="3" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_y"/>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_18">
-         <property name="text">
-          <string>Z</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QSpinBox" name="from_z"/>
-       </item>
-       <item row="4" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_z"/>
-       </item>
-       <item row="5" column="3">
-        <widget class="QSpinBox" name="to_size">
-         <property name="maximum">
-          <number>100000</number>
-         </property>
-         <property name="value">
-          <number>100000</number>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_x"/>
-       </item>
-       <item row="1" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_time"/>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_19">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only track objects with sizes within the given range.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Size</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1" colspan="2">
-        <widget class="QSpinBox" name="from_size">
-         <property name="maximum">
-          <number>100000</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
-   </item>
-   <item>
     <widget class="Line" name="line_2">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
     </widget>
-   </item>
-   <item>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
-     <item>
-      <widget class="QLabel" name="label_8">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Configure here the scales of the dimensions. For instance, if the resolution of the pixels is (dx,dy,dz) = (1µm,0.8µm,0.5µm), then the scales to enter should be (x,y,z)=(1,1.25,2).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Data Scales</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_10">
-         <property name="text">
-          <string>y scale</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_11">
-         <property name="text">
-          <string>z scale</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_9">
-         <property name="text">
-          <string>x scale</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="x_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="y_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="z_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
    </item>
    <item>
     <widget class="Line" name="line_3">
@@ -346,19 +132,6 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>from_time</tabstop>
-  <tabstop>to_time</tabstop>
-  <tabstop>from_x</tabstop>
-  <tabstop>to_x</tabstop>
-  <tabstop>from_y</tabstop>
-  <tabstop>to_y</tabstop>
-  <tabstop>from_z</tabstop>
-  <tabstop>to_z</tabstop>
-  <tabstop>from_size</tabstop>
-  <tabstop>to_size</tabstop>
-  <tabstop>x_scale</tabstop>
-  <tabstop>y_scale</tabstop>
-  <tabstop>z_scale</tabstop>
   <tabstop>exportButton</tabstop>
   <tabstop>exportTifButton</tabstop>
  </tabstops>
