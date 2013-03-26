@@ -36,7 +36,6 @@ if __name__ == "__main__":
                         'pmapoverlayFile' : options.pmapoverlayFile }
         
         def loadProject(shell):
-            shell.openProjectFile("C:/Users/Ben/Desktop/carvingData/stacktest.ilp")
             pass
         
         startShellGui(functools.partial(CarvingWorkflow, **workflowKwargs),loadProject)

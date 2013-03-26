@@ -13,7 +13,6 @@ from lazyflow.rtype import List
 
 #ilastik
 from ilastik.applets.labeling import OpLabelingSingleLane
-from preprocessfile import preprocess
 
 import os.path
 import copy
