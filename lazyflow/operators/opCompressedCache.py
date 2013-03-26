@@ -70,7 +70,7 @@ class OpCompressedCache(Operator):
         assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-        block_starts = map( lambda x: tuple(x), block_starts )
+        block_starts = map( tuple, block_starts )
 
         # Ensure all block cache files are up-to-date
         reqPool = RequestPool() # (Do the work in parallel.)
@@ -120,7 +120,7 @@ class OpCompressedCache(Operator):
             # Keep track of dirty blocks
             with self._lock:
                 block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-                block_starts = map( lambda x: tuple(x), block_starts )
+                block_starts = map( tuple, block_starts )
                 
                 for block_start in block_starts:
                     self._dirtyBlocks.add( block_start )
@@ -266,7 +266,7 @@ class OpCompressedCache(Operator):
         assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-        block_starts = map( lambda x: tuple(x), block_starts )
+        block_starts = map( tuple, block_starts )
 
         # Copy data to each block
         logger.debug( "Copying data INTO {} blocks...".format( len(block_starts) ) )

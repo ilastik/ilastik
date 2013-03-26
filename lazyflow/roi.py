@@ -91,11 +91,11 @@ class TinyVector(list):
             return TinyVector(map(lambda x:  x < other ,self))
 
     def ceil(self):
-        return TinyVector(map(lambda x:  ceil(x) ,self))
+        return TinyVector(map(ceil ,self))
         #return numpy.ceil(numpy.array(self))
 
     def floor(self):
-        return TinyVector(map(lambda x:  floor(x) ,self))
+        return TinyVector(map(floor ,self))
         #return numpy.floor(numpy.array(self))
 
     def _asint(self):
