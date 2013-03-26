@@ -524,6 +524,9 @@ class Slot(object):
         if partner is not None:
             self._value = None
             if partner.level == self.level:
+                assert isinstance(partner.stype, type(self.stype)), \
+                    "Can't connect slots of non-matching stypes!" \
+                    " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, partner.name, partner.stype)
                 self.partner = partner
                 notifyReady = (self.partner.meta._ready and
                                not self.meta._ready)
@@ -919,7 +922,7 @@ class Slot(object):
                         if not slot.ready() and not slot._optional:
                             slotInfoMsg += "Slot '{}' isn't ready\n".format( slot.name )
                     self.logger.error(slotInfoMsg)
-                    assert False, "Slot isn't ready.  See error message above."
+                    assert False, "Slot isn't ready.  See error log."
                 assert self.meta.shape is not None, \
                     ("Can't ask for slices of this slot yet:"
                      " self.meta.shape is None!"
