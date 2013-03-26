@@ -241,24 +241,11 @@ class ObjectClassificationGui(LabelingGui):
         if label == self.editor.brushingModel.erasingNumber:
             label = 0
         assert 0 <= label <= self._labelingSlots.maxLabelValue.value
-        slicing = tuple(slice(i, i+1) for i in pos5D)
 
-        arr = layer.segmentationImageSlot[slicing].wait()
-        obj = arr.flat[0]
-        if obj == 0: # background; FIXME: do not hardcode
-            return
-        t = pos5D[0]
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 
-        labelslot = layer._datasources[0]._inputSlot
-        labelsdict = labelslot.value
-        labels = labelsdict[t]
-
-        nobjects = len(labels)
-        if obj >= nobjects:
-            newLabels = numpy.zeros((obj + 1),)
-            newLabels[:nobjects] = labels[:]
-            labels = newLabels
-        labels[obj] = label
-        labelsdict[t] = labels
-        labelslot.setValue(labelsdict)
-        labelslot.setDirty([(t, obj)])
+        operatorAxisOrder = self.topLevelOperatorView.SegmentationImagesOut.meta.getAxisKeys()
+        assert operatorAxisOrder == list('txyzc'), \
+            "Need to update onClick() if the operator no longer expects volumnia axis order.  Operator wants: {}".format( operatorAxisOrder )
+        self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5D, label)

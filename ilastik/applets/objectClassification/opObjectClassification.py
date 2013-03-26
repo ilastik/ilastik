@@ -123,6 +123,34 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
+    def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
+        """
+        Update the assigned label of the object located at the given coordinate.
+        Does nothing if no object resides at the given coordinate.
+        """
+        segmentationShape = self.SegmentationImagesOut[imageIndex].meta.shape
+        assert len(coordinate) == len( segmentationShape ), "Coordinate: {} is has the wrong length for this image, which is of shape: {}".format( coordinate, segmentationShape )
+        slicing = tuple(slice(i, i+1) for i in coordinate)
+        arr = self.SegmentationImagesOut[imageIndex][slicing].wait()
+        
+        objIndex = arr.flat[0]
+        if objIndex == 0: # background; FIXME: do not hardcode
+            return
+        timeCoord = coordinate[0]
+        labelslot = self.LabelInputs[imageIndex]
+        labelsdict = labelslot.value
+        labels = labelsdict[timeCoord]
+
+        nobjects = len(labels)
+        if objIndex >= nobjects:
+            newLabels = numpy.zeros((objIndex + 1),)
+            newLabels[:nobjects] = labels[:]
+            labels = newLabels
+        labels[objIndex] = assignedLabel
+        labelsdict[timeCoord] = labels
+        labelslot.setValue(labelsdict)
+        labelslot.setDirty([(timeCoord, objIndex)])
+
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
         assert numLanes == laneIndex, "Image lanes must be appended."
