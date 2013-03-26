@@ -3,16 +3,18 @@ import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectExtraction.opObjectExtraction import \
-    OpObjectExtraction, OpRegionFeatures
+    OpObjectExtraction, OpRegionFeatures, OpAdaptTimeListRoi
     
 from lazyflow.operators import OpLabelImage
 
-FEATURES = [
-    'Count',
-    'RegionCenter',
-    'Coord<ArgMaxWeight>',
-    'Coord<Minimum>',
-    'Coord<Maximum>',
+FEATURES = \
+[
+    [ 'Count',
+      'RegionCenter',
+      'Coord<ArgMaxWeight>',
+      'Coord<Minimum>',
+      'Coord<Maximum>' ],
+    []
 ]
 
 def binaryImage():
@@ -44,24 +46,29 @@ class TestOpRegionFeatures(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.labelop = OpLabelImage(graph=g)
-        self.op = OpRegionFeatures(features=FEATURES, graph=g)
+        self.op = OpRegionFeatures(FEATURES, graph=g)
         self.op.LabelImage.connect(self.labelop.Output)
         self.op.RawImage.connect(self.labelop.Output) # Raw image is arbitrary for our purposes.  Just re-use the label image
         self.img = binaryImage()
         self.labelop.Input.setValue(self.img)
 
+
+
     def test_features(self):
         self.op.Output.fixed = False
         # FIXME: roi specification
-        feats = self.op.Output([0, 1]).wait()
+        opAdapt = OpAdaptTimeListRoi( graph=self.op.graph )
+        opAdapt.Input.connect( self.op.Output )
+        
+        feats = opAdapt.Output([0, 1]).wait()
         self.assertEquals(len(feats), self.img.shape[0])
         for t in feats:
             self.assertIsInstance(t, int)
             self.assertGreater(feats[t][0]['Count'].shape[0], 0)
-            self.assertGreater(feats[t][0]['RegionCenter'].shape[0], 0)
+            self.assertGreater(feats[t][0]['RegionCenter_obj'].shape[0], 0)
 
         self.assertTrue(np.any(feats[0][0]['Count'] != feats[1][0]['Count']))
-        self.assertTrue(np.any(feats[0][0]['RegionCenter'] != feats[1][0]['RegionCenter']))
+        self.assertTrue(np.any(feats[0][0]['RegionCenter_obj'] != feats[1][0]['RegionCenter_obj']))
 
 if __name__ == '__main__':
     unittest.main()
