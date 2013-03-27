@@ -11,7 +11,11 @@ class OpCachedLabelImage(Operator):
     BlockShape = InputSlot(optional=True)   # If not provided, blockshape is 1 time slice, 1 channel slice, 
                                             #  and the entire volume in xyz.
     Output = OutputSlot()
+
+    # Serialization support
+    InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot() # See OpCachedLabelImage for details
     
     # Schematic:
     #
@@ -32,10 +36,12 @@ class OpCachedLabelImage(Operator):
         # Hook up the cache
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.Input.connect( self._opLabelImage.Output )
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
         
         # Hook up our output slots
         self.Output.connect( self._opCache.Output )
         self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )
     
     def setupOutputs(self):
         if self.BlockShape.ready():
@@ -55,5 +61,8 @@ class OpCachedLabelImage(Operator):
         pass # Nothing to do...
 
     def setInSlot(self, slot, subindex, roi, value):
-        # Forward to our cache to force label values in from an external source.
-        self._opCache.setInSlot(self._opCache.Input, subindex, roi, value)
+        assert slot == self.Input or slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
+            

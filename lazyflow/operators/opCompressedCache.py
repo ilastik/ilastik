@@ -22,8 +22,11 @@ class OpCompressedCache(Operator):
     Input = InputSlot() # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
     BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
     
-    Output = OutputSlot()
+    Output = OutputSlot() # Output as numpy arrays
+
+    InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
+    OutputHdf5 = OutputSlot() # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
     
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
@@ -43,6 +46,7 @@ class OpCompressedCache(Operator):
     def setupOutputs(self):
         self._closeAllCacheFiles()
         self.Output.meta.assignFrom(self.Input.meta)
+        self.OutputHdf5.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
 
@@ -61,6 +65,8 @@ class OpCompressedCache(Operator):
             return self._executeOutput(roi, destination)
         elif slot == self.CleanBlocks:
             return self._executeCleanBlocks(destination)
+        elif slot == self.OutputHdf5:
+            return self._executeOutputHdf5( roi, destination )
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
         
@@ -114,6 +120,20 @@ class OpCompressedCache(Operator):
         destination[0] = map( partial(map, TinyVector), clean_block_rois )
         return destination
 
+    def _executeOutputHdf5(self, roi, destination):
+        print "Serving request for hdf5 block {}".format( roi )
+
+        assert isinstance( destination, h5py.Group ), "OutputHdf5 slot requires an hdf5 GROUP to copy into (not a numpy array)."
+        assert ((roi.start % self._blockshape) == 0).all(), "OutputHdf5 slot requires roi to be exactly one block."
+        block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
+        assert (block_roi == numpy.array((roi.start, roi.stop))).all(), "OutputHdf5 slot requires roi to be exactly one block."
+
+        block_roi = [roi.start, roi.stop]
+        self._ensureCached( block_roi )
+        dataset = self._getBlockDataset( block_roi )
+        assert str(block_roi) not in destination, "destination hdf5 group already has a dataset with this block's name"
+        destination.copy( dataset, str(block_roi) )
+        return destination        
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
@@ -255,13 +275,21 @@ class OpCompressedCache(Operator):
             if updated_cache:
                 # Now that the lock is released, signal that the cache was updated. 
                 self.Output._sig_value_changed()
-
+                self.OutputHdf5._sig_value_changed()
+                self.CleanBlocks._sig_value_changed()
 
     def setInSlot(self, slot, subindex, roi, value):
         """
         Overridden from Operator
         """
-        assert slot == self.Input, "OpCompressedCache: Only the main Input slot supports setInSlot"
+        if slot == self.Input:
+            self._setInSlotInput(slot, subindex, roi, value)
+        elif slot == self.InputHdf5:
+            self._setInSlotInputHdf5(slot, subindex, roi, value)
+        else:
+            assert False, "Invalid input slot for setInSlot(): {}".format( slot.name )
+
+    def _setInSlotInput(self, slot, subindex, roi, value):
         assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
         assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
         
@@ -289,8 +317,30 @@ class OpCompressedCache(Operator):
             # Therefore, this block is no longer 'dirty'
             self._dirtyBlocks.discard( block_start )
 
-        self.Output._sig_value_changed()
+#            self.Output._sig_value_changed()
+#            self.OutputHdf5._sig_value_changed()
+#            self.CleanBlocks._sig_value_changed()
 
+    def _setInSlotInputHdf5(self, slot, subindex, roi, value):
+        print "Setting block {} from hdf5".format( roi )
+        assert isinstance( value, h5py.Dataset ), "InputHdf5 slot requires an hdf5 Dataset to copy from (not a numpy array)."
+        assert ((roi.start % self._blockshape) == 0).all(), "InputHdf5 slot requires roi to be exactly one block."
+        block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
+        assert (block_roi == numpy.array((roi.start, roi.stop))).all(), "InputHdf5 slot requires roi to be exactly one block."
+
+        cachefile = self._getCacheFile( block_roi )
+        logger.debug( "Copying HDF5 data directly into block {}".format( block_roi ) )
+        assert cachefile['data'].dtype == value.dtype
+        assert cachefile['data'].shape == value.shape
+        del cachefile['data']
+        cachefile.copy( value, 'data' )
+
+        block_start = tuple(roi.start)
+        self._dirtyBlocks.discard( block_start )
+
+#        self.Output._sig_value_changed()
+#        self.OutputHdf5._sig_value_changed()
+#        self.CleanBlocks._sig_value_changed()
 
     def _getBlockDataset(self, entire_block_roi):
         """
