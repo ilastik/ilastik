@@ -13,7 +13,7 @@ class OpOpticalTranslation(Operator):
     name = "Optical Translation"
     BinaryImage = InputSlot()
     RawImage = InputSlot()
-    Parameters = InputSlot( value={'templateSize':40, 'maxTranslation':10, 'overlap':0, 'method':'nxcorr',
+    Parameters = InputSlot( value={'templateSize':40, 'maxTranslation':10, 'overlap':0, 'method':'xcorr',
                                    'maxDiffVals':10} )
     
     TranslationVectors = OutputSlot()

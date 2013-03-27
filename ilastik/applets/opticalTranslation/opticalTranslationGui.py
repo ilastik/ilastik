@@ -31,7 +31,9 @@ class OpticalTranslationGui( LayerViewerGui ):
         if self.mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = self.mainOperator.BinaryImage.meta.shape
         self.mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged)
-    
+        self.mainOperator.Parameters.notifyValueChanged(self._onParametersChanged)
+        self.mainOperator.Parameters._sig_value_changed()
+        
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.BinaryImage:
             if slot.meta.shape:                
@@ -51,6 +53,7 @@ class OpticalTranslationGui( LayerViewerGui ):
                 layerraw = GrayscaleLayer( self.rawsrc )    
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
+          
 
     def setupLayers( self ):        
         layers = []
@@ -104,8 +107,8 @@ class OpticalTranslationGui( LayerViewerGui ):
             self.editor.dataShape = self.topLevelOperatorView.TranslationVectors.meta.shape    
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
-        self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
-        
+        self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged ) 
+                
         return layers
     
     def _loadUiFile(self):
@@ -118,7 +121,16 @@ class OpticalTranslationGui( LayerViewerGui ):
         self._drawer = self._loadUiFile()
         
         self._drawer.computeTranslationButton.pressed.connect(self._onComputeTranslationButtonPressed)
-        self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)    
+        self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)
+    
+    def _onParametersChanged(self):
+        method = self.mainOperator.Parameters.value['method']
+        if method == 'xor':
+            self._drawer.methodBox.setCurrentIndex(0)
+        elif method == 'nxcorr':
+            self._drawer.methodBox.setCurrentIndex(1)
+        elif method == 'xcorr':
+            self._drawer.methodBox.setCurrentIndex(2)
     
     def _onMethodChanged(self):
         if self._drawer.methodBox.currentIndex() == 0:

@@ -45,3 +45,4 @@ class OpticalTranslationSerializer(AppletSerializer):
                 ]
 
         super(OpticalTranslationSerializer, self).__init__(projectFileGroupName, slots=slots)
+
