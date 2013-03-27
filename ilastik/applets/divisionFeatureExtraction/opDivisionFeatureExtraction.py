@@ -87,15 +87,15 @@ class OpDivisionFeatures(Operator):
         feats = {}
         if len(roi) == 0:
             roi = range(self.LabelImage.meta.shape[0])
-        for t in roi:     
-            print 'Extracting Division Features at t=%d' % t
-              
+        for t in roi:                 
             if t in self._cache:
                 # FIXME: if features have changed, they may not be in the cache.
                 feats_at = self._cache[t]
             elif self.fixed:
                 feats_at = dict((f, numpy.asarray([[]])) for f in self.features)
             else:
+                print 'Extracting Division Features at t=%d' % t
+                
                 feats_at = []
                 lshape = self.LabelImage.meta.shape
                 numChannels = lshape[-1]
