@@ -536,9 +536,10 @@ class OpCachedRegionFeatures(Operator):
         self._opCache.blockShape.setValue( blockshape )
 
     def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here.
+        # Our CacheInput slot is directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
         assert slot == self.CacheInput
-        # Forward to our cache to force label values in from an external source.
-        self._opCache.setInSlot(self._opCache.Input, subindex, roi, value)
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -655,6 +656,10 @@ class OpObjectExtraction(Operator):
                                            # has rtype=List, indexed by t.
                                            # For other workflows, output has rtype=ArrayLike, indexed by (t,c)
 
+    LabelInputHdf5 = InputSlot( optional=True )
+    LabelOutputHdf5 = OutputSlot()
+    CleanLabelBlocks = OutputSlot()
+
     # these features are needed by classification applet.
     default_features = [
         'RegionCenter',
@@ -687,6 +692,7 @@ class OpObjectExtraction(Operator):
 
         # connect internal operators
         self._opLabelImage.Input.connect(self.BinaryImage)
+        self._opLabelImage.InputHdf5.connect(self.LabelInputHdf5)
         self._opLabelImage.BackgroundLabels.connect(self.BackgroundLabels)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
@@ -705,6 +711,8 @@ class OpObjectExtraction(Operator):
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
+        self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
+        self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
 
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
@@ -720,3 +728,9 @@ class OpObjectExtraction(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.LabelInputHdf5 or slot == self.LabelImage, "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
