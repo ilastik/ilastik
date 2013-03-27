@@ -48,11 +48,10 @@ class TinyVector(list):
     __rmul__ = __mul__
 
     def __div__(self, other):
-        rdiv = numpy.divide
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: rdiv(x,y) ,self,other))
+            return TinyVector(map(lambda x,y: x/y ,self,other))
         else:
-            return TinyVector(map(lambda x: rdiv(x,other),self))
+            return TinyVector(map(lambda x: x/other,self))
 
     def __rdiv__(self, other):
         if isinstance(other, collections.Iterable):
