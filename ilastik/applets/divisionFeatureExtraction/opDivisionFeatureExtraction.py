@@ -196,7 +196,7 @@ class OpDivisionFeatures(Operator):
             roi = []
             for idx,coord in enumerate(idx_cur):
                 if idx == channel_axis - 1:
-                    assert(coord == 0., "RegionCenter has more dimensions than the image has")
+                    assert coord == 0., "RegionCenter has more dimensions than the image has"
                     continue
                 start = coord - self.templateSize/2
                 stop = coord + self.templateSize/2
