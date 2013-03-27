@@ -283,7 +283,7 @@ class OpDivisionFeatures(Operator):
                 v2 = com2 - com_cur                
                 ang = self.angle(v1,v2)
                 if ang > 180:
-                    assert(ang<=360.01, "the angle must be smaller than 360 degrees")
+                    assert ang<=360.01, "the angle must be smaller than 360 degrees"
                     ang = 360-ang
                 angles.append(ang)
                     
