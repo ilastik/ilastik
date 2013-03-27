@@ -8,6 +8,7 @@ from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBA
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor
 
 from lazyflow.graph import OperatorWrapper
+from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
@@ -117,6 +118,9 @@ class LayerViewerGui(QMainWindow):
         self.observedSlots = []
         for slot in observedSlots:
             if slot.level == 0:
+                if not isinstance(slot.stype, ArrayLike):
+                    # We don't support visualization of non-Array slots.
+                    continue
                 # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
                 # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
                 opPromoteInput = Op1ToMulti(graph=slot.operator.graph)
