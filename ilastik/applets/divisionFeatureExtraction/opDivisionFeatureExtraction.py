@@ -59,7 +59,7 @@ class OpDivisionFeatures(Operator):
                          'SquaredDistanceRatio', 'ParentChildrenSizeRatio', \
                          'ChildrenMeanRatio', 'ParentChildrenMeanRatio']
     numNeighbors = 2
-    templateSize = 100 
+    templateSize = 30  # window in which we look for neighboring labels in the next time steps
     size_filter_from = 5
     with_uncorrected_features = True # plain features
     with_corrected_features = True   # the region centers are corrected by translation vector
@@ -87,7 +87,9 @@ class OpDivisionFeatures(Operator):
         feats = {}
         if len(roi) == 0:
             roi = range(self.LabelImage.meta.shape[0])
-        for t in roi:            
+        for t in roi:     
+            print 'Extracting Division Features at t=%d' % t
+              
             if t in self._cache:
                 # FIXME: if features have changed, they may not be in the cache.
                 feats_at = self._cache[t]
@@ -117,7 +119,7 @@ class OpDivisionFeatures(Operator):
                             coord_roi = SubRegion(self.TranslationVectors, 
                                                  start=[t,] + coord + [0,],
                                                  stop=[t+1,] + coord_end + [3,])
-                            translation = self.TranslationVectors.get(coord_roi).wait()[0][0][0][0] 
+                            translation = self.TranslationVectors.get(coord_roi).wait().flatten() 
                             feats_at_c[name][label] = coord + translation
                         
                     num = region_feats_cur[c]['RegionCenter'].shape[0]
@@ -157,7 +159,7 @@ class OpDivisionFeatures(Operator):
                         axiskeys = self.LabelImage.meta.getTaggedShape().keys()
                         assert axiskeys == list('txyzc'), "FIXME: OpRegionFeatures requires txyzc input data."
                         labels_next = labels_next[0,...,0] # assumes t,x,y,z,c
-                        
+                                                
                         if self.with_uncorrected_features:
                             self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
                                                          numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,

@@ -72,7 +72,7 @@ class OpOpticalTranslation(Operator):
     def _computeTranslationVectors(self, roi, result):
         shape = self.BinaryImage.meta.shape        
         for t in range(roi.start[0], roi.stop[0]):
-            if t in self._processedTimeSteps:
+            if t in self._processedTimeSteps:                
                 continue                
             
             print ("Calculating TranslationVectors at t={}".format(t))
@@ -141,7 +141,7 @@ class OpOpticalTranslation(Operator):
                     for t in range(start, stop):
                         slc = (slice(t, t + 1),) + roi.toSlice()[1:]
                         dslc = slice(t - start, t - start + 1)
-                        if t not in self._processedTimeSteps:
+                        if t not in self._processedTimeSteps:                            
                             self._computeTranslationVectors(roi, result)                    
                         src = self._mem_h5['TranslationVectors']                    
                         result[dslc] = src[slc]
