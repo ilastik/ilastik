@@ -15,7 +15,11 @@ class TinyVector(list):
         else:
             return TinyVector(map(lambda x: x + other ,self))
 
+    __radd__ = __add__
+
     def __iadd__(self, other):
+        # Must explicitly override list.__iadd__
+        # Others (e.g. isub, imul) can use default implementation.
         if hasattr(other, "__iter__"):
             self =  TinyVector(map(lambda x,y: x + y ,self,other))
             return self
@@ -41,18 +45,44 @@ class TinyVector(list):
         else:
             return TinyVector(map(lambda x: x * other ,self))
 
+    __rmul__ = __mul__
+
     def __div__(self, other):
         rdiv = numpy.divide
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y: rdiv(x,y) ,self,other))
         else:
-            return TinyVector(map(lambda x: rdiv(other,x),self))
+            return TinyVector(map(lambda x: rdiv(x,other),self))
 
     def __rdiv__(self, other):
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y:  y / x,self,other))
         else:
             return TinyVector(map(lambda x:  other / x ,self))
+
+    def __mod__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x % y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x % other,self))
+
+    def __rmod__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: y % x ,self,other))
+        else:
+            return TinyVector(map(lambda x: other % x,self))
+
+    def __floordiv__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x // y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x // other,self))
+
+    def __rfloordiv__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: y // x ,self,other))
+        else:
+            return TinyVector(map(lambda x: other // x,self))
 
     def __eq__(self, other):
         if hasattr(other, "__iter__"):
@@ -90,6 +120,30 @@ class TinyVector(list):
         else:
             return TinyVector(map(lambda x:  x < other ,self))
 
+    def __and__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x & y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x & other,self))
+
+    __rand__ = __and__
+
+    def __or__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x | y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x | other,self))
+
+    __ror__ = __or__
+
+    def __xor__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x ^ y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x ^ other,self))
+
+    __rxor__ = __xor__
+    
     def ceil(self):
         return TinyVector(map(ceil ,self))
         #return numpy.ceil(numpy.array(self))
@@ -121,9 +175,6 @@ class TinyVector(list):
                 answer = True
                 break
         return answer
-
-TinyVector.__radd__ = TinyVector.__add__
-TinyVector.__rmul__ = TinyVector.__mul__
 
 def expandSlicing(s, shape):
     """
