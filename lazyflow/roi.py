@@ -11,9 +11,9 @@ class TinyVector(list):
 
     def __add__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x + y ,self,other))
+            return TinyVector(x+y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x + other ,self))
+            return TinyVector(x+other for x in self)
 
     __radd__ = __add__
 
@@ -21,133 +21,133 @@ class TinyVector(list):
         # Must explicitly override list.__iadd__
         # Others (e.g. isub, imul) can use default implementation.
         if isinstance(other, collections.Iterable):
-            self =  TinyVector(map(lambda x,y: x + y ,self,other))
+            self =  TinyVector(x+y for x,y in zip(self,other))
             return self
         else:
-            self = TinyVector(map(lambda x: x + other ,self))
+            self = TinyVector(x+other for x in self)
             return self
 
     def __sub__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x - y ,self,other))
+            return TinyVector(x-y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x - other ,self))
+            return TinyVector(x-other for x in self)
 
     def __rsub__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: y - x ,self,other))
+            return TinyVector(y-x for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: other - x ,self))
+            return TinyVector(other-x for x in self)
 
     def __mul__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x * y ,self,other))
+            return TinyVector(x*y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x * other ,self))
+            return TinyVector(x*other for x in self)
 
     __rmul__ = __mul__
 
     def __div__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x/y ,self,other))
+            return TinyVector(x/y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x/other,self))
+            return TinyVector(x/other for x in self)
 
     def __rdiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  y / x,self,other))
+            return TinyVector(y/x for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  other / x ,self))
+            return TinyVector(other/x for x in self)
 
     def __mod__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x % y ,self,other))
+            return TinyVector(x%y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x % other,self))
+            return TinyVector(x%other for x in self)
 
     def __rmod__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: y % x ,self,other))
+            return TinyVector(y%x for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: other % x,self))
+            return TinyVector(other%x for x in self)
 
     def __floordiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x // y ,self,other))
+            return TinyVector(x//y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x // other,self))
+            return TinyVector(x//other for x in self)
 
     def __rfloordiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: y // x ,self,other))
+            return TinyVector(y//x for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: other // x,self))
+            return TinyVector(other//x for x in self)
 
     def __eq__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x == y,self,other))
+            return TinyVector(x==y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x == other ,self))
+            return TinyVector(x==other for x in self)
 
     def __ne__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x != y,self,other))
+            return TinyVector(x!=y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x != other ,self))
+            return TinyVector(x!=other for x in self)
 
     def __ge__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x >= y,self,other))
+            return TinyVector(x>=y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x >= other ,self))
+            return TinyVector(x>=other for x in self)
 
     def __le__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x <= y,self,other))
+            return TinyVector(x<=y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x <= other ,self))
+            return TinyVector(x<=other for x in self)
 
     def __gt__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x > y,self,other))
+            return TinyVector(x>y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x > other ,self))
+            return TinyVector(x>other for x in self)
 
     def __lt__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y:  x < y,self,other))
+            return TinyVector(x<y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x:  x < other ,self))
+            return TinyVector(x<other for x in self)
 
     def __and__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x & y ,self,other))
+            return TinyVector(x&y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x & other,self))
+            return TinyVector(x&other for x in self)
 
     __rand__ = __and__
 
     def __or__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x | y ,self,other))
+            return TinyVector(x|y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x | other,self))
+            return TinyVector(x|other for x in self)
 
     __ror__ = __or__
 
     def __xor__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(map(lambda x,y: x ^ y ,self,other))
+            return TinyVector(x^y for x,y in zip(self,other))
         else:
-            return TinyVector(map(lambda x: x ^ other,self))
+            return TinyVector(x ^ other for x in self)
 
     __rxor__ = __xor__
     
     def __neg__(self):
-        return self * -1
+        return TinyVector( -x for x in self )
     
     def __abs__(self):
-        return TinyVector( abs(x) for x in self )
+        return TinyVector( map(abs, self) )
 
     def __pos__(self):
         return TinyVector(self)
