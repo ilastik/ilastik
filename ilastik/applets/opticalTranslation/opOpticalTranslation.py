@@ -13,7 +13,7 @@ class OpOpticalTranslation(Operator):
     name = "Optical Translation"
     BinaryImage = InputSlot()
     RawImage = InputSlot()
-    Parameters = InputSlot( value={'templateSize':100, 'maxTranslation':20, 'overlap':0, 'method':'nxcorr',
+    Parameters = InputSlot( value={'templateSize':40, 'maxTranslation':10, 'overlap':0, 'method':'nxcorr',
                                    'maxDiffVals':10} )
     
     TranslationVectors = OutputSlot()
@@ -49,11 +49,14 @@ class OpOpticalTranslation(Operator):
         self.WarpedImage.meta.assignFrom(self.BinaryImage.meta)
         self.WarpedImage.meta.dtype = numpy.uint8
         
-        chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),3)        
-        self._mem_h5.create_dataset('TranslationVectors', shape=shape, dtype=self.TranslationVectors.meta.dtype, 
-                                    compression=1,chunks=chunks) 
-        chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),1)
-        self._mem_h5.create_dataset('WarpedImage', shape=self.WarpedImage.meta.shape, dtype=self.WarpedImage.meta.dtype, 
+        
+        if 'TranslationVectors' not in self._mem_h5.keys():
+            chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),3)
+            self._mem_h5.create_dataset('TranslationVectors', shape=shape, dtype=self.TranslationVectors.meta.dtype, 
+                                        compression=1,chunks=chunks) 
+        if 'WarpedImage' not in self._mem_h5.keys():
+            chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),1)        
+            self._mem_h5.create_dataset('WarpedImage', shape=self.WarpedImage.meta.shape, dtype=self.WarpedImage.meta.dtype, 
                                     compression=1,chunks=chunks)
         
         self.twospacedim = False
@@ -176,7 +179,7 @@ class OpOpticalTranslation(Operator):
                         if self.twospacedim:
                             self._mem_h5['WarpedImage'][start,...,0,0] = pgmlink.translateImage(img_cur[0,...,0,0],translVectors[0,...,0,0:3])
                         else:
-                            self._mem_h5['WarpedImage'][start,...] = pgmlink.translateImage(img_cur[0,...,0],translVectors[0,...])
+                            self._mem_h5['WarpedImage'][start,...,0] = pgmlink.translateImage(img_cur[0,...,0],translVectors[0,...])
                         self._processedTimeStepsWarped.add(start)                
                         
                     result = self._mem_h5['WarpedImage'][roiToSlice(roi.start,roi.stop)]

@@ -184,29 +184,29 @@ class OpDivisionFeatures(Operator):
             if label_cur == 0:
                 continue
                     
-            if len(img_at_next.shape) == 3: #txyc
-                channel_axis = 3
-            elif len(img_at_next.shape) == 4: #txyzc
-                channel_axis = 4
-            else:
-                raise Exception("image shape not supported")
+#            if img_at_next.shape[-1] == 1: #txyc
+#                channel_axis = 3
+#            else: #txyzc
+#                channel_axis = 4
+#            else:
+#                raise Exception("image shape not supported")
                         
             idx_cur = [round(x) for x in com_cur]
             
             roi = []
             for idx,coord in enumerate(idx_cur):
-                if (len(img_at_next.shape) == 3) and (idx == channel_axis - 1):
-                    assert coord == 0., "RegionCenter has more dimensions than the image has"
-                    continue
-                start = coord - self.templateSize/2
-                stop = coord + self.templateSize/2
-                if start < 0:
-                    start = 0
-                if stop > img_at_next.shape[idx]:
-                    stop = img_at_next.shape[idx]
+#                if (len(img_at_next.shape) == 3) and (idx == channel_axis - 1):
+#                    assert coord == 0., "RegionCenter has more dimensions than the image has"
+#                    continue
+                start = max(coord - self.templateSize/2, 0)
+                stop = min(coord + self.templateSize/2, img_at_next.shape[idx])
+#                if start < 0:
+#                    start = 0
+#                if stop > img_at_next.shape[idx]:
+#                    stop = img_at_next.shape[idx]
                 roi.append(slice(start,stop))
             
-            roi.append(slice(0,1))  # channel
+#            roi.append(slice(0,1))  # channel
             
             # find all coms in the neighborhood of com_cur
             subimg_next = img_at_next[roi]
