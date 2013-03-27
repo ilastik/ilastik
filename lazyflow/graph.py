@@ -2097,7 +2097,9 @@ class OperatorWrapper(Operator):
 
     def execute(self, slot, subindex, roi, result):
         #this should never be called !!!
-        assert False
+        assert False, \
+            "OperatorWrapper execute() function should never be called.  "\
+            "You can only ask for data from SUBslots, not the outer multi-slots themselves."
 
     def setInSlot(self, slot, subindex, key, value):
         # Nothing to do here. Calls to Slot.setitem are already
