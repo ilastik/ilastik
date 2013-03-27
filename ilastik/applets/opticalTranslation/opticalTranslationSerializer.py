@@ -31,12 +31,13 @@ class SerialTranslationVectorsSlot(SerialSlot):
             mygroup = opgroup[inner]
             op = innerops[int(inner)]
             ts = set(numpy.array(mygroup['timesteps'][:]).flat)
-            op._processedTimeSteps = ts
+            op._processedTimeSteps = ts            
             
             dest = op._mem_h5
             del dest['TranslationVectors']
-            dest.copy(mygroup['data'], dest, name='TranslationVectors')            
+            dest.copy(mygroup['data'], dest, name='TranslationVectors')
         self.dirty = False
+        
 
 class OpticalTranslationSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):

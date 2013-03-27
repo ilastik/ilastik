@@ -32,7 +32,6 @@ class OpticalTranslationGui( LayerViewerGui ):
             self.editor.dataShape = self.mainOperator.BinaryImage.meta.shape
         self.mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged)
         self.mainOperator.Parameters.notifyValueChanged(self._onParametersChanged)
-        self.mainOperator.Parameters._sig_value_changed()
         
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.BinaryImage:
@@ -108,6 +107,9 @@ class OpticalTranslationGui( LayerViewerGui ):
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged ) 
+        
+        self._onParametersChanged()        
+        self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)
                 
         return layers
     
@@ -118,10 +120,9 @@ class OpticalTranslationGui( LayerViewerGui ):
         return self._drawer
     
     def initAppletDrawerUi(self):        
-        self._drawer = self._loadUiFile()
+        self._drawer = self._loadUiFile()        
         
         self._drawer.computeTranslationButton.pressed.connect(self._onComputeTranslationButtonPressed)
-        self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)
     
     def _onParametersChanged(self):
         method = self.mainOperator.Parameters.value['method']
