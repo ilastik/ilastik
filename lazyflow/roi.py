@@ -144,6 +144,18 @@ class TinyVector(list):
 
     __rxor__ = __xor__
     
+    def __neg__(self):
+        return self * -1
+    
+    def __abs__(self):
+        return TinyVector( abs(x) for x in self )
+
+    def __pos__(self):
+        return TinyVector(self)
+    
+    def __invert__(self):
+        return TinyVector(~x for x in self)
+    
     def ceil(self):
         return TinyVector(map(ceil ,self))
         #return numpy.ceil(numpy.array(self))

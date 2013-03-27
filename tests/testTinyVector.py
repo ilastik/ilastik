@@ -149,6 +149,21 @@ class TestTinyVector(object):
         assert b.any()
         assert not c.any()
 
+    def _checkUnaryOperation(self, op):
+        v1 = self.v1
+        nv1 = TinyVector( -x for x in v1 )
+        a1 = numpy.array(v1)
+        na1 = numpy.array(nv1)
+        
+        assert all( op(v1) == op(a1) )
+        assert all( op(nv1) == op(na1) )
+
+    def testUnaryOperators(self):
+        self._checkUnaryOperation(operator.neg)
+        self._checkUnaryOperation(operator.pos)
+        self._checkUnaryOperation(operator.abs)
+        self._checkUnaryOperation(operator.invert)
+
 if __name__ == "__main__":
     import sys
     import nose
