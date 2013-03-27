@@ -1,4 +1,4 @@
-import numpy, vigra
+import numpy
 from numpy.lib.stride_tricks import as_strided as ast
 from math import ceil, floor
 import collections
@@ -10,7 +10,7 @@ class TinyVector(list):
         return TinyVector(self)
 
     def __add__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x + y ,self,other))
         else:
             return TinyVector(map(lambda x: x + other ,self))
@@ -20,7 +20,7 @@ class TinyVector(list):
     def __iadd__(self, other):
         # Must explicitly override list.__iadd__
         # Others (e.g. isub, imul) can use default implementation.
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             self =  TinyVector(map(lambda x,y: x + y ,self,other))
             return self
         else:
@@ -28,19 +28,19 @@ class TinyVector(list):
             return self
 
     def __sub__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x - y ,self,other))
         else:
             return TinyVector(map(lambda x: x - other ,self))
 
     def __rsub__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: y - x ,self,other))
         else:
             return TinyVector(map(lambda x: other - x ,self))
 
     def __mul__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x * y ,self,other))
         else:
             return TinyVector(map(lambda x: x * other ,self))
@@ -49,79 +49,79 @@ class TinyVector(list):
 
     def __div__(self, other):
         rdiv = numpy.divide
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: rdiv(x,y) ,self,other))
         else:
             return TinyVector(map(lambda x: rdiv(x,other),self))
 
     def __rdiv__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  y / x,self,other))
         else:
             return TinyVector(map(lambda x:  other / x ,self))
 
     def __mod__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x % y ,self,other))
         else:
             return TinyVector(map(lambda x: x % other,self))
 
     def __rmod__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: y % x ,self,other))
         else:
             return TinyVector(map(lambda x: other % x,self))
 
     def __floordiv__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x // y ,self,other))
         else:
             return TinyVector(map(lambda x: x // other,self))
 
     def __rfloordiv__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: y // x ,self,other))
         else:
             return TinyVector(map(lambda x: other // x,self))
 
     def __eq__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x == y,self,other))
         else:
             return TinyVector(map(lambda x:  x == other ,self))
 
     def __ne__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x != y,self,other))
         else:
             return TinyVector(map(lambda x:  x != other ,self))
 
     def __ge__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x >= y,self,other))
         else:
             return TinyVector(map(lambda x:  x >= other ,self))
 
     def __le__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x <= y,self,other))
         else:
             return TinyVector(map(lambda x:  x <= other ,self))
 
     def __gt__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x > y,self,other))
         else:
             return TinyVector(map(lambda x:  x > other ,self))
 
     def __lt__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y:  x < y,self,other))
         else:
             return TinyVector(map(lambda x:  x < other ,self))
 
     def __and__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x & y ,self,other))
         else:
             return TinyVector(map(lambda x: x & other,self))
@@ -129,7 +129,7 @@ class TinyVector(list):
     __rand__ = __and__
 
     def __or__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x | y ,self,other))
         else:
             return TinyVector(map(lambda x: x | other,self))
@@ -137,7 +137,7 @@ class TinyVector(list):
     __ror__ = __or__
 
     def __xor__(self, other):
-        if hasattr(other, "__iter__"):
+        if isinstance(other, collections.Iterable):
             return TinyVector(map(lambda x,y: x ^ y ,self,other))
         else:
             return TinyVector(map(lambda x: x ^ other,self))
