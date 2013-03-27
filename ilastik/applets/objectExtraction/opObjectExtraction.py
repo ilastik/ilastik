@@ -192,7 +192,7 @@ class OpRegionFeatures(Operator):
 class OpObjectCenterImage(Operator):
     """A cross in the center of each connected component."""
     BinaryImage = InputSlot()
-    RegionCenters = InputSlot(rtype=List)
+    RegionCenters = InputSlot(stype=Opaque, rtype=List)
     Output = OutputSlot()
 
     def setupOutputs(self):

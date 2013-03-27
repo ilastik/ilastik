@@ -38,7 +38,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     BinaryImages = InputSlot(level=1) # for visualization
     RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1)
-    ObjectFeatures = InputSlot(rtype=List, level=1)
+    ObjectFeatures = InputSlot(stype=Opaque, rtype=List, level=1)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
     FreezePredictions = InputSlot(stype='bool')
@@ -181,7 +181,7 @@ class OpObjectTrain(Operator):
     category = "Learning"
 
     Labels = InputSlot(level=1, stype=Opaque, rtype=List)
-    Features = InputSlot(level=1, rtype=List)
+    Features = InputSlot(level=1, stype=Opaque, rtype=List)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
 
@@ -273,7 +273,7 @@ class OpObjectPredict(Operator):
 
     name = "OpObjectPredict"
 
-    Features = InputSlot(rtype=List)
+    Features = InputSlot(stype=Opaque, rtype=List)
     LabelsCount = InputSlot(stype='integer')
     Classifier = InputSlot()
 
@@ -391,7 +391,7 @@ class OpToImage(Operator):
     name = "OpToImage"
     Image = InputSlot()
     ObjectMap = InputSlot(stype=Opaque, rtype=List)
-    Features = InputSlot(rtype=List)
+    Features = InputSlot(stype=Opaque, rtype=List)
     Output = OutputSlot()
 
     def setupOutputs(self):
