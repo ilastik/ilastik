@@ -1,5 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from ilastik.workflows.tracking.manual.manualTrackingWorkflow import ManualTrackingWorkflow
+from manualTrackingWorkflow import ManualTrackingWorkflow
 
 debug_testing = False
 
