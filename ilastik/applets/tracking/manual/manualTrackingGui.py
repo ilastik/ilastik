@@ -403,7 +403,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _runSubtracking(self, position5d, oid):
-        window = 150
+        window = 40
         
         t_start = position5d[0]
         activeTrack = self._getActiveTrack()
