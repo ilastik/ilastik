@@ -121,7 +121,7 @@ class OpCompressedCache(Operator):
         return destination
 
     def _executeOutputHdf5(self, roi, destination):
-        print "Serving request for hdf5 block {}".format( roi )
+        logger.debug("Servicing request for hdf5 block {}".format( roi ))
 
         assert isinstance( destination, h5py.Group ), "OutputHdf5 slot requires an hdf5 GROUP to copy into (not a numpy array)."
         assert ((roi.start % self._blockshape) == 0).all(), "OutputHdf5 slot requires roi to be exactly one block."
@@ -322,7 +322,7 @@ class OpCompressedCache(Operator):
 #            self.CleanBlocks._sig_value_changed()
 
     def _setInSlotInputHdf5(self, slot, subindex, roi, value):
-        print "Setting block {} from hdf5".format( roi )
+        logger.debug("Setting block {} from hdf5".format( roi ))
         assert isinstance( value, h5py.Dataset ), "InputHdf5 slot requires an hdf5 Dataset to copy from (not a numpy array)."
         assert ((roi.start % self._blockshape) == 0).all(), "InputHdf5 slot requires roi to be exactly one block."
         block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
