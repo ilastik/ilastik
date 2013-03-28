@@ -138,34 +138,29 @@ class OpSelectLabels(Operator):
             starting_memory_usage_mb = getMemoryUsageMb()
             logger.debug("Starting with memory usage: {} MB".format( starting_memory_usage_mb ))
 
+        def logMemoryIncrease(msg):
+            """Log a debug message about the RAM usage compared to when this function started execution."""
+            if logger.isEnabledFor(logging.DEBUG):
+                memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
+                logger.debug("{}, memory increase is: {} MB".format( msg, memory_increase_mb ))
+
         smallLabelsReq = self.SmallLabels(roi.start, roi.stop)
         smallLabels = smallLabelsReq.wait()
         smallLabelsReq.clean()
-
-        if logger.isEnabledFor(logging.DEBUG):
-            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-            logger.debug("After obtaining small labels, memory increase is: {} MB".format( memory_increase_mb ))
+        logMemoryIncrease("After obtaining small labels")
 
         smallNonZero = numpy.ndarray(shape=smallLabels.shape, dtype=bool)
         smallNonZero[...] = (smallLabels != 0)
         del smallLabels
 
-        if logger.isEnabledFor(logging.DEBUG):
-            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-            logger.debug("Before obtaining big labels, memory increase is: {} MB".format( memory_increase_mb ))
-        
+        logMemoryIncrease("Before obtaining big labels")
         bigLabels = self.BigLabels(roi.start, roi.stop).wait()
-
-        if logger.isEnabledFor(logging.DEBUG):
-            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-            logger.debug("After obtaining big labels, memory increase is: {} MB".format( memory_increase_mb ))
+        logMemoryIncrease("After obtaining big labels")
         
         prod = smallNonZero * bigLabels
         del smallNonZero
         passed = numpy.unique(prod)
-        if logger.isEnabledFor(logging.DEBUG):
-            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-            logger.debug("After prod, memory increase is: {} MB".format( memory_increase_mb ))
+        logMemoryIncrease("After taking product")
         del prod
         
         all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint8 )
@@ -175,14 +170,14 @@ class OpSelectLabels(Operator):
         
         result[:] = all_label_values[ bigLabels ]
 
-        if logger.isEnabledFor(logging.DEBUG):
-            memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-            logger.debug("Just before return, memory increase is: {} MB".format( memory_increase_mb ))
-        
+        logMemoryIncrease("Just before return")
         return result        
 
     def propagateDirty(self, slot, subindex, roi):
-        warnings.warn("FIXME")
+        if slot == self.SmallLabels or slot == self.BigLabels:
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown input slot: {}".format( slot.name )
 
 class OpThresholdTwoLevels(Operator):
     name = "opThresholdTwoLevels"
@@ -200,6 +195,11 @@ class OpThresholdTwoLevels(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
     
+    # For serialization
+    InputHdf5 = InputSlot(optional=True)
+    OutputHdf5 = OutputSlot()
+    CleanBlocks = OutputSlot()
+    
     # Debug outputs
     InputChannels = OutputSlot(level=1)
     Smoothed = OutputSlot()
@@ -214,9 +214,9 @@ class OpThresholdTwoLevels(Operator):
     #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                  Output
     #               \                   \          /                 \                                            \               /
     # InputImage --> opChannelSlicer --> opSmoother -> Smoothed       --(cache)--> SmallRegions                    opSelectLabels --> opCache --> CachedOutput
-    #                                              \                                                              /              
-    #                                               opLowThresholder ----> opLowLabeler --------------------------                
-    #                                              /                \
+    #                                              \                                                              /                  /       \
+    #                                               opLowThresholder ----> opLowLabeler --------------------------          InputHdf5         --> OutputHdf5
+    #                                              /                \                                                                          -> CleanBlocks
     #                                  LowThreshold                  --(cache)--> BigRegions
     
     def __init__(self, *args, **kwargs):
@@ -251,11 +251,16 @@ class OpThresholdTwoLevels(Operator):
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
         self._opCache = OpCompressedCache( parent=self )
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
         self._opCache.Input.connect( self._opSelectLabels.Output )
 
         # Connect our own outputs
         self.Output.connect( self._opSelectLabels.Output )
         self.CachedOutput.connect( self._opCache.Output )
+
+        # Serialization outputs
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )
         
         # Debug outputs.
         self.Smoothed.connect( self._opSmoother.Output )
@@ -315,3 +320,8 @@ class OpThresholdTwoLevels(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass # Nothing to do here
 
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
