@@ -621,7 +621,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             centers = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = centers[t][ch]['RegionCenter']
+                centers = centers[t][ch]['RegionCenter_obj']
                 centers = numpy.asarray(centers, dtype=numpy.uint32)
                 if centers.size:
                     centers = centers[1:,:]
@@ -730,7 +730,7 @@ class OpObjectExtraction(Operator):
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.LabelInputHdf5 or slot == self.LabelImage, "Invalid slot for setInSlot(): {}".format( slot.name )
+        assert slot == self.LabelInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache, 
         #  so all calls to __setitem__ are forwarded automatically 
