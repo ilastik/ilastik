@@ -15,11 +15,11 @@ class OpManualTracking(Operator):
     BinaryImage = InputSlot()
     LabelImage = InputSlot()    
     RawImage = InputSlot()
-#    Labels = InputSlot(stype=Opaque, rtype=List, value=[])
     ActiveTrack = InputSlot(stype='int', value=0)
     
-    Tracks = OutputSlot(stype=Opaque, rtype=List)
     TrackImage = OutputSlot()
+    Labels = OutputSlot(stype=Opaque, rtype=List)
+    Divisions = OutputSlot(stype=Opaque, rtype=List)
     
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
@@ -29,47 +29,36 @@ class OpManualTracking(Operator):
         
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
-        self.Tracks.meta.shape = [self.LabelImage.meta.shape[0]]
-        self.Tracks.meta.dtype = object
-        self.Tracks.meta.axistags = None
                 
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
-                self.labels[t]={}  
-#        self.Labels.setValue(labels)        
-#        print 'OpManualTracking::setupOutputs: Labels = ', self.labels
-        
+                self.labels[t]={}     
 
     
     def execute(self, slot, subindex, roi, result):
-        if slot is self.Tracks:
-            times = roi._l
-            if len(times) == 0:
-                times = range(self.LabelImage.meta.shape[0])
-            
-            for t in times:
-                if t not in self.tracks.keys():
-                    self.tracks[t] = {}                
-#                self.tracks[t][]
-                
-        elif slot is self.TrackImage:            
-            assert roi.stop[0] - roi.start[0], 'only implemented for single time steps'
-            t = roi.start[0]
-            
-#            if not self.Labels.ready():
-#                result[:] = 0
-#                return result
-            oid2tid = self.labels
-#            print 'opManualTracking::execute: oid2tid =',oid2tid
-            if t not in oid2tid.keys():
-                result[:] = 0
-                return result
-            
-            result = self.LabelImage.get(roi).wait()      
-            t = roi.start[0]            
-            result[0, ..., 0] = self._relabel(result[0, ..., 0], oid2tid[t])
-            
+        if slot is self.Divisions:
+            result = {}
+            for trackid in self.divisions.keys():
+                (children, t_parent) = self.divisions[trackid] 
+                result[trackid] = (children, t_parent)
             return result
+         
+        if slot is self.Labels:
+            result = {}
+            for t in self.labels.keys():
+                result[t] = self.labels[t]
+            return result
+                
+        elif slot is self.TrackImage:
+            for t in range(roi.start[0],roi.stop[0]):          
+                if t not in self.labels.keys():
+                    result[t-roi.start[0],...][:] = 0
+                    return result
+            
+                result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]      
+                result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])
+            
+                return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
         print 'opManualTracking::propagateDirty: roi =', roi        
