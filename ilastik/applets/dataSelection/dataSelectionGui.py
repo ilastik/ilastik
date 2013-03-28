@@ -366,6 +366,7 @@ class DataSelectionGui(QWidget):
         with Tracer(traceLogger):
             infos = []
 
+            oldNumFiles = len(self.topLevelOperator.Dataset)
             # HACK: If the filePath isn't valid, replace it
             # This is to work around the scenario where two independent data selection applets are coupled, causing mutual resizes.
             # This will be fixed when a multi-file data selection applet gui replaces this gui.            
@@ -402,7 +403,6 @@ class DataSelectionGui(QWidget):
                 infos.append(datasetInfo)
 
             #if no exception was thrown, set up the operator now
-            oldNumFiles = len(self.topLevelOperator.Dataset)
             self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
             for i in range(len(infos)):
                 self.topLevelOperator.Dataset[i+oldNumFiles].setValue( infos[i] )
