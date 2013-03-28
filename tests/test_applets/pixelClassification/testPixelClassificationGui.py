@@ -160,7 +160,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
             # Add label classes
@@ -281,7 +281,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
             
             # Use the first view for this test
@@ -329,7 +329,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             assert opPix.MaxLabelValue.value == 2, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
@@ -403,8 +403,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             with Timer() as timer:
                 # Enable interactive mode            
-                assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-                gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+                assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+                gui.currentGui()._labelControlUi.liveUpdateButton.click()
     
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
@@ -412,7 +412,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
             # Disable iteractive mode.            
-            gui.currentGui()._viewerControlUi.pauseUpdateButton.click()
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 

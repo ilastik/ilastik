@@ -135,7 +135,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
             # Add label classes
@@ -193,8 +193,8 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
             with Timer() as timer:
                 # Enable interactive mode            
-                assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-                gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+                assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+                gui.currentGui()._labelControlUi.liveUpdateButton.click()
     
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
