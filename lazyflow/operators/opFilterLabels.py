@@ -54,5 +54,5 @@ class OpFilterLabels(Operator):
             bad_sizes = numpy.logical_or( bad_sizes, component_sizes > max_size )
         bad_locations = bad_sizes[a]
         a[bad_locations] = 0
-        return a.astype(original_dtype)
+        return numpy.array(a, dtype=original_dtype)
 

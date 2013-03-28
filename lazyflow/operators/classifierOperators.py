@@ -186,7 +186,8 @@ class OpTrainRandomForestBlocked(Operator):
                 for i in range(self._forest_count):
                     def train_and_store(number):
                         result[number] = vigra.learning.RandomForest(self._tree_count)
-                        result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+                        result[number].learnRF( numpy.asarray(featMatrix, dtype=numpy.float32),
+                                                numpy.asarray(labelsMatrix, dtype=numpy.uint32))
                     req = pool.request(partial(train_and_store, i))
 
                 pool.wait()
@@ -251,7 +252,7 @@ class OpPredictRandomForest(Operator):
         predictions = [0]*len(forests)
 
         def predict_forest(number):
-            predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32))
+            predictions[number] = forests[number].predictProbabilities(numpy.asarray(features, dtype=numpy.float32))
 
         t2 = time.time()
 

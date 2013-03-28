@@ -104,10 +104,10 @@ class OpVigraWatershed(Operator):
         # so we can automatically benefit from vigra's "turbo" mode
         if 'drange' in self.InputImage.meta:
             drange = self.InputImage.meta.drange
-            inputRegion = inputRegion.astype(numpy.float32)
+            inputRegion = numpy.asarray(inputRegion, dtype=numpy.float32)
             inputRegion -= drange[0]
             inputRegion /= (drange[1] - drange[0])
-            inputRegion *= 256.0
+            inputRegion *= 255.0
             inputRegion = inputRegion.astype(numpy.uint8)
 
         # This is where the magic happens
