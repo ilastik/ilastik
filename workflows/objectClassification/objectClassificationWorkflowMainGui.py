@@ -6,9 +6,9 @@ def debug_with_existing(shell):
     """
     (Function for debug and testing.)
     """
-    #projFilePath = "/magnetic/test_project.ilp"
+    projFilePath = "/magnetic/test_project.ilp"
     #projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
-    projFilePath = "/home/bergs/MyProject.ilp"
+    #projFilePath = "/home/bergs/MyProject.ilp"
     #projFilePath = '/magnetic/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
     #projFilePath = '/magnetic/250-2.ilp'
@@ -73,5 +73,6 @@ if __name__=="__main__":
     elif len(args) == 0:
         startShellGui(workflow)
         #startShellGui(workflow, debug_with_new)
+        #startShellGui(workflow, debug_with_existing)
     else:
         parser.error("incorrect number of arguments")

@@ -6,7 +6,7 @@ def debug_with_new(shell):
     (Function for debug and testing.)
     """
     #projFilePath = "/magnetic/synapse_debug_data/object_prediction.ilp"
-    projFilePath = "/magnetic/object_prediction.ilp"
+    projFilePath = "/magnetic/stuart_object_predictions.ilp"
 
     # New project
     shell.createAndLoadNewProject(projFilePath)
@@ -41,7 +41,7 @@ def debug_with_existing(shell):
     # Open an existing project
     #projFilePath = "/magnetic/objectLabels_good.ilp"
     #projFilePath = "/magnetic/object_prediction.ilp"
-    projFilePath = "/magnetic/data/validation/stuart_object_predictions.ilp"
+    projFilePath = "/magnetic/stuart_object_predictions.ilp"
     
     shell.openProjectFile(projFilePath)
 
