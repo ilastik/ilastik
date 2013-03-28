@@ -569,7 +569,7 @@ class OpCarving(Operator):
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
 
-            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1)).astype(numpy.float32)
+            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
             #assert numpy.sum(self._mst.seeds > 2) == 0, "seeds > 2 at %r" % numpy.where(self._mst.seeds > 2)
             self._mst.run(unaries, **params)
 

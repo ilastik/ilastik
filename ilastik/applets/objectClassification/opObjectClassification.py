@@ -256,7 +256,7 @@ class OpObjectTrain(Operator):
         try:
             # Ensure there are no NaNs in the feature matrix
             # TODO: There should probably be a better way to fix this...
-            featMatrix = featMatrix.astype(numpy.float32)
+            featMatrix = numpy.asarray(featMatrix, dtype=numpy.float32)
             nanFeatMatrix = numpy.isnan(featMatrix)
             if nanFeatMatrix.any():
                 warnings.warn("Feature matrix has NaN values!  Replacing with 0.0...")
@@ -266,8 +266,7 @@ class OpObjectTrain(Operator):
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    oob[number] = result[number].learnRF(featMatrix,
-                                           labelsMatrix.astype(numpy.uint32))
+                    oob[number] = result[number].learnRF(featMatrix, numpy.asarray(labelsMatrix, dtype=numpy.uint32))
                     print "intermediate oob:", oob[number]
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
@@ -341,7 +340,7 @@ class OpObjectPredict(Operator):
                     value = channel[featname]
                     if not featname in config.selected_features:
                         continue
-                    tmpfts = numpy.asarray(value).astype(numpy.float32)
+                    tmpfts = numpy.asarray(value, dtype=numpy.float32)
                     _atleast_nd(tmpfts, 2)
                     ftsMatrix.append(tmpfts)
 

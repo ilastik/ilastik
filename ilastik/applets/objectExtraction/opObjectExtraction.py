@@ -166,7 +166,7 @@ class OpRegionFeatures3d(Operator):
                 bboxkey[zAxis] = iz
                 bboxkey = tuple(bboxkey)
                 #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
-                dt = vigra.filters.distanceTransform2D(ccbbox[bboxkey].astype(numpy.float32))
+                dt = vigra.filters.distanceTransform2D( numpy.asarray(ccbbox[bboxkey], dtype=numpy.float32) )
                 passed[bboxkey] = dt<self.MARGIN
                 
                 #dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
@@ -246,8 +246,8 @@ class OpRegionFeatures3d(Operator):
             feats = [None, None, None]
             for ibox, bbox in enumerate(labeled_bboxes):
                 def extractObjectFeatures(ibox):
-                    feats[ibox] = vigra.analysis.extractRegionFeatures(rawbbox.astype(numpy.float32), \
-                                                                    labeled_bboxes[ibox].astype(numpy.uint32), \
+                    feats[ibox] = vigra.analysis.extractRegionFeatures(numpy.asarray(rawbbox, dtype=numpy.float32), \
+                                                                    numpy.asarray(labeled_bboxes[ibox], dtype=numpy.uint32), \
                                                                     self._vigraFeatureNames, \
                                                                     histogramRange=[0, 255], \
                                                                     binCount = 10,\
