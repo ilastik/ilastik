@@ -140,11 +140,10 @@ class DataSelectionSerializer( AppletSerializer ):
             numDatasets = len(self.topLevelOperator.Dataset)
             self.topLevelOperator.Dataset.resize( numDatasets + 1 )
             self.topLevelOperator.Dataset[numDatasets].setValue(info)
-            except RuntimeError as e:
-                exception = e
+            
         finally:
             self.progressSignal.emit(100)
-            if exception:
+
         return success
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
