@@ -1,4 +1,4 @@
-from workflows.pixelClassification import PixelClassificationWorkflow
+from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
 class PixelClassificationWithVigraWatershedWorkflow(PixelClassificationWorkflow):

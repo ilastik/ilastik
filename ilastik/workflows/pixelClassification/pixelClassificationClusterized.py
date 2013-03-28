@@ -32,7 +32,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.utility.pathHelpers import getPathVariants
 from ilastik.workflow import Workflow
 
-import workflows # Load all known workflow modules
+import ilastik.workflows # Load all known workflow modules
 
 @timeLogged(logger, logging.INFO)
 def main(argv):

@@ -2,10 +2,8 @@ import unittest
 import numpy as np
 import vigra
 from lazyflow.graph import Graph
-from ilastik.applets.objectExtraction.opObjectExtraction import OpLabelImage, OpRegionFeatures
-    OpObjectExtraction, OpRegionFeatures, OpAdaptTimeListRoi
-    
 from lazyflow.operators import OpLabelImage
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
 
 FEATURES = \
 [

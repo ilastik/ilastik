@@ -1,5 +1,6 @@
 import os
 import h5py
+import numpy
 import unittest
 import shutil
 import tempfile
