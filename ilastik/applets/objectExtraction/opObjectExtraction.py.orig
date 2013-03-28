@@ -26,14 +26,13 @@ class OpRegionFeatures3d(Operator):
     
     Output = OutputSlot()
     
-    MARGIN = 30
-    
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
         assert not isinstance(featureNames[0], str), "Features must be given as a list-of-lists.  You gave just one list: {}".format( featureNames )
         self._featureNames = featureNames # Saved here for debugging.
         self._vigraFeatureNames = featureNames[0]
         self._otherFeatureNames = featureNames[1]
+        self.margin = 30
         
     def setupOutputs(self):
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
@@ -126,13 +125,13 @@ class OpRegionFeatures3d(Operator):
                 if first_good<=i:
                     first_good=i+1
                 continue
-            minx = max(mins[i][xAxis]-self.MARGIN, 0)
-            miny = max(mins[i][yAxis]-self.MARGIN, 0)
+            minx = max(mins[i][xAxis]-self.margin, 0)
+            miny = max(mins[i][yAxis]-self.margin, 0)
             minz = max(mins[i][zAxis], 0)
             # Coord<Minimum> and Coord<Maximum> give us the [min,max] 
             # coords of the object, but we want the bounding box: [min,max), so add 1
-            maxx = min(maxs[i][xAxis]+1+self.MARGIN, image.shape[xAxis])
-            maxy = min(maxs[i][yAxis]+1+self.MARGIN, image.shape[yAxis])
+            maxx = min(maxs[i][xAxis]+1+self.margin, image.shape[xAxis])
+            maxy = min(maxs[i][yAxis]+1+self.margin, image.shape[yAxis])
             maxz = min(maxs[i][zAxis]+1, image.shape[zAxis])
             
             #FIXME: there must be a better way
@@ -167,10 +166,10 @@ class OpRegionFeatures3d(Operator):
                 bboxkey = tuple(bboxkey)
                 #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
                 dt = vigra.filters.distanceTransform2D(ccbbox[bboxkey].astype(numpy.float32))
-                passed[bboxkey] = dt<self.MARGIN
+                passed[bboxkey] = dt<self.margin
                 
                 #dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
-                #passed[:, :, iz] = dt<self.MARGIN
+                #passed[:, :, iz] = dt<self.margin
                 
             ccbboxexcl = passed-ccbboxobject
             if "bad_slices" in self._otherFeatureNames:
@@ -383,6 +382,16 @@ class OpRegionFeatures3d(Operator):
         #print "computed the following features:", feature_dict.keys()
         return feature_dict
 
+<<<<<<< HEAD
+    def __init__(self, parent=None, graph=None):
+        super(OpLabelImage, self).__init__(parent=parent, graph=graph)
+        # whether to use in-memory compressed hdf5 or a numpy array
+        self.compressed = config.compress_labels
+        if self.compressed:
+            self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+        self._processedTimeSteps = set()
+        self._lock = lazyflow.request.RequestLock()
+=======
     def propagateDirty(self, slot, subindex, roi):
         axes = self.RawVolume.meta.getTaggedShape().keys()
         dirtyStart = collections.OrderedDict( zip( axes, roi.start ) )
@@ -398,6 +407,7 @@ class OpRegionFeatures3d(Operator):
         del dirtyStop['z']
             
         self.Output.setDirty( dirtyStart.values(), dirtyStop.values() )
+>>>>>>> synapse_pipeline
 
 class OpRegionFeatures(Operator):
     RawImage = InputSlot()
@@ -536,11 +546,19 @@ class OpCachedRegionFeatures(Operator):
         blockshape = (1,) * len( self._opRegionFeatures.Output.meta.shape )
         self._opCache.blockShape.setValue( blockshape )
 
+<<<<<<< HEAD
+    def __init__(self, features, parent=None, graph=None):
+        super(OpRegionFeatures, self).__init__(parent=parent, graph=graph)
+        self._cache = {}
+        self.fixed = False
+        self.features = features
+=======
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here.
         # Our CacheInput slot is directly fed into the cache, 
         #  so all calls to __setitem__ are forwarded automatically 
         assert slot == self.CacheInput
+>>>>>>> synapse_pipeline
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -620,19 +638,10 @@ class OpObjectCenterImage(Operator):
         assert slot == self.Output, "Unknown output slot"
         result[:] = 0
         for t in range(roi.start[0], roi.stop[0]):
-            obj_features = self.RegionCenters([t]).wait()
+            centers = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t][ch]['RegionCenter_obj']
-                
-                # OpRegionFeatures3d produces object features with offset coordinates 
-                #  (offset from each object's bounding box, plus some margin)
-                offsets = obj_features[t][ch]['Coord<Minimum>']
-                centers = numpy.asarray(centers, dtype=numpy.uint32) + numpy.asarray(offsets, dtype=numpy.uint32)
-                
-                # FIXME: The OpRegionFeatures3d operator has a special hacked-in 'margin' 
-                #         that affects all x-y (not z) object coordinates
-                #        There's got to be a better way....
-                centers[:,0:2] -= OpRegionFeatures3d.MARGIN # xy, not z
+                centers = centers[t][ch]['RegionCenter_obj']
+                centers = numpy.asarray(centers, dtype=numpy.uint32)
                 if centers.size:
                     centers = centers[1:,:]
                 for center in centers:
