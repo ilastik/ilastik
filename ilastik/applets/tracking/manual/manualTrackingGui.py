@@ -355,6 +355,7 @@ class ManualTrackingGui(LayerViewerGui):
             return
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
+        self._setDirty(self.mainOperator.TrackImage, [t])
         
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
@@ -468,15 +469,15 @@ class ManualTrackingGui(LayerViewerGui):
         widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
     
     def _onDivisionsListActivated(self):        
-        div = tuple(str(self._drawer.divisionsList.currentItem().text()).split(" :,"))
-        t = self.mainOperator.divisions[int(div[0][0])][1]        
+        parent = int(str(self._drawer.divisionsList.currentItem().text()).split(':')[0])
+        t = self.mainOperator.divisions[parent][1]        
         
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         
         found = False
         for oid in self.mainOperator.labels[t].keys():
-            if int(div[0][0]) in self.mainOperator.labels[t][oid]:
+            if parent in self.mainOperator.labels[t][oid]:
                 found = True
                 break
         
