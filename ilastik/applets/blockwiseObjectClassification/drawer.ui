@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>239</width>
+    <height>99</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="margin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="blockLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Blocks:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="blockSpinBox_X">
+         <property name="toolTip">
+          <string>Blockshape: X dimension</string>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>4096</number>
+         </property>
+         <property name="value">
+          <number>256</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="blockSpinBox_Y">
+         <property name="toolTip">
+          <string>Blockshape: Y dimension</string>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>4096</number>
+         </property>
+         <property name="value">
+          <number>256</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="blockSpinBox_Z">
+         <property name="toolTip">
+          <string>Blockshape: Z dimension</string>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>4096</number>
+         </property>
+         <property name="value">
+          <number>256</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="haloLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Halo:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="haloSpinBox_X">
+         <property name="toolTip">
+          <string>Pipeline Halo: X dimension</string>
+         </property>
+         <property name="maximum">
+          <number>1024</number>
+         </property>
+         <property name="value">
+          <number>64</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="haloSpinBox_Y">
+         <property name="toolTip">
+          <string>Pipeline Halo: Y dimension</string>
+         </property>
+         <property name="maximum">
+          <number>1024</number>
+         </property>
+         <property name="value">
+          <number>64</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="haloSpinBox_Z">
+         <property name="toolTip">
+          <string>Pipeline Halo: Z dimension</string>
+         </property>
+         <property name="maximum">
+          <number>1024</number>
+         </property>
+         <property name="value">
+          <number>64</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QPushButton" name="applyButton">
+       <property name="text">
+        <string>Apply</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

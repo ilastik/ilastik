@@ -15,7 +15,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
     def __init__( self, headless, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(self.__class__, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(SynapseObjectClassificationWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
 
         ######################
         # Interactive workflow
@@ -69,6 +69,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
 
         # Connect Predictions -> Thresholding
         opTwoLevelThreshold.InputImage.connect( opPredictionData.Image )
+        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
 
         # FIXME: For now, the object extraction and classification applets REQUIRE 5D data.
         # (But the two-level thresholding applet CAN'T HANDLE 5d data.)
@@ -76,7 +77,10 @@ class SynapseObjectClassificationWorkflow(Workflow):
         op5Raw.input.connect( opRawData.Image )
         
         op5Predictions = Op5ifyer( parent=self )
-        op5Predictions.input.connect( opTwoLevelThreshold.Output )
+        #op5Predictions.input.connect( opTwoLevelThreshold.Output )
+        
+        # Use cached output so that the BinaryImage layer is correct in the GUI.
+        op5Predictions.input.connect( opTwoLevelThreshold.CachedOutput )
         
         # connect raw data -> extraction
         opObjExtraction.RawImage.connect(op5Raw.output)

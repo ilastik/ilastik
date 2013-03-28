@@ -1,21 +1,14 @@
 import numpy
-import h5py
 import vigra
-import vigra.analysis
-import copy
-from collections import defaultdict
+import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import Everything, SubRegion, List
-from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
-from lazyflow.operators import OperatorWrapper, OpBlockedSparseLabelArray, OpValueCache, \
-OpMultiArraySlicer2, OpSlicedBlockedArrayCache, OpPrecomputedInput
+from lazyflow.rtype import List
+from lazyflow.operators import OpValueCache
 from lazyflow.request import Request, Pool
 from functools import partial
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpShapeReader, OpMaxValue
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 
@@ -38,10 +31,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     BinaryImages = InputSlot(level=1) # for visualization
     RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1)
-    ObjectFeatures = InputSlot(rtype=List, level=1)
+    ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
-    FreezePredictions = InputSlot(stype='bool')
 
     ################
     # Output slots #
@@ -63,17 +55,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         # internal operators
         opkwargs = dict(parent=self)
-        self.opInputShapeReader = OpMultiLaneWrapper(OpShapeReader, **opkwargs)
         self.opTrain = OpObjectTrain(parent=self)
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
-        self.opLabelsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
-        self.opPredictionsToImage = OpMultiLaneWrapper(OpToImage, **opkwargs)
+        self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
 
         self.classifier_cache = OpValueCache(parent=self)
 
         # connect inputs
-        self.opInputShapeReader.Input.connect(self.SegmentationImages)
-
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
@@ -82,7 +71,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
-        self.opPredict.inputs["LabelsCount"].setValue(_MAXLABELS)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -98,7 +86,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
-        self.Classifier.connect(self.opTrain.Classifier)
+        #self.Classifier.connect(self.opTrain.Classifier)
+        self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
 
@@ -135,6 +124,34 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+    def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
+        """
+        Update the assigned label of the object located at the given coordinate.
+        Does nothing if no object resides at the given coordinate.
+        """
+        segmentationShape = self.SegmentationImagesOut[imageIndex].meta.shape
+        assert len(coordinate) == len( segmentationShape ), "Coordinate: {} is has the wrong length for this image, which is of shape: {}".format( coordinate, segmentationShape )
+        slicing = tuple(slice(i, i+1) for i in coordinate)
+        arr = self.SegmentationImagesOut[imageIndex][slicing].wait()
+        
+        objIndex = arr.flat[0]
+        if objIndex == 0: # background; FIXME: do not hardcode
+            return
+        timeCoord = coordinate[0]
+        labelslot = self.LabelInputs[imageIndex]
+        labelsdict = labelslot.value
+        labels = labelsdict[timeCoord]
+
+        nobjects = len(labels)
+        if objIndex >= nobjects:
+            newLabels = numpy.zeros((objIndex + 1),)
+            newLabels[:nobjects] = labels[:]
+            labels = newLabels
+        labels[objIndex] = assignedLabel
+        labelsdict[timeCoord] = labels
+        labelslot.setValue(labelsdict)
+        labelslot.setDirty([(timeCoord, objIndex)])
 
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
@@ -181,7 +198,7 @@ class OpObjectTrain(Operator):
     category = "Learning"
 
     Labels = InputSlot(level=1, stype=Opaque, rtype=List)
-    Features = InputSlot(level=1, rtype=List)
+    Features = InputSlot(level=1, rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
 
@@ -230,27 +247,37 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featMatrix, axis=0)
         labelsMatrix = _concatenate(labelsMatrix, axis=0)
-
+        print "training on matrix:", featMatrix.shape
+        
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
-
+        oob = [0]*self.ForestCount.value
         try:
+            # Ensure there are no NaNs in the feature matrix
+            # TODO: There should probably be a better way to fix this...
+            featMatrix = featMatrix.astype(numpy.float32)
+            nanFeatMatrix = numpy.isnan(featMatrix)
+            if nanFeatMatrix.any():
+                warnings.warn("Feature matrix has NaN values!  Replacing with 0.0...")
+                featMatrix[numpy.where(nanFeatMatrix)] = 0.0
             # train and store forests in parallel
             pool = Pool()
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    result[number].learnRF(featMatrix.astype(numpy.float32),
+                    oob[number] = result[number].learnRF(featMatrix,
                                            labelsMatrix.astype(numpy.uint32))
-                req = pool.request(partial(train_and_store, i))
+                    print "intermediate oob:", oob[number]
+                req = Request( partial(train_and_store, i) )
+                pool.add( req )
             pool.wait()
             pool.clean()
         except:
             print ("couldn't learn classifier")
             raise
-
-        slcs = (slice(0, self.ForestCount.value, None),)
+        oob_total = numpy.mean(oob)
+        print "training finished, out of bag error:", oob_total
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -269,12 +296,13 @@ class OpObjectPredict(Operator):
 
     name = "OpObjectPredict"
 
-    Features = InputSlot(rtype=List)
-    LabelsCount = InputSlot(stype='integer')
+    Features = InputSlot(rtype=List, stype=Opaque)
     Classifier = InputSlot()
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
+    
+    SegmentationThreshold = 0.5
 
     def setupOutputs(self):
         self.Predictions.meta.shape = self.Features.meta.shape
@@ -310,6 +338,7 @@ class OpObjectPredict(Operator):
 
         feats = {}
         predictions = {}
+        prob_predictions = {}
         for t in times:
             if t in cache:
                 continue
@@ -327,12 +356,14 @@ class OpObjectPredict(Operator):
 
             feats[t] = _concatenate(ftsMatrix, axis=1)
             predictions[t]  = [0] * len(forests)
+            prob_predictions[t] = [0] * len(forests)
 
         def prob_forest(t, number):
             predictions[t][number] = forests[number].predictProbabilities(feats[t])
 
         def predict_forest(t, number):
             predictions[t][number] = forests[number].predictLabels(feats[t]).reshape(1, -1)
+            prob_predictions[t][number] = forests[number].predictProbabilities(feats[t])
 
         if probs:
             func = prob_forest
@@ -346,7 +377,8 @@ class OpObjectPredict(Operator):
             if t in cache:
                 continue
             for i, f in enumerate(forests):
-                req = pool.request(partial(func, t, i))
+                req = Request( partial(func, t, i) )
+                pool.add(req)
 
         pool.wait()
         pool.clean()
@@ -356,17 +388,34 @@ class OpObjectPredict(Operator):
         for t in times:
             if t not in cache:
                 # shape (ForestCount, number of objects)
-                prediction = numpy.vstack(predictions[t])
-
+                labels = [0]*len(forests)
+                for ip, pred_vector in enumerate(prob_predictions[t]):
+                    #find the majority class
+                    #FIXME: we are limiting it to two labels again
+                    labels[ip] = 1 + (pred_vector[:,1]>self.SegmentationThreshold).astype(numpy.uint8)
+                    labels[ip][0] = 0
+                    #print labels[ip].shape
+                
                 if not probs:
+                    prediction = numpy.vstack(predictions[t])
+                    warnings.warn("FIXME: This was broken if more than one time slice was present.  Is it correct now?")
+                    #all_labels = numpy.vstack(labels[t])
+                    all_labels = numpy.vstack(labels[0])
+                    #print "all_labels.shape:", all_labels.shape
+                    #print "prediction shape:", prediction.shape
                     # take mode of each column
                     m, _ = mode(prediction, axis=0)
                     m = m.squeeze()
                     assert m.ndim == 1
                     m[0] = 0
-                    prediction = m
-                cache[t] = prediction
-            final_predictions[t] = cache[t]
+                    l, _ = mode(all_labels, axis=1)
+                    l = l.squeeze()
+                    l[0] = 0
+                    #labels[0] = 0
+                    #print l.shape, m.shape
+                    #assert numpy.all(labels==m)
+                    #self.cache[t] = m
+                    cache[t] = l
 
         return final_predictions
 
@@ -377,7 +426,7 @@ class OpObjectPredict(Operator):
         self.Probabilities.setDirty(())
 
 
-class OpToImage(Operator):
+class OpRelabelSegmentation(Operator):
     """Takes a segmentation image and a mapping and returns the
     mapped image.
 
@@ -387,15 +436,14 @@ class OpToImage(Operator):
     name = "OpToImage"
     Image = InputSlot()
     ObjectMap = InputSlot(stype=Opaque, rtype=List)
-    Features = InputSlot(rtype=List)
+    Features = InputSlot(rtype=List, stype=Opaque)
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Image.meta)
 
     def execute(self, slot, subindex, roi, result):
-        slc = roi.toSlice()
-        img = self.Image[slc].wait()
+        img = self.Image(roi.start, roi.stop).wait()
 
         for t in range(roi.start[0], roi.stop[0]):
             map_ = self.ObjectMap([t]).wait()
@@ -408,16 +456,17 @@ class OpToImage(Operator):
 
             tmap = tmap.squeeze()
 
+            warnings.warn("FIXME: This should be cached (and reset when the input becomes dirty)")
             idx = img.max()
             if len(tmap) <= idx:
-                newTmap = numpy.zeros((idx + 1,))
+                newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
 
             img[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
 
         return img
-
+    
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Image:
             self.Output.setDirty(roi)

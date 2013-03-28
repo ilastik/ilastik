@@ -13,6 +13,7 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 
 #lazyflow
+from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 from lazyflow.utility import traceLogged
 
@@ -121,6 +122,9 @@ class LayerViewerGui(QWidget):
         self.observedSlots = []
         for slot in observedSlots:
             if slot.level == 0:
+                if not isinstance(slot.stype, ArrayLike):
+                    # We don't support visualization of non-Array slots.
+                    continue
                 # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
                 # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
                 opPromoteInput = Op1ToMulti(graph=slot.operator.graph)

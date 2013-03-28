@@ -232,72 +232,32 @@ class OpLabelPipeline( Operator ):
 
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
+        pass    
 
-class OpPredictionPipeline(Operator):
+class OpPredictionPipelineNoCache(Operator):
+    """
+    This contains only the cacheless parts of the prediction pipeline, for easy use in headless workflows.
+    """
     FeatureImages = InputSlot()
-    CachedFeatureImages = InputSlot()
     MaxLabel = InputSlot()
     Classifier = InputSlot()
     FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
     
-    PredictionProbabilities = OutputSlot()
-    CachedPredictionProbabilities = OutputSlot()
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
 
-    PredictionProbabilityChannels = OutputSlot( level=1 )
-    SegmentationChannels = OutputSlot( level=1 )
-    UncertaintyEstimate = OutputSlot()
-
     def __init__(self, *args, **kwargs):
-        super( OpPredictionPipeline, self ).__init__( *args, **kwargs )
-        
-        self.predict = OpPredictRandomForest( parent=self )
-        self.predict.name = "OpPredictRandomForest"
-        self.prediction_cache = OpSlicedBlockedArrayCache( parent=self )
-        self.prediction_cache.name = "prediction_cache"
-        self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
-        self.prediction_cache_gui.name = "prediction_cache_gui"
-        self.precomputed_predictions = OpPrecomputedInput( parent=self )
-        self.precomputed_predictions.name = "precomputed_predictions"
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
-        self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
+        super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
 
-        ##
-        # 
-        ##
-        self.predict.inputs['Classifier'].connect(self.Classifier) 
-        self.predict.inputs['Image'].connect(self.CachedFeatureImages)
-        self.predict.inputs['LabelsCount'].connect(self.MaxLabel)
-        self.PredictionProbabilities.connect( self.predict.PMaps )
-        
-        # prediction cache for downstream operators (if they want it)
-        self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
-        self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
-
-        # The serializer uses these operators to provide prediction data directly from the project file
-        # if the predictions haven't become dirty since the project file was opened.
-        self.precomputed_predictions.SlowInput.connect( self.prediction_cache.Output )
-        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
-        self.CachedPredictionProbabilities.connect( self.precomputed_predictions.Output )
-
-        # Prediction cache for the GUI
-        self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
-
-        self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
-        self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
-
-        # CACHELESS FLOW (Don't pass through feature cache)
-        #  This is terrible for interactive labeling, but fast for command-line predictions.
+        # Random forest prediction using the raw feature image slot (not the cached features)
+        # This would be bad for interactive labeling, but it's good for headless flows 
+        #  because it avoids the overhead of cache.        
         self.cacheless_predict = OpPredictRandomForest( parent=self )
         self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.inputs['LabelsCount'].connect(self.MaxLabel)
-
         self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
 
         # Alternate headless output: uint8 instead of float.
@@ -306,6 +266,66 @@ class OpPredictionPipeline(Operator):
         self.opConvertToUint8.Input.connect( self.cacheless_predict.PMaps )
         self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
         self.HeadlessUint8PredictionProbabilities.connect( self.opConvertToUint8.Output )
+
+    def setupOutputs(self):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass
+
+class OpPredictionPipeline(OpPredictionPipelineNoCache):
+    """
+    This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
+    (It uses caches for these outputs, and has an extra input for cached features.)
+    """        
+    CachedFeatureImages = InputSlot()
+
+    PredictionProbabilities = OutputSlot()
+    CachedPredictionProbabilities = OutputSlot()
+    PredictionProbabilityChannels = OutputSlot( level=1 )
+    SegmentationChannels = OutputSlot( level=1 )
+    UncertaintyEstimate = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpPredictionPipeline, self).__init__( *args, **kwargs )
+
+        # Random forest prediction using CACHED features.
+        self.predict = OpPredictRandomForest( parent=self )
+        self.predict.name = "OpPredictRandomForest"
+        self.predict.inputs['Classifier'].connect(self.Classifier) 
+        self.predict.inputs['Image'].connect(self.CachedFeatureImages)
+        self.predict.inputs['LabelsCount'].connect(self.MaxLabel)
+        self.PredictionProbabilities.connect( self.predict.PMaps )
+
+        # prediction cache for downstream operators (if they want it)
+        self.prediction_cache = OpSlicedBlockedArrayCache( parent=self )
+        self.prediction_cache.name = "prediction_cache"
+        self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
+        self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
+
+        # Prediction cache for the GUI
+        self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
+        self.prediction_cache_gui.name = "prediction_cache_gui"
+        self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
+        self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
+
+        # The serializer uses these operators to provide prediction data directly from the project file
+        # if the predictions haven't become dirty since the project file was opened.
+        # (Think of each one like a railroad switch.)
+        self.precomputed_predictions = OpPrecomputedInput( parent=self )
+        self.precomputed_predictions.name = "precomputed_predictions"
+        self.precomputed_predictions.SlowInput.connect( self.prediction_cache.Output )
+        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
+        self.CachedPredictionProbabilities.connect( self.precomputed_predictions.Output )
+
+        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
+        self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
+        self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
+        self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
 
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
@@ -334,7 +354,7 @@ class OpPredictionPipeline(Operator):
         self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
         self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
-        
+
     def setupOutputs(self):
         # Set the blockshapes for each input image separately, depending on which axistags it has.
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
@@ -375,13 +395,6 @@ class OpPredictionPipeline(Operator):
         self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
 
 class OpShapeReader(Operator):
     """

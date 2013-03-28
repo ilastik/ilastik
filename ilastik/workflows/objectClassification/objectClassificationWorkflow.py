@@ -1,7 +1,6 @@
 from lazyflow.graph import Graph
 
 from ilastik.workflow import Workflow
-
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -9,8 +8,7 @@ from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 
-from lazyflow.operators import OpAttributeSelector, OpSegmentation, Op5ifyer
-
+from lazyflow.operators import OpSegmentation, Op5ifyer
 
 class ObjectClassificationWorkflow(Workflow):
     name = "Object Classification Workflow"

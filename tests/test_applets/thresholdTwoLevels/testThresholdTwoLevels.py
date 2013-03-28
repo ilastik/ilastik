@@ -42,7 +42,7 @@ class TestThresholdTwoLevels(object):
         self.highThreshold = 0.65 #third cluster doesn't pass
         self.lowThreshold = 0.1
         
-        self.sigma = (0.3, 0.3, 0.3)
+        self.sigma = { 'x' : 0.3, 'y' : 0.3, 'z' : 0.3 }
         
     def testStuff(self):
         g = Graph()

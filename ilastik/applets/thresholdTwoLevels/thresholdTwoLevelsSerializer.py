@@ -1,4 +1,4 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialHdf5BlockSlot
 
 class ThresholdTwoLevelsSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
@@ -8,6 +8,10 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
                  SerialSlot(operator.LowThreshold, autodepends=True),
                  SerialDictSlot(operator.SmootherSigma, autodepends=True),
                  SerialSlot(operator.Channel, autodepends=True),
+                 SerialHdf5BlockSlot(operator.InputHdf5,
+                                     operator.OutputHdf5,
+                                     operator.CleanBlocks,
+                                     name="CachedThresholdOutput")
                 ]
         
         super(self.__class__, self).__init__(projectFileGroupName, slots=slots)

@@ -199,7 +199,6 @@ class ObjectClassificationGui(LabelingGui):
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
-        self.op.FreezePredictions.setValue(not checked)
 
         # Auto-set the "show predictions" state according to what the
         # user just clicked.
@@ -249,25 +248,13 @@ class ObjectClassificationGui(LabelingGui):
             label = 0
         assert 0 <= label <= self._labelingSlots.maxLabelValue.value
 
-        obj = self._getObject(layer.segmentationImageSlot, pos5d)
-        if obj == 0: # background; FIXME: do not hardcode
-            return
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 
-        t = pos5d[0]
-
-        labelslot = layer._datasources[0]._inputSlot
-        labelsdict = labelslot.value
-        labels = labelsdict[t]
-
-        nobjects = len(labels)
-        if obj >= nobjects:
-            newLabels = numpy.zeros((obj + 1),)
-            newLabels[:nobjects] = labels[:]
-            labels = newLabels
-        labels[obj] = label
-        labelsdict[t] = labels
-        labelslot.setValue(labelsdict)
-        labelslot.setDirty([(t, obj)])
+        operatorAxisOrder = self.topLevelOperatorView.SegmentationImagesOut.meta.getAxisKeys()
+        assert operatorAxisOrder == list('txyzc'), \
+            "Need to update onClick() if the operator no longer expects volumnia axis order.  Operator wants: {}".format( operatorAxisOrder )
+        self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5d, label)
 
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):

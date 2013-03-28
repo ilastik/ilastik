@@ -1,17 +1,20 @@
 import unittest
 import numpy as np
+import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import \
-    OpToImage, OpObjectTrain, OpObjectPredict
+    OpRelabelSegmentation, OpObjectTrain, OpObjectPredict
 from ilastik.applets.objectExtraction.opObjectExtraction import \
-    OpRegionFeatures
+    OpRegionFeatures, OpAdaptTimeListRoi
 
-FEATURES = [
-    'Count',
-    'RegionCenter',
-    'Coord<ArgMaxWeight>',
-    'Coord<Minimum>',
-    'Coord<Maximum>',
+FEATURES = \
+[
+    [ 'Count',
+      'RegionCenter',
+      'Coord<ArgMaxWeight>',
+      'Coord<Minimum>',
+      'Coord<Maximum>' ],
+    []
 ]
 
 
@@ -22,13 +25,16 @@ def segImage():
     img[1,  0:10,  0:10,  0:10, 0] = 1
     img[1, 10:20, 10:20, 10:20, 0] = 2
     img[1, 20:25, 20:25, 20:25, 0] = 3
+    
+    img = img.view(vigra.VigraArray)
+    img.axistags = vigra.defaultAxistags('txyzc')    
     return img
 
 
-class TestOpToImage(unittest.TestCase):
+class TestOpRelabelSegmentation(unittest.TestCase):
     def setUp(self):
         g = Graph()
-        self.op = OpToImage(graph=g)
+        self.op = OpRelabelSegmentation(graph=g)
 
     def test(self):
         segimg = segImage()
@@ -50,45 +56,67 @@ class TestOpToImage(unittest.TestCase):
 
 class TestOpObjectTrain(unittest.TestCase):
     def setUp(self):
+        segimg = segImage()
+
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = rawimg.view(vigra.VigraArray)
+        rawimg.axistags = vigra.defaultAxistags('txyzc')
+
         g = Graph()
-        self.featsop = OpRegionFeatures(features=FEATURES, graph=g)
+        self.featsop = OpRegionFeatures(FEATURES, graph=g)
+        self.featsop.LabelImage.setValue(segimg)
+        self.featsop.RawImage.setValue( rawimg )
+
+        self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(graph=g)
+        self._opRegFeatsAdaptOutput.Input.connect(self.featsop.Output)
+
         self.op = OpObjectTrain(graph=g)
         self.op.Features.resize(1)
-        self.op.Labels.resize(1)
-
-        segimg = segImage()
-        self.featsop.LabelImage.setValue(segimg)
-        self.op.Features[0].connect(self.featsop.Output)
+        self.op.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.FixClassifier.setValue(False)
+        self.op.ForestCount.setValue(1)
 
     def test_train(self):
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 1, 1, 2])}
+        self.op.Labels.resize(1)
         self.op.Labels.setValue(labels)
+       
+        assert self.op.Classifier.ready()
 
 class TestOpObjectPredict(unittest.TestCase):
     def setUp(self):
-        g = Graph()
-        self.featsop = OpRegionFeatures(features=FEATURES, graph=g)
-        self.trainop = OpObjectTrain(graph=g)
-        self.op = OpObjectPredict(graph=g)
-
-        self.trainop.Features.resize(1)
-        self.trainop.Labels.resize(1)
-
-        self.op.LabelsCount.setValue(2)
-
-        self.trainop.Features.connect(self.featsop.Output)
-        self.op.Classifier.connect(self.trainop.Classifier)
-
         segimg = segImage()
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 0, 0, 0,])}
 
-        self.featsop.LabelImage.setValue(segimg)
-        self.trainop.Features[0].connect(self.featsop.Output)
-        self.trainop.Labels.setValue(labels)
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = rawimg.view(vigra.VigraArray)
+        rawimg.axistags = vigra.defaultAxistags('txyzc')
 
-        self.op.Features.connect(self.featsop.Output)
+        g = Graph()
+        self.featsop = OpRegionFeatures(FEATURES, graph=g)
+        self.featsop.LabelImage.setValue(segimg)
+        self.featsop.RawImage.setValue( rawimg )
+        assert self.featsop.Output.ready()
+
+        self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(graph=g)
+        self._opRegFeatsAdaptOutput.Input.connect(self.featsop.Output)
+        assert self._opRegFeatsAdaptOutput.Output.ready()
+
+        self.trainop = OpObjectTrain(graph=g)
+        self.trainop.Features.resize(1)
+        self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.trainop.Labels.resize(1)
+        self.trainop.Labels.setValues([labels])
+        self.trainop.FixClassifier.setValue(False)
+        self.trainop.ForestCount.setValue(1)
+        assert self.trainop.Classifier.ready()
+
+        self.op = OpObjectPredict(graph=g)
+        self.op.Classifier.connect(self.trainop.Classifier)
+        self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
+        assert self.op.Predictions.ready()
 
     def test_train(self):
         preds = self.op.Predictions([0, 1]).wait()

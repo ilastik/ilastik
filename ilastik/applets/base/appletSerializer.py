@@ -9,6 +9,9 @@ import h5py
 import numpy
 import warnings
 
+from lazyflow.roi import TinyVector, roiToSlice
+from lazyflow.rtype import SubRegion
+
 #######################
 # Convenience methods #
 #######################
@@ -219,8 +222,7 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            if len(slot) < len(subgroup):
-                slot.resize(len(subgroup))
+            slot.resize(len(subgroup))
             for i, key in enumerate(subgroup):
                 assert key == self.subname.format(i)
                 self._deserialize(subgroup[key], slot[i])
@@ -335,6 +337,41 @@ class SerialBlockSlot(SerialSlot):
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
                 self.inslot[index][slicing] = blockData[...]
 
+class SerialHdf5BlockSlot(SerialSlot):
+
+    def __init__(self, inslot, outslot, blockslot, *args, **kwargs):
+        super( SerialHdf5BlockSlot, self).__init__(outslot, *args, **kwargs )
+        self.inslot = inslot
+        self.outslot = outslot
+        self.blockslot = blockslot
+        self._bind(outslot)
+
+    def _serialize(self, group, name, slot):
+        mygroup = group.create_group(name)
+        num = len(self.blockslot)
+        for index in range(num):
+            subname = self.subname.format(index)
+            subgroup = mygroup.create_group(subname)
+            cleanBlockRois = self.blockslot[index].value
+            for roi in cleanBlockRois:
+                # The protocol for hdf5 slots is that they create appropriately 
+                #  named datasets within the subgroup that we provide via writeInto()
+                req = self.outslot[index]( *roi )
+                req.writeInto( subgroup )
+                req.wait()
+
+    def _deserialize(self, mygroup, slot):
+        num = len(mygroup)
+        if len(self.inslot) < num:
+            self.inslot.resize(num)
+        for index, t in enumerate(sorted(mygroup.items())):
+            groupName, labelGroup = t
+            for blockRoiString, blockDataset in labelGroup.items():
+                blockRoi = eval(blockRoiString)
+                roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
+                assert roiShape == blockDataset.shape
+
+                self.inslot[index][roiToSlice( *blockRoi )] = blockDataset
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""

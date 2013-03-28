@@ -1,25 +1,17 @@
-from lazyflow.graph import Graph, Operator, OperatorWrapper
+from lazyflow.graph import Graph
 
 from ilastik.workflow import Workflow
-
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
-
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
-from lazyflow.operators import OpAttributeSelector
-
-class ObjectClassificationWorkflow(Workflow):
+class ObjectClassificationWorkflowBinary(Workflow):
     name = "Object Classification Workflow"
 
     def __init__( self, headless, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(ObjectClassificationWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(ObjectClassificationWorkflowBinary, self).__init__(headless=headless, graph=graph, *args, **kwargs)
 
         ######################
         # Interactive workflow

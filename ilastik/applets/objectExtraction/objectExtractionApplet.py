@@ -1,7 +1,6 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
-from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
 
 class ObjectExtractionApplet( StandardApplet ):
     def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction" ):
@@ -18,6 +17,7 @@ class ObjectExtractionApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
+        from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
         return ObjectExtractionGui
 
     @property

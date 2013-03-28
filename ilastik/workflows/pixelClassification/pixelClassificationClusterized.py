@@ -20,6 +20,7 @@ ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 logger = logging.getLogger(__name__)
 
 # HCI
+import lazyflow.request
 from lazyflow.graph import OperatorWrapper
 
 # ilastik
@@ -55,11 +56,12 @@ def main(argv):
     return 0
 
 def getArgParser():
-    parser = argparse.ArgumentParser( description="Pixel Classification Prediction Workflow" )
+    parser = argparse.ArgumentParser( description="Ilastik Cluster Workload Launcher" )
     parser.add_argument('--process_name', default="MASTER", help='A name for this process (for logging purposes)', required=False)
     parser.add_argument('--option_config_file', help='A json file with various settings', required=True)
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--output_description_file', help='The JSON file that describes the output dataset', required=False)
+    parser.add_argument('--secondary_output_description_file', help='A secondary output description file, which will be used if the workflow supports secondary outputs.', required=False, action='append')
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
 
     return parser
@@ -112,6 +114,11 @@ def runWorkflow(parsed_args):
     # Update the monkey_patch settings
     ilastik.utility.monkey_patches.apply_setting_dict( config.__dict__ )
 
+    # If we're running a node job, set the threadpool size if the user specified one.
+    # Note that the main thread does not count toward the threadpool total.
+    if args._node_work_ is not None and config.task_threadpool_size is not None:
+        lazyflow.request.Request.reset_thread_pool( num_workers = config.task_threadpool_size )
+
     # Make sure project file exists.
     if not os.path.exists(args.project):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
@@ -129,15 +136,31 @@ def runWorkflow(parsed_args):
     resultSlot = None
     finalOutputSlot = workflow.getHeadlessOutputSlot( config.output_slot_id )
     assert finalOutputSlot is not None
+
+    secondaryOutputSlots = workflow.getSecondaryHeadlessOutputSlots( config.output_slot_id )
+    secondaryOutputDescriptions = args.secondary_output_description_file # This is a list (see 'action' above)
+    if len(secondaryOutputDescriptions) != len(secondaryOutputSlots):
+        raise RuntimeError( "This workflow produces exactly {} SECONDARY outputs.  You provided {}.".format( len(secondaryOutputSlots), len(secondaryOutputDescriptions) ) )
+    
     clusterOperator = None
     try:
         if args._node_work_ is not None:
             # We're doing node work
             opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
+
+            # FIXME: Image index is hard-coded as 0.  We assume we are working with only one (big) dataset in cluster mode.            
             opClusterTaskWorker.Input.connect( finalOutputSlot )
+            opClusterTaskWorker.RoiString[0].setValue( args._node_work_ )
             opClusterTaskWorker.TaskName.setValue( task_name )
-            opClusterTaskWorker.RoiString.setValue( args._node_work_ )
             opClusterTaskWorker.ConfigFilePath.setValue( args.option_config_file )
+
+            # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
+            opClusterTaskWorker.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
+            opClusterTaskWorker.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
+            for i in range( len(secondaryOutputSlots) ):
+                opClusterTaskWorker.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
+                opClusterTaskWorker.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )
+
             opClusterTaskWorker.OutputFilesetDescription.setValue( args.output_description_file )
     
             # If we have a way to report task progress (e.g. by updating the job name),
@@ -156,9 +179,18 @@ def runWorkflow(parsed_args):
         else:
             # We're the master
             opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
+
             opClusterizeMaster.Input.connect( finalOutputSlot )
             opClusterizeMaster.ProjectFilePath.setValue( args.project )
             opClusterizeMaster.OutputDatasetDescription.setValue( args.output_description_file )
+
+            # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
+            opClusterizeMaster.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
+            opClusterizeMaster.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
+            for i in range( len(secondaryOutputSlots) ):
+                opClusterizeMaster.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
+                opClusterizeMaster.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )    
+
             opClusterizeMaster.ConfigFilePath.setValue( args.option_config_file )
 
             resultSlot = opClusterizeMaster.ReturnCode
@@ -198,18 +230,39 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     #debug = None
-    #debug = 'Master'
     debug = 'Master'
+    #debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
         args = []
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+        
+#        # Object classification
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_object_cluster_options.json" )
+#        args.append( "--project=/nobackup/bock/ilastik_trials/stuart_object_predictions.ilp" )
+#        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+#        args.append( "--process_name=JOB02" )
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/results_description.json" )
+#        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/debug_feature_output_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+
+        # pixel classification
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+#        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
+#        args.append( "--process_name=JOB00" )
+
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
+        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
+        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
+        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+        #args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+        args.append("--process_name=JOBXX")
         args.append( "--sys_tmp_dir=/scratch/bergs")
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
-        args.append( "--process_name=JOB00" )
 
         sys.argv += args
 
@@ -228,11 +281,25 @@ if __name__ == "__main__":
 #        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
-        # RESTful TEST
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
-        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        # RESTful TEST
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
+#        #args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+
+#        # Synapse Pixel Classification
+#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_pixel_cluster_options.json")
+#        args.append( "--project=/nobackup/bock/ilastik_trials/Training_4_sel_features_bock11.ilp")
+#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/pixel_results/results_description.json")
+#        args.append( "--sys_tmp_dir=/scratch/bergs")
+
+        # Synapse Object classification
+        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
+        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
+        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
         args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
