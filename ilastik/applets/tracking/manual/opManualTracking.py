@@ -1,11 +1,9 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion, List
+from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 import numpy as np
 import pgmlink
-from ilastik.applets.tracking.base.trackingUtilities import relabel
-from ilastik.utility.operatorSubView import OperatorSubView
 
 
 class OpManualTracking(Operator):
@@ -61,7 +59,8 @@ class OpManualTracking(Operator):
                 return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
-        print 'opManualTracking::propagateDirty: roi =', roi        
+        pass
+#        print 'opManualTracking::propagateDirty: roi =', roi        
 #        if inputSlot is self.Labels:
 #            if len(roi._l) == 0:
 #                self.TrackImage.setDirty(slice(None))

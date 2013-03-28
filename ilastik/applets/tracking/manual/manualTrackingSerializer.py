@@ -1,5 +1,5 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialDictSlot, SerialSlot, deleteIfPresent, getOrCreateGroup
+    SerialSlot, deleteIfPresent, getOrCreateGroup
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):

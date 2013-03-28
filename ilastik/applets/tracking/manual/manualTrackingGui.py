@@ -1,14 +1,8 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic, QtGui
-from PyQt4.QtCore import pyqtSlot
-
-from ilastik.widgets.featureTableWidget import FeatureEntry
-from ilastik.widgets.featureDlg import FeatureDlg
 
 import os
 import numpy
-from ilastik.utility import bind
-from lazyflow.operators import OpSubRegion
 
 import logging
 from lazyflow.rtype import SubRegion
@@ -16,16 +10,9 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer import LayerViewerGui
-from ilastik.applets.labeling import LabelingGui
 
 import volumina.colortables as colortables
-from volumina.api import \
-    LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
-    ClickableColortableLayer, LazyflowSinkSource
-
-from volumina.interpreter import ClickInterpreter
-
-from ilastik.applets.objectExtraction import config
+from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 
 
 class ManualTrackingGui(LayerViewerGui):
@@ -181,7 +168,15 @@ class ManualTrackingGui(LayerViewerGui):
         arr = slot[slicing].wait()
         return arr.flat[0]
 
-
+    def _setDirty(self, slot, timesteps):
+        if slot is self.mainOperator.TrackImage:
+            roi = SubRegion(self.mainOperator.TrackImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
+            self.mainOperator.TrackImage.setDirty(roi)
+        elif slot is self.mainOperator.Labels:
+            self.mainOperator.Labels.setDirty(timesteps)
+        elif slot is self.mainOperator.Divisions:
+            self.mainOperator.Divisions.setDirty([])
+            
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
@@ -217,8 +212,9 @@ class ManualTrackingGui(LayerViewerGui):
                 self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
                 print 'divisions = ', self.mainOperator.divisions
                 
-                roi = SubRegion(self.mainOperator.TrackImage, start=[self.divs[0][0],] + 4*[0,], stop=[self.divs[0][0]+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-                self.mainOperator.TrackImage.setDirty(roi)
+                self._setDirty(self.mainOperator.Divisions, [])
+                self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
+                self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])            
                 
                 # release the division lock
                 self.divLock = False
@@ -240,10 +236,10 @@ class ManualTrackingGui(LayerViewerGui):
             res = self._addObjectToTrack(activeTrack,oid,t)
             if res == -1:
                 return
-            print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
+#            print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
             
-            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-            self.mainOperator.TrackImage.setDirty(roi)
+            self._setDirty(self.mainOperator.TrackImage, [t])
+            self._setDirty(self.mainOperator.Labels, [t])
     
             self.editor.posModel.time = self.editor.posModel.time + 1
 
@@ -290,8 +286,8 @@ class ManualTrackingGui(LayerViewerGui):
         if selection in delLabel.keys():
             self._delLabel(t, oid, delLabel[selection])
             
-            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-            self.mainOperator.TrackImage.setDirty(roi)
+            self._setDirty(self.mainOperator.TrackImage, [t])
+            self._setDirty(self.mainOperator.Labels, [t])
             
         elif selection in delSubtrack.keys():
             track2remove = delSubtrack[selection]
@@ -299,10 +295,10 @@ class ManualTrackingGui(LayerViewerGui):
             for t in range(t,maxt):
                 for oid in self.mainOperator.labels[t].keys():
                     if track2remove in self.mainOperator.labels[t][oid]:
-                        self._delLabel(t, oid, track2remove)                        
+                        self._delLabel(t, oid, track2remove)
             
-            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[maxt,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-            self.mainOperator.TrackImage.setDirty(roi)
+            self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
+            self._setDirty(self.mainOperator.Labels, range(t,maxt))
             
         elif selection == runTracking:
             self._runSubtracking(position5d, oid)
@@ -325,6 +321,8 @@ class ManualTrackingGui(LayerViewerGui):
         self.labelsWithDivisions[t_parent].remove(parent_label)
         self.labelsWithDivisions[t_parent+1].remove(children[0])
         self.labelsWithDivisions[t_parent+1].remove(children[1])
+        
+        self._setDirty(self.mainOperator.Divisions, [])
     
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
@@ -351,12 +349,12 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _delLabel(self, t, oid, track2remove):        
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
-#            self._delDivisionEvent(track2remove)
             QtGui.QMessageBox.critical(self, "Error", "Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first.", QtGui.QMessageBox.Ok)
             return
         self.mainOperator.labels[t][oid].remove(track2remove)
+        self._setDirty(self.mainOperator.Labels, [t])
         
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
@@ -366,12 +364,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         track2remove = self._getActiveTrack()
         idx2remove = activeTrackBox.currentIndex()
-        activeTrackBox.removeItem(idx2remove)
-        
-#        labelslot = self.mainOperator.Labels
-#        if not labelslot.ready():
-#            return
-#        labels = labelslot.value        
+        activeTrackBox.removeItem(idx2remove)     
 
         affectedT = []
         for t in self.mainOperator.labels.keys():
@@ -386,9 +379,8 @@ class ManualTrackingGui(LayerViewerGui):
                 self._delDivisionEvent(key)                
                 
         if len(affectedT) > 0:
-            roi = SubRegion(self.mainOperator.TrackImage, start=[min(affectedT),] + 4*[0,], stop=[max(affectedT)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-            self.mainOperator.TrackImage.setDirty(roi)
-#        labelslot.setValue(labels)  
+            self._setDirty(self.mainOperator.TrackImage, affectedT)
+            self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
         if activeTrack == 0:
@@ -404,9 +396,8 @@ class ManualTrackingGui(LayerViewerGui):
                 QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this timeslice", QtGui.QMessageBox.Ok)            
                 return -1
                         
-        self.mainOperator.labels[t][oid].add(activeTrack)
-#        labelslot.setValue(labels)
-#        labelslot.setDirty([t,])        
+        self.mainOperator.labels[t][oid].add(activeTrack)  
+        self._setDirty(self.mainOperator.Labels, [t])
         print 'added (t,oid,activeTrack) =', (t,oid, activeTrack)
         
         
@@ -457,31 +448,23 @@ class ManualTrackingGui(LayerViewerGui):
             oid_prev = uniqueLabels[0]
             li_prev = li_cur
     
-        
-        roi = SubRegion(self.mainOperator.TrackImage, start=[t_start,] + 4*[0,], stop=[max(t_start+1,t-1),] + list(self.mainOperator.TrackImage.meta.shape[1:]))
-        self.mainOperator.TrackImage.setDirty(roi)
+        self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
+        self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
 
         if t > 1:
             self.editor.posModel.time = t_end
     
     def _onDivEventPressed(self):
-        print 'divlock before: ', self.divLock
-        self.divLock = not self.divLock       
-        print 'divlock after: ', self.divLock
-#        self._drawer.divEvent.setCheckable(True)             
+        self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
 
-
-
-    def _setStyleSheet(self, widget, qcolor):        
-#        widget.setAutoFillBackground(True)                 
+    def _setStyleSheet(self, widget, qcolor):                         
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
                                      g = qcolor.green(),
                                      b = qcolor.blue(),
                                      a = qcolor.alpha()
                                      )
-#        widget.setStyleSheet("QLabel { color: rgba(0,0,0,255); background-color: rgba("+values+"); }")
         widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
     
     def _onDivisionsListActivated(self):        
@@ -502,11 +485,6 @@ class ManualTrackingGui(LayerViewerGui):
             return
         
         coords = numpy.where(li == oid)
-#        print 'coords = ', coords
-#        print '[coords[1][0], coords[2][0], coords[3][0]] = ', [coords[1][0], coords[2][0], coords[3][0]]
-#        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]
-
-        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]
-        
+        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
         self.editor.posModel.time = t
         

@@ -1,9 +1,8 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from lazyflow.graph import OperatorWrapper
-from ilastik.applets.tracking.manual.opManualTracking import OpManualTracking
-from ilastik.applets.tracking.manual.manualTrackingSerializer import ManualTrackingSerializer
-from ilastik.applets.tracking.manual.manualTrackingGui import ManualTrackingGui
+from opManualTracking import OpManualTracking
+from manualTrackingSerializer import ManualTrackingSerializer
+from manualTrackingGui import ManualTrackingGui
 
 class ManualTrackingApplet(StandardApplet):
     def __init__( self, name="Manual Tracking", workflow=None, projectFileGroupName="ManualTracking" ):
