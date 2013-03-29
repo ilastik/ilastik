@@ -86,6 +86,7 @@ class ManualTrackingGui(LayerViewerGui):
         layers = []
                 
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+           
         self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
         trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
         trackingLayer.name = "Manual Tracking"
@@ -93,6 +94,15 @@ class ManualTrackingGui(LayerViewerGui):
         trackingLayer.opacity = 0.8
         layers.append(trackingLayer)
         
+        ct = colortables.create_random_16bit()
+        ct[1] = QColor(230,0,0,150).rgba()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
+        untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
+        untrackedLayer.name = "Untracked Objects"
+        untrackedLayer.visible = False
+        untrackedLayer.opacity = 0.8
+        layers.append(untrackedLayer)
         
         self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
 #        ct = colortables.create_default_8bit()
