@@ -152,6 +152,9 @@ class ManualTrackingGui(LayerViewerGui):
         for trackid in self.mainOperator.divisions.keys():
             self._addDivisionToListWidget(trackid, self.mainOperator.divisions[trackid][0][0], self.mainOperator.divisions[trackid][0][1],
                                           self.mainOperator.divisions[trackid][-1])
+        # set all items checked
+        for idx in range(self._drawer.divisionsList.count()):
+            self._drawer.divisionsList.item(idx).setCheckState(True)
     
     def _setActiveTrackList(self):
         activeTrackBox = self._drawer.activeTrackBox
