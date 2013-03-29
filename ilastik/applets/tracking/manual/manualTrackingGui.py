@@ -465,7 +465,8 @@ class ManualTrackingGui(LayerViewerGui):
                 li = self.mainOperator.LabelImage.get(roi).wait()
                 coords = numpy.where(li == oid_prev)
                 mid = len(coords[1]) / 2
-                self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], coords[3][mid]]
+                cur_slicing_pos = self.editor.posModel.slicingPos 
+                self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], cur_slicing_pos[2]]
                 t_end = t-1
                 break
             
