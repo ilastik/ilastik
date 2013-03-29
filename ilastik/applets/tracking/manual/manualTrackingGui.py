@@ -461,6 +461,11 @@ class ManualTrackingGui(LayerViewerGui):
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
                 print 'the tracking is ambiguous, abort at t =', t, ', label candidates = ', uniqueLabels
+                roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+                li = self.mainOperator.LabelImage.get(roi).wait()
+                coords = numpy.where(li == oid_prev)
+                mid = len(coords[1]) / 2
+                self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], coords[3][mid]]
                 t_end = t-1
                 break
             
