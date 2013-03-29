@@ -18,6 +18,7 @@ class OpManualTracking(Operator):
     TrackImage = OutputSlot()
     Labels = OutputSlot(stype=Opaque, rtype=List)
     Divisions = OutputSlot(stype=Opaque, rtype=List)
+    UntrackedImage = OutputSlot()
     
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
@@ -27,6 +28,7 @@ class OpManualTracking(Operator):
         
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
+        self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
                 
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
@@ -45,7 +47,6 @@ class OpManualTracking(Operator):
             result = {}
             for t in self.labels.keys():
                 result[t] = self.labels[t]
-            return result
                 
         elif slot is self.TrackImage:
             for t in range(roi.start[0],roi.stop[0]):          
@@ -54,9 +55,17 @@ class OpManualTracking(Operator):
                     return result
             
                 result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]      
-                result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])
-            
-                return result
+                result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])        
+        
+        elif slot is self.UntrackedImage:
+            for t in range(roi.start[0],roi.stop[0]):
+                result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]
+                labels_at = []
+                if t in self.labels.keys():
+                    labels_at = self.labels[t]
+                result[t-roi.start[0],...,0] = self._relabelUntracked(result[t-roi.start[0],...,0], labels_at)
+
+        return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
@@ -82,4 +91,13 @@ class OpManualTracking(Operator):
             if label > 0:
                 if label in replace and len(replace[label]) > 0:
                     mp[label] = list(replace[label])[-1]
+        return mp[volume]
+    
+    def _relabelUntracked(self, volume, tracked_at):
+        mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
+        mp[1:] = 1
+        labels = np.unique(volume)
+        for label in labels:
+            if (label > 0) and (label in tracked_at.keys()) and (len(tracked_at[label]) > 0):                
+                mp[label] = 0
         return mp[volume]
