@@ -189,6 +189,9 @@ class ManualTrackingGui(LayerViewerGui):
             self.mainOperator.Labels.setDirty(timesteps)
         elif slot is self.mainOperator.Divisions:
             self.mainOperator.Divisions.setDirty([])
+        elif slot is self.mainOperator.UntrackedImage:
+            roi = SubRegion(self.mainOperator.UntrackedImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
+            self.mainOperator.UntrackedImage.setDirty(roi)
             
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
@@ -228,6 +231,7 @@ class ManualTrackingGui(LayerViewerGui):
                 self._setDirty(self.mainOperator.Divisions, [])
                 self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
                 self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])            
+                self._setDirty(self.mainOperator.UntrackedImage, [self.divs[0][0]])
                 
                 # release the division lock
                 self.divLock = False
@@ -252,6 +256,7 @@ class ManualTrackingGui(LayerViewerGui):
 #            print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
             
             self._setDirty(self.mainOperator.TrackImage, [t])
+            self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
     
             self.editor.posModel.time = self.editor.posModel.time + 1
@@ -300,6 +305,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._delLabel(t, oid, delLabel[selection])
             
             self._setDirty(self.mainOperator.TrackImage, [t])
+            self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
             
         elif selection in delSubtrack.keys():
@@ -311,6 +317,7 @@ class ManualTrackingGui(LayerViewerGui):
                         self._delLabel(t, oid, track2remove)
             
             self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
+            self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
             self._setDirty(self.mainOperator.Labels, range(t,maxt))
             
         elif selection == runTracking:
@@ -369,6 +376,7 @@ class ManualTrackingGui(LayerViewerGui):
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
+        self._setDirty(self.mainOperator.UntrackedImage, [t])
         
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
@@ -394,6 +402,7 @@ class ManualTrackingGui(LayerViewerGui):
                 
         if len(affectedT) > 0:
             self._setDirty(self.mainOperator.TrackImage, affectedT)
+            self._setDirty(self.mainOperator.UntrackedImage, affectedT)
             self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
@@ -463,6 +472,7 @@ class ManualTrackingGui(LayerViewerGui):
             li_prev = li_cur
     
         self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
+        self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
         self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
 
         if t > 1:
