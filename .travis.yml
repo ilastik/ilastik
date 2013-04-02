@@ -11,10 +11,10 @@ install:
    - sudo apt-get install -y cmake
    - pip install -r requirements/development-stage1.txt --use-mirrors
    - sudo apt-get install -y mercurial
-   - sudo sh .travis_scripts/install_h5py.sh
-   - sudo sh .travis_scripts/install_vigra.sh
+   - sudo source .travis_scripts/install_h5py.sh
+   - sudo source .travis_scripts/install_vigra.sh
    - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-   - sudo sh .travis_scripts/build_drtile.sh $VIRTUAL_ENV
+   - sudo source .travis_scripts/build_drtile.sh $VIRTUAL_ENV
    - mkdir ~/.lazyflow
    - echo "[verbosity]" > ~/.lazyflow/config
    - echo "deprecation_warnings = false" >> ~/.lazyflow/config
