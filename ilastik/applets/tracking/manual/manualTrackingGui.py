@@ -6,6 +6,7 @@ import numpy
 
 import logging
 from lazyflow.rtype import SubRegion
+from copy import copy
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -36,6 +37,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
+        self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         
         
     ###########################################
@@ -54,11 +56,13 @@ class ManualTrackingGui(LayerViewerGui):
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         
-        self.ct = colortables.create_random_16bit()
+        self.ct = colortables.create_random_16bit()        
         
         self.divLock = False
         self.divs = []
         self.labelsWithDivisions = {}
+        self.misdetLock = False
+        self.misdetIdx = -1
             
 
     def _onMetaChanged( self, slot ):
@@ -85,8 +89,9 @@ class ManualTrackingGui(LayerViewerGui):
     def setupLayers( self ):        
         layers = []
                 
-        self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-           
+        self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
+        self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
+        self.ct[-1] = QColor(0,0,0,255).rgba()
         self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
         trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
         trackingLayer.name = "Manual Tracking"
@@ -272,6 +277,7 @@ class ManualTrackingGui(LayerViewerGui):
             return
         
         t = position5d[0]
+        activeTrack = self._getActiveTrack()
         menu = QMenu(self)        
         delLabel = {}
         delSubtrack = {}
@@ -283,23 +289,27 @@ class ManualTrackingGui(LayerViewerGui):
                 delLabel[text] = l
                 menu.addAction(text)
                 
-                text = "remove label " + str(l) + " from here"
-                delSubtrack[text] = l
-                menu.addAction(text)
+                if activeTrack != self.misdetIdx:
+                    text = "remove label " + str(l) + " from here"
+                    delSubtrack[text] = l
+                    menu.addAction(text)
         
-        runTracking = "run automatic tracking for object " + str(oid)
-        menu.addAction(runTracking)
+        if activeTrack != self.misdetIdx:
+            runTracking = "run automatic tracking for object " + str(oid)
+            menu.addAction(runTracking)
         
         delDivision = {}
-        for trackid in trackids:
-            if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
-                text = "remove division event from label " + str(trackid)
-                delDivision[text] = trackid
-                menu.addAction(text)
+        if activeTrack != self.misdetIdx:
+            for trackid in trackids:
+                if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
+                    text = "remove division event from label " + str(trackid)
+                    delDivision[text] = trackid
+                    menu.addAction(text)
         
         action = menu.exec_(globalWindowCoordiante)
         if action is None:
             return
+
         selection = str(action.text())
         if selection in delLabel.keys():
             self._delLabel(t, oid, delLabel[selection])
@@ -352,15 +362,20 @@ class ManualTrackingGui(LayerViewerGui):
         if self._drawer.activeTrackBox.count() > 0:
             return int(self._drawer.activeTrackBox.currentText())
         else:
-            return 0    
+            return 0
         
     def _addNewTrack(self):
         activeTrackBox = self._drawer.activeTrackBox
         allTracks = [int(activeTrackBox.itemText(i)) for i in range(activeTrackBox.count())]
-        if len(allTracks) == 0:
+        if len(allTracks) == 1: # trackid self.misdetIdx is misdetection
             activeTrackBox.addItem(str(1), self.ct[1])
         else:
-            activeTrackBox.addItem(str(max(allTracks)+1), self.ct[max(allTracks)+1])
+            newTrack = max(allTracks)+1
+            if newTrack % 255 == 0:
+                newTrack += 2
+            elif newTrack % 256 == 0:
+                newTrack += 1
+            activeTrackBox.addItem(str(newTrack), self.ct[newTrack])
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
         return self._getActiveTrack()
         
@@ -406,19 +421,24 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
-        if activeTrack == 0:
-            print 'activeTrack is 0'
-            return
-                
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
         if oid not in self.mainOperator.labels[t].keys():
             self.mainOperator.labels[t][oid] = set()
-        for tracklist in self.mainOperator.labels[t].values():
-            if activeTrack in tracklist:                
-                QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this timeslice", QtGui.QMessageBox.Ok)            
+        if activeTrack == self.misdetIdx:
+            if len(self.mainOperator.labels[t][oid]) > 0:
+                QtGui.QMessageBox.critical(self, "Error", "Error: This object is already marked as part of a track, cannot mark it as a misdetection.", QtGui.QMessageBox.Ok)            
                 return -1
-                        
+        else:
+            for tracklist in self.mainOperator.labels[t].values():
+                if activeTrack in tracklist:                
+                    QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this timeslice", QtGui.QMessageBox.Ok)            
+                    return -1
+        
+        if self.misdetIdx in self.mainOperator.labels[t][oid]:
+            QtGui.QMessageBox.critical(self, "Error", "Error: This object is already marked as a misdetection. Cannot mark it as part of a track.", QtGui.QMessageBox.Ok)            
+            return -1
+        
         self.mainOperator.labels[t][oid].add(activeTrack)  
         self._setDirty(self.mainOperator.Labels, [t])
         print 'added (t,oid,activeTrack) =', (t,oid, activeTrack)
@@ -485,9 +505,24 @@ class ManualTrackingGui(LayerViewerGui):
             self.editor.posModel.time = t_end
     
     def _onDivEventPressed(self):
+        if self._getActiveTrack() == self.misdetIdx:
+            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot add a division event for misdetections. Disable misdetection.", QtGui.QMessageBox.Ok)
+            return
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
+        
+        if self.divLock:
+            self._drawer.activeTrackBox.setEnabled(False)
+            self._drawer.delTrack.setEnabled(False)
+            self._drawer.newTrack.setEnabled(False)
+            self._drawer.markMisdetection.setEnabled(False)
+        else:
+            self._drawer.activeTrackBox.setEnabled(True)
+            self._drawer.delTrack.setEnabled(True)
+            self._drawer.newTrack.setEnabled(True)
+            self._drawer.markMisdetection.setEnabled(True)
+
 
     def _setStyleSheet(self, widget, qcolor):                         
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -517,4 +552,40 @@ class ManualTrackingGui(LayerViewerGui):
         coords = numpy.where(li == oid)
         self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
         self.editor.posModel.time = t
+        
+
+    def _onMarkMisdetectionPressed(self):
+        self.misdetLock = not self.misdetLock             
+        self._drawer.markMisdetection.setChecked(not self.misdetLock)
+                
+        activeTrackBox = self._drawer.activeTrackBox
+        
+        if self.misdetLock:            
+            self.lastActiveTrackIdx = activeTrackBox.currentIndex()
+            self._drawer.divEvent.setEnabled(False)
+            self._drawer.delTrack.setEnabled(False)
+            self._drawer.newTrack.setEnabled(False)
+            self._drawer.activeTrackBox.setEnabled(False)
+            
+            # add -1 to the tracks if not already present
+            row = -1
+            for idx in range(self._drawer.activeTrackBox.count()):
+                if int(self._drawer.activeTrackBox.itemText(idx)) == self.misdetIdx:
+                    row = idx
+                    break
+            if row == -1:
+                activeTrackBox.addItem(str(self.misdetIdx), self.ct[-1]) # , QColor(0, 0, 0).rgba()
+                row = activeTrackBox.count() - 1
+            
+            activeTrackBox.setCurrentIndex(row)
+            self._currentActiveTrackChanged()
+        else:
+            activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
+            self._currentActiveTrackChanged()
+            
+            self._drawer.divEvent.setEnabled(True)
+            self._drawer.delTrack.setEnabled(True)
+            self._drawer.newTrack.setEnabled(True)
+            self._drawer.activeTrackBox.setEnabled(True)
+        
         
