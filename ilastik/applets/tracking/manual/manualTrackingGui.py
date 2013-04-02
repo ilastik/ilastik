@@ -395,10 +395,10 @@ class ManualTrackingGui(LayerViewerGui):
                     self._delLabel(t,oid,track2remove)                    
                     affectedT.append(t)
         
-        # delete the track from division events if present:
-        for key in self.mainOperator.divisions.keys():
-            if track2remove in key or track2remove in self.mainOperator.divisions[key][0]:
-                self._delDivisionEvent(key)                
+#        # delete the track from division events if present:
+#        for key in self.mainOperator.divisions.keys():
+#            if track2remove in key or track2remove in self.mainOperator.divisions[key][0]:
+#                self._delDivisionEvent(key)                
                 
         if len(affectedT) > 0:
             self._setDirty(self.mainOperator.TrackImage, affectedT)
@@ -481,7 +481,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
         self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
 
-        if t > 1:
+        if t_end > 0:
             self.editor.posModel.time = t_end
     
     def _onDivEventPressed(self):
