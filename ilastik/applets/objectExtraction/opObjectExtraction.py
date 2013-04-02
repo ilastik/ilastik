@@ -260,7 +260,7 @@ class OpRegionFeatures3d(Operator):
             features_obj.append(feats[2])
 
 
-            if "lbp_obj" in self._otherFeatureNames:
+            if "lbp" in self._otherFeatureNames:
                 #FIXME: there is a mess about which of the lbp features are computed
                 
                 #print "computing lbp features"
@@ -290,11 +290,11 @@ class OpRegionFeatures3d(Operator):
                 #print "computed histogram"
                 otherFeatures_dict["lbp_incl"].append(lbp_hist_incl)
                 otherFeatures_dict["lbp_excl"].append(lbp_hist_excl)
-                otherFeatures_dict["lbp_obj"].append(lbp_hist_obj)
+                otherFeatures_dict["lbp"].append(lbp_hist_obj)
 
            
 
-            if "lapl_obj" in self._otherFeatureNames:
+            if "lapl" in self._otherFeatureNames:
                 #compute mean and variance of laplacian in the object and its neighborhood
                 lapl = None
                 try:
@@ -303,7 +303,7 @@ class OpRegionFeatures3d(Operator):
                     #kernel longer than line. who cares?
                     otherFeatures_dict["lapl_incl"].append(None)
                     otherFeatures_dict["lapl_excl"].append(None)
-                    otherFeatures_dict["lapl_obj"].append(None)
+                    otherFeatures_dict["lapl"].append(None)
                 else:
                     lapl_incl = lapl[passed]
                     lapl_excl = lapl[ccbboxexcl.astype(bool)]
@@ -316,7 +316,7 @@ class OpRegionFeatures3d(Operator):
                     lapl_var_obj = numpy.var(lapl_obj)
                     otherFeatures_dict["lapl_incl"].append(numpy.array([lapl_mean_incl, lapl_var_incl]))
                     otherFeatures_dict["lapl_excl"].append(numpy.array([lapl_mean_excl, lapl_var_excl]))
-                    otherFeatures_dict["lapl_obj"].append(numpy.array([lapl_mean_obj, lapl_var_obj]))
+                    otherFeatures_dict["lapl"].append(numpy.array([lapl_mean_obj, lapl_var_obj]))
                 
            
                     
@@ -375,7 +375,7 @@ class OpRegionFeatures3d(Operator):
                         feature_incl[i] = features_incl[i][key]
                         feature_excl[i] = features_excl[i][key]
             
-            feature_dict[key+"_obj"]=feature_obj
+            feature_dict[key]=feature_obj
             feature_dict[key+"_incl"]=feature_incl
             feature_dict[key+"_excl"]=feature_excl
             #print key, feature_obj.shape, feature_incl.shape, feature_excl.shape

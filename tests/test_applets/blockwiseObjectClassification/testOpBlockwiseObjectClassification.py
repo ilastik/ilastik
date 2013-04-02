@@ -32,6 +32,7 @@ class TestOpBlockwiseObjectClassification(object):
         self.testingFeatures = ['Count', 'Mean']
         objectExtraction.config.vigra_features = self.testingFeatures
         objectExtraction.config.other_features = []
+        objectExtraction.config.selected_features = self.testingFeatures
         
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.
