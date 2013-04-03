@@ -2,11 +2,13 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateG
 from cylemon.segmentation import MSTSegmentor
 import h5py
 import numpy
+import os
 
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
         super(PreprocessingSerializer, self).__init__(*args, **kwargs)
         self._o = preprocessingTopLevelOperator 
+        self.caresOfHeadless = True
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         preproc = topGroup
@@ -32,7 +34,7 @@ class PreprocessingSerializer( AppletSerializer ):
             
             opPre._unsavedData = False
             
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath,headless = False):
         
         assert "sigma" in topGroup.keys()
         assert "filter" in topGroup.keys()
@@ -45,7 +47,13 @@ class PreprocessingSerializer( AppletSerializer ):
         else:
             assert "graphfile" in topGroup.keys()
             #feature: load preprocessed graph from file
-            graphgroup = h5py.File(topGroup["graphfile"].value,"r")["graph"]
+            filePath = topGroup["graphfile"].value
+            if not os.path.exists(filePath):
+                if headless:
+                    raise RuntimeError("Could not find data at " + filePath)
+                filePath = self.repairFile(filePath,"*.h5")
+            graphgroup = h5py.File(filePath,"r")["graph"]
+                
             
         
         for opPre in self._o.innerOperators:

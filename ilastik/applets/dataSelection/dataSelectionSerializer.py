@@ -26,6 +26,7 @@ class DataSelectionSerializer( AppletSerializer ):
         super( DataSelectionSerializer, self ).__init__(projectFileGroupName)
         self.topLevelOperator = topLevelOperator
         self._dirty = False
+        self.caresOfHeadless = True
         
         self._projectFilePath = None
         
@@ -157,7 +158,7 @@ class DataSelectionSerializer( AppletSerializer ):
         
         self._dirty = False
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless):
         self._projectFilePath = projectFilePath
         self.initWithoutTopGroup(hdf5File, projectFilePath)
 
@@ -195,11 +196,16 @@ class DataSelectionSerializer( AppletSerializer ):
 
             # If the data is supposed to exist outside the project, make sure it really does.
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                if not areOnSameDrive(datasetInfo.filePath,projectFilePath):
-                    raise RuntimeError("External data must be on same drive as working directory")
-                filePath = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0] ).externalPath
+                pathData = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0])
+                filePath = pathData.externalPath
                 if not os.path.exists(filePath):
-                    raise RuntimeError("Could not find external data: " + filePath)
+                    if headless:
+                        raise RuntimeError("Could not find data at " + filePath)
+                    filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+                    newpath = self.repairFile(filePath, filt)
+                    newpath = newpath+pathData.internalPath
+                    print newpath,getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
+                    datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
 
             # Give the new info to the operator
             self.topLevelOperator.Dataset[index].setValue(datasetInfo)
@@ -261,7 +267,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         # This class is for DEserialization only.
         pass
 
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
