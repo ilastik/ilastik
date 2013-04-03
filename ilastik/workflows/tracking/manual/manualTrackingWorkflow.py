@@ -61,4 +61,5 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.BinaryImage.connect( opData.Image )        
+        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
     
