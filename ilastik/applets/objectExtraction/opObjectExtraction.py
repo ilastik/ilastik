@@ -692,8 +692,7 @@ class OpObjectExtraction(Operator):
         features = list(set(config.vigra_features).union(set(self.default_features)))
         #features = config.vigra_features
         features = [features, config.other_features]
-
-        print "features:", features
+        
         # internal operators
         self._opLabelImage = OpCachedLabelImage(parent=self)
         self._opRegFeats = OpCachedRegionFeatures(features, parent=self)

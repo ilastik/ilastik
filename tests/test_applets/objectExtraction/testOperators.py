@@ -125,10 +125,10 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
             #print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
-                assert npcounts[iobj]==counts[iobj]
+                assert npcounts[iobj] == counts[iobj]
                 objmask = labelimage[t,...]==iobj
                 npmean = np.mean(np.asarray(self.rawimage)[t,...][objmask])
-                assert npmean== means[iobj]
+                assert npmean == means[iobj]
                 #currently, we have a margin of 30, this assert is very dependent on it
                 #FIXME: make margin visible from outside and use it here
                 zmin = mins[iobj][2]

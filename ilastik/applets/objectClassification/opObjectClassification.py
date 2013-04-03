@@ -234,14 +234,19 @@ class OpObjectTrain(Operator):
                 index = numpy.nonzero(lab)
                 labelsMatrix_tmp.append(lab[index])
 
-                for channel in feats[t]:
-                    for featname in sorted(channel.keys()):
-                        value = channel[featname]
-                        if not featname in config.selected_features:
-                            continue
-                        ft = numpy.asarray(value.squeeze())
-                        featsMatrix_tmp.append(ft[index])
-
+                #check that all requested features are present
+                for featname in config.selected_features:
+                    for channel in feats[t]:
+                        if not featname in channel.keys():
+                            print "Feature", featname, "has not been computed in the previous step"
+                            print "We only have the following features now:", channel.keys()
+                            result[:] = None
+                            return
+                        else:
+                            value = channel[featname]
+                            ft = numpy.asarray(value.squeeze())
+                            featsMatrix_tmp.append(ft[index])
+                
                 featMatrix.append(_concatenate(featsMatrix_tmp, axis=1))
                 labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
 

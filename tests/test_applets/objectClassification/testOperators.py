@@ -3,15 +3,17 @@ import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import \
-    OpRelabelSegmentation, OpObjectTrain, OpObjectPredict
+    OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification
+    
+from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
-    OpRegionFeatures, OpAdaptTimeListRoi
+    OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
 
 FEATURES = \
 [
     [ 'Count',
       'RegionCenter',
-      'Coord<ArgMaxWeight>',
+      'Coord<ArgMaxWeight >',
       'Coord<Minimum>',
       'Coord<Maximum>' ],
     []
@@ -93,8 +95,11 @@ class TestOpObjectPredict(unittest.TestCase):
         rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
         rawimg = rawimg.view(vigra.VigraArray)
         rawimg.axistags = vigra.defaultAxistags('txyzc')
-
+        
         g = Graph()
+        
+        objectExtraction.config.selected_features = FEATURES[0]
+        
         self.featsop = OpRegionFeatures(FEATURES, graph=g)
         self.featsop.LabelImage.setValue(segimg)
         self.featsop.RawImage.setValue( rawimg )
@@ -118,10 +123,57 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         assert self.op.Predictions.ready()
 
-    def test_train(self):
+    def test_predict(self):
         preds = self.op.Predictions([0, 1]).wait()
         self.assertTrue(np.all(preds[0] == np.array([0, 1, 2])))
         self.assertTrue(np.all(preds[1] == np.array([0, 1, 1, 2])))
+        
+class TestFeatureSelection(unittest.TestCase):
+    def setUp(self):
+        segimg = segImage()
+        binimg = (segimg>0).astype(np.uint8)
+        labels = {0 : np.array([0, 1, 2]),
+                  1 : np.array([0, 1, 1, 2])}
 
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = rawimg.view(vigra.VigraArray)
+        rawimg.axistags = vigra.defaultAxistags('txyzc')
+
+        g = Graph()
+
+        objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
+        #Kurtosis is not actually computed
+        objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
+        
+        self.extrOp = OpObjectExtraction(graph=g)
+        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.RawImage.setValue(rawimg)
+        assert self.extrOp.RegionFeatures.ready()
+
+        self.trainop = OpObjectTrain(graph=g)
+        self.trainop.Features.resize(1)
+        self.trainop.Features.connect(self.extrOp.RegionFeatures)
+        self.trainop.Labels.resize(1)
+        self.trainop.Labels.setValues([labels])
+        self.trainop.FixClassifier.setValue(False)
+        self.trainop.ForestCount.setValue(1)
+        assert self.trainop.Classifier.ready()
+
+        self.op = OpObjectPredict(graph=g)
+        self.op.Classifier.connect(self.trainop.Classifier)
+        self.op.Features.connect(self.extrOp.RegionFeatures)
+        assert self.op.Predictions.ready()
+        
+    def test_predict(self):
+        rf = self.trainop.Classifier[0].wait()
+        
+        #pass a vector of 4 random features. vigra shouldn't complain
+        #even though we computed more than 4
+        dummy_feats = np.zeros((1,4), dtype=np.float32)
+        dummy_feats[:] = 42
+        pred = rf[0].predictProbabilities(dummy_feats)
+        
+        
+        
 if __name__ == '__main__':
     unittest.main()
