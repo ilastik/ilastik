@@ -319,10 +319,16 @@ class DataSelectionGui(QWidget):
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
         dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
         dlg.setOption( QFileDialog.HideNameFilterDetails, False )
-        dlg.setOption( QFileDialog.DontUseNativeDialog, False )
+        dlg.setOption( QFileDialog.DontUseNativeDialog, True )
         dlg.setViewMode( QFileDialog.Detail )
         dlg.setFileMode( QFileDialog.ExistingFiles )
-        
+
+        if True: # FIXME: Test scripts can't allow modal dialogs
+            dlg.show()
+            if dlg.result() == QDialog.Accepted:
+                fileNames = dlg.selectedFiles()
+            else:
+                fileNames = []
         if dlg.exec_():
             fileNames = dlg.selectedFiles()
         else:

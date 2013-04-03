@@ -15,6 +15,8 @@ ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
 import functools
 
+shell = None
+
 def startShellGui(workflowClass, testFunc = None):
     """
     Create an application and launch the shell in it.
@@ -48,7 +50,10 @@ def launchShell(workflowClass, testFunc = None):
     splashScreen.show()
     
     # Create the shell and populate it
+    global shell
     shell = IlastikShell(workflowClass=workflowClass, sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+
+    assert QApplication.instance().thread() == shell.thread()
     
     # Start the shell GUI.
     shell.show()
