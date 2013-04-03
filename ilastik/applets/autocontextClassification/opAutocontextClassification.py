@@ -6,7 +6,13 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainR
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, Op50ToMulti, OpArrayPiper, OpMultiArrayStacker
 
-from context.operators.contextVariance import OpContextVariance
+try:
+    from context.operators.contextVariance import OpContextVariance
+except ImportError:
+    import os.path
+    import warnings
+    warnings.warn("Module 'context' not found. "
+          "Module %s is not fully functional." % os.path.basename(__file__)) 
                                
 class OpAutocontextClassification( Operator ):
     """

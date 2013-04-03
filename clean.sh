@@ -1,1 +1,2 @@
-find . -name "*.pyc" | xargs rm
+#!/bin/bash
+find -name "*.pyc" -exec rm -f {} \;
