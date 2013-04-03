@@ -21,6 +21,7 @@ def binaryImage():
     img[0, 20:30, 20:30, 20:30, 0] = 1
     img[1, 20:30, 20:30, 20:30, 0] = 1
     img[1, 5:10, 5:10, 0, 0] = 1
+    img[1, 12:15, 12:15, 0, 0] = 1
     img = img.view( vigra.VigraArray )
     img.axistags = vigra.defaultAxistags('txyzc')
 
@@ -31,7 +32,8 @@ def rawImage():
     img[0,  0:10,  0:10,  0:10, 0] = 200
     img[0, 20:30, 20:30, 20:30, 0] = 100
     img[1, 20:30, 20:30, 20:30, 0] = 50
-    img[1, 5:10, 5:10, 0, 0] = 25
+    img[1, 5:10, 5:10, 0, 0] = 25 #this and next object are in each other's excl features
+    img[1, 12:15, 12:15, 0, 0] = 13 
     img = img.view( vigra.VigraArray )
     img.axistags = vigra.defaultAxistags('txyzc')
 
@@ -83,7 +85,7 @@ class TestOpRegionFeatures(unittest.TestCase):
         self.assertTrue(np.any(feats[0][0]['Count'] != feats[1][0]['Count']))
         self.assertTrue(np.any(feats[0][0]['RegionCenter'] != feats[1][0]['RegionCenter']))
 
-class testOpRegionFeatures2(unittest.TestCase):
+class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.features = [["Count", "Mean"],[]]
@@ -115,12 +117,28 @@ class testOpRegionFeatures2(unittest.TestCase):
             npcounts = np.bincount(labelimage[t,...].flat)
             counts = feats[t][0]["Count"].astype(np.uint32)
             means = feats[t][0]["Mean"]
+            sum_excl = feats[t][0]["Sum_excl"] #sum, not mean, to avoid 0/0
+            sum_incl = feats[t][0]["Sum_incl"]
+            sum = feats[t][0]["Sum"]
+            mins = feats[t][0]["Coord<Minimum>"]
+            maxs = feats[t][0]["Coord<Maximum>"]
+            #print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
                 assert npcounts[iobj]==counts[iobj]
                 objmask = labelimage[t,...]==iobj
-                npmean = np.mean(self.rawimage[t,...][objmask])
+                npmean = np.mean(np.asarray(self.rawimage)[t,...][objmask])
                 assert npmean== means[iobj]
+                #currently, we have a margin of 30, this assert is very dependent on it
+                #FIXME: make margin visible from outside and use it here
+                zmin = mins[iobj][2]
+                zmax = maxs[iobj][2]+1
+                
+                exclmask = labelimage[t,:, :, zmin:zmax, :]!=iobj
+                npsum_excl = np.sum(np.asarray(self.rawimage)[t,:, :, zmin:zmax,:][exclmask])
+                assert npsum_excl == sum_excl[iobj]
+                
+                assert sum_incl[iobj] == sum[iobj]+sum_excl[iobj]
                 
             
 
