@@ -242,6 +242,11 @@ class ManualTrackingGui(LayerViewerGui):
                 self.divLock = False
                 self.divs = []
                 self._drawer.divEvent.setChecked(False)
+                
+                self._drawer.activeTrackBox.setEnabled(True)
+                self._drawer.delTrack.setEnabled(True)
+                self._drawer.newTrack.setEnabled(True)
+                self._drawer.markMisdetection.setEnabled(True)
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
