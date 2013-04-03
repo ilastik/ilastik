@@ -14,6 +14,7 @@ class OpManualTracking(Operator):
     LabelImage = InputSlot()    
     RawImage = InputSlot()
     ActiveTrack = InputSlot(stype='int', value=0)
+    ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
     
     TrackImage = OutputSlot()
     Labels = OutputSlot(stype=Opaque, rtype=List)
@@ -22,7 +23,6 @@ class OpManualTracking(Operator):
     
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)        
-        self.tracks = {}
         self.labels = {}
         self.divisions = {}
         
@@ -105,3 +105,49 @@ class OpManualTracking(Operator):
             if (label != 0) and (label in tracked_at.keys()) and (len(tracked_at[label]) > 0):                
                 mp[label] = 0
         return mp[volume]
+    
+    
+    
+    def _getObjects(self, time_range, x_range, y_range, z_range, size_range, misdet_idx):
+        trange = range(time_range[0], time_range[1])
+        print 'trange=', trange
+        feats = self.ObjectFeatures(trange).wait()        
+          
+        filtered_labels = {}
+        oid2tids = {}
+        alltids = set()
+        for t in feats.keys():
+            rc = feats[t][0]['RegionCenter']
+            if rc.size:
+                rc = rc[1:, ...]
+                
+            ct = feats[t][0]['Count']
+            if ct.size:
+                ct = ct[1:, ...]
+            
+            print "at timestep ", t, rc.shape[0], "traxels found"
+            count = 0
+            filtered_labels[t] = []
+            oid2tids[t] = {}
+            for idx in range(rc.shape[0]):
+                oid = int(idx) + 1
+                x, y, z = rc[idx]
+                size = ct[idx]
+                if (x < x_range[0] or x >= x_range[1] or
+                    y < y_range[0] or y >= y_range[1] or
+                    z < z_range[0] or z >= z_range[1] or
+                    size < size_range[0] or size >= size_range[1]):
+                    filtered_labels[t].append(oid)
+                    continue
+                
+                count += 1
+                if t in self.labels.keys() and oid in self.labels[t].keys():
+                    if misdet_idx not in self.labels[t][oid]:
+                        oid2tids[t][oid] = self.labels[t][oid]
+                        for l in self.labels[t][oid]:
+                            alltids.add(l)   
+                         
+            print "at timestep ", t, count, "traxels passed filter"
+            
+        return oid2tids, alltids
+    

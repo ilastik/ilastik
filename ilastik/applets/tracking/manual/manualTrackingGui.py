@@ -7,6 +7,7 @@ import numpy
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
+from ilastik.applets.tracking.base.trackingUtilities import LineageH5
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -38,6 +39,16 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
+        self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        
+        self._drawer.from_time.valueChanged.connect(self._setRanges)
+        self._drawer.from_x.valueChanged.connect(self._setRanges)
+        self._drawer.from_y.valueChanged.connect(self._setRanges)
+        self._drawer.from_z.valueChanged.connect(self._setRanges)
+        self._drawer.to_time.valueChanged.connect(self._setRanges)
+        self._drawer.to_x.valueChanged.connect(self._setRanges)
+        self._drawer.to_y.valueChanged.connect(self._setRanges)
+        self._drawer.to_z.valueChanged.connect(self._setRanges)
         
         
     ###########################################
@@ -69,6 +80,11 @@ class ManualTrackingGui(LayerViewerGui):
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
+                
+                maxt = slot.meta.shape[0] - 1
+                self._setRanges()
+                self._drawer.from_time.setValue(0)                
+                self._drawer.to_time.setValue(maxt)
             
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
@@ -131,6 +147,21 @@ class ManualTrackingGui(LayerViewerGui):
         
         if self.topLevelOperatorView.LabelImage.meta.shape:
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape    
+            
+            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
+        
+            self._setRanges()
+            self._drawer.from_time.setValue(0)
+            self._drawer.to_time.setValue(maxt) 
+            self._drawer.from_x.setValue(0)
+            self._drawer.to_x.setValue(maxx)
+            self._drawer.from_y.setValue(0)
+            self._drawer.to_y.setValue(maxy)   
+            self._drawer.from_z.setValue(0)    
+            self._drawer.to_z.setValue(maxz)
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
@@ -593,4 +624,178 @@ class ManualTrackingGui(LayerViewerGui):
             self._drawer.newTrack.setEnabled(True)
             self._drawer.activeTrackBox.setEnabled(True)
         
+    def _setRanges(self):
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+        maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+        maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
         
+        from_time = self._drawer.from_time
+        to_time = self._drawer.to_time
+        from_x = self._drawer.from_x
+        to_x = self._drawer.to_x
+        from_y = self._drawer.from_y
+        to_y = self._drawer.to_y
+        from_z = self._drawer.from_z
+        to_z = self._drawer.to_z
+                
+        from_time.setRange(0, to_time.value()-1)        
+        to_time.setRange(from_time.value()+1,maxt)      
+        
+        from_x.setRange(0,to_x.value())
+        to_x.setRange(from_x.value(),maxx)
+        
+        from_y.setRange(0,to_y.value())
+        to_y.setRange(from_y.value(),maxy)
+        
+        from_z.setRange(0,to_z.value())
+        to_z.setRange(from_z.value(),maxz)
+        
+    def _onExportButtonPressed(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        
+        if directory is None or str(directory) == '':
+            print "cancelled."
+            return
+        directory = str(directory)
+        
+        time_range = [int(self._drawer.from_time.value()), int(self._drawer.to_time.value())+1]
+        x_range = [int(self._drawer.from_x.value()), int(self._drawer.to_x.value())+1]
+        y_range = [int(self._drawer.from_y.value()), int(self._drawer.to_y.value())+1]
+        z_range = [int(self._drawer.from_z.value()), int(self._drawer.to_z.value())+1]
+        size_range = [int(self._drawer.from_size.value()), int(self._drawer.to_size.value())+1]
+        
+        oid2tids, alltids = self.mainOperator._getObjects(time_range, x_range, y_range, z_range, size_range, self.misdetIdx)
+        if self.misdetIdx in alltids:
+            alltids.remove(self.misdetIdx)
+        divisions = self.mainOperator.divisions
+                
+        moves = {}
+        divs = {}
+        mergers = {}
+        apps = {}
+        disapps = {}
+        for t in oid2tids.keys():
+            moves[t] = []
+            divs[t] = []
+            mergers[t] = []
+            apps[t] = []
+            disapps[t] = []
+        
+        t_start = time_range[0]
+        t_end = time_range[1]-1
+                            
+        for tid in sorted(list(alltids)):
+            oid_prev = None            
+            
+            for t in sorted(oid2tids.keys()):  
+                oid_cur = None                
+                for o in oid2tids[t].keys():
+                    if tid in oid2tids[t][o]:
+                        oid_cur = o
+#                        found = True
+                        break
+                       
+                if (oid_prev is not None) and (oid_cur is None): # track ends
+                    if oid_prev in divisions.keys(): # division
+                        [tid_child1, tid_child2], t_div = divisions[oid_prev]
+                        oid_child1 = None
+                        oid_child2 = None
+                        for o in oid2tids[t].keys():
+                            if tid_child1 in oid2tids[t][o]:
+                                oid_child1 = o
+                            if tid_child2 in oid2tids[t][o]:
+                                oid_child2 = o
+                                          
+                        if (t_div == t-1) and (oid_child1 is not None) and (oid_child2 is not None):
+                            divs[t].append((oid_prev,oid_child1,oid_child2,0.))                            
+                            break
+                                    
+                    # else: disappearance
+                    disapps[t].append((oid_prev, 0.))                    
+                    # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
+                
+                elif (oid_prev is None) and (t != t_start) and (oid_cur is not None) and (oid_cur not in apps[t]) and (oid_cur not in divisions.keys()): # track starts
+                    apps[t].append((oid_cur, 0.))                    
+                
+                elif (oid_prev is not None) and (oid_cur is not None): # move
+                    moves[t].append((oid_prev, oid_cur, 0.))                    
+                
+                oid_prev = oid_cur
+        
+        merger_sizes = {}
+        for t in oid2tids.keys():
+            for oid in oid2tids[t].keys():
+                if len(oid2tids[t][oid]) > 1:
+                    mergers[t].append((oid, len(oid2tids[t][oid]), 0.))                    
+                    m_size = len(oid2tids[t][oid])
+                    if m_size not in merger_sizes.keys():
+                        merger_sizes[m_size] = 0
+                    merger_sizes[m_size] += 1
+        
+        print 'Merger-Sizes:', merger_sizes
+        
+        for t in sorted(oid2tids.keys()):
+            fn =  directory + "/" + str(t).zfill(5)  + ".h5"
+            print 'Writing file', fn
+            
+            roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
+            labelImage = self.mainOperator.LabelImage.get(roi).wait()
+            labelImage = labelImage[0,...,0]
+             
+            dis_at = numpy.asarray(disapps[t])
+            app_at = numpy.asarray(apps[t])
+            div_at = numpy.asarray(divs[t])
+            mov_at = numpy.asarray(moves[t])
+            merger_at = numpy.asarray(mergers[t])
+                    
+            # write only if file exists
+            with LineageH5(fn, 'a') as f_curr:
+                # delete old label image
+                if "segmentation" in f_curr.keys():
+                    del f_curr["segmentation"]
+                
+                seg = f_curr.create_group("segmentation")            
+                # write label image
+                seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
+                
+                # delete old tracking
+                if "tracking" in f_curr.keys():
+                    del f_curr["tracking"]
+    
+                tg = f_curr.create_group("tracking")            
+                
+                # write associations
+                if len(app_at):
+                    app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "cell label appeared in current file"    
+                    ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"    
+                if len(dis_at):
+                    dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "cell label disappeared in current file"
+                    ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"    
+                if len(mov_at):
+                    mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "from (previous file), to (current file)"    
+                    ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"                
+                if len(div_at):
+                    div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                    ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(merger_at):
+                    merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "descendant (current file), number of objects"    
+                    ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+        
+            print "-> results successfully written"
+              
