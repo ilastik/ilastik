@@ -35,6 +35,10 @@ class ConservationTrackingWorkflow( Workflow ):
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection",
                                                                      projectFileGroupName="DivisionDetection")
+        
+        self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
+                                                                     name="Cell Classification",
+                                                                     projectFileGroupName="CellClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
         
@@ -44,6 +48,7 @@ class ConservationTrackingWorkflow( Workflow ):
         self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.divisionDetectionApplet)
+        self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.trackingApplet)
         
     @property
@@ -60,6 +65,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
         opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
+        opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
         opOptTranslation.RawImage.connect( opRawData.Image )
@@ -75,6 +81,12 @@ class ConservationTrackingWorkflow( Workflow ):
         opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
+        
+        opCellClassification.BinaryImages.connect(opData.Image)
+        opCellClassification.RawImages.connect(opRawData.Image)
+        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
+        opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
+        opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         
         opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )

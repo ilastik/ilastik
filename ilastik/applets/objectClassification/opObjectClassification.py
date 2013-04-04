@@ -59,8 +59,16 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     DeleteLabel = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpObjectClassification, self).__init__(*args, **kwargs)
+        assert len(kwargs) == 2, 'assume that kwargs only consists of parent and featurename'
+        super(OpObjectClassification, self).__init__(*args, parent=kwargs['parent'])
 
+        if 'featurename' in kwargs and kwargs['featurename'] == "Division Detection":
+            self.selectedFeatures = config.selected_features_division_detection
+        elif 'featurename' in kwargs and kwargs['featurename'] == "Cell Classification":
+            self.selectedFeatures = config.selected_features_cell_classification
+        else:
+            self.selectedFeatures = config.selected_features
+            
         # internal operators
         opkwargs = dict(parent=self)
         self.opInputShapeReader = OpMultiLaneWrapper(OpShapeReader, **opkwargs)
@@ -77,12 +85,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
+        self.opTrain.inputs['SelectedFeatures'].setValue(self.selectedFeatures)
 
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
         self.opPredict.inputs["LabelsCount"].setValue(_MAXLABELS)
+        self.opPredict.inputs["SelectedFeatures"].setValue(self.selectedFeatures)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -111,6 +121,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             multislot[index].notifyReady(handleInputReady)
 
         self.SegmentationImages.notifyInserted(handleNewInputImage)
+        
+        
+            
 
     def setupCaches(self, imageIndex):
         """Setup the label input to correct dimensions"""
@@ -184,13 +197,14 @@ class OpObjectTrain(Operator):
     Features = InputSlot(level=1, stype=Opaque, rtype=List)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
+    SelectedFeatures = InputSlot(stype=Opaque, rtype=List)
 
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
         self._tree_count = 30
-        self.FixClassifier.setValue(False)
+        self.FixClassifier.setValue(False)        
 
     def setupOutputs(self):
         if self.inputs["FixClassifier"].value == False:
@@ -202,6 +216,7 @@ class OpObjectTrain(Operator):
         featMatrix = []
         labelsMatrix = []
 
+        selectedFeatures = self.SelectedFeatures.get([]).wait()
         for i in range(len(self.Labels)):
             feats = self.Features[i]([]).wait()
 
@@ -220,7 +235,7 @@ class OpObjectTrain(Operator):
                 for channel in feats[t]:
                     for featname in sorted(channel.keys()):
                         value = channel[featname]
-                        if not featname in config.selected_features:
+                        if not featname in selectedFeatures:
                             continue
                         ft = numpy.asarray(value.squeeze())
                         featsMatrix_tmp.append(ft[index])
@@ -276,6 +291,7 @@ class OpObjectPredict(Operator):
     Features = InputSlot(stype=Opaque, rtype=List)
     LabelsCount = InputSlot(stype='integer')
     Classifier = InputSlot()
+    SelectedFeatures = InputSlot(stype=Opaque, rtype=List)
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
@@ -314,6 +330,7 @@ class OpObjectPredict(Operator):
 
         feats = {}
         predictions = {}
+        selectedFeatures = self.SelectedFeatures.get([]).wait()        
         for t in times:
             if t in cache:
                 continue
@@ -323,7 +340,7 @@ class OpObjectPredict(Operator):
             for channel in sorted(tmpfeats[t]):
                 for featname in sorted(channel.keys()):
                     value = channel[featname]
-                    if not featname in config.selected_features:
+                    if not featname in selectedFeatures:
                         continue
                     tmpfts = numpy.asarray(value).astype(numpy.float32)
                     _atleast_nd(tmpfts, 2)

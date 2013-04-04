@@ -3,12 +3,13 @@
 compress_labels = True
 
 # all these features are precalculated in opExtractObjects
-vigra_features = ['Count','RegionCenter', 'Mean', 'Variance']
+vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', \
+                  'RegionRadii']
 
 # only these features are used. eventually these will be chosen
 # interactively. They many include features not in 'vigra_features',
 # in the case that some other features are also used.
-selected_features = ['SquaredDistance01', 'SquaredDistance02', \
+selected_features_division_detection = ['SquaredDistance01', 'SquaredDistance02', \
                      'SquaredDistance00', 'AngleDaughters', 'ChildrenSizeRatio', \
                      'SquaredDistanceRatio', 'Count', \
                      'ParentChildrenSizeRatio', 'Mean', 'Variance', 'ChildrenMeanRatio', \
@@ -18,3 +19,8 @@ selected_features = ['SquaredDistance01', 'SquaredDistance02', \
                      'SquaredDistanceRatio_corr', \
                      'ParentChildrenSizeRatio_corr', 'ChildrenMeanRatio_corr', \
                      'ParentChildrenMeanRatio_corr']
+
+selected_features_cell_classification = ['Count', 'Mean', 'Variance',\
+                     'RegionRadii']
+
+selected_features = []

@@ -294,11 +294,18 @@ class ObjectClassificationGui(LabelingGui):
             for i, channel in enumerate(feats):
                 for featname in sorted(channel.keys()):
                     value = channel[featname]
-                    if not featname in config.selected_features:
+#                    if not featname in config.selected_features:
+                    if not featname in self.op.selectedFeatures:
                         continue
-                    ft = numpy.asarray(value.squeeze())[obj]
-                    vector.append(ft)
-                    names.append("{} {}".format(featname, i))
+                    ft = numpy.array(numpy.asarray(value.squeeze())[obj])
+                    if ft.size > 1:
+                        for ii, f in enumerate(ft):
+                            vector.append(f)
+                            names.append("{} {} {}".format(featname, ii, i))
+                    else:
+                        vector.append(ft)
+                        names.append("{} {}".format(featname, i))
+                        
             vector = numpy.array(vector)
 
             preds = self.op.Predictions([t]).wait()[t]
