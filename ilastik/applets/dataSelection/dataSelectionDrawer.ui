@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>226</width>
-    <height>152</height>
+    <width>221</width>
+    <height>168</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>0</x>
      <y>0</y>
      <width>221</width>
-     <height>151</height>
+     <height>168</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -32,7 +32,30 @@
        <string>Add a single volume or image</string>
       </property>
       <property name="text">
-       <string>Add File...</string>
+       <string>Add File</string>
+      </property>
+      <property name="icon">
+       <iconset>
+        <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
+      </property>
+      <property name="autoDefault">
+       <bool>true</bool>
+      </property>
+      <property name="default">
+       <bool>true</bool>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="addMassButton">
+      <property name="toolTip">
+       <string>Add many images or volumes</string>
+      </property>
+      <property name="text">
+       <string>Add by Pattern</string>
       </property>
       <property name="icon">
        <iconset>
@@ -55,7 +78,7 @@
        <string>Create a single 3D dataset in your project from a directory of images files</string>
       </property>
       <property name="text">
-       <string>Import Stack Directory...</string>
+       <string>Import Stack Directory</string>
       </property>
       <property name="autoDefault">
        <bool>true</bool>
@@ -74,7 +97,7 @@
        <string>Select several files to create a single 3D stack</string>
       </property>
       <property name="text">
-       <string>Import Stack Files...</string>
+       <string>Import Stack Files</string>
       </property>
       <property name="autoDefault">
        <bool>true</bool>

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>524</width>
+    <height>121</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <widget class="QDialogButtonBox" name="buttonBox">
+   <property name="geometry">
+    <rect>
+     <x>350</x>
+     <y>80</y>
+     <width>161</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="directoryButton">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>10</y>
+     <width>83</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select base directory.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>Directory</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="patternLabel">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>50</y>
+     <width>57</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Pattern</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="recursiveBox">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>80</y>
+     <width>85</width>
+     <height>19</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add matching files from all subdirectories.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="text">
+    <string>recursive</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="patternInput">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>50</y>
+     <width>391</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Any pattern recognized by the glob module. For instance: &amp;quot;*.tif&amp;quot;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="directoryInput">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>10</y>
+     <width>391</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Base directory&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+ </widget>
+ <tabstops>
+  <tabstop>directoryButton</tabstop>
+  <tabstop>directoryInput</tabstop>
+  <tabstop>patternInput</tabstop>
+  <tabstop>recursiveBox</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>Dialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>Dialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
