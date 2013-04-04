@@ -161,7 +161,12 @@ class DataSelectionSerializer( AppletSerializer ):
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless):
         self._projectFilePath = projectFilePath
         self.initWithoutTopGroup(hdf5File, projectFilePath)
-
+        
+        # normally the serializer is not dirty after loading a project file
+        # however, when the file was corrupted, the user has the possibility
+        # to save the fixed file after loading it.
+        dirty = False 
+        
         infoDir = topGroup['infos']
         
         self.topLevelOperator.Dataset.resize( len(infoDir) )
@@ -204,13 +209,14 @@ class DataSelectionSerializer( AppletSerializer ):
                     filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
                     newpath = self.repairFile(filePath, filt)
                     newpath = newpath+pathData.internalPath
-                    print newpath,getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
                     datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
-
+                    
+                    dirty = True
+                    
             # Give the new info to the operator
             self.topLevelOperator.Dataset[index].setValue(datasetInfo)
 
-        self._dirty = False
+        self._dirty = dirty
     
     def updateWorkingDirectory(self,newpath,oldpath):
         
