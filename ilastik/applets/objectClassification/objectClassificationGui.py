@@ -246,8 +246,7 @@ class ObjectClassificationGui(LabelingGui):
         """
         label = self.editor.brushingModel.drawnNumber
         if label == self.editor.brushingModel.erasingNumber:
-            label = 0
-        assert 0 <= label <= self._labelingSlots.maxLabelValue.value
+            label = 0        
 
         obj = self._getObject(layer.segmentationImageSlot, pos5d)
         if obj == 0: # background; FIXME: do not hardcode

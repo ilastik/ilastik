@@ -4,7 +4,7 @@ from ilastik.applets.divisionFeatureExtraction.opDivisionFeatureExtraction impor
 from ilastik.applets.divisionFeatureExtraction.divisionFeatureExtractionGui import DivisionFeatureExtractionGui
 
 class DivisionFeatureExtractionApplet( StandardApplet ):
-    def __init__( self, name="Division Feature Extraction", workflow=None, projectFileGroupName="DivisionFeatureExtraction" ):
+    def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction" ):
         super(DivisionFeatureExtractionApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ DivisionFeatureExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
 
