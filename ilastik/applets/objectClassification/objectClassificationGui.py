@@ -273,8 +273,7 @@ class ObjectClassificationGui(LabelingGui):
         label = self.editor.brushingModel.drawnNumber
         if label == self.editor.brushingModel.erasingNumber:
             label = 0
-        assert 0 <= label <= self._labelingSlots.maxLabelValue.value
-
+        
         topLevelOp = self.topLevelOperatorView.viewed_operator()
         imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 

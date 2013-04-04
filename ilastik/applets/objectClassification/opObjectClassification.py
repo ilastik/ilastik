@@ -71,9 +71,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
+        # Find the highest label in all the label images
+        self.opMaxLabel = OpMaxLabel( parent=self, graph=self.graph)
+        self.opMaxLabel.Inputs.connect( self.LabelInputs )
+
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
-        self.opPredict.inputs["LabelsCount"].setValue(_MAXLABELS)
+        self.opPredict.inputs["LabelsCount"].connect(self.opMaxLabel.Output)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -87,8 +91,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
         
+        
+        
         # connect outputs
-        self.NumLabels.setValue(_MAXLABELS)
+        self.NumLabels.connect( self.opMaxLabel.Output )
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
@@ -332,13 +338,15 @@ class OpObjectPredict(Operator):
         self.Probabilities.meta.mapping_dtype = numpy.float32
         self.Probabilities.meta.axistags = None
 
-        nlabels = self.LabelsCount.value
-        self.ProbabilityChannels.resize(nlabels)
-        for oslot in self.ProbabilityChannels:
-            oslot.meta.shape = self.Features.meta.shape
-            oslot.meta.dtype = object
-            oslot.meta.axistags = None
-            oslot.meta.mapping_dtype = numpy.float32
+        if self.LabelsCount.ready():
+            nlabels = self.LabelsCount[:].wait()
+            nlabels = int(nlabels[0])
+            self.ProbabilityChannels.resize(nlabels)
+            for oslot in self.ProbabilityChannels:
+                oslot.meta.shape = self.Features.meta.shape
+                oslot.meta.dtype = object
+                oslot.meta.axistags = None
+                oslot.meta.mapping_dtype = numpy.float32
         
 
         self.prob_cache = dict()
@@ -533,3 +541,50 @@ class OpMultiRelabelSegmentation(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
             
+class OpMaxLabel(Operator):
+    """ Finds the maximum label value in the input labels
+        More or less copied from opPixelClassification::OpMaxValue
+    """
+    name = "OpMaxLabel"
+    Inputs = InputSlot(level=1, stype=Opaque)
+    Output = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMaxLabel, self).__init__(*args, **kwargs)
+        self.Output.meta.shape = (1,)
+        self.Output.meta.dtype = object
+        self._output = 0 #internal cache 
+    
+    
+    def setupOutputs(self):
+        self.updateOutput()
+        self.Output.setValue(self._output)
+
+    def execute(self, slot, subindex, roi, result):
+        result[0] = self._output
+        return result
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        self.updateOutput()
+        self.Output.setValue(self._output)
+
+    def updateOutput(self):
+        # Return the max value of all our inputs
+        maxValue = None
+        for i, inputSubSlot in enumerate(self.Inputs):
+            # Only use inputs that are actually configured
+            if inputSubSlot.ready():
+                subSlotMax = numpy.max(inputSubSlot.value)
+                #subSlotMax = 0
+                #print inputSubSlot.value
+                #for label_array in inputSubSlot.value.items():
+                #    localMax = numpy.max(label_array)
+                #    subSlotMax = max(subSlotMax, localMax)
+                    
+                if maxValue is None:
+                    maxValue = subSlotMax
+                else:
+                    maxValue = max(maxValue, subSlotMax)
+
+        self._output = maxValue
+
