@@ -104,7 +104,7 @@ def getPathVariants(originalPath, workingDirectory):
     
     if os.path.isabs(originalPath):
         absPath = originalPath
-        assert areOnSameDrive(originalPath,workingDirectory),"All data files have to be on same drive."
+        assert areOnSameDrive(originalPath,workingDirectory),"All data files have to be on the same drive. You can move the data file and try again."
         relPath = os.path.relpath(absPath, workingDirectory).replace("\\","/")
     else:
         relPath = originalPath

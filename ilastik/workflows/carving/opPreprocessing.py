@@ -146,7 +146,8 @@ class OpPreprocessing(Operator):
                 self.applet.progress = x
         
         mst= MSTSegmentor(labelVolume, volume_feat.astype(numpy.float32), edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
-        mst.raw = volume
+        
+        #despite convention, mst.raw is not set here in order to avoid redundant data storage 
         
         #Output is of shape 1
         result[0] = mst
