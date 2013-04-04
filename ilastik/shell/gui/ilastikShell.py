@@ -210,7 +210,7 @@ class IlastikShell( QMainWindow ):
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
-        self._recorder = EventRecorder(parent=QApplication.instance())
+        self._recorder = None
 
     @property
     def _applets(self):
@@ -534,6 +534,8 @@ class IlastikShell( QMainWindow ):
                 if self.appletStack.indexOf( centralWidget ) == -1:
                     self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
                     self.appletStack.insertWidget( applet_index, centralWidget )
+                    # For test recording purposes, every gui we add MUST have a unique name
+                    centralWidget.setObjectName("centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
             self.appletStack.setCurrentIndex(applet_index)
 
@@ -545,6 +547,8 @@ class IlastikShell( QMainWindow ):
                 if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
                     self.viewerControlStack.addWidget( viewerControlWidget )
                 self.viewerControlStack.setCurrentWidget(viewerControlWidget)
+                # For test recording purposes, every gui we add MUST have a unique name
+                viewerControlWidget.setObjectName( "viewerControls_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
@@ -564,6 +568,8 @@ class IlastikShell( QMainWindow ):
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
                 appletDrawerItem.setSizeHint( 0, sizeHint )
+                # For test recording purposes, every gui we add MUST have a unique name
+                appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
 
 

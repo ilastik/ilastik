@@ -1,12 +1,14 @@
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, SLOT
 from PyQt4.QtCore import Qt, QObject, QEvent, QChildEvent, QTimer, QTimerEvent, QThread
-from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QAction, QActionEvent, QPaintEvent
+from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QAction, QActionEvent, QPaintEvent, QCursor, QComboBox, QResizeEvent
 
 import time
 import threading
+import logging
+logger = logging.getLogger(__name__)
 
 def assign_default_object_name( obj ):
-    parent = obj.parent()
+    parent = QObject.parent(obj)
     if parent is None:
         # We just name the object after it's type and hope for the best.
         obj.setObjectName( obj.__class__.__name__ )
@@ -17,16 +19,55 @@ def assign_default_object_name( obj ):
         assert newname not in existing_names
         obj.setObjectName( newname )
 
+def has_unique_name(obj):
+    parent = QObject.parent(obj)
+    if parent is None:
+        return True # We assume that top-level widgets have unique names, which should usually be true.
+    obj_name = obj.objectName()
+    for child in parent.children():
+        if child is not obj and child.objectName() == obj_name:
+            return False
+    return True
+
+def normalize_child_names(parent):
+    """
+    Make sure no two children of parent have the same name.
+    If two children have the same name, only rename the second one.
+    """
+    existing_names = set()
+    for child in parent.children():
+        if child.objectName() in existing_names:
+            assign_default_object_name(child)
+        existing_names.add( child.objectName() )
+
 def get_fully_qualified_name(obj):
-    parent = obj.parent()
+    """
+    Return a fully qualified object name of the form someobject.somechild.somegrandchild.etc
+    Before returning, this function renames any children that don't have unique names.
+
+    Note: The name uniqueness check and renaming algorithm are terribly inefficient, 
+          but it doesn't seem to slow things down much.  We could improve this later if necessary.
+    """
+    parent = QObject.parent(obj)
     objName = obj.objectName()
     if objName == "":
         assign_default_object_name(obj)
-        objName = obj.objectName()
-        
+    if not has_unique_name(obj):
+        normalize_child_names(parent)
+    
+    objName = obj.objectName()
+
     if parent is None:
         return objName
-    return "{}.".format( get_fully_qualified_name(parent) ) + objName
+    
+    fullname = "{}.".format( get_fully_qualified_name(parent) ) + objName
+
+    # Make sure no siblings have the same name!
+    for sibling in parent.children():
+        if sibling != obj:
+            assert sibling.objectName() != objName, "Detected multiple objects with full name: {}".format( fullname )
+
+    return fullname
 
 def locate_immediate_child(parent, childname):
     if parent is None:
@@ -37,6 +78,8 @@ def locate_immediate_child(parent, childname):
     for child in siblings:
         if child.objectName() == "":
             assign_default_object_name(child)
+        if not has_unique_name(child):
+            normalize_child_names(parent)
         if child.objectName() == childname:
             return child
     return None
@@ -50,8 +93,13 @@ def locate_descendent(parent, full_name):
     else:
         return locate_descendent( child, '.'.join(names[1:]) )
 
-def get_named_object(full_name):
-    return locate_descendent(None, full_name)
+def get_named_object(full_name, timeout=10.0):
+    obj = locate_descendent(None, full_name)
+    while obj is None and timeout > 0.0:
+        time.sleep(1.0)
+        timeout -= 1.0
+        obj = locate_descendent(None, full_name)
+    return obj
 
 event_serializers = {}
 event_deserializers = {}
@@ -87,20 +135,24 @@ def QKeyEvent_to_string(keyEvent):
 def QMoveEvent_to_string(moveEvent):
     return "QMoveEvent({}, {})".format( moveEvent.pos(), moveEvent.oldPos() )
 
+@register_serializer(QResizeEvent)
+def QResizeEvent_to_string(resizeEvent):
+    return "QResizeEvent({}, {})".format( resizeEvent.size(), resizeEvent.oldSize() )
+
 @register_serializer(QWindowStateChangeEvent)
 def QWindowStateChangeEvent_to_string(windowStateChangeEvent):
     return "QWindowStateChangeEvent(0x{:x})".format( int(windowStateChangeEvent.oldState()) )
 
-@register_serializer(QActionEvent)
-def QActionEvent_to_string(actionEvent):
-    action = actionEvent.action()
-    parentName = get_fully_qualified_name(action.parent())
-    actionStr = "QAction('{}', get_named_object('{}'))".format( action.text(), parentName )
-    
-    # Can we safely ignore the 'before' field?
-    # Let's hope so...
-    # before = actionEvent.before()
-    return "QActionEvent({}, {})".format( actionEvent.type(), actionStr )
+#@register_serializer(QActionEvent)
+#def QActionEvent_to_string(actionEvent):
+#    action = actionEvent.action()
+#    parentName = get_fully_qualified_name(action.parent())
+#    actionStr = "QAction('{}', get_named_object('{}'))".format( action.text(), parentName )
+#    
+#    # Can we safely ignore the 'before' field?
+#    # Let's hope so...
+#    # before = actionEvent.before()
+#    return "QActionEvent({}, {})".format( actionEvent.type(), actionStr )
 
 @register_serializer(QEvent)
 def QEvent_to_string(event):
@@ -123,7 +175,7 @@ class QDummy(QObject):
 
     def event(self, e):
         if e.type() == QDummy.SetEvent:
-            #assert threading.current_thread().name == "MainThread"
+            assert threading.current_thread().name == "MainThread"
             self.set()
             return True
         return False
@@ -164,15 +216,17 @@ def post_event(obj, event):
     
     syncher = QDummy()
     syncher.moveToThread( obj.thread() )
-    obj.installEventFilter(syncher)
+    syncher.setParent( QApplication.instance() )
+    #obj.installEventFilter(syncher)
 
     count = 1
     while count > 0:
-        print "count:",count
         count -= 1
-        QApplication.postEvent(obj, QEvent(QDummy.SetEvent), -100)
-        syncher.wait()
-        syncher.clear()
+
+#        print "count:",count
+#        QApplication.postEvent(obj, QEvent(QDummy.SetEvent), -100)
+#        syncher.wait()
+#        syncher.clear()
         
         print "Signaling..."
         signaler = Signaler()
@@ -182,29 +236,18 @@ def post_event(obj, event):
         syncher.clear()
         time.sleep(0)
         
-    obj.removeEventFilter(syncher)
-
-    syncher = QDummy()
-    syncher.moveToThread( QApplication.instance().thread() )
-
-    count = 1
-    while count > 0:
-        print "count:",count
-        count -= 1
-        QApplication.postEvent(syncher, QEvent(QDummy.SetEvent), -100)
-        syncher.wait()
-        syncher.clear()
-        
-        print "Signaling..."
-        signaler = Signaler()
-        signaler.sig.connect( syncher.set, Qt.QueuedConnection )
-        signaler.sig.emit()
-        syncher.wait()
-        syncher.clear()
-        time.sleep(0)
+    #obj.removeEventFilter(syncher)
 
 def verify_object(obj, objname):
     assert obj is not None, "Couldn't find object: {}".format(objname)
+
+def has_ancestor(obj, object_type):
+    parent = QObject.parent( obj )
+    if parent is None:
+        return False
+    if isinstance( parent, object_type ):
+        return True
+    return has_ancestor( parent, object_type )
 
 class EventRecorder( QObject ):
     syncEvent = None
@@ -216,7 +259,7 @@ class EventRecorder( QObject ):
             EventRecorder.syncEvent = QDummy(parent=self)
 
     QEvent_Style = 91
-    IgnoredEventTypes = set( [ QEvent.Paint, QEvent_Style, QEvent.KeyboardLayoutChange, QEvent.WindowDeactivate, QEvent.ActivationChange ] )
+    IgnoredEventTypes = set( [ QEvent.Paint, QEvent_Style, QEvent.KeyboardLayoutChange, QEvent.WindowActivate, QEvent.WindowDeactivate, QEvent.ActivationChange ] )
     IgnoredEventClasses = (QChildEvent, QTimerEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent)
 
     def eventFilter(self, watched, event):
@@ -224,18 +267,28 @@ class EventRecorder( QObject ):
             try:
                 eventstr = event_to_string(event)
             except KeyError:
-                eventstr = str(event)
-
-            if self._shouldSaveEvent(event):
+                logger.warn("Don't know how to record event: {}".format( str(event) ))
+                print "Don't know", str(event)
+            else:
                 self._captured_events.append( (eventstr, get_fully_qualified_name(watched)) )
-                print "Got event:", eventstr, "in", get_fully_qualified_name(watched)
+#            print "Got event:", eventstr, "in", get_fully_qualified_name(watched)
+#            widgetUnderCursor = QApplication.instance().widgetAt( QCursor.pos() )
+#            if widgetUnderCursor is not None:
+#                print "Cursor is over", get_fully_qualified_name(widgetUnderCursor)
         return False
 
     def _shouldSaveEvent(self, event):
         # Special cases:
         if isinstance(event, QMouseEvent):
-            # Ignore mouse movements if the user isn't pressing anything
-            if int(event.button()) == 0 and int(event.modifiers()) == 0:
+            if event.type() == QEvent.MouseMove \
+                and int(event.button()) == 0 \
+                and int(event.buttons()) == 0 \
+                and int(event.modifiers()) == 0:
+                # Ignore most mouse movement events if the user isn't pressing anything.
+                # Somewhat hackish (and slow), but we have to record mouse movements during combo box usage.
+                widgetUnderCursor = QApplication.instance().widgetAt( QCursor.pos() )
+                if widgetUnderCursor is not None and widgetUnderCursor.objectName() == "qt_scrollarea_viewport":
+                    return has_ancestor(widgetUnderCursor, QComboBox)
                 return False
             else:
                 return True
