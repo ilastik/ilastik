@@ -32,7 +32,7 @@ def segImage():
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
 
-
+'''
 class TestOpRelabelSegmentation(unittest.TestCase):
     def setUp(self):
         g = Graph()
@@ -85,6 +85,7 @@ class TestOpObjectTrain(unittest.TestCase):
         self.op.Labels.setValue(labels)
        
         assert self.op.Classifier.ready()
+'''
 
 class TestOpObjectPredict(unittest.TestCase):
     def setUp(self):
@@ -98,7 +99,7 @@ class TestOpObjectPredict(unittest.TestCase):
         
         g = Graph()
         
-        objectExtraction.config.selected_features = FEATURES[0]
+        objectExtraction.config.selected_features = ["Count"]
         
         self.featsop = OpRegionFeatures(FEATURES, graph=g)
         self.featsop.LabelImage.setValue(segimg)
@@ -121,13 +122,36 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op = OpObjectPredict(graph=g)
         self.op.Classifier.connect(self.trainop.Classifier)
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.LabelsCount.setValue(2)
         assert self.op.Predictions.ready()
 
     def test_predict(self):
         preds = self.op.Predictions([0, 1]).wait()
         self.assertTrue(np.all(preds[0] == np.array([0, 1, 2])))
         self.assertTrue(np.all(preds[1] == np.array([0, 1, 1, 2])))
+        probs = self.op.Probabilities([0, 1]).wait()
+        probChannel0Time0 = self.op.ProbabilityChannels[0][0].wait()
+        probChannel1Time0 = self.op.ProbabilityChannels[1][0].wait()
+        probChannel0Time1 = self.op.ProbabilityChannels[0][1].wait()
+        probChannel1Time1 = self.op.ProbabilityChannels[1][1].wait()
+        probChannel0Time01 = self.op.ProbabilityChannels[0]([0, 1]).wait()
+        print "probs:", probs[1][:, 0]
+        print "probChannels:", probChannel0Time1[1]
+        assert np.all(probChannel0Time0[0]==probs[0][:, 0])
+        assert np.all(probChannel1Time0[0]==probs[0][:, 1])
+        assert np.all(probChannel0Time1[1]==probs[1][:, 0])
+        assert np.all(probChannel1Time1[1]==probs[1][:, 1])
+        assert np.all(probChannel0Time01[0]==probs[0][:, 0])
+        assert np.all(probChannel0Time01[1]==probs[1][:, 0])
         
+        
+        
+        #assert np.all(probChannels[1][:]==probs[1][:, 1])
+        #print probs[0]
+        #print probs[1]
+        
+        
+'''        
 class TestFeatureSelection(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
@@ -159,10 +183,10 @@ class TestFeatureSelection(unittest.TestCase):
         self.trainop.ForestCount.setValue(1)
         assert self.trainop.Classifier.ready()
 
-        self.op = OpObjectPredict(graph=g)
-        self.op.Classifier.connect(self.trainop.Classifier)
-        self.op.Features.connect(self.extrOp.RegionFeatures)
-        assert self.op.Predictions.ready()
+        #self.op = OpObjectPredict(graph=g)
+        #self.op.Classifier.connect(self.trainop.Classifier)
+        #self.op.Features.connect(self.extrOp.RegionFeatures)
+        #assert self.op.Predictions.ready()
         
     def test_predict(self):
         rf = self.trainop.Classifier[0].wait()
@@ -172,8 +196,52 @@ class TestFeatureSelection(unittest.TestCase):
         dummy_feats = np.zeros((1,4), dtype=np.float32)
         dummy_feats[:] = 42
         pred = rf[0].predictProbabilities(dummy_feats)
+'''
+
+class TestFullOperator(unittest.TestCase):
+    def setUp(self):
+        segimg = segImage()
+        binimg = (segimg>0).astype(np.uint8)
+        labels = {0 : np.array([0, 1, 2]),
+                  1 : np.array([0, 1, 1, 2])}
+
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = rawimg.view(vigra.VigraArray)
+        rawimg.axistags = vigra.defaultAxistags('txyzc')
+
+        g = Graph()
+
+        objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
+        objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
+        
+        self.extrOp = OpObjectExtraction(graph=g)
+        self.extrOp.BinaryImage.setValue(binimg)
+        self.extrOp.RawImage.setValue(rawimg)
+        assert self.extrOp.RegionFeatures.ready()
+        
+        self.classOp = OpObjectClassification(graph=g)
+        self.classOp.BinaryImages.resize(1)
+        self.classOp.BinaryImages.setValues([binimg])
+        #print "bin", self.classOp.BinaryImages.ready()
+        self.classOp.SegmentationImages.resize(1)
+        self.classOp.SegmentationImages.setValues([segimg])
+        #print "seg", self.classOp.SegmentationImages.ready()
+        self.classOp.RawImages.resize(1)
+        self.classOp.RawImages.setValues([rawimg])
+        #print "raw", self.classOp.RawImages.ready()
+        self.classOp.LabelInputs.resize(1)
+        self.classOp.LabelInputs.setValues([labels])
+        self.classOp.LabelsAllowedFlags.resize(1)
+        self.classOp.LabelsAllowedFlags.setValues([True])
+        #self.classOp.ObjectFeatures.resize(1)
+        self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
         
         
-        
+    def test(self):
+        assert self.classOp.Predictions.ready()
+        probs = self.classOp.PredictionImages[0][:].wait()
+        print probs.shape
+        prob_channels = self.classOp.PredictionProbabilityChannels[0][0][:].wait()
+
 if __name__ == '__main__':
     unittest.main()

@@ -136,8 +136,7 @@ class ObjectClassificationGui(LabelingGui):
 
         # Base class provides the label layer.
         layers = super(ObjectClassificationGui, self).setupLayers()
-        #This is just for colors
-        labels = self.labelListData
+        
 
         labelOutput = self._labelingSlots.labelOutput
         binarySlot = self.op.BinaryImages
@@ -151,13 +150,10 @@ class ObjectClassificationGui(LabelingGui):
             layer = ColortableLayer(self.objectssrc, ct)
             layer.name = "Objects"
             layer.opacity = 0.5
+            layer.visible = False
             layers.append(layer)
 
-        if rawSlot.ready():
-            self.rawimagesrc = LazyflowSource(rawSlot)
-            layer = self.createStandardLayerFromSlot(rawSlot)
-            layer.name = "Raw data"
-            layers.append(layer)
+        
 
         if binarySlot.ready():
             ct_binary = [QColor(0, 0, 0, 0).rgba(),
@@ -165,8 +161,34 @@ class ObjectClassificationGui(LabelingGui):
             self.binaryimagesrc = LazyflowSource(binarySlot)
             layer = ColortableLayer(self.binaryimagesrc, ct_binary)
             layer.name = "Binary Image"
+            layer.visible = False
             layers.append(layer)
 
+        #This is just for colors
+        labels = self.labelListData
+        for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
+            if probSlot.ready() and channel < len(labels):
+                ref_label = labels[channel]
+                probsrc = LazyflowSource(probSlot)
+                probLayer = AlphaModulatedLayer( probsrc,
+                                                 tintColor=ref_label.pmapColor(),
+                                                 range=(0.0, 1.0),
+                                                 normalize=(0.0, 1.0) )
+                probLayer.opacity = 0.25
+                probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+
+                def setLayerColor(c, predictLayer=probLayer):
+                    predictLayer.tintColor = c
+
+                def setLayerName(n, predictLayer=probLayer):
+                    newName = "Prediction for %s" % n
+                    predictLayer.name = newName
+
+                setLayerName(ref_label.name)
+                ref_label.pmapColorChanged.connect(setLayerColor)
+                ref_label.nameChanged.connect(setLayerName)
+                layers.insert(0, probLayer)
+                
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
@@ -179,7 +201,12 @@ class ObjectClassificationGui(LabelingGui):
             # put first, so that it is visible after hitting "live
             # predict".
             layers.insert(0, self.predictlayer)
-
+        if rawSlot.ready():
+            self.rawimagesrc = LazyflowSource(rawSlot)
+            layer = self.createStandardLayerFromSlot(rawSlot)
+            layer.name = "Raw data"
+            layers.append(layer)
+        
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
         # __init__(), but it does not take effect there.
@@ -286,7 +313,8 @@ class ObjectClassificationGui(LabelingGui):
                     ft = numpy.asarray(value.squeeze())[obj]
                     vector.append(ft)
                     names.append("{} {}".format(featname, i))
-            vector = numpy.array(vector)
+            
+            #vector = numpy.array(vector)
 
             preds = self.op.Predictions([t]).wait()[t]
             if len(preds) < obj:
@@ -309,4 +337,6 @@ class ObjectClassificationGui(LabelingGui):
             print "features names: {}".format(names)
             print "probabilities:  {}".format(prob)
             print "prediction:     {}".format(pred)
+           
+            
             print "------------------------------------------------------------"

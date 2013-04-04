@@ -19,7 +19,7 @@ _MAXLABELS = 2
 
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
-# features from the first channel are used in this operater.
+# features from the first channel are used in this operator.
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
     name = "OpObjectClassification"
@@ -30,7 +30,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     ###############
     BinaryImages = InputSlot(level=1) # for visualization
     RawImages = InputSlot(level=1) # for visualization
-    SegmentationImages = InputSlot(level=1)
+    SegmentationImages = InputSlot(level=1) #connected components
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
@@ -43,8 +43,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
     Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
-    PredictionImages = OutputSlot(level=1)
-    SegmentationImagesOut = OutputSlot(level=1)
+    PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
+    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
+    SegmentationImagesOut = OutputSlot(level=1) #input connected componen
 
     # TODO: not actually used
     Eraser = OutputSlot()
@@ -59,6 +60,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
         self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
 
         self.classifier_cache = OpValueCache(parent=self)
 
@@ -71,6 +73,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
+        self.opPredict.inputs["LabelsCount"].setValue(_MAXLABELS)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -79,17 +82,24 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredictionsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opPredictionsToImage.inputs["ObjectMap"].connect(self.opPredict.Predictions)
         self.opPredictionsToImage.inputs["Features"].connect(self.ObjectFeatures)
-
+        
+        self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
+        self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
+        self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        
         # connect outputs
         self.NumLabels.setValue(_MAXLABELS)
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
+        self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
         #self.Classifier.connect(self.opTrain.Classifier)
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
+        
+        
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)
@@ -107,6 +117,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelInputs.resize(numImages)
         self.LabelInputs[imageIndex].meta.shape = (1,)
         self.LabelInputs[imageIndex].meta.dtype = object
+        self.LabelInputs[imageIndex].meta.mapping_dtype = numpy.uint8
         self.LabelInputs[imageIndex].meta.axistags = None
         self._resetLabelInputs(imageIndex)
 
@@ -302,9 +313,11 @@ class OpObjectPredict(Operator):
 
     Features = InputSlot(rtype=List, stype=Opaque)
     Classifier = InputSlot()
+    LabelsCount = InputSlot(stype='integer')
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
+    ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
     
     #SegmentationThreshold = 0.5
 
@@ -312,15 +325,26 @@ class OpObjectPredict(Operator):
         self.Predictions.meta.shape = self.Features.meta.shape
         self.Predictions.meta.dtype = object
         self.Predictions.meta.axistags = None
+        self.Predictions.meta.mapping_dtype = numpy.uint8
 
         self.Probabilities.meta.shape = self.Features.meta.shape
         self.Probabilities.meta.dtype = object
+        self.Probabilities.meta.mapping_dtype = numpy.float32
         self.Probabilities.meta.axistags = None
+
+        nlabels = self.LabelsCount.value
+        self.ProbabilityChannels.resize(nlabels)
+        for oslot in self.ProbabilityChannels:
+            oslot.meta.shape = self.Features.meta.shape
+            oslot.meta.dtype = object
+            oslot.meta.axistags = None
+            oslot.meta.mapping_dtype = numpy.float32
+        
 
         self.prob_cache = dict()
 
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.Predictions or slot == self.Probabilities
+        assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels
 
         times = roi._l
         if len(times) == 0:
@@ -393,6 +417,10 @@ class OpObjectPredict(Operator):
             for t in times:
                 labels[t][0] = 0 # Background gets the zero label
             return labels
+        elif slot == self.ProbabilityChannels:
+            prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
+            return prob_single_channel 
+        
         else:
             assert False, "Unknown input slot"
 
@@ -401,6 +429,7 @@ class OpObjectPredict(Operator):
         self.prob_cache = dict()
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
+        self.ProbabilityChannels.setDirty(())
 
 
 class OpRelabelSegmentation(Operator):
@@ -413,19 +442,18 @@ class OpRelabelSegmentation(Operator):
     name = "OpToImage"
     Image = InputSlot()
     ObjectMap = InputSlot(stype=Opaque, rtype=List)
-    Features = InputSlot(rtype=List, stype=Opaque)
+    Features = InputSlot(rtype=List, stype=Opaque) #this is needed to limit dirty propagation to the object bbox
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Image.meta)
+        self.Output.meta.dtype = self.ObjectMap.meta.mapping_dtype
 
     def execute(self, slot, subindex, roi, result):
         img = self.Image(roi.start, roi.stop).wait()
-
         for t in range(roi.start[0], roi.stop[0]):
             map_ = self.ObjectMap([t]).wait()
             tmap = map_[t]
-            
             # FIXME: necessary because predictions are returned
             # enclosed in a list.
             if isinstance(tmap, list):
@@ -439,10 +467,10 @@ class OpRelabelSegmentation(Operator):
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
-
-            img[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
-
-        return img
+            
+            result[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
+        
+        return result
     
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Image:
@@ -472,3 +500,36 @@ class OpRelabelSegmentation(Operator):
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
+                    
+class OpMultiRelabelSegmentation(Operator):
+    """Takes a segmentation image and multiple mappings and returns the
+    mapped images.
+
+    For instance, map prediction probabilities for different classes onto objects.
+
+    """
+    name = "OpToImageMulti"
+    Image = InputSlot()
+    ObjectMaps = InputSlot(stype=Opaque, rtype=List, level=1)
+    Features = InputSlot(rtype=List, stype=Opaque) #this is needed to limit dirty propagation to the object bbox
+    Output = OutputSlot(level=1)
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMultiRelabelSegmentation, self).__init__(*args, **kwargs)
+        self._innerOperators = []
+        
+    def setupOutputs(self):
+        nmaps = len(self.ObjectMaps)
+        for islot in self.ObjectMaps:
+            op = OpRelabelSegmentation(parent=self)
+            op.Image.connect(self.Image)
+            op.ObjectMap.connect(islot)
+            op.Features.connect(self.Features)
+            self._innerOperators.append(op)
+        self.Output.resize(nmaps)
+        for i, oslot in enumerate(self.Output):
+            oslot.connect(self._innerOperators[i].Output)
+            
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+            
