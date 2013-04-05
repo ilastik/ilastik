@@ -35,7 +35,7 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
-from ilastik.shell.gui.eventRecorder import EventRecorder
+from ilastik.utility.gui.eventRecorder import EventRecorder
 from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -369,12 +369,9 @@ class IlastikShell( QMainWindow ):
             self._recorder.stop()
 
     def _playRecording(self):
-        print "Loading recording...."
         _globals = {}
         _locals = {}
-        execfile('/tmp/recording.py', _globals, _locals)
-        print "Playing recording...."
-        
+        execfile('/tmp/recording.py', _globals, _locals)        
         th = threading.Thread(target=_locals['play_commands'])
         th.start()
     

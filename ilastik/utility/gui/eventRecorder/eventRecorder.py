@@ -1,6 +1,8 @@
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, SLOT
+from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtCore import Qt, QObject, QEvent, QChildEvent, QTimer, QTimerEvent, QThread
-from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QAction, QActionEvent, QPaintEvent, QCursor, QComboBox, QResizeEvent
+from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWheelEvent, \
+                        QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QAction, \
+                        QActionEvent, QPaintEvent, QCursor, QComboBox, QResizeEvent
 
 import time
 import threading
