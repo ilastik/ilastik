@@ -3,7 +3,7 @@
 compress_labels = False
 
 # all these features are precalculated in opExtractObjects
-vigra_features = ['Count', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'RegionCenter']
+vigra_features = ['Count', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'RegionCenter', 'RegionAxes']
 other_features = ['lbp', 'lbp_incl', 'lbp_excl', 'bad_slices']
 
 #vigra_features = ['Count', 'Mean']

@@ -28,6 +28,9 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
     
     MARGIN = 30
+    MAX_OBJECT_SIZE = 1000000
+    OffsetSensitiveFeatures = ["RegionCenter", "CenterOfMass", "Coord<Minimum>", "Coord<Maximum>", "RegionAxes", \
+                               "RegionRadii", "Coord<ArgMaxWeight>", "Coord<ArgMinWeight>"]
     
     def __init__(self, featureNames, *args, **kwargs):
         super( OpRegionFeatures3d, self ).__init__(*args, **kwargs)
@@ -90,12 +93,30 @@ class OpRegionFeatures3d(Operator):
         image = numpy.asarray(image, dtype=numpy.float32)
         labels = numpy.asarray(labels, dtype=numpy.uint32)
         
+        feature_names_first = [feat for feat in self._vigraFeatureNames if feat in self.OffsetSensitiveFeatures]
+        feature_names_second = [feat for feat in self._vigraFeatureNames if not feat in self.OffsetSensitiveFeatures]
         
-        minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
+        if not "Coord<Minimum>" in feature_names_first:
+            feature_names_first.append("Coord<Minimum>")
+        if not "Coord<Maximum>" in feature_names_first:
+            feature_names_first.append("Coord<Maximum>")
+        if not "Count" in feature_names_first:
+            feature_names_first.append("Count")
+            
+        #minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
     
-        mins = minmax["Coord<Minimum>"]
-        maxs = minmax["Coord<Maximum>"]
-        counts = minmax["Count"]
+        features_first = vigra.analysis.extractRegionFeatures(image, labels, feature_names_first, ignoreLabel=0)
+        
+        feature_dict = {}
+        for key in features_first.keys():
+            feature_dict[key] = features_first[key]
+        #feature_dict["Coord<Minimum>"]=mins
+        #feature_dict["Coord<Maximum>"]=maxs
+        #feature_dict["Count"]=counts
+        
+        mins = features_first["Coord<Minimum>"]
+        maxs = features_first["Coord<Maximum>"]
+        counts = features_first["Count"]
         
         nobj = mins.shape[0]
         features_obj = [None] #don't compute for the 0-th object (the background)
@@ -114,7 +135,7 @@ class OpRegionFeatures3d(Operator):
             
         for i in range(1,nobj):
             print "processing object ", i
-            if counts[i]>1000000:
+            if counts[i] > self.MAX_OBJECT_SIZE:
                 #avoid computing features for over-large objects which are clearly not synapses
                 #this can happen despite the size filtering in two-level thresholding, as one giant object
                 #can break into many smaller pieces at higher threshold and then get merged again at lower
@@ -127,6 +148,8 @@ class OpRegionFeatures3d(Operator):
                 if first_good<=i:
                     first_good=i+1
                 continue
+            
+            #find the bounding box
             minx = max(mins[i][xAxis]-self.MARGIN, 0)
             miny = max(mins[i][yAxis]-self.MARGIN, 0)
             minz = max(mins[i][zAxis], 0)
@@ -147,17 +170,13 @@ class OpRegionFeatures3d(Operator):
             rawbbox = image[key]
             ccbboxobject = numpy.where(ccbbox==i, 1, 0)
             
-            #ccbbox = labels[minx:maxx, miny:maxy, minz:maxz]
-            #rawbbox = image[minx:maxx, miny:maxy, minz:maxz]
-            #ccbboxobject = numpy.where(ccbbox==i, 1, 0)
-            
+            #find the context area around the object
             bboxshape = 3*[None]
             bboxshape[xAxis] = maxx-minx
             bboxshape[yAxis] = maxy-miny
             bboxshape[zAxis] = maxz-minz
             bboxshape = tuple(bboxshape)
             passed = numpy.zeros(bboxshape, dtype=bool)
-            #passed = numpy.zeros((maxx-minx, maxy-miny, maxz-minz), dtype=bool)
             
             for iz in range(maxz-minz):
                 #FIXME: shoot me, axistags
@@ -170,12 +189,11 @@ class OpRegionFeatures3d(Operator):
                 dt = vigra.filters.distanceTransform2D( numpy.asarray(ccbbox[bboxkey], dtype=numpy.float32) )
                 passed[bboxkey] = dt<self.MARGIN
                 
-                #dt = vigra.filters.distanceTransform2D(ccbbox[:, :, iz].astype(numpy.float32))
-                #passed[:, :, iz] = dt<self.MARGIN
-                
             ccbboxexcl = passed-ccbboxobject
             if "bad_slices" in self._otherFeatureNames:
-                #compute the quality score of an object. lower is better
+                #compute the quality score of an object - 
+                #count the number of fully black slices inside its bbox
+                #FIXME: the interpolation part is not tested at all...
                 nbadslices = 0
                 badslices = []
                 area = rawbbox.shape[xAxis]*rawbbox.shape[yAxis]
@@ -240,8 +258,6 @@ class OpRegionFeatures3d(Operator):
                     #interpolation didn't work. just go on.
                     print "interpolation failed"
                     
-                    
-                
                 
             labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
             feats = [None, None, None]
@@ -249,7 +265,7 @@ class OpRegionFeatures3d(Operator):
                 def extractObjectFeatures(ibox):
                     feats[ibox] = vigra.analysis.extractRegionFeatures(numpy.asarray(rawbbox, dtype=numpy.float32), \
                                                                     numpy.asarray(labeled_bboxes[ibox], dtype=numpy.uint32), \
-                                                                    self._vigraFeatureNames, \
+                                                                    feature_names_second, \
                                                                     histogramRange=[0, 255], \
                                                                     binCount = 10,\
                                                                     ignoreLabel=0)
@@ -262,9 +278,8 @@ class OpRegionFeatures3d(Operator):
 
 
             if "lbp" in self._otherFeatureNames:
-                #FIXME: there is a mess about which of the lbp features are computed
-                
-                #print "computing lbp features"
+                #FIXME: there is a mess about which of the lbp features are computed (obj, excl or incl)
+              
                 #compute lbp features
                 import skimage.feature as ft
                 P=8
@@ -293,8 +308,6 @@ class OpRegionFeatures3d(Operator):
                 otherFeatures_dict["lbp_excl"].append(lbp_hist_excl)
                 otherFeatures_dict["lbp"].append(lbp_hist_obj)
 
-           
-
             if "lapl" in self._otherFeatureNames:
                 #compute mean and variance of laplacian in the object and its neighborhood
                 lapl = None
@@ -318,17 +331,9 @@ class OpRegionFeatures3d(Operator):
                     otherFeatures_dict["lapl_incl"].append(numpy.array([lapl_mean_incl, lapl_var_incl]))
                     otherFeatures_dict["lapl_excl"].append(numpy.array([lapl_mean_excl, lapl_var_excl]))
                     otherFeatures_dict["lapl"].append(numpy.array([lapl_mean_obj, lapl_var_obj]))
-                
            
-                    
-                    
-                
-            
         feature_keys = features_incl[first_good].keys()
-        feature_dict = {}
-        feature_dict["Coord<Minimum>"]=mins
-        feature_dict["Coord<Maximum>"]=maxs
-        feature_dict["Count"]=counts
+        
         #copy over non-vigra features and turn them into numpy arrays
         for key in otherFeatures_dict.keys():
             #print otherFeatures_dict[key]
@@ -345,6 +350,8 @@ class OpRegionFeatures3d(Operator):
             #print key, feature_dict[key].shape
             
         for key in feature_keys:
+            if key in feature_names_first:
+                continue
             
             nchannels = 0
             #we always have two objects, background is first

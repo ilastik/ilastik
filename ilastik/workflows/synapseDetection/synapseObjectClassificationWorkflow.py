@@ -6,6 +6,9 @@ from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 
+from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
+from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
+
 # Glue operators
 from lazyflow.operators.adaptors import Op5ifyer
 
@@ -36,6 +39,8 @@ class SynapseObjectClassificationWorkflow(Workflow):
 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, "Threshold & Size Filter", "ThresholdTwoLevels" )
 
+        self.fillMissingSlicesApplet = FillMissingSlicesApplet(self, "Fill Missing Slices", "Fill Missing Slices")
+
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
@@ -43,6 +48,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
         self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.predictionSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
+        self._applets.append(self.fillMissingSlicesApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
@@ -64,8 +70,12 @@ class SynapseObjectClassificationWorkflow(Workflow):
         opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPredictionData = self.predictionSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
+
+        # Connect Raw data -> Fill missing slices
+        opFillMissingSlices.Input.connect(opRawData.Image)
 
         # Connect Predictions -> Thresholding
         opTwoLevelThreshold.InputImage.connect( opPredictionData.Image )
@@ -74,7 +84,8 @@ class SynapseObjectClassificationWorkflow(Workflow):
         # FIXME: For now, the object extraction and classification applets REQUIRE 5D data.
         # (But the two-level thresholding applet CAN'T HANDLE 5d data.)
         op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect( opRawData.Image )
+        #op5Raw.input.connect( opRawData.Image )
+        op5Raw.input.connect(opFillMissingSlices.Output)
         
         op5Predictions = Op5ifyer( parent=self )
         #op5Predictions.input.connect( opTwoLevelThreshold.Output )

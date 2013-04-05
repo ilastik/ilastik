@@ -19,6 +19,7 @@ def binaryImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
     img[0,  0:10,  0:10,  0:10, 0] = 1
     img[0, 20:30, 20:30, 20:30, 0] = 1
+    img[0, 40:45, 40:45, 40:45, 0] = 1
     img[1, 20:30, 20:30, 20:30, 0] = 1
     img[1, 5:10, 5:10, 0, 0] = 1
     img[1, 12:15, 12:15, 0, 0] = 1
@@ -31,6 +32,7 @@ def rawImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
     img[0,  0:10,  0:10,  0:10, 0] = 200
     img[0, 20:30, 20:30, 20:30, 0] = 100
+    img[0, 40:45, 40:45, 40:45, 0] = 75 #this object is further out than the margin and tests regionCenter feature
     img[1, 20:30, 20:30, 20:30, 0] = 50
     img[1, 5:10, 5:10, 0, 0] = 25 #this and next object are in each other's excl features
     img[1, 12:15, 12:15, 0, 0] = 13 
@@ -88,7 +90,7 @@ class TestOpRegionFeatures(unittest.TestCase):
 class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
     def setUp(self):
         g = Graph()
-        self.features = [["Count", "Mean"],[]]
+        self.features = [["Count", "Mean", "RegionCenter"],[]]
         binimage = binaryImage()
         self.rawimage = rawImage()
         self.labelop = OpLabelImage(graph=g)
@@ -120,8 +122,9 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
             sum_excl = feats[t][0]["Sum_excl"] #sum, not mean, to avoid 0/0
             sum_incl = feats[t][0]["Sum_incl"]
             sum = feats[t][0]["Sum"]
-            mins = feats[t][0]["Coord<Minimum>"]
-            maxs = feats[t][0]["Coord<Maximum>"]
+            mins = feats[t][0]["Coord<Minimum >"]
+            maxs = feats[t][0]["Coord<Maximum >"]
+            centers = feats[t][0]["RegionCenter"]
             #print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
@@ -139,6 +142,11 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
                 assert npsum_excl == sum_excl[iobj]
                 
                 assert sum_incl[iobj] == sum[iobj]+sum_excl[iobj]
+                #check that regionCenter wasn't shifted
+                for icoord, coord in enumerate(centers[iobj]):
+                    center_good = mins[iobj][icoord] + (maxs[iobj][icoord]-mins[iobj][icoord])/2.
+                    assert abs(coord-center_good)<0.01
+                
                 
             
 
