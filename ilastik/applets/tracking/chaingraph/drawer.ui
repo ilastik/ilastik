@@ -468,6 +468,7 @@
   <tabstop>noiseRateSpinBox</tabstop>
   <tabstop>noiseWeightSpinBox</tabstop>
   <tabstop>epGapSpinBox</tabstop>
+  <tabstop>nNeighborsSpinBox</tabstop>
   <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>
   <tabstop>to_time</tabstop>
