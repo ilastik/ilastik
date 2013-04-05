@@ -1,7 +1,8 @@
 import numpy, vigra
-from roi import roiToSlice, sliceToRoi
-from lazyflow.utility.helpers import warn_deprecated
 import warnings
+
+from roi import roiToSlice
+from lazyflow.utility.helpers import warn_deprecated
 
 class SlotType( object ):
     def __init__( self, slot):
@@ -128,66 +129,6 @@ class ArrayLike( SlotType ):
 
     def copy_data(self, dst, src):
         dst[...] = src[...]
-
-
-class Struct( SlotType ):
-
-    """
-    Sublass this type and define some class
-    variables of type Slot. Example:
-
-    class GraphType(Struct):
-      nodes = Slot(stype = ArrayLike)
-      edges = Slot(stype = ArrayLike)
-
-
-    slots with stype=GraphType
-    will now have instance
-    InputSlot/OutputSlot instance
-    attributes corresponding to these
-    names which behave like normal slots.
-    """
-
-    def __init__(self, slot):
-        SlotType.__init__(self, slot)
-        self._subSlots = {}
-        if slot.operator is not None:
-            self.graph = slot.operator.graph
-        else:
-            self.graph = None
-        for k,v in self.__class__.__dict__.items():
-            #FIXME: really bad detection of type
-            if hasattr(v,"_subSlots") and v != slot:
-                v._type = slot._type
-                si = v.getInstance(operator=self)
-                self._subSlots[k] = si
-                setattr(slot,k,si)
-
-    def isConfigured(self):
-        configured = True
-        for k,v in self._subSlots.items():
-            if v._optional is False and v.connected() is False:
-                configured = False
-                break
-        return configured
-
-    def connect(self, slot):
-        for k,v in self._subSlots.items():
-            if hasattr(slot,k):
-                self._subSlots[k].connect(getattr(slot, k))
-                print "subslot {} connected: {}".format(k,
-                                                        (self._subSlots[k].partner,
-                                                         self._subSlots[k].connected(),
-                                                         self._subSlots[k].shape,
-                                                         self._subSlots[k].graph,
-                                                         self.slot.operator))
-
-
-    def execute(self, slot, subindex, roi, destination):
-        return self.slot.operator.execute(slot,subindex,roi,destination)
-
-    def copy_data(self, dst, src):
-        raise("Not Implemented")
 
 class Opaque(SlotType):
     def allocateDestination(self, roi):

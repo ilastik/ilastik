@@ -1,9 +1,9 @@
-from roi import sliceToRoi, roiToSlice
-import vigra,numpy,copy
-from lazyflow.roi import TinyVector
-from lazyflow.utility import slicingtools
+import numpy, copy
 import cPickle as pickle
 import collections
+
+from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
+from lazyflow.utility import slicingtools
 
 class RoiMeta(type):
     """
@@ -184,7 +184,6 @@ class SubRegion(Roi):
     def adjustRoi(self,halo,cIndex=None):
         if type(halo) != list:
             halo = [halo]*len(self.start)
-        s = self.inputShape
         notAtStartEgde = map(lambda x,y: True if x<y else False,halo,self.start)
         for i in range(len(notAtStartEgde)):
             if notAtStartEgde[i]:
