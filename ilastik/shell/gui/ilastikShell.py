@@ -5,6 +5,7 @@ import os
 from functools import partial
 import weakref
 import logging
+from ilastik.workflow import Workflow
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -18,7 +19,8 @@ from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, QApplication
+                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
+                        QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel
 
 #lazyflow
 from lazyflow.utility import Tracer
@@ -37,6 +39,18 @@ from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
 from ilastik.config import cfg as ilastik_config
+
+def getAvailableWorkflows():
+    '''iterate over all workflows that were imported'''
+    for i in Workflow.__subclasses__():
+        if isinstance(i.workflowName,str):
+            yield i
+                
+def getWorkflowFromName(Name):
+    '''return workflow by naming its workflowName variable'''
+    for w in getAvailableWorkflows():
+        if w.workflowName==Name:
+            return w
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -153,17 +167,15 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflowClass, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
+    def __init__( self, workflowClass = None, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
         self._workflowClass = workflowClass
-
-        localDir = os.path.split(__file__)[0]
-        if localDir == "":localDir = os.getcwd()
-        uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        self._loaduifile()
         
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         
@@ -211,14 +223,39 @@ class IlastikShell( QMainWindow ):
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
         self._recorderGui = EventRecorderGui()
-
+    
     @property
     def _applets(self):
         if self.projectManager is None:
             return []
         else:
             return self.projectManager.workflow.applets
-
+    
+    def setWorkflowClass(self,w):
+        self._workflowClass = w
+    
+    def loadWorkflow(self,i):
+        self.setWorkflowClass(i)
+        self.onNewProjectActionTriggered()
+    
+    def getWorkflow(self,w = None):
+        
+        listOfItems = [i.workflowName for i in getAvailableWorkflows()]
+        if w is not None and w in listOfItems:
+            cur = listOfItems.index(w)
+        else:
+            cur = 0
+        
+        res,ok = QInputDialog.getItem(self,
+                        "Workflow Selection",
+                        "Select a workflow which should open the file.",
+                        listOfItems,
+                        cur,
+                        False)
+        
+        if ok:
+            return getWorkflowFromName(str(res))
+    
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
         menu = QMenu("&Project", self)
@@ -235,7 +272,7 @@ class IlastikShell( QMainWindow ):
         shellActions.openProjectAction = menu.addAction("&Open Project...")
         shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
-
+        
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project")
         shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
@@ -261,7 +298,32 @@ class IlastikShell( QMainWindow ):
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
         return (menu, shellActions)
-   
+    
+    def _loaduifile(self):
+        localDir = os.path.split(__file__)[0]
+        if localDir == "":localDir = os.getcwd()
+        startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        startscreen.Plist.setWidget(startscreen.VL1.widget())
+        startscreen.Plist.setWidgetResizable(True)
+        startscreen.Wlist.setWidget(startscreen.VL2.widget())
+        startscreen.Wlist.setWidgetResizable(True)
+        
+        projects = PreferencesManager().get("shell","recently opened list")
+        
+        if projects is not None:
+            for path,workflow in projects:
+                b = QCommandLinkButton(path,startscreen,flat = True)
+                b.setDescription(workflow)
+                b.clicked.connect(partial(self.openProjectFile,path))
+                startscreen.VL1.addWidget(b)
+          
+        for workflow in getAvailableWorkflows():
+            b = QCommandLinkButton(workflow.workflowName,startscreen,flat = True)
+            b.clicked.connect(partial(self.loadWorkflow,workflow))
+            startscreen.VL2.addWidget(b)
+        
+    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
@@ -788,7 +850,8 @@ class IlastikShell( QMainWindow ):
         
         # Find the directory of the most recently opened project
         mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
-        if mostRecentProjectPath is not None:
+        print mostRecentProjectPath
+        if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -798,8 +861,7 @@ class IlastikShell( QMainWindow ):
             # Make sure the user is finished with the currently open project
             if not self.ensureNoCurrentProject():
                 return
-
-            PreferencesManager().set('shell', 'recently opened', projectFilePath)
+            
             self.openProjectFile(projectFilePath)
     
     def openProjectFile(self, projectFilePath):
@@ -820,6 +882,21 @@ class IlastikShell( QMainWindow ):
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
+        
+        #setup the workflow if none was selected yet
+        if self._workflowClass is None:
+            
+            if "workflowName" in hdf5File.keys():
+                #if workflow is found in file, take it
+                workflowName = hdf5File["workflowName"].value
+                workflow = getWorkflowFromName(workflowName)
+            else:
+                #ask the user to name a workflow
+                workflow = self.getWorkflow()
+            if workflow is None:
+                return
+            self.setWorkflowClass(workflow)
+        
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
             self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
@@ -827,6 +904,27 @@ class IlastikShell( QMainWindow ):
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            
+            #add file and workflow to users preferences
+            mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
+            if mostRecentProjectPaths is None:
+                mostRecentProjectPaths = []
+            projectAndWorkflow = (projectFilePath,self._workflowClass.workflowName)
+            if projectAndWorkflow in mostRecentProjectPaths:
+                mostRecentProjectPaths.remove(projectAndWorkflow)
+            mostRecentProjectPaths.insert(0,projectAndWorkflow)
+            
+            #cut list of stored files at randomly chosen number of 5
+            if len(mostRecentProjectPaths) > 5:
+                mostRecentProjectPaths = mostRecentProjectPaths[:5]
+            
+            PreferencesManager().set('shell', 'recently opened list', mostRecentProjectPaths)
+            PreferencesManager().set('shell', 'recently opened', projectFilePath)
+            
+            #be friendly to user: if this file has not specified a default workflow, do it now
+            if not "workflowName" in hdf5File.keys() and not readOnly:
+                hdf5File.create_dataset("workflowName",data = self._workflowClass.workflowName)
+            
             #switch away from the startup screen to show the loaded project
             self.mainStackedWidget.setCurrentIndex(1)
             # By default, make the splitter control expose a reasonable width of the applet bar
@@ -844,6 +942,7 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
+            
 
     def closeCurrentProject(self):
         """
@@ -1065,19 +1164,8 @@ if __name__ == "__main__":
     from lazyflow.graph import Graph
     from ilastik.applets.dataSelection import DataSelectionApplet
     
-    class StandardWorkflow(Workflow):
-        @property
-        def applets(self):return self._applets
-        @property
-        def imageNameListSlot(self):return self._applets[0].topLevelOperator.ImageName
-        def connectLane(self,lane):pass
-        def __init__(self,*args, **kwargs):
-            graph = Graph()
-            super(StandardWorkflow, self).__init__(graph = graph ,*args, **kwargs)
-            self._applets = [DataSelectionApplet(self, "Input Data", "Input Data")]
-    
     # Create a shell with our test applets 
-    shell = IlastikShell( StandardWorkflow )
+    shell = IlastikShell()
 
     shell.show()
     qapp.exec_()

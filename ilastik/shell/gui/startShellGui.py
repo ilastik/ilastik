@@ -12,12 +12,13 @@ from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
+import ilastik.workflows
 
 import functools
 
 shell = None
 
-def startShellGui(workflowClass, *testFuncs):
+def startShellGui(workflowClass=None, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
@@ -37,7 +38,7 @@ def _applyStyleSheet(app):
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
 
-def launchShell(workflowClass, *testFuncs):
+def launchShell(workflowClass=None, *testFuncs):
     """
     Start the ilastik shell GUI with the given workflow type.
     Note: A QApplication must already exist, and you must call this function from its event loop.
@@ -64,3 +65,21 @@ def launchShell(workflowClass, *testFuncs):
     # Run a test (if given)
     for testFunc in testFuncs:
         QTimer.singleShot(0, functools.partial(testFunc, shell) )
+
+if __name__ == "__main__":
+    
+    from optparse import OptionParser
+    usage = "%prog [options] <project file>"
+    parser = OptionParser(usage)
+    parser.add_option("--workflow",
+                  dest="workflow", default=None,
+                  help="specify a workflow that should be loaded")
+
+    options, args = parser.parse_args()
+    
+    if len(args)==0:
+        startShellGui(workflowClass=options.workflow)
+    elif len(args)==1:
+        def loadProject(shell):
+            shell.openProjectFile(args[0])
+        startShellGui(testFunc = loadProject, workflowClass = options.workflow)

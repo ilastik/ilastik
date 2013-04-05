@@ -32,7 +32,15 @@ class Workflow( Operator ):
         This slot is typically provided by the DataSelection applet via its ImageName slot.
         """
         return None
-
+    
+    @property
+    def workflowName(self):
+        return None
+    
+    @property
+    def workflowDescription(self):
+        return None
+    
     @abstractmethod
     def connectLane(self, laneIndex):
         """
@@ -42,7 +50,7 @@ class Workflow( Operator ):
         2) Ask the subclass to hook up the new image lane by calling this function.
         """
         raise NotImplementedError
-
+    
     ##################
     # Public methods #
     ##################
