@@ -62,7 +62,7 @@ class OpDivisionFeatures(Operator):
     templateSize = 30  # window in which we look for neighboring labels in the next time steps
     size_filter_from = 5
     with_uncorrected_features = True # plain features
-    with_corrected_features = True   # the region centers are corrected by translation vector
+    with_corrected_features = False   # the region centers are corrected by translation vector
     defaultSquaredDistance = 1000
     
     transl_corr_suffix = "_corr"

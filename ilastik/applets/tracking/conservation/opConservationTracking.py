@@ -46,7 +46,8 @@ class OpConservationTracking(OpTrackingBase):
             divWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
-            withOpticalCorrection=True
+            withOpticalCorrection=True,
+            withCoordinateList=True
             ):
         
         median_obj_size = [0]
@@ -55,7 +56,8 @@ class OpConservationTracking(OpTrackingBase):
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
-                                                                      with_opt_correction=withOpticalCorrection)
+                                                                      with_opt_correction=withOpticalCorrection,
+                                                                      with_coordinate_list=withCoordinateList)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'

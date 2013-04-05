@@ -148,7 +148,8 @@ class OpTrackingBase(Operator):
                                with_local_centers=False,
                                median_object_size=None,
                                max_traxel_id_at=None,
-                               with_opt_correction=False):
+                               with_opt_correction=False,
+                               with_coordinate_list=False):
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -184,11 +185,17 @@ class OpTrackingBase(Operator):
             ct = feats[t][0]['Count']
             if ct.size:
                 ct = ct[1:, ...]
+
+            if with_coordinate_list:
+                coordinates = feats[t][0]['Coord<ValueList >']
+                if len(coordinates):
+                    coordinates = coordinates[1:]
             
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
             filtered_labels[t] = []
             for idx in range(rc.shape[0]):
+
                 x, y, z = rc[idx]
                 size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
@@ -205,21 +212,21 @@ class OpTrackingBase(Operator):
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
-                
+
                 tr.add_feature_array("com", len(rc[idx]))                
                 for i, v in enumerate(rc[idx]):
                     tr.set_feature_value('com', i, float(v))
-                
+
                 if with_opt_correction:
                     tr.add_feature_array("com_corrected", len(rc_corr[idx]))
                     for i, v in enumerate(rc_corr[idx]):
                         tr.set_feature_value("com_corrected", i, float(v))
-                        
+
                 if with_div:
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
-                
+
                 if with_local_centers:
                     tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
                     tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))
@@ -228,11 +235,21 @@ class OpTrackingBase(Operator):
                         tr.set_feature_value("localCentersX", i, float(v[0]))
                         tr.set_feature_value("localCentersY", i, float(v[1]))
                         tr.set_feature_value("localCentersZ", i, float(v[2]))                
-                
+
                 tr.add_feature_array("count", 1)
                 tr.set_feature_value("count", 0, float(size))
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
+
+                if with_coordinate_list:
+                    tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
+
+                    for i, v in enumerate(coordinates[idx]):
+                        tr.set_feature_value("coordinates", 3*i,   float(v[0]))
+                        tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
+                        tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
+
+                    
                 ts.add(tr)   
                          
             print "at timestep ", t, count, "traxels passed filter"
