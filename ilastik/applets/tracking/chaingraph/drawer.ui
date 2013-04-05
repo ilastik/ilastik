@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>710</height>
+    <height>742</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -67,9 +67,6 @@
        </item>
        <item row="0" column="1">
         <widget class="QSpinBox" name="appSpinBox">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -123,9 +120,6 @@
        </item>
        <item row="1" column="1">
         <widget class="QSpinBox" name="disSpinBox">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -155,27 +149,27 @@
         </widget>
        </item>
        <item row="6" column="0">
-	 <widget class="QLabel" name="label_23">
-	   <property name="toolTip">
-	     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of nearest neighbors for building hypotheses graph. Less neighbors speed up optimization time, but might have negative impact on tracking results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-	   </property>
-	   <property name="text">
-	     <string>Number of Neighbors</string>
-	   </property>
-	 </widget>
+        <widget class="QLabel" name="label_23">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of neighbors to be considered as potential association candidates. Less neighbors speed up optimization time, but might have negative impact on tracking results. A reasonable value might be 2 or 3.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Number of Neighbors</string>
+         </property>
+        </widget>
        </item>
        <item row="6" column="1">
-	 <widget class="QSpinBox" name="nNeighborsSpinBox">
-	   <property name="minimum">
-	     <number>1</number>
-	   </property>
-	   <property name="singleStep">
-	     <number>1</number>
-	   </property>
-	   <property name="value">
-	     <number>2</number>
-	   </property>
-	 </widget>
+        <widget class="QSpinBox" name="nNeighborsSpinBox">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="singleStep">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>2</number>
+         </property>
+        </widget>
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
@@ -240,9 +234,6 @@
          <weight>75</weight>
          <bold>true</bold>
         </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Field of view selection.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Field of View Selection:</string>
