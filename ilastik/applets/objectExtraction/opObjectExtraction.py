@@ -622,7 +622,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t][ch]['RegionCenter_obj']
+                centers = obj_features[t][ch]['RegionCenter']
                 
                 # OpRegionFeatures3d produces object features with offset coordinates 
                 #  (offset from each object's bounding box, plus some margin)
