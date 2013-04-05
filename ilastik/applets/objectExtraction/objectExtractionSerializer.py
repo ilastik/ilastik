@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):
 
+    def __init__(self, inslot, outslot, blockslot, *args, **kwargs):
+        super( SerialObjectFeaturesSlot, self).__init__(outslot, *args, **kwargs )
+        self.inslot = inslot
+        self.outslot = outslot
+        self.blockslot = blockslot
+        self._bind(outslot)
+
     def serialize(self, group):
         if not self.shouldSerialize(group):
             return
@@ -25,12 +32,11 @@ class SerialObjectFeaturesSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
 
         for i in range(len(mainOperator)):
-            opRegFeats = mainOperator.getLane(i)._opRegFeats
             subgroup = getOrCreateGroup(group, str(i))
 
-            cleanBlockRois = opRegFeats.CleanBlocks.value
+            cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
-                region_features_arr = opRegFeats.Output( *roi ).wait()
+                region_features_arr = self.outslot[i]( *roi ).wait()
                 assert region_features_arr.shape == (1,1)
                 region_features = region_features_arr[0,0]
                 roi_grp = subgroup.create_group(name=str(roi))
@@ -43,11 +49,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
     def deserialize(self, group):
         if not self.name in group:
             return
-        mainOperator = self.slot.getRealOperator()
         opgroup = group[self.name]
         for i, (_, subgroup) in enumerate( sorted(opgroup.items() ) ):
-            opRegFeats = mainOperator.getLane(i)._opRegFeats
-
             for roiString, roi_grp in subgroup.items():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
                 roi = eval(roiString)
@@ -56,8 +59,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 for key, val in roi_grp.items():
                     region_features[key] = val[...]
                 
-                slotRoi = SubRegion( opRegFeats.CacheInput, *roi )
-                opRegFeats.setInSlot( opRegFeats.CacheInput, (), slotRoi, numpy.array( [[region_features]] ) )
+                slicing = roiToSlice( *roi )
+                self.inslot[i][slicing] = numpy.array( [[region_features]] )
         
         self.dirty = False
 
@@ -69,7 +72,10 @@ class ObjectExtractionSerializer(AppletSerializer):
                                 operator.LabelOutputHdf5,
                                 operator.CleanLabelBlocks,
                                 name="LabelImage"),
-            SerialObjectFeaturesSlot(operator.RegionFeatures, name="samples"),
+            SerialObjectFeaturesSlot(operator.RegionFeaturesCacheInput,
+                                     operator.RegionFeatures,
+                                     operator.RegionFeaturesCleanBlocks,
+                                     name="RegionFeatures"),
         ]
 
         super(ObjectExtractionSerializer, self).__init__(projectFileGroupName,

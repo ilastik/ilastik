@@ -7,6 +7,7 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 from lazyflow.request import Request, Pool
@@ -537,10 +538,9 @@ class OpCachedRegionFeatures(Operator):
         self._opCache.blockShape.setValue( blockshape )
 
     def setInSlot(self, slot, subindex, roi, value):
-        # Nothing to do here.
-        # Our CacheInput slot is directly fed into the cache, 
-        #  so all calls to __setitem__ are forwarded automatically 
         assert slot == self.CacheInput
+        slicing = roiToSlice( roi.start, roi.stop )
+        self._opCache.Input[ slicing ] = value
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -669,6 +669,9 @@ class OpObjectExtraction(Operator):
     LabelInputHdf5 = InputSlot( optional=True )
     LabelOutputHdf5 = OutputSlot()
     CleanLabelBlocks = OutputSlot()
+    
+    RegionFeaturesCacheInput = InputSlot(optional=True)
+    RegionFeaturesCleanBlocks = OutputSlot()
 
     # these features are needed by classification applet.
     default_features = [
@@ -706,6 +709,8 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelImage.Output)
+        self._opRegFeats.CacheInput.connect(self.RegionFeaturesCacheInput)
+        self.RegionFeaturesCleanBlocks.connect( self._opRegFeats.CleanBlocks )
 
         self._opRegFeatsAdaptOutput.Input.connect(self._opRegFeats.Output)
         
@@ -739,7 +744,7 @@ class OpObjectExtraction(Operator):
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.LabelInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        assert slot == self.LabelInputHdf5 or slot == self.RegionFeaturesCacheInput, "Invalid slot for setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache, 
         #  so all calls to __setitem__ are forwarded automatically 
