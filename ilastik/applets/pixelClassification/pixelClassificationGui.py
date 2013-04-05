@@ -329,14 +329,6 @@ class PixelClassificationGui(LabelingGui):
             if "Prediction" in layer.name:
                 layer.visible = checked
 
-        # If we're being turned off, turn off live prediction mode, too.
-        if not checked and self.labelingDrawerUi.liveUpdateButton.isChecked():
-            self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-            # And hide all segmentation layers
-            for layer in self.layerstack:
-                if "Segmentation" in layer.name:
-                    layer.visible = False
-
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowSegmentationClicked(self):
