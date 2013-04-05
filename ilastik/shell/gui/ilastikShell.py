@@ -16,7 +16,7 @@ import threading
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QMenuBar, \
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog
 
@@ -33,8 +33,6 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.applets.base.standardApplet import StandardApplet
-
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 

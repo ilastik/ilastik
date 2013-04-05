@@ -1,5 +1,6 @@
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.valueProviders import OpAttributeSelector
+from lazyflow.operators.adaptors import Op5ifyer
 
 from ilastik.workflow import Workflow
 
@@ -58,17 +59,18 @@ class CarvingWorkflow(Workflow):
         
 
     def connectLane(self, laneIndex):
-        print "connect"
-        print laneIndex
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingTopLevel = self.carvingApplet.topLevelOperator.getLane(laneIndex)
         
+        op5 = Op5ifyer(parent=self)
+        op5.order.setValue("txyzc")
+        op5.input.connect(opData.Image)
+        
         ## Connect operators
-        opPreprocessing.RawData.connect(opData.Image)
-        opCarvingTopLevel.RawData.connect(opData.Image)
-        #opCarvingTopLevel.opCarving.RawData.connect( opData.Image )
+        opPreprocessing.RawData.connect(op5.output)
+        opCarvingTopLevel.RawData.connect(op5.output)
         opCarvingTopLevel.opCarving.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
         opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")

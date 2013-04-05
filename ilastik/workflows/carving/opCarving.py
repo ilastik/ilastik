@@ -1,7 +1,6 @@
 #Python
 import time
 import numpy, h5py
-import copy
 
 #carving
 from cylemon.segmentation import MSTSegmentor
@@ -13,9 +12,6 @@ from lazyflow.rtype import List
 
 #ilastik
 from ilastik.applets.labeling import OpLabelingSingleLane
-
-import os.path
-import copy
 
 from cylemon.segmentation import MSTSegmentor
 
@@ -85,8 +81,6 @@ class OpCarving(Operator):
         self.opLabeling.LabelInput.connect( self.RawData )
         self.opLabeling.InputImage.connect( self.RawData )
         self.opLabeling.LabelDelete.setValue(-1)
-        
-        print "[Carving id=%d] CONSTRUCTOR" % id(self)
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
@@ -162,8 +156,23 @@ class OpCarving(Operator):
             return False
         else:
             return True
+        
+    def _checkMeta(self, slot):
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(ax) != 5:
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if sh[0] != 1:
+            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
+        if sh[4] != 1:
+            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
+        self._checkMeta(self.RawData)
+        
         self.Segmentation.meta.assignFrom(self.RawData.meta)
         self.Supervoxels.meta.assignFrom(self.RawData.meta)
         self.DoneObjects.meta.assignFrom(self.RawData.meta)

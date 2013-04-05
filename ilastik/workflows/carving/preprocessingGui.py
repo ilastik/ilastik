@@ -1,61 +1,20 @@
-from PyQt4.QtCore import Qt, QVariant
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
-
-from functools import partial
+#Python
 import os
-import copy
-import glob
-import threading
-import h5py
-
-from volumina.utility import PreferencesManager
-from volumina.volumeEditor import VolumeEditor
-from volumina.volumeEditorWidget import VolumeEditorWidget
-from volumina.api import LayerStackModel
-from volumina.adaptors import Op5ifyer
-
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.utility.pathHelpers import getPathVariants
-
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
-from ilastik.applets.base.applet import ControlCommand
-
-from preprocessingViewerGui import PreprocessingViewerGui
-
-import vigra
-
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+#PyQt
+from PyQt4.QtGui import *
+from PyQt4 import uic
+
+#lazyflow
 from lazyflow.utility import Tracer
 
-class Column():
-    """ Enum for table column positions """
-    Name = 0
-    Location = 1
-    InternalID = 2
-    LabelsAllowed = 3 # Note: For now, this column must come last because it gets removed in batch mode.
-    
-    NumColumns = 4
-
-class LocationOptions():
-    """ Enum for location menu options """
-    Project = 0
-    AbsolutePath = 1
-    RelativePath = 2
-
-class GuiMode():
-    Normal = 0
-    Batch = 1
-
+#ilastik
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility.gui import ThreadRouter, threadRouted
+from preprocessingViewerGui import PreprocessingViewerGui
 
 class PreprocessingGui(QMainWindow):
     def __init__(self, topLevelOperatorView):
@@ -111,9 +70,15 @@ class PreprocessingGui(QMainWindow):
     def handleSigmaValueChanged(self):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
     
+    @threadRouted 
+    def onFailed(self, exception):
+        QMessageBox.critical(self, "error", str(exception))
+    
     def handleRunButtonClicked(self):
         self.setWriteprotect()
-        self.topLevelOperatorView.PreprocessedData[:].submit()
+        r = self.topLevelOperatorView.PreprocessedData[:]
+        r.notify_failed(self.onFailed)
+        r.submit()
         
     def handleWriterprotectStateChanged(self):
         iswriteprotect = self.drawer.writeprotectBox.checkState()
@@ -130,10 +95,10 @@ class PreprocessingGui(QMainWindow):
         self.handleFilterChanged()
     
     def setSigma(self,sigma):
-		self.drawer.sigmaSpin.setValue(sigma)
+        self.drawer.sigmaSpin.setValue(sigma)
     
     def enableReset(self,er):
-		self.drawer.resetButton.setEnabled(er)
+        self.drawer.resetButton.setEnabled(er)
     
     def centralWidget( self ):
         return self.centralGui
@@ -155,6 +120,3 @@ class PreprocessingGui(QMainWindow):
         pass
     def stopAndCleanUp(self):
         pass
-    
-    
-    

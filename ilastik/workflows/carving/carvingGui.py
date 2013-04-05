@@ -4,7 +4,6 @@ import numpy
 import random
 
 #PyQt
-from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
 from PyQt4.QtGui import QInputDialog, QMessageBox
@@ -428,14 +427,9 @@ class CarvingGui(LabelingGui):
             layer.opacity = 1.0
             layers.append(layer)
 
-        #
-        # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
-        #
-        
-        #
-        raw = numpy.add.reduce(self.topLevelOperatorView.RawData.value,3)
-        raw5D = numpy.zeros((1,)+raw.shape+(1,), dtype=raw.dtype)
-        raw5D[0,:,:,:,0] = raw[:,:,:]
+        #raw data
+        #(here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons)
+        raw5D = self.topLevelOperatorView.RawData.value
         layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
         layer.name = "raw"
         layer.visible = True

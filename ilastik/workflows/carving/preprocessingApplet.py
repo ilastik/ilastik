@@ -1,17 +1,10 @@
-from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApplet
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui ,GuiMode
-from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelection
-from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
+from ilastik.applets.dataSelection.dataSelectionSerializer import Ilastik05DataSelectionDeserializer
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.base.applet import ControlCommand
 
-from opCarvingTopLevel import OpCarvingTopLevel
-from carvingSerializer import CarvingSerializer
-from carvingGui import CarvingGui
 from preprocessingSerializer import PreprocessingSerializer
 from preprocessingGui import PreprocessingGui
 from opPreprocessing import OpPreprocessing
-import functools
 
 class PreprocessingApplet(StandardApplet):
 
@@ -67,5 +60,5 @@ class PreprocessingApplet(StandardApplet):
     
     @property
     def broadcastingSlots(self):
-        return ["Sigma","RawData"]
+        return ["Sigma", "RawData"]
     

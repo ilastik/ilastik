@@ -1,19 +1,15 @@
+#Python
 import sys
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
-from ilastik.utility.operatorSubView import OperatorSubView
-
-from ilastik.shell.gui.ilastikShell import ProgressDisplayManager
-
-from lazyflow.operators import Op5ifyer
-from lazyflow.request import Request
-from ilastik.applets.base.applet import ControlCommand
-
-from cylemon.segmentation import MSTSegmentor
-import vigra
+#SciPy
 import numpy
-import uuid
+import vigra
+
+#lazyflow
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+#carving Cython module
+from cylemon.segmentation import MSTSegmentor
 
 class OpPreprocessing(Operator):
     """
@@ -40,8 +36,22 @@ class OpPreprocessing(Operator):
          
         self.initialSigma = None  # save settings of last preprocess
         self.initialFilter = None # applied to gui by pressing reset
+        
+    def _checkMeta(self, slot):
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(ax) != 5:
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if sh[0] != 1:
+            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
+        if sh[4] != 1:
+            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
     
     def setupOutputs(self):
+        self._checkMeta(self.RawData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
         self.enableDownstream(False)
@@ -95,11 +105,21 @@ class OpPreprocessing(Operator):
         if self._prepData[0] is not None and not self._dirty:
             return self._prepData
         
+        #first thing, show the user that we are waiting for computations to finish        
+        self.applet.progressSignal.emit(0)
+       
+        #make sure raw data is 5D: t,{x,y,z},c 
+        ax = self.RawData.meta.axistags
+        sh = self.RawData.meta.shape
+        assert len(ax) == 5
+        assert ax[0].key == "t" and sh[0] == 1
+        for i in range(1,4):
+            assert ax[i].isSpatial()
+        assert ax[4].key == "c" and sh[4] == 1
+        
         volume5d = self.RawData.value
         sigma = self.Sigma.value
-        
-        #Hack: Remove Channel
-        volume = numpy.add.reduce(volume5d,3)
+        volume = volume5d[0,:,:,:,0]
         
         print "input volume shape: ", volume.shape
         print "input volume size: ", volume.nbytes / 1024**2, "MB"
@@ -133,7 +153,6 @@ class OpPreprocessing(Operator):
         volume_mi = numpy.min(volume_feat)
         volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
         sys.stdout.write("Watershed..."); sys.stdout.flush()
-        self.applet.progressSignal.emit(0)
         labelVolume = vigra.analysis.watersheds(volume_feat)[0].astype(numpy.int32)
         sys.stdout.write("done"); sys.stdout.flush()
         
