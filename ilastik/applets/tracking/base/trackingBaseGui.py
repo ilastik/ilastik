@@ -18,7 +18,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class TrackingGuiBase( LayerViewerGui ):
+class TrackingBaseGui( LayerViewerGui ):
     """
     """
     
@@ -42,7 +42,7 @@ class TrackingGuiBase( LayerViewerGui ):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
-        super(TrackingGuiBase, self).__init__(topLevelOperatorView)
+        super(TrackingBaseGui, self).__init__(topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
 
         self._initColors()
@@ -126,24 +126,59 @@ class TrackingGuiBase( LayerViewerGui ):
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
 
             maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
-            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1            
             maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
             maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
-        
-            self._setRanges()
-            self._drawer.from_time.setValue(0)
-            self._drawer.to_time.setValue(maxt) 
-            self._drawer.from_x.setValue(0)
-            self._drawer.to_x.setValue(maxx)
-            self._drawer.from_y.setValue(0)
-            self._drawer.to_y.setValue(maxy)   
-            self._drawer.from_z.setValue(0)    
-            self._drawer.to_z.setValue(maxz)
+                    
+            if not self.mainOperator.Parameters.ready():
+                raise Exception("Parameter slot is not ready")
             
-#            self._drawer.lineageFromBox.setRange(0,maxt-1)
-#            self._drawer.lineageFromBox.setValue(0)
-#            self._drawer.lineageToBox.setRange(0,maxt-2)
-#            self._drawer.lineageToBox.setValue(maxt-2)    
+            parameters = self.mainOperator.Parameters.value
+            self._setRanges() 
+            if 'size_range' in parameters:                
+                self._drawer.to_size.setValue(parameters['size_range'][1])
+                self._drawer.from_size.setValue(parameters['size_range'][0])
+            else:
+                self._drawer.from_size.setValue(0)
+                self._drawer.to_size.setValue(10000)
+                
+            if 'x_range' in parameters:                
+                self._drawer.to_x.setValue(parameters['x_range'][1]-1)
+                self._drawer.from_x.setValue(parameters['x_range'][0])
+            else:
+                self._drawer.from_x.setValue(0)
+                self._drawer.to_x.setValue(maxx)
+                
+            if 'y_range' in parameters:
+                self._drawer.to_y.setValue(parameters['y_range'][1]-1)
+                self._drawer.from_y.setValue(parameters['y_range'][0])                
+            else:
+                self._drawer.from_y.setValue(0)
+                self._drawer.to_y.setValue(maxy)
+                
+            if 'z_range' in parameters:
+                self._drawer.to_z.setValue(parameters['z_range'][1]-1)
+                self._drawer.from_z.setValue(parameters['z_range'][0])                
+            else:
+                self._drawer.from_z.setValue(0)
+                self._drawer.to_z.setValue(maxz)
+            
+            if 'time_range' in parameters:
+                self._drawer.to_time.setValue(parameters['time_range'][1])
+                self._drawer.from_time.setValue(parameters['time_range'][0])                
+            else:
+                self._drawer.from_time.setValue(0)
+                self._drawer.to_time.setValue(maxt)
+            
+            if 'scales' in parameters:
+                self._drawer.x_scale.setValue(parameters['scales'][0])
+                self._drawer.y_scale.setValue(parameters['scales'][1])
+                self._drawer.z_scale.setValue(parameters['scales'][2])
+            else:
+                self._drawer.x_scale.setValue(1)
+                self._drawer.y_scale.setValue(1)
+                self._drawer.z_scale.setValue(1)
+               
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )

@@ -1,23 +1,39 @@
 from PyQt4 import uic, QtGui
-
 import os
-import math
 
 import logging
-from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
+from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class ChaingraphTrackingGui( TrackingGuiBase ):
+class ChaingraphTrackingGui( TrackingBaseGui ):
 
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")        
+        
+        if not self.topLevelOperatorView.Parameters.ready():
+            raise Exception("Parameter slot is not ready")
+        
+        parameters = self.topLevelOperatorView.Parameters.value        
+        if 'appearance' in parameters.keys():
+            self._drawer.appSpinBox.setValue(parameters['appearance'])
+        if 'disappearance' in parameters.keys():
+            self._drawer.disSpinBox.setValue(parameters['disappearance'])
+        if 'opportunity' in parameters.keys():
+            self._drawer.oppSpinBox.setValue(parameters['opportunity'])
+        if 'noiserate' in parameters.keys():
+            self._drawer.noiseRateSpinBox.setValue(parameters['noiserate'])
+        if 'noiseweight' in parameters.keys():
+            self._drawer.noiseWeightSpinBox.setValue(parameters['noiseweight'])
+        if 'epgap' in parameters.keys():
+            self._drawer.epGapSpinBox.setValue(parameters['epgap'])
+        
         return self._drawer
     
-    def _onTrackButtonPressed( self ):
+    def _onTrackButtonPressed( self ):        
         app = self._drawer.appSpinBox.value()
         dis = self._drawer.disSpinBox.value()
         opp = self._drawer.oppSpinBox.value()
@@ -26,9 +42,6 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
         epGap = self._drawer.epGapSpinBox.value()
         n_neighbors = self._drawer.nNeighborsSpinBox.value()
 
-        det = noiseweight*(-1)*math.log(1-noiserate)
-        mdet = noiseweight*(-1)*math.log(noiserate)
-        
         from_t = self._drawer.from_time.value()
         to_t = self._drawer.to_time.value()
         from_x = self._drawer.from_x.value()
@@ -52,9 +65,9 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
                         z_scale = self._drawer.z_scale.value(),
                         app=app,
                         dis=dis,
-                        opp=opp,
-                        det=det,
-                        mdet=mdet,
+                        noiserate = noiserate,
+                        noiseweight = noiseweight,
+                        opp=opp,                        
                         ep_gap=epGap,
                         n_neighbors=n_neighbors)
         except Exception as e:
@@ -63,5 +76,5 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
     
         self._drawer.exportButton.setEnabled(True)
         self._drawer.exportTifButton.setEnabled(True)
-        self._setLayerVisible("Objects", False)
-    
+        self._setLayerVisible("Objects", False)    
+            
