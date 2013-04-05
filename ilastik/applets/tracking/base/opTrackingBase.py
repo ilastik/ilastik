@@ -148,7 +148,8 @@ class OpTrackingBase(Operator):
                                with_local_centers=False,
                                median_object_size=None,
                                max_traxel_id_at=None,
-                               with_opt_correction=False):
+                               with_opt_correction=False,
+                               with_coordinate_list=False):
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -185,9 +186,10 @@ class OpTrackingBase(Operator):
             if ct.size:
                 ct = ct[1:, ...]
 
-            coordinates = feats[t][0]['Coord<ValueList >']
-            if len(coordinates):
-                coordinates = coordinates[1:]
+            if with_coordinate_list:
+                coordinates = feats[t][0]['Coord<ValueList >']
+                if len(coordinates):
+                    coordinates = coordinates[1:]
             
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
@@ -239,13 +241,13 @@ class OpTrackingBase(Operator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
 
+                if with_coordinate_list:
+                    tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
 
-                tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
-
-                for i, v in enumerate(coordinates[idx]):
-                    tr.set_feature_value("coordinates", 3*i,   float(v[0]))
-                    tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
-                    tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
+                    for i, v in enumerate(coordinates[idx]):
+                        tr.set_feature_value("coordinates", 3*i,   float(v[0]))
+                        tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
+                        tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
 
                     
                 ts.add(tr)   
