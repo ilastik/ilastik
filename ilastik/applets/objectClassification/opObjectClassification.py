@@ -14,9 +14,6 @@ from ilastik.utility.mode import mode
 
 from ilastik.applets.objectExtraction import config
 
-# Right now we only support having two types of objects.
-_MAXLABELS = 2
-
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
 # features from the first channel are used in this operator.
