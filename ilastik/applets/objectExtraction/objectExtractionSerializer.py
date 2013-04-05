@@ -73,7 +73,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                                 operator.CleanLabelBlocks,
                                 name="LabelImage"),
             SerialObjectFeaturesSlot(operator.RegionFeaturesCacheInput,
-                                     operator.RegionFeatures,
+                                     operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCleanBlocks,
                                      name="RegionFeatures"),
         ]
