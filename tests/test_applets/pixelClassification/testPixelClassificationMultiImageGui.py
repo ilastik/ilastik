@@ -148,7 +148,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0
             
             # Add label classes
@@ -211,13 +211,13 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             self.test_4_AddLabels()
 
             # Enable interactive mode            
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Disable iteractive mode.            
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
