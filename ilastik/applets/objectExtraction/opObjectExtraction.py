@@ -630,27 +630,14 @@ class OpObjectCenterImage(Operator):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
                 centers = obj_features[t][ch]['RegionCenter']
-                
-                # OpRegionFeatures3d produces object features with offset coordinates 
-                #  (offset from each object's bounding box, plus some margin)
-                offsets = obj_features[t][ch]['Coord<Minimum>']
-                centers = numpy.asarray(centers, dtype=numpy.uint32) + numpy.asarray(offsets, dtype=numpy.uint32)
-                
-                # FIXME: The OpRegionFeatures3d operator has a special hacked-in 'margin' 
-                #         that affects all x-y (not z) object coordinates
-                #        There's got to be a better way....
-                centers[:,0:2] -= OpRegionFeatures3d.MARGIN # xy, not z
                 if centers.size:
-                    centers = centers[1:,:]
+                    centers = centers[1:, :]
                 for center in centers:
                     x, y, z = center[0:3]
-                    for dim in (1, 2, 3):
-                        for offset in (-1, 0, 1):
-                            c = [t, x, y, z, ch]
-                            c[dim] += offset
-                            c = tuple(c)
-                            if self.__contained_in_subregion(roi, c):
-                                result[self.__make_key(roi, c)] = 255
+                    c = (t, x, y, z, ch)
+                    if self.__contained_in_subregion(roi, c):
+                        result[self.__make_key(roi, c)] = 255
+                    
         return result
 
     def propagateDirty(self, slot, subindex, roi):
