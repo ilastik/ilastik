@@ -312,7 +312,7 @@ class OpSegmentation(Operator):
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
         self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1] + (1,)
-        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.dtype = numpy.uint8 #who is going to have more than 256 classes?
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
     def execute(self, slot, subindex, roi, result):
