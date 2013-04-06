@@ -168,14 +168,11 @@ class IlastikShell( QMainWindow ):
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
-        if 'Ubuntu' in platform.platform():
+        if ilastik_config.getboolean("ilastik", "debug") or 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
+            # Navive menus also required for event-recorded tests
             self.menuBar().setNativeMenuBar(False)
-
-        # Need non-native menus for test scripting
-        # FIXME: Set this via a config setting
-        self.menuBar().setNativeMenuBar(False)
-
+            
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
         self._helpMenu = self._createHelpMenu()
@@ -285,42 +282,16 @@ class IlastikShell( QMainWindow ):
         shortcutsAction = menu.addAction("&Keyboard Shortcuts")
         shortcutsAction.triggered.connect(editShortcuts)
 
-        #dbg = ilastik_config.getboolean("ilastik", "debug")
-        dbg = True
-
-        if dbg:
+        if ilastik_config.getboolean("ilastik", "debug"):
+            detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
             exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-            export0 = exportDebugSubmenu.addAction("Lowest Detail")
-            export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
-    
-            export1 = exportDebugSubmenu.addAction("Some Detail")
-            export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
-    
-            export2 = exportDebugSubmenu.addAction("More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
-    
-            export2 = exportDebugSubmenu.addAction("Even More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
-    
-            export3 = exportDebugSubmenu.addAction("Unlimited Detail")
-            export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
-    
             exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-            exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
-            exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
-    
-            exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
-            exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
-    
-            exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
-            exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
-    
-            exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
-            exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
-    
-            exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
-            exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
-            
+            for name, level in detail_levels:
+                op_action = exportDebugSubmenu.addAction(name)
+                workflow_action = exportWorkflowSubmenu.addAction(name)
+                op_action.triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
+                workflow_action.triggered.connect( partial(self.exportWorkflowDiagram, level) )
+        
             startRecordingAction = menu.addAction( "Start Recording" )
             startRecordingAction.triggered.connect( self._startRecording )
 
@@ -372,7 +343,7 @@ class IlastikShell( QMainWindow ):
         _globals = {}
         _locals = {}
         execfile('/tmp/recording.py', _globals, _locals)        
-        th = threading.Thread(target=_locals['play_commands'])
+        th = threading.Thread( target=partial(_locals['playback_events'], playback_speed=1.0) )
         th.start()
     
     def show(self):
@@ -747,7 +718,8 @@ class IlastikShell( QMainWindow ):
             dlg = QFileDialog(self, caption, defaultPath, "Ilastik project files (*.ilp)")
             dlg.setObjectName("CreateProjectFileDlg")
             dlg.setAcceptMode(QFileDialog.AcceptSave)
-            dlg.setOptions( QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
+            if ilastik_config.getboolean("ilastik", "debug"):
+                dlg.setOptions( QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
             dlg.exec_()
             
             # If the user cancelled, stop now
@@ -810,9 +782,12 @@ class IlastikShell( QMainWindow ):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
+        
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)",
-           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
