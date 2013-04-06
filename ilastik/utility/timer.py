@@ -12,6 +12,9 @@ class Timer(object):
     .. note:: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
     """
     def __init__(self):
+        """
+        Creates a paused timer.  Call `unpause()` to start the timer.
+        """
         self.paused = True
         self.start_time = None
         self.stop_time = None
@@ -135,6 +138,7 @@ if __name__ == "__main__":
         time.sleep(0.2)
 
     print "Calling..."
+    
     myfunc(2)
     print "Finished."
     

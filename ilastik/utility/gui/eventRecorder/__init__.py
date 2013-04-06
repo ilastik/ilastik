@@ -1,1 +1,2 @@
-from eventRecorder import EventRecorder
+from eventRecorder import EventRecorder, EventPlayer
+from eventRecorderGui import EventRecorderGui

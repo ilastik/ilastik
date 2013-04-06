@@ -35,7 +35,7 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
-from ilastik.utility.gui.eventRecorder import EventRecorder
+from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
 from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -207,7 +207,7 @@ class IlastikShell( QMainWindow ):
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
-        self._recorder = None
+        self._recorderGui = EventRecorderGui()
 
     @property
     def _applets(self):
@@ -279,27 +279,18 @@ class IlastikShell( QMainWindow ):
 
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
-        shortcutsAction = menu.addAction("&Keyboard Shortcuts")
-        shortcutsAction.triggered.connect(editShortcuts)
+        menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
 
         if ilastik_config.getboolean("ilastik", "debug"):
             detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
             exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
             exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
             for name, level in detail_levels:
-                op_action = exportDebugSubmenu.addAction(name)
-                workflow_action = exportWorkflowSubmenu.addAction(name)
-                op_action.triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
-                workflow_action.triggered.connect( partial(self.exportWorkflowDiagram, level) )
+                exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
+                exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
         
-            startRecordingAction = menu.addAction( "Start Recording" )
-            startRecordingAction.triggered.connect( self._startRecording )
-
-            startRecordingAction = menu.addAction( "Stop Recording" )
-            startRecordingAction.triggered.connect( self._stopRecording )
-
-            playRecorderingAction = menu.addAction( "Play Recording" )
-            playRecorderingAction.triggered.connect( self._playRecording )
+            menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
+            menu.addAction( "Play Recording" ).triggered.connect( self._playRecording )
 
         return menu
 
@@ -327,24 +318,12 @@ class IlastikShell( QMainWindow ):
             PreferencesManager().set( 'shell', 'recent debug diagram', str(svgPath) )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
 
-    def _startRecording(self):
-        self._recorder = EventRecorder(parent=self)
-        self._recorder.start()
-
-    def _stopRecording(self):
-        # If we are actually playing a recording right now, then the "Stop Recording" action gets triggered as the last step.
-        # Ignore it.
-        if self._recorder is not None:
-            with open('/tmp/recording.py', 'w') as f:
-                self._recorder.writeScript(f)
-            self._recorder.stop()
+    def _openRecorderControls(self):
+        self._recorderGui.show()
 
     def _playRecording(self):
-        _globals = {}
-        _locals = {}
-        execfile('/tmp/recording.py', _globals, _locals)        
-        th = threading.Thread( target=partial(_locals['playback_events'], playback_speed=1.0) )
-        th.start()
+        player = EventPlayer(playback_speed=1.0)
+        player.play_script('/tmp/recording.py')
     
     def show(self):
         """
