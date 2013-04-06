@@ -2,11 +2,13 @@ import numpy
 import h5py
 import vigra.analysis
 import math
+import pgmlink
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+from ilastik.applets.objectExtraction import config
 
 
 
@@ -24,13 +26,13 @@ class OpDivisionFeatureExtraction(OpObjectExtraction):
         
         self.RegionFeatures.disconnect()
         
-        self._opDivFeats = OpDivisionFeatures(parent=self)
+        self._opDivFeats = OpCellFeatures(parent=self)
         self._opDivFeats.LabelImage.connect(self.LabelImage)
         self._opDivFeats.RawImage.connect(self.RawImage)
         self._opDivFeats.TranslationVectors.connect(self.TranslationVectors)
         self._opDivFeats.RegionFeaturesVigra.connect(self.RegionFeaturesVigra)
         
-        self.RegionFeatures.connect(self._opDivFeats.DivisionFeatures)
+        self.RegionFeatures.connect(self._opDivFeats.RegionFeaturesExtended)
         
         
     def setupOutputs(self):
@@ -45,44 +47,48 @@ class OpDivisionFeatureExtraction(OpObjectExtraction):
 
 
 
-class OpDivisionFeatures(Operator):
-    name = "Division Features"
+class OpCellFeatures(Operator):
+    name = "Cell Features"
     
     LabelImage = InputSlot()
     RawImage = InputSlot()    
     RegionFeaturesVigra = InputSlot(stype=Opaque, rtype=List)
     TranslationVectors = InputSlot(optional=True)
         
-    DivisionFeatures = OutputSlot(stype=Opaque, rtype=List)
+    RegionFeaturesExtended = OutputSlot(stype=Opaque, rtype=List)
     
     divisionFeatures = ['SquaredDistance%02d', 'AngleDaughters', 'ChildrenSizeRatio',\
                          'SquaredDistanceRatio', 'ParentChildrenSizeRatio', \
                          'ChildrenMeanRatio', 'ParentChildrenMeanRatio']
+    cellClassificationFeatures = ['GMM_BIC']
+    
+    ndim = None
     numNeighbors = 2
     templateSize = 30  # window in which we look for neighboring labels in the next time steps
     size_filter_from = 5
     with_uncorrected_features = True # plain features
-    with_corrected_features = False   # the region centers are corrected by translation vector
+    with_corrected_features = True  # the region centers are corrected by translation vector
+    with_cell_classification_features = True # features for cell classification
     defaultSquaredDistance = 1000
     
     transl_corr_suffix = "_corr"
     
     def __init__(self, parent):
-        super(OpDivisionFeatures,self).__init__(parent=parent)
+        super(OpCellFeatures,self).__init__(parent=parent)
         self._cache = {}
         self.fixed = False
         
     def setupOutputs(self):
-        self.DivisionFeatures.meta.assignFrom(self.RegionFeaturesVigra.meta)        
+        self.RegionFeaturesExtended.meta.assignFrom(self.RegionFeaturesVigra.meta)        
         if self.with_corrected_features and not self.TranslationVectors.ready():
             raise Exception("TranslationVectors slot is not ready, cannot compute translation corrected features")
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.TranslationVectors:
-            self.DivisionFeatures.setDirty([0,self.TranslationVectors.meta.shape[0]])
+            self.RegionFeaturesExtended.setDirty([0,self.TranslationVectors.meta.shape[0]])
                         
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.DivisionFeatures        
+        assert slot == self.RegionFeaturesExtended        
         
         feats = {}
         if len(roi) == 0:
@@ -141,7 +147,17 @@ class OpDivisionFeatures(Operator):
                             feats_at_c[name] = numpy.zeros([num,1])
                         if self.with_corrected_features:     
                             feats_at_c[name+self.transl_corr_suffix] = numpy.zeros([num,1])
-                        
+                    
+                    if self.with_cell_classification_features:
+                        if self.ndim is None:
+                            ndim = 2
+                            for rc in feats_at_c['RegionCenter']:
+                                if rc[2] != 0:
+                                    ndim = 3
+                                    break
+                            self.ndim = ndim
+                        for name in self.cellClassificationFeatures:
+                            feats_at_c[name] = numpy.zeros([num,config.num_max_objects])
                         
                     if t < self.LabelImage.meta.shape[0] - 1:
                         region_feats_next = self.RegionFeaturesVigra.get([t+1]).wait()[t+1]
@@ -170,13 +186,44 @@ class OpDivisionFeatures(Operator):
                                                          numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,                                                         
                                                          suffix=self.transl_corr_suffix)
                     
+                    if self.with_cell_classification_features:
+                        self.extractCellClassificationFeatures(feats_at_c, self.cellClassificationFeatures, self.ndim, size_filter_from=self.size_filter_from)
+                            
                     feats_at.append(feats_at_c)    
 
                 self._cache[t] = feats_at                
-                self.DivisionFeatures._sig_value_changed()
+                self.RegionFeaturesExtended._sig_value_changed()
             feats[t] = feats_at   
         return feats     
     
+    
+    def extractCellClassificationFeatures(self, feats_at_cur, featurenames, ndim, size_filter_from=4,regularization_parameter = 0.1):
+        ''' adds cell classification features to feats_at_cur '''
+        
+        for label_cur, vals in enumerate(feats_at_cur['Coord<ValueList >']):
+            if label_cur == 0:
+                continue
+            
+            if 'GMM_BIC' in featurenames: 
+                data = pgmlink.feature_array()
+                for el in vals:
+                    for i in range(ndim):                         
+                        data.push_back(float(el[i]))
+                
+                bic_scores = pgmlink.feature_array()
+                cluster_centers = pgmlink.feature_array()
+                try: 
+                    pgmlink.gmm_priors_and_centers(data, bic_scores, cluster_centers, config.num_max_objects, ndim, regularization_parameter)
+                except:
+                    print 'WARNING: GMM computation threw exception, setting BIC = (0,..,0)'
+                    bic_scores = [ 0 for ii in range(ndim) ]
+                
+                bic_score_list = []
+                for b in bic_scores:
+                    bic_score_list.append(b)
+                feats_at_cur['GMM_BIC'][label_cur] = numpy.array(bic_score_list)
+                print 'GMM_BIC(',label_cur,') =', numpy.array(bic_score_list)
+            
     
     def extractDivisionFeatures(self, feats_at_cur, feats_at_next, img_at_next, divFeatures, 
                                 numNeighbors = 3, size_filter_from = 4, 

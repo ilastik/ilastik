@@ -92,5 +92,6 @@ class ConservationTrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opDivDetection.ObjectFeatures )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
+        opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
 #        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
     

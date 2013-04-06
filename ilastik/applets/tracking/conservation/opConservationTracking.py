@@ -8,6 +8,7 @@ from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
+    DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     
     MergerOutput = OutputSlot()
     
@@ -47,8 +48,13 @@ class OpConservationTracking(OpTrackingBase):
             transWeight=10.0,
             withDivisions=True,
             withOpticalCorrection=True,
-            withCoordinateList=True
+            withCoordinateList=True,
+            withClassifierPrior=False
             ):
+        
+        if withClassifierPrior:
+            if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
+                raise Exception, 'the max. number of objects must be consistent with the number of labels given in cell classification'
         
         median_obj_size = [0]
                 
@@ -57,7 +63,8 @@ class OpConservationTracking(OpTrackingBase):
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=withCoordinateList)
+                                                                      with_coordinate_list=withCoordinateList,
+                                                                      with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'

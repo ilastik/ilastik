@@ -149,7 +149,8 @@ class OpTrackingBase(Operator):
                                median_object_size=None,
                                max_traxel_id_at=None,
                                with_opt_correction=False,
-                               with_coordinate_list=False):
+                               with_coordinate_list=False,
+                               with_classifier_prior=False):
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -160,7 +161,10 @@ class OpTrackingBase(Operator):
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
-                
+        
+        if with_classifier_prior:
+            detProbs = self.DetectionProbabilities(time_range).wait()
+            
         print "filling traxelstore"
         ts = pgmlink.TraxelStore()
                 
@@ -190,7 +194,7 @@ class OpTrackingBase(Operator):
                 coordinates = feats[t][0]['Coord<ValueList >']
                 if len(coordinates):
                     coordinates = coordinates[1:]
-            
+                
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
             filtered_labels[t] = []
@@ -227,6 +231,16 @@ class OpTrackingBase(Operator):
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
 
+                if with_classifier_prior:
+                    tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
+                    for i, v in enumerate(detProbs[t][idx+1]):
+                        val = float(v)
+                        if val < 0.01:
+                            val = 0.01
+                        if val > 0.95:
+                            val = 0.95
+                        tr.set_feature_value("detProb", i, float(v))
+                        
                 if with_local_centers:
                     tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
                     tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))

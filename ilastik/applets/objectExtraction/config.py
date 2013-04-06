@@ -21,6 +21,8 @@ selected_features_division_detection = ['SquaredDistance01', 'SquaredDistance02'
                      'ParentChildrenMeanRatio_corr']
 
 selected_features_cell_classification = ['Count', 'Mean', 'Variance', \
-                     'RegionRadii']
+                     'RegionRadii', 'GMM_BIC']
 
 selected_features = []
+
+num_max_objects = 2

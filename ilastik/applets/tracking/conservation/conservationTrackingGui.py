@@ -63,6 +63,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 
         withTracklets = self._drawer.trackletsBox.isChecked()
         sizeDependent = self._drawer.sizeDepBox.isChecked()
+        hardPrior = self._drawer.hardPriorBox.isChecked()
+        classifierPrior = self._drawer.classifierPriorBox.isChecked()
         divWeight = self._drawer.divWeightBox.value()
         transWeight = self._drawer.transWeightBox.value()
         withDivisions = self._drawer.divisionsBox.isChecked()        
@@ -87,7 +89,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 divWeight=divWeight,
                 transWeight=transWeight,
                 withDivisions=withDivisions,
-                withOpticalCorrection=withOpticalCorrection
+                withOpticalCorrection=withOpticalCorrection,
+                withClassifierPrior=classifierPrior
                 )
         except Exception as e:
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        

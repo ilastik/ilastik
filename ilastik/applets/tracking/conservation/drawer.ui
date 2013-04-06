@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>887</height>
+    <height>941</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -435,19 +435,42 @@
       </layout>
      </item>
      <item>
-      <widget class="QCheckBox" name="trackletsBox">
+      <widget class="QRadioButton" name="hardPriorBox">
        <property name="text">
-        <string>With Tracklets</string>
+        <string>Hard Prior</string>
        </property>
        <property name="checked">
         <bool>true</bool>
        </property>
+       <attribute name="buttonGroup">
+        <string notr="true">buttonGroup</string>
+       </attribute>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="sizeDepBox">
+      <widget class="QRadioButton" name="sizeDepBox">
        <property name="text">
         <string>Size Dependent Prior</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">buttonGroup</string>
+       </attribute>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="classifierPriorBox">
+       <property name="text">
+        <string>Classifier Prior</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">buttonGroup</string>
+       </attribute>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="trackletsBox">
+       <property name="text">
+        <string>With Tracklets</string>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -733,8 +756,6 @@
   <tabstop>avgSizeBox</tabstop>
   <tabstop>divWeightBox</tabstop>
   <tabstop>transWeightBox</tabstop>
-  <tabstop>trackletsBox</tabstop>
-  <tabstop>sizeDepBox</tabstop>
   <tabstop>divisionsBox</tabstop>
   <tabstop>opticalBox</tabstop>
   <tabstop>TrackButton</tabstop>
@@ -756,4 +777,7 @@
  </tabstops>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
 </ui>

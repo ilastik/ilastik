@@ -6,7 +6,7 @@ from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectEx
 import numpy as np
 import collections
 
-class SerialDivisionFeaturesSlot(SerialSlot):
+class SerialExtendedFeaturesSlot(SerialSlot):
 
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -95,7 +95,7 @@ class DivisionFeatureExtractionSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):        
         slots = [
             SerialLabelImageSlot(operator.LabelImage, name="LabelImage"),
-            SerialDivisionFeaturesSlot(operator.RegionFeatures, name="samples"),
+            SerialExtendedFeaturesSlot(operator.RegionFeatures, name="samples"),
         ]
 
         super(DivisionFeatureExtractionSerializer, self).__init__(projectFileGroupName,
