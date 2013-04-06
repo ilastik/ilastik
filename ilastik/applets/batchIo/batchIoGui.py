@@ -16,6 +16,8 @@ import ilastik.applets.base.applet
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from ilastik.config import cfg as ilastik_config
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -206,7 +208,11 @@ class BatchIoGui(QWidget):
         """
         with Tracer(traceLogger):
             # Launch the "Open File" dialog
-            directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", os.path.abspath(__file__))
+            options = QFileDialog.Options()
+            if ilastik_config.getboolean("ilastik", "debug"):
+                options |= QFileDialog.DontUseNativeDialog
+
+            directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", os.path.abspath(__file__), options=options)
     
             # Stop now if the user canceled
             if directoryName.isNull():

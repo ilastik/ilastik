@@ -25,6 +25,7 @@ from lazyflow.request import Request
 from volumina.utility import PreferencesManager
 
 #ilastik
+from ilastik.config import cfg as ilastik_config
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
@@ -255,11 +256,15 @@ class DataSelectionGui(QWidget):
         else:
             defaultDirectory = os.path.expanduser('~')
 
+        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+
         # Launch the "Open File" dialog
         directoryName = QFileDialog.getExistingDirectory(self,
                                                          "Image Stack Directory",
                                                          defaultDirectory,
-                                                         options=QFileDialog.Options(QFileDialog.DontUseNativeDialog | QFileDialog.ShowDirsOnly))
+                                                         options=options)
 
         # If the user didn't cancel
         if not directoryName.isNull():
@@ -319,7 +324,8 @@ class DataSelectionGui(QWidget):
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
         dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
         dlg.setOption( QFileDialog.HideNameFilterDetails, False )
-        dlg.setOption( QFileDialog.DontUseNativeDialog, True )
+        if ilastik_config.getboolean("ilastik", "debug"):
+            dlg.setOption( QFileDialog.DontUseNativeDialog, True )
         dlg.setViewMode( QFileDialog.Detail )
         dlg.setFileMode( QFileDialog.ExistingFiles )
 
