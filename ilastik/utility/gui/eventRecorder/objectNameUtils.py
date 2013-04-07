@@ -45,6 +45,8 @@ def get_named_object(full_name, timeout=10.0):
         time.sleep(1.0)
         timeout -= 1.0
         obj = _locate_descendent(None, full_name)
+
+    assert obj is not None, "Couldn't locate object: {} within timeout of {} seconds".format( full_name, timeout )
     return obj
 
 def _assign_default_object_name( obj ):
@@ -56,7 +58,7 @@ def _assign_default_object_name( obj ):
         index = parent.children().index( obj )
         newname = "child_{}_{}".format( index, obj.__class__.__name__ )
         existing_names = map( QObject.objectName, parent.children() )
-        assert newname not in existing_names
+        assert newname not in existing_names, "Children were not accessed in the expected order, so renaming is not consistent! Parent widget: {} already has a child with name: {}".format( get_fully_qualified_name(parent), newname )
         obj.setObjectName( newname )
 
 def _has_unique_name(obj):

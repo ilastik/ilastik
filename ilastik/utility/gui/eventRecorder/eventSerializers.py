@@ -61,5 +61,9 @@ def QWindowStateChangeEvent_to_string(windowStateChangeEvent):
 
 @register_serializer(QEvent)
 def QEvent_to_string(event):
-    return "PyQt4.QtCore.QEvent({})".format( event.type() )
+    type_name = get_event_type_name( event.type() )
+    # Some event types are not exposed in pyqt as symbols
+    if not hasattr( QEvent, type_name ):
+        type_name = int(event.type())
+    return "PyQt4.QtCore.QEvent({})".format( type_name )
 

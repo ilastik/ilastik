@@ -4,6 +4,9 @@ from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWi
 
 from objectNameUtils import get_fully_qualified_name
 from eventSerializers import event_to_string
+from eventTypeNames import EventTypes
+
+from ilastik.utility.timer import Timer
 
 import threading
 import logging
@@ -46,24 +49,30 @@ class Signaler(QObject):
     def __init__(self, *args, **kwargs):
         QObject.__init__(self, *args, **kwargs)
 
-def post_event(obj, event):
-    assert threading.current_thread().name != "MainThread"
-    QApplication.postEvent(obj, event)
+class EventPlayer(object):
+    def __init__(self, playback_speed=None):
+        self._playback_speed = playback_speed
+        self._timer = Timer()
+        self._timer.unpause()
     
-    assert QApplication.instance().thread() == obj.thread()
+    def post_event(self, obj, event, timestamp_in_seconds):
+        if self._playback_speed is not None:
+            self._timer.sleep_until(timestamp_in_seconds / self._playback_speed)
+
+        assert threading.current_thread().name != "MainThread"
+        QApplication.postEvent(obj, event)
+        
+        assert QApplication.instance().thread() == obj.thread()
+        
+        flusher = QEventFlusher()
+        flusher.moveToThread( obj.thread() )
+        flusher.setParent( QApplication.instance() )
     
-    flusher = QEventFlusher()
-    flusher.moveToThread( obj.thread() )
-    flusher.setParent( QApplication.instance() )
-
-    signaler = Signaler()
-    signaler.sig.connect( flusher.set, Qt.QueuedConnection )
-    signaler.sig.emit()
-    flusher.wait()
-    flusher.clear()
-
-def verify_object(obj, objname):
-    assert obj is not None, "Couldn't find object: {}".format(objname)
+        signaler = Signaler()
+        signaler.sig.connect( flusher.set, Qt.QueuedConnection )
+        signaler.sig.emit()
+        flusher.wait()
+        flusher.clear()
 
 def has_ancestor(obj, object_type):
     parent = QObject.parent( obj )
@@ -80,9 +89,23 @@ class EventRecorder( QObject ):
     def __init__(self, *args, **kwargs):
         QObject.__init__(self, *args, **kwargs)
         self._captured_events = []
+        self._timer = Timer()
 
     QEvent_Style = 91
-    IgnoredEventTypes = set( [ QEvent.Paint, QEvent_Style, QEvent.KeyboardLayoutChange, QEvent.WindowActivate, QEvent.WindowDeactivate, QEvent.ActivationChange ] )
+    IgnoredEventTypes = set( [ QEvent.Paint,
+                              QEvent.KeyboardLayoutChange,
+                              QEvent.WindowActivate,
+                              QEvent.WindowDeactivate,
+                              QEvent.ActivationChange,
+                              # These event symbols are not exposed in pyqt, so we pull them from our own enum
+                              EventTypes.Style,
+                              EventTypes.ApplicationActivate,
+                              EventTypes.ApplicationDeactivate,
+                              EventTypes.NonClientAreaMouseMove,
+                              EventTypes.NonClientAreaMouseButtonPress,
+                              EventTypes.NonClientAreaMouseButtonRelease,
+                              EventTypes.NonClientAreaMouseButtonDblClick
+                               ] )
     IgnoredEventClasses = (QChildEvent, QTimerEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent)
 
     def eventFilter(self, watched, event):
@@ -93,7 +116,8 @@ class EventRecorder( QObject ):
                 logger.warn("Don't know how to record event: {}".format( str(event) ))
                 print "Don't know", str(event)
             else:
-                self._captured_events.append( (eventstr, get_fully_qualified_name(watched)) )
+                timestamp_in_seconds = self._timer.seconds()
+                self._captured_events.append( (eventstr, get_fully_qualified_name(watched), timestamp_in_seconds) )
         return False
 
     def _shouldSaveEvent(self, event):
@@ -120,6 +144,7 @@ class EventRecorder( QObject ):
         return True
 
     def start(self):
+        self._timer.unpause()
         QApplication.instance().installEventFilter( self )
 
     def stop(self):
@@ -128,19 +153,19 @@ class EventRecorder( QObject ):
     def writeScript(self, fileobj):
         fileobj.write(
 """
-def play_commands():\n
+def playback_events(playback_speed=None):
     import PyQt4.QtCore
     from PyQt4.QtCore import Qt, QEvent
     import PyQt4.QtGui
     from ilastik.utility.gui.eventRecorder.objectNameUtils import get_named_object
-    from ilastik.utility.gui.eventRecorder.eventRecorder import verify_object, post_event
+    from ilastik.utility.gui.eventRecorder.eventRecorder import EventPlayer
+    
+    player = EventPlayer(playback_speed)
 """)
-        for eventstr, objname in self._captured_events:
+        for eventstr, objname, timestamp_in_seconds in self._captured_events:
             fileobj.write("""
-    obj = get_named_object('{objname}')
-    verify_object(obj, '{objname}')
-    event = {eventstr}
-    post_event(obj, event)
+    obj = get_named_object( '{objname}' )
+    player.post_event( obj,  {eventstr}, {timestamp_in_seconds} )
 """.format( **locals() )
 )
 

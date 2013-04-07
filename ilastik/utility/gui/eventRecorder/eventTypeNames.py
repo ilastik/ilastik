@@ -37,7 +37,7 @@ def _get_flags_string(flags, defaultName, flagNames):
     return combinedName
 
 
-class _EventTypes(object):
+class EventTypes(object):
         None_ = 0                               # invalid event
         Timer = 1                              # timer event
         MouseButtonPress = 2                   # mouse button pressed
@@ -270,7 +270,7 @@ class _EventTypes(object):
         MaxUser = 65535
 
 EventTypeNameDict = {}
-for k,v in _EventTypes.__dict__.items():
+for k,v in EventTypes.__dict__.items():
     EventTypeNameDict[v] = 'QEvent.' + k
     
 
