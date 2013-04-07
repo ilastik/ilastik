@@ -17,12 +17,12 @@ import functools
 
 shell = None
 
-def startShellGui(workflowClass, testFunc = None):
+def startShellGui(workflowClass, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
     app = QApplication([])
-    QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, testFunc ) )
+    QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, *testFuncs ) )
     
     _applyStyleSheet(app)
 
@@ -37,7 +37,7 @@ def _applyStyleSheet(app):
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
 
-def launchShell(workflowClass, testFunc = None):
+def launchShell(workflowClass, *testFuncs):
     """
     Start the ilastik shell GUI with the given workflow type.
     Note: A QApplication must already exist, and you must call this function from its event loop.
@@ -62,5 +62,5 @@ def launchShell(workflowClass, testFunc = None):
     splashScreen.finish(shell)
 
     # Run a test (if given)
-    if testFunc:
+    for testFunc in testFuncs:
         QTimer.singleShot(0, functools.partial(testFunc, shell) )
