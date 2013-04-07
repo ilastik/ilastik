@@ -510,9 +510,11 @@ class ManualTrackingGui(LayerViewerGui):
             roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
             li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
             
+#            li_prev_oid = (li_prev == oid_prev)
+#            li_cur_pos = (li_cur > 0)
+#            uniqueLabels = list(numpy.unique(numpy.where(li_prev_oid == li_cur_pos, li_cur, 0)))
             li_prev_oid = (li_prev == oid_prev)
-            li_cur_pos = (li_cur > 0)
-            uniqueLabels = list(numpy.unique(numpy.where(li_prev_oid == li_cur_pos, li_cur, 0)))
+            uniqueLabels = list(numpy.unique(li_prev_oid * li_cur))
             if 0 in uniqueLabels:
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
