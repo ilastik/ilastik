@@ -4,12 +4,12 @@ NOSE_ARG=${1-"."}
 
 for f in `find $NOSE_ARG -iname "*test*.py"`
 do
-  if [[ $f == "./test_applets/pixelClassification/testPixelClassificationBenchmarking.py" ]]; then
+  if echo $f | grep -q "testPixelClassificationBenchmarking.py"; then
       echo "Skipping $f because is takes too long"
       continue
   fi
 
-  if [[ $f == "./test_applets/autocontextClassification/testAutocontextGui.py" ]]; then
+  if echo $f | grep -q "testAutocontextGui.py"; then
       echo "Skipping $f which is known to fail"
       continue
   fi
