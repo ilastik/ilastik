@@ -1,12 +1,11 @@
 import os
+import datetime
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QIcon
+from PyQt4.QtCore import Qt, QSettings
+from PyQt4.QtGui import QWidget, QIcon, QFileDialog
 
 from eventRecorder import EventRecorder
-
-from ilastik.shell.gui.iconMgr import ilastikIcons
 
 class EventRecorderGui(QWidget):
     
@@ -14,6 +13,8 @@ class EventRecorderGui(QWidget):
         super( EventRecorderGui, self ).__init__(parent)
         uiPath = os.path.join( os.path.split(__file__)[0], 'eventRecorderGui.ui' )
         uic.loadUi(uiPath, self)
+
+        self.setWindowTitle("Event Recorder")
 
         self.startButton.clicked.connect( self._onStart )
         self.pauseButton.clicked.connect( self._onPause )
@@ -32,6 +33,7 @@ class EventRecorderGui(QWidget):
         self.pauseButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.saveButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
+        from ilastik.shell.gui.iconMgr import ilastikIcons
         self.startButton.setIcon( QIcon(ilastikIcons.Play) )
         self.pauseButton.setIcon( QIcon(ilastikIcons.Pause) )
         self.saveButton.setIcon( QIcon(ilastikIcons.Stop) )
@@ -47,6 +49,9 @@ class EventRecorderGui(QWidget):
 
     def _onPause(self):
         if self._recorder.paused:
+            # Auto-add the comment (if any)
+            if self.newCommentEdit.toPlainText() != "":
+                self._onInsertComment()
             # Unpause the recorder
             self._recorder.unpause()
             self.pauseButton.setText( "Pause" )
@@ -67,12 +72,42 @@ class EventRecorderGui(QWidget):
 
         if not self._recorder.paused:
             self._onPause()
-        with open('/tmp/recording.py', 'w') as f:
+
+        self.startButton.setEnabled(True)
+        
+        settings = QSettings("Ilastik", "Event Recorder")
+        variant = settings.value("recordings_directory")
+        if not variant.isNull():
+            default_dir = str( variant.toString() )
+        else:
+            import ilastik
+            ilastik_module_root = os.path.split(ilastik.__file__)[0]
+            ilastik_repo_root = os.path.split( ilastik_module_root )[0]
+            default_dir = os.path.join( ilastik_repo_root, "tests" )
+
+        now = datetime.datetime.now()
+        timestr = "{:04d}{:02d}{:02d}-{:02d}{:02d}".format( now.year, now.month, now.minute, now.hour, now.second )
+        default_script_path = os.path.join( default_dir, "recording-{timestr}.py".format( timestr=timestr ) )
+            
+        dlg = QFileDialog(self, "Save Playback Script", default_script_path, "Ilastik event playback scripts (*.py)")
+        dlg.setObjectName("event_recorder_save_dlg")
+        dlg.setAcceptMode(QFileDialog.AcceptSave)
+        dlg.setOptions( QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
+        dlg.exec_()
+        
+        # If the user cancelled, stop now
+        if dlg.result() == QFileDialog.Rejected:
+            return
+    
+        script_path = str(dlg.selectedFiles()[0])
+        
+        # Remember the directory as our new default
+        default_dir = os.path.split(script_path)[0]
+        settings.setValue( "recordings_directory", default_dir )
+        
+        with open(script_path, 'w') as f:
             self._recorder.writeScript(f)
             
-        self.pauseButton.setEnabled(False)
-        self.startButton.setEnabled(True)
-
     def _onInsertComment(self):
         comment = self.newCommentEdit.toPlainText()
         self._recorder.insertComment( comment )

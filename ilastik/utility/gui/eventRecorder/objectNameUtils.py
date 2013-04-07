@@ -20,7 +20,10 @@ def get_fully_qualified_name(obj):
     if not _has_unique_name(obj):
         _normalize_child_names(parent)
     
-    objName = obj.objectName()
+    objName = str(obj.objectName())
+    
+    # We combine object names using periods, which means they better not have periods themselves...
+    assert objName.find('.') == -1, "Objects names must not use periods!  Found an object named: {}".format( objName )
 
     if parent is None:
         return objName
@@ -34,7 +37,7 @@ def get_fully_qualified_name(obj):
 
     return fullname
 
-def get_named_object(full_name, timeout=10.0):
+def get_named_object(full_name, timeout=3.0):
     """
     Locate the object with the given fully qualified name.
     While searching for the object, actively **rename** any objects that do not have unique names within their parent.

@@ -67,8 +67,9 @@ class EventPlayer(object):
         """
         _globals = {}
         _locals = {}
-        execfile(path, _globals, _locals)        
+        execfile(path, _globals, _locals)
         th = threading.Thread( target=partial(_locals['playback_events'], player=self) )
+        th.daemon = True
         th.start()
     
     def post_event(self, obj, event, timestamp_in_seconds):
@@ -189,6 +190,14 @@ class EventRecorder( QObject ):
         QApplication.instance().removeEventFilter( self )
     
     def writeScript(self, fileobj):
+        # Write header comments
+        fileobj.write(
+"""
+# Event Recording
+# Started at: {}
+""".format( str(self._timer.start_time) ) )
+
+        # Write playback function definition
         fileobj.write(
 """
 def playback_events(player):
@@ -201,6 +210,8 @@ def playback_events(player):
     player.display_comment("SCRIPT STARTING")
 
 """)
+
+        # Write all events and comments
         for eventstr, objname, timestamp_in_seconds in self._captured_events:
             if objname == "comment":
                 fileobj.write(
