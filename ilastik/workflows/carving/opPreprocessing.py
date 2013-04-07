@@ -128,6 +128,7 @@ class OpPreprocessing(Operator):
         #Choose filter selected by user
         volume_filter = self.Filter.value
         
+        self.applet.progressSignal.emit(0)
         print "applying filter",
         if volume_filter == 0:
             print "lowest eigenvalue of Hessian of Gaussian"
@@ -148,7 +149,7 @@ class OpPreprocessing(Operator):
         elif volume_filter == 4:
             print "negative Gaussian Smoothing"
             volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
-            
+        
         volume_ma = numpy.max(volume_feat)
         volume_mi = numpy.min(volume_feat)
         volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
@@ -165,7 +166,8 @@ class OpPreprocessing(Operator):
                 self.applet.progress = x
         
         mst= MSTSegmentor(labelVolume, volume_feat.astype(numpy.float32), edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
-        mst.raw = volume
+        #mst.raw is not set here in order to avoid redundant data storage 
+        mst.raw = None
         
         #Output is of shape 1
         result[0] = mst
