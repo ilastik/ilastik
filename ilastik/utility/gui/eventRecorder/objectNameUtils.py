@@ -43,13 +43,14 @@ def get_named_object(full_name, timeout=3.0):
     While searching for the object, actively **rename** any objects that do not have unique names within their parent.
     Since the renaming scheme is consistent with get_fully_qualified name, we should always be able to locate the target object, even if it was renamed when the object was originally recorded.
     """
+    timeout_ = timeout
     obj = _locate_descendent(None, full_name)
     while obj is None and timeout > 0.0:
         time.sleep(1.0)
         timeout -= 1.0
         obj = _locate_descendent(None, full_name)
 
-    assert obj is not None, "Couldn't locate object: {} within timeout of {} seconds".format( full_name, timeout )
+    assert obj is not None, "Couldn't locate object: {} within timeout of {} seconds".format( full_name, timeout_ )
     return obj
 
 def _assign_default_object_name( obj ):
