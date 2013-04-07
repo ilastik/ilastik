@@ -1522,7 +1522,7 @@ class Operator(object):
         ##
         # before __init__
         ##
-        obj = object.__new__(cls, *args, **kwargs)
+        obj = object.__new__(cls)
         obj.inputs = InputDict(obj)
         obj.outputs = OutputDict(obj)
         return obj
