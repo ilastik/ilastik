@@ -698,7 +698,8 @@ class IlastikShell( QMainWindow ):
             dlg.setObjectName("CreateProjectFileDlg")
             dlg.setAcceptMode(QFileDialog.AcceptSave)
             if ilastik_config.getboolean("ilastik", "debug"):
-                dlg.setOptions( QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
+                dlg.setOption( QFileDialog.DontUseNativeDialog,  True )
+                dlg.setOption( QFileDialog.DontConfirmOverwrite, True ) # For testing, it's easier if we don't record the overwrite confirmation
             dlg.exec_()
             
             # If the user cancelled, stop now
