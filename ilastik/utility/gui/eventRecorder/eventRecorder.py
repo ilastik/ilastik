@@ -60,7 +60,7 @@ class EventPlayer(object):
         else:
             self._comment_display = comment_display
 
-    def play_script(self, path):
+    def play_script(self, path, finish_callback=None):
         """
         Start execution of the given script in a separate thread and return immediately.
         Note: You should handle any exceptions from the playback script via sys.execpthook.
@@ -68,7 +68,11 @@ class EventPlayer(object):
         _globals = {}
         _locals = {}
         execfile(path, _globals, _locals)
-        th = threading.Thread( target=partial(_locals['playback_events'], player=self) )
+        def run():
+            _locals['playback_events'](player=self)
+            if finish_callback is not None:
+                finish_callback()
+        th = threading.Thread( target=run )
         th.daemon = True
         th.start()
     
