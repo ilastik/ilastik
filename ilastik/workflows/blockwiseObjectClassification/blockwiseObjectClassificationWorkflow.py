@@ -58,6 +58,7 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
         opBlockwiseObjectClassification.RawImage.connect( opTrainingTopLevel.RawImages )
         opBlockwiseObjectClassification.BinaryImage.connect( opTrainingTopLevel.BinaryImages )
         opBlockwiseObjectClassification.Classifier.connect( opTrainingTopLevel.Classifier )
+        opBlockwiseObjectClassification.LabelsCount.connect( opTrainingTopLevel.LabelsCount )
 
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
@@ -73,6 +74,7 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
         opBatchClassify.RawImage.connect( opRawBatchInput.Image )
         opBatchClassify.BinaryImage.connect( opBinaryBatchInput.Image )
         opBatchClassify.Classifier.connect( opTrainingTopLevel.Classifier )
+        opBatchClassify.LabelsCount.connect( opTrainingTopLevel.LabelsCount )
         opBatchClassify.BlockShape3dDict.connect( opBlockwiseObjectClassification.BlockShape3dDict )
         opBatchClassify.HaloPadding3dDict.connect( opBlockwiseObjectClassification.HaloPadding3dDict )
         
