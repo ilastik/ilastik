@@ -15,14 +15,15 @@ import threading
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog
+                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, QApplication
 
 #lazyflow
 from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
+from lazyflow.request import Request
 import lazyflow.tools.schematic
 
 #volumina
@@ -34,6 +35,7 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
+from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
 from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -167,16 +169,22 @@ class IlastikShell( QMainWindow ):
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
-        if 'Ubuntu' in platform.platform():
+        if ilastik_config.getboolean("ilastik", "debug") or 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
+            # Navive menus also required for event-recorded tests
             self.menuBar().setNativeMenuBar(False)
-
+            
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
         self._helpMenu = self._createHelpMenu()
         self.menuBar().addMenu( self._projectMenu  )
         self.menuBar().addMenu( self._settingsMenu )
         self.menuBar().addMenu( self._helpMenu    )
+        
+        assert self.thread() == QApplication.instance().thread()
+        assert self.menuBar().thread() == self.thread()
+        assert self._projectMenu.thread() == self.thread()
+        assert self._settingsMenu.thread() == self.thread()
         
         self.appletBar.expanded.connect(self.handleAppletBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
@@ -200,6 +208,7 @@ class IlastikShell( QMainWindow ):
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
+        self._recorderGui = EventRecorderGui()
 
     @property
     def _applets(self):
@@ -211,6 +220,7 @@ class IlastikShell( QMainWindow ):
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
         menu = QMenu("&Project", self)
+        menu.setObjectName("project_menu")
 
         shellActions = ShellActions()
 
@@ -252,6 +262,7 @@ class IlastikShell( QMainWindow ):
    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
+        menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(self._showAboutDialog)
         return menu
@@ -264,47 +275,23 @@ class IlastikShell( QMainWindow ):
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
+        menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
 
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
-        shortcutsAction = menu.addAction("&Keyboard Shortcuts")
-        shortcutsAction.triggered.connect(editShortcuts)
+        menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
 
-        dbg = ilastik_config.getboolean("ilastik", "debug")
-
-        if dbg:
+        if ilastik_config.getboolean("ilastik", "debug"):
+            detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
             exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-            export0 = exportDebugSubmenu.addAction("Lowest Detail")
-            export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
-    
-            export1 = exportDebugSubmenu.addAction("Some Detail")
-            export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
-    
-            export2 = exportDebugSubmenu.addAction("More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
-    
-            export2 = exportDebugSubmenu.addAction("Even More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
-    
-            export3 = exportDebugSubmenu.addAction("Unlimited Detail")
-            export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
-    
             exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-            exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
-            exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
-    
-            exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
-            exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
-    
-            exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
-            exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
-    
-            exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
-            exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
-    
-            exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
-            exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
+            for name, level in detail_levels:
+                exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
+                exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
+        
+            menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
+            menu.addAction( "Play Recording" ).triggered.connect( self._playRecording )
 
         return menu
 
@@ -331,6 +318,13 @@ class IlastikShell( QMainWindow ):
         if not svgPath.isNull():
             PreferencesManager().set( 'shell', 'recent debug diagram', str(svgPath) )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
+
+    def _openRecorderControls(self):
+        self._recorderGui.show()
+
+    def _playRecording(self):
+        player = EventPlayer(playback_speed=1.0)
+        player.play_script('/tmp/recording.py')
     
     def show(self):
         """
@@ -488,6 +482,8 @@ class IlastikShell( QMainWindow ):
                 if self.appletStack.indexOf( centralWidget ) == -1:
                     self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
                     self.appletStack.insertWidget( applet_index, centralWidget )
+                    # For test recording purposes, every gui we add MUST have a unique name
+                    centralWidget.setObjectName("centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
             self.appletStack.setCurrentIndex(applet_index)
 
@@ -499,6 +495,8 @@ class IlastikShell( QMainWindow ):
                 if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
                     self.viewerControlStack.addWidget( viewerControlWidget )
                 self.viewerControlStack.setCurrentWidget(viewerControlWidget)
+                # For test recording purposes, every gui we add MUST have a unique name
+                viewerControlWidget.setObjectName( "viewerControls_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
@@ -518,6 +516,8 @@ class IlastikShell( QMainWindow ):
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
                 appletDrawerItem.setSizeHint( 0, sizeHint )
+                # For test recording purposes, every gui we add MUST have a unique name
+                appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
 
 
@@ -685,7 +685,7 @@ class IlastikShell( QMainWindow ):
     def createAndLoadNewProject(self, newProjectFilePath):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
         self.loadProject(newProjectFile, newProjectFilePath, False)
-    
+
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
         Ask the user where he would like to create a project file.
@@ -695,15 +695,19 @@ class IlastikShell( QMainWindow ):
         
         fileSelected = False
         while not fileSelected:
-            projectFilePath = QFileDialog.getSaveFileName(
-               self, caption, defaultPath, "Ilastik project files (*.ilp)",
-               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+            dlg = QFileDialog(self, caption, defaultPath, "Ilastik project files (*.ilp)")
+            dlg.setObjectName("CreateProjectFileDlg")
+            dlg.setAcceptMode(QFileDialog.AcceptSave)
+            if ilastik_config.getboolean("ilastik", "debug"):
+                dlg.setOption( QFileDialog.DontUseNativeDialog,  True )
+                dlg.setOption( QFileDialog.DontConfirmOverwrite, True ) # For testing, it's easier if we don't record the overwrite confirmation
+            dlg.exec_()
             
             # If the user cancelled, stop now
-            if projectFilePath.isNull():
+            if dlg.result() == QDialog.Rejected:
                 return None
     
-            projectFilePath = str(projectFilePath)
+            projectFilePath = str(dlg.selectedFiles()[0])
             fileSelected = True
             
             # Add extension if necessary
@@ -721,7 +725,7 @@ class IlastikShell( QMainWindow ):
                         fileSelected = False
 
         return projectFilePath
-    
+
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
@@ -759,9 +763,12 @@ class IlastikShell( QMainWindow ):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
+        
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)",
-           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():

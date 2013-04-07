@@ -44,6 +44,7 @@ class ilastikIcons(object):
     Clear = iconPath + 'actions/edit-clear.png'
     Play = iconPath + "actions/media-playback-start.png"
     Pause = iconPath + "actions/media-playback-pause.png"
+    Stop = iconPath + "actions/media-playback-stop.png"
     View = iconPath + 'emotes/face-glasses.png'
     Segment = iconPath + "actions/my-segment.png" 
     Undo = iconPath + 'actions/edit-undo.png'

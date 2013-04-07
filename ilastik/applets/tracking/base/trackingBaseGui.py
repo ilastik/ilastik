@@ -15,6 +15,8 @@ from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from ilastik.config import cfg as ilastik_config
+
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -260,7 +262,11 @@ class TrackingBaseGui( LayerViewerGui ):
 
 
     def _onExportButtonPressed(self):
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None:
             print "cancelled."
@@ -306,7 +312,11 @@ class TrackingBaseGui( LayerViewerGui ):
             
             
     def _onExportTifButtonPressed(self):
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None:
             print "cancelled."
@@ -334,7 +344,10 @@ class TrackingBaseGui( LayerViewerGui ):
                     
                     
     def _onLineageFileNameButton(self):
-        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'))
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'), options=options)
         if fn is None:
             print "cancelled."
             return        
