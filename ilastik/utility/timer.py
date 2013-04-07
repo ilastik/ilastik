@@ -1,3 +1,4 @@
+from time import sleep
 import datetime
 import functools
 import logging
@@ -11,35 +12,48 @@ class Timer(object):
     .. note:: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
     """
     def __init__(self):
-        self.startTime = None
-        self.stopTime = None
+        self.paused = True
+        self.start_time = None
+        self.stop_time = None
+
+        self._last_start = None
+        self._total_time = datetime.timedelta()
     
     def __enter__(self):
-        self.start()
+        self.unpause()
         return self
     
     def __exit__(self, *args):
-        self.stop()
+        self.pause()
 
-    def start(self):
-        self.startTime = datetime.datetime.now()
+    def unpause(self):
+        assert self.paused
+        self._last_start = datetime.datetime.now()
+        self.paused = False
+        if self.start_time is None:
+            self.start_time = self._last_start
 
-    def stop(self):
-        self.stopTime = datetime.datetime.now()
+    def pause(self):
+        assert not self.paused
+        self.paused = True
+        self._last_stop = datetime.datetime.now()
+        self._total_time += self._last_stop - self._last_start
+        self.stop_time = self._last_stop
     
     def seconds(self):
         """
-        If the timer has already been stopped, return elapsed time = (stop - start) in seconds.
-        If the timer hasn't stopped yet, return the elapsed time SO FAR.
-        It is an error to call this function on a timer that hasn't been started yet.
+        Return the total elapsed time of the timer, not counting the time spent while paused.
         """
-        assert self.startTime is not None, "Timer hasn't started yet!"
-        if self.stopTime is None:
-            now = datetime.datetime.now()
-            timedelta = now - self.startTime
-        else:
-            timedelta = self.stopTime - self.startTime
+        timedelta = self._total_time
+        if not self.paused:
+            timedelta +=  datetime.datetime.now() - self._last_start
         return timedelta.seconds + timedelta.microseconds / 1000000.0
+
+    def sleep_until(self, seconds):
+        assert not self.paused
+        remaining = seconds - self.seconds()
+        if remaining > 0:
+            sleep( remaining )
 
 def timed(func):
     """
@@ -108,10 +122,17 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.addHandler( logging.StreamHandler(sys.stdout) )
     logger.setLevel( logging.INFO )
+    import time
+    
+    t = Timer()
+    for _ in range(10):
+        with t:
+            t.sleep_until(1)
+        print t.seconds()        
     
     @timeLogged(logger, logging.INFO)
     def myfunc(x):
-        print x**100
+        time.sleep(0.2)
 
     print "Calling..."
     myfunc(2)
