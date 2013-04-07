@@ -26,7 +26,7 @@ def startShellGui(workflowClass, *testFuncs):
     
     _applyStyleSheet(app)
 
-    app.exec_()
+    return app.exec_()
 
 def _applyStyleSheet(app):
     """
