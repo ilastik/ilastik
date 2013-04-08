@@ -302,18 +302,18 @@ class ArrayCacheMemoryMgr(threading.Thread):
                     while mem_usage > self._target_usage and len(self.caches) > 0:
                         self.traceLogger.debug("Mem usage: {}".format(mem_usage))
                         last_cache = self.caches.pop(-1)
-                        freed = last_cache._freeMemory(refcheck = False)
+                            
+                        freed = last_cache._freeMemory(refcheck = True)
                         self.traceLogger.debug("Freed: {}".format(freed))
                         mem_usage = psutil.phymem_usage().percent
                         count += 1
                         if freed == 0:
                             # store the caches which could not be freed
                             not_freed.append(last_cache)
+
                 gc.collect()
-                if mem_usage < self._target_usage:
-                    self.logger.info("freed %d/%d blocks, new usage = %f%%" % (count,old_length, mem_usage))
-                else:
-                    self.logger.info("freed all (%d/%d) blocks, new usage = %f%%, failed goal of %f since all other blocks are currently in use." % (count, old_length,mem_usage, self._target_usage))
+
+                self.logger.info("freed %d/%d blocks, new usage = %f%%" % (count,old_length, mem_usage))
                 
                 for c in not_freed:
                     # add the caches which could not be freed
@@ -555,13 +555,13 @@ class OpArrayCache(OpArrayPiper):
         ch += 1
         self._cacheHits = ch
 
-        cacheView = self._cache #prevent freeing of cache during running this function
+        self._running += 1
 
         if self._cache is None:
             self._allocateCache()
-        if self._running == 0:
-            self._memory_manager.remove(self)
-        self._running += 1
+
+        cacheView = self._cache[:] #prevent freeing of cache during running this function
+
 
         blockStart = (1.0 * start / self._blockShape).floor()
         blockStop = (1.0 * stop / self._blockShape).ceil()
@@ -576,8 +576,6 @@ class OpArrayCache(OpArrayPiper):
             result[:] = self._cache[roiToSlice(start, stop)]
             self._running -= 1
             self._updatePriority()
-            if self._running == 0:
-                self._memory_manager.add(self)
             cacheView = None
             self._lock.release()
             return
@@ -689,8 +687,6 @@ class OpArrayCache(OpArrayPiper):
             self.traceLogger.debug( "INPUT RECEIVED WITH THE CACHE LOCK LOCKED." )
         self._running -= 1
         self._updatePriority()
-        if self._running == 0:
-            self._memory_manager.add(self)
         cacheView = None
 
         self._lock.release()
