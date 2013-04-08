@@ -5,7 +5,7 @@ import os
 from functools import partial
 import weakref
 import logging
-from ilastik.workflow import Workflow
+from ilastik.workflow import Workflow,getAvailableWorkflows,getWorkflowFromName
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -39,18 +39,6 @@ from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
 from ilastik.config import cfg as ilastik_config
-
-def getAvailableWorkflows():
-    '''iterate over all workflows that were imported'''
-    for i in Workflow.__subclasses__():
-        if isinstance(i.workflowName,str):
-            yield i
-                
-def getWorkflowFromName(Name):
-    '''return workflow by naming its workflowName variable'''
-    for w in getAvailableWorkflows():
-        if w.workflowName==Name:
-            return w
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -240,7 +228,7 @@ class IlastikShell( QMainWindow ):
     
     def getWorkflow(self,w = None):
         
-        listOfItems = [i.workflowName for i in getAvailableWorkflows()]
+        listOfItems = [workflowName for _,workflowName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
@@ -317,9 +305,9 @@ class IlastikShell( QMainWindow ):
                 b.setDescription(workflow)
                 b.clicked.connect(partial(self.openProjectFile,path))
                 startscreen.VL1.addWidget(b)
-          
-        for workflow in getAvailableWorkflows():
-            b = QCommandLinkButton(workflow.workflowName,startscreen,flat = True)
+        
+        for workflow,_name in getAvailableWorkflows():
+            b = QCommandLinkButton(_name,startscreen,flat = True)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
             startscreen.VL2.addWidget(b)
         
@@ -909,7 +897,10 @@ class IlastikShell( QMainWindow ):
             mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
             if mostRecentProjectPaths is None:
                 mostRecentProjectPaths = []
-            projectAndWorkflow = (projectFilePath,self._workflowClass.workflowName)
+            
+            workflowName = self.projectManager.workflow.workflowName
+            
+            projectAndWorkflow = (projectFilePath,workflowName)
             if projectAndWorkflow in mostRecentProjectPaths:
                 mostRecentProjectPaths.remove(projectAndWorkflow)
             mostRecentProjectPaths.insert(0,projectAndWorkflow)
@@ -923,7 +914,7 @@ class IlastikShell( QMainWindow ):
             
             #be friendly to user: if this file has not specified a default workflow, do it now
             if not "workflowName" in hdf5File.keys() and not readOnly:
-                hdf5File.create_dataset("workflowName",data = self._workflowClass.workflowName)
+                hdf5File.create_dataset("workflowName",data = workflowName)
             
             #switch away from the startup screen to show the loaded project
             self.mainStackedWidget.setCurrentIndex(1)
@@ -942,7 +933,6 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
-            
 
     def closeCurrentProject(self):
         """

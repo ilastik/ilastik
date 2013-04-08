@@ -1,16 +1,12 @@
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, OperatorMetaClass
 from ilastik.utility.subclassRegistry import SubclassRegistryMeta
-
-# This metaclass provides automatic factory registration and still allows us to inherit from Operator
-class WorkflowMeta(SubclassRegistryMeta, OperatorMetaClass):
-    pass
+from string import ascii_uppercase
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
-    __metaclass__ = WorkflowMeta # Provides Workflow.all_subclasses member
     name = "Workflow (base class)"
 
     ###############################
@@ -35,7 +31,13 @@ class Workflow( Operator ):
     
     @property
     def workflowName(self):
-        return None
+        originalName = self.__class__.__name__
+        wname = originalName[0]
+        for i in originalName[1:]:
+            if i in ascii_uppercase:
+                wname+=" "
+            wname+=i
+        return wname
     
     @property
     def workflowDescription(self):
@@ -126,3 +128,28 @@ class Workflow( Operator ):
         for a in self.applets:
             if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)
+
+def getAvailableWorkflows():
+    '''iterate over all workflows that were imported'''
+    alreadyListed = set()
+    for W in Workflow.__subclasses__():
+        if W.__name__ in alreadyListed:
+            continue
+        
+        alreadyListed.add(W.__name__)
+        if isinstance(W.workflowName,str):
+            yield W,W.workflowName
+        else:
+            originalName = W.__name__
+            wname = originalName[0]
+            for i in originalName[1:]:
+                if i in ascii_uppercase:
+                    wname+=" "
+                wname+=i
+            yield W,wname
+
+def getWorkflowFromName(Name):
+    '''return workflow by naming its workflowName variable'''
+    for w,_name in getAvailableWorkflows():
+        if _name==Name:
+            return w

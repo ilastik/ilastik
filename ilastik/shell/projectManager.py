@@ -185,9 +185,9 @@ class ProjectManager(object):
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
             
             #save the current workflow as standard workflow
-            h5file = h5py.File(self.currentProjectFile,"w")
-            h5file.deleteIfPresent("workflowName")
-            h5file.create_dataset("workflowName",data = self.workflow.workflowName)
+            if "workflowName" in self.currentProjectFile:
+                del self.currentProjectFile["workflowName"]
+            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
             
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
