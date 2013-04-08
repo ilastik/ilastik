@@ -59,7 +59,7 @@ class TestRESTfulVolume(object):
         op.DescriptionFilePath.setValue( descriptionFilePath )
         
         #data = op.Output[0:100, 50000:50200, 50000:50200].wait()
-        data = op.Output[0:10, 4000:4100, 4000:4100].wait()
+        data = op.Output[0:10, 4000:4100, 4000:4100, 0:1].wait()
         
         # We expect a channel dimension to be added automatically...
         assert data.shape == ( 10, 100, 100, 1 )

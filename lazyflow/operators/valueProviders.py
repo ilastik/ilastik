@@ -1,39 +1,15 @@
+#Python
+import copy
+import logging
+import threading
+
+#SciPy
 import numpy
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import lazyflow.roi
-import threading
-import copy
-
-import logging
-
 from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
-
-
-class ArrayProvider(OutputSlot):
-    def __init__(self, name, shape, dtype, axistags="not none"):
-        OutputSlot.__init__(self,name)
-        self.meta.shape = shape
-        self.meta.dtype = dtype
-        self._data = None
-        self.meta.axistags = axistags
-        self._lock = threading.Lock()
-
-    def setData(self,d):
-        assert d.dtype == self.meta.dtype
-        assert d.shape == self.meta.shape
-        self._lock.acquire()
-        self._data = d
-        self._lock.release()
-        self.setDirty(slice(None,None,None))
-
-    def fireRequest(self, key, destination):
-        assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % self.name
-        self._lock.acquire()
-        destination[:] = self._data.__getitem__(key)
-        self._lock.release()
-
-
-
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"

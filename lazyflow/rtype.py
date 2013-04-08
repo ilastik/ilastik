@@ -100,6 +100,15 @@ class SubRegion(Roi):
             self.stop = TinyVector(stop)
         self.dim = len(self.start)
 
+    def __setstate__(self, state):
+        """
+        Support copy.copy()
+        """
+        self.slot = state['slot']
+        self.start = TinyVector( state['start'] )
+        self.stop = TinyVector( state['stop'] )
+        self.dim = len( state['start'] )
+
     def __str__( self ):
         return "".join(("Subregion: start '", str(self.start), "' stop '", str(self.stop), "'"))
 
