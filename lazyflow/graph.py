@@ -808,6 +808,9 @@ class Slot(object):
                 # (but don't copy if result_op is None, this means
                 # legacy op which wrote into destination anyway)
                 if destination_given and result_op is not None and id(result_op) != id(destination):
+                    # check that the returned value is compatible with the requested roi
+                    self.slot.stype.check_result_valid(self.roi, result_op)
+
                     self.slot.stype.copy_data(dst=destination, src = result_op)
                 elif result_op is not None:
                     # FIXME: this should be moved to a isCompatible
@@ -821,8 +824,9 @@ class Slot(object):
                                destination.shape, str(self.roi)))
                     destination = result_op
 
-                # check that the returned value is compatible with the requested roi
-                self.slot.stype.check_result_valid(self.roi, destination)
+                    # check that the returned value is compatible with the requested roi
+                    self.slot.stype.check_result_valid(self.roi, destination)
+
 
                 # Decrement the execution count
                 self._decrementOperatorExecutionCount()

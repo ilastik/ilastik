@@ -487,7 +487,6 @@ class OpSubRegion(Operator):
             else:
                 newKey += (slice(start[i2], start[i2], None),)
             i2 += 1
-
         self.inputs["Input"][newKey].writeInto(result).wait()
         return result
         

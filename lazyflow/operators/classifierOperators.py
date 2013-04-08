@@ -223,7 +223,6 @@ class OpPredictRandomForest(Operator):
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
-        print "SETUPOUTPUTS OPPREDICT", nlabels
 
     def execute(self, slot, subindex, roi, result):
         t1 = time.time()
@@ -279,8 +278,6 @@ class OpPredictRandomForest(Operator):
         t3 = time.time()
 
         # logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
-
-        print "OPPREDICTRANDOMFOREST", prediction.shape, prediction[...,chanslice].shape, roi.toSlice()
 
         return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
