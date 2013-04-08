@@ -172,12 +172,15 @@ class ValueRequest(object):
 
     def notify(self, callback, *args, **kwargs):
         callback(self.result, *args, **kwargs)
-
+        
     def onCancel(self, callback, *args, **kwargs):
         pass
 
     def onFinish(self, callback, **kwargs):
         callback(self, **kwargs)
+        
+    def notify_finished(self, callback):
+        callback(self.result)
 
     def clean(self):
         self.result = None
