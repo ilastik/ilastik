@@ -11,7 +11,10 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from lazyflow.graph import Graph, OperatorWrapper
 
 class PixelClassificationWorkflow(Workflow):
-
+    
+    workflowName = "Pixel Classification"
+    workflowDescription = "This is obviously self-explanoratory."
+    
     @property
     def applets(self):
         return self._applets
