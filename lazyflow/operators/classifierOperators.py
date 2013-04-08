@@ -271,15 +271,15 @@ class OpPredictRandomForest(Operator):
         #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
 
         # If our LabelsCount is higher than the number of labels in the training set,
-        # then our results aren't really valid.
+        # then our results aren't really valid.  FIXME !!!
         # Duplicate the last label's predictions
-        chanslice = slice(min(key[-1].start, forests[0].labelCount()-1), min(key[-1].stop, forests[0].labelCount()))
+        for c in range(result.shape[-1]):
+            result[...,c] = prediction[...,min(c+key[-1].start, prediction.shape[-1]-1)]
 
         t3 = time.time()
 
         # logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
-
-        return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
+        return result
 
 
 
