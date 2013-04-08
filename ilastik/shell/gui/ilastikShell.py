@@ -165,6 +165,8 @@ class IlastikShell( QMainWindow ):
         if localDir == "":localDir = os.getcwd()
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
+        self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
+        
         self.imageSelectionGroup.setHidden(True)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
@@ -569,6 +571,11 @@ class IlastikShell( QMainWindow ):
         self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
 
     def handleAppletBarClick(self, modelIndex):
+        #bug #193
+        drawerTitleItem = self.appletBar.invisibleRootItem().child(modelIndex.row())
+        if drawerTitleItem.isDisabled():
+            return
+        
         # If the user clicks on a top-level item, automatically expand it.
         if modelIndex.parent() == self.appletBar.rootIndex():
             self.appletBar.expand(modelIndex)
