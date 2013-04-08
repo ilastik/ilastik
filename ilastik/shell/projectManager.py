@@ -90,7 +90,7 @@ class ProjectManager(object):
         projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
             projectVersion = hdf5File["ilastikVersion"].value
-
+        
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
             # Must use _importProject() for old project files.
@@ -121,6 +121,9 @@ class ProjectManager(object):
         # Instantiate the workflow.
         self._workflowClass = workflowClass
         self._headless = headless
+        
+        #the workflow class has to be specified at this point
+        assert workflowClass is not None
         self.workflow = workflowClass(headless=headless)
 
         if importFromPath is None:
@@ -180,6 +183,12 @@ class ProjectManager(object):
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     if item.isDirty():
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
+            
+            #save the current workflow as standard workflow
+            if "workflowName" in self.currentProjectFile:
+                del self.currentProjectFile["workflowName"]
+            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
+            
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()

@@ -5,7 +5,8 @@ import pixelClassification
 import vigraWatershed
 import objectClassification
 import blockwiseObjectClassification
-import synapseDetection
+import carving
+#import synapseDetection
 
 try:
     import autocontextClassification

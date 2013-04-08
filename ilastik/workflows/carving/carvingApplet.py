@@ -6,7 +6,10 @@ from carvingSerializer import CarvingSerializer
 from carvingGui import CarvingGui
 
 class CarvingApplet(LabelingApplet):
-
+    
+    workflowName = "Carving"
+    workflowDescription = "this is obviously self-explanatory"
+    
     def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None, pmapOverlayFile=None):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
@@ -20,7 +23,7 @@ class CarvingApplet(LabelingApplet):
     @property
     def dataSerializers(self):
         return [ CarvingSerializer(self._topLevelOperator, "carving") ]
-
+    
     @property
     def topLevelOperator(self):
         """
