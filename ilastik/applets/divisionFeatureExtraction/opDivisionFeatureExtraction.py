@@ -222,7 +222,7 @@ class OpCellFeatures(Operator):
                 for b in bic_scores:
                     bic_score_list.append(b)
                 feats_at_cur['GMM_BIC'][label_cur] = numpy.array(bic_score_list)
-                print 'GMM_BIC(',label_cur,') =', numpy.array(bic_score_list)
+#                print 'GMM_BIC(',label_cur,') =', numpy.array(bic_score_list)
             
     
     def extractDivisionFeatures(self, feats_at_cur, feats_at_next, img_at_next, divFeatures, 
