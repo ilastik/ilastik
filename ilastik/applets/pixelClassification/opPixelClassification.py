@@ -90,6 +90,7 @@ class OpPixelClassification( Operator ):
         self.opTrain = OpTrainRandomForestBlocked( parent=self, graph=self.graph )
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
+        self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( False )
 
