@@ -16,6 +16,7 @@ class OpFilterLabels(Operator):
     Input = InputSlot() 
     MinLabelSize = InputSlot(stype='int')
     MaxLabelSize = InputSlot(optional=True, stype='int')
+    BinaryOut = InputSlot(optional=True, value = False, stype='bool')
         
     Output = OutputSlot()
     
@@ -30,6 +31,7 @@ class OpFilterLabels(Operator):
         req = self.Input.get(roi)
         req.writeInto(result)
         req.wait()
+        
         self.remove_wrongly_sized_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True)
         return result
         
@@ -43,7 +45,12 @@ class OpFilterLabels(Operator):
         Adapted from http://github.com/jni/ray/blob/develop/ray/morpho.py
         (MIT License)
         """
-        original_dtype = a.dtype
+        bin_out = self.BinaryOut.value
+        if bin_out:
+            original_dtype = numpy.bool
+        else:
+            original_dtype = a.dtype
+            
         if not in_place:
             a = a.copy()
         if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency

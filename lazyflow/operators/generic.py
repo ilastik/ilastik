@@ -401,29 +401,39 @@ class OpSingleChannelSelector(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def setupOutputs(self):
-        inputtags = self.Input.meta.axistags
-        assert inputtags.channelIndex == len(inputtags)-1, "FIXME: OpSingleChannelSelector assumes the channel axis is last."
+        
+        indexAxis=self.inputs["Input"].meta.axistags.channelIndex
+        inshape=list(self.inputs["Input"].meta.shape)
+        outshape = list(inshape)
+        outshape.pop(indexAxis)
+        outshape.insert(indexAxis, 1)
+        outshape=tuple(outshape)
 
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = self.Input.meta.shape[:-1]+(1,)
-        if self.Input.meta.drange is not None:
-            self.Output.meta.drange = self.Input.meta.drange
-
+        self.Output.meta.shape = outshape
+        
+        
     def execute(self, slot, subindex, roi, result):
         index=self.inputs["Index"].value
-        assert self.inputs["Input"].meta.shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
+        channelIndex = self.Input.meta.axistags.channelIndex
+        assert self.inputs["Input"].meta.shape[channelIndex] > index, ("Requested channel, %d, is out of Range" % index)
 
         # Only ask for the channel we need
         key = roiToSlice(roi.start,roi.stop)
-        newKey = key[:-1] + (slice(index,index+1),)
-        self.inputs["Input"][newKey].writeInto(result).wait()
+        newKey = list(key)
+        newKey[channelIndex] = slice(index, index+1, None)
+        #newKey = key[:-1] + (slice(index,index+1),)
+        self.inputs["Input"][tuple(newKey)].writeInto(result).wait()
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.Input:
-            key = key[:-1] + (slice(0,1,None),)
-            self.outputs["Output"].setDirty(key)
+            channelIndex = self.Input.meta.axistags.channelIndex
+            newKey = list(key)
+            newKey[channelIndex] = slice(0, 1, None)
+            #key = key[:-1] + (slice(0,1,None),)
+            self.outputs["Output"].setDirty(tuple(newKey))
         else:
             self.Output.setDirty(slice(None))
 
