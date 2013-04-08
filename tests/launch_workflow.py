@@ -24,6 +24,9 @@ def install_thread_excepthook():
             sys.excepthook(*sys.exc_info())
     threading.Thread.run = run
 
+#python launch_workflow.py --workflow=PixelClassificationWorkflow --playback_script=$f --playback_speed=2.0 --exit_on_failure --exit_on_success
+
+
 #sys.argv.append( "/Users/bergs/MyProject.ilp" )
 
 ## EXAMPLE PLAYBACK TESTING ARGS
