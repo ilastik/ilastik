@@ -214,12 +214,12 @@ class OpThresholdTwoLevels(Operator):
     #
     #                                 HighThreshold                         MinSize,MaxSize                       --(cache)--> opColorize -> FilteredSmallLabels
     #                                              \                                       \                     /
-    #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                  Output
-    #               \                   \          /                 \                                            \               /
-    # InputImage --> opChannelSlicer --> opSmoother -> Smoothed       --(cache)--> SmallRegions                    opSelectLabels --> opCache --> CachedOutput
-    #                                              \                                                              /                  /       \
-    #                                               opLowThresholder ----> opLowLabeler --------------------------          InputHdf5         --> OutputHdf5
-    #                                              /                \                                                                          -> CleanBlocks
+    #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                           Output
+    #               \                   \          /                 \                                            \                         /
+    # InputImage --> opChannelSelector --> opSmoother -> Smoothed       --(cache)--> SmallRegions                    opSelectLabels -->opFinalLabelSizeFilter--> opCache --> CachedOutput
+    #                                              \                                                              /                                           /       \
+    #                                               opLowThresholder ----> opLowLabeler --------------------------                                       InputHdf5     --> OutputHdf5
+    #                                              /                \                                                                                        -> CleanBlocks
     #                                  LowThreshold                  --(cache)--> BigRegions
     
     def __init__(self, *args, **kwargs):
