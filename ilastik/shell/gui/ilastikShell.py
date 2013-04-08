@@ -17,7 +17,7 @@ import threading
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, \
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
                         QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel
@@ -164,7 +164,6 @@ class IlastikShell( QMainWindow ):
         self._workflowClass = workflowClass
         
         self._loaduifile()
-        
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         
         self.imageSelectionGroup.setHidden(True)
@@ -290,6 +289,7 @@ class IlastikShell( QMainWindow ):
     def _loaduifile(self):
         localDir = os.path.split(__file__)[0]
         if localDir == "":localDir = os.getcwd()
+        
         startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
         startscreen.Plist.setWidget(startscreen.VL1.widget())
@@ -311,7 +311,6 @@ class IlastikShell( QMainWindow ):
             b.clicked.connect(partial(self.loadWorkflow,workflow))
             startscreen.VL2.addWidget(b)
         
-    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
@@ -873,7 +872,6 @@ class IlastikShell( QMainWindow ):
         
         #setup the workflow if none was selected yet
         if self._workflowClass is None:
-            
             if "workflowName" in hdf5File.keys():
                 #if workflow is found in file, take it
                 workflowName = hdf5File["workflowName"].value
@@ -1131,32 +1129,4 @@ class IlastikShell( QMainWindow ):
 #        animation.start()
 #
 #        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
-
-#===----------------------------------------------------------------------------------------------------------------===
-#=== __name__ == "__main__"                                                                                         ===
-#===----------------------------------------------------------------------------------------------------------------===
-
-#
-# Simple standalone test for the IlastikShell
-#
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import QApplication
-    import sys
-    from ilastik.applets.base.applet import Applet
-    from ilastik.utility import OpMultiLaneWrapper
-
-    qapp = QApplication(sys.argv)
-    
-    from ilastik.workflow import Workflow
-    from lazyflow.graph import Graph
-    from ilastik.applets.dataSelection import DataSelectionApplet
-    
-    # Create a shell with our test applets 
-    shell = IlastikShell()
-
-    shell.show()
-    qapp.exec_()
 

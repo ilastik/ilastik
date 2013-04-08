@@ -37,6 +37,8 @@ class Workflow( Operator ):
             if i in ascii_uppercase:
                 wname+=" "
             wname+=i
+        if wname.endswith(" Workflow"):
+            wname = wname[:-9]
         return wname
     
     @property
@@ -146,10 +148,12 @@ def getAvailableWorkflows():
                 if i in ascii_uppercase:
                     wname+=" "
                 wname+=i
+            if wname.endswith(" Workflow"):
+                wname = wname[:-9]
             yield W,wname
 
 def getWorkflowFromName(Name):
     '''return workflow by naming its workflowName variable'''
     for w,_name in getAvailableWorkflows():
-        if _name==Name:
+        if _name==Name or w.__name__==Name:
             return w
