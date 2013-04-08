@@ -1341,7 +1341,10 @@ class OpBlockedArrayCache(Operator):
                 #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
 
                 smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
-                op.execute(op.outputs["Output"], (), smallroi, result[bigkey])
+                req = op.Output(smallroi.start, smallroi.stop)
+                req.writeInto(result[bigkey])
+                req.wait()
+                #op.execute(op.outputs["Output"], (), smallroi, result[bigkey])
 
                 ####op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
                 #requests.append(req)
