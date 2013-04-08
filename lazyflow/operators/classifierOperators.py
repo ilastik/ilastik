@@ -79,7 +79,7 @@ class OpTrainRandomForestBlocked(Operator):
     category = "Learning"
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"), \
-                  InputSlot("nonzeroLabelBlocks", level=1)]
+                  InputSlot("nonzeroLabelBlocks", level=1), InputSlot("MaxLabel", value=0)]
     outputSlots = [OutputSlot("Classifier")]
 
     WarningEmitted = False
@@ -177,6 +177,8 @@ class OpTrainRandomForestBlocked(Operator):
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+            maxLabel = self.inputs["MaxLabel"].value
+            labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
             try:
                 logger.debug("Learning with Vigra...")
@@ -185,7 +187,7 @@ class OpTrainRandomForestBlocked(Operator):
 
                 for i in range(self._forest_count):
                     def train_and_store(number):
-                        result[number] = vigra.learning.RandomForest(self._tree_count)
+                        result[number] = vigra.learning.RandomForest(self._tree_count, labels=labelList)
                         result[number].learnRF( numpy.asarray(featMatrix, dtype=numpy.float32),
                                                 numpy.asarray(labelsMatrix, dtype=numpy.uint32))
                     req = pool.request(partial(train_and_store, i))
@@ -278,7 +280,6 @@ class OpPredictRandomForest(Operator):
         t3 = time.time()
 
         # logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
-
         return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 
