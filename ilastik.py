@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from ilastik.shell.gui.startShellGui import startShellGui
 from optparse import OptionParser
 import ilastik.workflows
