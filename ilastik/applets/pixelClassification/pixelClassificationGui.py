@@ -257,7 +257,14 @@ class PixelClassificationGui(LabelingGui):
 
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
-                self._setup_contexts(segLayer)
+                #check if layer is 3d before adding the "Toggle 3D" option
+                #this check is done this way to match the VolumeRenderer, in
+                #case different 3d-axistags should be rendered like t-x-y
+                #_axiskeys = segmentationSlot.meta.getAxisKeys()
+                if len(segmentationSlot.meta.shape) == 4:
+                    #the Renderer will cut out the last shape-dimension, so
+                    #we're checking for 4 dimensions
+                    self._setup_contexts(segLayer)
                 layers.append(segLayer)
 
 
