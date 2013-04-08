@@ -821,6 +821,9 @@ class Slot(object):
                                destination.shape, str(self.roi)))
                     destination = result_op
 
+                # check that the returned value is compatible with the requested roi
+                self.slot.stype.check_result_valid(self.roi, destination)
+
                 # Decrement the execution count
                 self._decrementOperatorExecutionCount()
                 return destination

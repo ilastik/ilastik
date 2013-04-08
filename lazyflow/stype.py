@@ -63,6 +63,14 @@ class SlotType( object ):
         """
         pass
 
+    def check_result_valid(self, roi, result):
+        """
+        Slot types must implement this method
+
+        it must check wether the provided result is compatible with the user specified roi
+        """
+        return True
+
 
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
@@ -129,6 +137,18 @@ class ArrayLike( SlotType ):
 
     def copy_data(self, dst, src):
         dst[...] = src[...]
+
+    def check_result_valid(self, roi, result):
+        if isinstance(result, numpy.ndarray):
+            assert len(roi.start) == result.ndim, "check_result_valid: result has wrong number of dimensions (%d instead of %d)" % (result.ndim, len(roi.start))
+            for d in range(result.ndim):
+                s = roi.stop[d] - roi.start[d]
+                assert result.shape[d] == s, "check_result_valid: result has wrong shape (%d instead of %d) for dimension %d" % (result.shape[d], s, d)
+        elif isinstance(result, list):
+            s = roi.stop[0] - roi.start[0]
+            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d) for dimension %d" % (result.shape[d], s, d)
+        else:
+            assert False, "check_result_valid: result type is not supported"
 
 class Opaque(SlotType):
     def allocateDestination(self, roi):
