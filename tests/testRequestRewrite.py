@@ -1,4 +1,4 @@
-from lazyflow.request.request_rewrite import Request, RequestLock
+from lazyflow.request.request import Request, RequestLock
 import time
 import random
 import nose

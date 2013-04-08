@@ -1,351 +1,713 @@
-import time, os, sys
-import psutil
-import atexit
-from collections import deque
-from Queue import Queue, LifoQueue, Empty, PriorityQueue
-from threading import Thread, current_thread
-import thread
-import greenlet
-import threading
-from lazyflow.utility.helpers import detectCPUs
-import math
-import logging
+# Built-in
+import sys
+import functools
 import itertools
-import warnings
+import collections
+import threading
+import multiprocessing
+import platform
 
-greenlet.GREENLET_USE_GC = False #use garbage collection
-sys.setrecursionlimit(1000)
+# Third-party
+import greenlet
 
+# lazyflow
+import threadPool
 
-def patchIfForeignThread(thread):
-    if not hasattr(thread, "finishedGreenlets"):
-        setattr(thread, "wlock", threading.Lock())
-        setattr(thread, "workAvailable", False)
-        setattr(thread, "requests", deque())
-        setattr(thread, "finishedGreenlets", deque())
-        setattr(thread, "last_request", None)
-        setattr(thread, "current_request", None)
+# This module's code needs to be sanitized if you're not using CPython.
+# In particular, check that set operations like remove() are still atomic.
+assert platform.python_implementation() == "CPython"
 
-def wakeUp(thr):
-    try:
-        thr.workAvailable = True
-        thr.wlock.release()
-    except thread.error:
+class RequestGreenlet(greenlet.greenlet):
+    def __init__(self, owning_request, fn):
+        super(RequestGreenlet, self).__init__(fn)
+        self.owning_requests = [owning_request]
+
+class SimpleSignal(object):
+    """
+    Simple callback mechanism. Not synchronized.  No unsubscribe function.
+    """
+    def __init__(self):
+        self.callbacks = []
+        self._cleaned = False
+
+    def subscribe(self, fn):
+        self.callbacks.append(fn)
+
+    def __call__(self, *args, **kwargs):
+        """Emit the signal."""
+        assert not self._cleaned, "Can't emit a signal after it's already been cleaned!"
+        for f in self.callbacks:
+            f(*args, **kwargs)
+        
+    def clean(self):
+        self._cleaned = True
+        self.callbacks = []
+
+class Request( object ):
+    
+    # One thread pool shared by all requests.
+    # See initialization after this class definition (below)
+    global_thread_pool = None
+    
+    @classmethod
+    def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
+        """
+        Change the number of threads allocated to the request system.
+        
+        .. note:: It is only valid to call this during startup.
+                  Any existing requests will be dropped from the pool.
+        """
+        if cls.global_thread_pool is not None:
+            cls.global_thread_pool.stop()
+        cls.global_thread_pool = threadPool.ThreadPool( num_workers )
+    
+    class CancellationException(Exception):
+        """
+        This is raised when the whole request has been cancelled.
+        If you catch this exception from within a request, clean up and return immediately.
+        If you have nothing to clean up, you are not required to handle this exception.
+        
+        Implementation details:
+        This exception is raised when the cancel flag is checked in the wait() function:
+        - immediately before the request is suspended OR
+        - immediately after the request is woken up from suspension
+        """
         pass
 
-def runDebugShell():
-    import traceback
-    traceback.print_exc()
-    import IPython
-    version_str = IPython.__version__.split(".")
-    if int(version_str[1]) < 11:
-        shell = IPython.Shell.IPShellEmbed()
-        shell()
-    else:
-        IPython.embed()
+    class InvalidRequestException(Exception):
+        """
+        This is raised when calling wait on a request that has already been cancelled,
+        which can only happen if the request you're waiting for was spawned elsewhere 
+        (i.e. you are waiting for someone else's request to avoid duplicate work).
+        When this occurs, you will typically want to restart the request yourself.
+        """
+        pass
 
-
-
-class Worker(Thread):
+    class CircularWaitException(Exception):
+        """
+        This exception is raised if a request calls wait() on itself.
+        Currently, this only catches the most basic case.
+        No attempt is made to detect indirect cycles
+        (e.g. if req.wait() is called from within a req's own child.),
+        so don't rely on it to catch tricky deadlocks due to indirect self-waiting.
+        """
+        pass
     
-    logger = logging.getLogger(__name__ + '.Worker')
+    class TimeoutException(Exception):
+        """
+        This is raised if a call to wait() times out in the context of a foreign thread.
+        See ``Request.wait()`` for details.
+        """
+        pass
     
-    def __init__(self, machine, wid = 0):
-        Thread.__init__(self)
-        self.daemon = True # kill automatically on application exit!
-        self.logger.info( "Creating worker %r for ThreadPool %r" % (self, machine) )
-        self.wid = wid
-        self.machine = machine
-        self.running = True
-        self.processing = False
-        self.last_request = None
-        self.current_request = None
-        #self.socket = zmq.Socket(context,zmq.SUB)
-        #self.socket.bind("inproc://%d" % self.wid)
-        self.requests = deque()#PriorityQueue()
-        self.finishedGreenlets = deque()
-        self.process = psutil.Process(os.getpid())
-        self.wlock = threading.Lock()
-        self.wlock.acquire()
-        self.workAvailable = False
+    _root_request_counter = itertools.count()
 
+    def __init__(self, fn):
+        """
+        Constructor.
+        Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).
+        """
+        # Workload
+        self.fn = fn
 
-    def stop(self):
-        self.logger.debug("stopping worker %r of machine %r" % (self, self.machine))
-        self.flush()
+        #: After this request finishes execution, this attribute holds the return value from the workload function.
+        self._result = None
 
-        self.running = False
-        wakeUp(self)
-        self.join()
+        # State
+        self.started = False
+        self.cancelled = False
+        self.uncancellable = False
+        self.finished = False
+        self.execution_complete = False
+        self.finished_event = threading.Event()
+        self.exception = None
+        self._cleaned = False
 
-    def flush(self):
-        allDone = False
+        # Execution
+        self.greenlet = None # Not created until assignment to a worker
+        self._assigned_worker = None
 
-        while not allDone:
-        # wait untile all threads have nothing to do anymore
-            allDone = True
-            for w in self.machine.workers:
-                if w.running and (w.processing or len(self.machine.requests0) > 0):
-                    #print "Worker %r still working..." % w, len(self.machine.requests0)
-                    allDone = False
-                    time.sleep(0.03)
-                    break
+        # Request relationships
+        self.pending_requests = set()  # Requests that are waiting for this one
+        self.blocking_requests = set() # Requests that this one is waiting for (currently one at most since wait() can only be called on one request at a time)
+        self.child_requests = set()    # Requests that were created from within this request (NOT the same as pending_requests)
+        
+        self._current_foreign_thread = None
+        current_request = Request._current_request()
+        self.parent_request = current_request
+        if current_request is None:
+            self._priority = [ Request._root_request_counter.next() ]
+        else:
+            with current_request._lock:
+                current_request.child_requests.add(self)
+                # We must ensure that we get the same cancelled status as our parent.
+                self.cancelled = current_request.cancelled
+                # We acquire the same priority as our parent, plus our own sub-priority
+                self._priority = current_request._priority + [ len(current_request.child_requests) ]
 
+        self._lock = threading.Lock() # NOT an RLock, since requests may share threads
+        self._sig_finished = SimpleSignal()
+        self._sig_cancelled = SimpleSignal()
+        self._sig_failed = SimpleSignal()
+        
+        self._sig_execution_complete = SimpleSignal()
 
-    def run(self):
-            # cache value for less dict lookups
-        requests0 = self.machine.requests0
-        requests1 = self.machine.requests1
-        freeWorkers = self.machine.freeWorkers
+    def __lt__(self, other):
+        """
+        Request comparison is by priority.
+        This allows us to store them in a heap.
+        """
+        return self._priority < other._priority
+
+    def clean(self, _fullClean=True):
+        """
+        Delete all state from the request, for cleanup purposes.
+        Removes references to callbacks, children, and the result.
+        
+        :param _fullClean: Internal use only.  If False, only clean internal bookkeeping members.
+                           Otherwise, delete everything, including the result.
+        """
+        self._sig_cancelled.clean()
+        self._sig_finished.clean()
+        self._sig_failed.clean()
+
+        with self._lock:
+            for child in self.child_requests:
+                child.parent_request = None
+            self.child_requests.clear()
+
+        if _fullClean:
+            self._cleaned = True
+            self._result = None
+        
+    @property
+    def assigned_worker(self):
+        """
+        This member is accessed by the ThreadPool to determine which Worker thread this request belongs to.
+        """
+        return self._assigned_worker
     
-        while self.running:
-            self.processing = False
-            freeWorkers.add(self)
-            #print "Worker %r sleeping..." % self
-            self.wlock.acquire()
-            self.processing = True
-            #print "Worker %r working..." % self
+    @assigned_worker.setter
+    def assigned_worker(self, worker):
+        """
+        Assign this request to the given worker thread.  (A request cannot switch between threads.)
+        Must be called from the worker thread.
+        """
+        self._assigned_worker = worker
+
+        # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
+        self.greenlet = RequestGreenlet(self, self._execute)
+
+    @property
+    def result(self):
+        assert not self._cleaned, "Can't get this result.  The request has already been cleaned!"
+        assert self.execution_complete, "Can't access the result until the request is complete."
+        assert not self.cancelled, "Can't access the result of a cancelled request."
+        assert self.exception is None, "Can't access this result.  The request failed."
+        return self._result
+
+    def _execute(self):
+        """
+        Do the real work of this request.
+        """
+        # Did someone cancel us before we even started?
+        if not self.cancelled:
             try:
-                freeWorkers.remove(self)
-            except KeyError:
+                # Do the actual work
+                self._result = self.fn()
+            except Request.CancellationException:
+                # Don't propagate cancellations back to the worker thread,
+                # even if the user didn't catch them.
                 pass
-            didRequest = True
-            while len(self.finishedGreenlets) != 0 or didRequest:
-                self.workAvailable = False
-                # first process all finished greenlets
-                while not len(self.finishedGreenlets) == 0:
-                    gr = self.finishedGreenlets.popleft()
-                    if gr.request.canceled is False:
-                        self.current_request = gr.request
-                        lock = gr.switch()
-                        if lock:
-                            lock.release()
-    
-                # processan higher priority request if available
-                didRequest = False
-                req = None
-                try:
-                    req = requests1.pop()
-                    #prio, req = requests.get(block=False)
-                except IndexError:
-                    # requests was empty..
-                    pass
-                if req is not None and req.finished is False and req.canceled is False:
-                    didRequest = True
-                    gr = CustomGreenlet(req._execute)
-                    self.current_request = req
-                    gr.thread = self
-                    gr.request = req
-                    lock = gr.switch()
-                    if lock:
-                        lock.release()
-    
-                if didRequest is False:
-                    # only do a low priority request if no higher priority request
-                    # was available
-                    try:
-                        req = requests0.pop()
-                    except IndexError:
-                        # requests was empty..
-                        pass
-                    if req is not None and req.finished is False and req.canceled is False:
-                        didRequest = True
-                        gr = CustomGreenlet(req._execute)
-                        self.current_request = req
-                        gr.thread = self
-                        gr.request = req
-                        lock = gr.switch()
-                        if lock:
-                            lock.release()
-    
-                # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
-                try:
-                    self.wlock.release()
-                except thread.error:
-                    pass
-                self.wlock.acquire()
+            except Exception as ex:
+                # The workload raised an exception.
+                # Save it so we can raise it in any requests that are waiting for us.
+                self.exception = ex
+                self.exception_tb = sys.exc_traceback # Documentation warns of circular references here,
+                                                      #  but that should be okay for us.
 
-class Singleton(type):
-    """
-    simple implementation of meta class that implements the singleton pattern.
-    """
-    def __init__(cls, name, bases, dict):
-        super(Singleton, cls).__init__(name, bases, dict)
-        cls.instance = None
+        # Guarantee that self.finished doesn't change while wait() owns self._lock
+        with self._lock:
+            self.finished = True
 
-    def __call__(cls,*args,**kw):
-        if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*args, **kw)
-        return cls.instance
-
-
-class ThreadPool(object):
-    """
-    This class uses the Singleton meta class to
-    represent the cpus of the machine
-    """
-    __metaclass__ = Singleton
-
-    def __init__(self):
-        self._finished = False
-        #self.requests = PriorityQueue()
-        self.requests0 = deque()
-        self.requests1 = deque()
-        self.workers = set()
-        self.freeWorkers = set()
-        if os.environ.has_key("LAZYFLOW_THREAD_COUNT"):
-            self.numThreads = int(os.environ["LAZYFLOW_THREAD_COUNT"])
-        else:
-            self.numThreads = detectCPUs()
-        self.lastWorker = None
-        for i in range(self.numThreads):
-            w = Worker(self)
-            self.workers.add(w)
-            w.start()
-            self.lastWorker = w
-        self._pausesLock = threading.Lock()
-        self._pauses = 0
-
-    def putRequest(self, request):
-        """
-        Put a job in the queue of a free worker. if no
-        worker is free, put it to the threadpool request queue,
-        the first free worker will take it from there.
-        """
-        #self.requests.put((request.prio,request))
-        if request.prio == 0:
-            if self._pauses == 0:
-              self.requests0.append(request)
-            else:
-              # silently drop request
-              # TODO: notify request of dropping ?
-              pass
-        else:
-            self.requests1.append(request)
         try:
-            w = self.freeWorkers.pop()
-            wakeUp(w)
-        except KeyError:
-            pass
+            # Notify callbacks (one or the other, not both)
+            if self.cancelled:
+                self._sig_cancelled()
+            elif self.exception is not None:
+                self._sig_failed( self.exception )
+            else:
+                self._sig_finished(self._result)
 
-    def stopThreadPool(self):
+            # Now that we're complete, the signals have fired and any requests we needed to wait for have completed.
+            # To free memory (and child requests), we can clean up everything but the result.
+            self.clean( _fullClean=False )
+
+            # Unconditionally signal (internal use only)
+            with self._lock:
+                self.execution_complete = True
+                self._sig_execution_complete()
+                self._sig_execution_complete.clean()
+
+        finally:
+            # Notify non-request-based threads
+            self.finished_event.set()
+
+            # Clean-up
+            if self.greenlet is not None:
+                assert self.greenlet.owning_requests.pop() == self
+            self.greenlet = None
+
+    def submit(self):
         """
-        wait until all requests are processed and stop the workers.
+        If this request isn't started yet, schedule it to be started.
         """
-        if not self._finished:
-            self._finished = True
-            # stop the workers of the machine
-            for w in self.workers:
-                w.stop()
-
-    def pause(self):
+        with self._lock:
+            if not self.started:
+                self.started = True
+                self._wake_up()
+    
+    def _wake_up(self):
         """
-        Pause Threadpool : drop new requests, wait unitl existing requests
-        are executed, increase _pauses counter
+        Resume this request's execution (put it back on the worker's job queue).
         """
-        cur_tr = threading.current_thread()
-        print cur_tr.current_request
-        assert cur_tr.current_request == None, "ERROR: the threadpool cannot be paused from inside a request"
-        self._pausesLock.acquire()
-        self._pauses += 1
-        self._pausesLock.release()
-        for w in self.workers:
-          w.flush()
-
-
-    def unpause(self):
+        Request.global_thread_pool.wake_up(self)
+ 
+    def _switch_to(self):
         """
-        Unpause Threadpool : decreases the pauses counter, when
-        reaching 0 requests are processed again
+        Switch to this request's greenlet
         """
-        self._pausesLock.acquire()
-        if self._pauses > 0:
-          self._pauses -= 1
-        self._pausesLock.release()
-
-@atexit.register
-def stopThreadPool():
-    """
-    global atexit handler, on program exit stop
-    all workers.
-    """
-    # get the machine singleton
-    machine = ThreadPool()
-    machine.stopThreadPool()
-
-# create a  globalmachine instance
-global_thread_pool = ThreadPool()
-
-
-# unused decorator
-class inThread(object):
-    def __init__(self, f):
-        self.f = f
-        f.func_dict['greencall_inThread'] = True
+        self.greenlet.switch()
 
     def __call__(self):
-        self.f()
+        """
+        Resume (or start) the request execution.
+        This is implemented in __call__ so that it can be used with the ThreadPool, which is designed for general callable tasks.
+        
+        .. note:: DO NOT use ``Request.__call__`` explicitly from your code.  It is called internally or from the ThreadPool.
+        """
+        self._switch_to()
+        
+    def _suspend(self):
+        """
+        Suspend this request so another one can be woken up by the worker.
+        """
+        # Switch back to the worker that we're currently running in.
+        self.greenlet.parent.switch()
 
+    def wait(self, timeout=None):
+        """
+        Start this request if necessary, then wait for it to complete.  Return the request's result.
+        
+        :param timeout: If running within a request, this parameter must be None.
+                        If running within the context of a foreign (non-request) thread, 
+                        a timeout may be specified in seconds (floating-point).
+                        If the request does not complete within the timeout period, 
+                        then a Request.TimeoutException is raised.
+        """        
+        assert not self._cleaned, "Can't wait() for a request that has already been cleaned."
+        return self._wait(timeout)
 
-class CustomGreenlet(greenlet.greenlet):
+    def block(self, timeout=None):
+        """
+        Like wait, but does not return a result.  Can be used even if the request has already been cleaned.
+        """
+        self._wait(timeout) # No return value. Use wait()
+
+    def _wait(self, timeout=None):
+        # Quick shortcut:
+        # If there's no need to wait, just return immediately.
+        # This avoids some function calls and locks.
+        # (If we didn't do this, the code below would still do the right thing.)
+        # Note that this is only possible because self.execution_complete is set to True 
+        #  AFTER self.cancelled and self.exception have their final values.  See _execute().
+        if self.execution_complete and not self.cancelled and self.exception is None:
+            return self._result
+        
+        # Identify the request that is waiting for us (the current context)
+        current_request = Request._current_request()
+
+        if current_request is None:
+            # 'None' means that this thread is not one of the request worker threads.
+            self._wait_within_foreign_thread( timeout )
+        else:
+            assert timeout is None, "The timeout parameter may only be used when wait() is called from a foreign thread."
+            self._wait_within_request( current_request )
+
+        assert self.finished
+        return self._result
+
+    def _wait_within_foreign_thread(self, timeout):
+        """
+        This is the implementation of wait() when executed from a foreign (non-worker) thread.
+        Here, we rely on an ordinary threading.Event primitive: ``self.finished_event``
+        """
+        # Don't allow this request to be cancelled, since a real thread is waiting for it.
+        self.uncancellable = True
+
+        with self._lock:
+            direct_execute_needed = not self.started and (timeout is None)
+            if direct_execute_needed:
+                # This request hasn't been started yet
+                # We can execute it directly in the current thread instead of submitting it to the request thread pool (big optimization).
+                # Mark it as 'started' so that no other greenlet can claim it
+                self.started = True
+
+        if self._current_foreign_thread is not None and self._current_foreign_thread == threading.current_thread():
+            # It's usually nonsense for a request to wait for itself,
+            #  but we allow it if the request is already "finished"
+            # (which can happen if the request is calling wait() from within a notify_finished callback)
+            if self.finished:
+                return
+            else:
+                raise Request.CircularWaitException()
+
+        if direct_execute_needed:
+            self._current_foreign_thread = threading.current_thread()
+            self._execute()
+        else:
+            self.submit()
+
+        # This is a non-worker thread, so just block the old-fashioned way
+        completed = self.finished_event.wait(timeout)
+        if not completed:
+            raise Request.TimeoutException()
+        
+        if self.cancelled:
+            # It turns out this request was already cancelled.
+            raise Request.InvalidRequestException()
+        
+        if self.exception is not None:
+            raise self.exception.__class__, self.exception, self.exception_tb 
+
+    def _wait_within_request(self, current_request):
+        """
+        This is the implementation of wait() when executed from another request.
+        If we have to wait, suspend the current request instead of blocking the whole worker thread.
+        """
+        # Before we suspend the current request, check to see if it's been cancelled since it last blocked
+        if current_request.cancelled:
+            raise Request.CancellationException()
+
+        if current_request == self:
+            # It's usually nonsense for a request to wait for itself,
+            #  but we allow it if the request is already "finished"
+            # (which can happen if the request is calling wait() from within a notify_finished callback)
+            if self.finished:
+                return
+            else:
+                raise Request.CircularWaitException()
+
+        with self._lock:
+            # If the current request isn't cancelled but we are,
+            # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
+            # If they really want it, they'll have to spawn it themselves.
+            if self.cancelled:
+                raise Request.InvalidRequestException()
+            
+            if self.exception is not None:
+                # This request was already started and already failed.
+                # Simply raise the exception back to the current request.
+                raise self.exception.__class__, self.exception, self.exception_tb 
+
+            direct_execute_needed = not self.started
+            suspend_needed = self.started and not self.execution_complete
+            if direct_execute_needed or suspend_needed:
+                current_request.blocking_requests.add(self)
+                self.pending_requests.add(current_request)
+            
+            if direct_execute_needed:
+                # This request hasn't been started yet
+                # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
+                # Mark it as 'started' so that no other greenlet can claim it
+                self.started = True
+            elif suspend_needed:
+                # This request is already started in some other greenlet.
+                # We must suspend the current greenlet while we wait for this request to complete.
+                # Here, we set up a callback so we'll wake up once this request is complete.
+                self._sig_execution_complete.subscribe( functools.partial(current_request._handle_finished_request, self) )
+
+        if suspend_needed:
+            current_request._suspend()
+        elif direct_execute_needed:
+            # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
+            self.greenlet = current_request.greenlet
+            self.greenlet.owning_requests.append(self)
+            self._assigned_worker = current_request._assigned_worker
+            self._execute()
+            self.greenlet = None
+            current_request.blocking_requests.remove(self)
+
+        if suspend_needed or direct_execute_needed:
+            # No need to lock here because set.remove is atomic in CPython.
+            #with self._lock:
+                self.pending_requests.remove( current_request )
+
+        # Now we're back (no longer suspended)
+        # Was the current request cancelled while it was waiting for us?
+        if current_request.cancelled:
+            raise Request.CancellationException()
+        
+        # Are we back because we failed?
+        if self.exception is not None:
+            raise self.exception.__class__, self.exception, self.exception_tb 
+
+    def _handle_finished_request(self, request, *args):
+        """
+        Called when a request that we were waiting for has completed.
+        Wake ourselves up so we can resume execution.
+        """
+        with self._lock:
+            # We're not waiting for this one any more
+            self.blocking_requests.remove(request)
+            if len(self.blocking_requests) == 0:
+                self._wake_up()
+
+    def notify_finished(self, fn):
+        """
+        Register a callback function to be called when this request is finished.
+        If we're already finished, call it now.
+        
+        :param fn: The callback to be notified.  Signature: fn(result)
+        """
+        assert not self._cleaned, "This request has been cleaned() already."
+        with self._lock:
+            finished = self.finished
+            if not finished:
+                # Call when we eventually finish
+                self._sig_finished.subscribe(fn)
+
+        if finished:
+            # Call immediately
+            fn(self._result)
+
+    def notify_cancelled(self, fn):
+        """
+        Register a callback function to be called when this request is finished due to cancellation.
+        If we're already finished and cancelled, call it now.
+        
+        :param fn: The callback to call if the request is cancelled.  Signature: fn()
+        """
+        assert not self._cleaned, "This request has been cleaned() already."
+        with self._lock:
+            finished = self.finished
+            cancelled = self.cancelled
+            if not finished:
+                # Call when we eventually finish
+                self._sig_cancelled.subscribe(fn)
+
+        if finished and cancelled:
+            # Call immediately
+            fn()
+
+    def notify_failed(self, fn):
+        """
+        Register a callback function to be called when this request is finished due to failure (an exception was raised).
+        If we're already failed, call it now.
+
+        :param fn: The callback to call if the request fails.  Signature: fn(exception)
+        """
+        assert not self._cleaned, "This request has been cleaned() already."
+        with self._lock:
+            finished = self.finished
+            failed = self.exception is not None
+            if not finished:
+                # Call when we eventually finish
+                self._sig_failed.subscribe(fn)
+
+        if finished and failed:
+            # Call immediately
+            fn(self.exception)
+
+    def cancel(self):
+        """
+        Attempt to cancel this request and all requests that it spawned.
+        No request will be cancelled if other non-cancelled requests are waiting for its results.
+        """
+        # We can only be cancelled if: 
+        # (1) There are no foreign threads blocking for us (flagged via self.uncancellable) AND
+        # (2) our parent request (if any) is already cancelled AND
+        # (3) all requests that are pending for this one are already cancelled
+        with self._lock:
+            cancelled = not self.uncancellable
+            cancelled &= (self.parent_request is None or self.parent_request.cancelled)
+            for r in self.pending_requests:
+                cancelled &= r.cancelled
+
+            self.cancelled = cancelled
+            if cancelled:
+                # Any children added after this point will receive our same cancelled status
+                child_requests = self.child_requests
+                self.child_requests = set()
+
+        if self.cancelled:
+            # Cancel all requests that were spawned from this one.
+            for child in child_requests:
+                child.cancel()
+    
+    @classmethod
+    def _current_request(cls):
+        """
+        Inspect the current greenlet/thread and return the request object associated with it, if any.
+        """
+        current_greenlet = greenlet.getcurrent()
+        # Greenlets in worker threads have a monkey-patched 'owning-request' member
+        if hasattr(current_greenlet, 'owning_requests'):
+            return current_greenlet.owning_requests[-1]
+        else:
+            # There is no request associated with this greenlet.
+            # It must be a regular (foreign) thread.
+            return None
+
+    ##########################################
+    #### Backwards-compatible API support ####
+    ##########################################
+
+    class _PartialWithAppendedArgs(object):
+        """
+        Like functools.partial, but any kwargs provided are given last when calling the target.
+        """
+        def __init__(self, fn, *args, **kwargs):
+            self.func = fn
+            self.args = args
+            self.kwargs = kwargs
+        
+        def __call__(self, *args):
+            totalargs = args + self.args
+            return self.func( *totalargs, **self.kwargs)
+    
+    def onFinish(self, fn, **kwargs):
+        f = Request._PartialWithAppendedArgs( fn, **kwargs )
+        self.notify_finished( f)
+
+    def onCancel(self, fn, *args, **kwargs):
+        # Cheating here: The only operator that uses this old api function is OpArrayCache,
+        # which doesn't do anything except return False to say "don't cancel me"
+        
+        # We'll just call it right now and set our flag with the result
+        self.uncancellable = not fn(self, *args, **kwargs)
+
+    def notify(self, fn, **kwargs):
+        f = Request._PartialWithAppendedArgs( fn, **kwargs )
+        self.notify_finished( f )
+        self.submit()
+
+    def allocate(self, priority = 0):
+        return self
+
+    def writeInto(self, destination):
+        self.fn = Request._PartialWithAppendedArgs( self.fn, destination=destination )
+        return self
+
+    def getResult(self):
+        return self.result
+
+# The __call__ method used to be a synonym for wait(), but now it is used by the worker to start/resume the request.
+#    def __call__(self):
+#        return self.wait()
+
+Request.reset_thread_pool()
+
+class RequestLock(object):
     """
-    small helper class that wraps a greenlet and provides
-    additional attributes.
+    Request-aware lock.  Implements the same interface as threading.Lock.
+    If acquire() is called from a normal thread, the the lock blocks the thread as usual.
+    If acquire() is called from a Request, then the request is suspended so that another Request can be resumed on the thread.
+    
+    Requests and normal threads can *share* access to a RequestLock.
+    That is, they compete equally for access to the lock.
+    
+    Implementation detail:  Depends on the ability to call two *private* Request methods: _suspend() and _wake_up().
     """
-    __slots__ = ("thread", "request")
-
-
-
-class Lock(object):
-    """
-    experimental non blocking, request/threadpool/worker compatible
-    Lock object that can be used for long running tasks.
-
-    The Lock object can only be used from within CustomGreenlets.
-
-    If a thread would normally block on an acquire() call, due to an
-    already acquired lock, this lock instead switches to the
-    Workers run function, so that the thread can execute other tasks.
-    """
-
     def __init__(self):
-        self.lock1 = threading.Lock()
-        self.lock1.acquire()
-        self.lock2 = threading.Lock()
-        self.waiting = deque()
+        # This member holds the state of this RequestLock
+        self._modelLock = threading.Lock()
 
-    def acquire(self):
-        try:
-            # try to acqiure lock1 (unlocked lock1 means
-            # this Lock object is already acquired by somebody else
-            self.lock1.release()
-            self.lock2.acquire()
-        except thread.error:
-            # equivalent to locked
-            cur_gr = greenlet.getcurrent()
-            self.waiting.append(cur_gr)
+        # This member protects the _pendingRequests set from corruption
+        self._selfProtectLock = threading.Lock()
+        
+        # This is a list of requests that are currently waiting for the lock.
+        # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
+        self._pendingRequests = collections.deque()
 
-            # yield to Worker run loop
-            cur_gr.parent.switch()
+    def locked(self):
+        """
+        Return True if lock is currently held by some thread or request.
+        """
+        return self._modelLock.locked()
+    
+    def acquire(self, blocking=True):
+        """
+        Acquire the lock.  If `blocking` is True, block until the lock is available.
+        If `blocking` is False, don't wait and return False if the lock couldn't be acquired immediately.
+        
+        :param blocking: Same as in threading.Lock 
+        """
+        current_request = Request._current_request()
+        if current_request is None:
+            return self._acquire_from_within_thread(blocking)
+        else:
+            return self._acquire_from_within_request(current_request, blocking)
 
+    def _acquire_from_within_request(self, current_request, blocking):
+            with self._selfProtectLock:
+                # Try to get it immediately.
+                got_it = self._modelLock.acquire(False)
+                if not blocking:
+                    return got_it
+                if not got_it:
+                    # We have to wait.  Add ourselves to the list of waiters.
+                    self._pendingRequests.append(current_request)
+
+            if not got_it:
+                # Suspend the current request.
+                # When it is woken, it owns the _modelLock.
+                current_request._suspend()
+
+            # Guaranteed to own _modelLock now (see release()).
+            return True
+        
+    def _acquire_from_within_thread(self, blocking):
+        if not blocking:
+            return self._modelLock.acquire(blocking)
+
+        with self._selfProtectLock:
+            # Append "None" to indicate that a real thread is waiting (not a request)
+            self._pendingRequests.append(None)
+
+        # Wait for the internal lock to become free
+        got_it = self._modelLock.acquire(blocking)
+    
+        with self._selfProtectLock:
+            # Search for a "None" to pull off the list of pendingRequests.
+            # Don't take real requests from the queue
+            r = self._pendingRequests.popleft()
+            while r is not None:
+                self._pendingRequests.append(r)
+                r = self._pendingRequests.popleft()
+
+        return got_it
 
     def release(self):
-        self.lock2.release()
-
-        # try to pop a waiting greenlet from the queue
-        # and wake it up
-        try:
-            gr = self.waiting.popleft()
-
-            # reset the state of this Lock object to acquired
-            # because the greenlet that is woken up
-            # will release it for us
-            self.lock2.acquire()
-            gr.thread.finishedGreenlets.appendleft(gr)
-            wakeUp(gr.thread)
-        except IndexError:
-            # indicate that this Lock object can be acquired again
-            self.lock1.acquire()
+        """
+        Release the lock so that another request or thread can acquire it.
+        """
+        assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
+        with self._selfProtectLock:
+            if len(self._pendingRequests) == 0:
+                # There were no waiting requests or threads, so the lock is free to be acquired again.
+                self._modelLock.release()
+            else:
+                # Instead of releasing the modelLock, just wake up a request that was waiting for it.
+                # He assumes that the lock is his when he wakes up.
+                r = self._pendingRequests[0]
+                if r is not None:
+                    self._pendingRequests.popleft()
+                    r._wake_up()
+                else:
+                    # The pending "request" is a real thread.
+                    # Release the lock to wake it up (he'll remove the _pendingRequest entry)
+                    self._modelLock.release()
 
     def __enter__(self):
         self.acquire()
@@ -353,443 +715,79 @@ class Lock(object):
     
     def __exit__(self, *args):
         self.release()
-    
 
-class Pool(object):
+class RequestPool(object):
     """
-    Request pool class for handling many requests jointly
+    Convenience class for submitting a batch of requests and waiting until they are all complete.
+    Requests can not be added to the pool after it has already started.
+    Not threadsafe (don't add requests from more than one thread).
+    """
 
-    THIS CLASS IS NOT THREAD SAFE. I.e. the class should only be
-    accessed from a single thread.
-    """
+    class RequestPoolError(Exception):
+        """
+        Raised if you attempt to use the Pool in a manner that it isn't designed for.
+        """
+        pass
 
     def __init__(self):
-        self.requests = []
-        self.callbacks_finish = []
+        self._requests = set()
+        self._started = False
 
-        self.running = False
-        self.finished = False
-
-        self.counter = itertools.count()
-        self.count_finished = self.counter.next()
-        self.must_finish = 0
-
-    def request(self, func, **kwargs):
-        """
-        generate a request object which is added to the pool.
-
-        returns the generated request.
-        """
-        if not self.running and not self.finished:
-            req = Request(func, **kwargs)
-            self.requests.append(req)
-            self.must_finish += 1
-            return req
-        else:
-            assert False
+    def __len__(self):
+        return len(self._requests)
 
     def add(self, req):
         """
-        add an already existing request object to the pool
-
-        returns the request object.
+        Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
         """
-        if not self.running and not self.finished and not req in self.requests:
-            self.requests.append(req)
-            self.must_finish += 1
-        else:
-            assert False
-        return req
+        if self._started:
+            # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
+            # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
+            raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
+        self._requests.add(req)
 
     def submit(self):
         """
-        Start processing of the requests
+        Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
         """
-        if not self.running and not self.finished:
-            self.running = True
-            # catch the case of an empty pool
-            if self.must_finish == 0:
-                self._finalize()
-            for r in self.requests:
-                r.submit()
-                r.onFinish(self._req_finished)
+        if self._started:
+            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
+        for req in self._requests:
+            req.submit()
 
     def wait(self):
         """
-        Start processing of the requests and blocking wait for their completion.
+        Wait for all requests in the pool to complete.
         """
-        if self.must_finish == 1:
-            self.requests[0].wait()
-            self._finalize()
-        else:
+        if not self._started:
             self.submit()
-            #print "submitting", self
-            if not self.finished:
-                cur_tr = threading.current_thread()
-                if isinstance(cur_tr, Worker):
-                    finished_lock = Lock() # special Worker compatible non-blocking lock
-                else:
-                    finished_lock = threading.Lock() # normal lock
-                #print "waiting", self, self.must_finish, self.count_finished
-                finished_lock.acquire()
-                self.onFinish(self._release_lock, lock = finished_lock)
-                finished_lock.acquire()
-                #print "finished", self
-            
-
-
-    def onFinish(self, func, **kwargs):
-        """
-        Register a callback function which is executed once all requests in the
-        pool are completed.
-        """
-        if not self.finished:
-            self.callbacks_finish.append((func,kwargs)) 
-        else:
-            func(**kwargs)
-
-    def clean(self):
-        """
-        Clean all the requests and the pool.
-        """
-        for r in self.requests:
-            r.clean()
-        self.requests = []
-        self.callbacks_finish = []
-    
-    def _finalize(self):
-        self.running = False
-        self.finished = True
-        callbacks_finish = self.callbacks_finish
-        self.finished_callbacks = []
-        for f, kwargs in callbacks_finish:
-            f(**kwargs)
-
-    def _req_finished(self, req):
-        self.count_finished = self.counter.next()
-        if self.count_finished >= self.must_finish:
-            self._finalize()
-
-
-    def __len__(self):
-        return self.must_finish
-            
-    def _release_lock(self, lock):
-        lock.release()
-
-
-class Request(object):
-    """
-    Class that wraps a computation.
-
-    it takes a function and its arguments on initialization and allows
-    to execute this function synchronously and asynchronously. In addition
-    various types of callbacks can be provided that notify
-    of cancellation, finished computation etc.
-    """
-
-    logger = logging.getLogger(__name__ + '.Request')
-    EnableRequesterStackDebugging = False
-
-    def __init__(self, function, **kwargs):
-        self.running = False
-        self.finished = False
-        self.canceled = False
-        self.processing = False
-        self.lock = threading.Lock()
-        self.function = function
-        self.kwargs = kwargs
-        self.callbacks_cancel = []
-        self.callbacks_finish = []
-        self.waiting_greenlets = []
-        #self.waiting_locks = []
-        self.child_requests = set()
-        self.result = None
-        self.parent_request = None
-        self.prio = 0
-        cur_gr = greenlet.getcurrent()
-        cur_tr = threading.current_thread()
-        patchIfForeignThread(cur_tr)
-
-        if hasattr(cur_tr, "current_request"):
-            self.parent_request = cur_tr.current_request
-            if self.parent_request is not None:
-              self.prio = self.parent_request.prio - 1
-
-              # self.parent_request.lock.acquire()
-              self.parent_request.child_requests.add(self)
-              # self.parent_request.lock.release()
-
-              # always hold back one request that
-              # was created in a thread.
-              # if a second one is created, submit the first one to the job queue
-        last_request = cur_tr.last_request
-        if last_request is not None:
-            #print "bursting..."
-            last_request.submit()
-        cur_tr.last_request = self
-
-        self._requesterStack = None
-
-
-    def __call__(self):
-        """
-        synchronous wait without timeout
-        """
-        return self.wait()
-
-    def _releaseLock(self, lock):
-        """
-        helper function that sets an event. this is used by the wait
-        method to provide a possiblity for an non-worker thread to wait
-        for completion of a request.
-        """
-        try:
-            lock.release()
-        except thread.error:
-            pass
-
-    def wait(self, timeout = 0):
-        """
-        synchronous wait for exectution of function
-        """
-        cur_gr = greenlet.getcurrent()
-        cur_tr = threading.current_thread()
-
-        if self.EnableRequesterStackDebugging:
-            import traceback
-            self._requesterStack = traceback.extract_stack()
-
-        # if we are waiting for something else
-        # burst the last reqeust
-        patchIfForeignThread(cur_tr)
-        last_request = cur_tr.last_request
-        if last_request is not None and last_request != self:
-            #print "bursting..."
-            last_request.submit()
-        cur_tr.last_request = None
-
-        self.lock.acquire()
-        if not self.finished and not self.canceled:
-            if not self.running:
-                self.running = True
-                self.lock.release()
-                self._execute()
-            else:
-                # wait for results
-                if isinstance(cur_tr, Worker):
-            # just wait for the request to finish
-            # we will get woken up
-                    self.waiting_greenlets.append(cur_gr)
-                    
-                    # switch back to parent, parent will release lock 
-                    cur_gr.parent.switch(self.lock)
-                else:
-                    lock = cur_tr.wlock
-                    try:
-                        lock.release()
-                    except thread.error:
-                        pass
-                    lock.acquire()
-                    #self.waiting_locks.append(lock)
-                    self.callbacks_finish.append((Request._releaseLock, {"lock" : lock}))
-                    self.lock.release()
-                    lock.acquire()
-        else:
-          self.lock.release()
-        return self.result
-
-    def submit(self):
-        """
-        asynchronous execution in background
-        """
-        if self.EnableRequesterStackDebugging:
-            import traceback
-            self._requesterStack = traceback.extract_stack()
-
-        # test before locking, otherwise deadlock ?
-        if self.finished or self.canceled:
-          return self
-
-        self.lock.acquire()
-        if not self.running:
-            self.running = True
-            self.lock.release()
-            global_thread_pool.putRequest(self)
-        else:
-            self.lock.release()
-        return self
-
-
-    def onCancel(self, callback, *args, **kwargs):
-        """
-        specify a callback that is called when the request is canceled.
-        """
-        self.lock.acquire()
-        if not self.canceled:
-            self.callbacks_cancel.append((callback, args, kwargs))
-            self.lock.release()
-        else:
-            self.lock.release()
-            callback(self, *args,**kwargs)
-        return self
-
-    def onFinish(self, callback, **kwargs):
-        """
-        execute function asynchronously and
-        call the specified callback function with the given
-        args and kwargs.
-        """
-        self.lock.acquire()
-        if not self.finished:
-            self.callbacks_finish.append((callback, kwargs))
-            self.lock.release()
-        else:
-            self.lock.release()
-            callback(self,**kwargs)
-        return self
-
+        for req in self._requests:
+            req.wait()
 
     def cancel(self):
         """
-        cancel a running request
+        Cancel all requests in the pool.
         """
-        self.lock.acquire()
-        if not self.finished:
-            callbacks_cancel = self.callbacks_cancel
-            self.callbacks_cancel = []
-            child_requests = self.child_requests
-            self.child_requests = set()
-            self.lock.release()
-
-            canceled = True
-            for c in callbacks_cancel:
-            # call the callback tuples
-                canceled = c[0](self, *c[1],**c[2])
-                if canceled is False:
-                    self.logger.debug( "onCancel callback refused cancellation" )
-                    break
-            if canceled:
-                self.logger.debug( "cancelling request" )
-                for c in child_requests:
-                    print "canceling child.."
-                    c.cancel()
-                self.canceled = True
-        else:
-            self.lock.release()
-            self.logger.debug( "tried to cancel but: self.finished={}, self.canceled={}".format(self.finished, self.canceled) )
-
-    def _execute(self):
+        for req in self._requests:
+            req.cancel()
+    
+    def request(self, func):
         """
-        helper function that executes the actual function of the request
-        calls all callbacks specified with onNotify and
-        resumes all waiters in other worker threads.
+        **Deprecated method**.  Convenience function to construct a request for the given callable and add it to the pool.
         """
-            # assert self.running is True
-            # assert self.finished is False
-        if self.canceled:
-            return
-
-        cur_tr = threading.current_thread()
-        req_backup = cur_tr.current_request
-        cur_tr.current_request = self
-
-        # do the actual work
-        self.result = self.function(**self.kwargs)
-
-        self.lock.acquire()
-        self.processing = True
-        self.finished = True
-        waiting_greenlets = self.waiting_greenlets
-        self.waiting_greenlets = None
-        # waiting_locks = self.waiting_locks
-        # self.waiting_locks = None
-        callbacks_finish = self.callbacks_finish
-        self.callbacks_finish = None
-        self.lock.release()
-
-        #self.lock.acquire()
-        if self.parent_request is not None:
-            # self.parent_request.lock.acquire()
-            try:
-                self.parent_request.child_requests.remove(self)
-            except KeyError:
-                pass
-            # self.parent_request.lock.release()
-            if self.prio - 1 < self.parent_request.prio:
-                self.parent_request.prio = self.prio - 1
-        #self.lock.release()
-
-        for gr in waiting_greenlets:
-            # greenlets ready to continue in the quee of the corresponding workers
-            gr.thread.finishedGreenlets.append(gr)
-            wakeUp(gr.thread)
-
-        #for l in waiting_locks:
-        #  l.release()
-
-        for c in callbacks_finish:
-            # call the callback tuples
-            c[0](self, **c[1])
-
-        cur_tr.current_request = req_backup
-
-    #
-    #
-    #  Functions for backwards compatability !
-    #
-
-
-    def _wrapperFinishCallback(self, real_callback, **kwargs):
-        real_callback(self.result, **kwargs)
-
-
-    def notify(self, function, **kwargs):
-        """
-        convenience function, setup a callback for finished computation
-        and start the computation in the background
-        """
-        self.onFinish( Request._wrapperFinishCallback, real_callback = function, **kwargs)
-        self.submit()
-        return self
-
-    def allocate(self, priority = 0):
-        return self
-
-
-    def writeInto(self, destination):
-        self.kwargs["destination"] = destination
-        return self
-
+        self.add( Request(func) )
+    
     def clean(self):
-        self.kwargs = {}
-        self.result = None
-        self.callbacks_finish = []
-        self.callbacks_cancel = []
+        """
+        Release our handles to all requests in the pool, for cleanup purposes.
+        """
+        self._requests = set()
+
+# BACKWARDS COMPATIBILITY
+Pool = RequestPool
 
 
-    def getResult(self):
-        return self.result
-    
-    ##
-    ## Functions for forwards compatibility
-    ##
-    def notify_finished(self, fn):
-        self.onFinish( Request._wrapperFinishCallback, real_callback = fn)
 
-    def notify_cancelled(self, fn):
-        warnings.warn("notify_cancelled() not supported in old request implementation.")
-    
-    def notify_failed(self, fn):
-        warnings.warn("notify_failed() not supported in old request implementation.")
-    
-    def block(self):
-        return self.wait()
-##
-## Definitions for FORWARDS compatibility
-##
 
-# New names
-RequestPool = Pool
-RequestLock = Lock
+
 

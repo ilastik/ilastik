@@ -49,10 +49,7 @@ class RoiRequestBatch( object ):
 
         self._activeRequests = collections.deque()
         
-        if lazyflow.request.backend == 'new':
-            self._lock = RequestLock()
-        else:
-            self._lock = FakeLock()
+        self._lock = RequestLock()
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
@@ -71,9 +68,6 @@ class RoiRequestBatch( object ):
         while next_request is not None:
             next_request.block()
 
-            if lazyflow.request.backend == 'old':
-                self._handleCompletedRequest( roi, next_request, next_request.result )
-            
             # Get next request to wait for
             roi, next_request = self._popOldestActiveRequest()
 
@@ -124,8 +118,7 @@ class RoiRequestBatch( object ):
             else:
                 req = self._outputSlot( roi[0], roi[1] )
                 self._activeRequests.append( (roi, req) )
-                if lazyflow.request.backend == 'new':
-                    req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
+                req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
                 req.submit()
 
 

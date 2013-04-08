@@ -658,8 +658,6 @@ As a temporary convenience for migration to the latest version of the Request Fr
 - ``Request.getResult()`` (now replaced with ``Request.result``)
 - ``Request.writeInto()`` (This member is specific to the Lazyflow Graph Framework.  It will soon be implemented there, in a special subclass of ``Request``.)
 
-Additionally, the old and new implementations of the old API can be quickly switched without even checking out a new branch in git.  Just edit lazyflow/request/__init__.py.
-
 .. note:: Backwards-compatibility support will be removed soon.  
           If you are depending on the old API, please upgrade your code.  
           If you suspect a bug in the new implementation, verify that it does not occur under the old implementation by editing lazyflow/request/__init__.py. 
