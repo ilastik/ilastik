@@ -1,14 +1,17 @@
-import numpy
-import h5py
+#Python
 import os
 
+#SciPy
+import numpy
+import h5py
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
-#from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed
 
 class OpFeatureSelectionNoCache(Operator):
     """
@@ -53,7 +56,7 @@ class OpFeatureSelectionNoCache(Operator):
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
             self.opPixelFeatures.InterpolationScaleZ.setValue(2)
         else:
-            assert False, "Unknown filter implementation option: {}".format( filter_implementation )
+            raise RuntimeError("Unknown filter implementation option: {}".format( filter_implementation ))
 
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
