@@ -158,6 +158,10 @@ class OpSelectLabels(Operator):
         logMemoryIncrease("After obtaining big labels")
         
         prod = smallNonZero * bigLabels
+        
+        #NOTE: the part below only makes sense if we want to output
+        #connected components. As we don't for now, it's out.
+        '''
         del smallNonZero
         passed = numpy.unique(prod)
         logMemoryIncrease("After taking product")
@@ -169,6 +173,8 @@ class OpSelectLabels(Operator):
         all_label_values[0] = 0
         
         result[:] = all_label_values[ bigLabels ]
+        '''
+        result[:] = (prod>0).astype(numpy.uint8)
 
         logMemoryIncrease("Just before return")
         return result        
