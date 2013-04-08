@@ -3,6 +3,7 @@ import h5py
 import vigra.analysis
 import math
 import pgmlink
+from sklearn import mixture, cluster
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -65,11 +66,13 @@ class OpCellFeatures(Operator):
     ndim = None
     numNeighbors = 2
     templateSize = 30  # window in which we look for neighboring labels in the next time steps
-    size_filter_from = 5
+    size_filter_from_divfeat = 5
     with_uncorrected_features = True # plain features
     with_corrected_features = True  # the region centers are corrected by translation vector
     with_cell_classification_features = True # features for cell classification
     defaultSquaredDistance = 1000
+    size_filter_from_cellfeat = 20
+    bic_regularization = 0.05   
     
     transl_corr_suffix = "_corr"
     
@@ -178,16 +181,17 @@ class OpCellFeatures(Operator):
                                                 
                         if self.with_uncorrected_features:
                             self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
-                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,
+                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from_divfeat,
                                                          suffix='')
                         
                         if self.with_corrected_features:
                             self.extractDivisionFeatures(feats_at_c, region_feats_next[c], labels_next, self.divisionFeatures, 
-                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from,                                                         
+                                                         numNeighbors=self.numNeighbors, size_filter_from=self.size_filter_from_divfeat,                                                         
                                                          suffix=self.transl_corr_suffix)
                     
                     if self.with_cell_classification_features:
-                        self.extractCellClassificationFeatures(feats_at_c, self.cellClassificationFeatures, self.ndim, size_filter_from=self.size_filter_from)
+                        self.extractCellClassificationFeatures(feats_at_c, self.cellClassificationFeatures, self.ndim, 
+                                                               size_filter_from=self.size_filter_from_cellfeat, regularization_parameter=self.bic_regularization)
                             
                     feats_at.append(feats_at_c)    
 
@@ -196,6 +200,29 @@ class OpCellFeatures(Operator):
             feats[t] = feats_at   
         return feats     
     
+    @staticmethod
+    def gmm_num_parameters(gmm):
+        """Return the number of free parameters in the gmm model."""
+        ndim = gmm.means.shape[1]
+        if gmm.cvtype == 'full':
+            cov_params = gmm.n_components * ndim * (ndim + 1) / 2.
+        elif gmm.cvtype == 'diag':
+            cov_params = gmm.n_components * ndim
+        elif gmm.cvtype == 'tied':
+            cov_params = ndim * (ndim + 1) / 2.
+        elif gmm.cvtype == 'spherical':
+            cov_params = gmm.n_components
+        mean_params = ndim * gmm.n_components
+        return int(cov_params + mean_params + gmm.n_components - 1)
+        
+    def gmm_bic(self, gmm, data):
+        return (-2 * gmm.score(data).sum() + self.gmm_num_parameters(gmm) * numpy.log(data.shape[0]))
+    
+    def gmm_bic_mod(self, gmm, data, reg_par, k):
+        return (gmm.score(data).sum() - reg_par * k)
+    
+    def gmm_aic(self, gmm, data):
+        return - 2 * gmm.score(data).sum() + 2 * self.gmm_num_parameters(gmm) 
     
     def extractCellClassificationFeatures(self, feats_at_cur, featurenames, ndim, size_filter_from=4,regularization_parameter = 0.1):
         ''' adds cell classification features to feats_at_cur '''
@@ -205,22 +232,61 @@ class OpCellFeatures(Operator):
                 continue
             
             if 'GMM_BIC' in featurenames: 
-                data = pgmlink.feature_array()
-                for el in vals:
-                    for i in range(ndim):                         
-                        data.push_back(float(el[i]))
+                size = feats_at_cur['Count'][label_cur]
                 
-                bic_scores = pgmlink.feature_array()
-                cluster_centers = pgmlink.feature_array()
-                try: 
-                    pgmlink.gmm_priors_and_centers(data, bic_scores, cluster_centers, config.num_max_objects, ndim, regularization_parameter)
-                except:
-                    print 'WARNING: GMM computation threw exception, setting BIC = (0,..,0)'
-                    bic_scores = [ 0 for ii in range(ndim) ]
+                if size <= size_filter_from:
+                    bic_score_list = [0 for ii in range(ndim)]
+                else:
+                    #### PGMLINK implementation
+#                    data = pgmlink.feature_array()
+#                    for el in vals:
+#                        for i in range(ndim):                         
+#                            data.push_back(float(el[i]))
+#                    
+#                    bic_scores = pgmlink.feature_array()
+#                    cluster_centers = pgmlink.feature_array()
+#                    try: 
+#                        pgmlink.gmm_priors_and_centers(data, bic_scores, cluster_centers, config.num_max_objects, ndim, regularization_parameter)
+#                    except:
+#                        print 'WARNING: GMM computation threw exception, setting BIC = (0,..,0)'
+#                        bic_scores = [ 0 for ii in range(ndim) ]
+#                    bic_score_list = []
+#                    for b in bic_scores:
+#                        bic_score_list.append(b)
+#                    ###################
                 
-                bic_score_list = []
-                for b in bic_scores:
-                    bic_score_list.append(b)
+                
+#                    ##### scikit-learn implementation
+#                    dim_maxs = []
+#                    dim_mins = []
+#                    for d in range(ndim):
+#                        dim_maxs.append({})
+#                        dim_mins.append({})
+#                        
+#                        for d_other in range(ndim):
+#                            if d == d_other:
+#                                continue
+#                            
+#                            if v > dim_maxs[d]:
+#                                dim_maxs[d] = v
+#                            if v < dim_mins[d]:
+#                                dim_mins[d] = v 
+                            
+                        
+                    
+                    bic_score_list = []
+                    for k in range(1,config.num_max_objects+1):
+                        g = mixture.GMM(n_components=k)
+#                        g = cluster.KMeans(k=k)
+                        
+                        g.fit(vals[:,:2])
+#                        bic_score_list.append(self.gmm_bic_mod(g,vals[:,:ndim],0.1,k))
+                        bic_score_list.append(self.gmm_bic(g,vals[:,:ndim]))
+#                        bic_score_list.append(g.score(vals[:,:2]).sum() / vals.shape[0])
+#                    print 'scikit BIC = ', bic_score_list
+                    ####################
+                
+                
                 
                 s = float(sum(bic_score_list))
                 if s == 0:
