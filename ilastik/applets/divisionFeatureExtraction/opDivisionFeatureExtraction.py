@@ -223,10 +223,13 @@ class OpCellFeatures(Operator):
                     bic_score_list.append(b)
                 
                 s = float(sum(bic_score_list))
-                if s != 0:                
+                if s == 0:
+                    for idx,b in enumerate(bic_score_list):
+                        bic_score_list[idx] = 1./len(bic_score_list)
+                else:            
                     for idx,b in enumerate(bic_score_list):
                         bic_score_list[idx] = b/s
-                    
+                
                 feats_at_cur['GMM_BIC'][label_cur] = numpy.array(bic_score_list)
 #                print 'GMM_BIC(',label_cur,') =', numpy.array(bic_score_list)
             
