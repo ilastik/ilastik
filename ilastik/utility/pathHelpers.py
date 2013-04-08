@@ -84,7 +84,8 @@ class PathComponents(object):
         return total
 
 def areOnSameDrive(path1,path2):
-    if not os.path.exists(path1) or not os.path.exists(path2):
+    #if one path is relative, assume they are on same drive
+    if not os.path.isabs(path1) or not os.path.isabs(path2):
         return True
     drive1,path1 = os.path.splitdrive(path1)
     drive2,path2 = os.path.splitdrive(path2)
@@ -103,7 +104,7 @@ def getPathVariants(originalPath, workingDirectory):
     
     if os.path.isabs(originalPath):
         absPath = originalPath
-        assert areOnSameDrive(originalPath,workingDirectory)
+        assert areOnSameDrive(originalPath,workingDirectory),"All data files have to be on the same drive. You can move the data file and try again."
         relPath = os.path.relpath(absPath, workingDirectory).replace("\\","/")
     else:
         relPath = originalPath

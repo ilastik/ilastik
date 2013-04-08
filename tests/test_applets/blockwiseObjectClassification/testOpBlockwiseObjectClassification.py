@@ -69,7 +69,7 @@ class TestOpBlockwiseObjectClassification(object):
         self.test_volume_labeled.axistags = vigra.defaultAxistags('xyz')
         
     
-    def testOpObjectClassification(self):
+    def testEverything(self):
         graph = Graph()
 
         op5Raw = Op5ifyer( graph=graph )
@@ -156,6 +156,7 @@ class TestOpBlockwiseObjectClassification(object):
         opBlockwise.RawImage.connect( opObjectClassification.RawImages[0] )
         opBlockwise.BinaryImage.connect( opObjectClassification.BinaryImages[0] )
         opBlockwise.Classifier.connect( opObjectClassification.Classifier )
+        opBlockwise.LabelsCount.connect( opObjectClassification.NumLabels )
 
         assert (opBlockwise.PredictionImage[:].wait() == prediction_volume).all(), \
             "Blockwise prediction operator did not produce the same prediction image" \

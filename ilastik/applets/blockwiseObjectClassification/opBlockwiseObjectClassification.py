@@ -14,7 +14,7 @@ from lazyflow.operators import OpSubRegion
 # ilastik
 from ilastik.utility import bind
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
-from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation, OpMaxLabel
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -24,6 +24,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     BinaryImage = InputSlot()
 
     Classifier = InputSlot()
+    LabelsCount = InputSlot()
     
     PredictionImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot() # Indexed by (t,c)
@@ -91,6 +92,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredict = OpObjectPredict( parent=self )
         self._opPredict.Features.connect( self._opExtract.RegionFeatures )
         self._opPredict.Classifier.connect( self.Classifier )
+        self._opPredict.LabelsCount.connect( self.LabelsCount )
         
         self._opPredictionImage = OpRelabelSegmentation( parent=self )
         self._opPredictionImage.Image.connect( self._opExtract.LabelImage ) 
@@ -171,6 +173,7 @@ class OpBlockwiseObjectClassification( Operator ):
     RawImage = InputSlot()
     BinaryImage = InputSlot()
     Classifier = InputSlot()
+    LabelsCount = InputSlot()
     BlockShape3dDict = InputSlot( value={'x' : 512, 'y' : 512, 'z' : 512} ) # A dict of SPATIAL block dims
     HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
@@ -290,7 +293,8 @@ class OpBlockwiseObjectClassification( Operator ):
             opBlockPipeline.RawImage.connect( self.RawImage )
             opBlockPipeline.BinaryImage.connect( self.BinaryImage )
             opBlockPipeline.Classifier.connect( self.Classifier )
-            
+            opBlockPipeline.LabelsCount.connect( self.LabelsCount )
+
             # Forward dirtyness
             opBlockPipeline.PredictionImage.notifyDirty( bind(self._handleDirtyBlock, block_start ) )
             

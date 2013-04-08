@@ -47,11 +47,11 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         
         # Start the timer
         cls.timer = Timer()
-        cls.timer.start()
+        cls.timer.unpause()
 
     @classmethod
     def teardownClass(cls):
-        cls.timer.stop()
+        cls.timer.pause()
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!

@@ -249,7 +249,11 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
     def onUsePrecomputedFeaturesButtonClicked(self):
-        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.')
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+
+        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
         
         #sanity checks on the given file
         if not filename:

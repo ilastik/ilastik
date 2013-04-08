@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>carving object management</string>
   </property>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">

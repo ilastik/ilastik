@@ -507,7 +507,7 @@ class AppletSerializer(object):
         pass
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File,
-                             projectFilePath):
+                             projectFilePath, headless = False):
         """Child classes should override this function, if
         necessary.
 
@@ -534,6 +534,7 @@ class AppletSerializer(object):
         self.topGroupName = topGroupName
         self.serialSlots = maybe(slots, [])
         self.operator = operator
+        self.caresOfHeadless = False # should _deserializeFromHdf5 should be called with headless-argument?
 
     def isDirty(self):
         """Returns true if the current state of this item (in memory)
@@ -620,7 +621,7 @@ class AppletSerializer(object):
             self.progressSignal.emit(100)
 
 
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
         """Read the the current applet state from the given hdf5File
         handle, which should already be open.
 
@@ -633,7 +634,10 @@ class AppletSerializer(object):
 
         :param projectFilePath: The path to the given file handle.
             (Most serializers do not use this parameter.)
-
+        
+        :param headless: Are we called in headless mode?
+            (in headless mode corrupted files cannot be fixed via the GUI)
+        
         """
         # Check the overall file version
         fileVersion = hdf5File["ilastikVersion"].value
@@ -660,12 +664,35 @@ class AppletSerializer(object):
                     self.progressSignal.emit(inc)
 
                 # Call the subclass to do remaining work
-                self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+                if self.caresOfHeadless:
+                    self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath, headless)
+                else:
+                    self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
             else:
                 self.initWithoutTopGroup(hdf5File, projectFilePath)
         finally:
             self.progressSignal.emit(100)
-
+    
+    def repairFile(self,path,filt = None):
+        """get new path to lost file"""
+        
+        from PyQt4.QtGui import QFileDialog,QMessageBox
+        
+        text = "The file at {} could not be found any more. Do you want to search for it at an other directory?".format(path)
+        c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
+        
+        if c == QMessageBox.Cancel:
+            raise RuntimeError("Could not find external data: " + path)
+        
+        dlg = QFileDialog( None, "repair files", path, filt )
+        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
+        dlg.setOption( QFileDialog.DontUseNativeDialog, False )
+        dlg.setViewMode( QFileDialog.Detail )
+        if dlg.exec_():
+            return str(dlg.selectedFiles()[0])
+        else:
+            raise RuntimeError("Could not find external data: " + path)
+        
     #######################
     # Optional methods    #
     #######################

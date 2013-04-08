@@ -31,7 +31,7 @@ before_script:
    - "export PYTHONPATH=/tmp/volumina:/tmp/widgets:/tmp/lazyflow:$PYTHONPATH"
 script:
    - cp tests/nose_single.py .
-   - ./tests/testeach.sh
+   - ./tests/run_each_unit_test.sh
 notifications:
   email:
     - bergs@janelia.hhmi.org
