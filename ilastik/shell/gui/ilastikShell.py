@@ -42,7 +42,7 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
-from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
+from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 
 ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
@@ -395,7 +395,6 @@ class IlastikShell( QMainWindow ):
                 exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
         
             menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
-            menu.addAction( "Play Recording" ).triggered.connect( self._playRecording )
 
         return menu
 
@@ -425,10 +424,6 @@ class IlastikShell( QMainWindow ):
 
     def _openRecorderControls(self):
         self._recorderGui.show()
-
-    def _playRecording(self):
-        player = EventPlayer(playback_speed=1.0)
-        player.play_script('/tmp/recording.py')
     
     def show(self):
         """
