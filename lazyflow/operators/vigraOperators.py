@@ -14,12 +14,11 @@ import numpy, vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
-from lazyflow.roi import sliceToRoi
+from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.request import Pool
 from operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
 from generic import OpMultiArrayStacker, popFlagsFromTheKey
-from lazyflow.roi import roiToSlice
 
 class OpXToMulti(Operator):
 
@@ -107,11 +106,9 @@ class Op20ToMulti(OpXToMulti):
     outputSlots = [OutputSlot("Outputs", level=1)]
 
 
-
-
 class Op50ToMulti(OpXToMulti):
 
-    name = "N Elements to Multislot"
+    name = "50 Elements to Multislot"
     category = "Misc"
 
     inputSlots = []
@@ -389,8 +386,9 @@ class OpPixelFeaturesPresmoothed(Operator):
             oldstart, oldstop = roi.sliceToRoi(key, shape)
 
             start, stop = roi.sliceToRoi(subkey,subkey)
-            maxSigma = max(0.7,self.maxSigma)
-            #maxSigma = max(1., self.maxSigma)
+            maxSigma = max(0.7,self.maxSigma)  #we use 0.7 as an approximation of not doing any smoothing
+            #smoothing was already applied previously
+            
             window_size = 3.5
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
             # 0.7, because the features receive a pre-smoothed array and don't need much of a neighborhood 
@@ -1109,8 +1107,8 @@ class OpBaseVigraFilter(OpArrayPiper):
             kwparams['window_size']=self.window_size_feature
             windowSize = self.window_size_smoother
 
-        #largestSigma = sigma #ensure enough context for the vigra operators
-        largestSigma = max(0.7,sigma)
+        largestSigma = max(0.7,sigma) #we use 0.7 as an approximation of not doing any smoothing
+        #smoothing was already applied previously
 
         shape = self.outputs["Output"].meta.shape
 
@@ -1214,7 +1212,7 @@ class OpBaseVigraFilter(OpArrayPiper):
             if (destEnd-destBegin != channelsPerChannel):
                 supportsOut = False
 
-            supportsOut= False #disable for now due to vigra crashes!
+            supportsOut = False #disable for now due to vigra crashes! #FIXME
             for step,image in enumerate(t.timeIter()):
                 nChannelAxis = channelAxis - 1
 
