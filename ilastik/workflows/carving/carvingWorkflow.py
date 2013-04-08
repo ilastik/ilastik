@@ -11,11 +11,13 @@ from carvingApplet import CarvingApplet
 from preprocessingApplet import PreprocessingApplet
 
 class CarvingWorkflow(Workflow):
-
+    
+    workflowName = "Carving"
+    
     @property
     def applets(self):
         return self._applets
-
+    
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName

@@ -25,7 +25,6 @@ class EventRecorderGui(QWidget):
         
         self.pauseButton.setEnabled(False)
         self.saveButton.setEnabled(False)
-        self.insertCommentButton.setEnabled( False )
         self.newCommentEdit.setEnabled(True)
         self.commentsDisplayEdit.setReadOnly(True)
 
@@ -56,13 +55,11 @@ class EventRecorderGui(QWidget):
             self._recorder.unpause()
             self.pauseButton.setText( "Pause" )
             self.pauseButton.setChecked( False )
-            self.insertCommentButton.setEnabled( False )
         else:
             # Pause the recorder
             self._recorder.pause()
             self.pauseButton.setText( "Unpause" )
             self.pauseButton.setChecked( True )
-            self.insertCommentButton.setEnabled( True )
 
     def _onSave(self):
         # If we are actually playing a recording right now, then the "Stop Recording" action gets triggered as the last step.

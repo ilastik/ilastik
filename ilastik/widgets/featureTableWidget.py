@@ -125,7 +125,7 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
-        self.setText(str(self.brushSize))
+        self.setText("%.1f" % self.sigma)
         font = QFont() 
         font.setPointSize(10)
         font.setBold(True)

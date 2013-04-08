@@ -33,7 +33,6 @@ class FeatureSelectionGui(LayerViewerGui):
     
     # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
-    DefaultColorTable = None
 
     # Map feature groups to lists of feature IDs
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),

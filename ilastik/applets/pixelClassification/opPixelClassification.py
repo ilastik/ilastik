@@ -1,17 +1,23 @@
+#Pyhton
 from functools import partial
+
+#SciPy
 import numpy
 import vigra
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from ilastik.utility.operatorSubView import OperatorSubView
-
-from ilastik.utility import OpMultiLaneWrapper
-
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
-                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
+                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
+                               OpPrecomputedInput, OpPixelOperator
+
+#ilastik
+from ilastik.utility.operatorSubView import OperatorSubView
+from ilastik.utility import OpMultiLaneWrapper
 
 class OpPixelClassification( Operator ):
     """
-    Top-level operator for the 
+    Top-level operator for pixel classification
     """
     name="OpPixelClassification"
     category = "Top-level"
@@ -501,29 +507,3 @@ class OpEnsembleMargin(Operator):
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = 1
         self.Output.setDirty( roi )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
