@@ -103,17 +103,12 @@ class OpRegionFeatures3d(Operator):
         if not "Count" in feature_names_first:
             feature_names_first.append("Count")
             
-        #minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
-    
         features_first = vigra.analysis.extractRegionFeatures(image, labels, feature_names_first, ignoreLabel=0)
         
         feature_dict = {}
         for key in features_first.keys():
             feature_dict[key] = features_first[key]
-        #feature_dict["Coord<Minimum>"]=mins
-        #feature_dict["Coord<Maximum>"]=maxs
-        #feature_dict["Count"]=counts
-        
+       
         mins = features_first["Coord<Minimum>"]
         maxs = features_first["Coord<Maximum>"]
         counts = features_first["Count"]
