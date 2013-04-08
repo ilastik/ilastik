@@ -1,26 +1,35 @@
-import lazyflow
-import numpy
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector, getBlockBounds
-from Queue import Empty
-from collections import deque
-import greenlet, threading
-import vigra
+#Python
 import copy
 import gc
 import sys
 import weakref
 from threading import current_thread, Lock, RLock
-from lazyflow import request
 import generic
 import itertools
-from lazyflow.rtype import SubRegion
 import time
 from functools import partial
 import threading
 import gc
+from Queue import Empty
+from collections import deque
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
+#SciPy
+import numpy
+import vigra
+
+#lazyflow
+import lazyflow
+from lazyflow.rtype import SubRegion
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector, getBlockBounds
+from lazyflow import request
+from lazyflow.utility import Tracer
+
+#third-party dependencies
+import greenlet
 import psutil
 if psutil.__version__ < '0.6':
     raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
@@ -38,10 +47,6 @@ except:
     err += "##############################################################"
     raise RuntimeError(err)
 
-import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.utility import Tracer
 
 class OpArrayPiper(Operator):
     name = "ArrayPiper"

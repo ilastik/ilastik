@@ -1,20 +1,29 @@
+#Python
+from functools import partial
 import math
-import vigra,numpy,h5py,glob
-from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
-from lazyflow.roi import roiToSlice
-
 import logging
+import glob
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+#SciPy
+import vigra,numpy,h5py
 
+#lazyflow
+from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
+from lazyflow.roi import roiToSlice
+
+#deprecated #FIXME
+#TODO remove
 class OpH5Writer(Operator):
     name = "H5 File Writer"
     category = "Output"
 
     inputSlots = [InputSlot("filename", stype = "filestring"),
                   InputSlot("hdf5Path", stype = "string"), InputSlot("input"),
-                  InputSlot("blockShape"),InputSlot("dataType"),InputSlot("roi"),
+                  InputSlot("blockShape"),
+                  InputSlot("dataType"),
+                  InputSlot("roi"),
                   InputSlot("normalize")]
 
     outputSlots = [OutputSlot("WriteImage")]
@@ -100,6 +109,7 @@ class OpH5Writer(Operator):
         requests = []
 
         #iter through blocks and generate requests
+        print "generating block requests",
         for bnr in range(len(blockIndices[0])):
             indices = [blockIndices[0][bnr]*nBlockShape[0],]
             for i in range(1,len(nshape)):
@@ -110,10 +120,9 @@ class OpH5Writer(Operator):
 
             s = roiToSlice(start,stop)
             req = self.inputs["input"][s]
-            print "Requesting bnr", bnr
-            req.notify(writeResult, blockNr = bnr, roiSlice=s)
-            print "Added callback"
+            req.notify_finished(partial(writeResult, blockNr=bnr, roiSlice=s))
             requests.append(req)
+        print "... %d requests" % len(requests)
 
         #execute requests
         for req in requests:
@@ -121,7 +130,7 @@ class OpH5Writer(Operator):
 
         f.close()
         result[0] = True
-
+        
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to
         # other operators. If someone is using it that way, we'll
@@ -225,6 +234,7 @@ class OpStackWriter(Operator):
     outputSlots = [OutputSlot("WritePNGStack")]
 
     def setupOutputs(self):
+        assert self.inputs['input'].meta.getAxisKeys() == ['t', 'x', 'y', 'z', 'c']
         assert self.inputs['input'].meta.shape is not None
         self.outputs["WritePNGStack"].meta.shape = self.inputs['input'].meta.shape
         self.outputs["WritePNGStack"].meta.dtype = object
