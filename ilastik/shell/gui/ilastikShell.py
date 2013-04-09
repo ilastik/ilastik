@@ -305,8 +305,6 @@ class IlastikShell( QMainWindow ):
         
         self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
-        #svgRenderer = QSvgWidget(localDir + "/ilastik-logo-alternate-colors.svg",self.startscreen.graphicsView)
-        #svgRenderer.setMaximumSize(QSize(288,410))
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
         self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
@@ -413,7 +411,7 @@ class IlastikShell( QMainWindow ):
             defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
-
+        
         svgPath = QFileDialog.getSaveFileName(
            self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))

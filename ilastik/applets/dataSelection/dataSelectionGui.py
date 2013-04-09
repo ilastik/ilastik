@@ -348,23 +348,20 @@ class DataSelectionGui(QWidget):
         """
         extensions = OpDataSelection.SupportedExtensions
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
-        dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
-        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
         if ilastik_config.getboolean("ilastik", "debug"):
+            dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
+            dlg.setOption( QFileDialog.HideNameFilterDetails, False )
             dlg.setOption( QFileDialog.DontUseNativeDialog, True )
-        dlg.setViewMode( QFileDialog.Detail )
-        dlg.setFileMode( QFileDialog.ExistingFiles )
+            dlg.setViewMode( QFileDialog.Detail )
+            dlg.setFileMode( QFileDialog.ExistingFiles )
 
-        if True: # FIXME: Test scripts can't allow modal dialogs
             dlg.show()
             if dlg.result() == QDialog.Accepted:
                 fileNames = dlg.selectedFiles()
             else:
                 fileNames = []
-        if dlg.exec_():
-            fileNames = dlg.selectedFiles()
         else:
-            fileNames = []
+            fileNames = QFileDialog.getOpenFileNames( self, "Select Images", defaultDirectory, filt )
 
         # Convert from QtString to python str
         fileNames = [str(s) for s in fileNames]
