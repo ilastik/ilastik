@@ -62,7 +62,8 @@ class OpStackLoader(Operator):
                 raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
             oslot = self.outputs["stack"]
-
+            
+            #input-file should have type xyc
             #build 4D shape out of 2DShape and Filelist: xyzc
             oslot.meta.shape = (self.info.getShape()[0],
                                 self.info.getShape()[1],
@@ -70,9 +71,15 @@ class OpStackLoader(Operator):
                                 self.info.getShape()[2])
             oslot.meta.dtype = self.info.getDtype()
             zAxisInfo = vigra.AxisInfo(key='z', typeFlags=vigra.AxisType.Space)
-            oslot.meta.axistags = self.info.getAxisTags()
-            oslot.meta.axistags.insert(2,zAxisInfo)
-
+            axistags = self.info.getAxisTags()
+            
+            #Can't insert in axistags because axistags
+            #of oslot and self.info are still connected!
+            #Manipulating them by insert would change them
+            #in self.info and shape and axistags will be mismatched.
+            
+            oslot.meta.axistags = vigra.AxisTags(axistags[0], axistags[1], zAxisInfo, axistags[2])
+            
         else:
             oslot = self.outputs["stack"]
             oslot.meta.shape = None
@@ -188,16 +195,19 @@ class OpStackToH5Writer(Operator):
         zAxis = stackTags.index('z')
         dataShape=self.opStackLoader.stack.meta.shape
         numImages = self.opStackLoader.stack.meta.shape[zAxis]
-
         axistags = self.opStackLoader.stack.meta.axistags
         dtype = self.opStackLoader.stack.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
-
-        numChannels = dataShape[ axistags.index('c') ]
-
+        
+        index_ = axistags.index('c')
+        if index_ >= len(dataShape):
+            numChannels = 1
+        else:
+            numChannels = dataShape[ index_]
+        
         # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
         cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
@@ -212,20 +222,20 @@ class OpStackToH5Writer(Operator):
 
         # h5py guide to chunking says chunks of 300k or less "work best"
         assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
-
+        
         chunkShape = ()
         for i in range( len(dataShape) ):
             axisKey = axistags[i].key
             # Chunk shape can't be larger than the data shape
             chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
-
+        
         # Create the dataset
         internalPath = self.hdf5Path.value
         internalPath = internalPath.replace('\\', '/') # Windows fix
         group = self.hdf5Group.value
         if internalPath in group:
             del group[internalPath]
-
+        
         data = group.create_dataset(internalPath,
                                     #compression='gzip',
                                     #compression_opts=4,
@@ -234,6 +244,7 @@ class OpStackToH5Writer(Operator):
                                     chunks=chunkShape)
         # Now copy each image
         self.progressSignal(0)
+        
         for z in range(numImages):
             # Ask for an entire z-slice (exactly one whole image from the stack)
             slicing = [slice(None)] * len(stackTags)

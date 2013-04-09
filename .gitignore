@@ -9,3 +9,4 @@ lazyflow.egg-info
 *.jpg
 *.swp
 
+lazyflow/drtile/drtile.pyd
