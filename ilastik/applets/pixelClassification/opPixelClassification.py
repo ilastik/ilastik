@@ -9,7 +9,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPrecomputedInput, OpPixelOperator
+                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
 
 #ilastik
 from ilastik.utility.operatorSubView import OperatorSubView
@@ -341,9 +341,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
-        self.opSegementor = OpPixelOperator( parent=self )
+        self.opSegementor = OpMaxChannelIndicatorOperator( parent=self )
         self.opSegementor.Input.connect( self.precomputed_predictions_gui.Output )
-        self.opSegementor.Function.setValue( lambda x: numpy.where(x < 0.5, 0, 1) )
 
         self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
         self.opSegmentationSlicer.name = "opSegmentationSlicer"
