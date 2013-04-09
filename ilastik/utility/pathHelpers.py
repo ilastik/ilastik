@@ -91,6 +91,27 @@ def areOnSameDrive(path1,path2):
     drive2,path2 = os.path.splitdrive(path2)
     return drive1==drive2
 
+def compressPathForDisplay(pathstr,maxlength):
+    '''Add alternatingly parts of the start and the end of the path
+    until the length s increased. Result: Drive/Dir1/.../Dirn/file'''
+    if len(pathstr)<=maxlength:
+        return pathstr
+    suffix = ""
+    prefix = ""
+    component_list = pathstr.split("/")
+    while component_list:
+        c = component_list.pop(-1)
+        if len(suffix)+1+len(c)+len(prefix)>maxlength:
+            break
+        suffix="/"+c+suffix
+        if not component_list:
+            break
+        c = component_list.pop(0)
+        if len(suffix)+len(prefix)+1+len(prefix)>maxlength:
+            break
+        prefix=prefix+c+"/"
+    return prefix+"..."+suffix
+    
 def getPathVariants(originalPath, workingDirectory):
     """
     Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
@@ -113,7 +134,6 @@ def getPathVariants(originalPath, workingDirectory):
     return (absPath, relPath)
 
 if __name__ == "__main__":
-    
     abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
     assert abs == '/aaa/bbb/ccc/ddd.txt'
     assert rel == '..\\ddd.txt'

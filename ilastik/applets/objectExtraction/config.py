@@ -15,6 +15,15 @@ other_features = []
 selected_features = ['Count', 'Mean', 'Mean_excl', 'Variance', \
                      'Variance_excl', 'Skewness', 'Skewness_excl', \
                       'Kurtosis', 'Kurtosis_excl']
+has_skimage = True
+try:
+    import skimage.feature
+except:
+    has_skimage = False
+    print "scikit-image is not installed, some features disabled"
+if not has_skimage:
+    selected_features = [feature for feature in selected_features if "lbp" not
+                         in feature]
 
 #selected_features = ['lbp_excl', 'lbp_obj']
 
