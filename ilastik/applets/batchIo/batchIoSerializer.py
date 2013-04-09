@@ -8,6 +8,7 @@ from ilastik.applets.base.appletSerializer import \
     AppletSerializer, SerialSlot, deleteIfPresent
 
 from ilastik.utility import bind
+from ilastik.utility.pathHelpers import PathComponents
 
 # FIXME: re-add logging
 
