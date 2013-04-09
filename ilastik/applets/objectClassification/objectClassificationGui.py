@@ -136,7 +136,6 @@ class ObjectClassificationGui(LabelingGui):
 
         # Base class provides the label layer.
         layers = super(ObjectClassificationGui, self).setupLayers()
-        
 
         labelOutput = self._labelingSlots.labelOutput
         binarySlot = self.op.BinaryImages
@@ -150,10 +149,8 @@ class ObjectClassificationGui(LabelingGui):
             layer = ColortableLayer(self.objectssrc, ct)
             layer.name = "Objects"
             layer.opacity = 0.5
-            layer.visible = False
+            layer.visible = True
             layers.append(layer)
-
-        
 
         if binarySlot.ready():
             ct_binary = [QColor(0, 0, 0, 0).rgba(),
