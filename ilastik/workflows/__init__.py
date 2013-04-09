@@ -21,4 +21,4 @@ try:
     import tracking
 except ImportError as e:
     logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
-import tracking
+
