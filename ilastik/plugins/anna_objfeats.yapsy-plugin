@@ -1,0 +1,9 @@
+[Core]
+Name = Anna's Object Features
+Module = anna_objfeats
+
+[Documentation]
+Author = Kemal Eren
+Version = 0.1
+Website = todo
+Description = todo

@@ -11,8 +11,7 @@ from functools import partial
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
-
-from ilastik.applets.objectExtraction import config
+from ilastik.applets.objectExtraction.opObjectExtraction import gui_features_suffix
 
 # WARNING: since we assume the input image is binary, we also assume
 # that it only has one channel. If there are multiple channels, only
@@ -83,13 +82,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredictionsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opPredictionsToImage.inputs["ObjectMap"].connect(self.opPredict.Predictions)
         self.opPredictionsToImage.inputs["Features"].connect(self.ObjectFeatures)
-        
+
         self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
-        
-        
-        
+
         # connect outputs
         self.NumLabels.connect( self.opMaxLabel.Output )
         self.LabelImages.connect(self.opLabelsToImage.Output)
@@ -101,8 +98,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
-        
-        
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)
@@ -148,7 +143,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         assert len(coordinate) == len( segmentationShape ), "Coordinate: {} is has the wrong length for this image, which is of shape: {}".format( coordinate, segmentationShape )
         slicing = tuple(slice(i, i+1) for i in coordinate)
         arr = self.SegmentationImagesOut[imageIndex][slicing].wait()
-        
+
         objIndex = arr.flat[0]
         if objIndex == 0: # background; FIXME: do not hardcode
             return
@@ -206,6 +201,43 @@ def _concatenate(arrays, axis):
     return numpy.concatenate(arrays, axis=axis)
 
 
+def make_feature_array(feats, labels=None):
+    featlist = []
+    labellist = []
+    featnames = feats.values()[0][0].keys()
+
+    # remove extra features used by applet only.
+    featnames = sorted(list(n for n in featnames
+                            if gui_features_suffix not in n))
+
+    for t in sorted(feats.keys()):
+        featsMatrix_tmp = []
+
+        if labels is not None:
+            labellist_tmp = []
+            lab = labels[t].squeeze()
+            index = numpy.nonzero(lab)
+            labellist_tmp.append(lab[index])
+
+        for featname in featnames:
+            for channel in feats[t]:
+                value = channel[featname]
+                ft = numpy.asarray(value.squeeze())
+                if labels is not None:
+                    ft = ft[index]
+                featsMatrix_tmp.append(ft)
+
+        featlist.append(_concatenate(featsMatrix_tmp, axis=1))
+        if labels is not None:
+            labellist.append(_concatenate(labellist_tmp, axis=1))
+
+    featMatrix = _concatenate(featlist, axis=0)
+    if labels is not None:
+        labelsMatrix = _concatenate(labellist, axis=0)
+        return featMatrix, labelsMatrix
+    return featMatrix
+
+
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
     description = "Train a random forest on multiple images"
@@ -230,8 +262,9 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.axistags = None
 
     def execute(self, slot, subindex, roi, result):
-        featMatrix = []
-        labelsMatrix = []
+
+        featList = []
+        labelsList = []
 
         for i in range(len(self.Labels)):
             feats = self.Features[i]([]).wait()
@@ -241,37 +274,18 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            for t in sorted(feats.keys()):
-                featsMatrix_tmp = []
-                labelsMatrix_tmp = []
-                lab = labels[t].squeeze()
-                index = numpy.nonzero(lab)
-                labelsMatrix_tmp.append(lab[index])
+            featstmp, labelstmp = make_feature_array(feats, labels)
+            featList.append(featstmp)
+            labelsList.append(labelstmp)
 
-                #check that all requested features are present
-                for featname in config.selected_features:
-                    for channel in feats[t]:
-                        if not featname in channel.keys():
-                            print "Feature", featname, "has not been computed in the previous step"
-                            print "We only have the following features now:", channel.keys()
-                            result[:] = None
-                            return
-                        else:
-                            value = channel[featname]
-                            ft = numpy.asarray(value.squeeze())
-                            featsMatrix_tmp.append(ft[index])
-                
-                featMatrix.append(_concatenate(featsMatrix_tmp, axis=1))
-                labelsMatrix.append(_concatenate(labelsMatrix_tmp, axis=1))
+        featMatrix = _concatenate(featList, axis=0)
+        labelsMatrix = _concatenate(labelsList, axis=0)
+        print "training on matrix:", featMatrix.shape, featMatrix.dtype
 
-        featMatrix = _concatenate(featMatrix, axis=0)
-        labelsMatrix = _concatenate(labelsMatrix, axis=0)
-        print "training on matrix:", featMatrix.shape
-        
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
-        oob = [0]*self.ForestCount.value
+        oob = [0] * self.ForestCount.value
         try:
             # Ensure there are no NaNs in the feature matrix
             # TODO: There should probably be a better way to fix this...
@@ -321,7 +335,7 @@ class OpObjectPredict(Operator):
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
     ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
-    
+
     #SegmentationThreshold = 0.5
 
     def setupOutputs(self):
@@ -344,7 +358,7 @@ class OpObjectPredict(Operator):
                 oslot.meta.dtype = object
                 oslot.meta.axistags = None
                 oslot.meta.mapping_dtype = numpy.float32
-        
+
 
         self.prob_cache = dict()
 
@@ -367,18 +381,8 @@ class OpObjectPredict(Operator):
             if t in self.prob_cache:
                 continue
 
-            ftsMatrix = []
             tmpfeats = self.Features([t]).wait()
-            for channel in sorted(tmpfeats[t]):
-                for featname in sorted(channel.keys()):
-                    value = channel[featname]
-                    if not featname in config.selected_features:
-                        continue
-                    tmpfts = numpy.asarray(value, dtype=numpy.float32)
-                    _atleast_nd(tmpfts, 2)
-                    ftsMatrix.append(tmpfts)
-
-            feats[t] = _concatenate(ftsMatrix, axis=1)
+            feats[t] = make_feature_array(tmpfeats)
             prob_predictions[t] = [0] * len(forests)
 
         def predict_forest(_t, forest_index):
@@ -406,7 +410,7 @@ class OpObjectPredict(Operator):
             if t not in self.prob_cache:
                 # prob_predictions is a dict-of-lists-of-arrays, indexed as follows:
                 # prob_predictions[t][forest_index][object_index, class_index]
-                
+
                 # Stack the forests together and average them.
                 stacked_predictions = numpy.array( prob_predictions[t] )
                 averaged_predictions = numpy.average( stacked_predictions, axis=0 )
@@ -424,8 +428,8 @@ class OpObjectPredict(Operator):
             return labels
         elif slot == self.ProbabilityChannels:
             prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
-            return prob_single_channel 
-        
+            return prob_single_channel
+
         else:
             assert False, "Unknown input slot"
 
@@ -472,11 +476,11 @@ class OpRelabelSegmentation(Operator):
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
-            
+
             result[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
-        
+
         return result
-    
+
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Image:
             self.Output.setDirty(roi)
@@ -496,16 +500,12 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    try:
-                        min_coords = feats[t][0]['Coord<Minimum>'][obj]
-                        max_coords = feats[t][0]['Coord<Maximum>'][obj]
-                    except KeyError:
-                        min_coords = feats[t][0]['Coord<Minimum >'][obj]
-                        max_coords = feats[t][0]['Coord<Maximum >'][obj]
+                    min_coords = feats[t][0]['Coord<Minimum>' + gui_features_suffix][obj]
+                    max_coords = feats[t][0]['Coord<Maximum>' + gui_features_suffix][obj]
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
-                    
+
 class OpMultiRelabelSegmentation(Operator):
     """Takes a segmentation image and multiple mappings and returns the
     mapped images.
@@ -518,11 +518,11 @@ class OpMultiRelabelSegmentation(Operator):
     ObjectMaps = InputSlot(stype=Opaque, rtype=List, level=1)
     Features = InputSlot(rtype=List, stype=Opaque) #this is needed to limit dirty propagation to the object bbox
     Output = OutputSlot(level=1)
-    
+
     def __init__(self, *args, **kwargs):
         super(OpMultiRelabelSegmentation, self).__init__(*args, **kwargs)
         self._innerOperators = []
-        
+
     def setupOutputs(self):
         nmaps = len(self.ObjectMaps)
         for islot in self.ObjectMaps:
@@ -534,10 +534,10 @@ class OpMultiRelabelSegmentation(Operator):
         self.Output.resize(nmaps)
         for i, oslot in enumerate(self.Output):
             oslot.connect(self._innerOperators[i].Output)
-            
+
     def propagateDirty(self, slot, subindex, roi):
         pass
-            
+
 class OpMaxLabel(Operator):
     """ Finds the maximum label value in the input labels
         More or less copied from opPixelClassification::OpMaxValue
@@ -545,14 +545,14 @@ class OpMaxLabel(Operator):
     name = "OpMaxLabel"
     Inputs = InputSlot(level=1, stype=Opaque)
     Output = OutputSlot()
-    
+
     def __init__(self, *args, **kwargs):
         super(OpMaxLabel, self).__init__(*args, **kwargs)
         self.Output.meta.shape = (1,)
         self.Output.meta.dtype = object
-        self._output = 0 #internal cache 
-    
-    
+        self._output = 0 #internal cache
+
+
     def setupOutputs(self):
         self.updateOutput()
         self.Output.setValue(self._output)
@@ -577,11 +577,10 @@ class OpMaxLabel(Operator):
                 #for label_array in inputSubSlot.value.items():
                 #    localMax = numpy.max(label_array)
                 #    subSlotMax = max(subSlotMax, localMax)
-                    
+
                 if maxValue is None:
                     maxValue = subSlotMax
                 else:
                     maxValue = max(maxValue, subSlotMax)
 
         self._output = maxValue
-
