@@ -6,6 +6,7 @@ import collections
 import threading
 import multiprocessing
 import platform
+import traceback
 
 # Third-party
 import greenlet
@@ -223,6 +224,7 @@ class Request( object ):
                 # The workload raised an exception.
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
+                traceback.print_exc()
                 self.exception_tb = sys.exc_traceback # Documentation warns of circular references here,
                                                       #  but that should be okay for us.
 
