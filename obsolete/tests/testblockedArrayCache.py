@@ -35,7 +35,7 @@ def test1():
             Op.inputs["outerBlockShape"].setValue(shape)
             Op.inputs["fixAtCurrent"].setValue(False)
             Op.inputs["innerBlockShape"].setValue(64)
-            dest = Op.outputs["Output"][key].allocate().wait()
+            dest = Op.outputs["Output"][key].wait()
             assert (numpy.array(dest.shape) == numpy.array(stop -start)).all()
 
             vigra.impex.writeImage(dest,"r_%09d.jpg"  %z)
@@ -141,7 +141,7 @@ def operatorTest(blockShape, sync = False, cache = False):
         r.wait()
 
     #full image
-    img2 = op.outputs["Output"][:].allocate().wait()
+    img2 = op.outputs["Output"][:].wait()
 
 
     assert (img2 == img1).all(),  "Op doesn't work correctly"

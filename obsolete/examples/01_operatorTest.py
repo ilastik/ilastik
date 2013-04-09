@@ -139,7 +139,7 @@ def operatorTest(operator_name, sync = False, cache = False):
         r.wait()
 
     #full image
-    img2 = op.outputs["Output"][:].allocate().wait()
+    img2 = op.outputs["Output"][:].wait()
 
 
     if (img2 == img1).all():

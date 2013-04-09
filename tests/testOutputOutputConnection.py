@@ -22,7 +22,7 @@ class OpOuter(Operator):
 
     def execute(self, slot, subindex, roi, result):
         self._was_executed = True
-        result[0] = self.Input[:].allocate().wait()[0]
+        result[0] = self.Input[:].wait()[0]
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -38,7 +38,7 @@ class OpInner(Operator):
         self.Output.meta.dtype = self.Input.meta.dtype
 
     def execute(self, slot, subindex, roi, result):
-        result[0] = self.Input[:].allocate().wait()[0]
+        result[0] = self.Input[:].wait()[0]
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -60,10 +60,10 @@ class TestOutputOutputConnection(object):
         (the o-o connection exists inside the OpOuter...
         """
         self.op.Input.setValue(True)
-        result = self.op.Output[:].allocate().wait()[0]
+        result = self.op.Output[:].wait()[0]
         assert result == True, "result = %r" % result
         self.op.Input.setValue(False)
-        result = self.op.Output[:].allocate().wait()[0]
+        result = self.op.Output[:].wait()[0]
         assert result == False, "result = %r" % result
 
     def test_execute(self):
@@ -74,7 +74,7 @@ class TestOutputOutputConnection(object):
         """
         self.op.Input.setValue(True)
         self.op._was_executed = False
-        result = self.op.Output[:].allocate().wait()[0]
+        result = self.op.Output[:].wait()[0]
         assert self.op._was_executed is False
 
 if __name__ == "__main__":
@@ -82,4 +82,5 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)

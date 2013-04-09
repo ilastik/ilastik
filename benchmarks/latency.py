@@ -145,7 +145,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 #
 t1 = time.time()
 for i in range(0,mcount):
-    p.outputs["Output"][3,3,3,0].allocate().wait()
+    p.outputs["Output"][3,3,3,0].wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW SYNC WAIT OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
@@ -155,7 +155,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 t1 = time.time()
 requests = []
 for i in range(0,mcount):
-    r = p.outputs["Output"][3,3,3,0].allocate()
+    r = p.outputs["Output"][3,3,3,0]
     requests.append(r)
 
 for r in requests:
@@ -169,7 +169,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 t1 = time.time()
 for i in range(0,mcountf):
-    features.outputs["Output"][:50,:50,:50,:].allocate().wait()
+    features.outputs["Output"][:50,:50,:50,:].wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW SYNC WAIT FEATURES :    %f seconds for %d iterations" % (t2-t1,mcountf)
@@ -179,7 +179,7 @@ print "                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,)
 t1 = time.time()
 requests = []
 for i in range(0,mcountf):
-    r = features.outputs["Output"][:50,:50,:50,:].allocate()
+    r = features.outputs["Output"][:50,:50,:50,:]
     requests.append(r)
 
 for r in requests:

@@ -84,12 +84,12 @@ rw = noOp.outputs["Output"][:]
 #   the GetItemWriterObject supports a convencience function
 #   which allocates an numpy array of appropriate shape:
 #
-#        rw.allocate()
+#        rw
 #
 #   We will use this convenience function for now:
 
 
-req = rw.allocate()
+req = rw
 
 
 #    contrary to what you might expect the result
@@ -103,7 +103,7 @@ req = rw.allocate()
 #       result = req.wait()
 #
 #    Which will run the request and return the result array
-#    that rw.allocate() has allocated.
+#    that rw has allocated.
 #    Or, you can schedule the request for background execution
 #    and provide a function that should be called once
 #    the request is finished:
@@ -132,7 +132,7 @@ imshow(result)
 #    call chaining syntax you may use when retrieving results
 #    of operator outputs:
 
-result2 = reader.outputs["Image"][:].allocate().wait()
+result2 = reader.outputs["Image"][:].wait()
 
 
 #    this combines all previous operations into
@@ -162,7 +162,7 @@ subwin.inputs["Stop"].setValue((200,200,3))
 #    complete results [:] will return a smaller portion of
 #    the image:
 
-result3 = subwin.outputs["Output"][:].allocate().wait()
+result3 = subwin.outputs["Output"][:].wait()
 imshow(result3)
 
 

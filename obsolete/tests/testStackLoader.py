@@ -31,7 +31,7 @@ class testOpStackLoader(TestCase):
         g = Graph()
         loader = OpStackLoader(graph=g)
         loader.inputs["globstring"].setValue(self.testdir+"/*."+filetype)
-        result = loader.outputs["stack"][:].allocate().wait()
+        result = loader.outputs["stack"][:].wait()
 
         if  not (result == self.block).all():
             raise RuntimeError('test failed')
@@ -45,7 +45,7 @@ class testOpStackLoader(TestCase):
 
         for i in range(self.keys):
             key = generateRandomKeys(self.dim)
-            result = loader.outputs["stack"][key].allocate().wait()
+            result = loader.outputs["stack"][key].wait()
             if  not (result == self.block[key]).all():
                 raise RuntimeError('test failed')
 

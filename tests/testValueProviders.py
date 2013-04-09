@@ -186,11 +186,12 @@ class TestOpValueCache(object):
 #    traceLogger.addHandler(handler)
 
 #    import nose
-#    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+#    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
 
 if __name__ == "__main__":
     import sys
     import nose
     #sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)

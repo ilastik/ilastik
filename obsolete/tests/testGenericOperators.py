@@ -38,6 +38,6 @@ if __name__=="__main__":
     merge.inputs["MergingFunction"].setValue(sum)
 
 
-    res=merge.outputs["Output"][:].allocate().wait()
+    res=merge.outputs["Output"][:].wait()
 
     assert (res==30).all()

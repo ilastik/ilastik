@@ -101,4 +101,5 @@ class TestOpH5WriterBigDataset_2(object):
 
 if __name__ == "__main__":
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    if not ret: sys.exit(1)

@@ -2,7 +2,7 @@ import numpy
 import time
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.request import Request, Pool
+from lazyflow.request import Request, RequestPool
 import vigra
 import copy
 from functools import partial
@@ -39,12 +39,12 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
-                labels=labels[:].allocate().wait()
+                labels=labels[:].wait()
 
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
                 #Maybe later request only part of the region?
 
-                image=self.inputs["Images"][i][:].allocate().wait()
+                image=self.inputs["Images"][i][:].wait()
 
                 features=image[indexes]
                 labels=labels[indexes]
@@ -57,7 +57,7 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
         # train and store self._forest_count forests in parallel
-        pool = Pool()
+        pool = RequestPool()
         for i in range(self._forest_count):
             def train_and_store(number):
                 result[number] = vigra.learning.RandomForest(self._tree_count)
@@ -110,8 +110,8 @@ class OpTrainRandomForestBlocked(Operator):
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
-                #labels=labels[:].allocate().wait()
-                blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
+                #labels=labels[:].wait()
+                blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
 
                 progress += 10/numImages
                 self.progressSignal(progress)
@@ -121,10 +121,10 @@ class OpTrainRandomForestBlocked(Operator):
                 traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
                 for b in blocks[0]:
 
-                    request = labels[b].allocate()
+                    request = labels[b]
                     featurekey = list(b)
                     featurekey[-1] = slice(None, None, None)
-                    request2 = self.inputs["Images"][i][featurekey].allocate()
+                    request2 = self.inputs["Images"][i][featurekey]
 
                     reqlistlabels.append(request)
                     reqlistfeat.append(request2)
@@ -144,10 +144,10 @@ class OpTrainRandomForestBlocked(Operator):
                     self.progressSignal(progress_outer[0])
 
                 for ir, req in enumerate(reqlistfeat):
-                    image = req.notify(progressNotify)
+                    image = req.notify_finished(progressNotify)
 
                 for ir, req in enumerate(reqlistlabels):
-                    labblock = req.notify(progressNotify)
+                    labblock = req.notify_finished(progressNotify)
 
                 traceLogger.debug("Requests fired")
 
@@ -326,7 +326,7 @@ class OpSegmentation(Operator):
         rstart[-1] = 0
         rstop[-1] = shape[-1]
         rkey = roiToSlice(rstart, rstop)
-        img = self.inputs["Input"][rkey].allocate().wait()
+        img = self.inputs["Input"][rkey].wait()
         axis = img.ndim - 1
         result = numpy.argmax(img, axis=axis)
         result.resize(result.shape + (1,))
@@ -360,7 +360,7 @@ class OpAreas(Operator):
         self.outputs["Areas"].meta.shape = (self.inputs["NumberOfChannels"].value,)
 
     def execute(self, slot, subindex, roi, result):
-        img = self.inputs["Input"][:].allocate().wait()
+        img = self.inputs["Input"][:].wait()
 
         numC = self.inputs["NumberOfChannels"].value
 

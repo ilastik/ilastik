@@ -24,7 +24,7 @@ opa1 = OpA(graph=g)
 opa1.inputs["Input"].connect(source0.outputs["Output"])
 
 print "Starting wait request..."
-opa1.outputs["Output"][:].allocate().wait()
+opa1.outputs["Output"][:].wait()
 print "... wait request finished"
 
 
@@ -47,8 +47,8 @@ def closure(result, req, fuchs):
     print "Result:", result
     print "Fuchs:", fuchs
 
-req1 = opa1.outputs["Output"][:].allocate()
-req2 = opa1.outputs["Output"][:].allocate()
+req1 = opa1.outputs["Output"][:]
+req2 = opa1.outputs["Output"][:]
 
 
 print "Starting notify request..."

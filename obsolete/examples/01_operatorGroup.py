@@ -34,9 +34,9 @@ def test_OpPixelFeatures__T1():
     OpG.inputs["Matrix"].setValue(aMatrix)
 
 
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2= OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
+    dest1 = OpG.outputs["Output"][:,:,0:3].wait()
+    dest2= OpG.outputs["Output"][:,:,3:6].wait()
+    dest3 = OpG.outputs["Output"][:,:,6:9].wait()
 
     vigra.impex.writeImage(dest1,"F2_T1_resultOpT1G1.jpg")
     vigra.impex.writeImage(dest2,"F2_T1_resultOpT1G2.jpg")
@@ -56,9 +56,9 @@ def test_OpPixelFeatures__T1():
     del dest3
     gc.collect()
 
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2= OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
+    dest1 = OpG.outputs["Output"][:,:,0:3].wait()
+    dest2= OpG.outputs["Output"][:,:,3:6].wait()
+    dest3 = OpG.outputs["Output"][:,:,6:9].wait()
 
     vigra.impex.writeImage(dest1,"F2_T1_resultOpT2G1.jpg")
     vigra.impex.writeImage(dest2,"F2_T1_resultOpT2G2.jpg")
@@ -77,9 +77,9 @@ def test_OpPixelFeatures__T1():
     del dest3
     gc.collect()
 
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2=  OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
+    dest1 = OpG.outputs["Output"][:,:,0:3].wait()
+    dest2=  OpG.outputs["Output"][:,:,3:6].wait()
+    dest3 = OpG.outputs["Output"][:,:,6:9].wait()
 
     vigra.impex.writeImage(dest1,"F2_T1_resultOpT3G1.jpg")
     vigra.impex.writeImage(dest2,"F2_T1_resultOpT3G2.jpg")
@@ -119,9 +119,9 @@ def test_OpPixelFeatures__T2():
 
     print OpG.outputs["Output"].meta.shape
 
-    dest1 = OpG.outputs["Output"][:,:,0,0,0:3].allocate().wait()
-    dest2= OpG.outputs["Output"][:,:,0,0,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,0,0,6:9].allocate().wait()
+    dest1 = OpG.outputs["Output"][:,:,0,0,0:3].wait()
+    dest2= OpG.outputs["Output"][:,:,0,0,3:6].wait()
+    dest3 = OpG.outputs["Output"][:,:,0,0,6:9].wait()
 
     print "HERE"
     print dest1.shape

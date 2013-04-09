@@ -65,14 +65,14 @@ class TestOpH5Writer(unittest.TestCase):
         self.writer.inputs["input"].setValue(self.volume)
         for blockshape in [numpy.int(i*max(self.volume.shape)) for i in [0.1,0.2,0.5,1,1.5,2]]:
             self.writer.inputs["blockShape"].setValue(blockshape)
-            self.writer.outputs["WriteImage"][:].allocate().wait()
+            self.writer.outputs["WriteImage"][:].wait()
 
 
     def test_writeToFileDataType(self):
         self.writer.inputs["input"].setValue(self.volume)
         for dataType in ['uint8','uint16','float64']:
             self.writer.inputs["dataType"].setValue(dataType)
-            self.writer.outputs["WriteImage"][:].allocate().wait()
+            self.writer.outputs["WriteImage"][:].wait()
             f = h5py.File(self.testdir+self.filename,'r')
             assert f[self.hdf5path].dtype == dataType
             f.close()
@@ -83,10 +83,12 @@ class TestOpH5Writer(unittest.TestCase):
         for i in range(20):
             testRoi = self.generateRoi()
             self.writer.inputs["roi"].setValue(testRoi)
-            self.writer.outputs["WriteImage"][:].allocate().wait()
+            self.writer.outputs["WriteImage"][:].wait()
             f = h5py.File(self.testdir+self.filename,'r')
             assert(self.roiToShape(testRoi)==f[self.hdf5path].shape)
             f.close()
 
 if __name__=="__main__":
-    unittest.main()
+    import nose
+    ret = nose.run()
+    if not ret: sys.exit(1)

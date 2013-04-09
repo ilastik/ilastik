@@ -180,7 +180,7 @@ if __name__=="__main__":
     opTrain.inputs['Images'].connect(opMultiI.outputs["Outputs"])
     opTrain.inputs['fixClassifier'].setValue(False)
 
-    #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()
+    #print "Here ########################", opTrain.outputs['Classifier'][:].wait()
 
     ##################Prediction
     opPredict=OpPredictRandomForest(graph=g)
@@ -200,4 +200,4 @@ if __name__=="__main__":
     selector.inputs["Index"].setValue(1)
     selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
 
-    print selector.outputs["Output"][:].allocate().wait()
+    print selector.outputs["Output"][:].wait()

@@ -33,7 +33,7 @@ def testFullAllocate():
     stackerX.inputs["AxisIndex"].setValue(0)
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
 
-    newdata = stackerX.outputs["Output"][:].allocate().wait()
+    newdata = stackerX.outputs["Output"][:].wait()
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print "1st part ok................."
@@ -55,7 +55,7 @@ def testFullAllocate():
 
     #print "STACKER: ", stackerX2.outputs["Output"].meta.shape
 
-    newdata = stackerX2.outputs["Output"][:].allocate().wait()
+    newdata = stackerX2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack2), axis=0)
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     #print newdata.shape, bothstacks.shape
@@ -78,7 +78,7 @@ def testFullAllocate():
     stackerC.inputs["AxisIndex"].setValue(3)
     stackerC.inputs["Images"].connect(slicerC.outputs["Slices"])
 
-    newdata = stackerC.outputs["Output"][:].allocate().wait()
+    newdata = stackerC.outputs["Output"][:].wait()
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print "3rd part ok................."
@@ -97,7 +97,7 @@ def testFullAllocate():
     stackerC2.inputs["AxisIndex"].setValue(3)
     stackerC2.inputs["Images"].connect(opMulti.outputs["Outputs"])
 
-    newdata = stackerC2.outputs["Output"][:].allocate().wait()
+    newdata = stackerC2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack3), axis=3)
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     print "4th part ok................."
@@ -128,7 +128,7 @@ def testPartialAllocate():
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
 
     key = (slice(2, 3, None), slice(15, 18, None), slice(12, 15, None), slice(0, 7, None))
-    newdata = stackerX.outputs["Output"][key].allocate().wait()
+    newdata = stackerX.outputs["Output"][key].wait()
     substack = stack[key]
     print newdata.shape, substack.shape
     assert_array_equal(newdata, substack.view(numpy.ndarray))
@@ -136,3 +136,4 @@ def testPartialAllocate():
 if __name__=="__main__":
     testFullAllocate()
     testPartialAllocate()
+    if not ret: sys.exit(1)

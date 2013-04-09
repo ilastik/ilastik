@@ -29,7 +29,7 @@ class TestOpCachedLabelImage(object):
         assert opData.Output.meta.axistags is not None
 
         data = opData.Output[:].wait()
-        logger.debug( "data:\n{}".format( str(data[0,:80:5,:80:5,0,0])) )
+        #logger.debug( "data:\n{}".format( str(data[0,:80:5,:80:5,0,0])) )
         
         # Each diagonal plane should get it's own label...        
         op = OpCachedLabelImage( graph=graph )
@@ -37,7 +37,7 @@ class TestOpCachedLabelImage(object):
         assert op.Output.ready()
         
         labels = op.Output[:].wait()
-        logger.debug( "labels:\n{}".format( str(labels[0,:80:5,:80:5,0,0])) )
+        #logger.debug( "labels:\n{}".format( str(labels[0,:80:5,:80:5,0,0])) )
 
     def testWithCustomBackground(self):
         graph = Graph()
@@ -61,12 +61,12 @@ class TestOpCachedLabelImage(object):
         data = opData.Output[:].wait()
         labels = op.Output[:].wait()
         channel = 0
-        logger.debug( "data-c0:\n{}".format( str(data[0,:80:5,:80:5,0,channel])) )
-        logger.debug( "labels-c0:\n{}".format( str(labels[0,:80:5,:80:5,0,channel])) )
+        #logger.debug( "data-c0:\n{}".format( str(data[0,:80:5,:80:5,0,channel])) )
+        #logger.debug( "labels-c0:\n{}".format( str(labels[0,:80:5,:80:5,0,channel])) )
 
         channel = 1
-        logger.debug( "data-c1:\n{}".format( str(data[0,:80:5,:80:5,0,channel])) )
-        logger.debug( "labels-c1:\n{}".format( str(labels[0,:80:5,:80:5,0,channel])) )
+        #logger.debug( "data-c1:\n{}".format( str(data[0,:80:5,:80:5,0,channel])) )
+        #logger.debug( "labels-c1:\n{}".format( str(labels[0,:80:5,:80:5,0,channel])) )
 
         assert labels[0,0,0,0,0] == 1
         assert labels[0,0,0,0,1] == 0, "Expected inverted background for the second channel"
@@ -82,6 +82,7 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
 
-        
+    if not ret: sys.exit(1)
+

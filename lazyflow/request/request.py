@@ -577,10 +577,12 @@ class Request( object ):
             return self.func( *totalargs, **self.kwargs)
     
     def onFinish(self, fn, **kwargs):
+        raise RuntimeError("remove old API: onFinish")
         f = Request._PartialWithAppendedArgs( fn, **kwargs )
         self.notify_finished( f)
 
     def onCancel(self, fn, *args, **kwargs):
+        raise RuntimeError("remove old API: onCancel")
         # Cheating here: The only operator that uses this old api function is OpArrayCache,
         # which doesn't do anything except return False to say "don't cancel me"
         
@@ -588,23 +590,22 @@ class Request( object ):
         self.uncancellable = not fn(self, *args, **kwargs)
 
     def notify(self, fn, **kwargs):
+        raise RuntimeError("remove old API: notify")
         f = Request._PartialWithAppendedArgs( fn, **kwargs )
         self.notify_finished( f )
         self.submit()
 
     def allocate(self, priority = 0):
+        raise RuntimeError("remove old API: allocate")
         return self
 
     def writeInto(self, destination):
+        #raise RuntimeError("remove old API: writeInto")
         self.fn = Request._PartialWithAppendedArgs( self.fn, destination=destination )
         return self
 
     def getResult(self):
         return self.result
-
-# The __call__ method used to be a synonym for wait(), but now it is used by the worker to start/resume the request.
-#    def __call__(self):
-#        return self.wait()
 
 Request.reset_thread_pool()
 
@@ -782,12 +783,3 @@ class RequestPool(object):
         Release our handles to all requests in the pool, for cleanup purposes.
         """
         self._requests = set()
-
-# BACKWARDS COMPATIBILITY
-Pool = RequestPool
-
-
-
-
-
-

@@ -105,7 +105,7 @@ class OpFlipArrayShifter(Operator):
 
             frkey = roiToSlice(frstart,frstop)
 
-            flip = self.inputs["Input"][frkey].allocate().wait()
+            flip = self.inputs["Input"][frkey].wait()
             flip = flip.swapaxes(0,i)[::-1].swapaxes(0,i)
 
             if self.shift[i] < 0:
@@ -135,7 +135,7 @@ class OpFlipArrayShifter(Operator):
         if shifted_axes == 2:
 
             dfrkey = roiToSlice(dfrstart,dfrstop)
-            dflip = self.inputs["Input"][dfrkey].allocate().wait()
+            dflip = self.inputs["Input"][dfrkey].wait()
             for ax, sh in enumerate(self.shift):
                 if sh !=0:
                     dflip = dflip.swapaxes(0,ax)[::-1].swapaxes(0,ax)
@@ -147,7 +147,7 @@ class OpFlipArrayShifter(Operator):
 
         wkey = roiToSlice(wstart,wstop)
 
-        res = self.inputs["Input"][rkey].allocate().wait()
+        res = self.inputs["Input"][rkey].wait()
         result[wkey] = res[:]
 
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
-    res= shifter.outputs["Output"][30:300,120:340,0:3].allocate().wait()
+    res= shifter.outputs["Output"][30:300,120:340,0:3].wait()
     #write shifted image on disk
     vigra.impex.writeImage(res,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/shift_result.jpg")
 

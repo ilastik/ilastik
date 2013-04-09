@@ -300,7 +300,7 @@ class OpImageResizer(Operator):
 
         #get the data of the InputSlot
         img = numpy.ndarray(rstop-rstart,dtype=self.meta.dtype)
-        img = self.inputs["Input"][rkey].allocate().wait()
+        img = self.inputs["Input"][rkey].wait()
 
         #create result array
         tmp_result = numpy.ndarray(tuple(numpy.hstack(((rstop-rstart)[:-1] * self.scaleFactor, (rstop-rstart)[-1]))), dtype=numpy.float32)
@@ -386,7 +386,7 @@ class OpSwapAxes(Operator):
         skey = roiToSlice(start,stop)
 
         #get data of the Inputslot
-        img = self.inputs["Input"][skey].allocate().wait()
+        img = self.inputs["Input"][skey].wait()
 
 
         #write swapped image into result array

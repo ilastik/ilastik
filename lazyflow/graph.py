@@ -19,7 +19,7 @@ operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype=numpy.uint8))
 
 operator2.inputs["Input"].connect(operator1.outputs["Output"])
 
-result = operator2.outputs["Output"][:].allocate().wait()
+result = operator2.outputs["Output"][:].wait()
 
 g.finalize()
 ---
@@ -171,12 +171,15 @@ class ValueRequest(object):
         pass
 
     def notify(self, callback, *args, **kwargs):
+        raise RuntimeError("remove old API: notify")
         callback(self.result, *args, **kwargs)
         
     def onCancel(self, callback, *args, **kwargs):
+        raise RuntimeError("remove old API: onCancel")
         pass
 
     def onFinish(self, callback, **kwargs):
+        raise RuntimeError("remove old API: onFinish")
         callback(self, **kwargs)
         
     def notify_finished(self, callback):
@@ -186,6 +189,7 @@ class ValueRequest(object):
         self.result = None
 
     def allocate(self, priority=0):
+        raise RuntimeError("remove old API: allocate")
         return self
 
     def writeInto(self, destination):
@@ -193,6 +197,7 @@ class ValueRequest(object):
         return self
 
     def getResult(self):
+        raise RuntimeError("remove old API: getResult")
         return self.result
 
 
@@ -1002,10 +1007,10 @@ class Slot(object):
         """
         if self.partner is not None:
             # outputslot-inputsslot, inputslot-inputslot and outputslot-outputslot case
-            temp = self[:].allocate().wait()
+            temp = self[:].wait()
         elif self._value is None:
             # outputslot case
-            temp =  self[:].allocate().wait()
+            temp =  self[:].wait()
         else:
             # _value case
             return self._value

@@ -179,7 +179,7 @@ if __name__=="__main__":
     opTrain.inputs['Images'].connect(opMultiI.outputs["Outputs"])
     opTrain.inputs['fixClassifier'].setValue(False)
 
-    #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()
+    #print "Here ########################", opTrain.outputs['Classifier'][:].wait()
 
     ##################Prediction
     opPredict=OpPredictRandomForest(graph=g)
@@ -193,17 +193,17 @@ if __name__=="__main__":
     selector.inputs["Index"].setValue(1)
     selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
 
-    print selector.outputs["Output"][:].allocate().wait()
+    print selector.outputs["Output"][:].wait()
 
 
     opSeg = OpSegmentation(graph=g)
 
     opSeg.inputs["Input"].connect(opPredict.outputs["PMaps"])
 
-    dest = opSeg.outputs["Output"][:].allocate().wait()
+    dest = opSeg.outputs["Output"][:].wait()
     vigra.impex.writeImage(dest,"Segmentation_result_1.jpg")
 
-    dest = opSeg.outputs["Output"][100:300,50:350].allocate().wait()
+    dest = opSeg.outputs["Output"][100:300,50:350].wait()
     vigra.impex.writeImage(dest,"Segmentation_result_2.jpg")
 
     g.finalize()

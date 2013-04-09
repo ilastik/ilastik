@@ -69,17 +69,17 @@ def test(shape, blockshape):
         opLabel.Input[key] = valuearray
         #opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], key, valuearray)
         opLabelBlocked.Input[key] = valuearray
-        out = opLabel.outputs["Output"][:].allocate().wait()
+        out = opLabel.outputs["Output"][:].wait()
         #print "first done"
-        outblocked = opLabelBlocked.outputs["Output"][:].allocate().wait()
+        outblocked = opLabelBlocked.outputs["Output"][:].wait()
         #print "second done"
         assert_array_equal(out, outblocked)
         #print out
         #print outblocked
 
-    nz1 = opLabel.outputs["nonzeroValues"][0].allocate().wait()
+    nz1 = opLabel.outputs["nonzeroValues"][0].wait()
 
-    nz2 = opLabelBlocked.outputs["nonzeroValues"][0].allocate().wait()
+    nz2 = opLabelBlocked.outputs["nonzeroValues"][0].wait()
 
     for nz in nz1[0]:
         assert nz in nz2[0], "%r value not in blocked set"%nz
@@ -124,9 +124,9 @@ def veryRandomTest(shape, blockshape):
         #key2 = (slice(37, 49, None), slice(38, 50, None), slice(28, 50, None), 0)
         #key2 = (slice(7, 21, None), slice(21, 50, None), slice(10, 50, None))
         print i, key, key2
-        out = opLabel.outputs["Output"][key2].allocate().wait()
+        out = opLabel.outputs["Output"][key2].wait()
         #print "first done"
-        outblocked = opLabelBlocked.outputs["Output"][key2].allocate().wait()
+        outblocked = opLabelBlocked.outputs["Output"][key2].wait()
         #print "second done"
         assert_array_equal(out, outblocked)
         #print out
@@ -148,7 +148,7 @@ def testBlocks(shape, blockshape):
     opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], key, value)
     opLabelBlocked.Input[key] = value
 
-    blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].allocate().wait()
+    blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].wait()
     print blocklist
 
     offset = numpy.array(shape[:-1])/numpy.array(blockshape[:-1])
@@ -169,7 +169,7 @@ def testBlocks(shape, blockshape):
         newkey.append(0)
         #opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], newkey, value)
         opLabelBlocked.Input[newkey] = value
-        blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].allocate().wait()
+        blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].wait()
         print blocklist
 
 

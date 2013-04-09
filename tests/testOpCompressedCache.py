@@ -26,7 +26,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [1, 100, 75, 50, 2] )
         op.Input.connect( opData.Output )
         
@@ -35,10 +35,10 @@ class TestOpCompressedCache( object ):
         slicing = numpy.s_[ 0:2, 0:100, 50:150, 75:150, 0:1 ]
         expectedData = sampleData[slicing].view(numpy.ndarray)
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
     def testBasic3d(self):
@@ -52,7 +52,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [100, 75, 50] )
         op.Input.connect( opData.Output )
         
@@ -61,10 +61,10 @@ class TestOpCompressedCache( object ):
         slicing = numpy.s_[ 0:100, 50:150, 75:150 ]
         expectedData = sampleData[slicing].view(numpy.ndarray)
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
     def testBasic4d_txyc(self):
@@ -78,7 +78,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [1, 75, 50, 2] )
         op.Input.connect( opData.Output )
         
@@ -87,10 +87,10 @@ class TestOpCompressedCache( object ):
         slicing = numpy.s_[ 1:3, 50:150, 75:150, 0:1 ]
         expectedData = sampleData[slicing].view(numpy.ndarray)
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
     def testBasic2d(self):
@@ -104,7 +104,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [75, 50] )
         op.Input.connect( opData.Output )
         
@@ -113,10 +113,10 @@ class TestOpCompressedCache( object ):
         slicing = numpy.s_[ 50:150, 75:150 ]
         expectedData = sampleData[slicing].view(numpy.ndarray)
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
     def testBasicOneBlock(self):
@@ -139,10 +139,10 @@ class TestOpCompressedCache( object ):
         slicing = numpy.s_[ 0:2, 0:100, 50:150, 75:150, 0:1 ]
         expectedData = sampleData[slicing].view(numpy.ndarray)
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
     def testMultiThread(self):
@@ -156,7 +156,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [1, 100, 75, 50, 2] )
         op.Input.connect( opData.Output )
         
@@ -181,7 +181,7 @@ class TestOpCompressedCache( object ):
         
         assert len( results ) == len( threads ), "Didn't get all results."
         
-        logger.debug("Checking data...")
+        #logger.debug("Checking data...")
         for i, data in results.items():
             assert (data == expectedData).all(), "Incorrect output for index {]".format( i )
 
@@ -196,7 +196,7 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
-        logger.debug("Setting block shape...")
+        #logger.debug("Setting block shape...")
         op.BlockShape.setValue( [100, 75, 50] )
         op.Input.connect( opData.Output )
         
@@ -206,13 +206,13 @@ class TestOpCompressedCache( object ):
         expectedData = numpy.ones( slicing2shape(slicing), dtype=int )
 
         # This is what we're testing.
-        logger.debug("Forcing external data...")
+        #logger.debug("Forcing external data...")
         op.Input[slicing] = expectedData
         
-        logger.debug("Requesting data...")
+        #logger.debug("Requesting data...")
         readData = op.Output[slicing].wait()
         
-        logger.debug("Checking data...")    
+        #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
         
@@ -231,4 +231,5 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)

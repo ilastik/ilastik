@@ -23,7 +23,7 @@ h5reader = OpH5Reader(graph=graph)
 h5reader.inputs["Filename"].setValue("ostrich.h5")
 h5reader.inputs["hdf5Path"].setValue("volume/data")
 
-res = ostrich.outputs["Image"][:].allocate().wait()
-resh5 = h5reader.outputs["Image"][:].allocate().wait()
+res = ostrich.outputs["Image"][:].wait()
+resh5 = h5reader.outputs["Image"][:].wait()
 
 assert (res == resh5).all()

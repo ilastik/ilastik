@@ -260,7 +260,7 @@ shifter.inputs["Input"].connect(reader.outputs["Image"])
 # the "execute" method of our operator.
 # The wait() function blocks other activities and waits till the results
 # of the requested Slot are calculated and stored in the result area.
-result=shifter.outputs["Output"][:].allocate().wait()
+result=shifter.outputs["Output"][:].wait()
 
 # display the result
 imshow(result)
