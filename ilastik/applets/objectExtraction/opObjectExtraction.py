@@ -1,21 +1,24 @@
+#Python
 import copy
 import collections
+import time
+from functools import partial
 
+#SciPy
 import numpy
 import vigra.analysis
 
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
+from lazyflow.request import Request, RequestPool
 
-from lazyflow.request import Request, Pool
-
+#ilastik
 from ilastik.applets.objectExtraction import config
 
-import time
-from functools import partial
 
 class OpRegionFeatures3d(Operator):
     """
@@ -117,7 +120,7 @@ class OpRegionFeatures3d(Operator):
         features_incl = [None]
         features_excl = [None]
         first_good = 1
-        pool = Pool()
+        pool = RequestPool()
         otherFeatures_dict = {}
         if len(self._otherFeatureNames)>0:
             #there are non-vigra features. let's make room for them
