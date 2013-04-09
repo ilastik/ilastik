@@ -5,15 +5,20 @@ import pixelClassification
 import vigraWatershed
 import objectClassification
 import blockwiseObjectClassification
-import carving
 #import synapseDetection
 
 try:
     import autocontextClassification
-except:
-    logger.warn( "Failed to import autocontextClassification workflow.  Check context dependencies." )
+except ImportError as e:
+    logger.warn( "Failed to import autocontextClassification workflow; check context dependencies: " + str(e) )
 
 try:
-    import carving
-except:
-    logger.warn( "Failed to import carving workflow.  Check cylemon dependency." )
+    import carving 
+except ImportError as e:
+    logger.warn( "Failed to import carving workflow; check cylemon dependency: " + str(e) )
+
+try:
+    import tracking
+except ImportError as e:
+    logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
+import tracking
