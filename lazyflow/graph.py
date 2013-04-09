@@ -1035,11 +1035,9 @@ class Slot(object):
         value.
 
         If check_changed is True, the new value is compared to the
-        current one and updates are onyl triggerd if they differ. This
-        check can take several seconds (for instance for large
-        array-like values). In that case you should turn off the
-        check.
-
+        current one and updates are onyl triggerd if they are different objects
+        (python is operator!). 
+        The check can be turned off with the check_changed flag.
         """
         assert isinstance(notify, bool)
         assert isinstance(check_changed, bool)
@@ -1060,13 +1058,11 @@ class Slot(object):
             return
 
         changed = True
-        try:
-            if check_changed and value == self._value:
-                changed = False
-        except:
-            pass
+       
+        if check_changed and value is self._value:
+            changed = False
+        
         if changed:
-            #if self.stype.isCompatible(value):
             # call disconnect callbacks
             self._sig_disconnect(self)
             self._value = value
