@@ -8,3 +8,4 @@ lazyflow.egg-info
 *.*~
 *.jpg
 
+lazyflow/drtile/drtile.pyd
