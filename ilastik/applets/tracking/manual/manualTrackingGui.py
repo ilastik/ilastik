@@ -40,6 +40,9 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
+        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
+        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
         
         self._drawer.from_time.valueChanged.connect(self._setRanges)
         self._drawer.from_x.valueChanged.connect(self._setRanges)
@@ -590,7 +593,7 @@ class ManualTrackingGui(LayerViewerGui):
         coords = numpy.where(li == oid)
         self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
         self.editor.posModel.time = t
-        
+    
 
     def _onMarkMisdetectionPressed(self):
         self.misdetLock = not self.misdetLock             
@@ -652,15 +655,8 @@ class ManualTrackingGui(LayerViewerGui):
         
         from_z.setRange(0,to_z.value())
         to_z.setRange(from_z.value(),maxz)
-        
-    def _onExportButtonPressed(self):
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
-        
-        if directory is None or str(directory) == '':
-            print "cancelled."
-            return
-        directory = str(directory)
-        
+    
+    def _getEvents(self):
         time_range = [int(self._drawer.from_time.value()), int(self._drawer.to_time.value())+1]
         x_range = [int(self._drawer.from_x.value()), int(self._drawer.to_x.value())+1]
         y_range = [int(self._drawer.from_y.value()), int(self._drawer.to_y.value())+1]
@@ -710,7 +706,16 @@ class ManualTrackingGui(LayerViewerGui):
                                 oid_child2 = o
                                           
                         if (t_div == t-1) and (oid_child1 is not None) and (oid_child2 is not None):
-                            divs[t].append((oid_prev,oid_child1,oid_child2,0.))                            
+                            # check if both children can be found in the next time frame                            
+                            child1_exists = (oid_child1 in oid2tids[t].keys())
+                            child2_exists = (oid_child2 in oid2tids[t].keys())
+                            if child1_exists and child2_exists:
+                                divs[t].append((oid_prev,oid_child1,oid_child2,0.))                                
+                            elif child1_exists:
+                                moves[t].append((oid_prev,oid_child1,0.))
+                            elif child2_exists:
+                                moves[t].append((oid_prev,oid_child2,0.))
+                            
                             break
                                     
                     # else: disappearance
@@ -736,6 +741,20 @@ class ManualTrackingGui(LayerViewerGui):
                     merger_sizes[m_size] += 1
         
         print 'Merger-Sizes:', merger_sizes
+        
+        return oid2tids, disapps, apps, divs, moves, mergers
+        
+        
+    def _onExportButtonPressed(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        
+        if directory is None or str(directory) == '':
+            print "cancelled."
+            return
+        directory = str(directory)
+        
+        oid2tids, disapps, apps, divs, moves, mergers = self._getEvents()
+        
         
         for t in sorted(oid2tids.keys()):
             fn =  directory + "/" + str(t).zfill(5)  + ".h5"
@@ -801,3 +820,89 @@ class ManualTrackingGui(LayerViewerGui):
         
             print "-> results successfully written"
               
+
+    def _onGotoLabel(self):
+        t = self._drawer.timeBox.value()
+        tid = self._drawer.tidBox.value()
+        
+        if t < 0 or t >= self.mainOperator.LabelImage.meta.shape[0]:
+            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot access time step "  + str(t) + ".", QtGui.QMessageBox.Ok)
+            return
+        
+        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+        li = self.mainOperator.LabelImage.get(roi).wait()
+        
+        found = False
+        for oid in self.mainOperator.labels[t].keys():
+            if tid in self.mainOperator.labels[t][oid]:
+                found = True
+                break
+        
+        if not found:
+            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find track id " + str(tid) + " at time " + str(t) + ".", QtGui.QMessageBox.Ok)
+            return
+        
+        coords = numpy.where(li == oid)
+        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
+        self.editor.posModel.time = t     
+    
+    def _onPrintMultipleLabelsInTimestep(self):
+        maxt = self.mainOperator.LabelImage.meta.shape[0]
+        
+        affectedTids = {}
+        for t in range(maxt):
+            affectedTids_at = []
+            tids_at= []
+            for l in self.mainOperator.labels[t].keys():
+                for tid in list(self.mainOperator.labels[t][l]):
+                    if tid in tids_at:
+                        affectedTids_at.append(tid)
+                    tids_at.append(tid)
+            affectedTids[t] = affectedTids_at
+            
+        print 'Multiple Track IDs in one Timestep:'
+        print '==================================='
+        for t in sorted(affectedTids.keys()):
+            for el in sorted(affectedTids[t]):
+                print '(t, tid) = ', (t, el)
+        
+        print 
+        print
+            
+            
+    def _onPrintAppearancesInMergers(self):
+        maxt = self.mainOperator.LabelImage.meta.shape[0]
+    
+        oid2tids, disapps, apps, divs, moves, mergers = self._getEvents()
+            
+        affectedTids = {}
+        for t in range(maxt):
+            affectedTids_at = []
+            if t in apps.keys():
+                for app in apps[t]:
+                    # FIXME: make a numpy array out of that and search in the first column
+                    for merg in mergers[t]:
+                        if app[0] == merg[0]:
+                            tid = self.mainOperator.labels[t][app[0]]
+                            affectedTids_at.append(tid)                            
+            if t in disapps.keys():
+                if t == 0:
+                    continue
+                for disapp in disapps[t]:
+                        for merg in mergers[t-1]:
+                            if disapp[0] == merg[0]:
+                                tid = self.mainOperator.labels[t-1][disapp[0]]
+                                affectedTids_at.append(tid)
+            affectedTids[t] = affectedTids_at
+            
+        
+        print 'Mergers with appearing/disappearing labels:'
+        print '==========================================='
+        for t in sorted(affectedTids.keys()):
+            for el in sorted(affectedTids[t]):
+                print '(t, tid) = ', (t, el)
+        
+        print 
+        print
+    
+    

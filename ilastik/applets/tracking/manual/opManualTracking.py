@@ -27,7 +27,7 @@ class OpManualTracking(Operator):
         self.divisions = {}
         
     def setupOutputs(self):        
-        self.TrackImage.meta.assignFrom(self.LabelImage.meta)        
+        self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
                 
         for t in range(self.LabelImage.meta.shape[0]):
