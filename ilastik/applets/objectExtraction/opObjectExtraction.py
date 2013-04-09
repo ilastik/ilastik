@@ -28,7 +28,6 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
     
     MARGIN = 30
-    MAX_OBJECT_SIZE = 1000000
     OffsetSensitiveFeatures = ["RegionCenter", "CenterOfMass", "Coord<Minimum>", "Coord<Maximum>", "RegionAxes", \
                                "RegionRadii", "Coord<ArgMaxWeight>", "Coord<ArgMinWeight>"]
     
@@ -103,17 +102,12 @@ class OpRegionFeatures3d(Operator):
         if not "Count" in feature_names_first:
             feature_names_first.append("Count")
             
-        #minmax = vigra.analysis.extractRegionFeatures(image, labels, ["Coord<Minimum>", "Coord<Maximum>", "Count"], ignoreLabel=0)
-    
         features_first = vigra.analysis.extractRegionFeatures(image, labels, feature_names_first, ignoreLabel=0)
         
         feature_dict = {}
         for key in features_first.keys():
             feature_dict[key] = features_first[key]
-        #feature_dict["Coord<Minimum>"]=mins
-        #feature_dict["Coord<Maximum>"]=maxs
-        #feature_dict["Count"]=counts
-        
+       
         mins = features_first["Coord<Minimum>"]
         maxs = features_first["Coord<Maximum>"]
         counts = features_first["Count"]
@@ -135,20 +129,6 @@ class OpRegionFeatures3d(Operator):
             
         for i in range(1,nobj):
             print "processing object ", i
-            if counts[i] > self.MAX_OBJECT_SIZE:
-                #avoid computing features for over-large objects which are clearly not synapses
-                #this can happen despite the size filtering in two-level thresholding, as one giant object
-                #can break into many smaller pieces at higher threshold and then get merged again at lower
-                features_incl.append(None)
-                features_excl.append(None)
-                features_obj.append(None)
-                for key in otherFeatures_dict.keys():
-                    otherFeatures_dict[key].append(None)
-                
-                if first_good<=i:
-                    first_good=i+1
-                continue
-            
             #find the bounding box
             minx = max(mins[i][xAxis]-self.MARGIN, 0)
             miny = max(mins[i][yAxis]-self.MARGIN, 0)
@@ -208,57 +188,7 @@ class OpRegionFeatures3d(Operator):
                         badslices.append(iz)
                 
                 otherFeatures_dict["bad_slices"].append(numpy.array([nbadslices]))
-                #interpolate the raw data
-                imagekey = 3*[None]
-                imagekey[xAxis] = slice(minx, maxx, None)
-                imagekey[yAxis] = slice(miny, maxy, None)
-                try:
-                    for sl in badslices:
-                        if sl==0:
-                            if minz==0:
-                                continue
-                            slprev=minz
-                            slprevsum = area
-                            while slprevsum>0.5*area and slprev>0:
-                                slprev = slprev-1
-                                imagekey[zAxis]=slprev
-                                slprevsum = numpy.sum(image[tuple(imagekey)])
-                        else:
-                            slprev = sl+minz
-                            while slprev-minz in badslices and slprev>=0:
-                                slprev = slprev-1
-                                
-                        if sl==maxz-1:
-                            if sl==image.shape[zAxis]-1:
-                                continue
-                            slnext = maxz-1
-                            slnextsum = area
-                            while slnextsum>0.5*area and slnext<image.shape[zAxis]-1:
-                                slnext = slnext+1
-                                imagekey[zAxis] = slnext
-                                slnextsum = numpy.sum(image[tuple(imagekey)])
-                        else:
-                            slnext = sl+minz
-                            while slnext-minz in badslices and slnext<maxz:
-                                slnext = slnext+1
-                            
-                            
-                        interval = slnext-slprev
-                        
-                        weightnext = float(slnext-sl)/interval
-                        weightprev = float(sl-slprev)/interval
-                        bboxkey[zAxis] = sl
-                        keycurrent = tuple(bboxkey)
-                        imagekey[zAxis] = slprev
-                        keyprev = tuple(imagekey)
-                        imagekey[zAxis] = slnext
-                        keynext = tuple(imagekey)
-                        rawbbox[keycurrent] = weightnext*image[keynext] + weightprev*image[keyprev]
-                except:
-                    #interpolation didn't work. just go on.
-                    print "interpolation failed"
                     
-                
             labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
             feats = [None, None, None]
             for ibox, bbox in enumerate(labeled_bboxes):

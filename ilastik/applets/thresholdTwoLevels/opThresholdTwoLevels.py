@@ -11,7 +11,8 @@ import psutil
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, OpCompressedCache, OpColorizeLabels
+from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, \
+                               OpCompressedCache, OpColorizeLabels, OpSingleChannelSelector
 from lazyflow.roi import extendSlice, TinyVector
 
 # ilastik
@@ -158,18 +159,20 @@ class OpSelectLabels(Operator):
         logMemoryIncrease("After obtaining big labels")
         
         prod = smallNonZero * bigLabels
+        
         del smallNonZero
+        
         passed = numpy.unique(prod)
         logMemoryIncrease("After taking product")
         del prod
         
         all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint8 )
-        for l in passed:
-            all_label_values[l] = 1
+        for i, l in enumerate(passed):
+            all_label_values[l] = i+1
         all_label_values[0] = 0
         
         result[:] = all_label_values[ bigLabels ]
-
+        
         logMemoryIncrease("Just before return")
         return result        
 
@@ -211,20 +214,20 @@ class OpThresholdTwoLevels(Operator):
     #
     #                                 HighThreshold                         MinSize,MaxSize                       --(cache)--> opColorize -> FilteredSmallLabels
     #                                              \                                       \                     /
-    #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                  Output
-    #               \                   \          /                 \                                            \               /
-    # InputImage --> opChannelSlicer --> opSmoother -> Smoothed       --(cache)--> SmallRegions                    opSelectLabels --> opCache --> CachedOutput
-    #                                              \                                                              /                  /       \
-    #                                               opLowThresholder ----> opLowLabeler --------------------------          InputHdf5         --> OutputHdf5
-    #                                              /                \                                                                          -> CleanBlocks
+    #        Channel       SmootherSigma            opHighThresholder --> opHighLabeler --> opHighLabelSizeFilter                           Output
+    #               \                   \          /                 \                                            \                         /
+    # InputImage --> opChannelSelector --> opSmoother -> Smoothed       --(cache)--> SmallRegions                    opSelectLabels -->opFinalLabelSizeFilter--> opCache --> CachedOutput
+    #                                              \                                                              /                                           /       \
+    #                                               opLowThresholder ----> opLowLabeler --------------------------                                       InputHdf5     --> OutputHdf5
+    #                                              /                \                                                                                        -> CleanBlocks
     #                                  LowThreshold                  --(cache)--> BigRegions
     
     def __init__(self, *args, **kwargs):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
         
-        self._opChannelSlicer = OpMultiArraySlicer2( parent=self )
-        self._opChannelSlicer.Input.connect( self.InputImage )
-        self._opChannelSlicer.AxisFlag.setValue('c')
+        self._opChannelSelector = OpSingleChannelSelector( parent = self )
+        self._opChannelSelector.Input.connect( self.InputImage )
+        
         
         self._opSmoother = OpAnisotropicGaussianSmoothing(parent=self)
         self._opSmoother.Sigmas.connect( self.SmootherSigma )
@@ -245,17 +248,28 @@ class OpThresholdTwoLevels(Operator):
         self._opHighLabelSizeFilter.Input.connect( self._opHighLabeler.Output )
         self._opHighLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opHighLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
+        self._opHighLabelSizeFilter.BinaryOut.setValue(True)
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
         self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
+        
+        #remove the remaining very large objects - 
+        #they might still be present in case a big object
+        #was split into many small ones for the higher threshold
+        #and they got reconnected again at lower threshold
+        self._opFinalLabelSizeFilter = OpFilterLabels( parent=self )
+        self._opFinalLabelSizeFilter.Input.connect(self._opSelectLabels.Output )
+        self._opFinalLabelSizeFilter.MinLabelSize.connect( self.MinSize )
+        self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
+        self._opFinalLabelSizeFilter.BinaryOut.setValue(True)
 
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.InputHdf5.connect( self.InputHdf5 )
-        self._opCache.Input.connect( self._opSelectLabels.Output )
+        self._opCache.Input.connect( self._opFinalLabelSizeFilter.Output )
 
         # Connect our own outputs
-        self.Output.connect( self._opSelectLabels.Output )
+        self.Output.connect( self._opFinalLabelSizeFilter.Output )
         self.CachedOutput.connect( self._opCache.Output )
 
         # Serialization outputs
@@ -264,7 +278,8 @@ class OpThresholdTwoLevels(Operator):
         
         # Debug outputs.
         self.Smoothed.connect( self._opSmoother.Output )
-        self.InputChannels.connect( self._opChannelSlicer.Slices )
+        #self.InputChannels.connect( self._opChannelSlicer.Slices )
+        self.InputChannels.connect( self._opChannelSelector.Output )
         
         # More debug outputs.  These all go through their own caches
         self._opBigRegionCache = OpCompressedCache( parent=self )
@@ -291,7 +306,9 @@ class OpThresholdTwoLevels(Operator):
         if hackChannel > self.InputImage.meta.shape[channelAxis]:
             hackChannel = 0
 
-        self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ hackChannel ] )
+        self._opChannelSelector.Index.setValue(hackChannel)
+        self._opSmoother.Input.connect( self._opChannelSelector.Output )
+        #self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ hackChannel ] )
 
         #self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ self.Channel.value ] )
         
@@ -312,7 +329,7 @@ class OpThresholdTwoLevels(Operator):
 
         # Copy the input metadata to the output
         self.Output.meta.assignFrom( self.InputImage.meta )
-        self.Output.meta.dtype=numpy.uint32
+        self.Output.meta.dtype=numpy.uint8
     
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
