@@ -126,10 +126,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
-            print "Cached Output dtype:", op.CachedOutput.meta.dtype
-            print "Output dtype:", op.Output.meta.dtype
-            outputSrc = LazyflowSource(op.Output)
-            outputLayer = ColortableLayer(outputSrc, ct)
+            outputSrc = LazyflowSource(op.CachedOutput)
+            outputLayer = ColortableLayer(outputSrc, binct)
             outputLayer.name = "Output (Cached)"
             outputLayer.visible = False
             outputLayer.opacity = 1.0

@@ -359,7 +359,8 @@ class OpThresholdTwoLevels4d(Operator):
         self._opHighLabelSizeFilter.Input.connect( self._opHighLabeler.Output )
         self._opHighLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opHighLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
-        self._opHighLabelSizeFilter.BinaryOut.setValue(True)
+        self._opHighLabelSizeFilter.BinaryOut.setValue(False) #we do the binarization in opSelectLabels
+                                                              #this way, we get to display pretty colors
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
         self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
