@@ -65,7 +65,7 @@ class TestOpFeatureSelection(object):
                 
         # Compute results for the top slice only
         topSlice = [0, slice(None), slice(None), 0, slice(None)]
-        result = opFeatures.OutputImage[0][topSlice].allocate().wait()
+        result = opFeatures.OutputImage[0][topSlice].wait()
         
         numFeatures = numpy.sum(opFeatures.SelectionMatrix.value)
         outputChannels = result.shape[-1]
