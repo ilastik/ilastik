@@ -40,6 +40,7 @@ def write_events(events, directory, t, labelImage, mergers=None):
         div = []
         mov = []
         merger = []
+        mult_mov = []
         
         print "-- Writing results to " + path.basename(fn)
         if mergers is not None:
@@ -57,6 +58,8 @@ def write_events(events, directory, t, labelImage, mergers=None):
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
 #            if event.type == pgmlink.EventType.Merger:
 #                merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+            if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:                    
+                mult_mov.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))             
     
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
@@ -64,8 +67,8 @@ def write_events(events, directory, t, labelImage, mergers=None):
         div = np.asarray(div)
         mov = np.asarray(mov)
         merger = np.asarray(merger)
+        mult_mov = np.asarray(mult_mov)
     
-        
         
         # write only if file exists
         with LineageH5(fn, 'a') as f_curr:
@@ -106,8 +109,13 @@ def write_events(events, directory, t, labelImage, mergers=None):
                 ds.attrs["Format"] = "lower energy -> higher confidence"
             if len(merger):
                 ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "descendant (current file), number of objects"    
+                ds.attrs["Format"] = "detection (current file), number of objects"    
                 ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+            if len(mult_mov):
+                ds = tg.create_dataset("MultiFrameMove", data=mult_mov[:, :-1], dtype=np.uint32, compression=1)
+                ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
+                ds = tg.create_dataset("MultiFrameMove-Energy", data=mult_mov[:, -1], dtype=np.double, compression=1)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
     
         print "-> results successfully written"
