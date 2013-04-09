@@ -572,6 +572,38 @@ class OpMultiArrayMerger(Operator):
             key = roi.toSlice()
             self.Output.setDirty( key )
 
+
+class OpMaxChannelIndicatorOperator(Operator):
+    name = "OpMaxChannelIndicatorOperator"
+
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.shape = self.Input.meta.shape
+        self.Output.meta.axistags = self.Input.meta.axistags
+        self.Output.meta.dtype = numpy.uint8
+        self._num_channels = self.Input.meta.shape[-1]
+
+    def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
+        data = self.inputs["Input"][key[:-1]+(slice(None),)].wait()
+    
+        #FIXME: only works if channels are in last dimension
+        dm = numpy.max(data, axis = data.ndim-1)
+        res = numpy.zeros(data.shape, numpy.uint8)
+
+        for c in range(data.shape[-1]):
+            res[...,c] = numpy.where(data[...,c] == dm, 1, 0)    
+
+        result[:] = res[...,key[-1]]
+
+    def propagateDirty(self, slot, subindex, roi):
+        key = roi.toSlice()
+        if slot == self.Input:
+            self.outputs["Output"].setDirty(key)
+
+
 class OpPixelOperator(Operator):
     name = "OpPixelOperator"
     description = "simple pixel operations"
