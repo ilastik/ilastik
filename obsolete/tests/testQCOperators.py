@@ -75,7 +75,7 @@ if __name__ == "__main__":
     op.inputs["Input"].setValue(a)
 
     imgPart = numpy.zeros((840,840))
-    dest = op.outputs["Output"][:].allocate().wait()
+    dest = op.outputs["Output"][:].wait()
 
     #vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/resultFull.jpg")
 

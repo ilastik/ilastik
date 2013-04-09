@@ -35,11 +35,11 @@ class OpA(graph.Operator):
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output1:
-            result[0] = self.Input1[:].allocate().wait()[0]
+            result[0] = self.Input1[:].wait()[0]
         elif slot == self.Output2:
-            result[0] = self.Input2[:].allocate().wait()[0]
+            result[0] = self.Input2[:].wait()[0]
         elif slot == self.Output3:
-            result[0] = self.Input3[:].allocate().wait()[0]
+            result[0] = self.Input3[:].wait()[0]
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -81,7 +81,7 @@ class OpTesting5ToMulti(graph.Operator):
             slot = self.inputs[sname]
             if slot.connected():
                 if i == index:
-                    return slot[key].allocate().wait()
+                    return slot[key].wait()
                 i += 1
 
     def propagateDirty(self, islot, subindex, roi):
@@ -166,14 +166,14 @@ class TestOperator_setupOutputs(object):
 
         # check that the slot with default value
         # returns the correct value
-        result = op.Output3[:].allocate().wait()[0]
+        result = op.Output3[:].wait()[0]
         assert result == 3
 
         # check that the slot with default value
         # returns the new value when it is connected
         # to something else
         op.Input3.setValue(2)
-        result = op.Output3[:].allocate().wait()[0]
+        result = op.Output3[:].wait()[0]
         assert result == 2
 
 
@@ -587,7 +587,7 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
 
 #    test = TestSlotStates()
 #    test.setup()    
@@ -601,3 +601,4 @@ if __name__ == "__main__":
 
 
 
+    if not ret: sys.exit(1)

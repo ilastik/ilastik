@@ -126,7 +126,7 @@ if __name__=="__main__":
     #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
-    shifter.outputs["Output"][:].allocate().wait()
+    shifter.outputs["Output"][:].wait()
 
     #create Image Writer
     vimageWriter = OpImageWriter(graph=g)

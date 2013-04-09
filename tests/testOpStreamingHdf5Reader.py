@@ -61,4 +61,5 @@ class TestOpStreamingHdf5Reader(object):
 
 if __name__ == "__main__":
     import nose
-    nose.main(defaultTest=__file__)
+    ret = nose.run()
+    if not ret: sys.exit(1)

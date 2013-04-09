@@ -57,8 +57,8 @@ print len(opd.outputs["Output"])
 print len(ope.outputs["MultiOutput"])
 
 
-assert (ope.outputs["MultiOutput"][0][:].allocate().wait() == 1).all(), ope.outputs["MultiOutput"][0][:].allocate().wait()
-assert (ope.outputs["MultiOutput"][1][:].allocate().wait() == 2).all(), ope.outputs["MultiOutput"][1][:].allocate().wait()
+assert (ope.outputs["MultiOutput"][0][:].wait() == 1).all(), ope.outputs["MultiOutput"][0][:].wait()
+assert (ope.outputs["MultiOutput"][1][:].wait() == 2).all(), ope.outputs["MultiOutput"][1][:].wait()
 
 assert len(opb.outputs["MultiOutput"]) == 2, len(opb.outputs["MultiOutput"])
 assert len(opc.outputs["Output"]) == 2, len(opc.outputs["Output"])
@@ -91,9 +91,9 @@ assert len(opc.outputs["Output"]) == 3, len(opc.outputs["Output"])
 assert len(opd.outputs["Output"]) == 3, len(opd.outputs["Output"])
 assert len(ope.outputs["MultiOutput"]) == 3, len(ope.outputs["MultiOutput"])
 
-assert (ope.outputs["MultiOutput"][0][:,:].allocate().wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate().wait() - 1)
-#assert (ope.outputs["MultiOutput"][1][:,:].allocate().wait() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][2][:].allocate().wait() - 2)
-#assert (ope.outputs["MultiOutput"][2][:,:].allocate().wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][1][:].allocate().wait() - 1)
+assert (ope.outputs["MultiOutput"][0][:,:].wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].wait() - 1)
+#assert (ope.outputs["MultiOutput"][1][:,:].wait() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][2][:].wait() - 2)
+#assert (ope.outputs["MultiOutput"][2][:,:].wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][1][:].wait() - 1)
 
 opb.inputs["MultiInput"].removeSlot(1)
 #opb.inputs["MultiInput"].removeSlot(1)
@@ -141,7 +141,7 @@ opRead = operators.OpImageReader(graph=g)
 opRead.inputs["Filename"].connect(opList2.outputs["Items"])
 
 
-opRead.outputs["Image"][0][:].allocate().wait()
+opRead.outputs["Image"][0][:].wait()
 
 
 

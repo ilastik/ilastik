@@ -68,7 +68,7 @@ class OpImageResizer(Operator):
 
         #get the data of the InputSlot
         img = numpy.ndarray(rstop-rstart,dtype=self.dtype)
-        img = self.inputs["Input"][rkey].allocate().meta.wait()
+        img = self.inputs["Input"][rkey].meta.wait()
 
         #create result array
         tmp_result = numpy.ndarray(tuple(numpy.hstack(((rstop-rstart)[:-1] * self.scaleFactor, (rstop-rstart)[-1]))), dtype=numpy.float32)
@@ -131,8 +131,8 @@ if __name__=="__main__":
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
 
-    dest = resizer.outputs["Output"][17:99,10:99,:].allocate().wait()
-    #dest = resizer.outputs["Output"][:].allocate().wait()
+    dest = resizer.outputs["Output"][17:99,10:99,:].wait()
+    #dest = resizer.outputs["Output"][:].wait()
     #write Image
     vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/resize_result_2.jpg")
     #write resized image on disk

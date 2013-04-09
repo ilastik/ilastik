@@ -15,10 +15,10 @@ class OpB(Operator):
     def setupOutputs(self):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
-        print "OpInternal shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
+        #print "OpInternal shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
     def execute(self, slot, subindex, roi, result):
-        result[0] = self.Input[:].allocate().wait()[0]
+        result[0] = self.Input[:].wait()[0]
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -39,11 +39,10 @@ class OpA(Operator):
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
-        print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
-
+        #print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
     def execute(self, slot, subindex, roi, result):
-        result[0] = self.internalOp.Output[:].allocate().wait()[0]
+        result[0] = self.internalOp.Output[:].wait()[0]
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -61,10 +60,10 @@ class TestInputInputConnection(object):
 
     def test_value(self):
         self.op.Input.setValue(True)
-        result = self.op.Output[:].allocate().wait()[0]
+        result = self.op.Output[:].wait()[0]
         assert result == True, "result = %r" % result
         self.op.Input.setValue(False)
-        result = self.op.Output[:].allocate().wait()[0]
+        result = self.op.Output[:].wait()[0]
         assert result == False, "result = %r" % result
 
     def test_disconnect(self):
@@ -78,11 +77,11 @@ class TestInputInputConnection(object):
 
         op = OperatorWrapper( OpA, graph=self.g )
         op.Input.connect(opm.Outputs)
-        result = op.Output[0][:].allocate().wait()[0]
+        result = op.Output[0][:].wait()[0]
         assert result == 1
 
         opm.Input1.setValue(2)
-        result = op.Output[1][:].allocate().wait()[0]
+        result = op.Output[1][:].wait()[0]
         assert result == 2
 
         # Note: operator wrappers do not "restore" back to unwrapped operators after disconnect
@@ -112,7 +111,7 @@ class OpC(Operator):
             slot.meta.dtype = self.Input[i].meta.dtype
 
     def execute(self, slot, subindex, roi, result):
-        result[0] = self.internalOp.Output[:].allocate().wait()[0]
+        result[0] = self.internalOp.Output[:].wait()[0]
         return result
 
 class TestMultiInputInputConnection(object):
@@ -139,4 +138,5 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)

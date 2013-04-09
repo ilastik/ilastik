@@ -18,19 +18,19 @@ def testThreshold():
     opTh.inputs["Threshold"].setValue(0.55)
 
     opTh.inputs["Channel"].setValue(0)
-    res = opTh.outputs["Output"][:].allocate().wait()
+    res = opTh.outputs["Output"][:].wait()
     desired = numpy.zeros((10, 10, 1))
     desired[0:5, 0:5, 0] = 1
     assert_array_equal(res, desired)
 
     opTh.inputs["Channel"].setValue(1)
-    res = opTh.outputs["Output"][:].allocate().wait()
+    res = opTh.outputs["Output"][:].wait()
     desired = numpy.zeros((10, 10, 1))
     desired[0:5, 5:, 0] = 1
     assert_array_equal(res, desired)
 
     opTh.inputs["Threshold"].setValue(0.65)
-    res = opTh.outputs["Output"][:].allocate().wait()
+    res = opTh.outputs["Output"][:].wait()
     assert_array_equal(res, numpy.zeros((10, 10, 1)))
 
 def testCC():
@@ -44,14 +44,14 @@ def testCC():
     opCC.inputs["Input"].setValue(predva)
     opCC.inputs["Neighborhood"].setValue(8)
     opCC.inputs["Background"].setValue(0)
-    res = opCC.outputs["Output"][:].allocate().wait()
+    res = opCC.outputs["Output"][:].wait()
     desired = numpy.zeros((10, 10), dtype=numpy.uint8)
     desired[0:5, 0:5] = 1
     desired[7:8, 7:8] = 2
     assert_array_equal(res, desired)
 
     opCC.inputs["Background"].setValue(-1)
-    res = opCC.outputs["Output"][:].allocate().wait()
+    res = opCC.outputs["Output"][:].wait()
     desired = numpy.ones((10, 10), dtype = numpy.uint8)
     desired[:] = 2
     desired[0:5, 0:5] = 1

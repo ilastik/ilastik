@@ -166,8 +166,8 @@ if __name__=="__main__":
     for index in range(stacker.outputs["Output"].meta.shape[2]):
         print "------------------------------------------------",index
 
-        paa=slicer.outputs["Slices"][index][:].allocate().wait()
-        desired=stacker.outputs["Output"][:,:,index].allocate().wait()
+        paa=slicer.outputs["Slices"][index][:].wait()
+        desired=stacker.outputs["Output"][:,:,index].wait()
         desired=numpy.squeeze(desired)
         assert_array_equal(paa,desired, "shit at index %r"%(index))
 
@@ -183,9 +183,9 @@ if __name__=="__main__":
     #for index in range(stacker.outputs["Output"].meta.shape[0]):
     for index in range(6):
         print "------------------------------------------------",index
-        desired=stacker.outputs["Output"][index,:,:].allocate().wait()
+        desired=stacker.outputs["Output"][index,:,:].wait()
         desired=desired[0,:,:]
-        paa=slicer2.outputs["Slices"][index][:].allocate().wait()
+        paa=slicer2.outputs["Slices"][index][:].wait()
         assert_array_equal(paa,desired, "shit at index %r"%(index))
 
 
@@ -199,10 +199,10 @@ if __name__=="__main__":
     for index in range(6):
         print "------------------------------------------------",index
 
-        desired=stacker.outputs["Output"][:,index,:].allocate().wait()
+        desired=stacker.outputs["Output"][:,index,:].wait()
 
         desired=desired[:,0,:]
-        paa=slicer3.outputs["Slices"][index][:].allocate().wait()
+        paa=slicer3.outputs["Slices"][index][:].wait()
         assert_array_equal(paa,desired, "shit at index %r"%(index))
 
 

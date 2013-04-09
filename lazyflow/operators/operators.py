@@ -595,7 +595,7 @@ class OpArrayCache(OpArrayPiper):
 
         dirtyRois = []
         half = tileArray.shape[0]/2
-        dirtyPool = request.Pool()
+        dirtyPool = request.RequestPool()
 
         def onCancel(req):
             return False # indicate that this request cannot be canceled
@@ -623,7 +623,8 @@ class OpArrayCache(OpArrayPiper):
 
                 req = self.inputs["Input"][key].writeInto(self._cache[key])
 
-                req.onCancel(onCancel)
+                req.uncancellable = True #FIXME
+                
                 dirtyPool.add(req)
 
                 self._blockQuery[key2] = weakref.ref(req)
@@ -671,8 +672,7 @@ class OpArrayCache(OpArrayPiper):
                 blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
 
-
-        inProcessPool = request.Pool()
+        inProcessPool = request.RequestPool()
         #wait for all in process queries
         for req in inProcessQueries:
             req = req() # get original req object from weakref

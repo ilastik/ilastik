@@ -240,7 +240,7 @@ class OpStackWriter(Operator):
         self.outputs["WritePNGStack"].meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        image = self.inputs["input"][roi.toSlice()].allocate().wait()
+        image = self.inputs["input"][roi.toSlice()].wait()
 
         filepath = self.inputs["filepath"].value
         filepath = filepath.split(".")

@@ -124,7 +124,7 @@ class OpMultiArraySlicer(Operator):
 
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
-        ttt = self.inputs["Input"][newKey].allocate().wait()
+        ttt = self.inputs["Input"][newKey].wait()
 
         writeKey = [slice(None, None, None) for k in key]
         writeKey.insert(indexAxis, 0)
@@ -554,7 +554,7 @@ class OpMultiArrayMerger(Operator):
         key = roiToSlice(roi.start,roi.stop)
         requests=[]
         for input in self.inputs["Inputs"]:
-            requests.append(input[key].allocate())
+            requests.append(input[key])
 
         data=[]
         for req in requests:

@@ -33,7 +33,7 @@ class OpB(OpArrayPiper):
 class OpC(OpArrayPiper):
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start, roi.stop)
-        v = self.inputs["Input"][:].allocate()
+        v = self.inputs["Input"][:]
         t = v.wait()
         result[:] = t[key]
         self.outputs["Output"][:] = t

@@ -38,12 +38,12 @@ class TestMultiInputConcatenater(object):
         op.Inputs[1][1].setValue( array5 )
         op.Inputs[1][2].setValue( array6 )
         
-        print op.Inputs[0][0].meta
-        print op.Inputs[0][1].meta
-        print op.Inputs[0][2].meta
-        print op.Output[0].meta
-        print op.Output[1].meta
-        print op.Output[2].meta
+        #print op.Inputs[0][0].meta
+        #print op.Inputs[0][1].meta
+        #print op.Inputs[0][2].meta
+        #print op.Output[0].meta
+        #print op.Output[1].meta
+        #print op.Output[2].meta
         
         assert len(op.Output) == 6
         assert op.Output[0].meta.shape == array1.shape
@@ -54,7 +54,7 @@ class TestMultiInputConcatenater(object):
         
         op.Inputs[0].removeSlot(1, 2)
         
-        print len(op.Output)
+        #print len(op.Output)
         assert len(op.Output) == 5
         assert op.Output[0].meta.shape == array1.shape
         assert op.Output[4].meta.shape == array6.shape
@@ -64,4 +64,5 @@ class TestMultiInputConcatenater(object):
 
 if __name__ == "__main__":
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    if not ret: sys.exit(1)

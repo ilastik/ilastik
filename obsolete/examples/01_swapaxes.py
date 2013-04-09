@@ -73,7 +73,7 @@ class OpSwapAxes(Operator):
         skey = roiToSlice(start,stop)
 
         #get data of the Inputslot
-        img = self.inputs["Input"][skey].allocate().wait()
+        img = self.inputs["Input"][skey].wait()
 
 
         #write swapped image into result array
@@ -119,7 +119,7 @@ if __name__=="__main__":
     #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
-    swapaxes.outputs["Output"][:].allocate().wait()
+    swapaxes.outputs["Output"][:].wait()
 
     #create Image Writer
     vimageWriter = OpImageWriter(graph=g)

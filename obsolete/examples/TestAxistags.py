@@ -101,7 +101,7 @@ import pylab
 #        r.wait()
 #
 #    #full image
-#    img2 = op.outputs["Output"][:].allocate().wait()
+#    img2 = op.outputs["Output"][:].wait()
 #
 #
 #    if (img2 == img1).all():
@@ -204,7 +204,7 @@ if __name__=="__main__":
     print "_______________________"
     print "________source_________"
     print "_______________________"
-    res = source.outputs["Output"][:].allocate().wait()
+    res = source.outputs["Output"][:].wait()
     print "Result-Shape", res.shape
     print "_dtype", s_dytpe
     print "_shape", s_shape
@@ -352,7 +352,7 @@ if __name__=="__main__":
     print "_______________________"
     print "_________end___________"
     print "_______________________"
-    res = e.outputs["Output"][:].allocate().wait()
+    res = e.outputs["Output"][:].wait()
     print "Result-Shape", res.shape
     print "_dtype", e.outputs["Output"].meta.dtype
     print "_shape", e.outputs["Output"].meta.shape

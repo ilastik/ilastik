@@ -15,7 +15,7 @@ import numpy, vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.request import Pool
+from lazyflow.request import RequestPool
 from operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
 from generic import OpMultiArrayStacker, popFlagsFromTheKey
@@ -425,7 +425,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             treadKey=tuple(treadKey)
 
-            req = self.inputs["Input"][treadKey].allocate()
+            req = self.inputs["Input"][treadKey]
             
             sourceArray = req.wait()
             req.clean()
@@ -550,7 +550,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 written += 1
                             cnt += 1
-            pool = Pool()
+            pool = RequestPool()
             for c in closures:
                 r = pool.request(c)
             pool.wait()
@@ -892,7 +892,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                 treadKeyInterp.insert(channelAxis, slice(None,None,None))
 
             treadKey=tuple(treadKey)
-            req = self.inputs["Input"][treadKey].allocate()
+            req = self.inputs["Input"][treadKey]
             sourceArray = req.wait()
             
             #req.result = None
@@ -1048,7 +1048,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
 
                                 written += 1
                             cnt += 1
-            pool = Pool()
+            pool = RequestPool()
             for c in closures:
                 r = pool.request(c)
             pool.wait()
@@ -1175,7 +1175,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 newReadKey.insert(channelAxis, slice(i, i+1, None))
                 
             if sourceArray is None:
-                req = self.inputs["Input"][newReadKey].allocate()
+                req = self.inputs["Input"][newReadKey]
                 t = req.wait()
             else:
                 if hasChannelAxis:
