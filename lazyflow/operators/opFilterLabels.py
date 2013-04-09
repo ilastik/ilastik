@@ -46,10 +46,8 @@ class OpFilterLabels(Operator):
         (MIT License)
         """
         bin_out = self.BinaryOut.value
-        if bin_out:
-            original_dtype = numpy.bool
-        else:
-            original_dtype = a.dtype
+        
+        original_dtype = a.dtype
             
         if not in_place:
             a = a.copy()
@@ -59,7 +57,10 @@ class OpFilterLabels(Operator):
         bad_sizes = component_sizes < min_size
         if max_size is not None:
             bad_sizes = numpy.logical_or( bad_sizes, component_sizes > max_size )
+        
         bad_locations = bad_sizes[a]
         a[bad_locations] = 0
+        if (bin_out):
+            a[a>0]=1
         return numpy.array(a, dtype=original_dtype)
 

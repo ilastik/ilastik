@@ -148,14 +148,14 @@ class SubRegion(Roi):
         self.stop[dim] = stop
         return self
 
-    def insertDim(self, dim, start, stop, at):
+    def insertDim(self, dim, start, stop):
         """
         insert a new dimension before dim.
         set start to start, stop to stop
         and the axistags to at
         """
-        self.start.insert(0,start)
-        self.stop.insert(0,stop)
+        self.start = self.start.insert(dim,start)
+        self.stop = self.stop.insert(dim,stop)
         return self
         
 

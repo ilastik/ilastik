@@ -275,7 +275,6 @@ class OpMultiArrayStacker(Operator):
     def setRightShape(self):
         c = 0
         flag = self.inputs["AxisFlag"].value
-
         self.intervals = []
 
         inTagKeys = []
@@ -386,9 +385,15 @@ class OpMultiArrayStacker(Operator):
             imageIndex = subindex[0]
             axisflag = self.AxisFlag.value
             axisIndex = self.Output.meta.axistags.index(axisflag)
-            roi.start[axisIndex] += self.intervals[imageIndex][0] 
-            roi.stop[axisIndex] += self.intervals[imageIndex][0] 
-            self.Output.setDirty( roi )
+            if len(roi.start)>axisIndex:
+                roi.start[axisIndex] += self.intervals[imageIndex][0] 
+                roi.stop[axisIndex] += self.intervals[imageIndex][0] 
+                self.Output.setDirty( roi )
+            else:
+                newroi = copy.copy(roi)
+                newroi = newroi.insertDim(axisIndex, self.intervals[imageIndex][0], self.intervals[imageIndex][0]+1)
+                self.Output.setDirty( newroi )
+                
         else:
             assert False, "Unknown input slot."
 
