@@ -20,7 +20,12 @@ from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel
+                        QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel,\
+                        QPixmap,QPainter,QIcon,QFont,QToolButton,QSpacerItem
+
+from PyQt4.QtSvg import QSvgWidget
+from iconMgr import ilastikIcons
+from ilastik.utility.pathHelpers import compressPathForDisplay
 
 #lazyflow
 from lazyflow.utility import Tracer
@@ -39,6 +44,8 @@ from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui, EventPlayer
 from ilastik.config import cfg as ilastik_config
+
+ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -222,8 +229,7 @@ class IlastikShell( QMainWindow ):
         self._workflowClass = w
     
     def loadWorkflow(self,i):
-        self.setWorkflowClass(i)
-        self.onNewProjectActionTriggered()
+        self.onNewProjectActionTriggered(i)
     
     def getWorkflow(self,w = None):
         
@@ -251,10 +257,13 @@ class IlastikShell( QMainWindow ):
         shellActions = ShellActions()
 
         # Menu item: New Project
-        shellActions.newProjectAction = menu.addAction("&New Project...")
-        shellActions.newProjectAction.setShortcuts( QKeySequence.New )
-        shellActions.newProjectAction.triggered.connect(self.onNewProjectActionTriggered)
-
+        newProjectMenu = menu.addMenu("&New Project...")
+        
+        workflowActions = []
+        for w,_name in getAvailableWorkflows():
+            a = newProjectMenu.addAction(_name)
+            a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
+        
         # Menu item: Open Project 
         shellActions.openProjectAction = menu.addAction("&Open Project...")
         shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
@@ -277,7 +286,11 @@ class IlastikShell( QMainWindow ):
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
-
+        
+        shellActions.closeAction = menu.addAction("&Close")
+        shellActions.closeAction.setShortcuts( QKeySequence.Close )
+        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
         shellActions.quitAction.setShortcuts( QKeySequence.Quit )
@@ -290,27 +303,67 @@ class IlastikShell( QMainWindow ):
         localDir = os.path.split(__file__)[0]
         if localDir == "":localDir = os.getcwd()
         
-        startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
-        startscreen.Plist.setWidget(startscreen.VL1.widget())
-        startscreen.Plist.setWidgetResizable(True)
-        startscreen.Wlist.setWidget(startscreen.VL2.widget())
-        startscreen.Wlist.setWidgetResizable(True)
+        #svgRenderer = QSvgWidget(localDir + "/ilastik-logo-alternate-colors.svg",self.startscreen.graphicsView)
+        #svgRenderer.setMaximumSize(QSize(288,410))
+        self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
+        self.startscreen.CreateList.setWidgetResizable(True)
+        self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
+        self.startscreen.OpenList.setWidgetResizable(True)
+        
+        self.startscreen.label1.setFont(ILASTIKFont)
+        self.startscreen.label2.setFont(ILASTIKFont)
         
         projects = PreferencesManager().get("shell","recently opened list")
         
+        buttons = []
+        
+        self.startscreen.browseFilesButton.setAutoRaise(True)
+        self.startscreen.browseFilesButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.startscreen.browseFilesButton.setIcon( QIcon(ilastikIcons.OpenFolder) )
+        self.startscreen.browseFilesButton.setFont(ILASTIKFont)
+        self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
+        buttons.append(self.startscreen.browseFilesButton)
+        
         if projects is not None:
             for path,workflow in projects:
-                b = QCommandLinkButton(path,startscreen,flat = True)
-                b.setDescription(workflow)
-                b.clicked.connect(partial(self.openProjectFile,path))
-                startscreen.VL1.addWidget(b)
+                b = QToolButton(self.startscreen)
+                #b.setDescription(workflow)
+                b.setAutoRaise(True)
+                b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+                b.setIcon( QIcon(ilastikIcons.Open) )
+                b.setFont(ILASTIKFont)
+                
+                #parse path
+                b.setToolTip(path)
+                compressedpath = compressPathForDisplay(path,50)
+                b.setText(compressedpath)
+                b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
+                self.startscreen.VL2.addWidget(b,2)
+                buttons.append(b)
         
         for workflow,_name in getAvailableWorkflows():
-            b = QCommandLinkButton(_name,startscreen,flat = True)
+            b = QToolButton(self.startscreen)
+            #b.setDescription(workflow)
+            b.setAutoRaise(True)
+            b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
-            startscreen.VL2.addWidget(b)
+            b.setIcon( QIcon(ilastikIcons.GoNext) )
+            b.setText(_name)
+            b.setFont(ILASTIKFont)
+            self.startscreen.VL1.addWidget(b)
+            buttons.append(b)
         
+        m = max(b.sizeHint().width() for b in buttons)
+        for b in buttons:
+            b.setFixedSize(QSize(m,20))
+    
+    def openFileAndCloseStartscreen(self,path):
+        self.startscreen.setParent(None)
+        del self.startscreen
+        self.openProjectFile(path)
+    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
@@ -413,6 +466,7 @@ class IlastikShell( QMainWindow ):
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
+        self._shellActions.closeAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -570,7 +624,17 @@ class IlastikShell( QMainWindow ):
                 # For test recording purposes, every gui we add MUST have a unique name
                 appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
-
+    
+    def onCloseActionTriggered(self):
+        if not self.confirmQuit():
+            return
+        self.closeCurrentProject()
+        self.projectManager = None # Destroy project manager
+        # Stop the thread that checks for log config changes.
+        ilastik.ilastik_logging.stopUpdates()
+        self._loaduifile()
+        self.mainStackedWidget.setCurrentIndex(0)
+        
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
@@ -726,18 +790,17 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def onNewProjectActionTriggered(self):
+    def onNewProjectActionTriggered(self,w = None):
         logger.debug("New Project action triggered")
-        
         newProjectFilePath = self.getProjectPathToCreate()
-
         if newProjectFilePath is not None:
             # Make sure the user is finished with the currently open project
             if not self.ensureNoCurrentProject():
                 return
-        
+            
+            self.setWorkflowClass(w)
             self.createAndLoadNewProject(newProjectFilePath)
-
+            
     def createAndLoadNewProject(self, newProjectFilePath):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
         self.loadProject(newProjectFile, newProjectFilePath, False)
@@ -1129,4 +1192,3 @@ class IlastikShell( QMainWindow ):
 #        animation.start()
 #
 #        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
-
