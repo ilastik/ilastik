@@ -6,7 +6,7 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.utility.gui import threadRouted
 
@@ -121,17 +121,20 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def setupLayers(self):
         layers = []        
         op = self.topLevelOperatorView
+        binct = [QColor(Qt.black), QColor(Qt.white)]
 
         # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
-            outputLayer = self.createStandardLayerFromSlot( op.CachedOutput )
+            outputSrc = LazyflowSource(op.CachedOutput)
+            outputLayer = ColortableLayer(outputSrc, binct)
             outputLayer.name = "Output (Cached)"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
         if op.BigRegions.ready():
-            lowThresholdLayer = self.createStandardLayerFromSlot( op.BigRegions )
+            lowThresholdSrc = LazyflowSource(op.BigRegions)
+            lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
             lowThresholdLayer.name = "Big Regions"
             lowThresholdLayer.visible = False
             lowThresholdLayer.opacity = 1.0
@@ -145,11 +148,12 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(filteredSmallLabelsLayer)
 
         if op.SmallRegions.ready():
-            lowThresholdLayer = self.createStandardLayerFromSlot( op.SmallRegions )
-            lowThresholdLayer.name = "Small Regions"
-            lowThresholdLayer.visible = False
-            lowThresholdLayer.opacity = 1.0
-            layers.append(lowThresholdLayer)
+            highThresholdSrc = LazyflowSource(op.SmallRegions)
+            highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
+            highThresholdLayer.name = "Small Regions"
+            highThresholdLayer.visible = False
+            highThresholdLayer.opacity = 1.0
+            layers.append(highThresholdLayer)
 
         # Selected input channel, smoothed.
         if op.Smoothed.ready():
@@ -159,21 +163,20 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             smoothedLayer.opacity = 1.0
             layers.append(smoothedLayer)
 
-        # Show each input channel as a separate layer
-        for channelIndex, channelSlot in enumerate(op.InputChannels):
-            if op.InputChannels.ready():
-                drange = channelSlot.meta.drange
-                if drange is None:
-                    drange = (0.0, 1.0)
-                channelSrc = LazyflowSource(channelSlot)
-                channelLayer = AlphaModulatedLayer( channelSrc,
-                                                    tintColor=QColor(self._channelColors[channelIndex]),
-                                                    range=drange,
-                                                    normalize=drange )
-                channelLayer.name = "Input Ch{}".format(channelIndex)
-                channelLayer.opacity = 1.0
-                channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
-                layers.append(channelLayer)
+        # Show the selected channel
+        if op.InputChannel.ready():
+            drange = op.InputChannel.meta.drange
+            if drange is None:
+                drange = (0.0, 1.0)
+            channelSrc = LazyflowSource(op.InputChannel)
+            channelLayer = AlphaModulatedLayer( channelSrc,
+                                                tintColor=QColor(self._channelColors[op.Channel.value]),
+                                                range=drange,
+                                                normalize=drange )
+            channelLayer.name = "Input Ch{}".format(op.Channel.value)
+            channelLayer.opacity = 1.0
+            #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
+            layers.append(channelLayer)
         
         # Show the raw input data
         rawSlot = self.topLevelOperatorView.RawInput

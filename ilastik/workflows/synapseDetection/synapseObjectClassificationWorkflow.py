@@ -76,28 +76,26 @@ class SynapseObjectClassificationWorkflow(Workflow):
 
         # Connect Raw data -> Fill missing slices
         opFillMissingSlices.Input.connect(opRawData.Image)
-
-        # Connect Predictions -> Thresholding
-        opTwoLevelThreshold.InputImage.connect( opPredictionData.Image )
-        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
-
-        # FIXME: For now, the object extraction and classification applets REQUIRE 5D data.
-        # (But the two-level thresholding applet CAN'T HANDLE 5d data.)
         op5Raw = Op5ifyer(parent=self)
-        #op5Raw.input.connect( opRawData.Image )
         op5Raw.input.connect(opFillMissingSlices.Output)
         
         op5Predictions = Op5ifyer( parent=self )
-        #op5Predictions.input.connect( opTwoLevelThreshold.Output )
+        op5Predictions.input.connect( opPredictionData.Image )
+
+        # Connect Predictions -> Thresholding
+        opTwoLevelThreshold.InputImage.connect( op5Predictions.output )
+        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
+
+        op5Binary = Op5ifyer( parent=self )
         
         # Use cached output so that the BinaryImage layer is correct in the GUI.
-        op5Predictions.input.connect( opTwoLevelThreshold.CachedOutput )
+        op5Binary.input.connect( opTwoLevelThreshold.CachedOutput )
         
         # connect raw data -> extraction
         opObjExtraction.RawImage.connect(op5Raw.output)
 
         # Thresholded and filtered binary image -> extraction
-        opObjExtraction.BinaryImage.connect( op5Predictions.output )
+        opObjExtraction.BinaryImage.connect( op5Binary.output )
 
         # connect data -> classification
         opObjClassification.BinaryImages.connect(op5Predictions.output)

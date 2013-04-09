@@ -12,7 +12,8 @@ import psutil
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabelVolume, OpFilterLabels, \
-                               OpCompressedCache, OpColorizeLabels, OpSingleChannelSelector
+                               OpCompressedCache, OpColorizeLabels, OpSingleChannelSelector, OperatorWrapper, \
+                               OpMultiArrayStacker, OpMultiArraySlicer
 from lazyflow.roi import extendSlice, TinyVector
 
 # ilastik
@@ -39,6 +40,13 @@ class OpAnisotropicGaussianSmoothing(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        #if there is a time of dim 1, output won't have that
+        timeIndex = self.Output.meta.axistags.index('t')
+        if timeIndex<len(self.Output.meta.shape):
+            newshape = list(self.Output.meta.shape)
+            newshape.pop(timeIndex)
+            self.Output.meta.shape = tuple(newshape)
+            del self.Output.meta.axistags[timeIndex]
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
@@ -75,10 +83,15 @@ class OpAnisotropicGaussianSmoothing(Operator):
         spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
         sigma = map( self._sigmas.get, spatialkeys )
         inputSpatialShape = self.Input.meta.getTaggedShape()
+        spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
         if 'c' in inputSpatialShape:
             del inputSpatialShape['c']
+        if 't' in inputSpatialShape.keys():
+            assert inputSpatialShape['t'] == 1
+            spatialRoi[0].pop( axiskeys.index('t') )
+            spatialRoi[1].pop( axiskeys.index('t') )
 
-        spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
+        
         spatialRoi[0].pop( axiskeys.index('c') )
         spatialRoi[1].pop( axiskeys.index('c') )
         
@@ -183,9 +196,108 @@ class OpSelectLabels(Operator):
             assert False, "Unknown input slot: {}".format( slot.name )
 
 class OpThresholdTwoLevels(Operator):
-    name = "opThresholdTwoLevels"
+    name = "opThresholdTwoLevels5d"
     
     RawInput = InputSlot(optional=True) # Display only
+    
+    InputImage = InputSlot()
+    MinSize = InputSlot(stype='int', value=100)
+    MaxSize = InputSlot(stype='int', value=1000000)
+    HighThreshold = InputSlot(stype='float', value=0.5)
+    LowThreshold = InputSlot(stype='float', value=0.2)
+    SmootherSigma = InputSlot(value={ 'x':1.0, 'y':1.0, 'z':1.0})
+    Channel = InputSlot(value=2)
+    
+    Output = OutputSlot()
+    
+    CachedOutput = OutputSlot() # For the GUI (blockwise-access)
+    
+    # For serialization
+    InputHdf5 = InputSlot(optional=True)
+    
+    CleanBlocks = OutputSlot()
+    
+    OutputHdf5 = OutputSlot()
+    
+    # Debug outputs
+    InputChannel = OutputSlot()
+    Smoothed = OutputSlot()
+    BigRegions = OutputSlot()
+    SmallRegions = OutputSlot()
+    FilteredSmallLabels = OutputSlot()
+    
+    
+    def __init__(self, *args, **kwargs):
+        super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
+        
+        self._opTimeSlicer = OpMultiArraySlicer(parent=self)
+        self._opTimeSlicer.AxisFlag.setValue('t')
+        self._opTimeSlicer.Input.connect( self.InputImage )
+        assert self._opTimeSlicer.Slices.level == 1
+        
+        self.opThreshold = OperatorWrapper(OpThresholdTwoLevels4d, parent = self)
+        self.opThreshold.InputImage.connect(self._opTimeSlicer.Slices)
+        self.opThreshold.MinSize.connect(self.MinSize)
+        self.opThreshold.MaxSize.connect(self.MaxSize)
+        self.opThreshold.LowThreshold.connect(self.LowThreshold)
+        self.opThreshold.HighThreshold.connect(self.HighThreshold)
+        self.opThreshold.SmootherSigma.connect(self.SmootherSigma)
+        self.opThreshold.Channel.connect(self.Channel)
+        
+        self._opTimeStacker = OpMultiArrayStacker(parent=self)
+        self._opTimeStacker.AxisFlag.setValue('t')
+        self._opTimeStacker.Images.connect(self.opThreshold.Output)
+        assert self._opTimeStacker.Output.level==0
+        self.Output.connect(self._opTimeStacker.Output)
+        
+        #cache our own output, don't propagate from internal operator
+        self._opCache = OpCompressedCache( parent=self )
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
+        self._opCache.Input.connect( self._opTimeStacker.Output )
+        self.CachedOutput.connect(self._opCache.Output)
+        
+        # Serialization outputs
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )
+        
+        #Debug outputs
+        self._smoothStacker = OpMultiArrayStacker(parent=self)
+        self._smoothStacker.AxisFlag.setValue('t')
+        self._smoothStacker.Images.connect(self.opThreshold.Smoothed)
+        self.Smoothed.connect(self._smoothStacker.Output)
+        
+        self._inputStacker = OpMultiArrayStacker(parent=self)
+        self._inputStacker.AxisFlag.setValue('t')
+        self._inputStacker.Images.connect(self.opThreshold.InputChannel)
+        self.InputChannel.connect(self._inputStacker.Output)
+        
+        self._bigRegionsStacker = OpMultiArrayStacker(parent=self)
+        self._bigRegionsStacker.AxisFlag.setValue('t')
+        self._bigRegionsStacker.Images.connect(self.opThreshold.BigRegions)
+        self.BigRegions.connect(self._bigRegionsStacker.Output)
+        
+        self._smallRegionsStacker = OpMultiArrayStacker(parent=self)
+        self._smallRegionsStacker.AxisFlag.setValue('t')
+        self._smallRegionsStacker.Images.connect(self.opThreshold.SmallRegions)
+        self.SmallRegions.connect(self._smallRegionsStacker.Output)
+        
+        self._filSmallRegionsStacker = OpMultiArrayStacker(parent=self)
+        self._filSmallRegionsStacker.AxisFlag.setValue('t')
+        self._filSmallRegionsStacker.Images.connect(self.opThreshold.FilteredSmallLabels)
+        self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
+        
+    def setupOutputs(self):
+        pass
+        
+    def execute(self, slot, subindex, roi, destination):
+        assert False, "Shouldn't get here."
+    
+    def propagateDirty(self, slot, subindex, roi):
+        pass # Nothing to do...
+        
+
+class OpThresholdTwoLevels4d(Operator):
+    name = "opThresholdTwoLevels4d"
     
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=100)
@@ -204,7 +316,7 @@ class OpThresholdTwoLevels(Operator):
     CleanBlocks = OutputSlot()
     
     # Debug outputs
-    InputChannels = OutputSlot(level=1)
+    InputChannel = OutputSlot()
     Smoothed = OutputSlot()
     BigRegions = OutputSlot()
     SmallRegions = OutputSlot()
@@ -223,28 +335,27 @@ class OpThresholdTwoLevels(Operator):
     #                                  LowThreshold                  --(cache)--> BigRegions
     
     def __init__(self, *args, **kwargs):
-        super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
+        super(OpThresholdTwoLevels4d, self).__init__(*args, **kwargs)
         
         self._opChannelSelector = OpSingleChannelSelector( parent = self )
         self._opChannelSelector.Input.connect( self.InputImage )
         
-        
         self._opSmoother = OpAnisotropicGaussianSmoothing(parent=self)
         self._opSmoother.Sigmas.connect( self.SmootherSigma )
         
-        self._opLowThresholder = OpPixelOperator( parent=self )
+        self._opLowThresholder = OpPixelOperator(parent=self )
         self._opLowThresholder.Input.connect( self._opSmoother.Output )
 
-        self._opHighThresholder = OpPixelOperator( parent=self )
+        self._opHighThresholder = OpPixelOperator(parent=self )
         self._opHighThresholder.Input.connect( self._opSmoother.Output )
         
-        self._opLowLabeler = OpVigraLabelVolume( parent=self )
+        self._opLowLabeler = OpVigraLabelVolume(parent=self )
         self._opLowLabeler.Input.connect( self._opLowThresholder.Output )
         
-        self._opHighLabeler = OpVigraLabelVolume( parent=self )
+        self._opHighLabeler = OpVigraLabelVolume(parent=self )
         self._opHighLabeler.Input.connect( self._opHighThresholder.Output )
         
-        self._opHighLabelSizeFilter = OpFilterLabels( parent=self )
+        self._opHighLabelSizeFilter = OpFilterLabels(parent=self )
         self._opHighLabelSizeFilter.Input.connect( self._opHighLabeler.Output )
         self._opHighLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opHighLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
@@ -278,14 +389,14 @@ class OpThresholdTwoLevels(Operator):
         
         # Debug outputs.
         self.Smoothed.connect( self._opSmoother.Output )
-        #self.InputChannels.connect( self._opChannelSlicer.Slices )
-        self.InputChannels.connect( self._opChannelSelector.Output )
+        
+        self.InputChannel.connect( self._opChannelSelector.Output )
         
         # More debug outputs.  These all go through their own caches
         self._opBigRegionCache = OpCompressedCache( parent=self )
         self._opBigRegionCache.Input.connect( self._opLowThresholder.Output )
         self.BigRegions.connect( self._opBigRegionCache.Output )
-                
+        
         self._opSmallRegionCache = OpCompressedCache( parent=self )
         self._opSmallRegionCache.Input.connect( self._opHighThresholder.Output )
         self.SmallRegions.connect( self._opSmallRegionCache.Output )
@@ -297,7 +408,10 @@ class OpThresholdTwoLevels(Operator):
         self.FilteredSmallLabels.connect( self._opColorizeSmallLabels.Output )
 
     def setupOutputs(self):
-        assert len(self.InputImage.meta.shape) <= 4, "This operator doesn't support 5D data."
+        timeIndex = self.InputImage.meta.axistags.index('t')
+        
+        if timeIndex<len(self.InputImage.meta.shape):
+            assert self.InputImage.meta.shape[timeIndex]==1, "This operator doesn't support 5D data."
         
         #FIXME: this happens when someone deletes the other prediction channels to save space
         #we should find a better way to handle this
@@ -308,9 +422,6 @@ class OpThresholdTwoLevels(Operator):
 
         self._opChannelSelector.Index.setValue(hackChannel)
         self._opSmoother.Input.connect( self._opChannelSelector.Output )
-        #self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ hackChannel ] )
-
-        #self._opSmoother.Input.connect( self._opChannelSlicer.Slices[ self.Channel.value ] )
         
         def thresholdToUint8(thresholdValue, a):
             drange = self._opSmoother.Output.meta.drange

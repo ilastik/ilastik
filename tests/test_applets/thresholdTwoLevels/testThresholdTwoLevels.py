@@ -1,6 +1,7 @@
 import numpy
 from lazyflow.graph import Graph
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels
+from lazyflow.operators import Op5ifyer
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels4d, OpThresholdTwoLevels
 
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
@@ -38,6 +39,7 @@ class TestThresholdTwoLevels(object):
         
         self.dataChannels = numpy.zeros((self.nx, self.ny, self.nz, self.nc))
         self.dataChannels[:, :, :, 2] = self.cluster1 + self.cluster2 + self.cluster3 + self.cluster4 + self.cluster5
+        self.data5d = self.dataChannels.reshape((1,)+self.dataChannels.shape)
         self.dataChannels = self.dataChannels.view(vigra.VigraArray)
         self.dataChannels.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         
@@ -45,6 +47,10 @@ class TestThresholdTwoLevels(object):
         self.dataRandom = self.dataRandom.reshape(self.dataRandom.shape+(1,))
         self.dataRandom = self.dataRandom.view(vigra.VigraArray)
         self.dataRandom.axistags = vigra.VigraArray.defaultAxistags("xyzc")
+        
+        
+        self.data5d = self.data5d.view(vigra.VigraArray)
+        self.data5d.axistags = vigra.VigraArray.defaultAxistags("txyzc")
         
         self.minSize = 5 #first cluster doesn't pass this
         self.maxSize = 30 #fourth cluster doesn't pass this
@@ -55,7 +61,8 @@ class TestThresholdTwoLevels(object):
         
     def testStuff(self):
         g = Graph()
-        oper = OpThresholdTwoLevels(graph = g)
+        
+        oper = OpThresholdTwoLevels4d(graph = g)
         oper.InputImage.setValue(self.data)
         oper.MinSize.setValue(self.minSize)
         oper.MaxSize.setValue(self.maxSize)
@@ -87,6 +94,23 @@ class TestThresholdTwoLevels(object):
         assert numpy.any(cluster3!=0)==False
         cluster4 = numpy.logical_and(output, self.cluster4)
         assert numpy.any(cluster4!=0)==False
+        
+        
+        oper5d = OpThresholdTwoLevels(graph=g)
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        
+        out5d = oper5d.Output[:].wait()
+        
+        tIndex= oper5d.Output.meta.axistags.index('t')
+        slicing = 5*[slice(None, None, None)]
+        slicing[tIndex]= slice(0, 1, None)
+        #print out5d.axistags, output.shape.axistags
+        assert numpy.all(out5d[slicing].squeeze()==output[:].squeeze())
         
     def thresholdTwoLevels(self, data):
         #this function is the same as the operator, but without any lazyflow stuff
@@ -135,7 +159,7 @@ class TestThresholdTwoLevels(object):
     
     def testMoreStuff(self):
         g = Graph()
-        oper = OpThresholdTwoLevels(graph = g)
+        oper = OpThresholdTwoLevels4d(graph = g)
         oper.InputImage.setValue(self.data)
         oper.MinSize.setValue(self.minSize)
         oper.MaxSize.setValue(self.maxSize)
