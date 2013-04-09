@@ -1,15 +1,19 @@
-import numpy
+#Python
 import time
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.request import Request, RequestPool
-import vigra
 import copy
 from functools import partial
-
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
+
+#SciPy
+import numpy
+import vigra
+
+#lazyflow
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
+from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.request import Request, RequestPool
 from lazyflow.utility import traceLogged
 
 class OpTrainRandomForest(Operator):
@@ -183,7 +187,7 @@ class OpTrainRandomForestBlocked(Operator):
             try:
                 logger.debug("Learning with Vigra...")
                 # train and store self._forest_count forests in parallel
-                pool = Pool()
+                pool = RequestPool()
 
                 for i in range(self._forest_count):
                     def train_and_store(number):
@@ -259,7 +263,7 @@ class OpPredictRandomForest(Operator):
         t2 = time.time()
 
         # predict the data with all the forests in parallel
-        pool = Pool()
+        pool = RequestPool()
 
         for i,f in enumerate(forests):
             req = pool.request(partial(predict_forest, i))
