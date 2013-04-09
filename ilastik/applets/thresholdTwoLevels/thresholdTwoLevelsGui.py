@@ -121,12 +121,15 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def setupLayers(self):
         layers = []        
         op = self.topLevelOperatorView
-        binct = [QColor(Qt.black), QColor(Qt.white)]
-
+        binct = [QColor(Qt.black), QColor(Qt.white), QColor(Qt.red), QColor(Qt.green)]
+        ct = self._createDefault16ColorColorTable()
+        ct[0]=0
         # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
-            outputSrc = LazyflowSource(op.CachedOutput)
-            outputLayer = ColortableLayer(outputSrc, binct)
+            print "Cached Output dtype:", op.CachedOutput.meta.dtype
+            print "Output dtype:", op.Output.meta.dtype
+            outputSrc = LazyflowSource(op.Output)
+            outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Output (Cached)"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
