@@ -219,7 +219,7 @@ class TestOperatorChain():
 
         OpChain = OpStackChainLoader(self.g)
         OpChain.inputs["globstring"].setValue(self.testdir + '*.png')
-        result = OpChain.outputs["output"][:].allocate().wait()
+        result = OpChain.outputs["output"][:].wait()
         assert(result == self.block).all()
     
     def stackAndTestConfig(self,filetype = "png"):
