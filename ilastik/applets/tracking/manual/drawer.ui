@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>691</height>
+    <height>861</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -134,6 +134,66 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="printMultiple">
+     <property name="text">
+      <string>Print Multiple Labels in each t</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="printApp">
+     <property name="text">
+      <string>Print (Dis-/Appearances) in mergers</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Time Step:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QSpinBox" name="timeBox">
+       <property name="maximum">
+        <number>9999</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Track ID:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="tidBox">
+       <property name="maximum">
+        <number>99999</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QPushButton" name="gotoLabel">
+       <property name="text">
+        <string>Go!</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="Line" name="line_4">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
       <widget class="QLabel" name="label_12">
@@ -151,13 +211,21 @@
      <item>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="3" column="1">
-        <widget class="QSpinBox" name="from_y"/>
+        <widget class="QSpinBox" name="from_y">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="1" column="1">
         <widget class="QSpinBox" name="from_time"/>
        </item>
        <item row="2" column="1">
-        <widget class="QSpinBox" name="from_x"/>
+        <widget class="QSpinBox" name="from_x">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_17">
@@ -174,7 +242,11 @@
         </widget>
        </item>
        <item row="2" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_x"/>
+        <widget class="QSpinBox" name="to_x">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="0" column="1">
         <widget class="QLabel" name="label_13">
@@ -194,7 +266,11 @@
         </widget>
        </item>
        <item row="3" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_y"/>
+        <widget class="QSpinBox" name="to_y">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="5" column="3">
         <widget class="QSpinBox" name="to_size">
@@ -214,10 +290,18 @@
         </widget>
        </item>
        <item row="4" column="2" colspan="2">
-        <widget class="QSpinBox" name="to_z"/>
+        <widget class="QSpinBox" name="to_z">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="4" column="1">
-        <widget class="QSpinBox" name="from_z"/>
+        <widget class="QSpinBox" name="from_z">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_16">
