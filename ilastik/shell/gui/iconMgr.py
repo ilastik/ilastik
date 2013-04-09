@@ -54,6 +54,8 @@ class ilastikIcons(object):
     Preferences = iconPath + 'categories/preferences-system.png'
     New = iconPath + "actions/document-new.png" 
     Open = iconPath + "actions/document-open.png" 
+    OpenFolder = iconPath + "status/folder-open.png" 
+    GoNext = iconPath + "actions/go-next.png" 
     Save = iconPath + "actions/document-save.png" 
     SaveAs = iconPath + "actions/document-save-as.png"
     Edit = iconPath + "actions/document-properties.png" 

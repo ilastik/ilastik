@@ -65,7 +65,6 @@ class CarvingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingTopLevel = self.carvingApplet.topLevelOperator.getLane(laneIndex)
-        
         op5 = Op5ifyer(parent=self)
         op5.order.setValue("txyzc")
         op5.input.connect(opData.Image)

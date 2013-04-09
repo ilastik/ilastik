@@ -23,3 +23,4 @@ QTableWidget#batchOutputTableWidget {background-color:#f2f2f2;}
 /* Label list widget (in the pixel classification drawer) */
 LabelListView {background-color:#f2f2f2;}
 
+QWidget#startupPage { background-color:qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:2, fx:0.5, fy:0.5, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255))}
