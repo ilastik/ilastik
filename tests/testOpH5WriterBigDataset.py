@@ -1,4 +1,4 @@
-from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 import numpy
 import vigra
 import h5py
