@@ -954,10 +954,11 @@ class IlastikShell( QMainWindow ):
             
             workflowName = self.projectManager.workflow.workflowName
             
-            projectAndWorkflow = (projectFilePath,workflowName)
-            if projectAndWorkflow in mostRecentProjectPaths:
-                mostRecentProjectPaths.remove(projectAndWorkflow)
-            mostRecentProjectPaths.insert(0,projectAndWorkflow)
+            for proj,work in mostRecentProjectPaths[:]:
+                if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
+                    mostRecentProjectPaths.remove((proj,work))
+            
+            mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
             
             #cut list of stored files at randomly chosen number of 5
             if len(mostRecentProjectPaths) > 5:
