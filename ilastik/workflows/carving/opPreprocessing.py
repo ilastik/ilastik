@@ -54,7 +54,6 @@ class OpPreprocessing(Operator):
         self._checkMeta(self.RawData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
-        self.enableDownstream(False)
         
     def propagateDirty(self,slot,subindex,roi):
         if slot == self.RawData:

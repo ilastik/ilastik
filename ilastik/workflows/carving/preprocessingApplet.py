@@ -31,7 +31,7 @@ class PreprocessingApplet(StandardApplet):
         if ed and not self._enabledDS: # enable Downstream 
             self._enabledDS = True
             self.guiControlSignal.emit(ControlCommand.Pop)  
-        if not ed:# and self._enabledDS: # disable Downstream
+        if not ed and self._enabledDS: # disable Downstream
             self._enabledDS = False
             self.guiControlSignal.emit(ControlCommand.DisableDownstream)
     
