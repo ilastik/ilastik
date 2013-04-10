@@ -127,9 +127,9 @@ class ProjectManager(object):
         self.workflow = workflowClass(headless=headless)
     
     
-    def __del__(self):
+    def cleanUp(self):
         """
-        Destructor.  Closes the project file.
+        Should be called when the Projectmanager is canceled. Closes the project file.
         """
         try:
             self._closeCurrentProject()

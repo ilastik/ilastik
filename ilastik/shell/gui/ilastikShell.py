@@ -102,7 +102,7 @@ class ProgressDisplayManager(QObject):
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
     
-    def __del__(self):
+    def cleanUp(self):
         # Disconnect everything
         self.dispatchSignal.disconnect()
         if self.progressBar is not None:
@@ -336,7 +336,12 @@ class IlastikShell( QMainWindow ):
                 #parse path
                 b.setToolTip(path)
                 compressedpath = compressPathForDisplay(path,50)
-                b.setText(compressedpath)
+                if len(workflow)>30:
+                    compressedworkflow = workflow[:27]+"..."
+                else:
+                    compressedworkflow = workflow
+                text = "{0} ({1})".format(compressedpath,compressedworkflow)
+                b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
                 self.startscreen.VL2.addWidget(b,2)
                 buttons.append(b)
@@ -358,8 +363,8 @@ class IlastikShell( QMainWindow ):
             b.setFixedSize(QSize(m,20))
     
     def openFileAndCloseStartscreen(self,path):
-        self.startscreen.setParent(None)
-        del self.startscreen
+        #self.startscreen.setParent(None)
+        #del self.startscreen
         self.openProjectFile(path)
     
     def _createHelpMenu(self):
@@ -621,13 +626,10 @@ class IlastikShell( QMainWindow ):
     def onCloseActionTriggered(self):
         if not self.confirmQuit():
             return
+        if not self.ensureNoCurrentProject():
+            return
         self.closeCurrentProject()
-        self.projectManager = None # Destroy project manager
-        # Stop the thread that checks for log config changes.
-        ilastik.ilastik_logging.stopUpdates()
-        self._loaduifile()
         self.mainStackedWidget.setCurrentIndex(0)
-        
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
@@ -1011,15 +1013,18 @@ class IlastikShell( QMainWindow ):
 
             if self.projectDisplayManager is not None: 
                 old = weakref.ref(self.projectDisplayManager)
+                self.projectDisplayManager.cleanUp()
                 self.projectDisplayManager = None # Destroy display manager
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
 
             old = weakref.ref(self.projectManager)
+            self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
-
+        
+        self._workflowClass = None
         self.enableWorkflow = False
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
@@ -1145,7 +1150,9 @@ class IlastikShell( QMainWindow ):
         return True
 
     def closeAndQuit(self, quitApp=True):
-        self.projectManager = None # Destroy project manager
+        if self.projectManager is not None:
+            self.projectManager.cleanUp()
+            self.projectManager = None # Destroy project manager
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
