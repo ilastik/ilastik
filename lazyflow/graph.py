@@ -170,35 +170,15 @@ class ValueRequest(object):
     def submit(self):
         pass
 
-    def notify(self, callback, *args, **kwargs):
-        raise RuntimeError("remove old API: notify")
-        callback(self.result, *args, **kwargs)
-        
-    def onCancel(self, callback, *args, **kwargs):
-        raise RuntimeError("remove old API: onCancel")
-        pass
-
-    def onFinish(self, callback, **kwargs):
-        raise RuntimeError("remove old API: onFinish")
-        callback(self, **kwargs)
-        
     def notify_finished(self, callback):
         callback(self.result)
 
     def clean(self):
         self.result = None
 
-    def allocate(self, priority=0):
-        raise RuntimeError("remove old API: allocate")
-        return self
-
     def writeInto(self, destination):
         destination[:] = self.result
         return self
-
-    def getResult(self):
-        raise RuntimeError("remove old API: getResult")
-        return self.result
 
 
 class Slot(object):
