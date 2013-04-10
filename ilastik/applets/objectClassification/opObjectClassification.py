@@ -13,10 +13,6 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import gui_features_suffix
 
-# WARNING: since we assume the input image is binary, we also assume
-# that it only has one channel. If there are multiple channels, only
-# features from the first channel are used in this operator.
-
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
     name = "OpObjectClassification"
     category = "Top-level"
@@ -204,7 +200,7 @@ def _concatenate(arrays, axis):
 def make_feature_array(feats, labels=None):
     featlist = []
     labellist = []
-    featnames = feats.values()[0][0].keys()
+    featnames = feats.values()[0].keys()
 
     # remove extra features used by applet only.
     featnames = sorted(list(n for n in featnames
@@ -220,12 +216,11 @@ def make_feature_array(feats, labels=None):
             labellist_tmp.append(lab[index])
 
         for featname in featnames:
-            for channel in feats[t]:
-                value = channel[featname]
-                ft = numpy.asarray(value.squeeze())
-                if labels is not None:
-                    ft = ft[index]
-                featsMatrix_tmp.append(ft)
+            value = feats[t][featname]
+            ft = numpy.asarray(value.squeeze())
+            if labels is not None:
+                ft = ft[index]
+            featsMatrix_tmp.append(ft)
 
         featlist.append(_concatenate(featsMatrix_tmp, axis=1))
         if labels is not None:
