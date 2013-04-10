@@ -76,6 +76,7 @@ class OpConservationTracking(OpTrackingBase):
         print 'median_obj_size = ', median_obj_size
         print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
+        with_merger_resolution = True
         
             
         tracker = pgmlink.ConsTracking(maxObj,
@@ -92,7 +93,7 @@ class OpConservationTracking(OpTrackingBase):
                                          withDivisions,
                                          500.0, # disappearance cost
                                          500.0, # appearance cost
-                                         )
+                                         with_merger_resolution)
         
         try:
             self.events = tracker(ts)
