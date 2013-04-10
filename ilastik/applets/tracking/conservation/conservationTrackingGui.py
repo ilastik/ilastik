@@ -2,6 +2,8 @@ from PyQt4 import uic, QtGui
 import os
 import logging
 from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
+import sys
+import traceback
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -92,9 +94,11 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 withOpticalCorrection=withOpticalCorrection,
                 withClassifierPrior=classifierPrior
                 )
-        except Exception as e:
-            QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        
-            return
+        except Exception:            
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)            
+            QtGui.QMessageBox.critical(self, "Error", "Exception(" + str(ex_type) + "): " + str(ex), QtGui.QMessageBox.Ok)
+            return                     
         
         self._drawer.exportButton.setEnabled(True)
         self._drawer.exportTifButton.setEnabled(True)

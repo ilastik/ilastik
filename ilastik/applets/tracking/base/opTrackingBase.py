@@ -63,6 +63,7 @@ class OpTrackingBase(Operator):
             div = []
             mov = []
             merger = []            
+            multi = []
             for event in events_at:
                 if event.type == pgmlink.EventType.Appearance:
                     app.append((event.traxel_ids[0], event.energy))
@@ -74,13 +75,16 @@ class OpTrackingBase(Operator):
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
                 if( hasattr(pgmlink.EventType, "Merger") ):
                     if event.type == pgmlink.EventType.Merger:
-                        merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))                              
+                        merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+                if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:
+                    multi.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))                              
 
             print len(dis), "dis at", i + time_range[0]
             print len(app), "app at", i + time_range[0]
             print len(div), "div at", i + time_range[0]
             print len(mov), "mov at", i + time_range[0]
             print len(merger), "merger at", i + time_range[0]
+            print len(multi), "multiMoves at", i + time_range[0]
             print
             
             label2color.append({})
