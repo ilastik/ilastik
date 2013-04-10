@@ -22,9 +22,7 @@ class CarvingWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, carvingGraphFile=None, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
-        if carvingGraphFile is not None:
-            assert isinstance(carvingGraphFile, str), "carvingGraphFile should be a string, not '%s'" % type(carvingGraphFile)
+    def __init__(self, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
         if hintoverlayFile is not None:
             assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
         if pmapoverlayFile is not None:
@@ -34,14 +32,12 @@ class CarvingWorkflow(Workflow):
         
         super(CarvingWorkflow, self).__init__(graph=graph, *args, **kwargs)
         
-
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         
         self.carvingApplet = CarvingApplet(workflow=self,
                                            projectFileGroupName="carving",
-                                           carvingGraphFile = carvingGraphFile,
                                            hintOverlayFile=hintoverlayFile,
                                            pmapOverlayFile=pmapoverlayFile)
         

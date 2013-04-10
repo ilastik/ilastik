@@ -22,7 +22,7 @@ class OpPreprocessing(Operator):
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
     
-    #Image after preprocess
+    #Image after preprocess as cylemon.MST
     PreprocessedData = OutputSlot()
     
     def __init__(self, *args, **kwargs):
