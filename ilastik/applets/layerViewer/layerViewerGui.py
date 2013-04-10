@@ -149,7 +149,7 @@ class LayerViewerGui(QWidget):
             self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
             self._drawer = QWidget( self )
             self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
-
+        
     def _after_init(self):
         self._initialized = True
         self.updateAllLayers()
@@ -172,7 +172,7 @@ class LayerViewerGui(QWidget):
                         layer.name = multiLayerSlot.getRealOperator().Input.partner.name
                     else:
                         layer.name = multiLayerSlot.name + " " + str(j)
-                    layers.append(layer)
+                    #layers.append(layer)
         return layers
 
     @traceLogged(traceLogger)

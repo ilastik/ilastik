@@ -7,8 +7,8 @@ import numpy
 import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.operators import OpH5WriterBigDataset, OpDummyData
-from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators import OpDummyData
+from lazyflow.operators.ioOperators import OpInputDataReader, OpH5WriterBigDataset
 from ilastik.utility.pathHelpers import PathComponents
 
 logger = logging.getLogger(__name__)
