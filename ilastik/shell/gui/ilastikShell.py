@@ -807,19 +807,18 @@ class IlastikShell( QMainWindow ):
         
         fileSelected = False
         while not fileSelected:
-            dlg = QFileDialog(self, caption, defaultPath, "Ilastik project files (*.ilp)")
-            dlg.setObjectName("CreateProjectFileDlg")
-            dlg.setAcceptMode(QFileDialog.AcceptSave)
+            options = QFileDialog.Options()
             if ilastik_config.getboolean("ilastik", "debug"):
-                dlg.setOption( QFileDialog.DontUseNativeDialog,  True )
-                dlg.setOption( QFileDialog.DontConfirmOverwrite, True ) # For testing, it's easier if we don't record the overwrite confirmation
-            dlg.exec_()
-            
+                options |= QFileDialog.DontUseNativeDialog
+                # For testing, it's easier if we don't record the overwrite confirmation
+                options |= QFileDialog.DontConfirmOverwrite
+
+            projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath, 
+                                          "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if dlg.result() == QDialog.Rejected:
+            if projectFilePath.isEmpty():
                 return None
-    
-            projectFilePath = str(dlg.selectedFiles()[0])
+            projectFilePath = str(projectFilePath)
             fileSelected = True
             
             # Add extension if necessary
