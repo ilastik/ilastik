@@ -673,12 +673,14 @@ class ManualTrackingGui(LayerViewerGui):
         mergers = {}
         apps = {}
         disapps = {}
+        multiMoves = {}
         for t in oid2tids.keys():
             moves[t] = []
             divs[t] = []
             mergers[t] = []
             apps[t] = []
             disapps[t] = []
+            multiMoves[t] = []
         
         t_start = time_range[0]
         t_end = time_range[1]-1
@@ -726,7 +728,20 @@ class ManualTrackingGui(LayerViewerGui):
                     apps[t].append((oid_cur, 0.))                    
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
-                    moves[t].append((oid_prev, oid_cur, 0.))                    
+                    moves[t].append((oid_prev, oid_cur, 0.))
+                    
+                    if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t][oid_prev]) > 1:
+                        t_multiprev = None
+                        oid_multiprev = None
+                                                
+                        for tt in reversed(range(t)):
+                            for o in oid2tids[tt].keys():
+                                if tid in oid2tids[tt][o] and len(oid2tids[tt][o]) == 1:
+                                    oid_multiprev = o
+                                    t_multiprev = tt                                    
+                                    break
+                        if t_multiprev is not None and oid_multiprev is not None: 
+                            multiMoves[t].append((oid_multiprev, oid_cur, t_multiprev, 0.))
                 
                 oid_prev = oid_cur
         
@@ -742,7 +757,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         print 'Merger-Sizes:', merger_sizes
         
-        return oid2tids, disapps, apps, divs, moves, mergers
+        return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
         
     def _onExportButtonPressed(self):
@@ -753,7 +768,7 @@ class ManualTrackingGui(LayerViewerGui):
             return
         directory = str(directory)
         
-        oid2tids, disapps, apps, divs, moves, mergers = self._getEvents()
+        oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
         
         
         for t in sorted(oid2tids.keys()):
@@ -769,6 +784,7 @@ class ManualTrackingGui(LayerViewerGui):
             div_at = numpy.asarray(divs[t])
             mov_at = numpy.asarray(moves[t])
             merger_at = numpy.asarray(mergers[t])
+            multiMoves_at = numpy.asarray(multiMoves[t])
                     
             # write only if file exists
             with LineageH5(fn, 'a') as f_curr:
@@ -816,6 +832,12 @@ class ManualTrackingGui(LayerViewerGui):
                     ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
                     ds.attrs["Format"] = "descendant (current file), number of objects"    
                     ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(multiMoves_at):
+                    multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
+                    ds = tg.create_dataset("Mergers", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
+                    ds = tg.create_dataset("Mergers-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         
             print "-> results successfully written"
@@ -873,7 +895,7 @@ class ManualTrackingGui(LayerViewerGui):
     def _onPrintAppearancesInMergers(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]
     
-        oid2tids, disapps, apps, divs, moves, mergers = self._getEvents()
+        oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
         affectedTids = {}
         for t in range(maxt):
