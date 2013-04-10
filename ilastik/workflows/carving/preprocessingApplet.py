@@ -12,8 +12,6 @@ class PreprocessingApplet(StandardApplet):
         super(PreprocessingApplet, self).__init__( title, workflow)
         
         self._serializableItems = [ PreprocessingSerializer(self.topLevelOperator, "preprocessing") ]
-        if supportIlastik05Import:
-            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self.topLevelOperator))
         
         self._gui = None
         self._title = title
@@ -32,9 +30,8 @@ class PreprocessingApplet(StandardApplet):
     def enableDownstream(self,ed):
         if ed and not self._enabledDS: # enable Downstream 
             self._enabledDS = True
-            self.guiControlSignal.emit(ControlCommand.Pop)
-            
-        elif not ed and self._enabledDS: # disable Downstream
+            self.guiControlSignal.emit(ControlCommand.Pop)  
+        if not ed and self._enabledDS: # disable Downstream
             self._enabledDS = False
             self.guiControlSignal.emit(ControlCommand.DisableDownstream)
     

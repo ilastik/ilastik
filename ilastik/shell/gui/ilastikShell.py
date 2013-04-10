@@ -305,8 +305,6 @@ class IlastikShell( QMainWindow ):
         
         self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
-        #svgRenderer = QSvgWidget(localDir + "/ilastik-logo-alternate-colors.svg",self.startscreen.graphicsView)
-        #svgRenderer.setMaximumSize(QSize(288,410))
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
         self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
@@ -413,7 +411,7 @@ class IlastikShell( QMainWindow ):
             defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
-
+        
         svgPath = QFileDialog.getSaveFileName(
            self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
@@ -726,7 +724,7 @@ class IlastikShell( QMainWindow ):
 
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
-
+        
         return applet_index
 
     def removeAllAppletWidgets(self):
@@ -752,6 +750,7 @@ class IlastikShell( QMainWindow ):
         A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
         If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
         """
+        
         if command == ControlCommand.Pop:
             command = self._controlCmds[applet_index].pop()
             step = -1 # Since we're popping this command, we'll subtract from the disable counts
@@ -895,7 +894,6 @@ class IlastikShell( QMainWindow ):
         
         # Find the directory of the most recently opened project
         mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
-        print mostRecentProjectPath
         if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
@@ -943,11 +941,23 @@ class IlastikShell( QMainWindow ):
         
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
+            self.projectManager = ProjectManager( self._workflowClass)
         except Exception, e:
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            
+            # Add all the applets from the workflow
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                self.addApplet(index, app)
+            
+            
+            #load the project data from file
+            if importFromPath is None:
+                self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+            else:
+                assert not readOnly, "Can't import into a read-only file."
+                self._importProject(importFromPath, hdf5File, projectFilePath)
             
             #add file and workflow to users preferences
             mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
@@ -956,10 +966,11 @@ class IlastikShell( QMainWindow ):
             
             workflowName = self.projectManager.workflow.workflowName
             
-            projectAndWorkflow = (projectFilePath,workflowName)
-            if projectAndWorkflow in mostRecentProjectPaths:
-                mostRecentProjectPaths.remove(projectAndWorkflow)
-            mostRecentProjectPaths.insert(0,projectAndWorkflow)
+            for proj,work in mostRecentProjectPaths[:]:
+                if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
+                    mostRecentProjectPaths.remove((proj,work))
+            
+            mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
             
             #cut list of stored files at randomly chosen number of 5
             if len(mostRecentProjectPaths) > 5:
@@ -977,12 +988,8 @@ class IlastikShell( QMainWindow ):
             # By default, make the splitter control expose a reasonable width of the applet bar
             self.mainSplitter.setSizes([300,1])
             
-            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
-
-            # Add all the applets from the workflow
-            for index, app in enumerate(self.projectManager.workflow.applets):
-                self.addApplet(index, app)
-    
+            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)
+                
             self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
             self.updateShellProjectDisplay()
 
