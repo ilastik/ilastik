@@ -485,6 +485,17 @@ class OpCarving(Operator):
         
         self._dirtyObjects.add(name)
 
+
+    def getMaxUncertaintyPos(self, label):
+        # FIXME: currently working on
+        uncertainties = self._mst.uncertainty.lut
+        segmentation = self._mst.segmentation.lut
+        uncertainty_fg = numpy.where(segmentation == label, uncertainties, 0)
+        index_max_uncert = numpy.argmax(uncertainty_fg, axis = 0)
+        pos = self._mst.regionCenter[index_max_uncert, :]
+
+        return pos
+
     def execute(self, slot, subindex, roi, result):
         start = time.time()
         
