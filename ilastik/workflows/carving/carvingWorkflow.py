@@ -54,8 +54,6 @@ class CarvingWorkflow(Workflow):
         self._applets.append(self.preprocessingApplet)
         self._applets.append(self.carvingApplet)
         
-        
-
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -72,5 +70,4 @@ class CarvingWorkflow(Workflow):
         opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
         opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
         
-    def setCarvingGraphFile(self, fname):
-        self.carvingApplet.topLevelOperator.opCarving.CarvingGraphFile.setValue(fname)
+        self.preprocessingApplet.enableDownstream(False)

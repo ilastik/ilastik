@@ -28,16 +28,9 @@ class PreprocessingApplet(StandardApplet):
                 self._gui.enableReset(er)
     
     def enableDownstream(self,ed):
-        
-        try:
-            self.guiControlSignal.emit(ControlCommand.Pop)
-        except IndexError:
-            pass
-        '''
         if ed and not self._enabledDS: # enable Downstream 
             self._enabledDS = True
-            self.guiControlSignal.emit(ControlCommand.Pop)
-        '''    
+            self.guiControlSignal.emit(ControlCommand.Pop)  
         if not ed:# and self._enabledDS: # disable Downstream
             self._enabledDS = False
             self.guiControlSignal.emit(ControlCommand.DisableDownstream)
