@@ -122,6 +122,7 @@ class Request( object ):
         self.execution_complete = False
         self.finished_event = threading.Event()
         self.exception = None
+        self.exception_info = (None, None, None)
         self._cleaned = False
 
         # Execution
@@ -224,9 +225,8 @@ class Request( object ):
                 # The workload raised an exception.
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
-                traceback.print_exc()
-                self.exception_tb = traceback.format_exc() # Documentation warns of circular references here,
-                                                           #  but that should be okay for us.
+                self.exception_info = sys.exc_info()   # Documentation warns of circular references here,
+                                                        #  but that should be okay for us.
 
         # Guarantee that self.finished doesn't change while wait() owns self._lock
         with self._lock:
@@ -237,7 +237,7 @@ class Request( object ):
             if self.cancelled:
                 self._sig_cancelled()
             elif self.exception is not None:
-                self._sig_failed( self.exception )
+                self._sig_failed( self.exception, self.exception_info )
             else:
                 self._sig_finished(self._result)
 
@@ -380,7 +380,7 @@ class Request( object ):
             raise Request.InvalidRequestException()
         
         if self.exception is not None:
-            raise self.exception.__class__, self.exception, self.exception_tb 
+            raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
 
     def _wait_within_request(self, current_request):
         """
@@ -410,7 +410,7 @@ class Request( object ):
             if self.exception is not None:
                 # This request was already started and already failed.
                 # Simply raise the exception back to the current request.
-                raise self.exception.__class__, self.exception, self.exception_tb 
+                raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
 
             direct_execute_needed = not self.started
             suspend_needed = self.started and not self.execution_complete
@@ -452,7 +452,7 @@ class Request( object ):
         
         # Are we back because we failed?
         if self.exception is not None:
-            raise self.exception.__class__, self.exception, self.exception_tb 
+            raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
 
     def _handle_finished_request(self, request, *args):
         """
@@ -507,7 +507,9 @@ class Request( object ):
         Register a callback function to be called when this request is finished due to failure (an exception was raised).
         If we're already failed, call it now.
 
-        :param fn: The callback to call if the request fails.  Signature: fn(exception)
+        :param fn: The callback to call if the request fails.  Signature: fn(exception, exception_info)
+        exception_info is a tuple of (type, value, traceback). see python documentation on sys.exc_info() for
+        more documentation.
         """
         assert not self._cleaned, "This request has been cleaned() already."
         with self._lock:
@@ -519,7 +521,7 @@ class Request( object ):
 
         if finished and failed:
             # Call immediately
-            fn(self.exception)
+            fn(self.exception, self.exception_info)
 
     def cancel(self):
         """
