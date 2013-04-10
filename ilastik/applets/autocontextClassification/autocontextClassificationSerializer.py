@@ -5,8 +5,7 @@ import h5py
 import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent, slicingToString, stringToSlicing
 from ilastik.utility import bind
-from lazyflow.operators import OpH5WriterBigDataset
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
 
 import tempfile
