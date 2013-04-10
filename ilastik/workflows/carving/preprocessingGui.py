@@ -121,4 +121,7 @@ class PreprocessingGui(QMainWindow):
     def imageLaneRemoved(self,laneIndex,finalLength):
         pass
     def stopAndCleanUp(self):
-        pass
+        self.centralGui.stopAndCleanUp()
+        
+        
+        
