@@ -100,7 +100,7 @@
          <item row="1" column="0">
           <widget class="QLabel" name="brushSizeCaption">
            <property name="text">
-            <string>Brush Size:</string>
+            <string>brush size:</string>
            </property>
           </widget>
          </item>
