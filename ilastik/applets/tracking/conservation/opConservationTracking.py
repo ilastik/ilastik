@@ -77,14 +77,6 @@ class OpConservationTracking(OpTrackingBase):
         print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
         
-        means = []
-        sigma2s = []
-        meanVector = pgmlink.VectorOfDouble()
-        sigma2Vector = pgmlink.VectorOfDouble()
-        for m in means:
-            meanVector.append(m)
-        for s in sigma2s:
-            sigma2Vector.append(s)
             
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
@@ -100,8 +92,6 @@ class OpConservationTracking(OpTrackingBase):
                                          withDivisions,
                                          500.0, # disappearance cost
                                          500.0, # appearance cost
-                                         meanVector, # means vector
-                                         sigma2Vector # sigma2 vector
                                          )
         
         try:
