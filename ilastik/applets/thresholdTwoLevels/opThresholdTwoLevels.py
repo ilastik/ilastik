@@ -289,6 +289,9 @@ class OpThresholdTwoLevels(Operator):
     def setupOutputs(self):
         pass
         
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+    
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
     
