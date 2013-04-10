@@ -1,4 +1,5 @@
-#Pyhton
+#Python
+import copy
 from functools import partial
 
 #SciPy
@@ -489,6 +490,7 @@ class OpEnsembleMargin(Operator):
         self.Output.meta.shape = taggedShape.values()
 
     def execute(self, slot, subindex, roi, result):
+        roi = copy.copy(roi)
         taggedShape = self.Input.meta.getTaggedShape()
         chanAxis = self.Input.meta.axistags.index('c')
         roi.start[chanAxis] = 0
@@ -500,7 +502,8 @@ class OpEnsembleMargin(Operator):
 
         res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
         res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
-        return (1-res)
+        result[...] = (1-res)
+        return result 
 
     def propagateDirty(self, inputSlot, subindex, roi):
         chanAxis = self.Input.meta.axistags.index('c')
