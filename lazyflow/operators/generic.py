@@ -784,11 +784,27 @@ class OpTransposeSlots(Operator):
         # All outputs are directly connected to an input slot.
         pass
         
+class OpWrapSlot(Operator):
+    """
+    Adaptor for when you have a slot and you need to make it look like a multi-slot.
+    Converts a single slot into a multi-slot of len == 1 and level == 1
+    """
+    Input = InputSlot()
+    Output = OutputSlot(level=1)
 
+    def __init__(self, *args, **kwargs):
+        super(OpWrapSlot, self).__init__(*args, **kwargs)
+        self.Output.resize(1)
+        self.Output[0].connect( self.Input )
 
+    def setupOutputs(self):
+        pass
 
+    def execute(self, slot, subindex, roi, result):
+        assert False
 
-
+    def propagateDirty(self, inputSlot, subindex, roi):
+        pass
 
 
 
