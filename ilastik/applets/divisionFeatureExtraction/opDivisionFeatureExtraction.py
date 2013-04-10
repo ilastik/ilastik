@@ -3,7 +3,6 @@ import h5py
 import vigra.analysis
 import math
 import pgmlink
-from sklearn import mixture, cluster
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -69,7 +68,7 @@ class OpCellFeatures(Operator):
     size_filter_from_divfeat = 5
     with_uncorrected_features = True # plain features
     with_corrected_features = True  # the region centers are corrected by translation vector
-    with_cell_classification_features = True # features for cell classification
+    with_cell_classification_features = False # features for cell classification
     defaultSquaredDistance = 1000
     size_filter_from_cellfeat = 20
     bic_regularization = 0.05   
@@ -227,6 +226,8 @@ class OpCellFeatures(Operator):
     def extractCellClassificationFeatures(self, feats_at_cur, featurenames, ndim, size_filter_from=4,regularization_parameter = 0.1):
         ''' adds cell classification features to feats_at_cur '''
         
+        from sklearn import mixture, cluster
+
         for label_cur, vals in enumerate(feats_at_cur['Coord<ValueList >']):
             if label_cur == 0:
                 continue
