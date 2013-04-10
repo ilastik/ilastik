@@ -4,6 +4,7 @@ import os
 import math
 import logging
 import glob
+from collections import deque
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
