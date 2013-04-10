@@ -212,7 +212,7 @@ def runWorkflow(parsed_args):
 
         try:
             logger.info("Closing project...")
-            del shell
+            shell.closeCurrentProject()
         except:
             logger.error("Errors while closing project.")
     
