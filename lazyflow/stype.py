@@ -4,6 +4,8 @@ import warnings
 from roi import roiToSlice
 from lazyflow.utility.helpers import warn_deprecated
 
+import h5py
+
 class SlotType( object ):
     def __init__( self, slot):
         self.slot = slot
@@ -147,6 +149,11 @@ class ArrayLike( SlotType ):
         elif isinstance(result, list):
             s = roi.stop[0] - roi.start[0]
             assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d) for dimension %d" % (result.shape[d], s, d)
+        elif isinstance(result, h5py.Group):
+            # FIXME: this is a hack. the slot
+            # OpCompressedCache.OutputHdf5 is not really array-like,
+            # because it expects destinations of type h5py.Group.
+            pass
         else:
             assert False, "check_result_valid: result type is not supported"
 
