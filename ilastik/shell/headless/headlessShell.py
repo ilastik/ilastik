@@ -29,8 +29,9 @@ class HeadlessShell(object):
             
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, headless=True )
-
+            self.projectManager = ProjectManager( self._workflowClass, headless=True )
+            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
+            
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
             oldProjectFilePath = projectFilePath
@@ -43,5 +44,6 @@ class HeadlessShell(object):
 
             # Create the project manager.
             # Here, we provide an additional parameter: the path of the project we're importing from. 
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly=False, importFromPath=oldProjectFilePath, headless=True )
+            self.projectManager = ProjectManager( self._workflowClass, importFromPath=oldProjectFilePath, headless=True )
+            self.projectManager._importProject(importFromPath, hdf5File, projectFilePath,readOnly = False)
 
