@@ -71,7 +71,9 @@ class PreprocessingGui(QMainWindow):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
     
     @threadRouted 
-    def onFailed(self, exception):
+    def onFailed(self, exception, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
         QMessageBox.critical(self, "error", str(exception))
     
     def handleRunButtonClicked(self):

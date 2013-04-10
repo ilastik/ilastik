@@ -406,7 +406,9 @@ class DataSelectionGui(QWidget):
         req.submit()
 
     @threadRouted
-    def handleFailedStackLoad(self, globString, exc):
+    def handleFailedStackLoad(self, globString, exc, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
         msg = "Failed to load stack: {}\n".format(globString)
         msg += "Due to the following error:\n{}".format( exc )
         QMessageBox.critical(self, "Failed to load image stack", msg)
