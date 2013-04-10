@@ -85,8 +85,7 @@ if __name__ == "__main__":
         def loadProject(shell):
             shell.openProjectFile(projectFilename)
 
-        workflowKwargs={'carvingGraphFile': carvingGraphFilename,
-                        'hintoverlayFile' : options.hintoverlayFile,
+        workflowKwargs={'hintoverlayFile' : options.hintoverlayFile,
                         'pmapoverlayFile' : options.pmapoverlayFile }
         startShellGui( functools.partial(CarvingWorkflow, **workflowKwargs), loadProject)
     else:

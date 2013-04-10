@@ -53,9 +53,7 @@ class PreprocessingSerializer( AppletSerializer ):
                     raise RuntimeError("Could not find data at " + filePath)
                 filePath = self.repairFile(filePath,"*.h5")
             graphgroup = h5py.File(filePath,"r")["graph"]
-                
             
-        
         for opPre in self._o.innerOperators:
             
             opPre.initialSigma = sigma
@@ -72,7 +70,6 @@ class PreprocessingSerializer( AppletSerializer ):
             
             opPre.PreprocessedData.setDirty()
             opPre.enableDownstream(True)
-            
            
     def isDirty(self):
         for opPre in self._o.innerOperators:            
