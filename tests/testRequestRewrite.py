@@ -368,7 +368,7 @@ class TestRequest(object):
         
         failed_ids = []
         lock = threading.Lock()
-        def handle_failed_req(req_id, failure_exc):
+        def handle_failed_req(req_id, failure_exc, exc_info):
             assert isinstance(failure_exc, CustomRuntimeError)
             with lock:
                 failed_ids.append(req_id)
@@ -597,7 +597,7 @@ class TestRequestExceptions(object):
         req3 = Request(wait_for_req1)
 
         signaled_exceptions = []
-        def failure_handler(ex):
+        def failure_handler(ex, exc_info):
             signaled_exceptions.append(ex)
             
         req2.notify_failed( failure_handler )
