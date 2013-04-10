@@ -4,6 +4,7 @@ import glob
 
 from PyQt4.QtGui import QDialog, QFileDialog
 from PyQt4 import uic
+from ilastik.config import cfg as ilastik_config
 
 class MassFileLoader(QDialog):
 
@@ -32,7 +33,9 @@ class MassFileLoader(QDialog):
             self.filenames = glob.glob(os.path.join(directory, pattern))
 
     def handleDirectoryButtonClicked(self):
-        options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |=  QFileDialog.DontUseNativeDialog
         directoryName = QFileDialog.getExistingDirectory(self,
                                                          "Base Directory",
                                                          self.defaultDirectory,
