@@ -225,8 +225,8 @@ class Request( object ):
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
                 traceback.print_exc()
-                self.exception_tb = sys.exc_traceback # Documentation warns of circular references here,
-                                                      #  but that should be okay for us.
+                self.exception_tb = traceback.format_exc() # Documentation warns of circular references here,
+                                                           #  but that should be okay for us.
 
         # Guarantee that self.finished doesn't change while wait() owns self._lock
         with self._lock:
