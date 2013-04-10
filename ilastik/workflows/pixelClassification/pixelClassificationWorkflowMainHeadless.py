@@ -123,7 +123,7 @@ def runWorkflow(parsed_args):
                 assert result
     finally:
         logger.info("Closing project...")
-        del shell
+        shell.closeCurrentProject()
 
     logger.info("FINISHED.")
         
