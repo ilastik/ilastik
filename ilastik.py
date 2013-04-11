@@ -9,6 +9,7 @@ import threading
 import sys
 from functools import partial
 from PyQt4.QtGui import QApplication
+from ilastik.config import cfg as ilastik_config
 
 def install_thread_excepthook():
     """
@@ -36,6 +37,7 @@ parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an un
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 parser.add_argument('--project', nargs='?', help='A project file to open on startup.')
 parser.add_argument('--workflow', help='A project file to open on startup.', default = None)
+parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
 
 
 parsed_args = parser.parse_args()
@@ -70,6 +72,12 @@ if parsed_args.exit_on_failure:
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
     install_thread_excepthook()
+
+if parsed_args.debug:
+    ilastik_config.set('ilastik', 'debug', 'true')
+    
+if ilastik_config.getboolean("ilastik", "debug"):
+    print "Starting ilastik in debug mode."
 
 workflowClass = getWorkflowFromName(parsed_args.workflow)
 sys.exit(startShellGui(workflowClass,*init_funcs))
