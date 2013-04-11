@@ -342,12 +342,12 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
-        self.opSegementor = OpMaxChannelIndicatorOperator( parent=self )
-        self.opSegementor.Input.connect( self.precomputed_predictions_gui.Output )
+        self.opSegmentor = OpMaxChannelIndicatorOperator( parent=self )
+        self.opSegmentor.Input.connect( self.precomputed_predictions_gui.Output )
 
         self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
         self.opSegmentationSlicer.name = "opSegmentationSlicer"
-        self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
+        self.opSegmentationSlicer.Input.connect( self.opSegmentor.Output )
         self.opSegmentationSlicer.AxisFlag.setValue('c')
         self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
 

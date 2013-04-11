@@ -217,7 +217,7 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(predictLayer)
 
 
-        # Add each of the segementations
+        # Add each of the segmentations
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
