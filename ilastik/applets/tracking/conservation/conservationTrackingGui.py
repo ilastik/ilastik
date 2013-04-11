@@ -71,6 +71,10 @@ class ConservationTrackingGui( TrackingGuiBase ):
         transWeight = self._drawer.transWeightBox.value()
         withDivisions = self._drawer.divisionsBox.isChecked()        
         withOpticalCorrection = self._drawer.opticalBox.isChecked()
+
+        ndim=3
+        if (to_z - from_z == 0):
+            ndim=2
         
         try:
             self.mainOperator.track(
@@ -92,7 +96,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 transWeight=transWeight,
                 withDivisions=withDivisions,
                 withOpticalCorrection=withOpticalCorrection,
-                withClassifierPrior=classifierPrior
+                withClassifierPrior=classifierPrior,
+                ndim=ndim
                 )
         except Exception:            
             ex_type, ex, tb = sys.exc_info()

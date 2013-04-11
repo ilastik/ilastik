@@ -49,7 +49,8 @@ class OpConservationTracking(OpTrackingBase):
             withDivisions=True,
             withOpticalCorrection=True,
             withCoordinateList=True,
-            withClassifierPrior=False
+            withClassifierPrior=False,
+            ndim=3
             ):
         
         if withClassifierPrior:
@@ -93,7 +94,8 @@ class OpConservationTracking(OpTrackingBase):
                                          withDivisions,
                                          500.0, # disappearance cost
                                          500.0, # appearance cost
-                                         with_merger_resolution)
+                                         with_merger_resolution,
+                                         ndim)
         
         try:
             self.events = tracker(ts)
