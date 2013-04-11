@@ -17,6 +17,7 @@ except:
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
+from ilastik.widgets.viewerControls import ViewerControls
 
 import vigra
 import numpy as np
@@ -199,15 +200,7 @@ class ObjectExtractionGui(QWidget):
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)
-
-        # Connect our layer movement buttons to the appropriate layerstack actions
-        self._viewerControlWidget.layerWidget.init(model)
-        self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-        self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-        self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+        self._viewerControlWidget.setupConnections(model)
 
         self.editor._lastImageViewFocus = 0
 
@@ -219,9 +212,7 @@ class ObjectExtractionGui(QWidget):
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
 
     def _initViewerControlUi(self):
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+        self._viewerControlWidget = ViewerControls(self)
 
     def _selectFeaturesButtonPressed(self):
         featureDict = {}

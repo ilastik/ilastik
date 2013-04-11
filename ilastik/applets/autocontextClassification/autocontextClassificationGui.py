@@ -122,18 +122,10 @@ class AutocontextClassificationGui(LabelingGui):
         self._viewerControlUi.pauseUpdateButton.setEnabled(True)
         self._viewerControlUi.pauseUpdateButton.setIcon( QIcon(ilastikIcons.Pause) )
         self._viewerControlUi.pauseUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
+        
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self._viewerControlUi.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self._viewerControlUi.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self._viewerControlUi.DeleteButton.setEnabled)
-
-        # Connect our layer movement buttons to the appropriate layerstack actions
-        self._viewerControlUi.layerWidget.init(model)
-        self._viewerControlUi.UpButton.clicked.connect(model.moveSelectedUp)
-        self._viewerControlUi.DownButton.clicked.connect(model.moveSelectedDown)
-        self._viewerControlUi.DeleteButton.clicked.connect(model.deleteSelected)
+        self._viewerControlUi.viewerControls.setupConnections(model)
 
     @traceLogged(traceLogger)
     def setupLayers(self):
