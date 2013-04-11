@@ -37,8 +37,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
             cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
                 region_features_arr = self.outslot[i]( *roi ).wait()
-                assert region_features_arr.shape == (1,1)
-                region_features = region_features_arr[0,0]
+                assert region_features_arr.shape == (1,)
+                region_features = region_features_arr[0]
                 roi_grp = subgroup.create_group(name=str(roi))
                 logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
                 for key, val in region_features.iteritems():
@@ -60,7 +60,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
                     region_features[key] = val[...]
                 
                 slicing = roiToSlice( *roi )
-                self.inslot[i][slicing] = numpy.array( [[region_features]] )
+                self.inslot[i][slicing] = numpy.array([region_features])
         
         self.dirty = False
 

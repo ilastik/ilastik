@@ -50,14 +50,13 @@ class OpRegionFeatures3d(Operator):
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
         if 't' in taggedOutputShape.keys():
             assert taggedOutputShape['t'] == 1
-        if 'c' in taggedOutputShape.keys():
-            assert taggedOutputShape['c'] == 1
-        assert set(taggedOutputShape.keys()) - set('t') == set('xyzc'), "Input volumes must have xyzt axes."
+        assert set(taggedOutputShape.keys()) - set('t') == set('xyzc'), "Input volumes must have xyzc axes."
 
-        # Remove the spatial dims (keep t and c, if present)
+        # Remove the spatial dims (keep t if present)
         del taggedOutputShape['x']
         del taggedOutputShape['y']
         del taggedOutputShape['z']
+        del taggedOutputShape['c']
 
         self.Output.meta.shape = tuple(taggedOutputShape.values())
         self.Output.meta.axistags = vigra.defaultAxistags("".join(taggedOutputShape.keys()))
@@ -170,7 +169,6 @@ class OpRegionFeatures3d(Operator):
         slc3d = [slice(None)] * 4 # FIXME: do not hardcode
         slc3d[axes.c] = 0
 
-        assert labels.shape[axes.c] == 1
         labels = labels[slc3d]
 
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
@@ -318,7 +316,7 @@ class OpCachedRegionFeatures(Operator):
 
     # Schematic:
     #
-    # RawImage -----   blockshape=(t,c)=(1,1)
+    # RawImage -----   blockshape=(t,)=(1,)
     #               \                        \
     # LabelImage ----> OpRegionFeatures ----> OpArrayCache --> Output
     #                                                     \
@@ -352,6 +350,7 @@ class OpCachedRegionFeatures(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput
         slicing = roiToSlice(roi.start, roi.stop)
+        import util; util.set_trace()
         self._opCache.Input[ slicing ] = value
 
     def execute(self, slot, subindex, roi, destination):
@@ -391,8 +390,11 @@ class OpAdaptTimeListRoi(Operator):
             stop = taggedShape.values()
             start[timeIndex] = t
             stop[timeIndex] = t + 1
+
             #FIXME: why is it wrapped like this?
-            result[t] = self.Input(start, stop).wait()[0, 0]
+            val = self.Input(start, stop).wait()
+            assert val.shape == (1,)
+            result[t] = val[0]
 
         return result
 
@@ -458,7 +460,7 @@ class OpObjectExtraction(Operator):
 
     BlockwiseRegionFeatures = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
                                            # has rtype=List, indexed by t.
-                                           # For other workflows, output has rtype=ArrayLike, indexed by (t,c)
+                                           # For other workflows, output has rtype=ArrayLike, indexed by (t)
 
     LabelInputHdf5 = InputSlot(optional=True)
     LabelOutputHdf5 = OutputSlot()
@@ -494,6 +496,8 @@ class OpObjectExtraction(Operator):
         self._opRegFeats.LabelImage.connect(self._opLabelImage.Output)
         self._opRegFeats.Features.connect(self.Features)
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
+
+        self._opRegFeats.CacheInput.connect(self.RegionFeaturesCacheInput)
 
         self._opRegFeatsAdaptOutput.Input.connect(self._opRegFeats.Output)
 
