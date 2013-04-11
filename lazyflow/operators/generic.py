@@ -753,36 +753,6 @@ class OpMultiInputConcatenater(Operator):
         # All outputs are directly connected to an input slot.
         pass
 
-class OpTransposeSlots(Operator):
-    """
-    Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
-    Note: Only works for a slot of level 2.
-    """
-    Inputs = InputSlot(level=2)
-    Outputs = OutputSlot(level=2)
-            
-    def setupOutputs(self):
-        minSize = None
-        for i, mslot in enumerate( self.Inputs ):
-            if minSize is None:
-                minSize = len(mslot)
-            else:
-                minSize = min( minSize, len(mslot) ) 
-        
-        self.Outputs.resize(minSize)
-        for j, mslot in enumerate( self.Outputs ):
-            mslot.resize( len(self.Inputs) )
-            for i, oslot in enumerate( mslot ):
-                oslot.connect( self.Inputs[i][j] )
-
-    def execute(self, slot, subindex, roi, result):
-        # Should never be called.  All output slots are directly connected to an input slot.
-        assert False
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        # Nothing to do here.
-        # All outputs are directly connected to an input slot.
-        pass
         
 class OpWrapSlot(Operator):
     """
