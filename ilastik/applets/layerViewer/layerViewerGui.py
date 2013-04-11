@@ -147,7 +147,7 @@ class LayerViewerGui(QWidget):
         self.__viewerControlWidget = None
         if not centralWidgetOnly:
             self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-            self._drawer = QWidget( self )
+            #self._drawer = QWidget( self )
             self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
         
     def _after_init(self):
