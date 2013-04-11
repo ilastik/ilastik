@@ -20,8 +20,9 @@ class HeadlessShell(object):
     def createBlankProjectFile(self, projectFilePath):
         hdf5File = ProjectManager.createBlankProjectFile(projectFilePath)
         readOnly = False
-        self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, headless=True )
-
+        self.projectManager = ProjectManager( self._workflowClass,  headless=True )
+        self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+        
     def openProjectPath(self, projectFilePath):
         try:
             # Open the project file
@@ -47,3 +48,7 @@ class HeadlessShell(object):
             self.projectManager = ProjectManager( self._workflowClass, importFromPath=oldProjectFilePath, headless=True )
             self.projectManager._importProject(importFromPath, hdf5File, projectFilePath,readOnly = False)
 
+    def closeCurrentProject(self):
+        self.projectManager._closeCurrentProject()
+        self.projectManager.cleanUp()
+        self.projectManager = None

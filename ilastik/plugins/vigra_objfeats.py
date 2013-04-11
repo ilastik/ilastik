@@ -2,14 +2,6 @@ from ilastik.plugins import ObjectFeaturesPlugin
 import vigra
 import numpy as np
 from lazyflow.request import Request, RequestPool
-from functools import partial
-
-def update_keys(d, prefix=None, suffix=None):
-    if prefix is None:
-        prefix = ''
-    if suffix is None:
-        suffix = ''
-    return dict((prefix + k + suffix, v) for k, v in d.items())
 
 def cleanup_key(k):
     return k.replace(' ', '')
@@ -65,33 +57,18 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         names = set(names).difference(self.excluded_features)
         return names
 
-    def execute(self, image, labels, features):
-        features = list(set(features).intersection(self.global_features))
-        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+    def _do_3d(self, image, labels, features, axes, *args, **kwargs):
+        image = np.asarray(image, dtype=np.float32)
+        labels = np.asarray(labels, dtype=np.uint32)
+        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0,
+                                                      histogramRange=[0, 255], binCount=10)
         return cleanup(result, 0 in labels, True, features)
 
-    def execute_local(self, image, features, axes, min_xyz, max_xyz,
-                      rawbbox, passed, ccbboxexcl, ccbboxobject):
+    def compute_global(self, image, labels, features, axes):
+        features = list(set(features).intersection(self.global_features))
+        return self.do_channels(image, labels, features, axes, self._do_3d)
+
+    def compute_local(self, image, label_bboxes, features, axes, mins, maxs):
         features = list(set(features).difference(self.global_features))
-        labeled_bboxes = [passed, ccbboxexcl, ccbboxobject]
-        feats = [None, None, None]
-        pool = RequestPool()
-        rawbbox = np.asarray(rawbbox, dtype=np.float32)
-        labeled_bboxes = list(np.asarray(bbox, dtype=np.uint32) for bbox in labeled_bboxes)
-        for ibox, bbox in enumerate(labeled_bboxes):
-            def extractObjectFeatures(ibox):
-                feats[ibox] = vigra.analysis.extractRegionFeatures(rawbbox,
-                                                                   bbox,
-                                                                   features,
-                                                                   histogramRange=[0, 255],
-                                                                   binCount = 10,
-                                                                   ignoreLabel=0)
-            req = pool.request(partial(extractObjectFeatures, ibox))
-        pool.wait()
-
-        result = {}
-        feats[0] = update_keys(feats[0], suffix='_incl')
-        feats[1] = update_keys(feats[1], suffix='_excl')
-
-        feats = list(cleanup(f, 0 in labels, False, features) for f, labels in zip(feats, labeled_bboxes))
-        return dict(sum((d.items() for d in feats), []))
+        return self.do_channels_local(image, label_bboxes, features, axes,
+                                      mins, maxs, self._do_3d)
