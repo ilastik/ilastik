@@ -102,7 +102,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None, headless=False):
+    def __init__(self, workflowClass, headless=False):
         """
         Constructor.
         
@@ -125,17 +125,11 @@ class ProjectManager(object):
         #the workflow class has to be specified at this point
         assert workflowClass is not None
         self.workflow = workflowClass(headless=headless)
-
-        if importFromPath is None:
-            # Normal load        
-            self._loadProject(hdf5File, projectFilePath, readOnly)
-        else:
-            assert not readOnly, "Can't import into a read-only file."
-            self._importProject(importFromPath, hdf5File, projectFilePath)
-
-    def __del__(self):
+    
+    
+    def cleanUp(self):
         """
-        Destructor.  Closes the project file.
+        Should be called when the Projectmanager is canceled. Closes the project file.
         """
         try:
             self._closeCurrentProject()

@@ -1,6 +1,7 @@
 #Python
 import os
 import logging
+import traceback
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -71,7 +72,9 @@ class PreprocessingGui(QMainWindow):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
     
     @threadRouted 
-    def onFailed(self, exception):
+    def onFailed(self, exception, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
         QMessageBox.critical(self, "error", str(exception))
     
     def handleRunButtonClicked(self):
@@ -119,4 +122,7 @@ class PreprocessingGui(QMainWindow):
     def imageLaneRemoved(self,laneIndex,finalLength):
         pass
     def stopAndCleanUp(self):
-        pass
+        self.centralGui.stopAndCleanUp()
+        
+        
+        

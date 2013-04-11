@@ -74,7 +74,7 @@ class OpCarving(Operator):
     #Pmap Overlay
     PmapOverlay = OutputSlot()
 
-    def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
+    def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
         self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
@@ -140,13 +140,6 @@ class OpCarving(Operator):
             assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
             self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         print ""
-    
-    '''
-    def setCarvingGraphFile(self,path):
-        self.CarvingGraphFile.setValue(path)
-        self._mst = MSTSegmentor.loadH5(path,  "graph")
-        print self._mst
-    '''
     
     def dataIsStorable(self):
         lut_seeds = self._mst.seeds.lut[:]
@@ -484,6 +477,17 @@ class OpCarving(Operator):
         self.Trigger.setDirty(slice(None))
         
         self._dirtyObjects.add(name)
+
+
+    def getMaxUncertaintyPos(self, label):
+        # FIXME: currently working on
+        uncertainties = self._mst.uncertainty.lut
+        segmentation = self._mst.segmentation.lut
+        uncertainty_fg = numpy.where(segmentation == label, uncertainties, 0)
+        index_max_uncert = numpy.argmax(uncertainty_fg, axis = 0)
+        pos = self._mst.regionCenter[index_max_uncert, :]
+
+        return pos
 
     def execute(self, slot, subindex, roi, result):
         start = time.time()

@@ -4,6 +4,7 @@ from PyQt4.QtCore import pyqtSlot
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
+from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 
 import os
 import numpy
@@ -23,9 +24,6 @@ from volumina.api import \
     ClickableColortableLayer, LazyflowSinkSource
 
 from volumina.interpreter import ClickInterpreter
-
-from ilastik.applets.objectExtraction import config
-
 
 class ObjectClassificationGui(LabelingGui):
 
@@ -185,7 +183,7 @@ class ObjectClassificationGui(LabelingGui):
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 layers.insert(0, probLayer)
-                
+
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
@@ -203,7 +201,7 @@ class ObjectClassificationGui(LabelingGui):
             layer = self.createStandardLayerFromSlot(rawSlot)
             layer.name = "Raw data"
             layers.append(layer)
-        
+
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
         # __init__(), but it does not take effect there.
@@ -270,7 +268,7 @@ class ObjectClassificationGui(LabelingGui):
         label = self.editor.brushingModel.drawnNumber
         if label == self.editor.brushingModel.erasingNumber:
             label = 0
-        
+
         topLevelOp = self.topLevelOperatorView.viewed_operator()
         imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 
@@ -298,20 +296,6 @@ class ObjectClassificationGui(LabelingGui):
             else:
                 label = "none"
 
-            feats = self.op.ObjectFeatures([t]).wait()[t]
-            vector = []
-            names = []
-            for i, channel in enumerate(feats):
-                for featname in sorted(channel.keys()):
-                    value = channel[featname]
-                    if not featname in config.selected_features:
-                        continue
-                    ft = numpy.asarray(value.squeeze())[obj]
-                    vector.append(ft)
-                    names.append("{} {}".format(featname, i))
-            
-            #vector = numpy.array(vector)
-
             preds = self.op.Predictions([t]).wait()[t]
             if len(preds) < obj:
                 pred = 'none'
@@ -329,12 +313,17 @@ class ObjectClassificationGui(LabelingGui):
             print "------------------------------------------------------------"
             print "object:         {}".format(obj)
             print "label:          {}".format(label)
-            print "feature values: {}".format(vector)
-            print "features names: {}".format(names)
             print "probabilities:  {}".format(prob)
             print "prediction:     {}".format(pred)
-           
-            
+
+            print 'features:'
+            feats = self.op.ObjectFeatures([t]).wait()[t]
+            featnames = feats[0].keys()
+            for featname in featnames:
+                print "{}:".format(featname)
+                value = channel[featname]
+                ft = numpy.asarray(value.squeeze())[obj]
+                print ft
             print "------------------------------------------------------------"
             
     def setVisible(self, visible):

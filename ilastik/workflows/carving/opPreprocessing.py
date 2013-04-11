@@ -22,7 +22,7 @@ class OpPreprocessing(Operator):
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
     
-    #Image after preprocess
+    #Image after preprocess as cylemon.MST
     PreprocessedData = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -54,7 +54,6 @@ class OpPreprocessing(Operator):
         self._checkMeta(self.RawData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
-        self.enableDownstream(False)
         
     def propagateDirty(self,slot,subindex,roi):
         if slot == self.RawData:

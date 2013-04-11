@@ -1,6 +1,5 @@
 from opDataSelection import OpDataSelection, DatasetInfo
-from lazyflow.operators.ioOperators import OpStackToH5Writer
-from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
 
 import os
 import copy

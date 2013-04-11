@@ -60,6 +60,21 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.clicked.connect(onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
+        def onUncertaintyFGButton():
+            print "uncertFG button clicked"
+            pos = self.topLevelOperatorView.opCarving.getMaxUncertaintyPos(label=2)
+            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
+        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
+
+        def onUncertaintyBGButton():
+            print "uncertBG button clicked"
+            pos = self.topLevelOperatorView.opCarving.getMaxUncertaintyPos(label=1)
+            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
+        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+
+
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
             self.topLevelOperatorView.opCarving.BackgroundPriority.setValue(value)

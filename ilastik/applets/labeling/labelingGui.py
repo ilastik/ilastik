@@ -202,17 +202,10 @@ class LabelingGui(LayerViewerGui):
                              Tool.Paint      : _labelControlUi.paintToolButton,
                              Tool.Erase      : _labelControlUi.eraserToolButton }
 
-        self.brushSizes = [ (1,  ""),
-                            (3,  "Tiny"),
-                            (5,  "Small"),
-                            (7,  "Medium"),
-                            (11, "Large"),
-                            (23, "Huge"),
-                            (31, "Megahuge"),
-                            (61, "Gigahuge") ]
+        self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
 
-        for size, name in self.brushSizes:
-            _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
+        for size in self.brushSizes:
+            _labelControlUi.brushSizeComboBox.addItem( str(size) )
 
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
 
@@ -371,7 +364,7 @@ class LabelingGui(LayerViewerGui):
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-                brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
+                brushSize = self.brushSizes[self.paintBrushSizeIndex]
                 self.editor.brushingModel.setBrushSize(brushSize)
                 # update GUI 
                 self._gui_setBrushing()
@@ -381,7 +374,7 @@ class LabelingGui(LayerViewerGui):
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
                 # Set the brushing size
-                eraserSize = self.brushSizes[self.eraserSizeIndex][0]
+                eraserSize = self.brushSizes[self.eraserSizeIndex]
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI 
                 self._gui_setErasing()
@@ -424,7 +417,7 @@ class LabelingGui(LayerViewerGui):
               However, we maintain two different sizes for the user and swap
               them depending on which tool is selected.
         """
-        newSize = self.brushSizes[index][0]
+        newSize = self.brushSizes[index]
         if self.editor.brushingModel.erasing:
             self.eraserSizeIndex = index
             self.editor.brushingModel.setBrushSize(newSize)

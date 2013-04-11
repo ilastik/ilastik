@@ -1,19 +1,97 @@
-from PyQt4.QtGui import QWidget, QColor, QProgressDialog
+from PyQt4.QtGui import QWidget, QColor, QProgressDialog, QTreeWidgetItem, QMessageBox
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QString
+from PyQt4.QtCore import Qt, QString, QVariant
 
 from lazyflow.rtype import SubRegion
 import os
+from collections import defaultdict
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+try:
+    from ilastik.plugins import pluginManager
+except:
+    print "Warning: could not import pluginManager"
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
+import vigra
+import numpy as np
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
+from PyQt4 import uic
+
+class FeatureSelectionDialog(QDialog):
+
+    def __init__(self, featureDict, selectedFeatures=None, parent=None):
+        QDialog.__init__(self, parent)
+        self.featureDict = featureDict
+        if selectedFeatures is None or len(selectedFeatures) == 0:
+            selectedFeatures = defaultdict(list)
+        self.selectedFeatures = selectedFeatures
+        self.setWindowTitle("Object Features")
+        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/featureSelection.ui")
+        self.ui = ui_class()
+        self.ui.setupUi(self)
+        self.ui.buttonBox.accepted.connect(self.accept)
+        self.ui.buttonBox.rejected.connect(self.reject)
+
+        self.ui.allButton.pressed.connect(self.handleAll)
+        self.ui.noneButton.pressed.connect(self.handleNone)
+
+        self.ui.treeWidget.clicked.connect(self.handleClick)
+
+        self.ui.treeWidget.setColumnCount(1)
+        for pluginName, features in featureDict.iteritems():
+            parent = QTreeWidgetItem(self.ui.treeWidget)
+            parent.setText(0, pluginName)
+            parent.setExpanded(True)
+            for name in sorted(features):
+                item = QTreeWidgetItem(parent)
+                item.setText(0, name)
+                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                if name in self.selectedFeatures[pluginName]:
+                    item.setCheckState(0, Qt.Checked)
+                else:
+                    item.setCheckState(0, Qt.Unchecked)
+
+    def handleClick(self, index):
+        item = self.ui.treeWidget.itemFromIndex(index)
+        state = item.checkState(0)
+        if state == Qt.Checked:
+            item.setCheckState(0, Qt.Unchecked)
+        else:
+            item.setCheckState(0, Qt.Checked)
+
+    def accept(self):
+        QDialog.accept(self)
+        selectedFeatures = defaultdict(list)
+        root = self.ui.treeWidget.invisibleRootItem()
+        for parent in root.takeChildren():
+            feats = list(str(item.text(0)) for item in parent.takeChildren()
+                         if item.checkState(0) == Qt.Checked)
+            if len(feats) > 0:
+                selectedFeatures[str(parent.text(0))] = feats
+        self.selectedFeatures = selectedFeatures
+
+    def _setAll(self, val):
+        root = self.ui.treeWidget.invisibleRootItem()
+        for parent_id in range(root.childCount()):
+            parent = root.child(parent_id)
+            for child_id in range(parent.childCount()):
+                child = parent.child(child_id)
+                child.setCheckState(0, val)
+
+    def handleAll(self):
+        self._setAll(Qt.Checked)
+
+    def handleNone(self):
+        self._setAll(Qt.Unchecked)
 
 
 class ObjectExtractionGui(QWidget):
@@ -55,7 +133,6 @@ class ObjectExtractionGui(QWidget):
         self._initAppletDrawerUi()
         assert(self.appletDrawer() is not None)
         self._initViewer()
-
 
     def _onMetaChanged(self, slot):
         if slot is self.mainOperator.BinaryImage:
@@ -147,16 +224,43 @@ class ObjectExtractionGui(QWidget):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
-        self._drawer.calculateFeaturesButton.pressed.connect(self._calculateFeaturesButtonPressed)
+        self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
 
     def _initViewerControlUi(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
-    def _calculateFeaturesButtonPressed(self):
+    def _selectFeaturesButtonPressed(self):
+        featureDict = {}
+        slot = self.mainOperator.Features
+        if slot.ready():
+            selectedFeatures = self.mainOperator.Features([]).wait()
+        else:
+            selectedFeatures = None
+
+        try:
+            plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
+        except:
+            QMessageBox.warning(self,
+                                'object features unavailable',
+                                'Object features plugins failed. Perhaps Yapsy is not installed?',
+                                QMessageBox.Ok)
+            return
+
+        for pluginInfo in plugins:
+            featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures()
+        dlg = FeatureSelectionDialog(featureDict=featureDict,
+                                     selectedFeatures=selectedFeatures)
+        dlg.exec_()
+
+        if dlg.result() == QDialog.Accepted:
+            self.mainOperator.Features.setValue(dlg.selectedFeatures)
+            self._calculateFeatures()
+
+    def _calculateFeatures(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]
-        progress = QProgressDialog("Calculating featuers...", "Stop", 0, maxt)
+        progress = QProgressDialog("Calculating features...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())

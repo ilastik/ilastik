@@ -348,24 +348,11 @@ class DataSelectionGui(QWidget):
         """
         extensions = OpDataSelection.SupportedExtensions
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
-        dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
-        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
+        options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            dlg.setOption( QFileDialog.DontUseNativeDialog, True )
-        dlg.setViewMode( QFileDialog.Detail )
-        dlg.setFileMode( QFileDialog.ExistingFiles )
-
-        if True: # FIXME: Test scripts can't allow modal dialogs
-            dlg.show()
-            if dlg.result() == QDialog.Accepted:
-                fileNames = dlg.selectedFiles()
-            else:
-                fileNames = []
-        if dlg.exec_():
-            fileNames = dlg.selectedFiles()
-        else:
-            fileNames = []
-
+            options |=  QFileDialog.DontUseNativeDialog
+        fileNames = QFileDialog.getOpenFileNames( self, "Select Images", 
+                                 defaultDirectory, filt, options=options )
         # Convert from QtString to python str
         fileNames = [str(s) for s in fileNames]
         return fileNames
@@ -406,7 +393,9 @@ class DataSelectionGui(QWidget):
         req.submit()
 
     @threadRouted
-    def handleFailedStackLoad(self, globString, exc):
+    def handleFailedStackLoad(self, globString, exc, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
         msg = "Failed to load stack: {}\n".format(globString)
         msg += "Due to the following error:\n{}".format( exc )
         QMessageBox.critical(self, "Failed to load image stack", msg)

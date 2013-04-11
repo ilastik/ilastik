@@ -1,8 +1,7 @@
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialClassifierSlot, \
     SerialBlockSlot, SerialListSlot
-from lazyflow.operators import OpH5WriterBigDataset
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
 from ilastik.utility.simpleSignal import SimpleSignal
 

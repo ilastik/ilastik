@@ -102,7 +102,7 @@ class ProgressDisplayManager(QObject):
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
     
-    def __del__(self):
+    def cleanUp(self):
         # Disconnect everything
         self.dispatchSignal.disconnect()
         if self.progressBar is not None:
@@ -305,8 +305,6 @@ class IlastikShell( QMainWindow ):
         
         self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         
-        #svgRenderer = QSvgWidget(localDir + "/ilastik-logo-alternate-colors.svg",self.startscreen.graphicsView)
-        #svgRenderer.setMaximumSize(QSize(288,410))
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
         self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
@@ -338,7 +336,12 @@ class IlastikShell( QMainWindow ):
                 #parse path
                 b.setToolTip(path)
                 compressedpath = compressPathForDisplay(path,50)
-                b.setText(compressedpath)
+                if len(workflow)>30:
+                    compressedworkflow = workflow[:27]+"..."
+                else:
+                    compressedworkflow = workflow
+                text = "{0} ({1})".format(compressedpath,compressedworkflow)
+                b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
                 self.startscreen.VL2.addWidget(b,2)
                 buttons.append(b)
@@ -360,8 +363,8 @@ class IlastikShell( QMainWindow ):
             b.setFixedSize(QSize(m,20))
     
     def openFileAndCloseStartscreen(self,path):
-        self.startscreen.setParent(None)
-        del self.startscreen
+        #self.startscreen.setParent(None)
+        #del self.startscreen
         self.openProjectFile(path)
     
     def _createHelpMenu(self):
@@ -413,7 +416,7 @@ class IlastikShell( QMainWindow ):
             defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
-
+        
         svgPath = QFileDialog.getSaveFileName(
            self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
@@ -623,13 +626,10 @@ class IlastikShell( QMainWindow ):
     def onCloseActionTriggered(self):
         if not self.confirmQuit():
             return
+        if not self.ensureNoCurrentProject():
+            return
         self.closeCurrentProject()
-        self.projectManager = None # Destroy project manager
-        # Stop the thread that checks for log config changes.
-        ilastik.ilastik_logging.stopUpdates()
-        self._loaduifile()
         self.mainStackedWidget.setCurrentIndex(0)
-        
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
@@ -726,7 +726,7 @@ class IlastikShell( QMainWindow ):
 
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
-
+        
         return applet_index
 
     def removeAllAppletWidgets(self):
@@ -752,6 +752,7 @@ class IlastikShell( QMainWindow ):
         A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
         If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
         """
+        
         if command == ControlCommand.Pop:
             command = self._controlCmds[applet_index].pop()
             step = -1 # Since we're popping this command, we'll subtract from the disable counts
@@ -809,19 +810,18 @@ class IlastikShell( QMainWindow ):
         
         fileSelected = False
         while not fileSelected:
-            dlg = QFileDialog(self, caption, defaultPath, "Ilastik project files (*.ilp)")
-            dlg.setObjectName("CreateProjectFileDlg")
-            dlg.setAcceptMode(QFileDialog.AcceptSave)
+            options = QFileDialog.Options()
             if ilastik_config.getboolean("ilastik", "debug"):
-                dlg.setOption( QFileDialog.DontUseNativeDialog,  True )
-                dlg.setOption( QFileDialog.DontConfirmOverwrite, True ) # For testing, it's easier if we don't record the overwrite confirmation
-            dlg.exec_()
-            
+                options |= QFileDialog.DontUseNativeDialog
+                # For testing, it's easier if we don't record the overwrite confirmation
+                options |= QFileDialog.DontConfirmOverwrite
+
+            projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath, 
+                                          "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if dlg.result() == QDialog.Rejected:
+            if projectFilePath.isEmpty():
                 return None
-    
-            projectFilePath = str(dlg.selectedFiles()[0])
+            projectFilePath = str(projectFilePath)
             fileSelected = True
             
             # Add extension if necessary
@@ -895,7 +895,6 @@ class IlastikShell( QMainWindow ):
         
         # Find the directory of the most recently opened project
         mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
-        print mostRecentProjectPath
         if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
@@ -943,11 +942,23 @@ class IlastikShell( QMainWindow ):
         
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
+            self.projectManager = ProjectManager( self._workflowClass)
         except Exception, e:
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            
+            # Add all the applets from the workflow
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                self.addApplet(index, app)
+            
+            
+            #load the project data from file
+            if importFromPath is None:
+                self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+            else:
+                assert not readOnly, "Can't import into a read-only file."
+                self._importProject(importFromPath, hdf5File, projectFilePath)
             
             #add file and workflow to users preferences
             mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
@@ -956,10 +967,11 @@ class IlastikShell( QMainWindow ):
             
             workflowName = self.projectManager.workflow.workflowName
             
-            projectAndWorkflow = (projectFilePath,workflowName)
-            if projectAndWorkflow in mostRecentProjectPaths:
-                mostRecentProjectPaths.remove(projectAndWorkflow)
-            mostRecentProjectPaths.insert(0,projectAndWorkflow)
+            for proj,work in mostRecentProjectPaths[:]:
+                if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
+                    mostRecentProjectPaths.remove((proj,work))
+            
+            mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
             
             #cut list of stored files at randomly chosen number of 5
             if len(mostRecentProjectPaths) > 5:
@@ -977,12 +989,8 @@ class IlastikShell( QMainWindow ):
             # By default, make the splitter control expose a reasonable width of the applet bar
             self.mainSplitter.setSizes([300,1])
             
-            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
-
-            # Add all the applets from the workflow
-            for index, app in enumerate(self.projectManager.workflow.applets):
-                self.addApplet(index, app)
-    
+            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)
+                
             self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
             self.updateShellProjectDisplay()
 
@@ -1005,15 +1013,18 @@ class IlastikShell( QMainWindow ):
 
             if self.projectDisplayManager is not None: 
                 old = weakref.ref(self.projectDisplayManager)
+                self.projectDisplayManager.cleanUp()
                 self.projectDisplayManager = None # Destroy display manager
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
 
             old = weakref.ref(self.projectManager)
+            self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
-
+        
+        self._workflowClass = None
         self.enableWorkflow = False
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
@@ -1139,7 +1150,9 @@ class IlastikShell( QMainWindow ):
         return True
 
     def closeAndQuit(self, quitApp=True):
-        self.projectManager = None # Destroy project manager
+        if self.projectManager is not None:
+            self.projectManager.cleanUp()
+            self.projectManager = None # Destroy project manager
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()

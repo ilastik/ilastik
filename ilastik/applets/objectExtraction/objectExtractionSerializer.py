@@ -9,7 +9,7 @@ from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiT
 from lazyflow.request import Request, RequestLock, RequestPool
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialHdf5BlockSlot
+    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialHdf5BlockSlot, SerialDictSlot
 
 from ilastik.utility.timer import timeLogged
 
@@ -76,6 +76,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                                      operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCleanBlocks,
                                      name="RegionFeatures"),
+            SerialDictSlot(operator.Features)
         ]
 
         super(ObjectExtractionSerializer, self).__init__(projectFileGroupName,
