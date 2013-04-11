@@ -1,6 +1,7 @@
 import numpy
 import vigra
 import warnings
+import itertools
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -123,6 +124,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def _resetLabelInputs(self, imageIndex, roi=None):
         labels = dict()
         for t in range(self.SegmentationImages[imageIndex].meta.shape[0]):
+            #initialize, because volumina needs to reshape to use it as a datasink
             labels[t] = numpy.zeros((2,))
         self.LabelInputs[imageIndex].setValue(labels)
 
@@ -134,7 +136,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot==self.SegmentationImages:
-            print "segmentation changed, aaaaaaaa, subindex=", subindex
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
             
@@ -169,16 +170,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         
         #Fill the cache of label bounding boxes, if it was empty
         if len(self._labelBBoxes[imageIndex].keys())==0:
-            print "opObjectClassification.assignObjectLabel: caching bboxes for image:", imageIndex
             #it's the first label for this image
             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
             
             #the bboxes should be the same for all channels
-            mins = feats[timeCoord][0]["Coord<Minimum >"]
-            maxs = feats[timeCoord][0]["Coord<Maximum >"]
+            mins = feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
+            maxs = feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
             bboxes = dict()
-            #FIXME: we remove the space in the end of "Coord<Minimum >". 
-            #Maybe one day vigra will do it as well.
             bboxes["Coord<Minimum>"]=mins
             bboxes["Coord<Maximum>"]=maxs
             self._labelBBoxes[imageIndex][timeCoord]=bboxes
@@ -194,25 +192,28 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             self._needLabelTransfer = False
             return
         
-        for timeCoord in range(self.SegmentationImages.meta.shape[0]):
+        labels = dict()
+        for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             #we have to get new object features to get bounding boxes
+            print "Transferring labels to the new segmentation. This might take a while..."
             new_feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
             coords = dict()
-            coords["Coord<Minimum>"]=new_feats[timeCoord][0]["Coord<Minimum >"]
-            coords["Coord<Maximum>"]=new_feats[timeCoord][0]["Coord<Maximum >"]
+            coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
+            coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
             new_labels = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
                                              self._labelBBoxes[imageIndex][timeCoord], \
                                             coords)
-            self.LabelInputs[imageIndex][timeCoord]=new_labels
+            labels[timeCoord] = new_labels
+            
             self._labelBBoxes[imageIndex][timeCoord]=coords
             self._ambiguousLabels[imageIndex][timeCoord]=numpy.zeros((2,)) #initialize ambig. labels as normal labels
             
+        self.LabelInputs[imageIndex].setValue(labels)
 
                 
     @staticmethod
     def transferLabels(old_labels, old_bboxes, new_bboxes, axistags = None):
-        import itertools
-        print "calling transferLabels"
+        
         mins_old = old_bboxes["Coord<Minimum>"]
         maxs_old = old_bboxes["Coord<Maximum>"]
         mins_new = new_bboxes["Coord<Minimum>"]
@@ -240,7 +241,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             def overlap(bbox_tuple):
                 this = bbox_tuple[0]
                 that = bbox_tuple[1]
-                pixelsum = 0
                 over_x = this.rad_x+that.rad_x - (abs(this.cent_x-that.cent_x))
                 over_y = this.rad_y+that.rad_y - (abs(this.cent_y-that.cent_y))
                 over_z = this.rad_z+that.rad_z - (abs(this.cent_z-that.cent_z))
@@ -258,26 +258,20 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         
         overlaps = numpy.asarray(overlaps)
         overlaps = overlaps.reshape((len(bboxes_old), len(bboxes_new)))
-        print overlaps
         new_labels = numpy.zeros((nobj_new,), dtype=numpy.uint32)
         for iobj in range(overlaps.shape[0]):
             #take the object with maximum overlap
             newindex = numpy.argmax(overlaps[iobj, :])
             overlaps[iobj, :] = 0
             overlaps[iobj, newindex] = 1 #doesn't matter what number>0
-            #new_labels[newindex]=old_labels[iobj]
             
         for iobj in range(nobj_new):
             labels = numpy.where(overlaps[:, iobj]>0)
             if labels[0].shape[0]==1:
-                print nonzeros, labels[0][0], nonzeros[0][labels[0][0]]
-                print old_labels[nonzeros[0][labels[0][0]]]
                 new_labels[iobj]=old_labels[nonzeros[0][labels[0][0]]]
         
-            
+        new_labels[0]=0 #FIXME: hardcoded background value again
         return new_labels
-        
-        
             
 
     def addLane(self, laneIndex):
@@ -623,8 +617,9 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    min_coords = feats[t][0]['Coord<Minimum>' + gui_features_suffix][obj]
-                    max_coords = feats[t][0]['Coord<Maximum>' + gui_features_suffix][obj]
+                    
+                    min_coords = feats[t]['Coord<Minimum>' + gui_features_suffix][obj]
+                    max_coords = feats[t]['Coord<Maximum>' + gui_features_suffix][obj]
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
