@@ -209,6 +209,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             self._ambiguousLabels[imageIndex][timeCoord]=numpy.zeros((2,)) #initialize ambig. labels as normal labels
             
         self.LabelInputs[imageIndex].setValue(labels)
+        self._needLabelTransfer = False
 
                 
     @staticmethod
