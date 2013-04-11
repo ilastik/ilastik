@@ -270,6 +270,13 @@ class TrackingGuiBase( LayerViewerGui ):
                 write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
             else:
                 write_events(events_at, str(directory), t+1, labelImage)
+            oids = np.unique(labelImage).astype(np.uint16)[1:]
+            oids = oids[::-1]
+            ones = np.ones(oids.shape, dtype=np.uint16)
+            import h5py
+            with h5py.File(str(directory) + '/' + str(t).zfill(5) + '.h5', 'a') as h5file:
+                h5file.create_dataset('objects/meta/id', data=oids)
+                h5file.create_dataset('objects/meta/valid', data=ones)
             
             
     def _onExportTifButtonPressed(self):
