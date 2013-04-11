@@ -303,7 +303,7 @@ class DataSelectionGui(QWidget):
         exts = vigra.impex.listExtensions().split()
         for ext in exts:
             fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
+            filenames = [k.replace('\\', '/') for k in glob.glob(fullGlob)]
 
             if len(filenames) == 1:
                 QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There is only one image file in the selected directory.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )

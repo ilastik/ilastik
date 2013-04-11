@@ -226,12 +226,12 @@ def convertStacksToH5(filePaths, stackVolumeCacheDir):
             #  even if the dataset is located in the same location as a previous one and has the same globstring!
             # Create a sha-1 of the file name and modification date.
             sha = hashlib.sha1()
-            files = glob.glob( path )
+            files = [k.replace('\\', '/') for k in glob.glob( path )]
             for f in files:
                 sha.update(f)
                 sha.update(pickle.dumps(os.stat(f).st_mtime))
             stackFile = sha.hexdigest() + '.h5'
-            stackPath = os.path.join( stackVolumeCacheDir, stackFile )
+            stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
             
             # Overwrite original path
             filePaths[i] = stackPath + "/volume/data"
