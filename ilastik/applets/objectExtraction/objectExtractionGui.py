@@ -305,7 +305,7 @@ class ObjectExtractionGui(QWidget):
             req.notify_finished(callback)
 
         # handle cancel button
-        def cancel(reqs):
+        def cancel():
             for req in reqs:
                 req.cancel()
-        progress.canceled.connect(partial(cancel, reqs))
+        progress.canceled.connect(cancel)
