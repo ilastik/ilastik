@@ -23,8 +23,10 @@ class OpArrayCache(OpArrayPiper):
     description = "numpy.ndarray caching class"
     category = "misc"
 
-    inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output"), OutputSlot("CleanBlocks")]
+    blockShape = InputSlot(value = 64)
+    fixAtCurrent = InputSlot(value = False)
+    
+    CleanBlocks = OutputSlot()
 
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
