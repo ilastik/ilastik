@@ -997,6 +997,12 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
+            
+            if "currentApplet" in hdf5File.keys():
+                appletName = hdf5File["currentApplet"].value
+                self.setSelectedAppletDrawer(appletName)
+            else:
+                self.setSelectedAppletDrawer(0)
 
     def closeCurrentProject(self):
         """
@@ -1004,6 +1010,13 @@ class IlastikShell( QMainWindow ):
         """
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
+            
+            projectFile = self.projectManager.currentProjectFile 
+            if projectFile is not None:
+                if "currentApplet" in projectFile.keys():
+                    del projectFile["currentApplet"]
+                self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
+            
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()
