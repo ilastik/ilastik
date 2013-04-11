@@ -5,7 +5,7 @@ import vigra
 import lazyflow
 from lazyflow.graph import *
 from lazyflow import operators
-from lazyflow.request import Request, Pool
+from lazyflow.request import Request, RequestPool
 import functools
 
 doProfile = False
@@ -66,15 +66,15 @@ class C(object):
 
 
 cache = operators.OpArrayCache(graph=g)
-p = operators.OpArrayPiper(graph=g)
+piper = operators.OpArrayPiper(graph=g)
 
 
 arr = numpy.ndarray((100,100,100,1),numpy.uint8)
 arr = arr.view(vigra.VigraArray)
 arr.axistags = vigra.defaultAxistags('xyzc')
 
-cache.inputs["Input"].setValue(arr)
-p.Input.connect(cache.outputs["Output"])
+piper.Input.setValue(arr)
+cache.inputs["Input"].connect(piper.Output)
 
 features = operators.OpPixelFeaturesPresmoothed(graph=g)
 matrix = numpy.ndarray((6,2), numpy.uint8)
@@ -145,24 +145,45 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 #
 t1 = time.time()
 for i in range(0,mcount):
-    p.outputs["Output"][3,3,3,0].wait()
+    cache.outputs["Output"][:10,:10,:10,0].wait()
 t2 = time.time()
 print "\n\n"
-print "LAZYFLOW SYNC WAIT OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
+print "LAZYFLOW SYNC WAIT CACHE OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
+print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+
+t1 = time.time()
+for i in range(0,mcount):
+    piper.outputs["Output"][:100,:100,:10,0].wait()
+t2 = time.time()
+print "\n\n"
+print "LAZYFLOW SYNC WAIT PIPER OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
 print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 
 t1 = time.time()
 requests = []
 for i in range(0,mcount):
-    r = p.outputs["Output"][3,3,3,0]
+    r = cache.outputs["Output"][:10,:10,:10,0]
     requests.append(r)
 
 for r in requests:
     r.wait()
 t2 = time.time()
 print "\n\n"
-print "LAZYFLOW ASYNC WAIT OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
+print "LAZYFLOW ASYNC WAIT CACHE OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
+print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+
+t1 = time.time()
+requests = []
+for i in range(0,mcount):
+    r = piper.outputs["Output"][:10,:10,:10,0]
+    requests.append(r)
+
+for r in requests:
+    r.wait()
+t2 = time.time()
+print "\n\n"
+print "LAZYFLOW ASYNC WAIT PIPER OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
 print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 
