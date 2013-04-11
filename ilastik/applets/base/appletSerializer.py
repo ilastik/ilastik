@@ -406,7 +406,7 @@ class SerialClassifierSlot(SerialSlot):
         # our open hdf5 group. Instead, we'll use vigra to write the
         # classifier to a temporary file.
         tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
         for i, forest in enumerate(classifier_forests):
             targetname = '{0}/{1}'.format(name, self.subname.format(i))
             forest.writeHDF5(cachePath, targetname)
@@ -430,7 +430,7 @@ class SerialClassifierSlot(SerialSlot):
         # from our open hdf5 group. Instead, we'll copy the
         # classfier data to a temporary file and give it to vigra.
         tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
         with h5py.File(cachePath, 'w') as cacheFile:
             cacheFile.copy(classifierGroup, self.name)
 

@@ -96,7 +96,7 @@ class OpBatchIo(Operator):
             filenameBase = PathComponents(self.OutputFileNameBase.value, self.WorkingDirectory.value).filenameBase
         else:
             filenameBase = inputPathComponents.filenameBase
-        outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext) 
+        outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext).replace('\\', '/')
         
         # Set up the path for H5 export
         if formatId == ExportFormat.H5:
