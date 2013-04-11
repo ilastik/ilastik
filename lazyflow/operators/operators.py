@@ -131,91 +131,11 @@ class OpMultiArrayPiper(Operator):
         key = roi.toSlice()
         self.outputs["MultiOutput"][subindex].setDirty(key)
 
-class OpMultiMultiArrayPiper(Operator):
-    name = "MultiMultiArrayPiper"
-    description = "simple piping operator"
-
-    inputSlots = [InputSlot("MultiInput", level = 2)]
-    outputSlots = [OutputSlot("MultiOutput", level = 2)]
-
-    def setupOutputs(self):
-        inputSlot = self.inputs["MultiInput"]
-
-        self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
-        for i,mislot in enumerate(self.inputs["MultiInput"]):
-            self.outputs["MultiOutput"][i].resize(len(mislot))
-            for ii,islot in enumerate(mislot):
-                oslot = self.outputs["MultiOutput"][i][ii]
-                if islot.partner is not None:
-                    oslot.meta.dtype = islot.meta.dtype
-                    oslot.meta.shape = islot.meta.shape
-                    oslot.meta.axistags = islot.meta.axistags
-
-    def execute(self, slot, subindex, roi, result):
-        key = roiToSlice(roi.start, roi.stop)
-        assert len(subindex) == 2 == len(self.MultiInput)
-        req = self.inputs["MultiInput"][subindex][key].writeInto(result)
-        res = req()
-        return res
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        key = roi.toSlice()
-        assert len(subindex) == 2 == len(self.MultiInput)
-        self.outputs["Output"][subindex].setDirty(key)
-
-
-
 try:
     from  lazyflow.drtile import drtile
 except Exception, e:
     raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !\n" + str(e))
 
-class BlockQueue(object):
-    __slots__ = ["queue","lock"]
-
-    def __init__(self):
-        self.queue = None
-        self.lock = threading.Lock()
-
-class OpRequestSplitter(OpArrayPiper):
-    name = "RequestSplitter"
-    description = "split requests into two parts along longest axis"
-    category = "misc"
-
-    def execute(self, slot, subindex, roi, result):
-        key = roiToSlice(roi.start,roi.stop)
-
-        start, stop = sliceToRoi(key, self.shape)
-
-        diff = stop-start
-
-        splitDim = numpy.argmax(diff[:-1])
-        splitPos = start[splitDim] + diff[splitDim] / 2
-
-        stop2 = stop.copy()
-        stop2[splitDim] = splitPos
-        start2 = start.copy()
-        start2[splitDim] = splitPos
-
-
-        destStart = start -start # zeros
-        destStop = stop - start
-
-        destStop2 = destStop.copy()
-        destStop2[splitDim] = diff[splitDim] / 2
-        destStart2 = destStart.copy()
-        destStart2[splitDim] = diff[splitDim] / 2
-
-        writeKey1 = roiToSlice(destStart,destStop2)
-        writeKey2 = roiToSlice(destStart2,destStop)
-
-        key1 = roiToSlice(start,stop2)
-        key2 = roiToSlice(start2,stop)
-
-        req1 = self.inputs["Input"][key1].writeInto(result[writeKey1])
-        req2 = self.inputs["Input"][key2].writeInto(result[writeKey2])
-        req1.wait()
-        req2.wait()
 
 def fastWhere(cond, A, B, dtype):
     nonz = numpy.nonzero(cond)
@@ -226,7 +146,6 @@ def fastWhere(cond, A, B, dtype):
     else:
         res[nonz] = A
     return res
-
 
 
 class ArrayCacheMemoryMgr(threading.Thread):
