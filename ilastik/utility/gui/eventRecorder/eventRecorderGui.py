@@ -83,7 +83,7 @@ class EventRecorderGui(QWidget):
             default_dir = os.path.join( ilastik_repo_root, "tests" )
 
         now = datetime.datetime.now()
-        timestr = "{:04d}{:02d}{:02d}-{:02d}{:02d}".format( now.year, now.month, now.minute, now.hour, now.second )
+        timestr = "{:04d}{:02d}{:02d}-{:02d}{:02d}".format( now.year, now.month, now.day, now.hour, now.minute )
         default_script_path = os.path.join( default_dir, "recording-{timestr}.py".format( timestr=timestr ) )
             
         dlg = QFileDialog(self, "Save Playback Script", default_script_path, "Ilastik event playback scripts (*.py)")
