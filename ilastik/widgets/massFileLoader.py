@@ -27,10 +27,10 @@ class MassFileLoader(QDialog):
         if recursive:
             self.filenames = []
             for root, dirnames, filenames in os.walk(directory):
-                self.filenames.extend(os.path.join(root, f)
+                self.filenames.extend(os.path.join(root, f).replace('\\', '/')
                                       for f in fnmatch.filter(filenames, pattern))
         else:
-            self.filenames = glob.glob(os.path.join(directory, pattern))
+            self.filenames = [k.replace('\\', '/') for k in glob.glob(os.path.join(directory, pattern))]
 
     def handleDirectoryButtonClicked(self):
         options = QFileDialog.Options()

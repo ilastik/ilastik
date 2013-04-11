@@ -148,7 +148,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                 # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
                 # Instead, we'll use vigra to write the classifier to a temporary file.
                 tmpDir = tempfile.mkdtemp()
-                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
                 for j, forest in enumerate(classifier_forests):
                     forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(j) )
                 
@@ -289,7 +289,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                         break
                     classifierGroup = topGroup[fullpath]
                     tmpDir = tempfile.mkdtemp()
-                    cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                    cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
                     with h5py.File(cachePath, 'w') as cacheFile:
                         cacheFile.copy(classifierGroup, 'ClassifierForests')
             
