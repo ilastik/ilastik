@@ -46,8 +46,6 @@ class FeatureSelectionDialog(QDialog):
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
-        self.ui.treeWidget.clicked.connect(self.handleClick)
-
         self.ui.treeWidget.setColumnCount(1)
         for pluginName, features in featureDict.iteritems():
             parent = QTreeWidgetItem(self.ui.treeWidget)
@@ -61,14 +59,6 @@ class FeatureSelectionDialog(QDialog):
                     item.setCheckState(0, Qt.Checked)
                 else:
                     item.setCheckState(0, Qt.Unchecked)
-
-    def handleClick(self, index):
-        item = self.ui.treeWidget.itemFromIndex(index)
-        state = item.checkState(0)
-        if state == Qt.Checked:
-            item.setCheckState(0, Qt.Unchecked)
-        else:
-            item.setCheckState(0, Qt.Checked)
 
     def accept(self):
         QDialog.accept(self)
