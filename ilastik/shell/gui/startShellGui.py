@@ -1,11 +1,12 @@
 import os
+import platform 
 
 #make the program quit on Ctrl+C
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
-from PyQt4.QtCore import QTimer
+from PyQt4.QtCore import Qt, QTimer
 from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
 # Logging configuration
@@ -22,7 +23,19 @@ def startShellGui(workflowClass=None,*testFuncs):
     """
     Create an application and launch the shell in it.
     """
+
+    """
+    The next two lines fix the following xcb error on Ubuntu by calling X11InitThreads before loading the QApplication:
+       [xcb] Unknown request in queue while dequeuing 
+       [xcb] Most likely this is a multi-threaded client and XInitThreads has not been called 
+       [xcb] Aborting, sorry about that.
+       python: ../../src/xcb_io.c:178: dequeue_pending_request: Assertion !xcb_xlib_unknown_req_in_deq failed.
+    """
+    if 'Ubuntu' in platform.platform():
+        QApplication.setAttribute(Qt.AA_X11InitThreads,True)
+    
     app = QApplication([])
+
     QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, *testFuncs ) )
     
     _applyStyleSheet(app)

@@ -67,6 +67,11 @@ class EventPlayer(object):
         """
         _globals = {}
         _locals = {}
+        """ 
+        Calls to events in the playback script like: player.post_event(obj,PyQt4.QtGui.QMouseEvent(...),t)
+        are/were responsible for the xcb-error on Ubuntu, because you may not use
+        a Gui-object from a thread other than the MainThread running the Gui
+        """
         execfile(path, _globals, _locals)
         def run():
             _locals['playback_events'](player=self)
@@ -79,10 +84,8 @@ class EventPlayer(object):
     def post_event(self, obj, event, timestamp_in_seconds):
         if self._playback_speed is not None:
             self._timer.sleep_until(timestamp_in_seconds / self._playback_speed)
-
         assert threading.current_thread().name != "MainThread"
         QApplication.postEvent(obj, event)
-        
         assert QApplication.instance().thread() == obj.thread()
         
         flusher = EventFlusher()
