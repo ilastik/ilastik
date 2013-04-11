@@ -227,6 +227,7 @@ class TrackingGuiBase( LayerViewerGui ):
 
 
     def _onExportButtonPressed(self):
+        import h5py
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
         
         if directory is None:
@@ -255,6 +256,13 @@ class TrackingGuiBase( LayerViewerGui ):
         labelImage = labelImage[0,...,0]
         
         write_events([], str(directory), t_from, labelImage)
+
+        oids = np.unique(labelImage).astype(np.uint16)[1:]
+        oids = oids[::-1]
+        ones = np.ones(oids.shape, dtype=np.uint16)
+        with h5py.File(str(directory) + '/' + str(0).zfill(5) + '.h5', 'a') as h5file:
+            h5file.create_dataset('objects/meta/id', data=oids)
+            h5file.create_dataset('objects/meta/valid', data=ones)
             
         events = self.mainOperator.events
         print "Saving events..."
@@ -273,8 +281,8 @@ class TrackingGuiBase( LayerViewerGui ):
             oids = np.unique(labelImage).astype(np.uint16)[1:]
             oids = oids[::-1]
             ones = np.ones(oids.shape, dtype=np.uint16)
-            import h5py
-            with h5py.File(str(directory) + '/' + str(t).zfill(5) + '.h5', 'a') as h5file:
+            
+            with h5py.File(str(directory) + '/' + str(t+1).zfill(5) + '.h5', 'a') as h5file:
                 h5file.create_dataset('objects/meta/id', data=oids)
                 h5file.create_dataset('objects/meta/valid', data=ones)
             
