@@ -29,9 +29,6 @@ class DataLaneSummaryTableView(QTableView):
 
         self.verticalHeader().hide()
 
-        # Set up handlers
-        self.itemSelectionChanged.connect(self.handleTableSelectionChange)
-
     def selectionChanged(self, selected, deselected):
         super( DataLaneSummaryTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value

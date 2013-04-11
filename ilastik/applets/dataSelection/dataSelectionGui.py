@@ -156,7 +156,7 @@ class DataSelectionGui(QWidget):
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]+'/'
         uic.loadUi(localDir+"/dataSelection.ui", self)
-        self.fileInfoGroupBox.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
+        self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
 
         self.initViewerStack()
         self.splitter.setSizes([150, 850])

@@ -191,7 +191,7 @@ class OpDataSelectionGroup( Operator ):
 
 class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
     def __init__(self, force5d=False, *args, **kwargs):
-        kwargs.update( { 'operator_kwargs' : {'force5d', force5d},
+        kwargs.update( { 'operator_kwargs' : {'force5d' : force5d},
                          'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
         super( OpMultiLaneDataSelectionGroup, self ).__init__(OpDataSelectionGroup, *args, **kwargs )
     
