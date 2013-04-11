@@ -283,13 +283,19 @@ class ObjectExtractionGui(QWidget):
                 self.timestep_done.emit(self.ndone)
                 if self.ndone == len(reqs):
                     self.all_finished.emit()
-
         callback = Callback()
-        callback.timestep_done.connect(partial(self.updateProgress, progress))
-        callback.all_finished.connect(self.finished)
 
-        reqs = []
+        def updateProgress(progress, n):
+            progress.setValue(n)
+        callback.timestep_done.connect(partial(updateProgress, progress))
+
+        def finished():
+            self.mainOperator._opRegFeats.fixed = True
+            print 'Object Extraction: done.'
+        callback.all_finished.connect(finished)
+
         self.mainOperator._opRegFeats.fixed = False
+        reqs = []
         for t in range(maxt):
             req = self.mainOperator.RegionFeatures([t])
             req.submit()
@@ -299,15 +305,7 @@ class ObjectExtractionGui(QWidget):
             req.notify_finished(callback)
 
         # handle cancel button
-        progress.canceled.connect(partial(self.cancelFeatureComputation, reqs))
-
-    def updateProgress(self, progress, n):
-        progress.setValue(n)
-
-    def cancelFeatureComputation(self, reqs):
-        for req in reqs:
-            req.cancel()
-
-    def finished(self):
-        self.mainOperator._opRegFeats.fixed = True
-        print 'Object Extraction: done.'
+        def cancel(reqs):
+            for req in reqs:
+                req.cancel()
+        progress.canceled.connect(partial(cancel, reqs))
