@@ -428,7 +428,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t][ch]['RegionCenter' + gui_features_suffix]
+                centers = obj_features[t]['RegionCenter' + gui_features_suffix]
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:
