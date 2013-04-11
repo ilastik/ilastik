@@ -32,19 +32,12 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants,areOnSameDrive
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import ControlCommand
-from opDataSelection import OpDataSelection, DatasetInfo
 from ilastik.widgets.massFileLoader import MassFileLoader
 
+from opDataSelection import OpDataSelection, DatasetInfo
+from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
+
 #===----------------------------------------------------------------------------------------------------------------===
-
-class Column():
-    """ Enum for table column positions """
-    Name = 0
-    Location = 1
-    InternalID = 2
-    LabelsAllowed = 3 # Note: For now, this column must come last because it gets removed in batch mode.
-
-    NumColumns = 4
 
 class LocationOptions():
     """ Enum for location menu options """
@@ -94,13 +87,11 @@ class DataSelectionGui(QWidget):
             if(len(self.topLevelOperator.Dataset) != laneIndex+1):
                 import warnings
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
-        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
         if self.guiMode != GuiMode.Batch:
             assert len(self.topLevelOperator.Dataset) == finalLength
-        self.drawer.removeFileButton.setEnabled( len(self.topLevelOperator.Dataset) )
 
     ###########################################
     ###########################################
@@ -121,33 +112,6 @@ class DataSelectionGui(QWidget):
             self.initAppletDrawerUic()
             self.initCentralUic()
 
-            def handleNewDataset( multislot, index, finalSize):
-                # Subtlety here: This if statement is needed due to the fact that
-                #  This code is hit twice on startup: Once in response to a ImageName resize
-                #  (during construction) and once for Dataset resize.
-                if self.fileInfoTableWidget.rowCount() < finalSize:
-                    assert multislot == self.topLevelOperator.Dataset
-                    # Make room in the table
-                    self.fileInfoTableWidget.insertRow( index )
-
-                    # Update the table row data when this slot has new data
-                    # We can't bind in the row here because the row may change in the meantime.
-                    self.topLevelOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
-
-            self.topLevelOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
-
-            # For each dataset that already exists, update the GUI
-            for i, subslot in enumerate(self.topLevelOperator.Dataset):
-                handleNewDataset( self.topLevelOperator.Dataset, i, len(self.topLevelOperator.Dataset) )
-                if subslot.ready():
-                    self.updateTableForSlot(subslot)
-
-            def handleDatasetRemoved( multislot, index, finalLength ):
-                assert multislot == self.topLevelOperator.Dataset
-                if self.fileInfoTableWidget.rowCount() > finalLength:
-                    # Remove the row we don't need any more
-                    self.fileInfoTableWidget.removeRow( index )
-
             def handleImageRemoved(multislot, index, finalLength):
                 # Remove the viewer for this dataset
                 imageSlot = self.topLevelOperator.Image[index]
@@ -156,7 +120,6 @@ class DataSelectionGui(QWidget):
                     self.viewerStack.removeWidget( editor )
                     editor.stopAndCleanUp()
 
-            self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
             self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
 
     def initAppletDrawerUic(self):
@@ -190,37 +153,13 @@ class DataSelectionGui(QWidget):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
-        self.initFileTableWidget()
-        self.initViewerStack()
-        self.splitter.setSizes([150, 850])
-
-    def initFileTableWidget(self):
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]+'/'
         uic.loadUi(localDir+"/dataSelection.ui", self)
+        self.fileInfoGroupBox.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
 
-        self.fileInfoTableWidget.resizeRowsToContents()
-        self.fileInfoTableWidget.resizeColumnsToContents()
-        self.fileInfoTableWidget.setAlternatingRowColors(True)
-        self.fileInfoTableWidget.setShowGrid(False)
-        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Name, QHeaderView.Interactive)
-        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Location, QHeaderView.Interactive)
-        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.InternalID, QHeaderView.Interactive)
-
-        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Name, 200)
-        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Location, 300)
-        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.InternalID, 200)
-
-        if self.guiMode == GuiMode.Batch:
-            # It doesn't make sense to provide a labeling option in batch mode
-            self.fileInfoTableWidget.removeColumn( Column.LabelsAllowed )
-            self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
-            self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
-
-        self.fileInfoTableWidget.verticalHeader().hide()
-
-        # Set up handlers
-        self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        self.initViewerStack()
+        self.splitter.setSizes([150, 850])
 
     def initViewerStack(self):
         self.volumeEditors = {}
@@ -746,24 +685,7 @@ class DataSelectionGui(QWidget):
         """
         Any time the user selects a new item, select the whole row.
         """
-        self.selectEntireRow()
         self.showSelectedDataset()
-
-    def selectEntireRow(self):
-        assert threading.current_thread().name == "MainThread"
-        selectedItemRows = set()
-        selectedRanges = self.fileInfoTableWidget.selectedRanges()
-        for rng in selectedRanges:
-            for row in range(rng.topRow(), rng.bottomRow()+1):
-                selectedItemRows.add(row)
-
-        # Disconnect from selection change notifications while we do this
-        self.fileInfoTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
-        for row in selectedItemRows:
-            self.fileInfoTableWidget.selectRow(row)
-
-        # Reconnect now that we're finished
-        self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
 
     def showSelectedDataset(self):
         assert threading.current_thread().name == "MainThread"

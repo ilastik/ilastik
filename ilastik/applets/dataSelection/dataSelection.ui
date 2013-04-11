@@ -45,11 +45,23 @@
       <property name="title">
        <string>File Info</string>
       </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="DataLaneSummaryTableView" name="tableView"/>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MultiLaneDatasetGroupView</class>
+   <extends>QTreeView</extends>
+   <header>ilastik.applets.dataSelection.multiLaneDatasetGroupView</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

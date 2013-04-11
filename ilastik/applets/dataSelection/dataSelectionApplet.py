@@ -1,5 +1,5 @@
 from ilastik.applets.base.applet import Applet
-from opDataSelection import OpMultiLaneDataSelection
+from opDataSelection import OpMultiLaneDataSelectionGroup
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 class DataSelectionApplet( Applet ):

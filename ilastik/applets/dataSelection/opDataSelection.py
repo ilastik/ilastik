@@ -144,10 +144,11 @@ class OpDataSelectionGroup( Operator ):
     #  it assumes all the others have already been resized.
     ImageName = OutputSlot() # Name of the first dataset is used.  Other names are ignored.
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, force5d=False, *args, **kwargs):
         super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
         self._opDatasets = None
         self._roles = []
+        self._force5d = force5d
     
     def setupOutputs(self):
         # Create internal operators
@@ -161,7 +162,7 @@ class OpDataSelectionGroup( Operator ):
         if self._opDatasets is not None:
             self._opDatasets.cleanUp()
 
-        self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, 
+        self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'force5d' : self._force5d },
                                             broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
         self.ImageGroup.connect( self._opDatasets.Image )
         self._opDatasets.ProjectFile.connect( self.ProjectFile )
@@ -189,8 +190,9 @@ class OpDataSelectionGroup( Operator ):
         pass
 
 class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
-    def __init__(self, *args, **kwargs):
-        kwargs.update( {'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
+    def __init__(self, force5d=False, *args, **kwargs):
+        kwargs.update( { 'operator_kwargs' : {'force5d', force5d},
+                         'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
         super( OpMultiLaneDataSelectionGroup, self ).__init__(OpDataSelectionGroup, *args, **kwargs )
     
     def addLane(self, laneIndex):
