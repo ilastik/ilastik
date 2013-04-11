@@ -580,31 +580,7 @@ class Request( object ):
             totalargs = args + self.args
             return self.func( *totalargs, **self.kwargs)
     
-    def onFinish(self, fn, **kwargs):
-        raise RuntimeError("remove old API: onFinish")
-        f = Request._PartialWithAppendedArgs( fn, **kwargs )
-        self.notify_finished( f)
-
-    def onCancel(self, fn, *args, **kwargs):
-        raise RuntimeError("remove old API: onCancel")
-        # Cheating here: The only operator that uses this old api function is OpArrayCache,
-        # which doesn't do anything except return False to say "don't cancel me"
-        
-        # We'll just call it right now and set our flag with the result
-        self.uncancellable = not fn(self, *args, **kwargs)
-
-    def notify(self, fn, **kwargs):
-        raise RuntimeError("remove old API: notify")
-        f = Request._PartialWithAppendedArgs( fn, **kwargs )
-        self.notify_finished( f )
-        self.submit()
-
-    def allocate(self, priority = 0):
-        raise RuntimeError("remove old API: allocate")
-        return self
-
     def writeInto(self, destination):
-        #raise RuntimeError("remove old API: writeInto")
         self.fn = Request._PartialWithAppendedArgs( self.fn, destination=destination )
         return self
 

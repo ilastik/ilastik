@@ -7,6 +7,9 @@ import lazyflow
 from lazyflow.graph import Operator
 from lazyflow.utility.helpers import itersubclasses
 
+# necessary because we used a factory
+from vigraOperators import Op1ToMulti, Op5ToMulti, Op50ToMulti
+
 try:
     if modules != None:
         pass
