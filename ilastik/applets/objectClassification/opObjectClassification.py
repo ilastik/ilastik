@@ -200,7 +200,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             coords = dict()
             coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
             coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
-            new_labels = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
+            new_labels, old_labels_lost, new_labels_lost = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
                                              self._labelBBoxes[imageIndex][timeCoord], \
                                             coords)
             labels[timeCoord] = new_labels
