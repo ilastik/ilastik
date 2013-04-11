@@ -23,9 +23,13 @@ class OpArrayCache(OpArrayPiper):
     description = "numpy.ndarray caching class"
     category = "misc"
 
-    blockShape = InputSlot(value = 64)
+    DefaultBlockSize = 64
+
+    #Input
+    blockShape = InputSlot(value = DefaultBlockSize)
     fixAtCurrent = InputSlot(value = False)
-    
+   
+    #Output
     CleanBlocks = OutputSlot()
 
     loggingName = __name__ + ".OpArrayCache"
@@ -33,14 +37,14 @@ class OpArrayCache(OpArrayPiper):
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
     # Block states
-    IN_PROCESS = 0
-    DIRTY = 1
-    CLEAN = 2
+    IN_PROCESS  = 0
+    DIRTY       = 1
+    CLEAN       = 2
     FIXED_DIRTY = 3
 
     def __init__(self, *args, **kwargs):
         super( OpArrayPiper, self ).__init__(*args, **kwargs)
-        self._origBlockShape = 64
+        self._origBlockShape = self.DefaultBlockSize
         self._blockShape = None
         self._dirtyShape = None
         self._blockState = None
@@ -48,7 +52,6 @@ class OpArrayCache(OpArrayPiper):
         self._fixed = False
         self._cache = None
         self._lock = Lock()
-        #self._cacheLock = request.Lock()#greencall.Lock()
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
@@ -106,20 +109,13 @@ class OpArrayCache(OpArrayPiper):
     
             _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
             _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-    
-    
-    #        self._blockNumbers = _blockNumbers
-    #        self._blockIndices = _blockIndices
-    #
+            
             self._blockState[:]= OpArrayCache.DIRTY
             self._dirtyState = OpArrayCache.CLEAN
     
             # allocate queryArray object
             self._flatBlockIndices =  _blockIndices[:]
             self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-    #        for p in self._flatBlockIndices:
-    #            self._blockQuery[p] = BlockQueue()
-
 
     def _allocateCache(self):
         with self._cacheLock:
@@ -157,8 +153,6 @@ class OpArrayCache(OpArrayPiper):
             if not self._lazyAlloc:
                 self._allocateCache()
             self._lock.release()
-
-
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
@@ -223,9 +217,6 @@ class OpArrayCache(OpArrayPiper):
         new_prio = 0.5 * self._cache_priority + delta
         self._cache_priority = new_prio
 
-        
-
-
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
             return self._executeOutput(slot, subindex, roi, result)
@@ -233,7 +224,6 @@ class OpArrayCache(OpArrayPiper):
             return self._executeCleanBlocks(slot, subindex, roi, result)
         
     def _executeOutput(self, slot, subindex, roi, result):
-        #return
         key = roi.toSlice()
 
         start, stop = sliceToRoi(key, self.shape)
