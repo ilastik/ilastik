@@ -280,9 +280,9 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
-
+        
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
