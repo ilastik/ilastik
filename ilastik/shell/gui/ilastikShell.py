@@ -1,51 +1,52 @@
-#Python
+# Standard
 import re
 import traceback
 import os
 from functools import partial
 import weakref
 import logging
-from ilastik.workflow import Workflow,getAvailableWorkflows,getWorkflowFromName
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
-#SciPy
+# SciPy
 import numpy
 import platform
 import threading
 
-#PyQt
+# PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel,\
-                        QPixmap,QPainter,QIcon,QFont,QToolButton,QSpacerItem
+                        QInputDialog, QIcon, QFont, QToolButton
+                        
 
-from PyQt4.QtSvg import QSvgWidget
-from iconMgr import ilastikIcons
-from ilastik.utility.pathHelpers import compressPathForDisplay
 
-#lazyflow
+# lazyflow
 from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
-from lazyflow.request import Request
 import lazyflow.tools.schematic
 
-#volumina
+# volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
 
-#ilastik
+# ilastik
+from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
+from iconMgr import ilastikIcons
+from ilastik.utility.pathHelpers import compressPathForDisplay
+
+# Import all known workflows now to make sure they are all registered with getWorkflowFromName()
+import ilastik.workflows
 
 ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
