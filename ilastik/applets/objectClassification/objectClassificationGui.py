@@ -318,10 +318,10 @@ class ObjectClassificationGui(LabelingGui):
 
             print 'features:'
             feats = self.op.ObjectFeatures([t]).wait()[t]
-            featnames = feats[0].keys()
+            featnames = feats.keys()
             for featname in featnames:
                 print "{}:".format(featname)
-                value = channel[featname]
+                value = feats[featname]
                 ft = numpy.asarray(value.squeeze())[obj]
                 print ft
             print "------------------------------------------------------------"
