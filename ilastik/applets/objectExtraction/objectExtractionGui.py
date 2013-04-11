@@ -231,8 +231,19 @@ class ObjectExtractionGui(QWidget):
                                 QMessageBox.Ok)
             return
 
+        imgshape = list(self.mainOperator.RawImage.meta.shape)
+        axistags = self.mainOperator.RawImage.meta.axistags
+        imgshape.pop(axistags.index('t'))
+        fakeimg = np.empty(imgshape, dtype=np.float32)
+
+        labelshape = list(self.mainOperator.BinaryImage.meta.shape)
+        axistags = self.mainOperator.BinaryImage.meta.axistags
+        labelshape.pop(axistags.index('t'))
+        labelshape.pop(axistags.index('c') - 1)
+        fakelabels = np.empty(labelshape, dtype=np.uint32)
+
         for pluginInfo in plugins:
-            featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures()
+            featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
         dlg = FeatureSelectionDialog(featureDict=featureDict,
                                      selectedFeatures=selectedFeatures)
         dlg.exec_()

@@ -5,7 +5,7 @@ import numpy as np
 class AnnaObjFeats(ObjectFeaturesPlugin):
     all_features = ['bad_slices', 'lbp', 'lapl']
 
-    def availableFeatures(self):
+    def availableFeatures(self, image, labels):
         return self.all_features
 
     def badslices(self, image, label_bboxes, axes, mins, maxs):

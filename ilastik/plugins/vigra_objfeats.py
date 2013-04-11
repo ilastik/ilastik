@@ -50,25 +50,22 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                              'Coord<Maximum>',
                              ])
 
-    def availableFeatures(self):
-        names = vigra.analysis.supportedRegionFeatures(np.zeros((3, 3), dtype=np.float32),
-                                                       np.zeros((3, 3), dtype=np.uint32))
+    def availableFeatures(self, image, labels):
+        names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         names = set(names).difference(self.excluded_features)
         return names
 
-    def _do_3d(self, image, labels, features, axes, *args, **kwargs):
+    def _do_4d(self, image, labels, features, axes, *args, **kwargs):
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
-        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0,
-                                                      histogramRange=[0, 255], binCount=10)
+        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
         return cleanup(result, 0 in labels, True, features)
 
     def compute_global(self, image, labels, features, axes):
         features = list(set(features).intersection(self.global_features))
-        return self.do_channels(image, labels, features, axes, self._do_3d)
+        return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, label_bboxes, features, axes, mins, maxs):
         features = list(set(features).difference(self.global_features))
-        return self.do_channels_local(image, label_bboxes, features, axes,
-                                      mins, maxs, self._do_3d)
+        return self.do_local(image, label_bboxes, features, axes, mins, maxs, self._do_4d)

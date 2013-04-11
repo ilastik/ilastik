@@ -4,6 +4,8 @@ from yapsy.PluginManager import PluginManager
 import os
 from collections import namedtuple
 
+from functools import partial
+
 # these directories are searched for plugins
 # TODO: perhaps these should be set in the config file.
 plugins_paths = ("~/.ilastik/plugins",
@@ -18,7 +20,7 @@ class ObjectFeaturesPlugin(IPlugin):
     """Plugins of this class calculate object features"""
     name = "Base object features plugin"
 
-    def availableFeatures(self):
+    def availableFeatures(self, image, labels):
         """returns a list of feature names supported by this plugin."""
         return []
 
@@ -80,13 +82,18 @@ class ObjectFeaturesPlugin(IPlugin):
             results.append(self.update_keys(result, suffix='_channel_{}'.format(channel)))
         return self.combine_dicts(results)
 
-    def do_channels_local(self, image, label_bboxes, features, axes, mins, maxs, fn, **kwargs):
-        """helper that deals with context features."""
+    def do_local(self, image, label_bboxes, features, axes, mins, maxs, fn, **kwargs):
+        """helper that deals with individual objects"""
         results = []
         for label, suffix in zip(label_bboxes, ['', '_incl', '_excl']):
-            result = self.do_channels(image, label, features, axes, fn, mins=mins, maxs=maxs, **kwargs)
+            result = fn(image, label, features, axes, mins=mins, maxs=maxs, **kwargs)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)
+
+    def do_local_channels(self, image, label_bboxes, features, axes, mins, maxs, fn, **kwargs):
+        """combines both do_channels() and do_local()"""
+        newfn = partial(self.do_channels, fn=fn)
+        self.do_local(image, label_bboxes, features, axes, mins, maxs, newfn, **kwargs)
 
 
 ###############
