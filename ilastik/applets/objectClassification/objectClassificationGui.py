@@ -325,3 +325,9 @@ class ObjectClassificationGui(LabelingGui):
                 ft = numpy.asarray(value.squeeze())[obj]
                 print ft
             print "------------------------------------------------------------"
+            
+    def setVisible(self, visible):
+        if visible:
+            self.op.triggerTransferLabels(self.op.current_view_index())
+        super(ObjectClassificationGui, self).setVisible(visible)
+        
