@@ -321,8 +321,7 @@ class ObjectClassificationGui(LabelingGui):
             featnames = feats[0].keys()
             for featname in featnames:
                 print "{}:".format(featname)
-                for i, channel in enumerate(feats):
-                    value = channel[featname]
-                    ft = numpy.asarray(value.squeeze())[obj]
-                    print ft
+                value = channel[featname]
+                ft = numpy.asarray(value.squeeze())[obj]
+                print ft
             print "------------------------------------------------------------"

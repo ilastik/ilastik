@@ -30,7 +30,7 @@ gui_features_suffix = '_gui_only'
 class OpRegionFeatures3d(Operator):
     """
     Produces region features (i.e. a vigra.analysis.RegionFeatureAccumulator) for a 3d image.
-    The image MUST have xyz axes, and is permitted to have t and c axes of dim 1.
+    The image MUST have xyzc axes, and is permitted to have t axis of dim 1.
     """
     RawVolume = InputSlot()
     LabelVolume = InputSlot()
@@ -52,7 +52,7 @@ class OpRegionFeatures3d(Operator):
             assert taggedOutputShape['t'] == 1
         if 'c' in taggedOutputShape.keys():
             assert taggedOutputShape['c'] == 1
-        assert set(taggedOutputShape.keys()) - set('tc') == set('xyz'), "Input volumes must have xyz axes."
+        assert set(taggedOutputShape.keys()) - set('t') == set('xyzc'), "Input volumes must have xyzt axes."
 
         # Remove the spatial dims (keep t and c, if present)
         del taggedOutputShape['x']
@@ -72,88 +72,113 @@ class OpRegionFeatures3d(Operator):
         rawVolume = self.RawVolume[:].wait()
         labelVolume = self.LabelVolume[:].wait()
 
-        # Convert to 3D (preserve axis order)
-        spatialAxes = self.RawVolume.meta.getTaggedShape().keys()
-        spatialAxes = filter(lambda k: k in 'xyz', spatialAxes)
+        # Convert to 4D (preserve axis order)
+        axes4d = self.RawVolume.meta.getTaggedShape().keys()
+        axes4d = filter(lambda k: k in 'xyzc', axes4d)
 
         rawVolume = rawVolume.view(vigra.VigraArray)
         rawVolume.axistags = self.RawVolume.meta.axistags
-        rawVolume3d = rawVolume.withAxes(*spatialAxes)
+        rawVolume4d = rawVolume.withAxes(*axes4d)
 
         labelVolume = labelVolume.view(vigra.VigraArray)
         labelVolume.axistags = self.LabelVolume.meta.axistags
-        labelVolume3d = labelVolume.withAxes(*spatialAxes)
+        labelVolume4d = labelVolume.withAxes(*axes4d)
 
         assert np.prod(roi.stop - roi.start) == 1
-        acc = self._extract(rawVolume3d, labelVolume3d)
+        acc = self._extract(rawVolume4d, labelVolume4d)
         result[tuple(roi.start)] = acc
         return result
 
-    def compute_bboxes(self, i, image, labels, mins, maxs, axes):
-        xAxis, yAxis, zAxis = axes
+    def compute_minmax(self, i, image, mincoords, maxcoords, axes):
+        class Limit(object):
+            def __init__(self, x, y, z):
+                self.x = x
+                self.y = y
+                self.z = z
+
         #find the bounding box
-        minx = max(mins[i][xAxis] - self.MARGIN, 0)
-        miny = max(mins[i][yAxis] - self.MARGIN, 0)
-        minz = max(mins[i][zAxis], 0)
-        min_xyz = minx, miny, minz
+        minx = max(mincoords[i][axes.x] - self.MARGIN, 0)
+        miny = max(mincoords[i][axes.y] - self.MARGIN, 0)
+        minz = max(mincoords[i][axes.z], 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
-        maxx = min(maxs[i][xAxis] + 1 + self.MARGIN, image.shape[xAxis])
-        maxy = min(maxs[i][yAxis] + 1 + self.MARGIN, image.shape[yAxis])
-        maxz = min(maxs[i][zAxis] + 1, image.shape[zAxis])
-        max_xyz = maxx, maxy, maxz
+        maxx = min(maxcoords[i][axes.x] + 1 + self.MARGIN, image.shape[axes.x])
+        maxy = min(maxcoords[i][axes.y] + 1 + self.MARGIN, image.shape[axes.y])
+        maxz = min(maxcoords[i][axes.z] + 1, image.shape[axes.z])
 
-        #FIXME: there must be a better way
-        key = 3 * [None]
-        key[xAxis] = slice(minx, maxx, None)
-        key[yAxis] = slice(miny, maxy, None)
-        key[zAxis] = slice(minz, maxz, None)
-        key = tuple(key)
+        mins = Limit(minx, miny, minz)
+        maxcoords = Limit(maxx, maxy, maxz)
 
-        ccbbox = labels[key]
-        rawbbox = image[key]
+        return mins, maxcoords
+
+    def compute_rawbbox(self, image, mins, maxs, axes):
+        key = [slice(None)] * 4
+        key[axes.x] = slice(mins.x, maxs.x, None)
+        key[axes.y] = slice(mins.y, maxs.y, None)
+        key[axes.z] = slice(mins.z, maxs.z, None)
+        key[axes.c] = slice(None)
+        return image[tuple(key)]
+
+    def compute_label_bboxes(self, i, labels, mins, maxs, axes):
+        key = [slice(None)] * 3
+        key[axes.x] = slice(mins.x, maxs.x, None)
+        key[axes.y] = slice(mins.y, maxs.y, None)
+        key[axes.z] = slice(mins.z, maxs.z, None)
+
+        ccbbox = labels[tuple(key)]
+
+        # object only
         ccbboxobject = np.where(ccbbox == i, 1, 0)
 
-        #find the context area around the object
-        bboxshape = 3*[None]
-        bboxshape[xAxis] = maxx - minx
-        bboxshape[yAxis] = maxy - miny
-        bboxshape[zAxis] = maxz - minz
+        # object and context
+        bboxshape = [None] * 3
+        bboxshape[axes.x] = maxs.x - mins.x
+        bboxshape[axes.y] = maxs.y - mins.y
+        bboxshape[axes.z] = maxs.z - mins.z
         bboxshape = tuple(bboxshape)
         passed = np.zeros(bboxshape, dtype=bool)
 
-        for iz in range(maxz - minz):
+        for iz in range(maxs.z - mins.z):
             #FIXME: shoot me, axistags
-            bboxkey = 3*[None]
-            bboxkey[xAxis] = slice(None, None, None)
-            bboxkey[yAxis] = slice(None, None, None)
-            bboxkey[zAxis] = iz
+            bboxkey = [slice(None)] * 3
+            bboxkey[axes.z] = iz
             bboxkey = tuple(bboxkey)
             #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
             dt = vigra.filters.distanceTransform2D(np.asarray(ccbbox[bboxkey], dtype=np.float32))
-            passed[bboxkey] = dt < self.MARGIN
+            passed[tuple(bboxkey)] = dt < self.MARGIN
 
+        # context only
         ccbboxexcl = passed - ccbboxobject
 
-        return min_xyz, max_xyz, rawbbox, passed, ccbboxexcl, ccbboxobject
+        label_bboxes = [ccbboxobject, passed, ccbboxexcl]
+        return label_bboxes
 
     def _extract(self, image, labels):
-        assert len(image.shape) == len(labels.shape) == 3, "Images must be 3D.  Shapes were: {} and {}".format(image.shape, labels.shape)
+        assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
 
-        axes = (image.axistags.index('x'),
-                image.axistags.index('y'),
-                image.axistags.index('z'))
+        class Axes(object):
+            x = image.axistags.index('x')
+            y = image.axistags.index('y')
+            z = image.axistags.index('z')
+            c = image.axistags.index('c')
+        axes = Axes()
 
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
 
-        extrafeats = vigra.analysis.extractRegionFeatures(image, labels,
+        slc3d = [slice(None)] * 4 # FIXME: do not hardcode
+        slc3d[axes.c] = 0
+
+        assert labels.shape[axes.c] == 1
+        labels = labels[slc3d]
+
+        extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                           gui_features,
                                                           ignoreLabel=0)
-        mins = extrafeats["Coord<Minimum >"]
-        maxs = extrafeats["Coord<Maximum >"]
-        nobj = mins.shape[0]
+        mincoords = extrafeats["Coord<Minimum >"]
+        maxcoords = extrafeats["Coord<Maximum >"]
+        nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
 
@@ -161,7 +186,7 @@ class OpRegionFeatures3d(Operator):
         global_features = defaultdict(list)
         for plugin_name, feature_list in feature_names.iteritems():
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            feats = plugin.plugin_object.execute(image, labels, feature_list)
+            feats = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
             global_features = dict(global_features.items() + feats.items())
 
         # local features: loop over all objects
@@ -173,11 +198,13 @@ class OpRegionFeatures3d(Operator):
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
-            min_xyz, max_xyz, rawbbox, passed, ccbboxexcl, ccbboxobject = self.compute_bboxes(i, image, labels, mins, maxs, axes)
+            mins, maxs = self.compute_minmax(i, image, mincoords, maxcoords, axes)
+            rawbbox = self.compute_rawbbox(image, mins, maxs, axes)
+            label_bboxes = self.compute_label_bboxes(i, labels, mins, maxs, axes)
 
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.execute_local(image, feature_list, axes, min_xyz, max_xyz, rawbbox, passed, ccbboxexcl, ccbboxobject)
+                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes, mins, maxs)
                 local_features = dictextend(local_features, feats)
 
         for key, value in local_features.iteritems():
@@ -206,6 +233,7 @@ class OpRegionFeatures3d(Operator):
         # removed before classification.
         extrafeats = dict((k.replace(' ', '') + gui_features_suffix, v)
                           for k, v in extrafeats.iteritems())
+
         return dict(all_features.items() + extrafeats.items())
 
     def propagateDirty(self, slot, subindex, roi):
@@ -235,9 +263,9 @@ class OpRegionFeatures(Operator):
 
     # Schematic:
     #
-    # RawImage ----> opRawTimeSlicer ----> opRawChannelSlicer -----
-    #                                                              \
-    # LabelImage --> opLabelTimeSlicer --> opLabelChannelSlicer --> opRegionFeatures3dBlocks --> opChannelStacker --> opTimeStacker -> Output
+    # RawImage ----> opRawTimeSlicer ----
+    #                                    \
+    # LabelImage --> opLabelTimeSlicer --> opRegionFeatures3dBlocks --> opTimeStacker -> Output
 
     def __init__(self, *args, **kwargs):
         super(OpRegionFeatures, self).__init__(*args, **kwargs)
@@ -248,70 +276,24 @@ class OpRegionFeatures(Operator):
         self.opRawTimeSlicer.Input.connect(self.RawImage)
         assert self.opRawTimeSlicer.Slices.level == 1
 
-        self.opRawChannelSlicer = OperatorWrapper(OpMultiArraySlicer2, parent=self)
-        self.opRawChannelSlicer.AxisFlag.setValue('c')
-        self.opRawChannelSlicer.Input.connect(self.opRawTimeSlicer.Slices)
-        assert self.opRawChannelSlicer.Slices.level == 2
-
         # Distribute the labels
         self.opLabelTimeSlicer = OpMultiArraySlicer2(parent=self)
         self.opLabelTimeSlicer.AxisFlag.setValue('t')
         self.opLabelTimeSlicer.Input.connect(self.LabelImage)
         assert self.opLabelTimeSlicer.Slices.level == 1
 
-        self.opLabelChannelSlicer = OperatorWrapper(OpMultiArraySlicer2, parent=self)
-        self.opLabelChannelSlicer.AxisFlag.setValue('c')
-        self.opLabelChannelSlicer.Input.connect(self.opLabelTimeSlicer.Slices)
-        assert self.opLabelChannelSlicer.Slices.level == 2
-
-        class OpWrappedRegionFeatures3d(Operator):
-            """
-            This quick hack is necessary because there's not currently a way to wrap an OperatorWrapper.
-            We need to double-wrap OpRegionFeatures3d, so we need this operator to provide the first level of wrapping.
-            """
-            RawVolume = InputSlot(level=1)
-            LabelVolume = InputSlot(level=1)
-            Features = InputSlot(rtype=List, stype=Opaque, level=1)
-            Output = OutputSlot(level=1)
-
-            def __init__(self, *args, **kwargs):
-                super(OpWrappedRegionFeatures3d, self).__init__(*args, **kwargs)
-                self._innerOperator = OperatorWrapper(OpRegionFeatures3d, operator_args=[], parent=self)
-                self._innerOperator.RawVolume.connect(self.RawVolume)
-                self._innerOperator.LabelVolume.connect(self.LabelVolume)
-                self._innerOperator.Features.connect(self.Features)
-                self.Output.connect(self._innerOperator.Output)
-
-            def setupOutputs(self):
-                pass
-
-            def execute(self, slot, subindex, roi, destination):
-                assert False, "Shouldn't get here."
-
-            def propagateDirty(self, slot, subindex, roi):
-                pass # Nothing to do...
-
-        # Wrap OpRegionFeatures3d TWICE.
-        self.opRegionFeatures3dBlocks = OperatorWrapper(OpWrappedRegionFeatures3d, operator_args=[], parent=self)
-        assert self.opRegionFeatures3dBlocks.RawVolume.level == 2
-        assert self.opRegionFeatures3dBlocks.LabelVolume.level == 2
-        self.opRegionFeatures3dBlocks.RawVolume.connect(self.opRawChannelSlicer.Slices)
-        self.opRegionFeatures3dBlocks.LabelVolume.connect(self.opLabelChannelSlicer.Slices)
+        self.opRegionFeatures3dBlocks = OperatorWrapper(OpRegionFeatures3d, operator_args=[], parent=self)
+        assert self.opRegionFeatures3dBlocks.RawVolume.level == 1
+        assert self.opRegionFeatures3dBlocks.LabelVolume.level == 1
+        self.opRegionFeatures3dBlocks.RawVolume.connect(self.opRawTimeSlicer.Slices)
+        self.opRegionFeatures3dBlocks.LabelVolume.connect(self.opLabelTimeSlicer.Slices)
         self.opRegionFeatures3dBlocks.Features.connect(self.Features)
-
-        assert self.opRegionFeatures3dBlocks.Output.level == 2
-        self.opChannelStacker = OperatorWrapper(OpMultiArrayStacker, parent=self)
-        self.opChannelStacker.AxisFlag.setValue('c')
-
-        assert self.opChannelStacker.Images.level == 2
-        self.opChannelStacker.Images.connect(self.opRegionFeatures3dBlocks.Output)
+        assert self.opRegionFeatures3dBlocks.Output.level == 1
 
         self.opTimeStacker = OpMultiArrayStacker(parent=self)
         self.opTimeStacker.AxisFlag.setValue('t')
-
-        assert self.opChannelStacker.Output.level == 1
         assert self.opTimeStacker.Images.level == 1
-        self.opTimeStacker.Images.connect(self.opChannelStacker.Output)
+        self.opTimeStacker.Images.connect(self.opRegionFeatures3dBlocks.Output)
 
         # Connect our outputs
         self.Output.connect(self.opTimeStacker.Output)
@@ -380,9 +362,9 @@ class OpCachedRegionFeatures(Operator):
 
 class OpAdaptTimeListRoi(Operator):
     """
-    Adapts the tc array output from OpRegionFeatures to an Output slot that is called with a
+    Adapts the t array output from OpRegionFeatures to an Output slot that is called with a
     'List' rtype, where the roi is a list of time slices, and the output is a
-    dict-of-lists (dict by time, list by channels).
+    dictionary of (time, featuredict) pairs.
     """
     Input = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
@@ -395,8 +377,6 @@ class OpAdaptTimeListRoi(Operator):
     def execute(self, slot, subindex, roi, destination):
         assert slot == self.Output, "Unknown output slot"
         taggedShape = self.Input.meta.getTaggedShape()
-        numChannels = taggedShape['c']
-        channelIndex = taggedShape.keys().index('c')
 
         # Special case: An empty roi list means "request everything"
         if len(roi) == 0:
@@ -407,17 +387,13 @@ class OpAdaptTimeListRoi(Operator):
 
         result = {}
         for t in roi:
-            result[t] = []
             start = [0] * len(taggedShape)
             stop = taggedShape.values()
             start[timeIndex] = t
             stop[timeIndex] = t + 1
-            a = self.Input(start, stop).wait()
-            # Result is provided as a list of arrays by channel
-            channelResults = np.split(a, numChannels, channelIndex)
-            for channelResult in channelResults:
-                # Extract from 1x1 ndarray
-                result[t].append(channelResult.flat[0])
+            #FIXME: why is it wrapped like this?
+            result[t] = self.Input(start, stop).wait()[0, 0]
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -452,7 +428,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t][ch]['RegionCenter' + gui_features_suffix]
+                centers = obj_features[t]['RegionCenter' + gui_features_suffix]
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:

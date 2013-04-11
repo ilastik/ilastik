@@ -1,51 +1,52 @@
-#Python
+# Standard
 import re
 import traceback
 import os
 from functools import partial
 import weakref
 import logging
-from ilastik.workflow import Workflow,getAvailableWorkflows,getWorkflowFromName
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
-#SciPy
+# SciPy
 import numpy
 import platform
 import threading
 
-#PyQt
+# PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QString, QStringList
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QPushButton, QInputDialog, QCommandLinkButton, QVBoxLayout, QLabel,\
-                        QPixmap,QPainter,QIcon,QFont,QToolButton,QSpacerItem
+                        QInputDialog, QIcon, QFont, QToolButton
+                        
 
-from PyQt4.QtSvg import QSvgWidget
-from iconMgr import ilastikIcons
-from ilastik.utility.pathHelpers import compressPathForDisplay
 
-#lazyflow
+# lazyflow
 from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
-from lazyflow.request import Request
 import lazyflow.tools.schematic
 
-#volumina
+# volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
 
-#ilastik
+# ilastik
+from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
+from iconMgr import ilastikIcons
+from ilastik.utility.pathHelpers import compressPathForDisplay
+
+# Import all known workflows now to make sure they are all registered with getWorkflowFromName()
+import ilastik.workflows
 
 ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -280,9 +281,9 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
-
+        
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
@@ -997,6 +998,12 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
+            
+            if "currentApplet" in hdf5File.keys():
+                appletName = hdf5File["currentApplet"].value
+                self.setSelectedAppletDrawer(appletName)
+            else:
+                self.setSelectedAppletDrawer(0)
 
     def closeCurrentProject(self):
         """
@@ -1004,6 +1011,13 @@ class IlastikShell( QMainWindow ):
         """
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
+            
+            projectFile = self.projectManager.currentProjectFile 
+            if projectFile is not None:
+                if "currentApplet" in projectFile.keys():
+                    del projectFile["currentApplet"]
+                self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
+            
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()

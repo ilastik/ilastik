@@ -1,6 +1,9 @@
 from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
 from ilastik.utility import MultiLaneOperatorABC
 
+import logging
+logger = logging.getLogger(__name__)
+
 class OperatorSubViewMetaclass(type):
     """
     Simple metaclass to catch errors the user might make by attempting to access certain class attributes.
@@ -71,7 +74,12 @@ class OperatorSubView(object):
         self.outputs = OutputDict(self)
         for slot in op.outputs.values():
             if slot.level >= 1 and not slot.nonlane:
-                self.outputs[slot.name] = slot[index]
+                try:
+                    self.outputs[slot.name] = slot[index]
+                except IndexError:
+                    logger.error( "Could not create OperatorSubView for {}".format( self.__op.name ) )
+                    logger.error( "IndexError when accessing {}[{}]".format( slot.name, index ) )
+                    raise
                 if self.__referenceSlotName is None:
                     self.__referenceSlotName = slot.name
             else:
