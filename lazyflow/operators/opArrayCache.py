@@ -19,6 +19,12 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 class OpArrayCache(OpArrayPiper):
+    """ Allocates a block of memory as large as Input.meta.shape (==Output.meta.shape)
+        with the same dtype in order to be able to cache results.
+        
+        blockShape: dirty regions are tracked with a granularity of blockShape
+    """
+    
     name = "ArrayCache"
     description = "numpy.ndarray caching class"
     category = "misc"

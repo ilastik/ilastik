@@ -18,8 +18,15 @@ class OpBlockedArrayCache(Operator):
     name = "OpBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent"), InputSlot("forward_dirty", value = True)]
-    outputSlots = [OutputSlot("Output")]
+    #Input
+    Input = InputSlot()
+    innerBlockShape = InputSlot()
+    outerBlockShape = InputSlot()
+    fixAtCurrent = InputSlot()
+    forward_dirty = InputSlot(value = True)
+   
+    #Output
+    Output = OutputSlot("Output")
 
     loggerName = __name__ + ".OpBlockedArrayCache"
     logger = logging.getLogger(loggerName)

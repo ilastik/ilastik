@@ -4,8 +4,11 @@ class OpArrayPiper(Operator):
     name = "ArrayPiper"
     description = "simple piping operator"
 
-    inputSlots = [InputSlot("Input")]
-    outputSlots = [OutputSlot("Output")]
+    #Inputs
+    Input = InputSlot() 
+   
+    #Outputs
+    Output = OutputSlot()
 
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
