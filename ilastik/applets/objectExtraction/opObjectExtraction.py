@@ -40,8 +40,22 @@ class OpRegionFeatures3d(Operator):
 
     MARGIN = 30
 
+    applet = None
+
     def __init__(self, *args, **kwargs):
         super(OpRegionFeatures3d, self).__init__(*args, **kwargs)
+                
+        # determine the applet that can block other applets downstream
+        temp = self.parent
+        while temp is not None:
+            if temp.name == "Object Classification Workflow":
+                #FIXME probably dangerous comparison, is there a better way to determine the extraction applet?
+                self.applet = temp.objectExtractionApplet
+                break
+            temp = temp.parent
+
+    def enableDownstream(self, enable=True):
+        self.applet.enableDownstream(enable=enable)
 
     def setupOutputs(self):
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
@@ -234,6 +248,9 @@ class OpRegionFeatures3d(Operator):
         extrafeats = dict((k.replace(' ', '') + gui_features_suffix, v)
                           for k, v in extrafeats.iteritems())
 
+        # downstream applets (i.e. object labeling) may now be used
+        self.enableDownstream()
+        
         return dict(all_features.items() + extrafeats.items())
 
     def propagateDirty(self, slot, subindex, roi):

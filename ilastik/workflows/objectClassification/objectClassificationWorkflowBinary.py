@@ -66,3 +66,7 @@ class ObjectClassificationWorkflowBinary(Workflow):
         # connect extraction -> classification
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
+    
+        # bad things will happen if labels are created before feature selection took place   
+        self.objectExtractionApplet.enableDownstream(False)
+
