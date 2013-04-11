@@ -350,7 +350,6 @@ class OpCachedRegionFeatures(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput
         slicing = roiToSlice(roi.start, roi.stop)
-        import util; util.set_trace()
         self._opCache.Input[ slicing ] = value
 
     def execute(self, slot, subindex, roi, destination):

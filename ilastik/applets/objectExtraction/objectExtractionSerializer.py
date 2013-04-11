@@ -72,11 +72,11 @@ class ObjectExtractionSerializer(AppletSerializer):
                                 operator.LabelOutputHdf5,
                                 operator.CleanLabelBlocks,
                                 name="LabelImage"),
+            SerialDictSlot(operator.Features),
             SerialObjectFeaturesSlot(operator.RegionFeaturesCacheInput,
                                      operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCleanBlocks,
                                      name="RegionFeatures"),
-            SerialDictSlot(operator.Features)
         ]
 
         super(ObjectExtractionSerializer, self).__init__(projectFileGroupName,
