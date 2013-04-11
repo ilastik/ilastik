@@ -249,9 +249,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                     return over_x*over_y*over_z
                 return 0
                     
-        nonzeros = numpy.nonzero(old_labels)
+        nonzeros = numpy.nonzero(old_labels)[0]
         bboxes_old = [bbox(x, axistags) for x in zip(mins_old[nonzeros], maxs_old[nonzeros])]
         bboxes_new = [bbox(x, axistags) for x in zip(mins_new, maxs_new)]
+        
+        #remove background
+        #FIXME: assuming background is 0 again
+        bboxes_new = bboxes_new[1:]
         
         double_for_loop = itertools.product(bboxes_old, bboxes_new)
         overlaps = map(bbox.overlap, double_for_loop)
@@ -259,19 +263,35 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         overlaps = numpy.asarray(overlaps)
         overlaps = overlaps.reshape((len(bboxes_old), len(bboxes_new)))
         new_labels = numpy.zeros((nobj_new,), dtype=numpy.uint32)
+        old_labels_lost = dict()
+        old_labels_lost["full"]=[]
+        old_labels_lost["partial"]=[]
+        new_labels_lost = dict()
+        new_labels_lost["conflict"]=[]
         for iobj in range(overlaps.shape[0]):
             #take the object with maximum overlap
+            overlapsum = numpy.sum(overlaps[iobj, :])
+            if overlapsum==0:
+                old_labels_lost["full"].append((bboxes_old[iobj].cent_x, bboxes_old[iobj].cent_y, bboxes_old[iobj].cent_z))
+                continue
             newindex = numpy.argmax(overlaps[iobj, :])
+            if overlapsum-overlaps[iobj,newindex]>0:
+                #this object overlaps with more than one new object
+                old_labels_lost["partial"].append((bboxes_old[iobj].cent_x, bboxes_old[iobj].cent_y, bboxes_old[iobj].cent_z))
+                
             overlaps[iobj, :] = 0
             overlaps[iobj, newindex] = 1 #doesn't matter what number>0
             
-        for iobj in range(nobj_new):
-            labels = numpy.where(overlaps[:, iobj]>0)
-            if labels[0].shape[0]==1:
-                new_labels[iobj]=old_labels[nonzeros[0][labels[0][0]]]
+        for iobj in range(overlaps.shape[1]):
+            labels = numpy.where(overlaps[:, iobj]>0)[0]
+            if labels.shape[0]==1:
+                new_labels[iobj+1]=old_labels[nonzeros[labels[0]]] #iobj+1 because of the background
+            elif labels.shape[0]>1:
+                new_labels_lost["conflict"].append((bboxes_new[iobj].cent_x, bboxes_new[iobj].cent_y, bboxes_new[iobj].cent_z))
         
+        new_labels = new_labels
         new_labels[0]=0 #FIXME: hardcoded background value again
-        return new_labels
+        return new_labels, old_labels_lost, new_labels_lost
             
 
     def addLane(self, laneIndex):
