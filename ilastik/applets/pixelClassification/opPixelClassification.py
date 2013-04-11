@@ -309,27 +309,13 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.inputs['LabelsCount'].connect(self.MaxLabel)
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
-        # prediction cache for downstream operators (if they want it)
-        self.prediction_cache = OpSlicedBlockedArrayCache( parent=self )
-        self.prediction_cache.name = "prediction_cache"
-        self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
-        self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
-
         # Prediction cache for the GUI
         self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
 
-        # The serializer uses these operators to provide prediction data directly from the project file
-        # if the predictions haven't become dirty since the project file was opened.
-        # (Think of each one like a railroad switch.)
-        self.precomputed_predictions = OpPrecomputedInput( parent=self )
-        self.precomputed_predictions.name = "precomputed_predictions"
-        self.precomputed_predictions.SlowInput.connect( self.prediction_cache.Output )
-        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
-        self.CachedPredictionProbabilities.connect( self.precomputed_predictions.Output )
-
+        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
@@ -392,9 +378,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.prediction_cache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.prediction_cache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
         self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
