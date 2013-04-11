@@ -264,10 +264,9 @@ class ObjectExtractionGui(QWidget):
         self.mainOperator.ObjectCenterImage.setDirty(SubRegion(self.mainOperator.ObjectCenterImage))
 
         maxt = self.mainOperator.LabelImage.meta.shape[0]
-        progress = QProgressDialog("Calculating features...", "Stop", 0, maxt)
+        progress = QProgressDialog("Calculating features...", "Cancel", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
-        progress.setCancelButtonText(QString())
         progress.setValue(0)
 
         # We will use notify_finished() to update the progress bar.
@@ -299,10 +298,15 @@ class ObjectExtractionGui(QWidget):
         for i, req in enumerate(reqs):
             req.notify_finished(callback)
 
-        # FIXME: listen for cancel
+        # handle cancel button
+        progress.canceled.connect(partial(self.cancelFeatureComputation, reqs))
 
     def updateProgress(self, progress, n):
         progress.setValue(n)
+
+    def cancelFeatureComputation(self, reqs):
+        for req in reqs:
+            req.cancel()
 
     def finished(self):
         self.mainOperator._opRegFeats.fixed = True
