@@ -10,4 +10,4 @@ class OpLayerViewer(Operator):
     category = "top-level"
 
     RawInput = InputSlot()
-
+    OtherInput = InputSlot(optional=True)

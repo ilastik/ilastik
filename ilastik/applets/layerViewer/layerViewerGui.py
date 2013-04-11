@@ -14,7 +14,7 @@ from PyQt4 import uic
 
 #lazyflow
 from lazyflow.stype import ArrayLike
-from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
+from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.utility import traceLogged
 
 #volumina
@@ -127,9 +127,9 @@ class LayerViewerGui(QWidget):
                     continue
                 # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
                 # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
-                opPromoteInput = Op1ToMulti(graph=slot.operator.graph)
+                opPromoteInput = OpWrapSlot(graph=slot.operator.graph)
                 opPromoteInput.Input.connect(slot)
-                slot = opPromoteInput.Outputs
+                slot = opPromoteInput.Output
                 self._orphanOperators.append( opPromoteInput )
 
             # Each slot should now be indexed as slot[layer_index]
@@ -167,7 +167,7 @@ class LayerViewerGui(QWidget):
                     layer = self.createStandardLayerFromSlot(slot)
                     
                     # Name the layer after the slot name.
-                    if isinstance( multiLayerSlot.getRealOperator(), Op1ToMulti ):
+                    if isinstance( multiLayerSlot.getRealOperator(), OpWrapSlot ):
                         # We attached an 'upleveling' operator, so look upstream for the real slot.
                         layer.name = multiLayerSlot.getRealOperator().Input.partner.name
                     else:

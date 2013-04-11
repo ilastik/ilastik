@@ -1,7 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
-from ilastik.utility.operatorSubView import OperatorSubView
 
+from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.operators import Op5ifyer
 
 import uuid
@@ -56,8 +56,6 @@ class OpDataSelection(Operator):
     Image = OutputSlot() #: The output image
     AllowLabels = OutputSlot(stype='bool') #: A bool indicating whether or not this image can be used for training
 
-    # Must be declared last of all slots.
-    # When the shell detects that this slot has been resized, it assumes all the others have already been resized.
     ImageName = OutputSlot(stype='string') #: The name of the output image
     
     def __init__(self, force5d=False, *args, **kwargs):
@@ -124,34 +122,96 @@ class OpDataSelection(Operator):
         # Output slots are directly connected to internal operators
         pass
 
-class OpMultiLaneDataSelection( OperatorWrapper ):
+    @classmethod
+    def getInternalDatasets(cls, filePath):
+        return OpInputDataReader.getInternalDatasets( filePath )
+
+class OpDataSelectionGroup( Operator ):
+    # Inputs
+    ProjectFile = InputSlot(stype='object', optional=True)
+    ProjectDataGroup = InputSlot(stype='string', optional=True)
+    WorkingDirectory = InputSlot(stype='filestring')
+    DatasetRoles = InputSlot(stype='object')
+
+    DatasetGroup = InputSlot(stype='object', level=1, optional=True) # Must mark as optional because not all subslots are required.
+
+    # Outputs
+    ImageGroup = OutputSlot(level=1)
+    Image = OutputSlot() # The first dataset. Equivalent to ImageGroup[0]
+
+    # Must be the LAST slot declared in this class.
+    # When the shell detects that this slot has been resized,
+    #  it assumes all the others have already been resized.
+    ImageName = OutputSlot() # Name of the first dataset is used.  Other names are ignored.
     
-    def __init__(self, parent, applet , **kwargs):
-        super( OpMultiLaneDataSelection, self).__init__(
-            OpDataSelection,
-            parent=parent,
-            broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup',
-                                   'WorkingDirectory'],
-            operator_kwargs=kwargs)
-        self.applet = applet
+    def __init__(self, *args, **kwargs):
+        super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
+        self._opDatasets = None
+        self._roles = []
+    
+    def setupOutputs(self):
+        # Create internal operators
+        if self.DatasetRoles.value == self._roles:
+            # No additional setup needed; Internal operators will set themselves up as needed.
+            return
+        self._roles = self.DatasetRoles.value
+        # Clean up the old operators
+        self.ImageGroup.disconnect()
+        self.Image.disconnect()
+        if self._opDatasets is not None:
+            self._opDatasets.cleanUp()
+
+        self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, 
+                                            broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
+        self.ImageGroup.connect( self._opDatasets.Image )
+        self._opDatasets.ProjectFile.connect( self.ProjectFile )
+        self._opDatasets.ProjectDataGroup.connect( self.ProjectDataGroup )
+        self._opDatasets.WorkingDirectory.connect( self.WorkingDirectory )
+        self._opDatasets.Dataset.connect( self.DatasetGroup )
+
+        self.DatasetGroup.resize( len(self._roles) )
+        
+        if len( self._opDatasets.Image ) > 0:
+            self.Image.connect( self._opDatasets.Image[0] )
+            self.ImageName.connect( self._opDatasets.ImageName[0] )
+
+    def execute(self, slot, subindex, rroi, result):
+#        if slot == self.Image:
+#            result[:] = self._opDatasets.Image(rroi.start, rroi.stop).wait()
+#        if slot == self.ImageName:
+#            result[:] = self._opDatasets.ImageName[0].value
+#            return result
+#        else:
+            assert False, "Unknown or unconnected output slot."
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Output slots are directly connected to internal operators
+        pass
+
+class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
+    def __init__(self, *args, **kwargs):
+        kwargs.update( {'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
+        super( OpMultiLaneDataSelectionGroup, self ).__init__(OpDataSelectionGroup, *args, **kwargs )
+    
     def addLane(self, laneIndex):
-        """
-        Add an image lane.
-        """
+        """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         
         # Only add this lane if we don't already have it
         # We might be called from within the context of our own insertSlot signal.
         if numLanes == laneIndex:
-            self._insertInnerOperator(numLanes, numLanes+1)
+            super( OpMultiLaneDataSelectionGroup, self ).addLane( laneIndex )
 
     def removeLane(self, laneIndex, finalLength):
-        """
-        Remove an image lane.
-        """
+        """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
-            self._removeInnerOperator(laneIndex, numLanes-1)
+            super( OpMultiLaneDataSelectionGroup, self ).removeLane( laneIndex, finalLength )
 
-    def getLane(self, laneIndex):
-        return OperatorSubView(self, laneIndex)
+
+
+
+
+
+
+
