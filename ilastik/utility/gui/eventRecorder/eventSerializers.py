@@ -37,6 +37,8 @@ def QWheelEvent_to_string(wheelEvent):
 def QKeyEvent_to_string(keyEvent):
     text = str(keyEvent.text())
     text = text.replace('\n', '\\n')
+    text = text.replace('"', '\\"')
+    text = text.replace("'", "\\'")
     text = '"""' + text + '"""'
     type_name = get_event_type_name( keyEvent.type() )
     mod_str = get_key_modifiers_string(keyEvent.modifiers())

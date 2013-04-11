@@ -217,9 +217,10 @@ def playback_events(player):
 
         # Write all events and comments
         for eventstr, objname, timestamp_in_seconds in self._captured_events:
-            eventstr = eventstr.replace('\\', '\\\\')
-            eventstr = eventstr.replace('"', r'\"')
             if objname == "comment":
+                eventstr = eventstr.replace('\\', '\\\\')
+                eventstr = eventstr.replace('"', '\\"')
+                eventstr = eventstr.replace("'", "\\'")
                 fileobj.write(
 """
     ########################
