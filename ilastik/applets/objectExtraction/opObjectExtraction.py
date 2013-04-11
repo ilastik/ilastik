@@ -205,8 +205,13 @@ class OpRegionFeatures3d(Operator):
                 feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes, mins, maxs)
                 local_features = dictextend(local_features, feats)
 
-        for key, value in local_features.iteritems():
-            local_features[key] = np.vstack(list(v.reshape(1, -1) for v in value))
+        for key in local_features.keys():
+            value = local_features[key]
+            try:
+                local_features[key] = np.vstack(list(v.reshape(1, -1) for v in value))
+            except:
+                print 'warning: feature {} failed'.format(key)
+                del local_features[key]
 
         all_features = dict(global_features.items() + local_features.items())
 
