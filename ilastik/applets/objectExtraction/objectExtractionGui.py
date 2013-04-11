@@ -1,12 +1,14 @@
 from PyQt4.QtGui import QWidget, QColor, QProgressDialog, QTreeWidgetItem, QMessageBox
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QString, QVariant
+from PyQt4.QtCore import Qt, QString, QVariant, pyqtSignal, QObject
 
 from lazyflow.rtype import SubRegion
 import os
 from collections import defaultdict
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+from functools import partial
+
 try:
     from ilastik.plugins import pluginManager
 except:
@@ -259,28 +261,49 @@ class ObjectExtractionGui(QWidget):
             self._calculateFeatures()
 
     def _calculateFeatures(self):
+        self.mainOperator.ObjectCenterImage.setDirty(SubRegion(self.mainOperator.ObjectCenterImage))
+
         maxt = self.mainOperator.LabelImage.meta.shape[0]
         progress = QProgressDialog("Calculating features...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
+        progress.setValue(0)
+
+        # We will use notify_finished() to update the progress bar.
+        # However, the callback will be called from a non-gui thread,
+        # which cannot access gui elements directly. Therefore we use
+        # this callback object to send signals back to this thread.
+        class Callback(QObject):
+            ndone = 0
+            timestep_done = pyqtSignal(int)
+            all_finished = pyqtSignal()
+
+            def __call__(self, *args, **kwargs):
+                self.ndone += 1
+                self.timestep_done.emit(self.ndone)
+                if self.ndone == len(reqs):
+                    self.all_finished.emit()
+
+        callback = Callback()
+        callback.timestep_done.connect(partial(self.updateProgress, progress))
+        callback.all_finished.connect(self.finished)
 
         reqs = []
         self.mainOperator._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.mainOperator.RegionFeatures([t]))
-            reqs[-1].submit()
+            req = self.mainOperator.RegionFeatures([t])
+            req.submit()
+            reqs.append(req)
 
         for i, req in enumerate(reqs):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()
+            req.notify_finished(callback)
 
+        # FIXME: listen for cancel
+
+    def updateProgress(self, progress, n):
+        progress.setValue(n)
+
+    def finished(self):
         self.mainOperator._opRegFeats.fixed = True
-        progress.setValue(maxt)
-
-        self.mainOperator.ObjectCenterImage.setDirty(SubRegion(self.mainOperator.ObjectCenterImage))
-
         print 'Object Extraction: done.'
