@@ -80,7 +80,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QToolButton" name="DeleteButton">
+      <widget class="QToolButton" name="SaveButton">
        <property name="toolTip">
         <string>delete layer</string>
        </property>
@@ -89,7 +89,7 @@
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>../shell/gui/icons/16x16/actions/list-remove.png</normaloff>../shell/gui/icons/16x16/actions/list-remove.png</iconset>
+         <normaloff>../shell/gui/icons/16x16/actions/document-save.png</normaloff>../shell/gui/icons/16x16/actions/document-save.png</iconset>
        </property>
       </widget>
      </item>
