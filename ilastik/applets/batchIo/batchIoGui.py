@@ -211,8 +211,9 @@ class BatchIoGui(QWidget):
             options = QFileDialog.Options()
             if ilastik_config.getboolean("ilastik", "debug"):
                 options |= QFileDialog.DontUseNativeDialog
-
-            directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", os.path.abspath(__file__), options=options)
+            
+            defaultpath = self.topLevelOperator.WorkingDirectory.value
+            directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", defaultpath, options=options)
     
             # Stop now if the user canceled
             if directoryName.isNull():
