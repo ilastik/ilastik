@@ -4,6 +4,7 @@
 import sys
 import argparse
 import threading
+import logging
 from functools import partial
 
 # Third-party
@@ -18,6 +19,8 @@ default_config.init()
 from ilastik.utility.pathHelpers import PathComponents
 from ilastik.utility.gui.eventRecorder import EventPlayer
 from ilastik.shell.gui.startShellGui import startShellGui
+
+logger = logging.getLogger(__name__)
 
 def install_thread_excepthook():
     # This function was copied from: http://bugs.python.org/issue1230540
@@ -84,7 +87,7 @@ if parsed_args.debug:
     ilastik_config.set('ilastik', 'debug', 'true')
     
 if ilastik_config.getboolean("ilastik", "debug"):
-    print "Starting ilastik in debug mode."
+    logger.info("Starting ilastik in debug mode.")
 
 sys.exit(startShellGui(None,*init_funcs))
 
