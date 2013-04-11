@@ -8,6 +8,7 @@ from functools import partial
 
 # Third-party
 from PyQt4.QtGui import QApplication
+from ilastik.config import cfg as ilastik_config
 
 # Initialize logging before anything else
 from ilastik.ilastik_logging import default_config
@@ -44,9 +45,10 @@ parser.add_argument('--playback_speed', help='Speed to play the playback script.
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 parser.add_argument('--project', nargs='?', help='A project file to open on startup.')
+parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
 
 # Example:
-# python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --playback_script=my_recording.py
+# python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
 parsed_args = parser.parse_args()
 init_funcs = []
@@ -77,6 +79,12 @@ if parsed_args.exit_on_failure:
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
     install_thread_excepthook()
+
+if parsed_args.debug:
+    ilastik_config.set('ilastik', 'debug', 'true')
+    
+if ilastik_config.getboolean("ilastik", "debug"):
+    print "Starting ilastik in debug mode."
 
 sys.exit(startShellGui(None,*init_funcs))
 
