@@ -34,6 +34,8 @@ class PreprocessingApplet(StandardApplet):
         if not ed and self._enabledDS: # disable Downstream
             self._enabledDS = False
             self.guiControlSignal.emit(ControlCommand.DisableDownstream)
+        if isinstance(self._gui,PreprocessingGui): # if the gui is already set up, apply enabling to write-protect checkbox
+            self._gui.enableWriteprotect(ed)
     
     def createSingleLaneGui( self , laneIndex):
         opPre = self.topLevelOperator.getLane(laneIndex)

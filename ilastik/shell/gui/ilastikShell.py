@@ -453,11 +453,14 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath
-
+            
+            if self._workflowClass is not None:
+                windowTitle+=" - "+self.projectManager.workflow.workflowName
+            
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
                 windowTitle += " [Read Only]"
-
+            
         self.setWindowTitle(windowTitle)        
 
         # Enable/Disable menu items

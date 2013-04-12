@@ -90,6 +90,9 @@ class PreprocessingGui(QMainWindow):
         self.drawer.sigmaSpin.setEnabled(not iswriteprotect)
         self.drawer.runButton.setEnabled(not iswriteprotect)
     
+    def enableWriteprotect(self,ew):
+        self.drawer.writeprotectBox.setEnabled(ew)
+    
     def setWriteprotect(self):
         self.drawer.writeprotectBox.setChecked(True)
     
