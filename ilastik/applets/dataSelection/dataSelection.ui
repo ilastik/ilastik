@@ -19,15 +19,44 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <widget class="QGroupBox" name="fileInfoGroupBox">
-      <property name="title">
-       <string>File Info</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <widget class="DataLaneSummaryTableView" name="laneSummaryTableView"/>
-       </item>
-      </layout>
+     <widget class="QTabWidget" name="fileInfoTabWidget">
+      <widget class="QWidget" name="fileInfoTabWidgetPage1">
+       <attribute name="title">
+        <string/>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <property name="margin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="DataLaneSummaryTableView" name="laneSummaryTableView"/>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="removeLaneButton">
+            <property name="text">
+             <string>Remove Lane</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
      </widget>
      <widget class="QStackedWidget" name="viewerStack">
       <property name="sizePolicy">
@@ -49,7 +78,7 @@
  <customwidgets>
   <customwidget>
    <class>DataLaneSummaryTableView</class>
-   <extends>QTreeView</extends>
+   <extends>QTableView</extends>
    <header>ilastik.applets.dataSelection.dataLaneSummaryTableView</header>
   </customwidget>
  </customwidgets>

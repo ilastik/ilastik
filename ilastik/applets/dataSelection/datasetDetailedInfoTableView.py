@@ -1,13 +1,13 @@
 from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel
+from PyQt4.QtGui import QTableView, QHeaderView
 
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
+from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel, DatasetDetailedInfoColumn
 
-class DataLaneSummaryTableView(QTableView):
+class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)
 
     def __init__(self, parent):
-        super( DataLaneSummaryTableView, self ).__init__(parent)
+        super( DatasetDetailedInfoTableView, self ).__init__(parent)
 
         self.resizeRowsToContents()
         self.resizeColumnsToContents()
@@ -30,25 +30,16 @@ class DataLaneSummaryTableView(QTableView):
         self.verticalHeader().hide()
 
     def selectionChanged(self, selected, deselected):
-        super( DataLaneSummaryTableView, self ).selectionChanged(selected, deselected)
+        super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
         selectedIndexes = selected.indexes()
         if len(selectedIndexes) == 0:
-            self.update()
+            #self.update()
             self._selectedLane = -1
             self.dataLaneSelected.emit(-1)
             return
-
-        rowFirstIndex = self.model().index( selectedIndexes[0].row(), 0, selectedIndexes[0].parent() )
-        rowLastIndex = self.model().index( selectedIndexes[0].row(), self.model().columnCount(), selectedIndexes[0].parent() )
-        selection = QItemSelection( rowFirstIndex, rowLastIndex )
-        self.selectionModel().select( selection, QItemSelectionModel.Select )
-
         self._selectedLane = selectedIndexes[0].row()
         self.dataLaneSelected.emit(self._selectedLane)
-
-        # For some reason, changing the selection doesn't automatically trigger a paint event
-        self.update()
         
     def selectedLane(self):
         return self._selectedLane

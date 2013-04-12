@@ -3,23 +3,21 @@ from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
 from ilastik.utility import bind, PathComponents
 from opDataSelection import DatasetInfo
 
-class LaneColumn():
-    LabelsAllowed = 0
-    NumColumns = 1
-
-class DatasetInfoColumn():
+class DatasetDetailedInfoColumn():
     Name = 0
     Location = 1
-    NumColumns = 2
+    InternalID = 2
+    AxisOrder = 3
+    NumColumns = 4
 
-class DataLaneSummaryTableModel(QAbstractItemModel):
-    
-    def __init__(self, parent, topLevelOperator):
+class DatasetDetailedInfoTableModel(QAbstractItemModel):
+    def __init__(self, parent, topLevelOperator, roleIndex):
         """
         :param topLevelOperator: An instance of OpMultiLaneDataSelectionGroup
         """
-        super( DataLaneSummaryTableModel, self ).__init__(parent)
+        super( DatasetDetailedInfoTableModel, self ).__init__(parent)
         self._op = topLevelOperator
+        self._roleIndex = roleIndex
 
         def handleNewLane( multislot, laneIndex):
             assert multislot is self._op.DatasetGroup
@@ -30,15 +28,12 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
                 # Get the row of this slot
                 laneSlot = slot.operator
                 laneIndex = laneSlot.operator.index( laneSlot )
-                # FIXME: For now, we update the whole row.
-                #        Later, update only the columns that correspond to this dataset.
                 firstIndex = self.createIndex(laneIndex, 0)
                 lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
                 self.dataChanged.emit(firstIndex, lastIndex)
             
             for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
-                for roleIndex, datasetSlot in enumerate(datasetMultiSlot):
-                    datasetSlot.notifyDirty( handleDatasetInfoChanged )
+                datasetMultiSlot[self._roleIndex].notifyDirty( handleDatasetInfoChanged )
 
         self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
 
@@ -53,10 +48,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             handleNewLane( self._op.DatasetGroup, laneIndex )
 
     def columnCount(self, parent=QModelIndex()):
-        if not self._op.DatasetRoles.ready():
-            return 0
-        roles = self._op.DatasetRoles.value
-        return LaneColumn.NumColumns + DatasetInfoColumn.NumColumns * len(roles)
+        return DatasetDetailedInfoColumn.NumColumns
     
     def rowCount(self, parent=QModelIndex()):
         return len( self._op.ImageGroup )
@@ -74,53 +66,50 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole ):
         if orientation != Qt.Horizontal or role != Qt.DisplayRole:
             return None
-        if section == LaneColumn.LabelsAllowed:
-            return "Labelable"
-        section = section - LaneColumn.NumColumns
-        section %= DatasetInfoColumn.NumColumns
-        InfoColumnNames = { DatasetInfoColumn.Name : "Name",
-                            DatasetInfoColumn.Location : "Location" }
+
+        InfoColumnNames = { DatasetDetailedInfoColumn.Name : "Name",
+                            DatasetDetailedInfoColumn.Location : "Location",
+                            DatasetDetailedInfoColumn.InternalID : "Internal Path",
+                            DatasetDetailedInfoColumn.AxisOrder : "Axis Order" }
         return InfoColumnNames[section]
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
-        
-        if index.column() < LaneColumn.NumColumns:
-            if index.column() == LaneColumn.LabelsAllowed:
-                firstInfoSlot = self._op.DatasetGroup[laneIndex][0]
-                if not firstInfoSlot.ready():
-                    return ""
-                info = firstInfoSlot.value
-                return { True: "True", False : "False" }[ info.allowLabels ]
-            else:
-                assert False
 
         ## Dataset info item
-        roleIndex = (index.column() - LaneColumn.NumColumns) // DatasetInfoColumn.NumColumns
-        datasetInfoIndex = (index.column() - LaneColumn.NumColumns) % DatasetInfoColumn.NumColumns
-        
-        datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
         if not datasetSlot.ready():
             return ""
 
-        UninitializedDisplayData = { DatasetInfoColumn.Name : "<please select>",
-                                     DatasetInfoColumn.Location : "" }
+        UninitializedDisplayData = { DatasetDetailedInfoColumn.Name : "<please select>",
+                                     DatasetDetailedInfoColumn.Location : "",
+                                     DatasetDetailedInfoColumn.InternalID : "",
+                                     DatasetDetailedInfoColumn.AxisOrder : "" }
         
-        datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
         if datasetSlot.ready():
-            datasetInfo = self._op.DatasetGroup[laneIndex][roleIndex].value
+            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
         else:
-            return UninitializedDisplayData[ datasetInfoIndex ]
+            return UninitializedDisplayData[ index.column() ]
         
         filePathComponents = PathComponents( datasetInfo.filePath )        
-        if datasetInfoIndex == DatasetInfoColumn.Name:
+        if index.column() == DatasetDetailedInfoColumn.Name:
             return filePathComponents.filename
 
-        if datasetInfoIndex == DatasetInfoColumn.Location:
+        if index.column() == DatasetDetailedInfoColumn.Location:
             LocationNames = { DatasetInfo.Location.FileSystem : "External File",
                               DatasetInfo.Location.ProjectInternal : "Project File" }
             return LocationNames[ datasetInfo.location ]
+        
+        if index.column() == DatasetDetailedInfoColumn.InternalID:
+            return filePathComponents.internalPath
+        
+        imageSlot = self._op.ImageGroup[laneIndex][self._roleIndex]
+        if index.column() == DatasetDetailedInfoColumn.AxisOrder:
+            if imageSlot.ready():
+                return "".join( imageSlot.meta.getAxisKeys() )
+            else:
+                return UninitializedDisplayData[DatasetDetailedInfoColumn.AxisOrder]
 
-        assert False, "Unknown column"
-
+        assert False, "Unknown column: row={}, column={}".format( index.row(), index.column() )
 

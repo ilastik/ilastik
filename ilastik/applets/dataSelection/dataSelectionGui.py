@@ -36,6 +36,10 @@ from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
+from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
+
+from dataDetailViewerWidget import DataDetailViewerWidget
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -84,14 +88,14 @@ class DataSelectionGui(QWidget):
     def imageLaneAdded(self, laneIndex):
         # We assume that there's nothing to do here because THIS GUI initiated the lane addition
         if self.guiMode != GuiMode.Batch:
-            if(len(self.topLevelOperator.Dataset) != laneIndex+1):
+            if(len(self.topLevelOperator.DatasetGroup) != laneIndex+1):
                 import warnings
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
         if self.guiMode != GuiMode.Batch:
-            assert len(self.topLevelOperator.Dataset) == finalLength
+            assert len(self.topLevelOperator.DatasetGroup) == finalLength
 
     ###########################################
     ###########################################
@@ -109,8 +113,8 @@ class DataSelectionGui(QWidget):
             self.guiControlSignal = guiControlSignal
             self.threadRouter = ThreadRouter(self)
 
-            self.initAppletDrawerUic()
-            self.initCentralUic()
+            self._initAppletDrawerUic()
+            self._initCentralUic()
 
             def handleImageRemoved(multislot, index, finalLength):
                 # Remove the viewer for this dataset
@@ -122,50 +126,62 @@ class DataSelectionGui(QWidget):
 
             self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
 
-    def initAppletDrawerUic(self):
+    def _initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        with Tracer(traceLogger):
-            # Load the ui file (find it in our own directory)
-            localDir = os.path.split(__file__)[0]+'/'
-            # (We don't pass self here because we keep the drawer ui in a separate object.)
-            self.drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
+        localDir = os.path.split(__file__)[0]+'/'
+        self.drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
 
-            # Set up our handlers
-            self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
-            self.drawer.addFileButton.setIcon( QIcon(ilastikIcons.AddSel) )
+#        # Set up our handlers
+#        self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
+#        self.drawer.addFileButton.setIcon( QIcon(ilastikIcons.AddSel) )
+#
+#        self.drawer.addMassButton.clicked.connect(self.handleMassAddButtonClicked)
+#        self.drawer.addMassButton.setIcon( QIcon(ilastikIcons.AddSel) )
+#
+#        self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
+#        self.drawer.addStackButton.setIcon( QIcon(ilastikIcons.AddSel) )
+#
+#        self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
+#        self.drawer.addStackFilesButton.setIcon( QIcon(ilastikIcons.AddSel) )
+#
+#        self.drawer.removeFileButton.setEnabled(False)
+#        self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
+#        self.drawer.removeFileButton.setIcon( QIcon(ilastikIcons.RemSel) )
 
-            self.drawer.addMassButton.clicked.connect(self.handleMassAddButtonClicked)
-            self.drawer.addMassButton.setIcon( QIcon(ilastikIcons.AddSel) )
-
-            self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
-            self.drawer.addStackButton.setIcon( QIcon(ilastikIcons.AddSel) )
-
-            self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
-            self.drawer.addStackFilesButton.setIcon( QIcon(ilastikIcons.AddSel) )
-
-            self.drawer.removeFileButton.setEnabled(False)
-            self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
-            self.drawer.removeFileButton.setIcon( QIcon(ilastikIcons.RemSel) )
-
-    def initCentralUic(self):
+    def _initCentralUic(self):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]+'/'
         uic.loadUi(localDir+"/dataSelection.ui", self)
+
+        self._initTableViews()
+        self._initViewerStack()
+        self.splitter.setSizes( [150, 850] )
+
+    def _initTableViews(self):
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
+        self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
+        self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
 
-        self.initViewerStack()
-        self.splitter.setSizes([150, 850])
+        self.fileInfoTabWidget.setTabText( 0, "Summary" )
+        for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
+            detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
+            detailViewer.addFileButton.clicked.connect( partial(self.handleAddFileButtonClicked, roleIndex) )
+            detailViewer.addByPatternButton.clicked.connect( partial(self.handleMassAddButtonClicked, roleIndex) )
+            detailViewer.importStackFilesButton.clicked.connect( partial(self.handleAddStackFilesButtonClicked, roleIndex) )
+            #detailViewer.clearButton.clicked( partial(self.yadayada, roleIndex) )
+            
+            self.fileInfoTabWidget.addTab( detailViewer, role )
 
-    def initViewerStack(self):
+    def _initViewerStack(self):
         self.volumeEditors = {}
         self.viewerStack.addWidget( QWidget() )
 
-    def handleAddFileButtonClicked(self):
+    def handleAddFileButtonClicked(self, roleIndex):
         """
         The user clicked the "Add File" button.
         Ask him to choose a file (or several) and add them to both
@@ -185,11 +201,11 @@ class DataSelectionGui(QWidget):
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
             try:
-                self.addFileNames(fileNames)
+                self.addFileNames(fileNames, roleIndex)
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
 
-    def handleMassAddButtonClicked(self):
+    def handleMassAddButtonClicked(self, roleIndex):
         # Find the most recent directory
 
         # TODO: remove code duplication
@@ -205,7 +221,7 @@ class DataSelectionGui(QWidget):
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent mass directory', os.path.split(fileNames[0])[0])
             try:
-                self.addFileNames(fileNames)
+                self.addFileNames(fileNames, roleIndex)
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
 
@@ -256,7 +272,7 @@ class DataSelectionGui(QWidget):
         # Couldn't find an image file in the directory...
         return None
 
-    def handleAddStackFilesButtonClicked(self):
+    def handleAddStackFilesButtonClicked(self, roleIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
@@ -279,7 +295,7 @@ class DataSelectionGui(QWidget):
             PreferencesManager().set('DataSelection', 'recent stack image', fileNames[0])
             # Convert into one big string, which is accepted by the stack loading operator
             bigString = "//".join( fileNames )
-            self.importStackFromGlobString(bigString)
+            self.importStackFromGlobString(bigString, roleIndex)
 
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
@@ -308,7 +324,7 @@ class DataSelectionGui(QWidget):
             fileNames = []
         return fileNames
 
-    def importStackFromGlobString(self, globString):
+    def importStackFromGlobString(self, globString, roleIndex):
         """
         The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
         """
@@ -339,58 +355,60 @@ class DataSelectionGui(QWidget):
         msg += "Due to the following error:\n{}".format( exc )
         QMessageBox.critical(self, "Failed to load image stack", msg)
 
-    def addFileNames(self, fileNames):
+    def addFileNames(self, fileNames, roleIndex):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
+        The filenames will be *appended* to the role's list of files.
         """
-        with Tracer(traceLogger):
-            infos = []
+        infos = []
+        
+        opTop = self.topLevelOperator
+        
+        # Determine the number of files this role already has
+        # Search for the last valid value.
+        firstNewLane = 0
+        for laneIndex, slot in reversed(zip(range(len(opTop.DatasetGroup)), opTop.DatasetGroup)):
+            if slot[roleIndex].ready():
+                firstNewLane = laneIndex+1
+                break
+        totalLanes = firstNewLane+len(fileNames)
 
-            oldNumFiles = len(self.topLevelOperator.Dataset)
-            # HACK: If the filePath isn't valid, replace it
-            # This is to work around the scenario where two independent data selection applets are coupled, causing mutual resizes.
-            # This will be fixed when a multi-file data selection applet gui replaces this gui.            
-            for i in reversed( range( oldNumFiles ) ):
-                if not self.topLevelOperator.Dataset[i].ready():
-                    oldNumFiles -= 1
-                else:
-                    break
+        # Assign values to the new inputs we just allocated.
+        # The GUI will be updated by callbacks that are listening to slot changes
+        for i, filePath in enumerate(fileNames):
+            datasetInfo = DatasetInfo()
+            cwd = self.topLevelOperator.WorkingDirectory.value
             
-    
-            # Assign values to the new inputs we just allocated.
-            # The GUI will be updated by callbacks that are listening to slot changes
-            for i, filePath in enumerate(fileNames):
-                datasetInfo = DatasetInfo()
-                cwd = self.topLevelOperator.WorkingDirectory.value
+            if not areOnSameDrive(filePath,cwd):
+                QMessageBox.critical(self, "Drive Error","Data must be on same drive as working directory.")
+                return
                 
-                if not areOnSameDrive(filePath,cwd):
-                    QMessageBox.critical(self, "Drive Error","Data must be on same drive as working directory.")
-                    return
-                    
-                absPath, relPath = getPathVariants(filePath, cwd)
-                
-                # Relative by default, unless the file is in a totally different tree from the working directory.
-                if len(os.path.commonprefix([cwd, absPath])) > 1:
-                    datasetInfo.filePath = relPath
+            absPath, relPath = getPathVariants(filePath, cwd)
+            
+            # Relative by default, unless the file is in a totally different tree from the working directory.
+            if len(os.path.commonprefix([cwd, absPath])) > 1:
+                datasetInfo.filePath = relPath
+            else:
+                datasetInfo.filePath = absPath
+
+            h5Exts = ['.ilp', '.h5', '.hdf5']
+            if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
+                datasetNames = self.getPossibleInternalPaths( absPath )
+                if len(datasetNames) > 0:
+                    datasetInfo.filePath += str(datasetNames[0])
                 else:
-                    datasetInfo.filePath = absPath
+                    raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
 
-                h5Exts = ['.ilp', '.h5', '.hdf5']
-                if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
-                    datasetNames = self.getPossibleInternalPaths( absPath )
-                    if len(datasetNames) > 0:
-                        datasetInfo.filePath += str(datasetNames[0])
-                    else:
-                        raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+            # Allow labels by default if this gui isn't being used for batch data.
+            datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+            infos.append(datasetInfo)
 
-                # Allow labels by default if this gui isn't being used for batch data.
-                datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
-                infos.append(datasetInfo)
+        # if no exception was thrown, set up the operator now
+        if len( opTop.DatasetGroup ) < totalLanes:
+            opTop.DatasetGroup.resize( totalLanes )
 
-            #if no exception was thrown, set up the operator now
-            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
-            for i in range(len(infos)):
-                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( infos[i] )
+        for laneIndex, info in zip(range(firstNewLane, totalLanes), infos):
+            self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
 
     @threadRouted
     def updateTableForSlot(self, slot, *args):
@@ -637,29 +655,23 @@ class DataSelectionGui(QWidget):
                 # Update the storage option combo to show the new path
                 self.updateStorageOptionComboBox(index, newFileNamePath)
 
-    def handleRemoveButtonClicked(self):
+    def handleRemoveLaneButtonClicked(self):
         """
         The user clicked the "Remove" button.
         Remove the currently selected row(s) from both the GUI and the top-level operator.
         """
-        with Tracer(traceLogger):
-            # Figure out which dataset to remove
-            rowsToDelete = set()
-            selectedRanges = self.fileInfoTableWidget.selectedRanges()
-            for rng in selectedRanges:
-                for row in range(rng.topRow(), rng.bottomRow()+1):
-                    rowsToDelete.add(row)
+        # Figure out which lane to remove
+        selectedIndexes = self.laneSummaryTableView.selectedIndexes()
+        row = selectedIndexes[0].row()
 
-            # Remove files in reverse order so we don't have to switch indexes as we go
-            for row in sorted(rowsToDelete, reverse=True):
-                # Remove from the GUI
-                self.fileInfoTableWidget.removeRow(row)
-                # Remove from the operator input
-                finalSize = len(self.topLevelOperator.Dataset) - 1
-                self.topLevelOperator.Dataset.removeSlot(row, finalSize)
+        # Remove from the GUI
+        self.laneSummaryTableView.model().removeRow(row)
+        # Remove from the operator
+        finalSize = len(self.topLevelOperator.DatasetGroup) - 1
+        self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
 
-            # The gui and the operator should be in sync
-            assert self.fileInfoTableWidget.rowCount() == len(self.topLevelOperator.Dataset)
+        # The gui and the operator should be in sync
+        assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)
 
     def handleComboSelectionChanged(self, combo, index):
         """
@@ -681,25 +693,16 @@ class DataSelectionGui(QWidget):
 
             self.updateFilePath( changedRow )
 
-    def handleTableSelectionChange(self):
-        """
-        Any time the user selects a new item, select the whole row.
-        """
-        self.showSelectedDataset()
-
-    def showSelectedDataset(self):
+    def showDataset(self, laneIndex):
+        if laneIndex == -1:
+            self.viewerStack.setCurrentIndex(0)
+        
         assert threading.current_thread().name == "MainThread"
-        # Get the selected row and corresponding slot value
-        selectedRanges = self.fileInfoTableWidget.selectedRanges()
-        if len(selectedRanges) == 0:
-            return
-        row = selectedRanges[0].topRow()
-        imageSlot = self.topLevelOperator.Image[row]
+        imageSlot = self.topLevelOperator.Image[laneIndex]
 
         # Create if necessary
         if imageSlot not in self.volumeEditors.keys():
-            layerViewer = LayerViewerGui(self.topLevelOperator.getLane(row),
-                                         crosshair=False)
+            layerViewer = LayerViewerGui(self.topLevelOperator.getLane(laneIndex), crosshair=False)
 
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
