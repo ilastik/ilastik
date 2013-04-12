@@ -45,6 +45,10 @@ class Workflow( Operator ):
     def workflowDescription(self):
         return None
     
+    @property
+    def defaultAppletIndex(self):
+        return 0
+    
     @abstractmethod
     def connectLane(self, laneIndex):
         """

@@ -13,6 +13,7 @@ from preprocessingApplet import PreprocessingApplet
 class CarvingWorkflow(Workflow):
     
     workflowName = "Carving"
+    defaultAppletIndex = 1 # show DataSelection by default
     
     @property
     def applets(self):

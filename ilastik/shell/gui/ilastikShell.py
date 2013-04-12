@@ -1003,7 +1003,7 @@ class IlastikShell( QMainWindow ):
                 appletName = hdf5File["currentApplet"].value
                 self.setSelectedAppletDrawer(appletName)
             else:
-                self.setSelectedAppletDrawer(0)
+                self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
 
     def closeCurrentProject(self):
         """

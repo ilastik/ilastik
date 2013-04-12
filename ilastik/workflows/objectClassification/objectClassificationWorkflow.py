@@ -12,6 +12,7 @@ from lazyflow.operators import OpSegmentation, Op5ifyer
 
 class ObjectClassificationWorkflow(Workflow):
     name = "Object Classification Workflow"
+    defaultAppletIndex = 1 # show DataSelection by default
 
     def __init__(self, headless, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()

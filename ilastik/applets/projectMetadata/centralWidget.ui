@@ -43,7 +43,7 @@
         </size>
        </property>
        <property name="title">
-        <string>Labeler</string>
+        <string>Author</string>
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout_10">
         <item>

@@ -14,6 +14,7 @@ class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanoratory."
+    defaultAppletIndex = 1 # show DataSelection by default
     
     @property
     def applets(self):
