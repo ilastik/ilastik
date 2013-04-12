@@ -1,21 +1,26 @@
 from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView
+from PyQt4.QtGui import QTableView, QHeaderView, QMenu
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel, DatasetDetailedInfoColumn
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)
+    editRequested = pyqtSignal(int) # Signature: (laneIndex)
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
+
+        self.setContextMenuPolicy( Qt.CustomContextMenu )
+        self.customContextMenuRequested.connect( self.handleCustomContextMenuRequested )
 
         self.resizeRowsToContents()
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
-#        self.horizontalHeader().setResizeMode(DatasetInfoColumn.Name, QHeaderView.Interactive)
-#        self.horizontalHeader().setResizeMode(DatasetInfoColumn.Location, QHeaderView.Interactive)
-#        self.horizontalHeader().setResizeMode(DatasetInfoColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Name, QHeaderView.Interactive)
+        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
 #
 #        self.horizontalHeader().resizeSection(Column.Name, 200)
 #        self.horizontalHeader().resizeSection(Column.Location, 300)
@@ -43,3 +48,21 @@ class DatasetDetailedInfoTableView(QTableView):
         
     def selectedLane(self):
         return self._selectedLane
+    
+    def handleCustomContextMenuRequested(self, pos):
+        col = self.columnAt( pos.x() )
+        row = self.rowAt( pos.y() )
+
+        if col < self.model().columnCount() and row < self.model().rowCount():
+            menu = QMenu(parent=self)
+            menu.addAction( "Replace with file..." )
+            menu.addAction( "Replace with stack import..." )
+            menu.addAction( "Edit properties..." )
+    
+            globalPos = self.mapToGlobal( pos )
+            selection = menu.exec_( globalPos )
+            if selection is not None:
+                print "Selection was: ", selection.text()
+    
+
+

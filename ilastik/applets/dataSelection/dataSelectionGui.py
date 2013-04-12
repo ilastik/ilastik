@@ -696,6 +696,7 @@ class DataSelectionGui(QWidget):
     def showDataset(self, laneIndex):
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
+            return
         
         assert threading.current_thread().name == "MainThread"
         imageSlot = self.topLevelOperator.Image[laneIndex]

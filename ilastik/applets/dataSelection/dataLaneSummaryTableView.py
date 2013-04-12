@@ -1,5 +1,5 @@
 from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel
+from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu
 
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
 
@@ -13,6 +13,8 @@ class DataLaneSummaryTableView(QTableView):
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
+
+
 #        self.horizontalHeader().setResizeMode(DatasetInfoColumn.Name, QHeaderView.Interactive)
 #        self.horizontalHeader().setResizeMode(DatasetInfoColumn.Location, QHeaderView.Interactive)
 #        self.horizontalHeader().setResizeMode(DatasetInfoColumn.InternalID, QHeaderView.Interactive)
@@ -52,3 +54,11 @@ class DataLaneSummaryTableView(QTableView):
         
     def selectedLane(self):
         return self._selectedLane
+
+
+
+
+
+
+
+

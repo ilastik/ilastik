@@ -76,15 +76,14 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
 
-        ## Dataset info item
-        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-        if not datasetSlot.ready():
-            return ""
-
         UninitializedDisplayData = { DatasetDetailedInfoColumn.Name : "<please select>",
                                      DatasetDetailedInfoColumn.Location : "",
                                      DatasetDetailedInfoColumn.InternalID : "",
                                      DatasetDetailedInfoColumn.AxisOrder : "" }
+
+        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+        if not datasetSlot.ready():
+            return UninitializedDisplayData[ index.column() ]
         
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
         if datasetSlot.ready():

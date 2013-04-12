@@ -9,8 +9,7 @@ class LaneColumn():
 
 class DatasetInfoColumn():
     Name = 0
-    Location = 1
-    NumColumns = 2
+    NumColumns = 1
 
 class DataLaneSummaryTableModel(QAbstractItemModel):
     
@@ -76,11 +75,12 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return None
         if section == LaneColumn.LabelsAllowed:
             return "Labelable"
-        section = section - LaneColumn.NumColumns
-        section %= DatasetInfoColumn.NumColumns
-        InfoColumnNames = { DatasetInfoColumn.Name : "Name",
-                            DatasetInfoColumn.Location : "Location" }
-        return InfoColumnNames[section]
+        infoColumn = section - LaneColumn.NumColumns
+        infoColumn %= LaneColumn.NumColumns
+        roleIndex = infoColumn // DatasetInfoColumn.NumColumns
+        if infoColumn == DatasetInfoColumn.Name:
+            return self._op.DatasetRoles.value[roleIndex]
+        assert False, "Unknown header column: {}".format( section )
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
@@ -103,8 +103,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if not datasetSlot.ready():
             return ""
 
-        UninitializedDisplayData = { DatasetInfoColumn.Name : "<please select>",
-                                     DatasetInfoColumn.Location : "" }
+        UninitializedDisplayData = { DatasetInfoColumn.Name : "<please select>" }
         
         datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
         if datasetSlot.ready():
