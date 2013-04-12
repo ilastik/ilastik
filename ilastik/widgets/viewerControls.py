@@ -10,17 +10,6 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
-# HCI
-from lazyflow.utility import traceLogged
-from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager
-
-# ilastik
-from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.base.applet import ShellRequest, ControlCommand
-
 from volumina.widgets.exportDlg import ExportDialog
 
 class ViewerControls(QWidget):
