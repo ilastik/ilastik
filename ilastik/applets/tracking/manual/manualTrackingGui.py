@@ -684,6 +684,13 @@ class ManualTrackingGui(LayerViewerGui):
         
         t_start = time_range[0]
         t_end = time_range[1]-1
+        
+        tracks_starting_in_div = {}
+        for d in divisions.keys():
+            [tid_child1, tid_child2], t_div = divisions[d]
+            tracks_starting_in_div[tid_child1] = t_div + 1
+            tracks_starting_in_div[tid_child2] = t_div + 1
+            
                             
         for tid in sorted(list(alltids)):
             oid_prev = None            
@@ -697,7 +704,7 @@ class ManualTrackingGui(LayerViewerGui):
                         break
                        
                 if (oid_prev is not None) and (oid_cur is None): # track ends
-                    if oid_prev in divisions.keys(): # division
+                    if tid in divisions.keys(): # division
                         [tid_child1, tid_child2], t_div = divisions[oid_prev]
                         oid_child1 = None
                         oid_child2 = None
@@ -724,8 +731,9 @@ class ManualTrackingGui(LayerViewerGui):
                     disapps[t].append((oid_prev, 0.))                    
                     # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
                 
-                elif (oid_prev is None) and (t != t_start) and (oid_cur is not None) and (oid_cur not in apps[t]) and (oid_cur not in divisions.keys()): # track starts
-                    apps[t].append((oid_cur, 0.))                    
+                elif (oid_prev is None) and (t != t_start) and (oid_cur is not None): # track starts
+                    if tid in tracks_starting_in_div.keys() and tracks_starting_in_div[tid] != t:
+                        apps[t].append((oid_cur, 0.))                    
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
                     moves[t].append((oid_prev, oid_cur, 0.))
@@ -770,7 +778,6 @@ class ManualTrackingGui(LayerViewerGui):
         directory = str(directory)
         
         oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
-        
         
         for t in sorted(oid2tids.keys()):
             fn =  directory + "/" + str(t).zfill(5)  + ".h5"
