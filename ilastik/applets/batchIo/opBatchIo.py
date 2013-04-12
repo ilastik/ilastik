@@ -76,10 +76,22 @@ class OpBatchIo(Operator):
         
         self._createDirLock = threading.Lock()
         
-    def setupOutputs(self):        
+    def cleanupPreview(self):
         if self._opExportedImageProvider is not None:
             self.ExportedImage.disconnect()
             self._opExportedImageProvider.cleanUp()
+
+    def setupPreview(self):
+        # Set up the output that let's us view the exported file
+        self._opExportedImageProvider = OpExportedImageProvider( parent=self )
+        self._opExportedImageProvider.Input.connect( self.ImageToExport )
+        self._opExportedImageProvider.WorkingDirectory.connect( self.WorkingDirectory )
+        self._opExportedImageProvider.DatasetPath.connect( self.OutputDataPath )
+        self._opExportedImageProvider.Dirty.connect( self.Dirty )
+        self.ExportedImage.connect( self._opExportedImageProvider.Output )
+    
+    def setupOutputs(self):
+        self.cleanupPreview()        
             
         # Create the output data path
         formatId = self.Format.value
@@ -117,13 +129,7 @@ class OpBatchIo(Operator):
         elif formatId == ExportFormat.Tiff:
             self.OutputDataPath.setValue( outputPath )
 
-        # Set up the output that let's us view the exported file
-        self._opExportedImageProvider = OpExportedImageProvider( parent=self )
-        self._opExportedImageProvider.Input.connect( self.ImageToExport )
-        self._opExportedImageProvider.WorkingDirectory.connect( self.WorkingDirectory )
-        self._opExportedImageProvider.DatasetPath.connect( self.OutputDataPath )
-        self._opExportedImageProvider.Dirty.connect( self.Dirty )
-        self.ExportedImage.connect( self._opExportedImageProvider.Output )
+        self.setupPreview()
 
     def propagateDirty(self, slot, subindex, roi):
         # Out input data changed, so we have work to do when we get executed.
@@ -155,6 +161,8 @@ class OpBatchIo(Operator):
                         if not os.path.exists(pathComp.externalDirectory):
                             os.makedirs(pathComp.externalDirectory)
 
+                self.cleanupPreview()
+                
                 # Open the file
                 try:
                     hdf5File = h5py.File(pathComp.externalPath)
@@ -174,10 +182,12 @@ class OpBatchIo(Operator):
                 opH5Writer.progressSignal.subscribe( self.progressSignal )
 
                 # Trigger the write
-                self.Dirty.setValue( not opH5Writer.WriteImage.value )
+                dirtyState = not opH5Writer.WriteImage.value
                 hdf5File.close()
-
                 opH5Writer.cleanUp()
+                
+                self.setupPreview()
+                self.Dirty.setValue( dirtyState )
 
 #            elif exportFormat == ExportFormat.Npy:
 #                assert False # TODO
@@ -191,7 +201,7 @@ class OpBatchIo(Operator):
             
 class OpExportedImageProvider(Operator):
     """
-    This simply wraps a lazyflow OpInputDataReader, but provides a default output (zeros) if the file doesn't exist yet.
+    This simply wraps a lazyflow OpInputDataReader, but provides a default output if the file doesn't exist yet.
     """
     Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
 

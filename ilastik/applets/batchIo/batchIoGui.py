@@ -367,8 +367,15 @@ class BatchIoGui(QWidget):
 
     def deleteAllResults(self):
         with Tracer(traceLogger):
-            for slot in self.topLevelOperator.OutputDataPath:
-                os.remove(slot.value)
+            for k in xrange(len(self.topLevelOperator)):
+                operatorView = self.topLevelOperator.getLane(k)
+                operatorView.cleanupPreview()
+                pathComp = PathComponents(operatorView.OutputDataPath.value, operatorView.WorkingDirectory.value)
+                os.remove(pathComp.externalPath)
+                operatorView.setupPreview()
+                # we need to toggle the dirts state in order to enforce a frech dirty signal
+                operatorView.Dirty.setValue( False )
+                operatorView.Dirty.setValue( True )
     
     def showSelectedDataset(self):
         """
