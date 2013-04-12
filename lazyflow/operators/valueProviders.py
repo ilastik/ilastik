@@ -9,7 +9,7 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import lazyflow.roi
-from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
+from operators import OpArrayCache, OpArrayPiper
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"

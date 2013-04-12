@@ -67,9 +67,6 @@ class TestSlot_notifyConnect(object):
     def setUp(self):
         self.g = Graph()
 
-    def tearDown(self):
-        self.g.stopGraph()
-
     def test_connect(self):
         # test that the notifyConnect callback is called
         # when the slot is connected
@@ -147,9 +144,6 @@ class TestSlot_notifyDisconnect(object):
 
     def setUp(self):
         self.g = Graph()
-
-    def tearDown(self):
-        self.g.stopGraph()
 
     def test_disconnect(self):
         # test that the notifyConnect callback is called
@@ -232,9 +226,6 @@ class TestSlot_notifyMetaChanged(object):
 
     def setUp(self):
         self.g = Graph()
-
-    def tearDown(self):
-        self.g.stopGraph()
 
     def test_inputslot_changed(self):
         # test that the changed callback is called

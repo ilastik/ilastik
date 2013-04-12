@@ -102,8 +102,6 @@ def testFullAllocate():
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     print "4th part ok................."
 
-    g.finalize()
-
 
 def testPartialAllocate():
 
@@ -134,6 +132,5 @@ def testPartialAllocate():
     assert_array_equal(newdata, substack.view(numpy.ndarray))
 
 if __name__=="__main__":
-    testFullAllocate()
-    testPartialAllocate()
-    if not ret: sys.exit(1)
+    import nose
+    nose.run(defaultTest=__file__)

@@ -5,7 +5,7 @@ import vigra
 import lazyflow
 from lazyflow.graph import *
 from lazyflow import operators
-from lazyflow.request import Request, Pool
+from lazyflow.request import Request, RequestPool
 import functools
 
 doProfile = False

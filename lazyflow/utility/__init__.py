@@ -9,3 +9,4 @@ from pathHelpers import PathComponents, getPathVariants
 from roiRequestBatch import RoiRequestBatch
 from bigRequestStreamer import BigRequestStreamer
 import io
+from lazyflow.utility.fastWhere import fastWhere
