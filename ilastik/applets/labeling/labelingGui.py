@@ -263,13 +263,13 @@ class LabelingGui(LayerViewerGui):
                       "Eraser Cursor",
                       eraserMode,
                       self.labelingDrawerUi.eraserToolButton )
-
+        '''
         changeBrushSize = QShortcut( QKeySequence("c"), self, member=self.labelingDrawerUi.brushSizeComboBox.showPopup )
         mgr.register( shortcutGroupName,
                       "Change Brush Size",
                       changeBrushSize,
                       self.labelingDrawerUi.brushSizeComboBox )
-
+        '''
 
         self._labelShortcuts = []
 

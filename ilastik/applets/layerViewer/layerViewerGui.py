@@ -516,7 +516,7 @@ class LayerViewerGui(QWidget):
         def resetAllAxes():
             for i, s in enumerate(self.editor.imageScenes):
                 s.resetAxes()
-
+        
         self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
         self.menuGui.actionCenterImage.triggered.connect(centerImage)
         self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
@@ -531,7 +531,17 @@ class LayerViewerGui(QWidget):
         #self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
         self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
-
+        from PyQt4.QtCore import Qt
+        mgr = ShortcutManager()
+        qsa = QShortcut(QKeySequence("I"),self,member = self.menuGui.actionFitImage.trigger,context = Qt.WidgetShortcut)
+        mgr.register("FitImage","fit image on screen",qsa)
+        qsd = QShortcut(QKeySequence("Ctrl+D"),self,member = self.menuGui.actionShowDebugPatches.toggle,context = Qt.WidgetShortcut)
+        mgr.register("ShowTiling","show tiling",qsd)
+        qsc = QShortcut(QKeySequence("C"),self,member = self.menuGui.actionCenterImage.trigger,context = Qt.WidgetShortcut)
+        mgr.register("CenterImage","center image",qsc)
+        qsw = QShortcut(QKeySequence("W"),self,member = self.menuGui.actionReset_zoom.trigger,context = Qt.WidgetShortcut)
+        mgr.register("ResetZoom","reset zoom",qsw)
+        
     @traceLogged(traceLogger)
     def _initEditor(self, crosshair):
         """

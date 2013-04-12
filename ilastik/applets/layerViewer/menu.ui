@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>1339</width>
-     <height>29</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -93,9 +93,6 @@
    <property name="text">
     <string>&amp;Show Tiling</string>
    </property>
-   <property name="shortcut">
-    <string>Ctrl+D</string>
-   </property>
    <property name="iconVisibleInMenu">
     <bool>false</bool>
    </property>
@@ -152,12 +149,6 @@
    <property name="toolTip">
     <string>toggle selected hud</string>
    </property>
-   <property name="shortcut">
-    <string>H</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::WidgetShortcut</enum>
-   </property>
   </action>
   <action name="actionCenterAllImages">
    <property name="text">
@@ -168,12 +159,6 @@
    <property name="text">
     <string>Center Image</string>
    </property>
-   <property name="shortcut">
-    <string>C</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::WidgetShortcut</enum>
-   </property>
   </action>
   <action name="actionFitImage">
    <property name="text">
@@ -182,12 +167,6 @@
    <property name="toolTip">
     <string>fit image into view</string>
    </property>
-   <property name="shortcut">
-    <string>F</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::ApplicationShortcut</enum>
-   </property>
   </action>
   <action name="actionReset_zoom">
    <property name="text">
@@ -195,9 +174,6 @@
    </property>
    <property name="toolTip">
     <string>reset zoom</string>
-   </property>
-   <property name="shortcut">
-    <string>W</string>
    </property>
   </action>
   <action name="actionOpenStack">
