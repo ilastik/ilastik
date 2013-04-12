@@ -103,6 +103,7 @@ class TestThresholdTwoLevels(object):
         oper5d.HighThreshold.setValue(self.highThreshold)
         oper5d.LowThreshold.setValue(self.lowThreshold)
         oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(2)
         
         out5d = oper5d.Output[:].wait()
         
