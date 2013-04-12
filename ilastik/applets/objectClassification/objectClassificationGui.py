@@ -5,6 +5,7 @@ from PyQt4.QtCore import pyqtSlot
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
+from ilastik.applets.objectExtraction.opObjectExtraction import gui_features_suffix
 
 import os
 import numpy
@@ -320,6 +321,8 @@ class ObjectClassificationGui(LabelingGui):
             feats = self.op.ObjectFeatures([t]).wait()[t]
             featnames = feats.keys()
             for featname in featnames:
+                if gui_features_suffix in featname:
+                    continue
                 print "{}:".format(featname)
                 value = feats[featname]
                 ft = numpy.asarray(value.squeeze())[obj]
