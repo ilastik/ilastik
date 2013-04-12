@@ -741,13 +741,18 @@ class ManualTrackingGui(LayerViewerGui):
                     if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t-1][oid_prev]) > 1:
                         t_multiprev = None
                         oid_multiprev = None
-                                                
+                        
+                        found = False            
                         for tt in reversed(range(t)):
                             for o in oid2tids[tt].keys():
-                                if tid in oid2tids[tt][o] and len(oid2tids[tt][o]) == 1:
+                                if (tid in oid2tids[tt][o]) and (len(oid2tids[tt][o]) == 1):
+                                    found = True
                                     oid_multiprev = o
                                     t_multiprev = tt                                    
                                     break
+                            if found:
+                                break
+                            
                         if t_multiprev is not None and oid_multiprev is not None: 
                             multiMoves[t].append((oid_multiprev, oid_cur, t_multiprev, 0.))
                 
