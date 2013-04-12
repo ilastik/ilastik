@@ -2,7 +2,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pixelClassification
-import vigraWatershed
+#import vigraWatershed
 try:
     import objectClassification
     import blockwiseObjectClassification
