@@ -706,31 +706,32 @@ class ManualTrackingGui(LayerViewerGui):
                 if (oid_prev is not None) and (oid_cur is None): # track ends
                     if tid in divisions.keys(): # division
                         [tid_child1, tid_child2], t_div = divisions[tid]
-                        assert t == t_div+1
-                        oid_child1 = None
-                        oid_child2 = None
-                        for o in oid2tids[t].keys():
-                            if tid_child1 in oid2tids[t][o]:
-                                oid_child1 = o
-                                if oid_child2:
-                                    break
-                            if tid_child2 in oid2tids[t][o]:
-                                oid_child2 = o
-                                if oid_child1:
-                                    break
+                        
+                        if t == t_div+1:                    
+                            oid_child1 = None
+                            oid_child2 = None
+                            for o in oid2tids[t].keys():
+                                if tid_child1 in oid2tids[t][o]:
+                                    oid_child1 = o
+                                    if oid_child2:
+                                        break
+                                if tid_child2 in oid2tids[t][o]:
+                                    oid_child2 = o
+                                    if oid_child1:
+                                        break
                                           
-                        if (t_div == t-1) and (oid_child1 is not None) and (oid_child2 is not None):
-                            # check if both children can be found in the current frame                            
-                            child1_exists = (oid_child1 in oid2tids[t].keys())
-                            child2_exists = (oid_child2 in oid2tids[t].keys())
-                            if child1_exists and child2_exists:
-                                divs[t].append((oid_prev,oid_child1,oid_child2,0.))                                
-                            elif child1_exists:
-                                moves[t].append((oid_prev,oid_child1,0.))
-                            elif child2_exists:
-                                moves[t].append((oid_prev,oid_child2,0.))
-                            
-                            break
+                            if (oid_child1 is not None) and (oid_child2 is not None):
+                                # check if both children can be found in the current frame                            
+                                child1_exists = (oid_child1 in oid2tids[t].keys())
+                                child2_exists = (oid_child2 in oid2tids[t].keys())
+                                if child1_exists and child2_exists:
+                                    divs[t].append((oid_prev,oid_child1,oid_child2,0.))                                
+                                elif child1_exists:
+                                    moves[t].append((oid_prev,oid_child1,0.))
+                                elif child2_exists:
+                                    moves[t].append((oid_prev,oid_child2,0.))
+                                
+                                break
                                     
                     # else: disappearance
                     disapps[t].append((oid_prev, 0.))                    
