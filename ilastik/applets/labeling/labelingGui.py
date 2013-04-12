@@ -704,7 +704,4 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(128,0, 128) )    #purple
         colors.append( QColor(240, 230, 140) ) #khaki
         assert len(colors) == 16
-        #FIXME: move to have a different PMap color. Just for testing now
-        table = [c.rgba() for c in colors]
-        table[101] = QColor(Qt.black).rgba()
         return [c.rgba() for c in colors]

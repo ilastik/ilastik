@@ -2,11 +2,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pixelClassification
+
 #import vigraWatershed
 try:
     import objectClassification
     import blockwiseObjectClassification
-    #import synapseDetection
+    import synapseDetection
 except ImportError as e:
     logger.warn("Failed to import object workflow; check dependencies: " + str(e))
 

@@ -439,14 +439,13 @@ class OpObjectTrain(Operator):
             labels = self.Labels[i]([]).wait()
 
             featstmp, labelstmp, bad_object_indices = make_feature_array(feats, labels)
-            print "WARNING: removed following entries from labels", bad_object_indices
+            #print "WARNING: removed following entries from labels", bad_object_indices
             featList.append(featstmp)
             labelsList.append(labelstmp)
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-        print "training on matrix:", featMatrix.shape, featMatrix.dtype, featMatrix
-        print "training with labels:", labelsMatrix.shape, labelsMatrix.dtype
+        print "training on matrix:", featMatrix.shape
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
@@ -545,7 +544,7 @@ class OpObjectPredict(Operator):
             
             feats[t], tmp_bad_indices = make_feature_array(tmpfeats)
             bad_object_indices[t] = tmp_bad_indices[0] #because the make_feature_array function already returns a dicts
-            print "WARNING: following entries have NaNs in feature values and will not be predicted:", bad_object_indices[t]
+            #print "WARNING: following entries have NaNs in feature values and will not be predicted:", bad_object_indices[t]
             prob_predictions[t] = [0] * len(forests)
 
         def predict_forest(_t, forest_index):
@@ -581,10 +580,7 @@ class OpObjectPredict(Operator):
                 #re-insert the bad cases
                 #FIXME: change this once it's in vigra
                 nclasses = averaged_predictions.shape[1]
-                print averaged_predictions.shape
-                print "bad indices t:", bad_object_indices[t], t
                 for ind in bad_object_indices[t]:
-                    print "inserting...", ind
                     averaged_predictions = numpy.insert(averaged_predictions, ind, \
                                                         numpy.zeros((nclasses,), dtype=numpy.float32), axis=0)
                 self.prob_cache[t] = averaged_predictions

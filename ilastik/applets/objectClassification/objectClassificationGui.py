@@ -1,6 +1,6 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtCore import pyqtSlot, Qt
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -112,6 +112,9 @@ class ObjectClassificationGui(LabelingGui):
         if not labelOutput.ready():
             return (None, None)
         else:
+            self._colorTable16[15] = QColor(Qt.black).rgba() #for the objects with NaNs in features
+            
+            
             labelsrc = LazyflowSinkSource(labelOutput,
                                           labelInput)
             labellayer = ColortableLayer(labelsrc,
@@ -319,12 +322,12 @@ class ObjectClassificationGui(LabelingGui):
 
             print 'features:'
             feats = self.op.ObjectFeatures([t]).wait()[t]
-            featnames = feats.keys()
+            featnames = feats[0].keys()
             for featname in featnames:
                 if gui_features_suffix in featname:
                     continue
                 print "{}:".format(featname)
-                value = feats[featname]
+                value = channel[featname]
                 ft = numpy.asarray(value.squeeze())[obj]
                 print ft
             print "------------------------------------------------------------"
