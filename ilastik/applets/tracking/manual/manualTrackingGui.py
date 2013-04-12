@@ -705,7 +705,7 @@ class ManualTrackingGui(LayerViewerGui):
                        
                 if (oid_prev is not None) and (oid_cur is None): # track ends
                     if tid in divisions.keys(): # division
-                        [tid_child1, tid_child2], t_div = divisions[oid_prev]
+                        [tid_child1, tid_child2], t_div = divisions[tid]
                         oid_child1 = None
                         oid_child2 = None
                         for o in oid2tids[t].keys():
