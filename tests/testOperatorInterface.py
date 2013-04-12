@@ -244,9 +244,6 @@ class TestOperator_meta(object):
     def setUp(self):
         self.g = graph.Graph()
 
-    def tearDown(self):
-        
-
     def test_meta_propagate(self):
         # check that connecting a required slot to an
         # already configured slots notifes the operator
@@ -300,9 +297,6 @@ class TestMultiSlotResize(object):
         
         self.wrappedOp.Input1.connect(self.op1.Input)
         self.wrappedOp.Input2.connect(self.op2.Input)
-
-    def tearDown(self):
-        
 
     def testResizeToSmaller(self):
         self.op1.Input.resize(5)
