@@ -730,7 +730,7 @@ class ManualTrackingGui(LayerViewerGui):
                 elif (oid_prev is not None) and (oid_cur is not None): # move
                     moves[t].append((oid_prev, oid_cur, 0.))
                     
-                    if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t][oid_prev]) > 1:
+                    if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t-1][oid_prev]) > 1:
                         t_multiprev = None
                         oid_multiprev = None
                                                 
@@ -761,6 +761,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _onExportButtonPressed(self):
+        import h5py
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
         
         if directory is None or str(directory) == '':
@@ -796,6 +797,13 @@ class ManualTrackingGui(LayerViewerGui):
                 # write label image
                 seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
                 
+                oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
+                if 'objects' in f_curr.keys(): del f_curr['objects']
+                f_meta = f_curr.create_group('objects').create_group('meta')
+                f_meta.create_dataset('id', data=oids_meta, compression=1)
+                f_meta.create_dataset('valid', data=ones, compression=1)
+
                 # delete old tracking
                 if "tracking" in f_curr.keys():
                     del f_curr["tracking"]
@@ -835,9 +843,9 @@ class ManualTrackingGui(LayerViewerGui):
                     ds.attrs["Format"] = "lower energy -> higher confidence"
                 if len(multiMoves_at):
                     multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Mergers", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
+                    ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
                     ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
-                    ds = tg.create_dataset("Mergers-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
+                    ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         
             print "-> results successfully written"
