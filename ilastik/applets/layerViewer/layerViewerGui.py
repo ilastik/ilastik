@@ -174,7 +174,7 @@ class LayerViewerGui(QWidget):
                         layer.name = multiLayerSlot.getRealOperator().Input.partner.name
                     else:
                         layer.name = multiLayerSlot.name + " " + str(j)
-                    #layers.append(layer)
+                    layers.append(layer)
         return layers
 
     @traceLogged(traceLogger)
