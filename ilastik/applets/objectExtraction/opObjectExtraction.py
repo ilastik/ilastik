@@ -251,10 +251,12 @@ class OpRegionFeatures3d(Operator):
             del dirtyStart['x']
             del dirtyStart['y']
             del dirtyStart['z']
+            del dirtyStart['c']
 
             del dirtyStop['x']
             del dirtyStop['y']
             del dirtyStop['z']
+            del dirtyStop['c']
 
             self.Output.setDirty(dirtyStart.values(), dirtyStop.values())
 
