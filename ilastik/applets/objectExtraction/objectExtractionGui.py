@@ -53,11 +53,9 @@ class FeatureSelectionDialog(QDialog):
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-                if pluginName in self.selectedFeatures:
-                    if name in self.selectedFeatures[pluginName]:
-                        item.setCheckState(0, Qt.Checked)
-                    else:
-                        item.setCheckState(0, Qt.Unchecked)
+                item.setCheckState(0, Qt.Checked)
+                if pluginName not in self.selectedFeatures:
+                    item.setCheckState(0, Qt.Unchecked)
 
     def accept(self):
         QDialog.accept(self)
