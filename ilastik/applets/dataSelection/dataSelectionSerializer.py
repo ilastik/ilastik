@@ -207,9 +207,9 @@ class DataSelectionSerializer( AppletSerializer ):
                         raise RuntimeError("Could not find data at " + filePath)
                     filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
                     newpath = self.repairFile(filePath, filt)
-                    newpath = newpath+pathData.internalPath
+                    if pathData.internalPath is not None:
+                        newpath += pathData.internalPath
                     datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
-                    
                     dirty = True
                     
             # Give the new info to the operator
