@@ -9,10 +9,7 @@ from collections import defaultdict
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from functools import partial
 
-try:
-    from ilastik.plugins import pluginManager
-except:
-    print "Warning: could not import pluginManager"
+from ilastik.plugins import pluginManager
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
@@ -223,14 +220,7 @@ class ObjectExtractionGui(QWidget):
         else:
             selectedFeatures = None
 
-        try:
-            plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
-        except:
-            QMessageBox.warning(self,
-                                'object features unavailable',
-                                'Object features plugins failed. Perhaps Yapsy is not installed?',
-                                QMessageBox.Ok)
-            return
+        plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
 
         imgshape = list(self.mainOperator.RawImage.meta.shape)
         axistags = self.mainOperator.RawImage.meta.axistags

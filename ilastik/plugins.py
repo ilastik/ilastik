@@ -9,7 +9,7 @@ from functools import partial
 # these directories are searched for plugins
 # TODO: perhaps these should be set in the config file.
 plugins_paths = ("~/.ilastik/plugins",
-                 os.path.join(os.path.split(__file__)[0], "plugins"),
+                 os.path.join(os.path.split(__file__)[0], "default_plugins"),
                  )
 
 ##########################
