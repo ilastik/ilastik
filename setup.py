@@ -23,7 +23,8 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
           'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
           'ilastik.ilastik_logging': ['logging_config.json'],
-          'ilastik.widgets': ['*.ui']
+          'ilastik.widgets': ['*.ui'],
+          'ilastik.plugins': ['*.yapsy-plugin'],
               }
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf'],
