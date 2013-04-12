@@ -44,7 +44,7 @@ def install_thread_excepthook():
 
 parser = argparse.ArgumentParser( description="start an ilastik workflow" )
 parser.add_argument('--playback_script', help='An event recording to play back after the main window has opened.', required=False)
-parser.add_argument('--playback_speed', help='Speed to play the playback script.', default=0.5, type=float)
+parser.add_argument('--playback_speed', help='Speed to play the playback script.', default=1.0, type=float)
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 parser.add_argument('--project', nargs='?', help='A project file to open on startup.')
@@ -69,6 +69,7 @@ if parsed_args.exit_on_success:
     onfinish = QApplication.quit
 
 if parsed_args.playback_script is not None:
+    parsed_args.debug = True # Auto-enable debug mode
     def play_recording(shell):
         player = EventPlayer(parsed_args.playback_speed)
         player.play_script(parsed_args.playback_script, onfinish)
