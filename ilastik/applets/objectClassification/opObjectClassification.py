@@ -200,6 +200,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             coords = dict()
             coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
             coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
+            #FIXME: pass axistags
             new_labels, old_labels_lost, new_labels_lost = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
                                              self._labelBBoxes[imageIndex][timeCoord], \
                                             coords)
@@ -214,7 +215,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
     @staticmethod
     def transferLabels(old_labels, old_bboxes, new_bboxes, axistags = None):
-        
+        #transfer labels from old segmentation to new segmentation
+         
         mins_old = old_bboxes["Coord<Minimum>"]
         maxs_old = old_bboxes["Coord<Maximum>"]
         mins_new = new_bboxes["Coord<Minimum>"]
@@ -349,6 +351,7 @@ def make_feature_array(feats, labels=None):
     featnames = sorted(list(n for n in featnames
                             if gui_features_suffix not in n))
 
+    bad_indices_dict = dict()
     for t in sorted(feats.keys()):
         featsMatrix_tmp = []
 
@@ -357,24 +360,47 @@ def make_feature_array(feats, labels=None):
             lab = labels[t].squeeze()
             index = numpy.nonzero(lab)
             labellist_tmp.append(lab[index])
-
+        
+        bad_object_indices = []
         for featname in featnames:
             value = feats[t][featname]
             ft = numpy.asarray(value.squeeze())
             if labels is not None:
                 ft = ft[index]
+            bad_objects = check_features(ft)
+            bad_object_indices.extend(bad_objects)
+                
             featsMatrix_tmp.append(ft)
 
-        featlist.append(_concatenate(featsMatrix_tmp, axis=1))
+        bad_object_indices = set(bad_object_indices)
+        #FIXME: we can do it all with just arrays
+        bad_object_indices = list(bad_object_indices)
+        featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
+        featsMatrix_tmp_combined = numpy.delete(featsMatrix_tmp_combined, bad_object_indices, axis=0)
+        featlist.append(featsMatrix_tmp_combined)
         if labels is not None:
-            labellist.append(_concatenate(labellist_tmp, axis=1))
+            labellist_tmp_combined = _concatenate(labellist_tmp, axis=1)
+            labellist_tmp_combined = numpy.delete(labellist_tmp_combined, bad_object_indices, axis=0)
+            labellist.append(labellist_tmp_combined)
+        bad_indices_dict[t]=bad_object_indices
 
     featMatrix = _concatenate(featlist, axis=0)
     if labels is not None:
         labelsMatrix = _concatenate(labellist, axis=0)
-        return featMatrix, labelsMatrix
-    return featMatrix
+        assert labelsMatrix.shape[0]==featMatrix.shape[0]
+        return featMatrix, labelsMatrix, bad_indices_dict
+    return featMatrix, bad_indices_dict
 
+def check_features(features):
+    #make a list of NaN, inf, None and other bad indices
+    if len(features.shape)>1:
+        features = numpy.sum(features, axis=1)
+    nans = numpy.argwhere(numpy.isnan(features))
+    infs = numpy.argwhere(numpy.isinf(features))
+    neginfs = numpy.argwhere(numpy.isneginf(features))
+    bad_objects = numpy.vstack([nans, infs, neginfs])
+    bad_objects = bad_objects.reshape((bad_objects.shape[0],))
+    return list(bad_objects)
 
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
@@ -412,32 +438,27 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            featstmp, labelstmp = make_feature_array(feats, labels)
+            featstmp, labelstmp, bad_object_indices = make_feature_array(feats, labels)
+            print "WARNING: removed following entries from labels", bad_object_indices
             featList.append(featstmp)
             labelsList.append(labelstmp)
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-        print "training on matrix:", featMatrix.shape, featMatrix.dtype
+        print "training on matrix:", featMatrix.shape, featMatrix.dtype, featMatrix
+        print "training with labels:", labelsMatrix.shape, labelsMatrix.dtype
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
             return
         oob = [0] * self.ForestCount.value
         try:
-            # Ensure there are no NaNs in the feature matrix
-            # TODO: There should probably be a better way to fix this...
-            featMatrix = numpy.asarray(featMatrix, dtype=numpy.float32)
-            nanFeatMatrix = numpy.isnan(featMatrix)
-            if nanFeatMatrix.any():
-                warnings.warn("Feature matrix has NaN values!  Replacing with 0.0...")
-                featMatrix[numpy.where(nanFeatMatrix)] = 0.0
             # train and store forests in parallel
             pool = RequestPool()
             for i in range(self.ForestCount.value):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
-                    oob[number] = result[number].learnRF(featMatrix, numpy.asarray(labelsMatrix, dtype=numpy.uint32))
+                    oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32))
                     print "intermediate oob:", oob[number]
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
@@ -515,12 +536,16 @@ class OpObjectPredict(Operator):
 
         feats = {}
         prob_predictions = {}
+        bad_object_indices = {}
         for t in times:
             if t in self.prob_cache:
                 continue
 
             tmpfeats = self.Features([t]).wait()
-            feats[t] = make_feature_array(tmpfeats)
+            
+            feats[t], tmp_bad_indices = make_feature_array(tmpfeats)
+            bad_object_indices[t] = tmp_bad_indices[0] #because the make_feature_array function already returns a dicts
+            print "WARNING: following entries have NaNs in feature values and will not be predicted:", bad_object_indices[t]
             prob_predictions[t] = [0] * len(forests)
 
         def predict_forest(_t, forest_index):
@@ -530,7 +555,7 @@ class OpObjectPredict(Operator):
             #       For details please see wikipedia:
             #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
             #       (^-^)
-            prob_predictions[_t][forest_index] = forests[forest_index].predictProbabilities(feats[_t])
+            prob_predictions[_t][forest_index] = forests[forest_index].predictProbabilities(feats[_t].astype(numpy.float32))
 
         # predict the data with all the forests in parallel
         pool = RequestPool()
@@ -553,17 +578,33 @@ class OpObjectPredict(Operator):
                 stacked_predictions = numpy.array( prob_predictions[t] )
                 averaged_predictions = numpy.average( stacked_predictions, axis=0 )
                 assert averaged_predictions.shape[0] == len(feats[t])
+                #re-insert the bad cases
+                #FIXME: change this once it's in vigra
+                nclasses = averaged_predictions.shape[1]
+                print averaged_predictions.shape
+                print "bad indices t:", bad_object_indices[t], t
+                for ind in bad_object_indices[t]:
+                    print "inserting...", ind
+                    averaged_predictions = numpy.insert(averaged_predictions, ind, \
+                                                        numpy.zeros((nclasses,), dtype=numpy.float32), axis=0)
                 self.prob_cache[t] = averaged_predictions
+                
                 self.prob_cache[t][0] = 0 # Background probability is always zero
 
+                
         if slot == self.Probabilities:
             return { t : self.prob_cache[t] for t in times }
         elif slot == self.Predictions:
             # FIXME: Support SegmentationThreshold again...
-            labels = { t : 1 + numpy.argmax(self.prob_cache[t], axis=1) for t in times }
+            labels = dict()
             for t in times:
+                prob_sum = numpy.sum(self.prob_cache[t], axis=1)
+                bad_objects = prob_sum<0.1 #it's 0 for bad objects, but let's not compare floats by ==
+                labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
+                labels[t][bad_objects] = 101
                 labels[t][0] = 0 # Background gets the zero label
             return labels
+          
         elif slot == self.ProbabilityChannels:
             prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
             return prob_single_channel
