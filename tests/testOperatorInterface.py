@@ -101,9 +101,6 @@ class TestOperator_setupOutputs(object):
     def setUp(self):
         self.g = graph.Graph()
 
-    def tearDown(self):
-        self.g.stopGraph()
-
     def test_disconnected_connected(self):
         # check that operator is not configuerd initiallia
         # since it has a slot without default value
@@ -248,7 +245,7 @@ class TestOperator_meta(object):
         self.g = graph.Graph()
 
     def tearDown(self):
-        self.g.stopGraph()
+        
 
     def test_meta_propagate(self):
         # check that connecting a required slot to an
@@ -305,7 +302,7 @@ class TestMultiSlotResize(object):
         self.wrappedOp.Input2.connect(self.op2.Input)
 
     def tearDown(self):
-        self.g.stopGraph()
+        
 
     def testResizeToSmaller(self):
         self.op1.Input.resize(5)

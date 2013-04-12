@@ -50,9 +50,6 @@ class TestOutputOutputConnection(object):
         self.g = Graph()
         self.op = OpOuter(graph=self.g)
 
-    def tearDown(self):
-        self.g.stopGraph()
-
     def test_value(self):
         """
         This test checks, that requests produce correct

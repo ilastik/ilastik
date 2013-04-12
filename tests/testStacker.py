@@ -102,8 +102,6 @@ def testFullAllocate():
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     print "4th part ok................."
 
-    g.finalize()
-
 
 def testPartialAllocate():
 

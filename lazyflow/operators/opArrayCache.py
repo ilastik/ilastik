@@ -61,7 +61,6 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
-        self.graph._registerCache(self)
         self._has_fixed_dirty_blocks = False
         self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
@@ -132,7 +131,6 @@ class OpArrayCache(OpArrayPiper):
             if self._cache is None or (self._cache.shape != self.shape):
                 mem = numpy.zeros(self.shape, dtype = self.dtype)
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
-                self.graph._notifyMemoryAllocation(self, mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
                 self._cache = mem

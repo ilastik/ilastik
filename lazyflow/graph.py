@@ -20,38 +20,35 @@ operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype=numpy.uint8))
 operator2.inputs["Input"].connect(operator1.outputs["Output"])
 
 result = operator2.outputs["Output"][:].wait()
-
-g.finalize()
 ---
-
 
 """
 
-import lazyflow
-import numpy
+#Python
 import sys
 import copy
-import psutil
 import functools
 import collections
 import itertools
+import threading
+import logging
 
+#third-party
+import psutil
 if (int(psutil.__version__.split(".")[0]) < 1 and
     int(psutil.__version__.split(".")[1]) < 3):
     print ("Lazyflow: Please install a psutil python module version"
            " of at least >= 0.3.0")
     sys.exit(1)
 
-import threading
-import logging
+#SciPy
+import numpy
 
-from request import Request
-import lazyflow.utility
-import rtype
+#lazyflow
+from lazyflow import rtype
+from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
-from lazyflow.utility import slicingtools
-
-from lazyflow.utility import Tracer, OrderedSignal
+from lazyflow.utility import slicingtools, Tracer, OrderedSignal, Singleton
 
 class MetaDict(dict):
     """
@@ -2097,30 +2094,7 @@ class OperatorWrapper(Operator):
         # forwarded to all slot partners.
         pass
 
+#this class serves as a parent for nodes
+#for now, it is to be kept for future use (Stuart)
 class Graph(object):
-    def stopGraph(self):
-        pass
-
-    def finalize(self):
-        pass
-
-    def resumeGraph(self):
-        pass
-
-    def _registerCache(self, cache):
-        pass
-
-    def _notifyMemoryHit(self, *args, **kwargs):
-        pass
-
-    def _notifyMemoryAllocation(self, *args, **kwargs):
-        pass
-
-    def _notifyFreeMemory(self, *args, **kwargs):
-        pass
-
-# singleton graph class, that
-# serves as parent graph for all operators
-# wich are created without parent
-class GlobalGraph(Graph):
-    __metaclass__ = lazyflow.utility.Singleton
+    pass
