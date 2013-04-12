@@ -5,6 +5,7 @@ import itertools
 from threading import Lock
 import logging
 logger = logging.getLogger(__name__)
+from functools import partial
 
 #SciPy
 import numpy
@@ -12,7 +13,7 @@ import numpy
 #lazyflow
 from lazyflow.request import RequestPool
 from lazyflow.drtile import drtile
-from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere, Tracer
 from lazyflow.operators.opArrayPiper import OpArrayPiper
@@ -49,7 +50,7 @@ class OpArrayCache(OpArrayPiper):
     FIXED_DIRTY = 3
 
     def __init__(self, *args, **kwargs):
-        super( OpArrayPiper, self ).__init__(*args, **kwargs)
+        super( OpArrayCache, self ).__init__(*args, **kwargs)
         self._origBlockShape = self.DefaultBlockSize
         self._blockShape = None
         self._dirtyShape = None
