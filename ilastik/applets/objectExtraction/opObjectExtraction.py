@@ -152,6 +152,7 @@ class OpRegionFeatures3d(Operator):
 
         labels = labels[slc3d]
 
+        #FIXME: clamp the global vigra features here
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                           gui_features,
                                                           ignoreLabel=0)
@@ -205,7 +206,7 @@ class OpRegionFeatures3d(Operator):
             value = np.vstack((np.zeros(value.shape[1]),
                                value))
 
-            value = value.astype(np.float32)
+            value = value.astype(np.float32) #turn Nones into numpy.NaNs
 
             assert value.dtype == np.float32
             assert value.shape[0] == nobj

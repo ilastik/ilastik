@@ -1,0 +1,9 @@
+[Core]
+Name = Features for pipeline testing
+Module = test_objfeats
+
+[Documentation]
+Author = Anna Kreshuk
+Version = 0.1
+Website = todo
+Description = todo
