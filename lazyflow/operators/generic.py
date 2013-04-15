@@ -1,12 +1,17 @@
+#Python
+import copy
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
+
+#SciPy
+import numpy
+import vigra
+
+#lazyflow
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import roi
 from lazyflow.roi import roiToSlice, sliceToRoi
-import logging
-import numpy
-import vigra
-import copy
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 from lazyflow.utility import Tracer
 
 def axisTagObjectFromFlag(flag):
@@ -43,8 +48,6 @@ def axisTagsToString(axistags):
     return res
 
 
-
-
 def getSubKeyWithFlags(key,axistags,axisflags):
     assert len(axistags)==len(key)
     assert len(axisflags)<=len(key)
@@ -69,9 +72,6 @@ def popFlagsFromTheKey(key,axistags,flags):
             newKey.append(slice)
 
     return newKey
-
-
-
 
 
 class OpMultiArraySlicer(Operator):
@@ -258,6 +258,7 @@ class OpMultiArraySlicer2(Operator):
         else:
             assert False, "Unknown dirty input slot."
 
+
 class OpMultiArrayStacker(Operator):
     inputSlots = [InputSlot("Images", level=1), InputSlot("AxisFlag"), InputSlot("AxisIndex", optional=True)]
     outputSlots = [OutputSlot("Output")]
@@ -313,8 +314,6 @@ class OpMultiArrayStacker(Operator):
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
             self.outputs["Output"].meta.shape = None
-
-
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start,rroi.stop)
@@ -443,9 +442,6 @@ class OpSingleChannelSelector(Operator):
             self.Output.setDirty(slice(None))
 
 
-
-
-
 class OpSubRegion(Operator):
     name = "OpSubRegion"
     description = "Select a region of interest from an numpy array"
@@ -519,6 +515,7 @@ class OpSubRegion(Operator):
             #  propagate dirty region to output
             if ((smallstop - smallstart ) > 0).all():
                 self.Output.setDirty( smallstart, smallstop )
+
 
 class OpMultiArrayMerger(Operator):
     inputSlots = [InputSlot("Inputs", level=1),InputSlot('MergingFunction')]
@@ -753,36 +750,6 @@ class OpMultiInputConcatenater(Operator):
         # All outputs are directly connected to an input slot.
         pass
 
-class OpTransposeSlots(Operator):
-    """
-    Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
-    Note: Only works for a slot of level 2.
-    """
-    Inputs = InputSlot(level=2)
-    Outputs = OutputSlot(level=2)
-            
-    def setupOutputs(self):
-        minSize = None
-        for i, mslot in enumerate( self.Inputs ):
-            if minSize is None:
-                minSize = len(mslot)
-            else:
-                minSize = min( minSize, len(mslot) ) 
-        
-        self.Outputs.resize(minSize)
-        for j, mslot in enumerate( self.Outputs ):
-            mslot.resize( len(self.Inputs) )
-            for i, oslot in enumerate( mslot ):
-                oslot.connect( self.Inputs[i][j] )
-
-    def execute(self, slot, subindex, roi, result):
-        # Should never be called.  All output slots are directly connected to an input slot.
-        assert False
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        # Nothing to do here.
-        # All outputs are directly connected to an input slot.
-        pass
         
 class OpWrapSlot(Operator):
     """
@@ -805,33 +772,3 @@ class OpWrapSlot(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

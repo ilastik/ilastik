@@ -15,10 +15,15 @@ class OpSlicedBlockedArrayCache(Operator):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
+    #Inputs
     Input = InputSlot()
-
-    inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output"), OutputSlot("InnerOutputs", level=1)]
+    innerBlockShape = InputSlot()
+    outerBlockShape = InputSlot()
+    fixAtCurrent = InputSlot(value = False)
+   
+    #Outputs
+    Output = OutputSlot()
+    InnerOutputs = OutputSlot(level=1)
 
     loggerName = __name__ + ".OpSlicedBlockedArrayCache"
     logger = logging.getLogger(loggerName)

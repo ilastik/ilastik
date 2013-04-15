@@ -55,9 +55,6 @@ class TestInputInputConnection(object):
         self.g = Graph()
         self.op = OpA(graph=self.g)
 
-    def tearDown(self):
-        self.g.stopGraph()
-
     def test_value(self):
         self.op.Input.setValue(True)
         result = self.op.Output[:].wait()[0]
@@ -69,7 +66,6 @@ class TestInputInputConnection(object):
     def test_disconnect(self):
         self.op.internalOp.Input.disconnect()
         self.op.internalOp.Input.connect(self.op.Input)
-
 
     def test_wrapping(self):
         opm = operators.Op5ToMulti(graph=self.g)
@@ -119,9 +115,6 @@ class TestMultiInputInputConnection(object):
     def setUp(self):
         self.g = Graph()
         self.op = OpC(graph=self.g)
-
-    def tearDown(self):
-        self.g.stopGraph()
 
     def test_wrapping(self):
         opm = operators.Op5ToMulti(graph=self.g)

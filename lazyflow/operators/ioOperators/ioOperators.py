@@ -4,6 +4,7 @@ import os
 import math
 import logging
 import glob
+from itertools import product, chain
 from collections import deque
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -164,6 +165,137 @@ class OpStackWriter(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.WritePNGStack.setDirty(slice(None))
 
+
+class OpStackWriter(Operator):
+    name = "Stack File Writer"
+    category = "Output"
+
+    inputSlots = [InputSlot("Filepath", stype = "string", value = ''),
+                  InputSlot("Filename", stype = "string"),
+                  InputSlot("Filetype", stype = "string", value = 'png'),
+                  InputSlot("ImageAxesNames", stype = "list", value = 'xy'),
+                  InputSlot("Image")]
+    outputSlots = [OutputSlot("WriteImage"),
+                  OutputSlot("FilePattern", stype = "string")
+                  ]
+
+    def __init__(self, *args, **kwargs):
+        super(OpStackWriter, self).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
+
+    def setupOutputs(self):
+        assert self.Image.meta.shape is not None
+        self.WriteImage.meta.shape = (1,)
+        self.WriteImage.meta.dtype = object
+        self.FilePattern.meta.shape = (1,)
+        self.FilePattern.meta.dtype = object
+        self.setupIndices()
+
+    def setupIndices(self):
+        self.imageAxesFilteredNames = [axis for axis in
+                                       self.ImageAxesNames.value if axis in
+                                       self.Image.meta.getAxisKeys()]
+        self.imageAxes = [self.Image.meta.axistags.index(axis) for axis in
+                          self.imageAxesFilteredNames]
+        self.orderedImageAxes = sorted(self.imageAxes)
+        self.transposing = [self.imageAxes.index(x) for x in
+                            self.orderedImageAxes]
+
+        self.iterationIndices = [i for i in range(len(self.Image.meta.shape)) if i not in
+                            self.imageAxes]
+
+        self.axisKeys = self.Image.meta.getAxisKeys()
+        
+
+    def execute(self, slot, subindex, roi, result):
+        if slot == self.FilePattern:
+            filePattern = "%s-%s" % (self.Filename.value
+                                      ,''.join(self.imageAxesFilteredNames))
+            for iterationIndex in self.iterationIndices:
+                filePattern = filePattern + "-" + str(self.axisKeys[iterationIndex]) +  "_%04d"
+            filePattern = filePattern + "." + self.Filetype.value
+            result[0] = filePattern
+
+        if slot == self.WriteImage:
+            filepath = self.Filepath.value
+            filename = self.Filename.value
+            #s = ...
+            #image = self.Image[:].wait() #WIP, don't wait for everything at the same time
+            imageShape = self.Image.meta.shape 
+            slicings = self.computeRequestSlicings()
+            numSlicings = numpy.prod(self.iteratingShape)
+            axisKeys = self.Image.meta.getAxisKeys()
+            iterationAxisDescriptors = [axisKeys[i] for i in self.iterationIndices]
+            newImageShape = tuple([imageShape[key] for key in
+                                   self.orderedImageAxes])
+            #newImageAxisKeys = ''.join([axisKeys[i] for i in newImageIndices])
+            filepattern = self.FilePattern[:].wait()[0]
+            
+            self.progressSignal(0)
+            activeRequests = deque()
+            activeSlicings = deque()
+            # Start by activating 10 requests 
+            for i in range( min(10, numSlicings) ):
+                s = next(slicings)
+                activeSlicings.append(s)
+                self.logger.debug( "Creating request for slicing {}".format(s) )
+                activeRequests.append( self.Image[s] )
+            
+            counter = 0
+
+            while len(activeRequests) > 0:
+                # Wait for a request to finish
+                req = activeRequests.popleft()
+                slicing=activeSlicings.popleft()
+                data = req.wait()
+                iterationIndexDescriptors = tuple([slicing[i].start for i in
+                                                   self.iterationIndices])
+                patternEntries = iterationIndexDescriptors
+                
+                fullFilename = filepath + filepattern % (patternEntries)
+                vigra.impex.writeImage(data.reshape(*newImageShape).transpose(self.transposing), fullFilename)
+                
+                req.clean() # Discard the data in the request and allow its children to be garbage collected.
+
+                try:
+                    s = next(slicings)
+                    activeSlicings.append(s)
+                    activeRequests.append( self.Image[s] )
+                except StopIteration:
+                    pass
+
+                # Since requests finish in an arbitrary order (but we always block for them in the same order),
+                # this progress feedback will not be smooth.  It's the best we can do for now.
+                self.progressSignal( 100*counter/numSlicings )
+                self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
+                counter += 1
+
+
+            # We're finished.
+            result[0] = True
+
+            self.progressSignal(100)
+
+    def computeRequestSlicings(self):
+
+        imageShape = self.Image.meta.shape
+        self.iteratingShape = [imageShape[i] for i in self.iterationIndices]
+        indexList = [xrange(index) for index in self.iteratingShape]
+        fullSliceObject = [slice(None) for i in imageShape]
+        def fillSlicing(tup):
+            slicing = numpy.copy(fullSliceObject)
+            slicing[self.iterationIndices] = [slice(i, i + 1) for i in tup]
+            return tuple(slicing)
+
+        #for combo in product(*indexList):
+        #    slicing = numpy.copy(fullSliceObject)
+        #    slicing[self.iterationIndices] = [slice(i, i + 1) for i in combo]
+        #    slicings.append(tuple(slicing))
+        return (fillSlicing(tup) for tup in product(*indexList))
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.FilePattern.setDirty(slice(None))
+        self.WriteImage.setDirty(slice(None))
 
 class OpStackToH5Writer(Operator):
     name = "OpStackToH5Writer"
@@ -417,7 +549,6 @@ class OpH5WriterBigDataset(Operator):
 
         #shape = shape - (numpy.mod(numpy.asarray(shape),
         #                  shift))
-        from itertools import product
 
         for indices in product(*[range(0, stop, step)
                         for stop,step in zip(shape, shift)]):

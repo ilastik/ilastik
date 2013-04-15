@@ -5,6 +5,7 @@ import itertools
 from threading import Lock
 import logging
 logger = logging.getLogger(__name__)
+from functools import partial
 
 #SciPy
 import numpy
@@ -12,7 +13,7 @@ import numpy
 #lazyflow
 from lazyflow.request import RequestPool
 from lazyflow.drtile import drtile
-from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere, Tracer
 from lazyflow.operators.opArrayPiper import OpArrayPiper
@@ -49,7 +50,7 @@ class OpArrayCache(OpArrayPiper):
     FIXED_DIRTY = 3
 
     def __init__(self, *args, **kwargs):
-        super( OpArrayPiper, self ).__init__(*args, **kwargs)
+        super( OpArrayCache, self ).__init__(*args, **kwargs)
         self._origBlockShape = self.DefaultBlockSize
         self._blockShape = None
         self._dirtyShape = None
@@ -61,7 +62,6 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
-        self.graph._registerCache(self)
         self._has_fixed_dirty_blocks = False
         self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
@@ -132,7 +132,6 @@ class OpArrayCache(OpArrayPiper):
             if self._cache is None or (self._cache.shape != self.shape):
                 mem = numpy.zeros(self.shape, dtype = self.dtype)
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
-                self.graph._notifyMemoryAllocation(self, mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
                 self._cache = mem

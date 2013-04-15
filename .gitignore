@@ -1,5 +1,7 @@
 .project
 .pydevproject
+#KDevelop project files
+*.kdev4
 *.pyc
 *.backup
 build
