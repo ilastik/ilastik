@@ -59,6 +59,7 @@ init_funcs = []
 
 if parsed_args.start_recording:
     assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
+    parsed_args.debug = True # Auto-enable debug mode
     def startRecording(shell):
         shell._recorderGui.openInPausedState()
     init_funcs.append(startRecording)
