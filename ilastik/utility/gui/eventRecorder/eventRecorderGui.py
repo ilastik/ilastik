@@ -39,14 +39,13 @@ class EventRecorderGui(QWidget):
 
         self.newCommentEdit.installEventFilter(self)
         self._autopaused = False
-        self._saved = True
+        self._saved = False
     
     def openInPausedState(self):
         self.show()
         self.startButton.click()
         self.newCommentEdit.setFocus( Qt.MouseFocusReason )
-        self._onPause()
-        self._autopaused = True
+        self._onPause(True)
     
     def confirmQuit(self):
         if self._recorder is not None and not self._saved:
@@ -66,7 +65,8 @@ class EventRecorderGui(QWidget):
         self._onPause()
         self.saveButton.setEnabled(True)
 
-    def _onPause(self):
+    def _onPause(self, autopaused=False):
+        self._autopaused = autopaused
         if self._recorder.paused:
             # Auto-add the comment (if any)
             if self.newCommentEdit.toPlainText() != "":
@@ -75,12 +75,13 @@ class EventRecorderGui(QWidget):
             self._recorder.unpause()
             self.pauseButton.setText( "Pause" )
             self.pauseButton.setChecked( False )
+            if not self._autopaused:
+                self._saved = False
         else:
             # Pause the recorder
             self._recorder.pause()
             self.pauseButton.setText( "Unpause" )
             self.pauseButton.setChecked( True )
-            self._saved = False
 
     def _onSave(self):
         # If we are actually playing a recording right now, then the "Stop Recording" action gets triggered as the last step.
@@ -88,8 +89,11 @@ class EventRecorderGui(QWidget):
         if self._recorder is None:
             return
 
+        self.commentsDisplayEdit.setFocus(True)
+        self._autopaused = False
+
         if not self._recorder.paused:
-            self._onPause()
+            self._onPause(False)
 
         self.startButton.setEnabled(True)
         
@@ -138,12 +142,10 @@ class EventRecorderGui(QWidget):
         if watched == self.newCommentEdit:
             if event.type() == QEvent.FocusIn:
                 if not self._recorder.paused:
-                    self._onPause()
-                    self._autopaused = True
+                    self._onPause(True)
             elif event.type() == QEvent.FocusOut:
                 if self._autopaused and self._recorder.paused:
-                    self._onPause()
-                self._autopaused = False
+                    self._onPause(False)
         return False
 
 
