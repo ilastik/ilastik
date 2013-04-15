@@ -44,6 +44,7 @@ class EventRecorderGui(QWidget):
     def openInPausedState(self):
         self.show()
         self.startButton.click()
+        self.newCommentEdit.setFocus( Qt.MouseFocusReason )
         self._onPause()
         self._autopaused = True
     
