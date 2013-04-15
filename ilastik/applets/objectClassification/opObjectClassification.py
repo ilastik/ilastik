@@ -7,7 +7,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 from lazyflow.operators import OpValueCache
-from lazyflow.request import Request, RequestPool
+from lazyflow.request import Request, RequestPool, RequestLock
 from functools import partial
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
@@ -529,6 +529,7 @@ class OpObjectPredict(Operator):
                 oslot.meta.mapping_dtype = numpy.float32
 
 
+        self.lock = RequestLock()
         self.prob_cache = dict()
 
     def execute(self, slot, subindex, roi, result):
@@ -546,81 +547,87 @@ class OpObjectPredict(Operator):
 
         feats = {}
         prob_predictions = {}
-        for t in times:
-            if t in self.prob_cache:
-                continue
 
-            tmpfeats = self.Features([t]).wait()
-            ftmatrix, col_names = make_feature_array(tmpfeats)
-
-            idx, rows, cols = get_bad_rows_and_columns(ftmatrix)
-            ftmatrix[idx] = MISSING_VALUE
-
-            badfeats = set(col_names[c] for c in cols)
-
-            if len(rows) > 0:
-                print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
-            if len(cols) > 0:
-                print 'Warning: the following features in time slice {} were bad: {}'.format(t, badfeats)
-
-            feats[t] = ftmatrix
-            prob_predictions[t] = [0] * len(forests)
-
-        def predict_forest(_t, forest_index):
-            # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
-            #        and we have to average the PROBABILITIES from all forests.
-            #       Averaging the label predictions from each forest is NOT equivalent.
-            #       For details please see wikipedia:
-            #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
-            #       (^-^)
-            prob_predictions[_t][forest_index] = forests[forest_index].predictProbabilities(feats[_t].astype(numpy.float32))
-
-        # predict the data with all the forests in parallel
-        pool = RequestPool()
-        for t in times:
-            if t in self.prob_cache:
-                continue
-            for i, f in enumerate(forests):
-                req = Request( partial(predict_forest, t, i) )
-                pool.add(req)
-
-        pool.wait()
-        pool.clean()
-
-        for t in times:
-            if t not in self.prob_cache:
-                # prob_predictions is a dict-of-lists-of-arrays, indexed as follows:
-                # prob_predictions[t][forest_index][object_index, class_index]
-
-                # Stack the forests together and average them.
-                stacked_predictions = numpy.array( prob_predictions[t] )
-                averaged_predictions = numpy.average( stacked_predictions, axis=0 )
-                assert averaged_predictions.shape[0] == len(feats[t])
-                self.prob_cache[t] = averaged_predictions
-
-                self.prob_cache[t][0] = 0 # Background probability is always zero
-
-
-        if slot == self.Probabilities:
-            return { t : self.prob_cache[t] for t in times }
-        elif slot == self.Predictions:
-            # FIXME: Support SegmentationThreshold again...
-            labels = dict()
+        # FIXME: self.prob_cache is shared, so we need to block.
+        # However, this makes prediction single-threaded.
+        self.lock.acquire()
+        try:
             for t in times:
-                prob_sum = numpy.sum(self.prob_cache[t], axis=1)
-                labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
-                labels[t][0] = 0 # Background gets the zero label
-            return labels
+                if t in self.prob_cache:
+                    continue
 
-        elif slot == self.ProbabilityChannels:
-            prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
-            return prob_single_channel
+                tmpfeats = self.Features([t]).wait()
+                ftmatrix, col_names = make_feature_array(tmpfeats)
 
-        else:
-            assert False, "Unknown input slot"
+                idx, rows, cols = get_bad_rows_and_columns(ftmatrix)
+                ftmatrix[idx] = MISSING_VALUE
+
+                badfeats = set(col_names[c] for c in cols)
+
+                if len(rows) > 0:
+                    print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
+                if len(cols) > 0:
+                    print 'Warning: the following features in time slice {} were bad: {}'.format(t, badfeats)
+
+                feats[t] = ftmatrix
+                prob_predictions[t] = [0] * len(forests)
+
+            def predict_forest(_t, forest_index):
+                # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
+                #        and we have to average the PROBABILITIES from all forests.
+                #       Averaging the label predictions from each forest is NOT equivalent.
+                #       For details please see wikipedia:
+                #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
+                #       (^-^)
+                prob_predictions[_t][forest_index] = forests[forest_index].predictProbabilities(feats[_t].astype(numpy.float32))
+
+            # predict the data with all the forests in parallel
+            pool = RequestPool()
+            for t in times:
+                if t in self.prob_cache:
+                    continue
+                for i, f in enumerate(forests):
+                    req = Request( partial(predict_forest, t, i) )
+                    pool.add(req)
+
+            pool.wait()
+            pool.clean()
+
+            for t in times:
+                if t not in self.prob_cache:
+                    # prob_predictions is a dict-of-lists-of-arrays, indexed as follows:
+                    # prob_predictions[t][forest_index][object_index, class_index]
+
+                    # Stack the forests together and average them.
+                    stacked_predictions = numpy.array( prob_predictions[t] )
+                    averaged_predictions = numpy.average( stacked_predictions, axis=0 )
+                    assert averaged_predictions.shape[0] == len(feats[t])
+                    self.prob_cache[t] = averaged_predictions
+
+                    self.prob_cache[t][0] = 0 # Background probability is always zero
+
+
+            if slot == self.Probabilities:
+                return { t : self.prob_cache[t] for t in times }
+            elif slot == self.Predictions:
+                # FIXME: Support SegmentationThreshold again...
+                labels = dict()
+                for t in times:
+                    prob_sum = numpy.sum(self.prob_cache[t], axis=1)
+                    labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
+                    labels[t][0] = 0 # Background gets the zero label
+                return labels
+
+            elif slot == self.ProbabilityChannels:
+                prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
+                return prob_single_channel
+
+            else:
+                assert False, "Unknown input slot"
+        finally:
+            self.lock.release()
 
     def propagateDirty(self, slot, subindex, roi):
-        self.pred_cache = dict()
         self.prob_cache = dict()
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
