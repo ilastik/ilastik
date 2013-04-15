@@ -421,6 +421,7 @@ class OpObjectTrain(Operator):
         all_col_names = []
         labelsList = []
 
+        # TODO: make these available in the GUI.
         all_bad_objects = {}
         all_bad_feats = set()
 
