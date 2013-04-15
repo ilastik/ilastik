@@ -387,10 +387,21 @@ def make_feature_array(feats, labels=None):
     return featMatrix, col_names
 
 
-def get_bad_rows_and_columns(a):
+def replace_missing(a):
     rows, cols = numpy.where(numpy.isnan(a) + numpy.isinf(a))
-    return (rows, cols), list(set(rows.flat)), list(set(cols.flat))
+    idx = (rows, cols)
+    rows = list(set(rows.flat))
+    cols = list(set(cols.flat))
+    a[idx] = MISSING_VALUE
+    return rows, cols
 
+def warn_bad(rows, cols, col_names, t):
+    badfeats = set(col_names[c] for c in cols)
+    if len(rows) > 0:
+        print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
+    if len(badfeats) > 0:
+        print 'Warning: the following features in time slice {} had bad values: {}'.format(t, sorted(badfeats))
+    return badfeats
 
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
@@ -434,15 +445,8 @@ class OpObjectTrain(Operator):
             labels = self.Labels[i]([]).wait()
 
             featstmp, col_names, labelstmp = make_feature_array(feats, labels)
-            idx, rows, cols = get_bad_rows_and_columns(featstmp)
-            featstmp[idx] = MISSING_VALUE
-
-            badfeats = set(col_names[c] for c in cols)
-
-            if len(rows) > 0:
-                print 'Warning: the following objects in time slice {} had bad features: {}'.format(i, rows)
-            if len(badfeats) > 0:
-                print 'Warning: the following features in time slice {} were bad: {}'.format(i, badfeats)
+            rows, cols = replace_missing(featstmp)
+            badfeats = warn_bad(rows, cols, col_names, i)
 
             featList.append(featstmp)
             all_col_names.append(tuple(col_names))
@@ -559,17 +563,8 @@ class OpObjectPredict(Operator):
 
                 tmpfeats = self.Features([t]).wait()
                 ftmatrix, col_names = make_feature_array(tmpfeats)
-
-                idx, rows, cols = get_bad_rows_and_columns(ftmatrix)
-                ftmatrix[idx] = MISSING_VALUE
-
-                badfeats = set(col_names[c] for c in cols)
-
-                if len(rows) > 0:
-                    print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
-                if len(cols) > 0:
-                    print 'Warning: the following features in time slice {} were bad: {}'.format(t, badfeats)
-
+                rows, cols = replace_missing(ftmatrix)
+                warn_bad(rows, cols, col_names, t)
                 feats[t] = ftmatrix
                 prob_predictions[t] = [0] * len(forests)
 
