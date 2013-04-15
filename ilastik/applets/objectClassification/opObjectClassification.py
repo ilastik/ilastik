@@ -183,14 +183,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def triggerTransferLabels(self, imageIndex):
         if not self._needLabelTransfer:
-            return
+            return None
         if not self.SegmentationImages[imageIndex].ready():
-            return
+            return None
         if len(self._labelBBoxes[imageIndex].keys())==0:
             #we either don't have any labels or we just read the project from file
             #nothing to transfer
             self._needLabelTransfer = False
-            return
+            return None
         
         labels = dict()
         for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
@@ -211,7 +211,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             
         self.LabelInputs[imageIndex].setValue(labels)
         self._needLabelTransfer = False
-
+        
+        return new_labels, old_labels_lost, new_labels_lost
                 
     @staticmethod
     def transferLabels(old_labels, old_bboxes, new_bboxes, axistags = None):
