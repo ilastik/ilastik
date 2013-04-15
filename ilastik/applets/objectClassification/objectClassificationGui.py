@@ -26,6 +26,8 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
+from guiMessage import LabelsChangedDialog
+
 class ObjectClassificationGui(LabelingGui):
 
     def centralWidget(self):
@@ -334,6 +336,17 @@ class ObjectClassificationGui(LabelingGui):
             
     def setVisible(self, visible):
         if visible:
-            self.op.triggerTransferLabels(self.op.current_view_index())
+            temp = self.op.triggerTransferLabels(self.op.current_view_index())
+        else:
+            temp = None
+            
         super(ObjectClassificationGui, self).setVisible(visible)
+
+        if temp is not None:
+            new_labels, old_labels_lost, new_labels_lost = temp
+            # labels are lost, create a pop-up window
+            pop=LabelsChangedDialog(self)
+            pop.oldLabelsLost = old_labels_lost
+            pop.newLabelsLost = new_labels_lost
+            pop.showDialog(blocking=False)
         
