@@ -76,10 +76,12 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if section == LaneColumn.LabelsAllowed:
             return "Labelable"
         infoColumn = section - LaneColumn.NumColumns
-        infoColumn %= LaneColumn.NumColumns
         roleIndex = infoColumn // DatasetInfoColumn.NumColumns
+        infoColumn %= LaneColumn.NumColumns
         if infoColumn == DatasetInfoColumn.Name:
-            return self._op.DatasetRoles.value[roleIndex]
+            if self._op.DatasetRoles.ready():
+                return self._op.DatasetRoles.value[roleIndex]
+            return ""
         assert False, "Unknown header column: {}".format( section )
             
     def _getDisplayRoleData(self, index):

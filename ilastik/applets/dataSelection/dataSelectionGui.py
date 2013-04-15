@@ -163,25 +163,39 @@ class DataSelectionGui(QWidget):
         self.splitter.setSizes( [150, 850] )
 
     def _initTableViews(self):
+        self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
         self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
 
-        self.fileInfoTabWidget.setTabText( 0, "Summary" )
+        self._retained = [] # Retain menus so they don't get deleted
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
-            detailViewer.addFileButton.clicked.connect( partial(self.handleAddFileButtonClicked, roleIndex) )
-            detailViewer.addByPatternButton.clicked.connect( partial(self.handleMassAddButtonClicked, roleIndex) )
-            detailViewer.importStackFilesButton.clicked.connect( partial(self.handleAddStackFilesButtonClicked, roleIndex) )
+            
+            addOneMenu = QMenu()
+            addOneMenu.addAction( "Select File..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
+            addOneMenu.addAction( "Specify Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
+            detailViewer.addOneButton.setMenu( addOneMenu )
+            self._retained.append(addOneMenu)
+            
+            addManyMenu = QMenu()
+            addManyMenu.addAction( "Select Files..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
+            addManyMenu.addAction( "Give Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
+            detailViewer.addManyButton.setMenu( addManyMenu )
+            self._retained.append(addManyMenu)
+            
+            #detailViewer.addFileButton.clicked.connect( partial(self.handleAddFileButtonClicked, roleIndex) )
+            #detailViewer.addByPatternButton.clicked.connect( partial(self.handleMassAddButtonClicked, roleIndex) )
+            #detailViewer.importStackFilesButton.clicked.connect( partial(self.handleAddStackFilesButtonClicked, roleIndex) )
             #detailViewer.clearButton.clicked( partial(self.yadayada, roleIndex) )
             
-            self.fileInfoTabWidget.addTab( detailViewer, role )
+            self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
     def _initViewerStack(self):
         self.volumeEditors = {}
         self.viewerStack.addWidget( QWidget() )
 
-    def handleAddFileButtonClicked(self, roleIndex):
+    def handleAddFiles(self, roleIndex):
         """
         The user clicked the "Add File" button.
         Ask him to choose a file (or several) and add them to both
@@ -205,7 +219,7 @@ class DataSelectionGui(QWidget):
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
 
-    def handleMassAddButtonClicked(self, roleIndex):
+    def handleAddByPattern(self, roleIndex):
         # Find the most recent directory
 
         # TODO: remove code duplication
@@ -226,7 +240,7 @@ class DataSelectionGui(QWidget):
                 QMessageBox.critical(self, "Error loading file", str(e))
 
 
-    def handleAddStackButtonClicked(self):
+    def handleAddStackButtonClicked(self, roleIndex):
         """
         The user clicked the "Import Stack Directory" button.
         """
@@ -272,7 +286,7 @@ class DataSelectionGui(QWidget):
         # Couldn't find an image file in the directory...
         return None
 
-    def handleAddStackFilesButtonClicked(self, roleIndex):
+    def handleAddStack(self, roleIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
