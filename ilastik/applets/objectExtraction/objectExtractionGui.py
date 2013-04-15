@@ -49,7 +49,7 @@ class FeatureSelectionDialog(QDialog):
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setExpanded(True)
-            for name in sorted(features):
+            for name, parameters in sorted(features):
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -65,7 +65,7 @@ class FeatureSelectionDialog(QDialog):
             feats = list(str(item.text(0)) for item in parent.takeChildren()
                          if item.checkState(0) == Qt.Checked)
             if len(feats) > 0:
-                selectedFeatures[str(parent.text(0))] = feats
+                selectedFeatures[str(parent.text(0))] = list((f, []) for f in feats)
         self.selectedFeatures = selectedFeatures
 
     def _setAll(self, val):

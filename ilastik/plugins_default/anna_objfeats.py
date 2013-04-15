@@ -6,9 +6,9 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
     all_features = ['bad_slices', 'lbp', 'lapl']
 
     def availableFeatures(self, image, labels):
-        return self.all_features
+        return list((f, []) for f in self.all_features)
 
-    def badslices(self, image, label_bboxes, axes, mins, maxs):
+    def badslices(self, image, label_bboxes, extent, axes):
         rawbbox = image
 
         #compute the quality score of an object -
@@ -18,66 +18,18 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         badslices = []
         area = rawbbox.shape[axes.x] * rawbbox.shape[axes.y]
         bboxkey = [slice(None)] * 3
-        for iz in range(maxs.z - mins.z):
+        for iz in range(extent.zrange):
             bboxkey[axes.z] = iz
             nblack = np.sum(rawbbox[tuple(bboxkey)]==0)
             if nblack>0.5*area:
                 nbadslices = nbadslices + 1
                 badslices.append(iz)
 
-        #interpolate the raw data
-        imagekey = [slice(None)] * 3
-        imagekey[axes.x] = slice(mins.x, maxs.x, None)
-        imagekey[axes.y] = slice(mins.y, maxs.y, None)
-        try:
-            for sl in badslices:
-                if sl==0:
-                    if mins.z==0:
-                        continue
-                    slprev=mins.z
-                    slprevsum = area
-                    while slprevsum>0.5*area and slprev>0:
-                        slprev = slprev - 1
-                        imagekey[axes.z]=slprev
-                        slprevsum = np.sum(image[tuple(imagekey)])
-                else:
-                    slprev = sl + mins.z
-                    while slprev - mins.z in badslices and slprev>=0:
-                        slprev = slprev - 1
-
-                if sl == maxs.z - 1:
-                    if sl==image.shape[axes.z]-1:
-                        continue
-                    slnext = maxs.z - 1
-                    slnextsum = area
-                    while slnextsum>0.5*area and slnext<image.shape[axes.z]-1:
-                        slnext = slnext + 1
-                        imagekey[axes.z] = slnext
-                        slnextsum = np.sum(image[tuple(imagekey)])
-                else:
-                    slnext = sl + mins.z
-                    while slnext - mins.z in badslices and slnext<maxs.z:
-                        slnext = slnext + 1
-
-                interval = slnext - slprev
-
-                weightnext = float(slnext - sl) / interval
-                weightprev = float(sl - slprev) / interval
-                bboxkey[axes.z] = sl
-                keycurrent = tuple(bboxkey)
-                imagekey[axes.z] = slprev
-                keyprev = tuple(imagekey)
-                imagekey[axes.z] = slnext
-                keynext = tuple(imagekey)
-                rawbbox[keycurrent] = weightnext * image[keynext] + weightprev * image[keyprev]
-        except:
-            #interpolation didn't work. just go on.
-            print "interpolation failed"
         result = {}
         result["bad_slices"] = np.array([nbadslices])
         return result
 
-    def lbp(self, image, label_bboxes, axes, mins, maxs):
+    def lbp(self, image, label_bboxes, extent, axes):
         rawbbox = image
         ccbboxobject, passed, ccbboxexcl = label_bboxes
 
@@ -86,7 +38,7 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         P=8
         R=1
         lbp_total = np.zeros(passed.shape)
-        for iz in range(maxs.z - mins.z):
+        for iz in range(extent.zrange):
             #an lbp image
             bboxkey = [slice(None)] * 3
             bboxkey[axes.z] = iz
@@ -106,7 +58,7 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         result["lbp"] = lbp_hist_obj
         return result
 
-    def lapl(self, image, label_bboxes, axes, mins, maxs):
+    def lapl(self, image, label_bboxes, extent, axes):
         rawbbox = image
         ccbboxobject, passed, ccbboxexcl = label_bboxes
 
@@ -135,19 +87,20 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
             result["lapl"] = np.array([lapl_mean_obj, lapl_var_obj])
         return result
 
-    def _do_3d(self, image, label_bboxes, features, axes, mins, maxs):
+    def _do_3d(self, image, labels, features, extent, axes):
         kwargs = locals()
         del kwargs['self']
         del kwargs['features']
+        kwargs['label_bboxes'] = kwargs.pop('labels')
         results = []
+        features = list(f for f, _ in features)
         if 'bad_slices' in features:
             results.append(self.badslices(**kwargs))
         if 'lbp' in features:
             results.append(self.lbp(**kwargs))
         if 'lapl' in features:
             results.append(self.lapl(**kwargs))
-
         return self.combine_dicts(results)
 
-    def compute_local(self, image, label_bboxes, features, axes, mins, maxs):
-        return self.do_channels(image, label_bboxes, features, axes, self._do_3d, mins=mins, maxs=maxs)
+    def compute_local(self, image, labels, features, extent, axes):
+        return self.do_channels(self._do_3d, image, labels=labels, features=features, extent=extent, axes=axes)

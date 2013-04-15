@@ -88,42 +88,42 @@ class OpRegionFeatures3d(Operator):
         result[tuple(roi.start)] = acc
         return result
 
-    def compute_minmax(self, i, image, mincoords, maxcoords, axes):
-        class Limit(object):
+    def compute_extent(self, i, image, mincoords, maxcoords, axes):
+        class Extent(object):
             def __init__(self, x, y, z):
-                self.x = x
-                self.y = y
-                self.z = z
+                self.xmin, self.xmax = x
+                self.ymin, self.ymax = y
+                self.zmin, self.zmax = z
+
+                self.xrange = self.xmax - self.xmin
+                self.yrange = self.ymax - self.ymin
+                self.zrange = self.zmax - self.zmin
 
         #find the bounding box
         minx = max(mincoords[i][axes.x] - self.MARGIN, 0)
         miny = max(mincoords[i][axes.y] - self.MARGIN, 0)
-        minz = max(mincoords[i][axes.z], 0)
+        minz = max(mincoords[i][axes.z] - self.MARGIN, 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
         maxx = min(maxcoords[i][axes.x] + 1 + self.MARGIN, image.shape[axes.x])
         maxy = min(maxcoords[i][axes.y] + 1 + self.MARGIN, image.shape[axes.y])
-        maxz = min(maxcoords[i][axes.z] + 1, image.shape[axes.z])
+        maxz = min(maxcoords[i][axes.z] + 1 + self.MARGIN, image.shape[axes.z])
+        return Extent((minx, maxx), (miny, maxy), (minz, maxz))
 
-        mins = Limit(minx, miny, minz)
-        maxcoords = Limit(maxx, maxy, maxz)
-
-        return mins, maxcoords
-
-    def compute_rawbbox(self, image, mins, maxs, axes):
+    def compute_rawbbox(self, image, extent, axes):
         key = [slice(None)] * 4
-        key[axes.x] = slice(mins.x, maxs.x, None)
-        key[axes.y] = slice(mins.y, maxs.y, None)
-        key[axes.z] = slice(mins.z, maxs.z, None)
+        key[axes.x] = slice(extent.xmin, extent.xmax, None)
+        key[axes.y] = slice(extent.ymin, extent.ymax, None)
+        key[axes.z] = slice(extent.zmin, extent.zmax, None)
         key[axes.c] = slice(None)
         return image[tuple(key)]
 
-    def compute_label_bboxes(self, i, labels, mins, maxs, axes):
+    def compute_label_bboxes(self, i, labels, extent, axes):
         key = [slice(None)] * 3
-        key[axes.x] = slice(mins.x, maxs.x, None)
-        key[axes.y] = slice(mins.y, maxs.y, None)
-        key[axes.z] = slice(mins.z, maxs.z, None)
+        key[axes.x] = slice(extent.xmin, extent.xmax, None)
+        key[axes.y] = slice(extent.ymin, extent.ymax, None)
+        key[axes.z] = slice(extent.zmin, extent.zmax, None)
 
         ccbbox = labels[tuple(key)]
 
@@ -132,13 +132,13 @@ class OpRegionFeatures3d(Operator):
 
         # object and context
         bboxshape = [None] * 3
-        bboxshape[axes.x] = maxs.x - mins.x
-        bboxshape[axes.y] = maxs.y - mins.y
-        bboxshape[axes.z] = maxs.z - mins.z
+        bboxshape[axes.x] = extent.xrange
+        bboxshape[axes.y] = extent.yrange
+        bboxshape[axes.z] = extent.zrange
         bboxshape = tuple(bboxshape)
         passed = np.zeros(bboxshape, dtype=bool)
 
-        for iz in range(maxs.z - mins.z):
+        for iz in range(extent.zrange):
             #FIXME: shoot me, axistags
             bboxkey = [slice(None)] * 3
             bboxkey[axes.z] = iz
@@ -156,6 +156,7 @@ class OpRegionFeatures3d(Operator):
     def _extract(self, image, labels):
         assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
 
+        # FIXME: maybe simplify?
         class Axes(object):
             x = image.axistags.index('x')
             y = image.axistags.index('y')
@@ -196,13 +197,14 @@ class OpRegionFeatures3d(Operator):
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
-            mins, maxs = self.compute_minmax(i, image, mincoords, maxcoords, axes)
-            rawbbox = self.compute_rawbbox(image, mins, maxs, axes)
-            label_bboxes = self.compute_label_bboxes(i, labels, mins, maxs, axes)
+            extent = self.compute_extent(i, image, mincoords, maxcoords, axes)
+            rawbbox = self.compute_rawbbox(image, extent, axes)
+            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes)
 
+            import util; util.set_trace()
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes, mins, maxs)
+                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, extent, axes)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
