@@ -128,27 +128,14 @@ class OpRegionFeatures3d(Operator):
         ccbbox = labels[tuple(key)]
 
         # object only
-        ccbboxobject = np.where(ccbbox == i, 1, 0)
+        ccbboxobject = np.where(ccbbox == i, 1, 0).astype(np.bool)
 
         # object and context
-        bboxshape = [None] * 3
-        bboxshape[axes.x] = extent.xrange
-        bboxshape[axes.y] = extent.yrange
-        bboxshape[axes.z] = extent.zrange
-        bboxshape = tuple(bboxshape)
-        passed = np.zeros(bboxshape, dtype=bool)
-
-        for iz in range(extent.zrange):
-            #FIXME: shoot me, axistags
-            bboxkey = [slice(None)] * 3
-            bboxkey[axes.z] = iz
-            bboxkey = tuple(bboxkey)
-            #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
-            dt = vigra.filters.distanceTransform2D(np.asarray(ccbbox[bboxkey], dtype=np.float32))
-            passed[tuple(bboxkey)] = dt < self.MARGIN
+        dt = vigra.filters.distanceTransform3D(np.asarray(ccbbox, dtype=np.float32))
+        passed = np.asarray(dt < self.MARGIN).astype(np.bool)
 
         # context only
-        ccbboxexcl = passed - ccbboxobject
+        ccbboxexcl = (passed - ccbboxobject).astype(np.bool)
 
         label_bboxes = [ccbboxobject, passed, ccbboxexcl]
         return label_bboxes
@@ -201,7 +188,6 @@ class OpRegionFeatures3d(Operator):
             rawbbox = self.compute_rawbbox(image, extent, axes)
             label_bboxes = self.compute_label_bboxes(i, labels, extent, axes)
 
-            import util; util.set_trace()
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
                 feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, extent, axes)
