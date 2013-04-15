@@ -14,6 +14,8 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import gui_features_suffix
 
+MISSING_VALUE = 0
+
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
     name = "OpObjectClassification"
     category = "Top-level"
@@ -98,7 +100,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)
-        
+
         self._labelBBoxes = []
         self._ambiguousLabels = []
         self._needLabelTransfer = False
@@ -118,7 +120,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelInputs[imageIndex].meta.dtype = object
         self.LabelInputs[imageIndex].meta.mapping_dtype = numpy.uint8
         self.LabelInputs[imageIndex].meta.axistags = None
-        
+
         self._resetLabelInputs(imageIndex)
 
     def _resetLabelInputs(self, imageIndex, roi=None):
@@ -138,7 +140,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         if slot==self.SegmentationImages:
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
-            
+
 
     def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
         """
@@ -167,12 +169,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         labelsdict[timeCoord] = labels
         labelslot.setValue(labelsdict)
         labelslot.setDirty([(timeCoord, objIndex)])
-        
+
         #Fill the cache of label bounding boxes, if it was empty
         if len(self._labelBBoxes[imageIndex].keys())==0:
             #it's the first label for this image
             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
-            
+
             #the bboxes should be the same for all channels
             mins = feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
             maxs = feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
@@ -191,7 +193,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             #nothing to transfer
             self._needLabelTransfer = False
             return None
-        
+
         labels = dict()
         for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             #we have to get new object features to get bounding boxes
@@ -205,19 +207,19 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                                              self._labelBBoxes[imageIndex][timeCoord], \
                                             coords)
             labels[timeCoord] = new_labels
-            
+
             self._labelBBoxes[imageIndex][timeCoord]=coords
             self._ambiguousLabels[imageIndex][timeCoord]=numpy.zeros((2,)) #initialize ambig. labels as normal labels
-            
+
         self.LabelInputs[imageIndex].setValue(labels)
         self._needLabelTransfer = False
-        
+
         return new_labels, old_labels_lost, new_labels_lost
-                
+
     @staticmethod
     def transferLabels(old_labels, old_bboxes, new_bboxes, axistags = None):
         #transfer labels from old segmentation to new segmentation
-         
+
         mins_old = old_bboxes["Coord<Minimum>"]
         maxs_old = old_bboxes["Coord<Maximum>"]
         mins_new = new_bboxes["Coord<Minimum>"]
@@ -240,30 +242,30 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 self.cent_y = self.ymin+self.rad_y
                 self.rad_z = 0.5*(self.zmax-self.zmin)
                 self.cent_z = self.zmin+self.rad_z
-                
-            @staticmethod    
+
+            @staticmethod
             def overlap(bbox_tuple):
                 this = bbox_tuple[0]
                 that = bbox_tuple[1]
                 over_x = this.rad_x+that.rad_x - (abs(this.cent_x-that.cent_x))
                 over_y = this.rad_y+that.rad_y - (abs(this.cent_y-that.cent_y))
                 over_z = this.rad_z+that.rad_z - (abs(this.cent_z-that.cent_z))
-                
+
                 if over_x>0 and over_y>0 and over_z>0:
                     return over_x*over_y*over_z
                 return 0
-                    
+
         nonzeros = numpy.nonzero(old_labels)[0]
         bboxes_old = [bbox(x, axistags) for x in zip(mins_old[nonzeros], maxs_old[nonzeros])]
         bboxes_new = [bbox(x, axistags) for x in zip(mins_new, maxs_new)]
-        
+
         #remove background
         #FIXME: assuming background is 0 again
         bboxes_new = bboxes_new[1:]
-        
+
         double_for_loop = itertools.product(bboxes_old, bboxes_new)
         overlaps = map(bbox.overlap, double_for_loop)
-        
+
         overlaps = numpy.asarray(overlaps)
         overlaps = overlaps.reshape((len(bboxes_old), len(bboxes_new)))
         new_labels = numpy.zeros((nobj_new,), dtype=numpy.uint32)
@@ -282,21 +284,21 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             if overlapsum-overlaps[iobj,newindex]>0:
                 #this object overlaps with more than one new object
                 old_labels_lost["partial"].append((bboxes_old[iobj].cent_x, bboxes_old[iobj].cent_y, bboxes_old[iobj].cent_z))
-                
+
             overlaps[iobj, :] = 0
             overlaps[iobj, newindex] = 1 #doesn't matter what number>0
-            
+
         for iobj in range(overlaps.shape[1]):
             labels = numpy.where(overlaps[:, iobj]>0)[0]
             if labels.shape[0]==1:
                 new_labels[iobj+1]=old_labels[nonzeros[labels[0]]] #iobj+1 because of the background
             elif labels.shape[0]>1:
                 new_labels_lost["conflict"].append((bboxes_new[iobj].cent_x, bboxes_new[iobj].cent_y, bboxes_new[iobj].cent_z))
-        
+
         new_labels = new_labels
         new_labels[0]=0 #FIXME: hardcoded background value again
         return new_labels, old_labels_lost, new_labels_lost
-            
+
 
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
@@ -304,7 +306,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         for slot in self.inputs.values():
             if slot.level > 0 and len(slot) == laneIndex:
                 slot.resize(numLanes + 1)
-                
+
         self._ambiguousLabels.insert(laneIndex, None)
         self._labelBBoxes.insert(laneIndex, dict())
 
@@ -312,7 +314,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         for slot in self.inputs.values():
             if slot.level > 0 and len(slot) == finalLength + 1:
                 slot.removeSlot(laneIndex, finalLength)
-                
+
         self._ambiguousLabels.pop(laneIndex)
         self._labelBBoxes.pop(laneIndex)
 
@@ -351,8 +353,8 @@ def make_feature_array(feats, labels=None):
     # remove extra features used by applet only.
     featnames = sorted(list(n for n in featnames
                             if gui_features_suffix not in n))
+    col_names = []
 
-    bad_indices_dict = dict()
     for t in sorted(feats.keys()):
         featsMatrix_tmp = []
 
@@ -361,47 +363,34 @@ def make_feature_array(feats, labels=None):
             lab = labels[t].squeeze()
             index = numpy.nonzero(lab)
             labellist_tmp.append(lab[index])
-        
-        bad_object_indices = []
+
         for featname in featnames:
             value = feats[t][featname]
             ft = numpy.asarray(value.squeeze())
             if labels is not None:
                 ft = ft[index]
-            bad_objects = check_features(ft)
-            bad_object_indices.extend(bad_objects)
-                
             featsMatrix_tmp.append(ft)
+            col_names.extend([featname] * value.shape[1])
 
-        bad_object_indices = set(bad_object_indices)
         #FIXME: we can do it all with just arrays
-        bad_object_indices = list(bad_object_indices)
         featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
-        featsMatrix_tmp_combined = numpy.delete(featsMatrix_tmp_combined, bad_object_indices, axis=0)
         featlist.append(featsMatrix_tmp_combined)
         if labels is not None:
             labellist_tmp_combined = _concatenate(labellist_tmp, axis=1)
-            labellist_tmp_combined = numpy.delete(labellist_tmp_combined, bad_object_indices, axis=0)
             labellist.append(labellist_tmp_combined)
-        bad_indices_dict[t]=bad_object_indices
 
     featMatrix = _concatenate(featlist, axis=0)
     if labels is not None:
         labelsMatrix = _concatenate(labellist, axis=0)
         assert labelsMatrix.shape[0]==featMatrix.shape[0]
-        return featMatrix, labelsMatrix, bad_indices_dict
-    return featMatrix, bad_indices_dict
+        return featMatrix, col_names, labelsMatrix
+    return featMatrix, col_names
 
-def check_features(features):
-    #make a list of NaN, inf, None and other bad indices
-    if len(features.shape)>1:
-        features = numpy.sum(features, axis=1)
-    nans = numpy.argwhere(numpy.isnan(features))
-    infs = numpy.argwhere(numpy.isinf(features))
-    neginfs = numpy.argwhere(numpy.isneginf(features))
-    bad_objects = numpy.vstack([nans, infs, neginfs])
-    bad_objects = bad_objects.reshape((bad_objects.shape[0],))
-    return list(bad_objects)
+
+def get_bad_rows_and_columns(a):
+    rows, cols = numpy.where(numpy.isnan(a) + numpy.isinf(a))
+    return (rows, cols), list(set(rows.flat)), list(set(cols.flat))
+
 
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
@@ -429,7 +418,11 @@ class OpObjectTrain(Operator):
     def execute(self, slot, subindex, roi, result):
 
         featList = []
+        all_col_names = []
         labelsList = []
+
+        all_bad_objects = {}
+        all_bad_feats = set()
 
         for i in range(len(self.Labels)):
             feats = self.Features[i]([]).wait()
@@ -439,14 +432,31 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            featstmp, labelstmp, bad_object_indices = make_feature_array(feats, labels)
-            #print "WARNING: removed following entries from labels", bad_object_indices
+            featstmp, col_names, labelstmp = make_feature_array(feats, labels)
+            idx, rows, cols = get_bad_rows_and_columns(featstmp)
+            featstmp[idx] = MISSING_VALUE
+
+            badfeats = set(col_names[c] for c in cols)
+
+            if len(rows) > 0:
+                print 'Warning: the following objects in time slice {} had bad features: {}'.format(i, rows)
+            if len(badfeats) > 0:
+                print 'Warning: the following features in time slice {} were bad: {}'.format(i, badfeats)
+
             featList.append(featstmp)
+            all_col_names.append(tuple(col_names))
             labelsList.append(labelstmp)
+
+            all_bad_objects[i] = rows
+            all_bad_feats = all_bad_feats.union(badfeats)
+
+        if not len(set(all_col_names)) == 1:
+            raise Exception('different time slices did not have same features.')
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-        print "training on matrix:", featMatrix.shape
+
+        print "training on matrix of shape {}".format(featMatrix.shape)
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             result[:] = None
@@ -536,16 +546,24 @@ class OpObjectPredict(Operator):
 
         feats = {}
         prob_predictions = {}
-        bad_object_indices = {}
         for t in times:
             if t in self.prob_cache:
                 continue
 
             tmpfeats = self.Features([t]).wait()
-            
-            feats[t], tmp_bad_indices = make_feature_array(tmpfeats)
-            bad_object_indices[t] = tmp_bad_indices[0] #because the make_feature_array function already returns a dicts
-            #print "WARNING: following entries have NaNs in feature values and will not be predicted:", bad_object_indices[t]
+            ftmatrix, col_names = make_feature_array(tmpfeats)
+
+            idx, rows, cols = get_bad_rows_and_columns(ftmatrix)
+            ftmatrix[idx] = MISSING_VALUE
+
+            badfeats = set(col_names[c] for c in cols)
+
+            if len(rows) > 0:
+                print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
+            if len(cols) > 0:
+                print 'Warning: the following features in time slice {} were bad: {}'.format(t, badfeats)
+
+            feats[t] = ftmatrix
             prob_predictions[t] = [0] * len(forests)
 
         def predict_forest(_t, forest_index):
@@ -578,17 +596,11 @@ class OpObjectPredict(Operator):
                 stacked_predictions = numpy.array( prob_predictions[t] )
                 averaged_predictions = numpy.average( stacked_predictions, axis=0 )
                 assert averaged_predictions.shape[0] == len(feats[t])
-                #re-insert the bad cases
-                #FIXME: change this once it's in vigra
-                nclasses = averaged_predictions.shape[1]
-                for ind in bad_object_indices[t]:
-                    averaged_predictions = numpy.insert(averaged_predictions, ind, \
-                                                        numpy.zeros((nclasses,), dtype=numpy.float32), axis=0)
                 self.prob_cache[t] = averaged_predictions
-                
+
                 self.prob_cache[t][0] = 0 # Background probability is always zero
 
-                
+
         if slot == self.Probabilities:
             return { t : self.prob_cache[t] for t in times }
         elif slot == self.Predictions:
@@ -596,12 +608,10 @@ class OpObjectPredict(Operator):
             labels = dict()
             for t in times:
                 prob_sum = numpy.sum(self.prob_cache[t], axis=1)
-                bad_objects = prob_sum<0.1 #it's 0 for bad objects, but let's not compare floats by ==
                 labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
-                labels[t][bad_objects] = 101
                 labels[t][0] = 0 # Background gets the zero label
             return labels
-          
+
         elif slot == self.ProbabilityChannels:
             prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
             return prob_single_channel
