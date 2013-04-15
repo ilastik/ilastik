@@ -2,8 +2,8 @@ import os
 import datetime
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QSettings
-from PyQt4.QtGui import QWidget, QIcon, QFileDialog
+from PyQt4.QtCore import Qt, QSettings, QEvent
+from PyQt4.QtGui import QWidget, QIcon, QFileDialog, QMessageBox, QApplication
 
 from eventRecorder import EventRecorder
 
@@ -37,6 +37,25 @@ class EventRecorderGui(QWidget):
         self.pauseButton.setIcon( QIcon(ilastikIcons.Pause) )
         self.saveButton.setIcon( QIcon(ilastikIcons.Stop) )
 
+        self.newCommentEdit.installEventFilter(self)
+        self._autopaused = False
+        self._saved = True
+    
+    def openInPausedState(self):
+        self.show()
+        self.startButton.click()
+        self._onPause()
+        self._autopaused = True
+    
+    def confirmQuit(self):
+        if self._recorder is not None and not self._saved:
+            message = "You haven't saved your recording.  Are you sure you want to quit now?\n"
+            buttons = QMessageBox.Discard | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Discard recording?", message, buttons, defaultButton=QMessageBox.Cancel)
+            if response == QMessageBox.Cancel:
+                return False
+        return True
+    
     def _onStart(self):
         self._recorder = EventRecorder( parent=self )
         self.startButton.setEnabled(False)
@@ -60,6 +79,7 @@ class EventRecorderGui(QWidget):
             self._recorder.pause()
             self.pauseButton.setText( "Unpause" )
             self.pauseButton.setChecked( True )
+            self._saved = False
 
     def _onSave(self):
         # If we are actually playing a recording right now, then the "Stop Recording" action gets triggered as the last step.
@@ -104,6 +124,7 @@ class EventRecorderGui(QWidget):
         
         with open(script_path, 'w') as f:
             self._recorder.writeScript(f)
+        self._saved = True
             
     def _onInsertComment(self):
         comment = self.newCommentEdit.toPlainText()
@@ -112,7 +133,17 @@ class EventRecorderGui(QWidget):
         self.commentsDisplayEdit.appendPlainText( comment )
         self.newCommentEdit.clear()
 
-
+    def eventFilter(self, watched, event):
+        if watched == self.newCommentEdit:
+            if event.type() == QEvent.FocusIn:
+                if not self._recorder.paused:
+                    self._onPause()
+                    self._autopaused = True
+            elif event.type() == QEvent.FocusOut:
+                if self._autopaused and self._recorder.paused:
+                    self._onPause()
+                self._autopaused = False
+        return False
 
 
 

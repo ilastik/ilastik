@@ -1174,7 +1174,8 @@ class IlastikShell( QMainWindow ):
                 response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
                 if response == QMessageBox.Cancel:
                     return False
-        return True
+
+        return self._recorderGui.confirmQuit()
 
     def closeAndQuit(self, quitApp=True):
         if self.projectManager is not None:

@@ -43,6 +43,7 @@ def install_thread_excepthook():
     threading.Thread.run = run
 
 parser = argparse.ArgumentParser( description="start an ilastik workflow" )
+parser.add_argument('--start_recording', help='Open the recorder controls and immediately start recording', action='store_true', default=False)
 parser.add_argument('--playback_script', help='An event recording to play back after the main window has opened.', required=False)
 parser.add_argument('--playback_speed', help='Speed to play the playback script.', default=1.0, type=float)
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
@@ -55,6 +56,12 @@ parser.add_argument('--debug', help='Start ilastik in debug mode.', action='stor
 
 parsed_args = parser.parse_args()
 init_funcs = []
+
+if parsed_args.start_recording:
+    assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
+    def startRecording(shell):
+        shell._recorderGui.openInPausedState()
+    init_funcs.append(startRecording)
 
 if parsed_args.project is not None:    
     #convert path to convenient format
