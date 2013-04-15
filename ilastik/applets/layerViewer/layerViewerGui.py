@@ -252,7 +252,7 @@ class LayerViewerGui(QWidget):
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
             normSource = NormalizingSource( source, bounds=normalize )
-            return GrayscaleLayer(normSource)
+            return GrayscaleLayer(source)
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
             "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
@@ -269,6 +269,7 @@ class LayerViewerGui(QWidget):
         greenNormSource = NormalizingSource( greenSource, bounds=normalize )
 
         blueNormSource = None
+        blueSource = None
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             blueProvider = OpSingleChannelSelector(graph=slot.graph)
             blueProvider.Input.connect(slot)
@@ -277,6 +278,7 @@ class LayerViewerGui(QWidget):
             blueNormSource = NormalizingSource( blueSource, bounds=normalize )
 
         alphaNormSource = None
+        alphaSource = None
         if lastChannelIsAlpha:
             alphaProvider = OpSingleChannelSelector(graph=slot.graph)
             alphaProvider.Input.connect(slot)
@@ -284,7 +286,7 @@ class LayerViewerGui(QWidget):
             alphaSource = LazyflowSource( alphaProvider.Output )
             alphaNormSource = NormalizingSource( alphaSource, bounds=normalize )
 
-        layer = RGBALayer( red=redNormSource, green=greenNormSource, blue=blueNormSource, alpha=alphaNormSource )
+        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource )
         return layer
 
     @traceLogged(traceLogger)
