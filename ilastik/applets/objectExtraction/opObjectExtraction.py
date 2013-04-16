@@ -203,7 +203,7 @@ class OpRegionFeatures3d(Operator):
 
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes, mins, maxs)
+                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, axes, mins, maxs)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
@@ -215,6 +215,7 @@ class OpRegionFeatures3d(Operator):
                 del local_features[key]
 
         all_features = dict(global_features.items() + local_features.items())
+        print all_features
 
         for key, value in all_features.iteritems():
             if value.shape[0] != nobj - 1:

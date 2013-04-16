@@ -12,11 +12,14 @@ class TestFeatures(ObjectFeaturesPlugin):
         lmax = numpy.max(labels)
         result = dict()
         result["with_nans"] = numpy.zeros((lmax,))
+        result["with_nones"] = numpy.zeros((lmax,))
         for i in range(lmax):
             if i%3==0:
                 result["with_nans"][i]=numpy.NaN
                 result["with_nones"][i]=None
             else:
+                result["with_nans"][i]=21
                 result["with_nones"][i]=42
                 
         return result
+    

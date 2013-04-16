@@ -38,6 +38,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.inputChannelSpinBox,
             self._drawer.lowThresholdSpinBox,
             self._drawer.highThresholdSpinBox,
+            self._drawer.thresholdSpinBox,
             self._drawer.minSizeSpinBox,
             self._drawer.maxSizeSpinBox
         ]
@@ -89,6 +90,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
 
         # Read Thresholds
+        singleThreshold = self._drawer.thresholdSpinBox.value()
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
         
@@ -125,6 +127,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         ct = self._createDefault16ColorColorTable()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
+        
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, binct)
@@ -142,7 +145,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(lowThresholdLayer)
 
         if op.FilteredSmallLabels.ready():
-            filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels, lastChannelIsAlpha=True )
+            filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
             filteredSmallLabelsLayer.name = "Filtered Small Labels"
             filteredSmallLabelsLayer.visible = False
             filteredSmallLabelsLayer.opacity = 1.0
@@ -155,7 +158,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             highThresholdLayer.visible = False
             highThresholdLayer.opacity = 1.0
             layers.append(highThresholdLayer)
-
+        
         # Selected input channel, smoothed.
         if op.Smoothed.ready():
             smoothedLayer = self.createStandardLayerFromSlot( op.Smoothed )
@@ -163,7 +166,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             smoothedLayer.visible = True
             smoothedLayer.opacity = 1.0
             layers.append(smoothedLayer)
-
+        
         # Show the selected channel
         if op.InputChannel.ready():
             drange = op.InputChannel.meta.drange

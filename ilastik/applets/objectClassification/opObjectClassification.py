@@ -730,6 +730,7 @@ class OpMaxLabel(Operator):
 
 
     def setupOutputs(self):
+        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"
         self.updateOutput()
         self.Output.setValue(self._output)
 

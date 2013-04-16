@@ -58,8 +58,11 @@ class TestThresholdTwoLevels(object):
         self.lowThreshold = 0.1
         
         self.sigma = { 'x' : 0.3, 'y' : 0.3, 'z' : 0.3 }
+        #pre-smooth all 3d and 4d data
+        self.data = vigra.filters.gaussianSmoothing(self.data.astype(numpy.float32), 0.3)
+        self.dataChannels = vigra.filters.gaussianSmoothing(self.dataChannels[..., 2:3].astype(numpy.float32), 0.3)
         
-    def testStuff(self):
+    def test4dAnd5d(self):
         g = Graph()
         
         oper = OpThresholdTwoLevels4d(graph = g)
@@ -68,7 +71,7 @@ class TestThresholdTwoLevels(object):
         oper.MaxSize.setValue(self.maxSize)
         oper.HighThreshold.setValue(self.highThreshold)
         oper.LowThreshold.setValue(self.lowThreshold)
-        oper.SmootherSigma.setValue(self.sigma)
+        #oper.SmootherSigma.setValue(self.sigma)
         
         output = oper.Output[:].wait()
         output = output.reshape((self.nx, self.ny, self.nz))
@@ -117,8 +120,8 @@ class TestThresholdTwoLevels(object):
         #this function is the same as the operator, but without any lazyflow stuff
         #or memory management
         
-        sigmatuple = (self.sigma['x'], self.sigma['y'], self.sigma['z'])
-        data = vigra.filters.gaussianSmoothing(data.astype(numpy.float32), sigmatuple)
+        #sigmatuple = (self.sigma['x'], self.sigma['y'], self.sigma['z'])
+        #data = vigra.filters.gaussianSmoothing(data.astype(numpy.float32), sigmatuple)
         
         th_high = data>self.highThreshold
         th_low = data>self.lowThreshold
@@ -158,7 +161,7 @@ class TestThresholdTwoLevels(object):
         return filtered2.squeeze()
         
     
-    def testMoreStuff(self):
+    def testAgainstOwn(self):
         g = Graph()
         oper = OpThresholdTwoLevels4d(graph = g)
         oper.InputImage.setValue(self.data)
@@ -166,7 +169,7 @@ class TestThresholdTwoLevels(object):
         oper.MaxSize.setValue(self.maxSize)
         oper.HighThreshold.setValue(self.highThreshold)
         oper.LowThreshold.setValue(self.lowThreshold)
-        oper.SmootherSigma.setValue(self.sigma)
+        #oper.SmootherSigma.setValue(self.sigma)
         
         output = oper.Output[:].wait()
         output = output.reshape((self.nx, self.ny, self.nz))
