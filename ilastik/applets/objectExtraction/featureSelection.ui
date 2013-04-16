@@ -30,9 +30,9 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>20</y>
+     <y>40</y>
      <width>521</width>
-     <height>411</height>
+     <height>391</height>
     </rect>
    </property>
    <column>
@@ -65,6 +65,29 @@
    </property>
    <property name="text">
     <string>None</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="marginEdit">
+   <property name="geometry">
+    <rect>
+     <x>460</x>
+     <y>10</y>
+     <width>71</width>
+     <height>20</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="marginLabel">
+   <property name="geometry">
+    <rect>
+     <x>370</x>
+     <y>10</y>
+     <width>81</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Margin pixels</string>
    </property>
   </widget>
  </widget>

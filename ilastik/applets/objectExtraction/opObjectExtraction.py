@@ -1,4 +1,5 @@
 #Python
+from copy import copy
 import collections
 from collections import defaultdict
 
@@ -26,6 +27,16 @@ gui_features = ['Coord<Minimum>', 'Coord<Maximum>', 'RegionCenter']
 
 # to distinguish them, their name gets this suffix
 gui_features_suffix = '_gui_only'
+
+def max_margin(d, default=0):
+    margin = default
+    for features in d.itervalues():
+        for params in features.itervalues():
+            try:
+                margin = max(margin, params['margin'])
+            except ValueError:
+                continue
+    return margin
 
 class OpRegionFeatures3d(Operator):
     """
@@ -88,67 +99,41 @@ class OpRegionFeatures3d(Operator):
         result[tuple(roi.start)] = acc
         return result
 
-    def compute_minmax(self, i, image, mincoords, maxcoords, axes):
-        class Limit(object):
-            def __init__(self, x, y, z):
-                self.x = x
-                self.y = y
-                self.z = z
-
+    def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
         #find the bounding box
-        minx = max(mincoords[i][axes.x] - self.MARGIN, 0)
-        miny = max(mincoords[i][axes.y] - self.MARGIN, 0)
-        minz = max(mincoords[i][axes.z], 0)
+        minx = max(mincoords[i][axes.x] - margin, 0)
+        miny = max(mincoords[i][axes.y] - margin, 0)
+        minz = max(mincoords[i][axes.z] - margin, 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
-        maxx = min(maxcoords[i][axes.x] + 1 + self.MARGIN, image.shape[axes.x])
-        maxy = min(maxcoords[i][axes.y] + 1 + self.MARGIN, image.shape[axes.y])
-        maxz = min(maxcoords[i][axes.z] + 1, image.shape[axes.z])
+        maxx = min(maxcoords[i][axes.x] + 1 + margin, image.shape[axes.x])
+        maxy = min(maxcoords[i][axes.y] + 1 + margin, image.shape[axes.y])
+        maxz = min(maxcoords[i][axes.z] + 1 + margin, image.shape[axes.z])
 
-        mins = Limit(minx, miny, minz)
-        maxcoords = Limit(maxx, maxy, maxz)
+        result = [None] * 3
+        result[axes.x] = slice(minx, maxx)
+        result[axes.y] = slice(miny, maxy)
+        result[axes.z] = slice(minz, maxz)
+        return [slice(minx, maxx), slice(miny, maxy), slice(minz, maxz)]
 
-        return mins, maxcoords
-
-    def compute_rawbbox(self, image, mins, maxs, axes):
-        key = [slice(None)] * 4
-        key[axes.x] = slice(mins.x, maxs.x, None)
-        key[axes.y] = slice(mins.y, maxs.y, None)
-        key[axes.z] = slice(mins.z, maxs.z, None)
-        key[axes.c] = slice(None)
+    def compute_rawbbox(self, image, extent, axes):
+        key = copy(extent)
+        key.insert(axes.c, slice(None))
         return image[tuple(key)]
 
-    def compute_label_bboxes(self, i, labels, mins, maxs, axes):
-        key = [slice(None)] * 3
-        key[axes.x] = slice(mins.x, maxs.x, None)
-        key[axes.y] = slice(mins.y, maxs.y, None)
-        key[axes.z] = slice(mins.z, maxs.z, None)
-
-        ccbbox = labels[tuple(key)]
+    def compute_label_bboxes(self, i, labels, extent, axes, margin):
+        ccbbox = labels[tuple(extent)]
 
         # object only
-        ccbboxobject = np.where(ccbbox == i, 1, 0)
+        ccbboxobject = np.where(ccbbox == i, 1, 0).astype(np.bool)
 
         # object and context
-        bboxshape = [None] * 3
-        bboxshape[axes.x] = maxs.x - mins.x
-        bboxshape[axes.y] = maxs.y - mins.y
-        bboxshape[axes.z] = maxs.z - mins.z
-        bboxshape = tuple(bboxshape)
-        passed = np.zeros(bboxshape, dtype=bool)
-
-        for iz in range(maxs.z - mins.z):
-            #FIXME: shoot me, axistags
-            bboxkey = [slice(None)] * 3
-            bboxkey[axes.z] = iz
-            bboxkey = tuple(bboxkey)
-            #TODO: Ulli once mentioned that distance transform can be made anisotropic in 3D
-            dt = vigra.filters.distanceTransform2D(np.asarray(ccbbox[bboxkey], dtype=np.float32))
-            passed[tuple(bboxkey)] = dt < self.MARGIN
+        dt = vigra.filters.distanceTransform3D(np.asarray(ccbbox, dtype=np.float32))
+        passed = np.asarray(dt < margin).astype(np.bool)
 
         # context only
-        ccbboxexcl = passed - ccbboxobject
+        ccbboxexcl = (passed - ccbboxobject).astype(np.bool)
 
         label_bboxes = [ccbboxobject, passed, ccbboxexcl]
         return label_bboxes
@@ -156,6 +141,7 @@ class OpRegionFeatures3d(Operator):
     def _extract(self, image, labels):
         assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
 
+        # FIXME: maybe simplify?
         class Axes(object):
             x = image.axistags.index('x')
             y = image.axistags.index('y')
@@ -193,16 +179,18 @@ class OpRegionFeatures3d(Operator):
                 a[key].append(b[key])
             return a
 
+        margin = max_margin(feature_names)
+
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
-            mins, maxs = self.compute_minmax(i, image, mincoords, maxcoords, axes)
-            rawbbox = self.compute_rawbbox(image, mins, maxs, axes)
-            label_bboxes = self.compute_label_bboxes(i, labels, mins, maxs, axes)
+            extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
+            rawbbox = self.compute_rawbbox(image, extent, axes)
+            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes, margin)
 
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes, mins, maxs)
+                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
