@@ -18,7 +18,7 @@ from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 from lazyflow.utility import traceLogged
 
 #volumina
-from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
                          LayerStackModel, VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.adaptors import Op5ifyer
@@ -251,7 +251,6 @@ class LayerViewerGui(QWidget):
         if numChannels == 1:
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            normSource = NormalizingSource( source, bounds=normalize )
             return GrayscaleLayer(source)
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
@@ -260,13 +259,11 @@ class LayerViewerGui(QWidget):
         redProvider.Input.connect(slot)
         redProvider.Index.setValue( 0 )
         redSource = LazyflowSource( redProvider.Output )
-        redNormSource = NormalizingSource( redSource, bounds=normalize )
 
         greenProvider = OpSingleChannelSelector(graph=slot.graph)
         greenProvider.Input.connect(slot)
         greenProvider.Index.setValue( 1 )
         greenSource = LazyflowSource( greenProvider.Output )
-        greenNormSource = NormalizingSource( greenSource, bounds=normalize )
 
         blueNormSource = None
         blueSource = None
@@ -275,7 +272,6 @@ class LayerViewerGui(QWidget):
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue( 2 )
             blueSource = LazyflowSource( blueProvider.Output )
-            blueNormSource = NormalizingSource( blueSource, bounds=normalize )
 
         alphaNormSource = None
         alphaSource = None
@@ -284,7 +280,6 @@ class LayerViewerGui(QWidget):
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( numChannels-1 )
             alphaSource = LazyflowSource( alphaProvider.Output )
-            alphaNormSource = NormalizingSource( alphaSource, bounds=normalize )
 
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource )
         return layer
@@ -584,8 +579,6 @@ class LayerViewerGui(QWidget):
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
-                if isinstance( datasource, NormalizingSource ):
-                    datasource = datasource._rawSource
                 if isinstance(datasource, LazyflowSource):
                     dataTags = datasource.dataSlot.meta.axistags
                     if dataTags is not None:
