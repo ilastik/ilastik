@@ -457,7 +457,7 @@ class SerialDictSlot(SerialSlot):
     def __init__(self, slot, transform=None, **kwargs):
         """
         :param transform: a function called on each key before
-          inserting it into the dictionary.
+        inserting it into the dictionary.
 
         """
         super(SerialDictSlot, self).__init__(slot, **kwargs)
@@ -465,16 +465,27 @@ class SerialDictSlot(SerialSlot):
             transform = lambda x: x
         self.transform = transform
 
-    @staticmethod
-    def _saveValue(group, name, value):
+    def _saveValue(self, group, name, value):
         sg = group.create_group(name)
         for key, v in value.iteritems():
-            sg.create_dataset(str(key), data=v)
+            if isinstance(v, dict):
+                self._saveValue(sg, key, v)
+            else:
+                sg.create_dataset(str(key), data=v)
 
-    def _getValue(self, subgroup, slot):
+
+    def _getValueHelper(self, subgroup):
         result = {}
         for key in subgroup.keys():
-            result[self.transform(key)] = subgroup[key][()]
+            if isinstance(subgroup[key], h5py.Group):
+                value = self._getValueHelper(subgroup[key])
+            else:
+                value = subgroup[key][()]
+            result[self.transform(key)] = value
+        return result
+
+    def _getValue(self, subgroup, slot):
+        result = self._getValueHelper(subgroup)
         try:
             slot.setValue(result)
         except AssertionError as e:
