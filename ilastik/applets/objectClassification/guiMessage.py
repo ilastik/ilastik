@@ -44,8 +44,9 @@ class GuiDialog(QtGui.QMessageBox):
         return "More Lorem Ipsum!"
 
 class LabelsChangedDialog(GuiDialog):
-    oldLabelsLost = {'partial':[], '???':[]}
-    newLabelsLost = {'???':[]}
+    labelsLost = {'conflict':[],'partial':[],'full':[]}
+    messages = {'full': "These labels were lost completely:\n(X, Y, Z)", 'partial': "These labels were lost partially:\n(X, Y, Z)", 'conflict': "These new labels conflicted:\n(X, Y, Z)"}
+    defaultMessage = "These labels could not be transferred:"
     
     def hasDetails(self):
         return True
@@ -54,7 +55,13 @@ class LabelsChangedDialog(GuiDialog):
         return "Some of your labels could not be transferred."
 
     def getDetails(self):
-        return "\n".join([str(a) for a in [self.oldLabelsLost, self.newLabelsLost]])
+        cases = []
+        for k in self.labelsLost.keys():
+            if len(self.labelsLost[k])>0:
+                msg = self.messages[k] if k in self.messages.keys() else self.defaultMessage
+                coords = "\n".join([str(item) for item in self.labelsLost[k]])
+                cases.append("\n".join([msg,coords]))
+        return "\n\n".join(cases)
 
 
 class Example(QtGui.QWidget):
