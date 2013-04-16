@@ -78,9 +78,15 @@ class TestThresholdOneLevel(object):
         assert numpy.all(cluster1==0)
         
         cluster4 = numpy.logical_and(output.squeeze(), clusters[3])
-        #print cluster4[2:10, 2:10, 15]
-        #print output.shape
-        assert numpy.all(cluster4==False)
+        assert numpy.all(cluster4==0)
+        
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.all(cluster5==0)
+        oper.Threshold.setValue(0.2)
+        output = oper.Output[:].wait()
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.any(cluster5!=0)
+        
 
 
 class TestThresholdTwoLevels(object):
