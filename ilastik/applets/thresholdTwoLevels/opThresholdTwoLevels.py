@@ -242,16 +242,16 @@ class OpThresholdTwoLevels(Operator):
         self._opSmoother.Sigmas.connect( self.SmootherSigma )
         
         
-        self.opThreshold = OperatorWrapper(OpThresholdTwoLevels4d, parent = self)
-        self.opThreshold.InputImage.connect(self._opSmoother.Output)
-        self.opThreshold.MinSize.connect(self.MinSize)
-        self.opThreshold.MaxSize.connect(self.MaxSize)
-        self.opThreshold.LowThreshold.connect(self.LowThreshold)
-        self.opThreshold.HighThreshold.connect(self.HighThreshold)
+        self.opThreshold2 = OperatorWrapper(OpThresholdTwoLevels4d, parent = self)
+        self.opThreshold2.InputImage.connect(self._opSmoother.Output)
+        self.opThreshold2.MinSize.connect(self.MinSize)
+        self.opThreshold2.MaxSize.connect(self.MaxSize)
+        self.opThreshold2.LowThreshold.connect(self.LowThreshold)
+        self.opThreshold2.HighThreshold.connect(self.HighThreshold)
         
         self._opTimeStacker = OpMultiArrayStacker(parent=self)
         self._opTimeStacker.AxisFlag.setValue('t')
-        self._opTimeStacker.Images.connect(self.opThreshold.Output)
+        self._opTimeStacker.Images.connect(self.opThreshold2.Output)
         assert self._opTimeStacker.Output.level==0
         self.Output.connect(self._opTimeStacker.Output)
         
@@ -270,28 +270,25 @@ class OpThresholdTwoLevels(Operator):
         self._smoothStacker.AxisFlag.setValue('t')
         self._smoothStacker.Images.connect(self._opSmoother.Output)
         self.Smoothed.connect(self._smoothStacker.Output)
-        #self.Smoothed.connect(self._opSmoother.Output)
         
         self._inputStacker = OpMultiArrayStacker(parent=self)
         self._inputStacker.AxisFlag.setValue('t')
         self._inputStacker.Images.connect(self._opChannelSelector.Output)
-        
         self.InputChannel.connect(self._inputStacker.Output)
-        #self.InputChannel.connect( self._opChannelSelector.Output )
         
         self._bigRegionsStacker = OpMultiArrayStacker(parent=self)
         self._bigRegionsStacker.AxisFlag.setValue('t')
-        self._bigRegionsStacker.Images.connect(self.opThreshold.BigRegions)
+        self._bigRegionsStacker.Images.connect(self.opThreshold2.BigRegions)
         self.BigRegions.connect(self._bigRegionsStacker.Output)
         
         self._smallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._smallRegionsStacker.AxisFlag.setValue('t')
-        self._smallRegionsStacker.Images.connect(self.opThreshold.SmallRegions)
+        self._smallRegionsStacker.Images.connect(self.opThreshold2.SmallRegions)
         self.SmallRegions.connect(self._smallRegionsStacker.Output)
         
         self._filSmallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._filSmallRegionsStacker.AxisFlag.setValue('t')
-        self._filSmallRegionsStacker.Images.connect(self.opThreshold.FilteredSmallLabels)
+        self._filSmallRegionsStacker.Images.connect(self.opThreshold2.FilteredSmallLabels)
         self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
         
     def setupOutputs(self):
@@ -453,3 +450,69 @@ class OpThresholdTwoLevels4d(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache, 
         #  so all calls to __setitem__ are forwarded automatically 
+        
+        
+class OpThresholdOneLevel(Operator):
+    name = "OpThresholdOneLevel"
+    
+    InputImage = InputSlot()
+    MinSize = InputSlot(stype='int', value=100)
+    MaxSize = InputSlot(stype='int', value=1000000)
+    Threshold = InputSlot(stype='float', value=0.5)
+    
+    Output = OutputSlot()
+    
+    #debug output
+    BeforeSizeFilter = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpThresholdOneLevel, self).__init__(*args, **kwargs)
+        
+        self._opThresholder = OpPixelOperator(parent=self )
+        self._opThresholder.Input.connect( self.InputImage )
+        
+        self._opLabeler = OpVigraLabelVolume( parent=self )
+        self._opLabeler.Input.connect(self._opThresholder.Output)
+        
+        self._opFilter = OpFilterLabels( parent=self )
+        self._opFilter.Input.connect(self._opLabeler.Output )
+        self._opFilter.MinLabelSize.connect( self.MinSize )
+        self._opFilter.MaxLabelSize.connect( self.MaxSize )
+        self._opFilter.BinaryOut.setValue(True)
+        
+        self.Output.connect(self._opFilter.Output)
+        
+    def setupOutputs(self):
+        timeIndex = self.InputImage.meta.axistags.index('t')
+        
+        if timeIndex<len(self.InputImage.meta.shape):
+            assert self.InputImage.meta.shape[timeIndex]==1, "This operator doesn't support 5D data."
+        
+        def thresholdToUint8(thresholdValue, a):
+            drange = self.InputImage.meta.drange
+            if drange is not None:
+                assert drange[0] == 0, "Don't know how to threshold data with this drange."
+                thresholdValue *= drange[1]
+            if a.dtype == numpy.uint8:
+                # In-place (does numpy optimize cases like this?)
+                a[:] = (a > thresholdValue)
+                return a
+            else:
+                return (a > thresholdValue).astype(numpy.uint8)
+        
+        self._opThresholder.Function.setValue( partial( thresholdToUint8, self.Threshold.value ) )
+        # Copy the input metadata to the output
+        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.dtype=numpy.uint8
+        
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here..."
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass # Nothing to do here
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
+        pass

@@ -1,44 +1,104 @@
 import numpy
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ifyer
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels4d, OpThresholdTwoLevels
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels4d, OpThresholdTwoLevels, \
+                                                                    OpThresholdOneLevel
 
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
 import vigra
 
-class TestThresholdTwoLevels(object):
+def generateData((nx, ny, nz, nc)):
+  
+    clusters = []
+    
+    #cluster of 4 points
+    cluster1 = numpy.zeros((nx, ny, nz))
+    cluster1[1:3, 1:3, 1]=0.9
+    clusters.append(cluster1)
+    
+    #cluster of 18 points
+    cluster2 = numpy.zeros((nx, ny, nz))
+    cluster2[5:8, 5:8, 5:8]=0.7
+    clusters.append(cluster2)
+    
+    #cluster of lower probability (18 points)
+    cluster3 = numpy.zeros((nx, ny, nz))
+    cluster3[4:7, 11:14, 9:11]=0.3
+    clusters.append(cluster3)
+    
+    #cluster of 64 points
+    cluster4 = numpy.zeros((nx, ny, nz))
+    cluster4[2:10, 2:10, 15]=0.9
+    clusters.append(cluster4)
+    
+    #dual cluster
+    cluster5 = numpy.zeros((nx, ny, nz))
+    cluster5[20:30, 20:30, 20] = 0.4 #bigger cluster of lower prob
+    cluster5[25:30, 25:30, 20] = 0.95 #smaller core of high prob
+    clusters.append(cluster5)
+    
+    return clusters
+
+class TestThresholdOneLevel(object):
     def setUp(self):
         self.nx = 50
         self.ny = 50
         self.nz = 50
         self.nc = 3
-        #self.data = numpy.zeros((self.nx, self.ny, self.nz))
-        #cluster of 4 points
-        self.cluster1 = numpy.zeros((self.nx, self.ny, self.nz))
-        self.cluster1[1:3, 1:3, 1]=0.9
-        #cluster of 18 points
-        self.cluster2 = numpy.zeros((self.nx, self.ny, self.nz))
-        self.cluster2[5:8, 5:8, 5:8]=0.7
-        #cluster of lower probability
-        self.cluster3 = numpy.zeros((self.nx, self.ny, self.nz))
-        self.cluster3[4:7, 11:14, 9:11]=0.3
-        #cluster of 64 points
-        self.cluster4 = numpy.zeros((self.nx, self.ny, self.nz))
-        self.cluster4[2:10, 2:10, 15]=0.9
         
-        self.cluster5 = numpy.zeros((self.nx, self.ny, self.nz))
-        self.cluster5[20:30, 20:30, 20] = 0.4 #bigger cluster of lower prob
-        self.cluster5[25:30, 25:30, 20] = 0.95 #smaller core of high prob
+        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+        self.data = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
+        self.data = self.data.reshape(self.data.shape+(1,))
+        self.data = self.data.view(vigra.VigraArray)
+        self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         
-        self.data = self.cluster1 + self.cluster2 + self.cluster3 + self.cluster4 + self.cluster5
+        self.minSize = 0
+        self.maxSize = 50
+        
+    def test(self):
+        g = Graph()
+        oper = OpThresholdOneLevel(graph=g)
+        oper.MinSize.setValue(self.minSize)
+        oper.MaxSize.setValue(self.maxSize)
+        oper.Threshold.setValue(0.5)
+        oper.InputImage.setValue(self.data)
+        
+        output = oper.Output[:].wait()
+        
+        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+        
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.any(cluster1!=0)
+                
+        oper.MinSize.setValue(5)
+        output = oper.Output[:].wait()
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.all(cluster1==0)
+        
+        cluster4 = numpy.logical_and(output.squeeze(), clusters[3])
+        #print cluster4[2:10, 2:10, 15]
+        #print output.shape
+        assert numpy.all(cluster4==False)
+
+
+class TestThresholdTwoLevels(object):
+    def setUp(self):
+        
+        self.nx = 50
+        self.ny = 50
+        self.nz = 50
+        self.nc = 3
+        
+        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+        self.data = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
         self.data = self.data.reshape(self.data.shape+(1,))
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         
         self.dataChannels = numpy.zeros((self.nx, self.ny, self.nz, self.nc))
-        self.dataChannels[:, :, :, 2] = self.cluster1 + self.cluster2 + self.cluster3 + self.cluster4 + self.cluster5
+        self.dataChannels[:, :, :, 2] = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
         self.data5d = self.dataChannels.reshape((1,)+self.dataChannels.shape)
         self.dataChannels = self.dataChannels.view(vigra.VigraArray)
         self.dataChannels.axistags = vigra.VigraArray.defaultAxistags('xyzc')
@@ -75,27 +135,30 @@ class TestThresholdTwoLevels(object):
         
         output = oper.Output[:].wait()
         output = output.reshape((self.nx, self.ny, self.nz))
-        cluster1 = numpy.logical_and(output, self.cluster1)
+        
+        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+        
+        cluster1 = numpy.logical_and(output, clusters[0])
         assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output, self.cluster2)
+        cluster2 = numpy.logical_and(output, clusters[1])
         assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output, self.cluster3)
+        cluster3 = numpy.logical_and(output, clusters[2])
         assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output, self.cluster4)
+        cluster4 = numpy.logical_and(output, clusters[3])
         assert numpy.any(cluster4!=0)==False
-        cluster5 = numpy.logical_and(output, self.cluster5)
+        cluster5 = numpy.logical_and(output, clusters[4])
         assert numpy.all(cluster5==0)
         
         oper.InputImage.setValue(self.dataChannels)
         output = oper.Output[:].wait()
         output = output.reshape((self.nx, self.ny, self.nz))
-        cluster1 = numpy.logical_and(output, self.cluster1)
+        cluster1 = numpy.logical_and(output, clusters[0])
         assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output, self.cluster2)
+        cluster2 = numpy.logical_and(output, clusters[1])
         assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output, self.cluster3)
+        cluster3 = numpy.logical_and(output, clusters[2])
         assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output, self.cluster4)
+        cluster4 = numpy.logical_and(output, clusters[3])
         assert numpy.any(cluster4!=0)==False
         
         
@@ -177,15 +240,17 @@ class TestThresholdTwoLevels(object):
         output2 = self.thresholdTwoLevels(self.data)
         output2 = output2.astype(numpy.bool).astype(numpy.uint8)
        
-        cluster1 = numpy.logical_and(output2, self.cluster1)
+        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+       
+        cluster1 = numpy.logical_and(output2, clusters[0])
         assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output2, self.cluster2)
+        cluster2 = numpy.logical_and(output2, clusters[1])
         assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output2, self.cluster3)
+        cluster3 = numpy.logical_and(output2, clusters[2])
         assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output2, self.cluster4)
+        cluster4 = numpy.logical_and(output2, clusters[3])
         assert numpy.all(cluster4==0)
-        cluster5 = numpy.logical_and(output2, self.cluster5)
+        cluster5 = numpy.logical_and(output2, clusters[4])
         assert numpy.all(cluster5==0)
 
         output = output.astype(numpy.bool).astype(numpy.uint8)
@@ -198,7 +263,6 @@ class TestThresholdTwoLevels(object):
         output2 = output2.astype(numpy.bool).astype(numpy.uint8)
         output = output.astype(numpy.bool).astype(numpy.uint8)
         assert numpy.all(output==output2)
-        
         
         
         
