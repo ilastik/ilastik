@@ -38,6 +38,17 @@ def max_margin(d, default=0):
                 continue
     return margin
 
+
+def make_bboxes(binary_bbox, margin):
+    # object and context
+    dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32))
+    passed = np.asarray(dt < margin).astype(np.bool)
+
+    # context only
+    context = (passed - binary_bbox).astype(np.bool)
+    return passed, context
+
+
 class OpRegionFeatures3d(Operator):
     """
     Produces region features (i.e. a vigra.analysis.RegionFeatureAccumulator) for a 3d image.
@@ -122,22 +133,6 @@ class OpRegionFeatures3d(Operator):
         key.insert(axes.c, slice(None))
         return image[tuple(key)]
 
-    def compute_label_bboxes(self, i, labels, extent, axes, margin):
-        ccbbox = labels[tuple(extent)]
-
-        # object only
-        ccbboxobject = np.where(ccbbox == i, 1, 0).astype(np.bool)
-
-        # object and context
-        dt = vigra.filters.distanceTransform3D(np.asarray(ccbbox, dtype=np.float32))
-        passed = np.asarray(dt < margin).astype(np.bool)
-
-        # context only
-        ccbboxexcl = (passed - ccbboxobject).astype(np.bool)
-
-        label_bboxes = [ccbboxobject, passed, ccbboxexcl]
-        return label_bboxes
-
     def _extract(self, image, labels):
         assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
 
@@ -180,17 +175,15 @@ class OpRegionFeatures3d(Operator):
             return a
 
         margin = max_margin(feature_names)
-
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
             extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
             rawbbox = self.compute_rawbbox(image, extent, axes)
-            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes, margin)
-
+            binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes)
+                feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
