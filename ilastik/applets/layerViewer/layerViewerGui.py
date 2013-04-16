@@ -206,7 +206,7 @@ class LayerViewerGui(QWidget):
         Generates a volumina layer using the given slot.
         Chooses between grayscale or RGB depending on the number of channels in the slot.
 
-        * If *slot* has 1 channel, a GrayscaleLayer is created.
+        * If *slot* has 1 channel or more than 4 channels, a GrayscaleLayer is created.
         * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
         * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
         * If *slot* has 4 channels, an RGBA layer is created
@@ -245,13 +245,13 @@ class LayerViewerGui(QWidget):
             
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
-        else:
-            assert numChannels <= 3, "Can't display a standard layer with more than three channels (with no alpha).  Your image has {} channels.".format(numChannels)
 
-        if numChannels == 1:
+        if numChannels == 1 or (numChannels > 4):
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            return GrayscaleLayer(source)
+            layer = GrayscaleLayer(source)
+            layer.numberOfChannels = numChannels
+            return layer
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
             "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
