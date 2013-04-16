@@ -1,4 +1,5 @@
 #Python
+from copy import copy
 import collections
 from collections import defaultdict
 
@@ -99,16 +100,6 @@ class OpRegionFeatures3d(Operator):
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
-        class Extent(object):
-            def __init__(self, x, y, z):
-                self.xmin, self.xmax = x
-                self.ymin, self.ymax = y
-                self.zmin, self.zmax = z
-
-                self.xrange = self.xmax - self.xmin
-                self.yrange = self.ymax - self.ymin
-                self.zrange = self.zmax - self.zmin
-
         #find the bounding box
         minx = max(mincoords[i][axes.x] - margin, 0)
         miny = max(mincoords[i][axes.y] - margin, 0)
@@ -119,23 +110,20 @@ class OpRegionFeatures3d(Operator):
         maxx = min(maxcoords[i][axes.x] + 1 + margin, image.shape[axes.x])
         maxy = min(maxcoords[i][axes.y] + 1 + margin, image.shape[axes.y])
         maxz = min(maxcoords[i][axes.z] + 1 + margin, image.shape[axes.z])
-        return Extent((minx, maxx), (miny, maxy), (minz, maxz))
+
+        result = [None] * 3
+        result[axes.x] = slice(minx, maxx)
+        result[axes.y] = slice(miny, maxy)
+        result[axes.z] = slice(minz, maxz)
+        return [slice(minx, maxx), slice(miny, maxy), slice(minz, maxz)]
 
     def compute_rawbbox(self, image, extent, axes):
-        key = [slice(None)] * 4
-        key[axes.x] = slice(extent.xmin, extent.xmax, None)
-        key[axes.y] = slice(extent.ymin, extent.ymax, None)
-        key[axes.z] = slice(extent.zmin, extent.zmax, None)
-        key[axes.c] = slice(None)
+        key = copy(extent)
+        key.insert(axes.c, slice(None))
         return image[tuple(key)]
 
     def compute_label_bboxes(self, i, labels, extent, axes, margin):
-        key = [slice(None)] * 3
-        key[axes.x] = slice(extent.xmin, extent.xmax, None)
-        key[axes.y] = slice(extent.ymin, extent.ymax, None)
-        key[axes.z] = slice(extent.zmin, extent.zmax, None)
-
-        ccbbox = labels[tuple(key)]
+        ccbbox = labels[tuple(extent)]
 
         # object only
         ccbboxobject = np.where(ccbbox == i, 1, 0).astype(np.bool)
@@ -202,7 +190,7 @@ class OpRegionFeatures3d(Operator):
 
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, extent, axes)
+                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():

@@ -67,7 +67,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         features = list(set(features).intersection(self.global_features))
         return self._do_4d(image, labels, features, axes)
 
-    def compute_local(self, image, label_bboxes, features, extent, axes):
+    def compute_local(self, image, label_bboxes, features, axes):
         """helper that deals with individual objects"""
         features = features.keys()
         features = list(set(features).difference(self.global_features))

@@ -48,14 +48,13 @@ class ObjectFeaturesPlugin(IPlugin):
         """
         return dict()
 
-    def compute_local(self, image, binary_img, features, extent, axes):
+    def compute_local(self, image, binary_img, features, axes):
         """calculate requested features on a single object.
 
         Params:
         ------
         image: np.ndarray - image[expanded bounding box]
         binary_img: binarize(labels[expanded bounding box])
-        extent: actual object extent in bounding box
         axes: axis tags
 
         extend currently used for the slice-wise distance transform in anna's features
