@@ -346,7 +346,12 @@ class ObjectClassificationGui(LabelingGui):
             new_labels, old_labels_lost, new_labels_lost = temp
             # labels are lost, create a pop-up window
             pop=LabelsChangedDialog(self)
-            pop.oldLabelsLost = old_labels_lost
-            pop.newLabelsLost = new_labels_lost
+            
+            pop.labelsLost = {}
+            for k in old_labels_lost.keys():
+                pop.labelsLost[k] = old_labels_lost[k]
+            for k in new_labels_lost.keys():
+                pop.labelsLost[k] = new_labels_lost[k]
+                
             pop.showDialog(blocking=False)
         
