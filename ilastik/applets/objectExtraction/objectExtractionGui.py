@@ -66,7 +66,8 @@ class FeatureSelectionDialog(QDialog):
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setExpanded(True)
-            for name, parameters in sorted(features):
+            for name in sorted(features.keys()):
+                parameters = features[name]
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
