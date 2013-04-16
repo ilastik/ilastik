@@ -1,3 +1,5 @@
+import os
+
 from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from ilastik.utility import bind, PathComponents
@@ -8,7 +10,9 @@ class DatasetDetailedInfoColumn():
     Location = 1
     InternalID = 2
     AxisOrder = 3
-    NumColumns = 4
+    Shape = 4
+    Range = 5
+    NumColumns = 6
 
 class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def __init__(self, parent, topLevelOperator, roleIndex):
@@ -24,16 +28,19 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
             self.endInsertRows()
 
-            def handleDatasetInfoChanged(slot, roi):
+            def handleDatasetInfoChanged(slot):
                 # Get the row of this slot
                 laneSlot = slot.operator
+                if laneSlot is None or laneSlot.operator is None: # This can happen during disconnect
+                    return
                 laneIndex = laneSlot.operator.index( laneSlot )
                 firstIndex = self.createIndex(laneIndex, 0)
                 lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
                 self.dataChanged.emit(firstIndex, lastIndex)
             
-            for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
-                datasetMultiSlot[self._roleIndex].notifyDirty( handleDatasetInfoChanged )
+            for laneIndex, datasetMultiSlot in enumerate( self._op.DatasetGroup ):
+                datasetMultiSlot[self._roleIndex].notifyDirty( bind(handleDatasetInfoChanged) )
+                datasetMultiSlot[self._roleIndex].notifyDisconnect( bind(handleDatasetInfoChanged) )
 
         self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
 
@@ -70,7 +77,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         InfoColumnNames = { DatasetDetailedInfoColumn.Name : "Name",
                             DatasetDetailedInfoColumn.Location : "Location",
                             DatasetDetailedInfoColumn.InternalID : "Internal Path",
-                            DatasetDetailedInfoColumn.AxisOrder : "Axis Order" }
+                            DatasetDetailedInfoColumn.AxisOrder : "Axes",
+                            DatasetDetailedInfoColumn.Shape : "Shape",
+                            DatasetDetailedInfoColumn.Range : "Data Range" }
         return InfoColumnNames[section]
             
     def _getDisplayRoleData(self, index):
@@ -79,36 +88,94 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         UninitializedDisplayData = { DatasetDetailedInfoColumn.Name : "<please select>",
                                      DatasetDetailedInfoColumn.Location : "",
                                      DatasetDetailedInfoColumn.InternalID : "",
-                                     DatasetDetailedInfoColumn.AxisOrder : "" }
+                                     DatasetDetailedInfoColumn.AxisOrder : "",
+                                     DatasetDetailedInfoColumn.Shape : "",
+                                     DatasetDetailedInfoColumn.Range : "" }
 
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+
+        # Default
         if not datasetSlot.ready():
             return UninitializedDisplayData[ index.column() ]
         
-        datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-        if datasetSlot.ready():
-            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
-        else:
-            return UninitializedDisplayData[ index.column() ]
-        
-        filePathComponents = PathComponents( datasetInfo.filePath )        
+        datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+        filePathComponents = PathComponents( datasetInfo.filePath )
+
+        ## Input meta-data fields
+
+        # Name
         if index.column() == DatasetDetailedInfoColumn.Name:
             return filePathComponents.filename
 
+        # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
-            LocationNames = { DatasetInfo.Location.FileSystem : "External File",
-                              DatasetInfo.Location.ProjectInternal : "Project File" }
-            return LocationNames[ datasetInfo.location ]
-        
+            if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                if os.path.isabs(datasetInfo.filePath):
+                    return "Absolute Link: {}".format( datasetInfo.filePath )
+                else:
+                    return "Relative Link: {}".format( datasetInfo.filePath )
+            else:
+                return "Project File"
+
+        # Internal ID        
         if index.column() == DatasetDetailedInfoColumn.InternalID:
             return filePathComponents.internalPath
+
+        ## Output meta-data fields
         
+        # Defaults        
         imageSlot = self._op.ImageGroup[laneIndex][self._roleIndex]
+        if not imageSlot.ready():
+            return UninitializedDisplayData[index.column()]
+
+        # Axis order            
         if index.column() == DatasetDetailedInfoColumn.AxisOrder:
-            if imageSlot.ready():
-                return "".join( imageSlot.meta.getAxisKeys() )
-            else:
-                return UninitializedDisplayData[DatasetDetailedInfoColumn.AxisOrder]
+            if imageSlot.meta.axistags is None:
+                return ""
+            return "".join( imageSlot.meta.getAxisKeys() )
+
+        # Shape
+        if index.column() == DatasetDetailedInfoColumn.Shape:
+            shape = imageSlot.meta.shape
+            if shape is None:
+                return ""
+            return str(shape)
+
+        # Range
+        if index.column() == DatasetDetailedInfoColumn.Range:
+            drange = imageSlot.meta.drange
+            if drange is None:
+                return ""
+            return str(drange)
 
         assert False, "Unknown column: row={}, column={}".format( index.row(), index.column() )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

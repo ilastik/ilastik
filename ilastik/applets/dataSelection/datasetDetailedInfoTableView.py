@@ -1,11 +1,14 @@
 from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView, QMenu
+from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel, DatasetDetailedInfoColumn
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)
-    editRequested = pyqtSignal(int) # Signature: (laneIndex)
+
+    replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex)
+    replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)
+    editRequested = pyqtSignal(object) # Signature: (lane_index_list)
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
@@ -40,14 +43,17 @@ class DatasetDetailedInfoTableView(QTableView):
         selectedIndexes = selected.indexes()
         if len(selectedIndexes) == 0:
             #self.update()
-            self._selectedLane = -1
-            self.dataLaneSelected.emit(-1)
+            self._selectedLanes = []
+            self.dataLaneSelected.emit(self._selectedLanes)
             return
-        self._selectedLane = selectedIndexes[0].row()
-        self.dataLaneSelected.emit(self._selectedLane)
+        rows = set()
+        for index in selectedIndexes:
+            rows.add(index.row())
+        self._selectedLanes = sorted(rows)
+        self.dataLaneSelected.emit(self._selectedLanes)
         
-    def selectedLane(self):
-        return self._selectedLane
+    def selectedLanes(self):
+        return self._selectedLanes
     
     def handleCustomContextMenuRequested(self, pos):
         col = self.columnAt( pos.x() )
@@ -55,14 +61,28 @@ class DatasetDetailedInfoTableView(QTableView):
 
         if col < self.model().columnCount() and row < self.model().rowCount():
             menu = QMenu(parent=self)
-            menu.addAction( "Replace with file..." )
-            menu.addAction( "Replace with stack import..." )
-            menu.addAction( "Edit properties..." )
+            editSharedPropertiesAction = QAction( "Edit shared properties...", menu )
+            if row in self._selectedLanes and len(self._selectedLanes) > 1:
+                # Show the multi-lane menu, which allows for editing but not replacing
+                menu.addAction( editSharedPropertiesAction )
+            else:
+                editPropertiesAction = QAction( "Edit properties...", menu )
+                replaceWithFileAction = QAction( "Replace with file...", menu )
+                replaceWithStackAction = QAction( "Replace with stack...", menu )
+                menu.addAction( editPropertiesAction )
+                menu.addAction( replaceWithFileAction )
+                menu.addAction( replaceWithStackAction )
     
             globalPos = self.mapToGlobal( pos )
             selection = menu.exec_( globalPos )
-            if selection is not None:
-                print "Selection was: ", selection.text()
+            if selection is editSharedPropertiesAction:
+                self.editRequested.emit( self._selectedLanes )
+            if selection is editPropertiesAction:
+                self.editRequested.emit( row )
+            if selection is replaceWithFileAction:
+                self.replaceWithFileRequested.emit( row )
+            if selection is replaceWithStackAction:
+                self.replaceWithStackRequested.emit( row )
     
 
 

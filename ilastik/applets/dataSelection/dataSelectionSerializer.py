@@ -113,7 +113,7 @@ class DataSelectionSerializer( AppletSerializer ):
         
         self._dirty = False
 
-    def importStackAsLocalDataset(self, info, laneIndex, roleIndex):
+    def importStackAsLocalDataset(self, info):
         """
         Add the given stack data to the project file as a local dataset.
         Create a datainfo and append it to our operator.
@@ -137,10 +137,6 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.progressSignal.subscribe( self.progressSignal.emit )
             
             success = opWriter.WriteImage.value
-            
-            numDatasets = len(self.topLevelOperator.DatasetGroup)
-            self.topLevelOperator.DatasetGroup.resize( numDatasets + 1 )
-            self.topLevelOperator.DatasetGroup[numDatasets].setValue(info)
             
         finally:
             self.progressSignal.emit(100)
