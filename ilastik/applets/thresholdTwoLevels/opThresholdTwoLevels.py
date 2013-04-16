@@ -205,8 +205,10 @@ class OpThresholdTwoLevels(Operator):
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
+    SingleThreshold = InputSlot(stype='float', value=0.5)
     SmootherSigma = InputSlot(value={ 'x':1.0, 'y':1.0, 'z':1.0})
     Channel = InputSlot(value=0)
+    CurOperator = InputSlot(stype='int', value=0)
     
     Output = OutputSlot()
     
@@ -225,6 +227,7 @@ class OpThresholdTwoLevels(Operator):
     BigRegions = OutputSlot()
     SmallRegions = OutputSlot()
     FilteredSmallLabels = OutputSlot()
+    BeforeSizeFilter = OutputSlot()
     
     
     def __init__(self, *args, **kwargs):
@@ -241,6 +244,12 @@ class OpThresholdTwoLevels(Operator):
         self._opSmoother = OperatorWrapper(OpAnisotropicGaussianSmoothing, parent=self)
         self._opSmoother.Sigmas.connect( self.SmootherSigma )
         
+        self.opThreshold1 = OperatorWrapper(OpThresholdOneLevel, parent=self)
+        self.opThreshold1.InputImage.connect(self._opSmoother.Output)
+        self.opThreshold1.Threshold.connect(self.SingleThreshold)
+        self.opThreshold1.MinSize.connect(self.MinSize)
+        self.opThreshold1.MaxSize.connect(self.MaxSize)
+        
         
         self.opThreshold2 = OperatorWrapper(OpThresholdTwoLevels4d, parent = self)
         self.opThreshold2.InputImage.connect(self._opSmoother.Output)
@@ -249,16 +258,21 @@ class OpThresholdTwoLevels(Operator):
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
         self.opThreshold2.HighThreshold.connect(self.HighThreshold)
         
-        self._opTimeStacker = OpMultiArrayStacker(parent=self)
-        self._opTimeStacker.AxisFlag.setValue('t')
-        self._opTimeStacker.Images.connect(self.opThreshold2.Output)
-        assert self._opTimeStacker.Output.level==0
-        self.Output.connect(self._opTimeStacker.Output)
+        self._opTimeStacker2 = OpMultiArrayStacker(parent=self)
+        self._opTimeStacker2.AxisFlag.setValue('t')
+        self._opTimeStacker2.Images.connect(self.opThreshold2.Output)
+        assert self._opTimeStacker2.Output.level==0
+        
+        self._opTimeStacker1 = OpMultiArrayStacker(parent=self)
+        self._opTimeStacker1.AxisFlag.setValue('t')
+        self._opTimeStacker1.Images.connect(self.opThreshold1.Output)
+        assert self._opTimeStacker1.Output.level==0
+        
         
         #cache our own output, don't propagate from internal operator
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.InputHdf5.connect( self.InputHdf5 )
-        self._opCache.Input.connect( self._opTimeStacker.Output )
+        
         self.CachedOutput.connect(self._opCache.Output)
         
         # Serialization outputs
@@ -276,20 +290,27 @@ class OpThresholdTwoLevels(Operator):
         self._inputStacker.Images.connect(self._opChannelSelector.Output)
         self.InputChannel.connect(self._inputStacker.Output)
         
+        #Debug 2 level operator
         self._bigRegionsStacker = OpMultiArrayStacker(parent=self)
         self._bigRegionsStacker.AxisFlag.setValue('t')
         self._bigRegionsStacker.Images.connect(self.opThreshold2.BigRegions)
-        self.BigRegions.connect(self._bigRegionsStacker.Output)
+        
         
         self._smallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._smallRegionsStacker.AxisFlag.setValue('t')
         self._smallRegionsStacker.Images.connect(self.opThreshold2.SmallRegions)
-        self.SmallRegions.connect(self._smallRegionsStacker.Output)
+        
         
         self._filSmallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._filSmallRegionsStacker.AxisFlag.setValue('t')
         self._filSmallRegionsStacker.Images.connect(self.opThreshold2.FilteredSmallLabels)
-        self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
+       
+        
+        #Debug 1 level operator
+        self._beforeFilterStacker = OpMultiArrayStacker(parent=self)
+        self._beforeFilterStacker.AxisFlag.setValue('t')
+        self._beforeFilterStacker.Images.connect(self.opThreshold1.BeforeSizeFilter)
+        
         
     def setupOutputs(self):
         #FIXME: this happens when someone deletes the other prediction channels to save space
@@ -301,6 +322,29 @@ class OpThresholdTwoLevels(Operator):
 
         self._opChannelSelector.Index.setValue(hackChannel)
         self._opSmoother.Input.connect( self._opChannelSelector.Output )
+        
+        curIndex = self.CurOperator.value
+        if curIndex==0:
+            self.Output.connect(self._opTimeStacker1.Output)
+            self._opCache.Input.connect( self._opTimeStacker1.Output )
+            self.BigRegions.disconnect()
+            self.SmallRegions.disconnect()
+            self.FilteredSmallLabels.disconnect()
+            
+            self.BeforeSizeFilter.connect(self._beforeFilterStacker.Output)
+            
+        elif curIndex==1:
+            self.Output.connect(self._opTimeStacker2.Output)
+            self._opCache.Input.connect( self._opTimeStacker2.Output )
+            
+            self.BeforeSizeFilter.disconnect()
+            
+            self.BigRegions.connect(self._bigRegionsStacker.Output)
+            self.SmallRegions.connect(self._smallRegionsStacker.Output)
+            self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
+        else:
+            #we only have two tabs
+            return
         
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -473,6 +517,8 @@ class OpThresholdOneLevel(Operator):
         
         self._opLabeler = OpVigraLabelVolume( parent=self )
         self._opLabeler.Input.connect(self._opThresholder.Output)
+        
+        self.BeforeSizeFilter.connect(self._opLabeler.Output)
         
         self._opFilter = OpFilterLabels( parent=self )
         self._opFilter.Input.connect(self._opLabeler.Output )

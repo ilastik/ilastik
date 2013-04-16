@@ -28,6 +28,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
+        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
@@ -67,6 +68,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Thresholds
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
+        self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
@@ -98,17 +100,28 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
 
+        # Read the current thresholding method
+        curIndex = self._drawer.tabWidget.currentIndex()
+        print "updateOperatorFromGui, curIndex=", curIndex
+        
         # Apply new settings to the operator
+        op.CurOperator.setValue(curIndex)
         op.Channel.setValue( channel )
         sigmaSlot.setValue( block_shape_dict )
+        op.SingleThreshold.setValue( singleThreshold )
         op.LowThreshold.setValue( lowThreshold )
         op.HighThreshold.setValue( highThreshold )
         op.MinSize.setValue( minSize )
         op.MaxSize.setValue( maxSize )
-
+        
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
+    
+    def _onTabCurrentChanged(self, cur):
+        self._updateOperatorFromGui()
+        self.updateAllLayers()
+        
 
     def eventFilter(self, watched, event):
         """
@@ -123,7 +136,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def setupLayers(self):
         layers = []        
         op = self.topLevelOperatorView
-        binct = [QColor(Qt.black), QColor(Qt.white), QColor(Qt.red), QColor(Qt.green)]
+        binct = [QColor(Qt.black), QColor(Qt.white)]
         ct = self._createDefault16ColorColorTable()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
@@ -181,6 +194,14 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             channelLayer.opacity = 1.0
             #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
             layers.append(channelLayer)
+        
+        if op.BeforeSizeFilter.ready():
+            thLayer = self.createStandardLayerFromSlot(op.BeforeSizeFilter)
+            thLayer.name = "Thresholded Labels"
+            thLayer.visible = False
+            thLayer.opacity = 1.0
+            layers.append(thLayer)
+        
         
         # Show the raw input data
         rawSlot = self.topLevelOperatorView.RawInput
