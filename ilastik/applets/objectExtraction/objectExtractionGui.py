@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QWidget, QColor, QProgressDialog, QTreeWidgetItem, QMessageBox
+from PyQt4.QtGui import QWidget, QColor, QProgressDialog, QTreeWidgetItem, QMessageBox, QIntValidator
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QString, QVariant, pyqtSignal, QObject
 
@@ -8,6 +8,7 @@ from collections import defaultdict
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from functools import partial
+from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
 
@@ -27,6 +28,7 @@ from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
 
 class FeatureSelectionDialog(QDialog):
+    default_margin = 30
 
     def __init__(self, featureDict, selectedFeatures=None, parent=None):
         QDialog.__init__(self, parent)
@@ -44,8 +46,14 @@ class FeatureSelectionDialog(QDialog):
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
+        self.ui.marginEdit.setValidator(QIntValidator(0, 100))
+
+        self.populate()
+        self.set_margin()
+
+    def populate(self):
         self.ui.treeWidget.setColumnCount(1)
-        for pluginName, features in featureDict.iteritems():
+        for pluginName, features in self.featureDict.iteritems():
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setExpanded(True)
@@ -57,15 +65,22 @@ class FeatureSelectionDialog(QDialog):
                 if pluginName not in self.selectedFeatures:
                     item.setCheckState(0, Qt.Unchecked)
 
+    def set_margin(self):
+        margin = max_margin(self.selectedFeatures, default=-1)
+        if margin == -1:
+            margin = self.default_margin
+        self.ui.marginEdit.setText(str(margin))
+
     def accept(self):
         QDialog.accept(self)
         selectedFeatures = defaultdict(list)
+        margin = int(str(self.ui.marginEdit.text()))
         root = self.ui.treeWidget.invisibleRootItem()
         for parent in root.takeChildren():
             feats = list(str(item.text(0)) for item in parent.takeChildren()
                          if item.checkState(0) == Qt.Checked)
             if len(feats) > 0:
-                selectedFeatures[str(parent.text(0))] = list((f, []) for f in feats)
+                selectedFeatures[str(parent.text(0))] = dict((f, {'margin': margin}) for f in feats)
         self.selectedFeatures = selectedFeatures
 
     def _setAll(self, val):

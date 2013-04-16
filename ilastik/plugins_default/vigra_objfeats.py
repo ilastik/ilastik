@@ -63,13 +63,13 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         return cleanup(result, 0 in labels, True, features)
 
     def compute_global(self, image, labels, features, axes):
-        features = list(f for f, _ in features)
+        features = features.keys()
         features = list(set(features).intersection(self.global_features))
         return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, label_bboxes, features, extent, axes):
         """helper that deals with individual objects"""
-        features = list(f for f, _ in features)
+        features = features.keys()
         features = list(set(features).difference(self.global_features))
         results = []
         for label, suffix in zip(label_bboxes, ['', '_incl', '_excl']):

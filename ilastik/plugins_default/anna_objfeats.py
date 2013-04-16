@@ -93,7 +93,7 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         del kwargs['features']
         kwargs['label_bboxes'] = kwargs.pop('labels')
         results = []
-        features = list(f for f, _ in features)
+        features = features.keys()
         if 'bad_slices' in features:
             results.append(self.badslices(**kwargs))
         if 'lbp' in features:

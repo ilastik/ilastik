@@ -27,6 +27,16 @@ gui_features = ['Coord<Minimum>', 'Coord<Maximum>', 'RegionCenter']
 # to distinguish them, their name gets this suffix
 gui_features_suffix = '_gui_only'
 
+def max_margin(d, default=0):
+    margin = default
+    for features in d.itervalues():
+        for params in features.itervalues():
+            try:
+                margin = max(margin, params['margin'])
+            except ValueError:
+                continue
+    return margin
+
 class OpRegionFeatures3d(Operator):
     """
     Produces region features (i.e. a vigra.analysis.RegionFeatureAccumulator) for a 3d image.
@@ -88,7 +98,7 @@ class OpRegionFeatures3d(Operator):
         result[tuple(roi.start)] = acc
         return result
 
-    def compute_extent(self, i, image, mincoords, maxcoords, axes):
+    def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
         class Extent(object):
             def __init__(self, x, y, z):
                 self.xmin, self.xmax = x
@@ -100,15 +110,15 @@ class OpRegionFeatures3d(Operator):
                 self.zrange = self.zmax - self.zmin
 
         #find the bounding box
-        minx = max(mincoords[i][axes.x] - self.MARGIN, 0)
-        miny = max(mincoords[i][axes.y] - self.MARGIN, 0)
-        minz = max(mincoords[i][axes.z] - self.MARGIN, 0)
+        minx = max(mincoords[i][axes.x] - margin, 0)
+        miny = max(mincoords[i][axes.y] - margin, 0)
+        minz = max(mincoords[i][axes.z] - margin, 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
-        maxx = min(maxcoords[i][axes.x] + 1 + self.MARGIN, image.shape[axes.x])
-        maxy = min(maxcoords[i][axes.y] + 1 + self.MARGIN, image.shape[axes.y])
-        maxz = min(maxcoords[i][axes.z] + 1 + self.MARGIN, image.shape[axes.z])
+        maxx = min(maxcoords[i][axes.x] + 1 + margin, image.shape[axes.x])
+        maxy = min(maxcoords[i][axes.y] + 1 + margin, image.shape[axes.y])
+        maxz = min(maxcoords[i][axes.z] + 1 + margin, image.shape[axes.z])
         return Extent((minx, maxx), (miny, maxy), (minz, maxz))
 
     def compute_rawbbox(self, image, extent, axes):
@@ -119,7 +129,7 @@ class OpRegionFeatures3d(Operator):
         key[axes.c] = slice(None)
         return image[tuple(key)]
 
-    def compute_label_bboxes(self, i, labels, extent, axes):
+    def compute_label_bboxes(self, i, labels, extent, axes, margin):
         key = [slice(None)] * 3
         key[axes.x] = slice(extent.xmin, extent.xmax, None)
         key[axes.y] = slice(extent.ymin, extent.ymax, None)
@@ -132,7 +142,7 @@ class OpRegionFeatures3d(Operator):
 
         # object and context
         dt = vigra.filters.distanceTransform3D(np.asarray(ccbbox, dtype=np.float32))
-        passed = np.asarray(dt < self.MARGIN).astype(np.bool)
+        passed = np.asarray(dt < margin).astype(np.bool)
 
         # context only
         ccbboxexcl = (passed - ccbboxobject).astype(np.bool)
@@ -181,12 +191,14 @@ class OpRegionFeatures3d(Operator):
                 a[key].append(b[key])
             return a
 
+        margin = max_margin(feature_names)
+
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
-            extent = self.compute_extent(i, image, mincoords, maxcoords, axes)
+            extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
             rawbbox = self.compute_rawbbox(image, extent, axes)
-            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes)
+            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes, margin)
 
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
