@@ -7,7 +7,7 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
     all_features = ['bad_slices', 'lbp', 'lapl']
 
     def availableFeatures(self, image, labels):
-        return list((f, []) for f in self.all_features)
+        return list((f, {}) for f in self.all_features)
 
     def badslices(self, image, label_bboxes, axes):
         rawbbox = image

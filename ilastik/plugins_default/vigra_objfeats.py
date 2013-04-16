@@ -55,7 +55,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         names = set(names).difference(self.excluded_features)
-        return list((n, []) for n in names)
+        return list((n, {}) for n in names)
 
     def _do_4d(self, image, labels, features, axes):
         image = np.asarray(image, dtype=np.float32)

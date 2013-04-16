@@ -29,6 +29,15 @@ gui_features = ['Coord<Minimum>', 'Coord<Maximum>', 'RegionCenter']
 gui_features_suffix = '_gui_only'
 
 def max_margin(d, default=0):
+    """find any parameter named 'margin' in the nested feature
+    dictionary 'd' and return the max.
+
+    return 'default' if none are found.
+
+    >>> max_margin({'plugin_one' : {'feature_one' : {'margin' : 10}}})
+    10
+
+    """
     margin = default
     for features in d.itervalues():
         for params in features.itervalues():
@@ -38,8 +47,14 @@ def max_margin(d, default=0):
                 continue
     return margin
 
-
 def make_bboxes(binary_bbox, margin):
+    """Return binary label arrays for an object with margin.
+
+    Helper for feature plugins.
+
+    Returns (the object + context, context only)
+
+    """
     # object and context
     dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32))
     passed = np.asarray(dt < margin).astype(np.bool)
@@ -59,8 +74,6 @@ class OpRegionFeatures3d(Operator):
     Features = InputSlot(rtype=List, stype=Opaque)
 
     Output = OutputSlot()
-
-    MARGIN = 30
 
     def __init__(self, *args, **kwargs):
         super(OpRegionFeatures3d, self).__init__(*args, **kwargs)
@@ -111,6 +124,7 @@ class OpRegionFeatures3d(Operator):
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
+        """Make a slicing to extract object i from the image."""
         #find the bounding box
         minx = max(mincoords[i][axes.x] - margin, 0)
         miny = max(mincoords[i][axes.y] - margin, 0)
@@ -129,6 +143,7 @@ class OpRegionFeatures3d(Operator):
         return [slice(minx, maxx), slice(miny, maxy), slice(minz, maxz)]
 
     def compute_rawbbox(self, image, extent, axes):
+        """essentially returns image[extent], preserving all channels."""
         key = copy(extent)
         key.insert(axes.c, slice(None))
         return image[tuple(key)]
@@ -231,7 +246,7 @@ class OpRegionFeatures3d(Operator):
             dirtyStart = collections.OrderedDict(zip(axes, roi.start))
             dirtyStop = collections.OrderedDict(zip(axes, roi.stop))
 
-            # Remove the spatial dims (keep t and c, if present)
+            # Remove the spatial and channel dims (keep t, if present)
             del dirtyStart['x']
             del dirtyStart['y']
             del dirtyStart['z']
