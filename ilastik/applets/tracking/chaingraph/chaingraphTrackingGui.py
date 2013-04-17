@@ -3,6 +3,8 @@ import os
 
 import logging
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+import sys
+import traceback
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -33,7 +35,11 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         
         return self._drawer
     
-    def _onTrackButtonPressed( self ):        
+    def _onTrackButtonPressed( self ):    
+        if not self.mainOperator.ObjectFeatures.ready():
+            QtGui.QMessageBox.critical(self, "Error", "You have to select object features first.", QtGui.QMessageBox.Ok)
+            return
+        
         app = self._drawer.appSpinBox.value()
         dis = self._drawer.disSpinBox.value()
         opp = self._drawer.oppSpinBox.value()
@@ -70,8 +76,10 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                         opp=opp,                        
                         ep_gap=epGap,
                         n_neighbors=n_neighbors)
-        except Exception as e:
-            QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)
+        except Exception:
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)            
+            QtGui.QMessageBox.critical(self, "Error", "Exception(" + str(ex_type) + "): " + str(ex), QtGui.QMessageBox.Ok)
             return
     
         self._drawer.exportButton.setEnabled(True)
