@@ -235,7 +235,6 @@ class ObjectExtractionGui(QWidget):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
 
     def _initViewerControlUi(self):
@@ -321,3 +320,13 @@ class ObjectExtractionGui(QWidget):
             for req in reqs:
                 req.cancel()
         progress.canceled.connect(cancel)
+
+
+class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
+    def _selectFeaturesButtonPressed(self):
+        self.mainOperator.Features.setValue({})
+        self._calculateFeatures()
+
+    def _initAppletDrawerUi(self):
+        super(ObjectExtractionGuiNonInteractive, self)._initAppletDrawerUi()
+        self._drawer.selectFeaturesButton.setText('Calculate features')

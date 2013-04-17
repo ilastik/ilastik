@@ -30,7 +30,7 @@ class ObjectClassificationWorkflowBinary(Workflow):
                                                        batchDataGui=False,
                                                        force5d=True)
         
-        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
+        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, interactive=False)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
         self._applets = []

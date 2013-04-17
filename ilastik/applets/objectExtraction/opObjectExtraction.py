@@ -20,13 +20,16 @@ try:
 except:
     print "Warning: could not import pluginManager"
 
-
 # These features are always calculated, but not used for prediction.
-# They are needed by other applets.
-gui_features = ['Coord<Minimum>', 'Coord<Maximum>', 'RegionCenter']
+# They are needed by our gui, or by downstream applets.
+default_features = ['Coord<Minimum>',
+                    'Coord<Maximum>',
+                    'RegionCenter',
+                    'Count',
+                ]
 
 # to distinguish them, their name gets this suffix
-gui_features_suffix = '_gui_only'
+default_features_suffix = '_default_only'
 
 def max_margin(d, default=0):
     """find any parameter named 'margin' in the nested feature
@@ -74,9 +77,6 @@ class OpRegionFeatures3d(Operator):
     Features = InputSlot(rtype=List, stype=Opaque)
 
     Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpRegionFeatures3d, self).__init__(*args, **kwargs)
 
     def setupOutputs(self):
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
@@ -169,8 +169,8 @@ class OpRegionFeatures3d(Operator):
 
         #FIXME: clamp the global vigra features here
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
-                                                          gui_features,
-                                                          ignoreLabel=0)
+                                                        default_features,
+                                                        ignoreLabel=0)
         mincoords = extrafeats["Coord<Minimum >"]
         maxcoords = extrafeats["Coord<Maximum >"]
         nobj = mincoords.shape[0]
@@ -233,7 +233,7 @@ class OpRegionFeatures3d(Operator):
 
         # add features needed by downstream applets. these should be
         # removed before classification.
-        extrafeats = dict((k.replace(' ', '') + gui_features_suffix, v)
+        extrafeats = dict((k.replace(' ', '') + default_features_suffix, v)
                           for k, v in extrafeats.iteritems())
 
         return dict(all_features.items() + extrafeats.items())
@@ -435,7 +435,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t]['RegionCenter' + gui_features_suffix]
+                centers = obj_features[t]['RegionCenter' + default_features_suffix]
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:

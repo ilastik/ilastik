@@ -12,7 +12,7 @@ from functools import partial
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
-from ilastik.applets.objectExtraction.opObjectExtraction import gui_features_suffix
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_suffix
 
 MISSING_VALUE = 0
 
@@ -176,8 +176,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
 
             #the bboxes should be the same for all channels
-            mins = feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
-            maxs = feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
+            mins = feats[timeCoord]["Coord<Minimum>"+default_features_suffix]
+            maxs = feats[timeCoord]["Coord<Maximum>"+default_features_suffix]
             bboxes = dict()
             bboxes["Coord<Minimum>"]=mins
             bboxes["Coord<Maximum>"]=maxs
@@ -200,8 +200,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             print "Transferring labels to the new segmentation. This might take a while..."
             new_feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
             coords = dict()
-            coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+gui_features_suffix]
-            coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+gui_features_suffix]
+            coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+default_features_suffix]
+            coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+default_features_suffix]
             #FIXME: pass axistags
             new_labels, old_labels_lost, new_labels_lost = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
                                              self._labelBBoxes[imageIndex][timeCoord], \
@@ -352,7 +352,7 @@ def make_feature_array(feats, labels=None):
 
     # remove extra features used by applet only.
     featnames = sorted(list(n for n in featnames
-                            if gui_features_suffix not in n))
+                            if default_features_suffix not in n))
     col_names = []
 
     for t in sorted(feats.keys()):
@@ -689,8 +689,8 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    min_coords = feats[t]['Coord<Minimum>' + gui_features_suffix][obj]
-                    max_coords = feats[t]['Coord<Maximum>' + gui_features_suffix][obj]
+                    min_coords = feats[t]['Coord<Minimum>' + default_features_suffix][obj]
+                    max_coords = feats[t]['Coord<Maximum>' + default_features_suffix][obj]
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
