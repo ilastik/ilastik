@@ -1,6 +1,7 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from objectClassificationWorkflow import ObjectClassificationWorkflow as pixel_workflow
 from objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary as binary_workflow
+from objectClassificationWorkflowPrediction import ObjectClassificationWorkflowPrediction as prediction_workflow
 
 def debug_with_existing(shell):
     """
@@ -54,7 +55,12 @@ if __name__=="__main__":
                       action="store_true",
                       dest="binary",
                       default=False,
-                      help="use binary workflow")
+                      help="start workflow from segmentation")
+    parser.add_option("-p", "--prediction",
+                      action="store_true",
+                      dest="prediction",
+                      default=False,
+                      help="start workflow from predictions")
 
     (options, args) = parser.parse_args()
 
@@ -62,6 +68,8 @@ if __name__=="__main__":
 
     if options.binary:
         workflow = binary_workflow
+    elif options.prediction:
+        workflow = prediction_workflow
     else:
         workflow = pixel_workflow
 
