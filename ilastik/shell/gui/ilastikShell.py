@@ -173,6 +173,7 @@ class IlastikShell( QMainWindow ):
         
         self._loaduifile()
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
+        self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
         
         self.imageSelectionGroup.setHidden(True)
 
