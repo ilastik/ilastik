@@ -43,7 +43,7 @@ def max_margin(d, default=0):
         for params in features.itervalues():
             try:
                 margin = max(margin, params['margin'])
-            except ValueError:
+            except (ValueError, KeyError):
                 continue
     return margin
 
@@ -190,18 +190,19 @@ class OpRegionFeatures3d(Operator):
                 a[key].append(b[key])
             return a
 
-        margin = max_margin(feature_names)
         local_features = defaultdict(list)
-        for i in range(1, nobj):
-            print "processing object {}".format(i)
-            extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
-            rawbbox = self.compute_rawbbox(image, extent, axes)
-            binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
-            for plugin_name, feature_list in feature_names.iteritems():
-                plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+        margin = max_margin(feature_names)
+        if margin > 0:
+            for i in range(1, nobj):
+                print "processing object {}".format(i)
+                extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
+                rawbbox = self.compute_rawbbox(image, extent, axes)
+                binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
+                for plugin_name, feature_list in feature_names.iteritems():
+                    plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
 
-                feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
-                local_features = dictextend(local_features, feats)
+                    feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
+                    local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
             value = local_features[key]
@@ -212,7 +213,6 @@ class OpRegionFeatures3d(Operator):
                 del local_features[key]
 
         all_features = dict(global_features.items() + local_features.items())
-        print all_features
 
         for key, value in all_features.iteritems():
             if value.shape[0] != nobj - 1:

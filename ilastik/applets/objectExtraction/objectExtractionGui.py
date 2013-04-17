@@ -87,10 +87,16 @@ class FeatureSelectionDialog(QDialog):
         margin = int(str(self.ui.marginEdit.text()))
         root = self.ui.treeWidget.invisibleRootItem()
         for parent in root.takeChildren():
-            feats = list(str(item.text(0)) for item in parent.takeChildren()
+            plugin = str(parent.text(0))
+            featnames = list(str(item.text(0)) for item in parent.takeChildren()
                          if item.checkState(0) == Qt.Checked)
-            if len(feats) > 0:
-                selectedFeatures[str(parent.text(0))] = dict((f, {'margin': margin}) for f in feats)
+            if len(featnames) > 0:
+                features = {}
+                for f in featnames:
+                    features[f] = {}
+                    if 'margin' in self.featureDict[plugin][f]:
+                        features[f]['margin'] = margin
+                selectedFeatures[plugin] = features
         self.selectedFeatures = selectedFeatures
 
     def _setAll(self, val):
