@@ -5,6 +5,7 @@ from functools import partial
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from ilastik.applets.layerViewer import LayerViewerGui
@@ -96,9 +97,21 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
         
+        if lowThreshold>highThreshold:
+            mexBox=QMessageBox()
+            mexBox.setText("Low threshold must be lower than high threshold ")
+            mexBox.exec_()
+            return
+        
         # Read Size filters
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
+        
+        if minSize>=maxSize:
+            mexBox=QMessageBox()
+            mexBox.setText("Min size must be smaller than max size ")
+            mexBox.exec_()
+            return
 
         # Read the current thresholding method
         curIndex = self._drawer.tabWidget.currentIndex()
