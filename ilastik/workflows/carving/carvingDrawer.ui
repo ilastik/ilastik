@@ -180,6 +180,38 @@
         </layout>
        </item>
        <item>
+        <widget class="QLabel" name="label_9">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Uncertainty:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="uncertaintyCombo">
+         <item>
+          <property name="text">
+           <string>None</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Local Margin</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Exchange Count</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QPushButton" name="pushButtonUncertaintyFG">
@@ -204,15 +236,28 @@
         </layout>
        </item>
        <item>
+        <widget class="QLabel" name="label_7">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Options:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QGridLayout" name="gridLayout_2">
-         <item row="0" column="0">
+         <item row="1" column="0">
           <widget class="QLabel" name="label_2">
            <property name="text">
             <string>bg priority</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
+         <item row="1" column="1">
           <widget class="QDoubleSpinBox" name="backgroundPrioritySpin">
            <property name="decimals">
             <number>3</number>
@@ -228,14 +273,14 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="2" column="0">
           <widget class="QLabel" name="label_3">
            <property name="text">
             <string>no bias below</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
+         <item row="2" column="1">
           <widget class="QSpinBox" name="noBiasBelowSpin">
            <property name="maximum">
             <number>255</number>
@@ -245,33 +290,14 @@
            </property>
           </widget>
          </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>Uncertainty</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QComboBox" name="uncertaintyCombo">
-           <item>
-            <property name="text">
-             <string>None</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Local Margin</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Exchange Count</string>
-            </property>
-           </item>
-          </widget>
-         </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Segmented Object:</string>
+         </property>
+        </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_4">
