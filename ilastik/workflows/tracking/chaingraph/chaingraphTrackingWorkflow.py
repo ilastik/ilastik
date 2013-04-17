@@ -26,7 +26,7 @@ class ChaingraphTrackingWorkflow( Workflow ):
                                                        batchDataGui=False,
                                                        force5d=True)
                 
-        self.objectExtractionApplet = ObjectExtractionApplet( workflow=self )
+        self.objectExtractionApplet = ObjectExtractionApplet( workflow=self, interactive=False )
         
         self.trackingApplet = ChaingraphTrackingApplet( workflow=self )
         
