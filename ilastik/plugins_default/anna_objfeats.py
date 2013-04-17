@@ -1,4 +1,5 @@
 from ilastik.plugins import ObjectFeaturesPlugin
+from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
 import numpy as np
 
@@ -6,7 +7,7 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
     all_features = ['bad_slices', 'lbp', 'lapl']
 
     def availableFeatures(self, image, labels):
-        return list((f, []) for f in self.all_features)
+        return dict((f, {}) for f in self.all_features)
 
     def badslices(self, image, label_bboxes, axes):
         rawbbox = image
@@ -87,11 +88,11 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
             result["lapl"] = np.array([lapl_mean_obj, lapl_var_obj])
         return result
 
-    def _do_3d(self, image, labels, features, axes):
+    def _do_3d(self, image, label_bboxes, features, axes):
         kwargs = locals()
         del kwargs['self']
         del kwargs['features']
-        kwargs['label_bboxes'] = kwargs.pop('labels')
+        kwargs['label_bboxes'] = kwargs.pop('label_bboxes')
         results = []
         features = features.keys()
         if 'bad_slices' in features:
@@ -102,5 +103,9 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
             results.append(self.lapl(**kwargs))
         return self.combine_dicts(results)
 
-    def compute_local(self, image, labels, features, axes):
-        return self.do_channels(self._do_3d, image, labels=labels, features=features, axes=axes)
+    def compute_local(self, image, binary_bbox, features, axes):
+        margin = max_margin({'': features})
+        passed, excl = make_bboxes(binary_bbox, margin)
+        return self.do_channels(self._do_3d, image,
+                                label_bboxes=[binary_bbox, passed, excl],
+                                features=features, axes=axes)

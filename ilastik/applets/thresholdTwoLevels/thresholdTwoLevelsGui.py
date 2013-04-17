@@ -28,6 +28,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
+        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
@@ -38,6 +39,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.inputChannelSpinBox,
             self._drawer.lowThresholdSpinBox,
             self._drawer.highThresholdSpinBox,
+            self._drawer.thresholdSpinBox,
             self._drawer.minSizeSpinBox,
             self._drawer.maxSizeSpinBox
         ]
@@ -66,6 +68,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Thresholds
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
+        self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
@@ -89,6 +92,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
 
         # Read Thresholds
+        singleThreshold = self._drawer.thresholdSpinBox.value()
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
         
@@ -96,17 +100,28 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
 
+        # Read the current thresholding method
+        curIndex = self._drawer.tabWidget.currentIndex()
+        #print "Setting operator to", curIndex+1, " thresholds"
+        
         # Apply new settings to the operator
+        op.CurOperator.setValue(curIndex)
         op.Channel.setValue( channel )
         sigmaSlot.setValue( block_shape_dict )
+        op.SingleThreshold.setValue( singleThreshold )
         op.LowThreshold.setValue( lowThreshold )
         op.HighThreshold.setValue( highThreshold )
         op.MinSize.setValue( minSize )
         op.MaxSize.setValue( maxSize )
-
+        
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
+    
+    def _onTabCurrentChanged(self, cur):
+        self._updateOperatorFromGui()
+        self.updateAllLayers()
+        
 
     def eventFilter(self, watched, event):
         """
@@ -121,10 +136,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def setupLayers(self):
         layers = []        
         op = self.topLevelOperatorView
-        binct = [QColor(Qt.black), QColor(Qt.white), QColor(Qt.red), QColor(Qt.green)]
+        binct = [QColor(Qt.black), QColor(Qt.white)]
         ct = self._createDefault16ColorColorTable()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
+        
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, binct)
@@ -133,29 +149,40 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
-        if op.BigRegions.ready():
-            lowThresholdSrc = LazyflowSource(op.BigRegions)
-            lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
-            lowThresholdLayer.name = "Big Regions"
-            lowThresholdLayer.visible = False
-            lowThresholdLayer.opacity = 1.0
-            layers.append(lowThresholdLayer)
-
-        if op.FilteredSmallLabels.ready():
-            filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels, lastChannelIsAlpha=True )
-            filteredSmallLabelsLayer.name = "Filtered Small Labels"
-            filteredSmallLabelsLayer.visible = False
-            filteredSmallLabelsLayer.opacity = 1.0
-            layers.append(filteredSmallLabelsLayer)
-
-        if op.SmallRegions.ready():
-            highThresholdSrc = LazyflowSource(op.SmallRegions)
-            highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
-            highThresholdLayer.name = "Small Regions"
-            highThresholdLayer.visible = False
-            highThresholdLayer.opacity = 1.0
-            layers.append(highThresholdLayer)
-
+        #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
+        curIndex = self._drawer.tabWidget.currentIndex()
+        if curIndex==1:
+            if op.BigRegions.ready():
+                lowThresholdSrc = LazyflowSource(op.BigRegions)
+                lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
+                lowThresholdLayer.name = "Big Regions"
+                lowThresholdLayer.visible = False
+                lowThresholdLayer.opacity = 1.0
+                layers.append(lowThresholdLayer)
+    
+            if op.FilteredSmallLabels.ready():
+                filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                filteredSmallLabelsLayer.name = "Filtered Small Labels"
+                filteredSmallLabelsLayer.visible = False
+                filteredSmallLabelsLayer.opacity = 1.0
+                layers.append(filteredSmallLabelsLayer)
+    
+            if op.SmallRegions.ready():
+                highThresholdSrc = LazyflowSource(op.SmallRegions)
+                highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
+                highThresholdLayer.name = "Small Regions"
+                highThresholdLayer.visible = False
+                highThresholdLayer.opacity = 1.0
+                layers.append(highThresholdLayer)
+        elif curIndex==0:
+            if op.BeforeSizeFilter.ready():
+                thSrc = LazyflowSource(op.BeforeSizeFilter)
+                thLayer = ColortableLayer(thSrc, binct)
+                thLayer.name = "Thresholded Labels"
+                thLayer.visible = False
+                thLayer.opacity = 1.0
+                layers.append(thLayer)
+        
         # Selected input channel, smoothed.
         if op.Smoothed.ready():
             smoothedLayer = self.createStandardLayerFromSlot( op.Smoothed )
@@ -163,7 +190,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             smoothedLayer.visible = True
             smoothedLayer.opacity = 1.0
             layers.append(smoothedLayer)
-
+        
         # Show the selected channel
         if op.InputChannel.ready():
             drange = op.InputChannel.meta.drange

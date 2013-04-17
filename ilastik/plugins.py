@@ -48,7 +48,7 @@ class ObjectFeaturesPlugin(IPlugin):
         """
         return dict()
 
-    def compute_local(self, image, binary_img, features, axes):
+    def compute_local(self, image, binary_bbox, features, axes):
         """calculate requested features on a single object.
 
         Params:

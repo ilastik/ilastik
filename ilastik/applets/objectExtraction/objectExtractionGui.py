@@ -28,9 +28,18 @@ from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
 
 class FeatureSelectionDialog(QDialog):
+    # for now all features get the same margin parameter. In the
+    # future this should be selectable per feature, and only for
+    # global features.
     default_margin = 30
 
     def __init__(self, featureDict, selectedFeatures=None, parent=None):
+        """
+        Parameters:
+        * featureDict: a nested dictionary. {plugin name : {feature name : {parameter name : parameter}}
+        * selectedDict: like featureDict. entries will be checked and their parameters populated.
+
+        """
         QDialog.__init__(self, parent)
         self.featureDict = featureDict
         if selectedFeatures is None or len(selectedFeatures) == 0:
@@ -57,7 +66,8 @@ class FeatureSelectionDialog(QDialog):
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setExpanded(True)
-            for name, parameters in sorted(features):
+            for name in sorted(features.keys()):
+                parameters = features[name]
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)

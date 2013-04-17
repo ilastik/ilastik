@@ -29,6 +29,15 @@ gui_features = ['Coord<Minimum>', 'Coord<Maximum>', 'RegionCenter']
 gui_features_suffix = '_gui_only'
 
 def max_margin(d, default=0):
+    """find any parameter named 'margin' in the nested feature
+    dictionary 'd' and return the max.
+
+    return 'default' if none are found.
+
+    >>> max_margin({'plugin_one' : {'feature_one' : {'margin' : 10}}})
+    10
+
+    """
     margin = default
     for features in d.itervalues():
         for params in features.itervalues():
@@ -37,6 +46,23 @@ def max_margin(d, default=0):
             except ValueError:
                 continue
     return margin
+
+def make_bboxes(binary_bbox, margin):
+    """Return binary label arrays for an object with margin.
+
+    Helper for feature plugins.
+
+    Returns (the object + context, context only)
+
+    """
+    # object and context
+    dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32))
+    passed = np.asarray(dt < margin).astype(np.bool)
+
+    # context only
+    context = (passed - binary_bbox).astype(np.bool)
+    return passed, context
+
 
 class OpRegionFeatures3d(Operator):
     """
@@ -48,8 +74,6 @@ class OpRegionFeatures3d(Operator):
     Features = InputSlot(rtype=List, stype=Opaque)
 
     Output = OutputSlot()
-
-    MARGIN = 30
 
     def __init__(self, *args, **kwargs):
         super(OpRegionFeatures3d, self).__init__(*args, **kwargs)
@@ -100,6 +124,7 @@ class OpRegionFeatures3d(Operator):
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
+        """Make a slicing to extract object i from the image."""
         #find the bounding box
         minx = max(mincoords[i][axes.x] - margin, 0)
         miny = max(mincoords[i][axes.y] - margin, 0)
@@ -118,25 +143,10 @@ class OpRegionFeatures3d(Operator):
         return [slice(minx, maxx), slice(miny, maxy), slice(minz, maxz)]
 
     def compute_rawbbox(self, image, extent, axes):
+        """essentially returns image[extent], preserving all channels."""
         key = copy(extent)
         key.insert(axes.c, slice(None))
         return image[tuple(key)]
-
-    def compute_label_bboxes(self, i, labels, extent, axes, margin):
-        ccbbox = labels[tuple(extent)]
-
-        # object only
-        ccbboxobject = np.where(ccbbox == i, 1, 0).astype(np.bool)
-
-        # object and context
-        dt = vigra.filters.distanceTransform3D(np.asarray(ccbbox, dtype=np.float32))
-        passed = np.asarray(dt < margin).astype(np.bool)
-
-        # context only
-        ccbboxexcl = (passed - ccbboxobject).astype(np.bool)
-
-        label_bboxes = [ccbboxobject, passed, ccbboxexcl]
-        return label_bboxes
 
     def _extract(self, image, labels):
         assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
@@ -157,6 +167,7 @@ class OpRegionFeatures3d(Operator):
 
         labels = labels[slc3d]
 
+        #FIXME: clamp the global vigra features here
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                           gui_features,
                                                           ignoreLabel=0)
@@ -180,17 +191,16 @@ class OpRegionFeatures3d(Operator):
             return a
 
         margin = max_margin(feature_names)
-
         local_features = defaultdict(list)
         for i in range(1, nobj):
             print "processing object {}".format(i)
             extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
             rawbbox = self.compute_rawbbox(image, extent, axes)
-            label_bboxes = self.compute_label_bboxes(i, labels, extent, axes, margin)
-
+            binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
             for plugin_name, feature_list in feature_names.iteritems():
                 plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                feats = plugin.plugin_object.compute_local(rawbbox, label_bboxes, feature_list, axes)
+
+                feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
                 local_features = dictextend(local_features, feats)
 
         for key in local_features.keys():
@@ -202,6 +212,7 @@ class OpRegionFeatures3d(Operator):
                 del local_features[key]
 
         all_features = dict(global_features.items() + local_features.items())
+        print all_features
 
         for key, value in all_features.iteritems():
             if value.shape[0] != nobj - 1:
@@ -212,7 +223,7 @@ class OpRegionFeatures3d(Operator):
             value = np.vstack((np.zeros(value.shape[1]),
                                value))
 
-            value = value.astype(np.float32)
+            value = value.astype(np.float32) #turn Nones into numpy.NaNs
 
             assert value.dtype == np.float32
             assert value.shape[0] == nobj
@@ -235,7 +246,7 @@ class OpRegionFeatures3d(Operator):
             dirtyStart = collections.OrderedDict(zip(axes, roi.start))
             dirtyStop = collections.OrderedDict(zip(axes, roi.stop))
 
-            # Remove the spatial dims (keep t and c, if present)
+            # Remove the spatial and channel dims (keep t, if present)
             del dirtyStart['x']
             del dirtyStart['y']
             del dirtyStart['z']

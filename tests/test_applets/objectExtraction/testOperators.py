@@ -41,7 +41,7 @@ def rawImage():
 
     return img
 
-class TestOpLabelImage(unittest.TestCase):
+class TestOpLabelImage(object):
     def setUp(self):
         g = Graph()
         self.op = OpLabelImage(graph=g)
@@ -51,15 +51,16 @@ class TestOpLabelImage(unittest.TestCase):
     def test_segment(self):
         labelImg = self.op.Output.value
         labelImg = labelImg.astype(np.int)
-        self.assertEquals(labelImg.shape, self.img.shape)
+        assert np.all(labelImg.shape==self.img.shape)
+        
         vigraImage0 = vigra.analysis.labelVolumeWithBackground(self.img[0,...])
         vigraImage1 = vigra.analysis.labelVolumeWithBackground(self.img[1,...])
         
         assert np.all(np.asarray(vigraImage0)==labelImg[0,...])
         assert np.all(np.asarray(vigraImage1)==labelImg[1,...])
 
-
-class TestOpRegionFeatures(unittest.TestCase):
+'''
+class TestOpRegionFeatures(object):
     def setUp(self):
         g = Graph()
         self.labelop = OpLabelImage(graph=g)
@@ -86,17 +87,20 @@ class TestOpRegionFeatures(unittest.TestCase):
 
         self.assertTrue(np.any(feats[0][0]['Count'] != feats[1][0]['Count']))
         self.assertTrue(np.any(feats[0][0]['RegionCenter'] != feats[1][0]['RegionCenter']))
-
-class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
+'''
+class testOpRegionFeaturesAgainstNumpy(object):
     def setUp(self):
         g = Graph()
-        self.features = [["Count", "Mean", "RegionCenter"],[]]
+        self.features = dict()
+        self.features["Vigra Object Features"] = ["Count", "Mean", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
+        
         binimage = binaryImage()
         self.rawimage = rawImage()
         self.labelop = OpLabelImage(graph=g)
-        self.op = OpRegionFeatures(self.features, graph=g)
+        self.op = OpRegionFeatures(graph=g)
         self.op.LabelImage.connect(self.labelop.Output)
         self.op.RawImage.setValue(self.rawimage)
+        self.op.Features.setValue(self.features)
         self.img = binaryImage()
         self.labelop.Input.setValue(binimage)
         
@@ -108,7 +112,8 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
         
         feats = opAdapt.Output([0, 1]).wait()
         #print feats[0][0]
-        self.assertEquals(len(feats), self.img.shape[0])
+        assert len(feats)==self.img.shape[0]
+        #self.assertEquals(len(feats), self.img.shape[0])
         for key in self.features[0]:
             #FIXME: why does it have to be [0][0]? What is the second list for?
             assert key in feats[0][0].keys()
@@ -122,8 +127,8 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
             sum_excl = feats[t][0]["Sum_excl"] #sum, not mean, to avoid 0/0
             sum_incl = feats[t][0]["Sum_incl"]
             sum = feats[t][0]["Sum"]
-            mins = feats[t][0]["Coord<Minimum >"]
-            maxs = feats[t][0]["Coord<Maximum >"]
+            mins = feats[t][0]["Coord<Minimum>"]
+            maxs = feats[t][0]["Coord<Maximum>"]
             centers = feats[t][0]["RegionCenter"]
             #print mins, maxs
             nobj = npcounts.shape[0]
@@ -152,4 +157,8 @@ class testOpRegionFeaturesAgainstNumpy(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

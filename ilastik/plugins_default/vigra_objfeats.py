@@ -1,4 +1,5 @@
 from ilastik.plugins import ObjectFeaturesPlugin
+from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
 import numpy as np
 from lazyflow.request import Request, RequestPool
@@ -54,7 +55,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         names = set(names).difference(self.excluded_features)
-        return list((n, []) for n in names)
+        return dict((n, {}) for n in names)
 
     def _do_4d(self, image, labels, features, axes):
         image = np.asarray(image, dtype=np.float32)
@@ -67,12 +68,15 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         features = list(set(features).intersection(self.global_features))
         return self._do_4d(image, labels, features, axes)
 
-    def compute_local(self, image, label_bboxes, features, axes):
+    def compute_local(self, image, binary_bbox, features, axes):
         """helper that deals with individual objects"""
+        margin = max_margin({'': features})
         features = features.keys()
         features = list(set(features).difference(self.global_features))
         results = []
-        for label, suffix in zip(label_bboxes, ['', '_incl', '_excl']):
+        passed, excl = make_bboxes(binary_bbox, margin)
+        for label, suffix in zip([binary_bbox, passed, excl],
+                                 ['', '_incl', '_excl']):
             result = self._do_4d(image, label, features, axes)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)
