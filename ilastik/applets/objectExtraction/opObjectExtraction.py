@@ -426,7 +426,7 @@ class OpObjectCenterImage(Operator):
 
     @staticmethod
     def __make_key(roi, coords):
-        key = [coords[i] - roi.start[i] for i in range(len(roi.start))]
+        key = [int(coords[i] - roi.start[i]) for i in range(len(roi.start))]
         return tuple(key)
 
     def execute(self, slot, subindex, roi, result):
@@ -442,7 +442,7 @@ class OpObjectCenterImage(Operator):
                     x, y, z = center[0:3]
                     c = (t, x, y, z, ch)
                     if self.__contained_in_subregion(roi, c):
-                        result[self.__make_key(roi, c)] = 255
+                        result[self.__make_key(roi, c)] = 1
 
         return result
 

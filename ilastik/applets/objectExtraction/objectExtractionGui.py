@@ -7,6 +7,7 @@ import os
 from collections import defaultdict
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+from ilastik.applets.layerViewer import LayerViewerGui
 from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
@@ -114,101 +115,49 @@ class FeatureSelectionDialog(QDialog):
         self._setAll(Qt.Unchecked)
 
 
-class ObjectExtractionGui(QWidget):
+class ObjectExtractionGui(LayerViewerGui):
 
-    ###########################################
-    ### AppletGuiInterface Concrete Methods ###
-    ###########################################
-
-    def centralWidget(self):
-        """ Return the widget that will be displayed in the main viewer area. """
-        return self.volumeEditorWidget
-
-    def appletDrawer(self):
-        return self._drawer
-
-    def menus(self):
-        return []
-
-    def viewerControlWidget(self):
-        return self._viewerControlWidget
-
-    def stopAndCleanUp(self):
-        pass
-
-    ###########################################
-    ###########################################
-
-    def __init__(self, topLevelOperatorView):
-        super(ObjectExtractionGui, self).__init__()
-        self.mainOperator = topLevelOperatorView
-        self.layerstack = LayerStackModel()
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-        assert(self.appletDrawer() is not None)
-        self._initViewer()
-
-    def _onMetaChanged(self, slot):
-        if slot is self.mainOperator.BinaryImage:
-            if slot.meta.shape:
-                self.editor.dataShape = slot.meta.shape
-
-        if slot is self.mainOperator.RawImage:
-            if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
-                layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
-                self.layerstack.append(layerraw)
-
-    def _onReady(self, slot):
-        if slot is self.mainOperator.RawImage:
-            if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
-                layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
-                self.layerstack.append(layerraw)
-
-    def _initViewer(self):
-        mainOperator = self.mainOperator
-
-        # white foreground on transparent background
-        ct = [QColor(0, 0, 0, 0).rgba(),
-              QColor(255, 255, 255, 255).rgba()]
-        self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
-        self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
-        layer = ColortableLayer(self.binaryimagesrc, ct)
-        layer.name = "Binary Image"
-        self.layerstack.append(layer)
-
+    
+    def setupLayers(self):
+        mainOperator = self.topLevelOperatorView
+        layers = []
+        
+        if mainOperator.ObjectCenterImage.ready():
+            self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
+            #layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
+            redct = [0, QColor(255, 0, 0).rgba()]
+            layer = ColortableLayer(self.centerimagesrc, redct)
+            layer.name = "Object Centers"
+            layer.visible = False
+            layers.append(layer)
+        
         ct = colortables.create_default_16bit()
-        self.objectssrc = LazyflowSource(mainOperator.LabelImage)
-        self.objectssrc.setObjectName("LabelImage LazyflowSrc")
-        ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
-        layer = ColortableLayer(self.objectssrc, ct)
-        layer.name = "Label Image"
-        layer.visible = False
-        layer.opacity = 0.5
-        self.layerstack.append(layer)
-
-        self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
-        layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
-        layer.name = "Object Centers"
-        layer.visible = False
-        self.layerstack.append(layer)
+        if mainOperator.LabelImage.ready():
+            self.objectssrc = LazyflowSource(mainOperator.LabelImage)
+            self.objectssrc.setObjectName("LabelImage LazyflowSrc")
+            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+            layer = ColortableLayer(self.objectssrc, ct)
+            layer.name = "Label Image"
+            layer.visible = False
+            layer.opacity = 0.5
+            layers.append(layer)
+        
+        # white foreground on transparent background
+        binct = [QColor(0, 0, 0, 0).rgba(), QColor(255, 255, 255, 255).rgba()]
+        if mainOperator.BinaryImage.ready():
+            self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
+            self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
+            layer = ColortableLayer(self.binaryimagesrc, binct)
+            layer.name = "Binary Image"
+            layers.append(layer)
 
         ## raw data layer
         self.rawsrc = None
-        self.rawsrc = LazyflowSource(self.mainOperator.RawImage)
+        self.rawsrc = LazyflowSource(mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
         layerraw.name = "Raw"
-        self.layerstack.insert(len(self.layerstack), layerraw)
+        layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
@@ -216,47 +165,55 @@ class ObjectExtractionGui(QWidget):
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
+        
+        return layers
+        
+    def _onMetaChanged(self, slot):
+        #FiXME: why do we need that?
+        if slot is self.topLevelOperatorView.BinaryImage:
+            if slot.meta.shape:
+                self.editor.dataShape = slot.meta.shape
 
-    def _initEditor(self):
-        """Initialize the Volume Editor GUI."""
+        if slot is self.topLevelOperatorView.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                layerraw = GrayscaleLayer(self.rawsrc)
+                layerraw.name = "Raw"
+                self.layerstack.append(layerraw)
 
-        self.editor = VolumeEditor(self.layerstack, crosshair=False)
+    def _onReady(self, slot):
+        if slot is self.topLevelOperatorView.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
+                layerraw = GrayscaleLayer(self.rawsrc)
+                layerraw.name = "Raw"
+                self.layerstack.append(layerraw)
 
-        self.volumeEditorWidget = VolumeEditorWidget()
-        self.volumeEditorWidget.init(self.editor)
 
-        # The editor's layerstack is in charge of which layer movement buttons are enabled
-        model = self.editor.layerStack
-        self._viewerControlWidget.setupConnections(model)
-
-        self.editor._lastImageViewFocus = 0
-
-    def _initAppletDrawerUi(self):
+    def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
 
-    def _initViewerControlUi(self):
-        self._viewerControlWidget = ViewerControls(self)
-
     def _selectFeaturesButtonPressed(self):
         featureDict = {}
-        slot = self.mainOperator.Features
+        mainOperator = self.topLevelOperatorView
+        slot = mainOperator.Features
         if slot.ready():
-            selectedFeatures = self.mainOperator.Features([]).wait()
+            selectedFeatures = mainOperator.Features([]).wait()
         else:
             selectedFeatures = None
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
 
-        imgshape = list(self.mainOperator.RawImage.meta.shape)
-        axistags = self.mainOperator.RawImage.meta.axistags
+        imgshape = list(mainOperator.RawImage.meta.shape)
+        axistags = mainOperator.RawImage.meta.axistags
         imgshape.pop(axistags.index('t'))
         fakeimg = np.empty(imgshape, dtype=np.float32)
 
-        labelshape = list(self.mainOperator.BinaryImage.meta.shape)
-        axistags = self.mainOperator.BinaryImage.meta.axistags
+        labelshape = list(mainOperator.BinaryImage.meta.shape)
+        axistags = mainOperator.BinaryImage.meta.axistags
         labelshape.pop(axistags.index('t'))
         labelshape.pop(axistags.index('c') - 1)
         fakelabels = np.empty(labelshape, dtype=np.uint32)
@@ -268,13 +225,14 @@ class ObjectExtractionGui(QWidget):
         dlg.exec_()
 
         if dlg.result() == QDialog.Accepted:
-            self.mainOperator.Features.setValue(dlg.selectedFeatures)
+            mainOperator.Features.setValue(dlg.selectedFeatures)
             self._calculateFeatures()
 
     def _calculateFeatures(self):
-        self.mainOperator.ObjectCenterImage.setDirty(SubRegion(self.mainOperator.ObjectCenterImage))
+        mainOperator = self.topLevelOperatorView
+        mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
-        maxt = self.mainOperator.LabelImage.meta.shape[0]
+        maxt = mainOperator.LabelImage.meta.shape[0]
         progress = QProgressDialog("Calculating features...", "Cancel", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -301,14 +259,14 @@ class ObjectExtractionGui(QWidget):
         callback.timestep_done.connect(partial(updateProgress, progress))
 
         def finished():
-            self.mainOperator._opRegFeats.fixed = True
+            self.topLevelOperatorView._opRegFeats.fixed = True
             print 'Object Extraction: done.'
         callback.all_finished.connect(finished)
 
-        self.mainOperator._opRegFeats.fixed = False
+        mainOperator._opRegFeats.fixed = False
         reqs = []
         for t in range(maxt):
-            req = self.mainOperator.RegionFeatures([t])
+            req = mainOperator.RegionFeatures([t])
             req.submit()
             reqs.append(req)
 
