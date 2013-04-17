@@ -173,7 +173,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                  operator.NonzeroLabelBlocks,
                                  name='LabelSets',
                                  subname='labels{:03d}',
-                                 autodepends=False),
+                                 selfdepends=False),
                  SerialClassifierSlot(operator.Classifier,
                                       operator.classifier_cache,
                                       name="ClassifierForests",

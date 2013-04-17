@@ -29,7 +29,7 @@ class OpMockSerializer(AppletSerializer):
         self.TestSerialSlot = SerialSlot(operator.TestSlot)
         self.TestMultiSerialSlot = SerialSlot(operator.TestMultiSlot)
         self.TestSerialListSlot = SerialListSlot(operator.TestListSlot,
-                                                 autodepends=True)
+                                                 selfdepends=True)
         slots = (self.TestSerialSlot,
                  self.TestMultiSerialSlot,
                  self.TestSerialListSlot)

@@ -68,7 +68,7 @@ def stringToSlicing(strSlicing):
 class SerialSlot(object):
     """Implements the logic for serializing a slot."""
     def __init__(self, slot, name=None, subname=None, default=None,
-                 depends=None, autodepends=True):
+                 depends=None, selfdepends=True):
         """
         :param slot: the slot to save/load
 
@@ -85,7 +85,7 @@ class SerialSlot(object):
         :param depends: a list of slots which must be ready before this slot
           can be serialized. If None, defaults to [].
 
-        :param autodepends: whether 'slot' should be added to 'depends'
+        :param selfdepends: whether 'slot' should be added to 'depends'
 
         """
         if slot.level > 1:
@@ -94,7 +94,7 @@ class SerialSlot(object):
         self.slot = slot
         self.default = default
         self.depends = maybe(depends, [])
-        if autodepends:
+        if selfdepends:
             self.depends.append(slot)
         if name is None:
             name = slot.name
