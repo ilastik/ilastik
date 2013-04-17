@@ -456,7 +456,7 @@ class Slot(object):
             except ValueError:
                 pass
         self.partner = None
-        had_value = self._value
+        had_value = self._value is not None
         self._value = None
         oldReady = self.meta._ready
         self.meta = MetaDict()
