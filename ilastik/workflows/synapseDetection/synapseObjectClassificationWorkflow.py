@@ -41,16 +41,16 @@ class SynapseObjectClassificationWorkflow(Workflow):
 
         self.fillMissingSlicesApplet = FillMissingSlicesApplet(self, "Fill Missing Slices", "Fill Missing Slices")
 
-        #self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
-        #self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
+        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
+        self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
         self._applets = []
         self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.predictionSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.fillMissingSlicesApplet)
-        #self._applets.append(self.objectExtractionApplet)
-        #self._applets.append(self.objectClassificationApplet)
+        self._applets.append(self.objectExtractionApplet)
+        self._applets.append(self.objectClassificationApplet)
 
     @property
     def applets(self):
@@ -71,8 +71,8 @@ class SynapseObjectClassificationWorkflow(Workflow):
         opPredictionData = self.predictionSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
-        #opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
-        #opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
+        opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
+        opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect Raw data -> Fill missing slices
         opFillMissingSlices.Input.connect(opRawData.Image)
@@ -86,7 +86,7 @@ class SynapseObjectClassificationWorkflow(Workflow):
         opTwoLevelThreshold.InputImage.connect( op5Predictions.output )
         opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
 
-        '''
+        
         op5Binary = Op5ifyer( parent=self )
         
         # Use cached output so that the BinaryImage layer is correct in the GUI.
@@ -106,4 +106,4 @@ class SynapseObjectClassificationWorkflow(Workflow):
         # connect extraction -> classification
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        '''
+        
