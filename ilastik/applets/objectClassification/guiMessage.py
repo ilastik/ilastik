@@ -1,27 +1,42 @@
 from PyQt4 import QtGui, QtCore
+from lazyflow.graph import Graph, Operator, InputSlot
+from lazyflow.stype import Opaque
+from opWarning import OpWarning, OpTestImplementation
 
+from ilastik.utility.gui import ThunkEventHandler
 
 
 class GuiDialog(QtGui.QMessageBox):
 
     title = "Warning"
+    description = None
+    details = None
     
     _icon = QtGui.QMessageBox.Warning
 
     def __init__(self, parent=None):
         super(GuiDialog, self).__init__(parent)
+        self.thunkEventHandler = ThunkEventHandler(self)
 
-
-    def showDialog(self, blocking=True):
+    def showDialog(self, blocking=False):
+        self._blocking = blocking
+        self.thunkEventHandler.post(self._showDialog)
+        
+    def _showDialog(self):
+        # must be called from GUI thread!
         self._setup()
-        self.setModal(blocking)
+        self.setModal(self._blocking)
         self.show()
 
     def _setup(self):
-        self.setWindowTitle(self.title)
-        self.setText(self.getMessage())
+        
+        def nn(a):
+            return "" if a is None else a
+        
+        self.setWindowTitle(nn(self.title))
+        self.setText(nn(self.getMessage()))
         if self.hasDetails():
-            self.setDetailedText(self.getDetails())
+            self.setDetailedText(nn(self.getDetails()))
         okButton = self.addButton(QtGui.QMessageBox.Ok)
         self.icon = self._icon
 
@@ -29,24 +44,28 @@ class GuiDialog(QtGui.QMessageBox):
         """
         Main content for message box, should be overridden.
         """ 
-        return "Lorem Ipsum!"
+        return self.description
 
     def hasDetails(self):
         """
         Should be overridden.
         """
-        return False
+        return self.details is not None
 
     def getDetails(self):
         """
         Main content for message box, should be overridden.
         """ 
-        return "More Lorem Ipsum!"
+        return self.details
+    
+
 
 class LabelsChangedDialog(GuiDialog):
     labelsLost = {'conflict':[],'partial':[],'full':[]}
-    messages = {'full': "These labels were lost completely:\n(X, Y, Z)", 'partial': "These labels were lost partially:\n(X, Y, Z)", 'conflict': "These new labels conflicted:\n(X, Y, Z)"}
+    messages = {'full': "These labels were lost completely:", 'partial': "These labels were lost partially:", 'conflict': "These new labels conflicted:"}
     defaultMessage = "These labels could not be transferred:"
+    
+    _sep = "\t"
     
     def hasDetails(self):
         return True
@@ -59,10 +78,35 @@ class LabelsChangedDialog(GuiDialog):
         for k in self.labelsLost.keys():
             if len(self.labelsLost[k])>0:
                 msg = self.messages[k] if k in self.messages.keys() else self.defaultMessage
-                coords = "\n".join([str(item) for item in self.labelsLost[k]])
-                cases.append("\n".join([msg,coords]))
+                axis = self._sep.join(["X", "Y", "Z"])
+                coords = "\n".join([self._sep.join(["{:<8.1f}".format(i) for i in item]) for item in self.labelsLost[k]])
+                cases.append("\n".join([msg,axis,coords]))
         return "\n\n".join(cases)
 
+
+    
+class OpGuiDialog(OpWarning):
+    name = "OpGuiDialog"
+    inputslot = InputSlot(stype=Opaque)
+    dialog = None
+
+    def setupOutputs(self):
+        super(OpGuiDialog, self).setupOutputs()
+    
+    def execute(self, slot, subindex, roi, result):
+        pass
+        
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.inputslot and self.dialog is not None:
+            #TODO what if the dialog was not set up correctly?
+            d = self.inputslot[:].wait()
+            self.dialog.title = d['title']
+            self.dialog.description = d['description']
+            self.dialog.details = d['details']
+            self.dialog.showDialog()
+            
+
+#  ### EXAMPLE USAGE ###
 
 class Example(QtGui.QWidget):
     _a = False
@@ -91,10 +135,23 @@ class Example(QtGui.QWidget):
         self.show()
 
     def showIt(self):
-        d = LabelsChangedDialog(self)
-        d.showDialog(blocking=self._a)
-        self._a = not self._a
-
+        case = 2
+        
+        if case == 1: # LabelsChangedDialog
+            d = LabelsChangedDialog(self)
+            d.labelsLost['partial'] = [(15,7.5,1000), (700000,12.55,23)]
+            d.showDialog(blocking=self._a)
+            self._a = not self._a
+            
+            
+        elif case == 2: # OpWarning
+            opwarn = OpTestImplementation(graph=Graph())
+            opdialog = OpGuiDialog(graph=Graph())
+            opdialog.inputslot.connect(opwarn.Warnings)
+            opdialog.dialog = GuiDialog(self)
+            opwarn.setWarning(title="Hello World!", description="test", details="More...")
+            
+            
         
 if __name__ == "__main__":
     import sys

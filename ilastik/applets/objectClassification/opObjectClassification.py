@@ -14,6 +14,8 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_suffix
 
+from opWarning import OpWarning
+
 MISSING_VALUE = 0
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
@@ -163,6 +165,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
 
     def setupOutputs(self):
+        super(OpObjectClassification, self).setupOutputs()
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -427,15 +430,18 @@ def replace_missing(a):
     a[idx] = MISSING_VALUE
     return rows, cols
 
-def warn_bad(rows, cols, col_names, t):
+
+
+def warn_bad(op, rows, cols, col_names, t):
     badfeats = set(col_names[c] for c in cols)
     if len(rows) > 0:
-        print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
+        op.setWarning(title='Warning', description='Encountered objects with bad features!', details="{}".format(rows))
     if len(badfeats) > 0:
-        print 'Warning: the following features in time slice {} had bad values: {}'.format(t, sorted(badfeats))
+        op.setWarning(title='Warning', description='Encountered features with bad values!', details="{}".format(sorted(badfeats)))
+        
     return badfeats
-
-class OpObjectTrain(Operator):
+    
+class OpObjectTrain(OpWarning):
     name = "TrainRandomForestObjects"
     description = "Train a random forest on multiple images"
     category = "Learning"
@@ -457,6 +463,9 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.dtype = object
             self.outputs["Classifier"].meta.shape = (self.ForestCount.value,)
             self.outputs["Classifier"].meta.axistags = None
+        
+        # needed for OpWarning    
+        super(OpObjectTrain, self).setupOutputs()
 
     def execute(self, slot, subindex, roi, result):
 
@@ -483,7 +492,7 @@ class OpObjectTrain(Operator):
                 continue
 
             rows, cols = replace_missing(featstmp)
-            badfeats = warn_bad(rows, cols, col_names, i)
+            badfeats = warn_bad(self, rows, cols, col_names, i)
 
             featList.append(featstmp)
             all_col_names.append(tuple(col_names))
@@ -530,7 +539,7 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].setDirty(slcs)
 
 
-class OpObjectPredict(Operator):
+class OpObjectPredict(OpWarning):
     # WARNING: right now we predict and cache a whole time slice. We
     # expect this to be fast because there are relatively few objects
     # compared to the number of pixels in pixel classification. If
@@ -579,6 +588,9 @@ class OpObjectPredict(Operator):
         self.lock = RequestLock()
         self.prob_cache = dict()
         self.bad_objects = dict()
+        
+        # needed for OpWarning
+        super(OpObjectPredict, self).setupOutputs()
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels or slot==self.BadObjects
@@ -609,7 +621,7 @@ class OpObjectPredict(Operator):
                 rows, cols = replace_missing(ftmatrix)
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1
-                warn_bad(rows, cols, col_names, t)
+                warn_bad(self, rows, cols, col_names, t)
                 feats[t] = ftmatrix
                 prob_predictions[t] = [0] * len(forests)
 
