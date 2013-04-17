@@ -101,7 +101,7 @@ class TrackingBaseGui( LayerViewerGui ):
         trackingLayer = ColortableLayer( self.trackingsrc, ct )
         trackingLayer.name = "Tracking"
         trackingLayer.visible = True
-        trackingLayer.opacity = 0.8
+        trackingLayer.opacity = 1.0
         layers.append(trackingLayer)
         
         
@@ -111,7 +111,7 @@ class TrackingBaseGui( LayerViewerGui ):
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
-        objLayer.opacity = 0.8
+        objLayer.opacity = 1.0
         objLayer.visible = True
         layers.append(objLayer)
 
@@ -138,7 +138,7 @@ class TrackingBaseGui( LayerViewerGui ):
             parameters = self.mainOperator.Parameters.value
             self._setRanges() 
             if 'size_range' in parameters:                
-                self._drawer.to_size.setValue(parameters['size_range'][1])
+                self._drawer.to_size.setValue(parameters['size_range'][1]-1)
                 self._drawer.from_size.setValue(parameters['size_range'][0])
             else:
                 self._drawer.from_size.setValue(0)

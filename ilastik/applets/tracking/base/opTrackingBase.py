@@ -126,9 +126,8 @@ class OpTrackingBase(Operator):
         self.label2color = label2color
         self.mergers = mergers        
         
-        m = self.LabelImage.meta
-        roi = SubRegion(self.Output, start=5*(0,), stop=m.shape)
-        self.Output.setDirty(roi)
+        self.Output._value = None
+        self.Output.setDirty(slice(None))
         
 
     def _generate_traxelstore(self,
