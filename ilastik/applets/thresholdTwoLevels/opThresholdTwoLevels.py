@@ -293,24 +293,23 @@ class OpThresholdTwoLevels(Operator):
         #Debug 2 level operator
         self._bigRegionsStacker = OpMultiArrayStacker(parent=self)
         self._bigRegionsStacker.AxisFlag.setValue('t')
-        self._bigRegionsStacker.Images.connect(self.opThreshold2.BigRegions)
-        
+        self.BigRegions.connect(self._bigRegionsStacker.Output)
         
         self._smallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._smallRegionsStacker.AxisFlag.setValue('t')
-        self._smallRegionsStacker.Images.connect(self.opThreshold2.SmallRegions)
+        self.SmallRegions.connect(self._smallRegionsStacker.Output)
         
         
         self._filSmallRegionsStacker = OpMultiArrayStacker(parent=self)
         self._filSmallRegionsStacker.AxisFlag.setValue('t')
-        self._filSmallRegionsStacker.Images.connect(self.opThreshold2.FilteredSmallLabels)
-       
+        self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
+        
         
         #Debug 1 level operator
         self._beforeFilterStacker = OpMultiArrayStacker(parent=self)
         self._beforeFilterStacker.AxisFlag.setValue('t')
-        self._beforeFilterStacker.Images.connect(self.opThreshold1.BeforeSizeFilter)
         
+        self.BeforeSizeFilter.connect(self._beforeFilterStacker.Output)
         
     def setupOutputs(self):
         #FIXME: this happens when someone deletes the other prediction channels to save space
@@ -327,21 +326,33 @@ class OpThresholdTwoLevels(Operator):
         if curIndex==0:
             self.Output.connect(self._opTimeStacker1.Output)
             self._opCache.Input.connect( self._opTimeStacker1.Output )
-            self.BigRegions.disconnect()
-            self.SmallRegions.disconnect()
-            self.FilteredSmallLabels.disconnect()
             
-            self.BeforeSizeFilter.connect(self._beforeFilterStacker.Output)
+            self._bigRegionsStacker.Images.disconnect()
+            self._smallRegionsStacker.Images.disconnect()
+            self._filSmallRegionsStacker.Images.disconnect()
+            
+            self._beforeFilterStacker.Images.connect(self.opThreshold1.BeforeSizeFilter)
+            
+            assert self.Output.ready()
+            assert self.BeforeSizeFilter.ready()
+            #FIXME: these asserts fail because there is no way to make an operator "partially ready"
+            #assert self.BigRegions.ready()==False
             
         elif curIndex==1:
             self.Output.connect(self._opTimeStacker2.Output)
             self._opCache.Input.connect( self._opTimeStacker2.Output )
             
-            self.BeforeSizeFilter.disconnect()
+            self._bigRegionsStacker.Images.connect(self.opThreshold2.BigRegions)
+            self._smallRegionsStacker.Images.connect(self.opThreshold2.SmallRegions)
+            self._filSmallRegionsStacker.Images.connect(self.opThreshold2.FilteredSmallLabels)
             
-            self.BigRegions.connect(self._bigRegionsStacker.Output)
-            self.SmallRegions.connect(self._smallRegionsStacker.Output)
-            self.FilteredSmallLabels.connect(self._filSmallRegionsStacker.Output)
+            self._beforeFilterStacker.Images.disconnect()
+            
+            assert self.Output.ready()
+            assert self.BigRegions.ready()
+            #FIXME: these asserts fail because there is no way to make an operator "partially ready"
+            #assert self._beforeFilterStacker.Output.ready()==False
+            #assert self.BeforeSizeFilter.ready()==False
         else:
             #we only have two tabs
             return

@@ -102,7 +102,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # Read the current thresholding method
         curIndex = self._drawer.tabWidget.currentIndex()
-        print "updateOperatorFromGui, curIndex=", curIndex
+        #print "Setting operator to", curIndex+1, " thresholds"
         
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
@@ -149,28 +149,39 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
-        if op.BigRegions.ready():
-            lowThresholdSrc = LazyflowSource(op.BigRegions)
-            lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
-            lowThresholdLayer.name = "Big Regions"
-            lowThresholdLayer.visible = False
-            lowThresholdLayer.opacity = 1.0
-            layers.append(lowThresholdLayer)
-
-        if op.FilteredSmallLabels.ready():
-            filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
-            filteredSmallLabelsLayer.name = "Filtered Small Labels"
-            filteredSmallLabelsLayer.visible = False
-            filteredSmallLabelsLayer.opacity = 1.0
-            layers.append(filteredSmallLabelsLayer)
-
-        if op.SmallRegions.ready():
-            highThresholdSrc = LazyflowSource(op.SmallRegions)
-            highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
-            highThresholdLayer.name = "Small Regions"
-            highThresholdLayer.visible = False
-            highThresholdLayer.opacity = 1.0
-            layers.append(highThresholdLayer)
+        #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
+        curIndex = self._drawer.tabWidget.currentIndex()
+        if curIndex==1:
+            if op.BigRegions.ready():
+                lowThresholdSrc = LazyflowSource(op.BigRegions)
+                lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
+                lowThresholdLayer.name = "Big Regions"
+                lowThresholdLayer.visible = False
+                lowThresholdLayer.opacity = 1.0
+                layers.append(lowThresholdLayer)
+    
+            if op.FilteredSmallLabels.ready():
+                filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                filteredSmallLabelsLayer.name = "Filtered Small Labels"
+                filteredSmallLabelsLayer.visible = False
+                filteredSmallLabelsLayer.opacity = 1.0
+                layers.append(filteredSmallLabelsLayer)
+    
+            if op.SmallRegions.ready():
+                highThresholdSrc = LazyflowSource(op.SmallRegions)
+                highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
+                highThresholdLayer.name = "Small Regions"
+                highThresholdLayer.visible = False
+                highThresholdLayer.opacity = 1.0
+                layers.append(highThresholdLayer)
+        elif curIndex==0:
+            if op.BeforeSizeFilter.ready():
+                thSrc = LazyflowSource(op.BeforeSizeFilter)
+                thLayer = ColortableLayer(thSrc, binct)
+                thLayer.name = "Thresholded Labels"
+                thLayer.visible = False
+                thLayer.opacity = 1.0
+                layers.append(thLayer)
         
         # Selected input channel, smoothed.
         if op.Smoothed.ready():
@@ -194,14 +205,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             channelLayer.opacity = 1.0
             #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
             layers.append(channelLayer)
-        
-        if op.BeforeSizeFilter.ready():
-            thLayer = self.createStandardLayerFromSlot(op.BeforeSizeFilter)
-            thLayer.name = "Thresholded Labels"
-            thLayer.visible = False
-            thLayer.opacity = 1.0
-            layers.append(thLayer)
-        
         
         # Show the raw input data
         rawSlot = self.topLevelOperatorView.RawInput

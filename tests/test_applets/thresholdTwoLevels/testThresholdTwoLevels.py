@@ -51,11 +51,17 @@ class TestThresholdOneLevel(object):
         clusters = generateData((self.nx, self.ny, self.nz, self.nc))
         self.data = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
         self.data = self.data.reshape(self.data.shape+(1,))
+        self.data5d = self.data.reshape((1,)+self.data.shape)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
+        self.data5d = self.data5d.view(vigra.VigraArray)
+        self.data5d.axistags = vigra.VigraArray.defaultAxistags('txyzc')
         
         self.minSize = 0
         self.maxSize = 50
+        
+        self.sigma = { 'x' : 0.3, 'y' : 0.3, 'z' : 0.3 }
+        self.data = vigra.filters.gaussianSmoothing(self.data.astype(numpy.float32), 0.3)
         
     def test(self):
         g = Graph()
@@ -87,6 +93,22 @@ class TestThresholdOneLevel(object):
         cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
         assert numpy.any(cluster5!=0)
         
+        oper5d = OpThresholdTwoLevels(graph=g)
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(oper.MinSize.value)
+        oper5d.MaxSize.setValue(oper.MaxSize.value)
+        oper5d.SingleThreshold.setValue(oper.Threshold.value)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(0)
+        
+        output5d = oper5d.Output[:].wait()
+        
+        tIndex= oper5d.Output.meta.axistags.index('t')
+        slicing = 5*[slice(None, None, None)]
+        slicing[tIndex]= slice(0, 1, None)
+        #print out5d.axistags, output.shape.axistags
+        assert numpy.all(output5d[slicing].squeeze()==output[:].squeeze())
 
 
 class TestThresholdTwoLevels(object):
