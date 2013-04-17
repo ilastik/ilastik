@@ -226,6 +226,9 @@
    <property name="text">
     <string>Use Prefetching</string>
    </property>
+   <property name="toolTip">
+    <string>Cache slices nearby such that they display faster when scrolling through a volume (needs more memory)</string>
+   </property>
   </action>
  </widget>
  <resources/>
