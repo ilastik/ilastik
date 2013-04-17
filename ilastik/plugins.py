@@ -1,16 +1,17 @@
+from ilastik.config import cfg
+
 from yapsy.IPlugin import IPlugin
 from yapsy.PluginManager import PluginManager
 
 import os
 from collections import namedtuple
-
 from functools import partial
 
 # these directories are searched for plugins
-# TODO: perhaps these should be set in the config file.
-plugins_paths = ("~/.ilastik/plugins",
-                 os.path.join(os.path.split(__file__)[0], "plugins_default"),
-                 )
+plugin_paths = cfg.get('ilastik', 'plugin_directories')
+plugin_paths = list(os.path.expanduser(d) for d in plugin_paths.split(',')
+                    if len(d) > 0)
+plugin_paths.append(os.path.join(os.path.split(__file__)[0], "plugins_default"))
 
 ##########################
 # different plugin types #
@@ -94,7 +95,7 @@ class ObjectFeaturesPlugin(IPlugin):
 ###############
 
 pluginManager = PluginManager()
-pluginManager.setPluginPlaces(plugins_paths)
+pluginManager.setPluginPlaces(plugin_paths)
 
 pluginManager.setCategoriesFilter({
    "ObjectFeatures" : ObjectFeaturesPlugin,
