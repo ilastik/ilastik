@@ -3,6 +3,7 @@ import vigra
 import numpy
 
 class TestFeatures(ObjectFeaturesPlugin):
+
     all_features = {"with_nans" : {},
                     "with_nones" : {}}
     
