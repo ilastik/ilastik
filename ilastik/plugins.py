@@ -20,8 +20,16 @@ class ObjectFeaturesPlugin(IPlugin):
     """Plugins of this class calculate object features"""
     name = "Base object features plugin"
 
+    # TODO for now, only one margin will be set in the dialog. however, it
+    # should be repeated for each feature, because in the future it
+    # might be different, or each feature might take other parameters.
+
+    def __init__(self, *args, **kwargs):
+        super(ObjectFeaturesPlugin, self).__init__(*args, **kwargs)
+        self._selectedFeatures = []
+
     def availableFeatures(self, image, labels):
-        """returns a list of feature names supported by this plugin."""
+        """returns a list of (feature name, feature parameters)"""
         return []
 
     def compute_global(self, image, labels, features, axes):
@@ -31,8 +39,7 @@ class ObjectFeaturesPlugin(IPlugin):
         ------
         image: np.ndarray
         labels: np.ndarray of ints
-        features: list of feature names.
-        axes:
+        axes: axis tags
 
         Returns: a dictionary with one entry per feature.
         key: feature name
@@ -41,17 +48,16 @@ class ObjectFeaturesPlugin(IPlugin):
         """
         return dict()
 
-    def compute_local(self, image, label_bboxes, axes, mins, maxs):
+    def compute_local(self, image, binary_bbox, features, axes):
         """calculate requested features on a single object.
 
         Params:
         ------
-        image: np.ndarray
-        label_bboxes: labels for object, object+context, context
-        features: np.ndarray of ints
-        axes:
-        mins:
-        maxs:
+        image: np.ndarray - image[expanded bounding box]
+        binary_img: binarize(labels[expanded bounding box])
+        axes: axis tags
+
+        extend currently used for the slice-wise distance transform in anna's features
 
         Returns: a dictionary with one entry per feature.
         key: feature name
@@ -72,28 +78,15 @@ class ObjectFeaturesPlugin(IPlugin):
             suffix = ''
         return dict((prefix + k + suffix, v) for k, v in d.items())
 
-    def do_channels(self, image, labels, features, axes, fn, **kwargs):
+    def do_channels(self, fn, image, axes, **kwargs):
         """helper for features that only take one channel."""
         results = []
         slc = [slice(None)] * 4
         for channel in range(image.shape[axes.c]):
             slc[axes.c] = channel
-            result = fn(image[slc], labels, features, axes, **kwargs)
+            result = fn(image[slc], axes=axes, **kwargs)
             results.append(self.update_keys(result, suffix='_channel_{}'.format(channel)))
         return self.combine_dicts(results)
-
-    def do_local(self, image, label_bboxes, features, axes, mins, maxs, fn, **kwargs):
-        """helper that deals with individual objects"""
-        results = []
-        for label, suffix in zip(label_bboxes, ['', '_incl', '_excl']):
-            result = fn(image, label, features, axes, mins=mins, maxs=maxs, **kwargs)
-            results.append(self.update_keys(result, suffix=suffix))
-        return self.combine_dicts(results)
-
-    def do_local_channels(self, image, label_bboxes, features, axes, mins, maxs, fn, **kwargs):
-        """combines both do_channels() and do_local()"""
-        newfn = partial(self.do_channels, fn=fn)
-        self.do_local(image, label_bboxes, features, axes, mins, maxs, newfn, **kwargs)
 
 
 ###############

@@ -18,7 +18,7 @@ from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 from lazyflow.utility import traceLogged
 
 #volumina
-from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
                          LayerStackModel, VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.adaptors import Op5ifyer
@@ -206,7 +206,7 @@ class LayerViewerGui(QWidget):
         Generates a volumina layer using the given slot.
         Chooses between grayscale or RGB depending on the number of channels in the slot.
 
-        * If *slot* has 1 channel, a GrayscaleLayer is created.
+        * If *slot* has 1 channel or more than 4 channels, a GrayscaleLayer is created.
         * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
         * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
         * If *slot* has 4 channels, an RGBA layer is created
@@ -245,14 +245,13 @@ class LayerViewerGui(QWidget):
             
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
-        else:
-            assert numChannels <= 3, "Can't display a standard layer with more than three channels (with no alpha).  Your image has {} channels.".format(numChannels)
 
-        if numChannels == 1:
+        if numChannels == 1 or (numChannels > 4):
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            normSource = NormalizingSource( source, bounds=normalize )
-            return GrayscaleLayer(normSource)
+            layer = GrayscaleLayer(source)
+            layer.numberOfChannels = numChannels
+            return layer
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
             "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
@@ -260,31 +259,29 @@ class LayerViewerGui(QWidget):
         redProvider.Input.connect(slot)
         redProvider.Index.setValue( 0 )
         redSource = LazyflowSource( redProvider.Output )
-        redNormSource = NormalizingSource( redSource, bounds=normalize )
 
         greenProvider = OpSingleChannelSelector(graph=slot.graph)
         greenProvider.Input.connect(slot)
         greenProvider.Index.setValue( 1 )
         greenSource = LazyflowSource( greenProvider.Output )
-        greenNormSource = NormalizingSource( greenSource, bounds=normalize )
 
         blueNormSource = None
+        blueSource = None
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             blueProvider = OpSingleChannelSelector(graph=slot.graph)
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue( 2 )
             blueSource = LazyflowSource( blueProvider.Output )
-            blueNormSource = NormalizingSource( blueSource, bounds=normalize )
 
         alphaNormSource = None
+        alphaSource = None
         if lastChannelIsAlpha:
             alphaProvider = OpSingleChannelSelector(graph=slot.graph)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( numChannels-1 )
             alphaSource = LazyflowSource( alphaProvider.Output )
-            alphaNormSource = NormalizingSource( alphaSource, bounds=normalize )
 
-        layer = RGBALayer( red=redNormSource, green=greenNormSource, blue=blueNormSource, alpha=alphaNormSource )
+        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource )
         return layer
 
     @traceLogged(traceLogger)
@@ -383,11 +380,6 @@ class LayerViewerGui(QWidget):
                     # We just needed the operator to determine the transposed shape.
                     # Disconnect it so it can be garbage collected.
                     op5.input.disconnect()
-
-        if newDataShape is not None:
-            # For now, this base class combines multi-channel images into a single layer,
-            # So, we want the volume editor to behave as though there is only one channel
-            newDataShape = newDataShape[:-1] + (1,)
         return newDataShape
 
     @traceLogged(traceLogger)
@@ -582,8 +574,6 @@ class LayerViewerGui(QWidget):
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
-                if isinstance( datasource, NormalizingSource ):
-                    datasource = datasource._rawSource
                 if isinstance(datasource, LazyflowSource):
                     dataTags = datasource.dataSlot.meta.axistags
                     if dataTags is not None:
