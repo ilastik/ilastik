@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>224</height>
+    <height>257</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -37,6 +37,13 @@
      <property name="rightMargin">
       <number>10</number>
      </property>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Choose boundary type:</string>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QRadioButton" name="filter1">
        <property name="toolTip">
