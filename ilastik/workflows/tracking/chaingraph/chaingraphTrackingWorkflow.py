@@ -6,7 +6,7 @@ from ilastik.applets.tracking.chaingraph.chaingraphTrackingApplet import Chaingr
 
 
 class ChaingraphTrackingWorkflow( Workflow ):
-    name = "Chaingraph Tracking Workflow"
+    workflowName = "Tracking Workflow (Chaingraph)"
 
     def __init__( self, headless, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
