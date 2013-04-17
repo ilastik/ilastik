@@ -79,6 +79,7 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
         assert self.LabelVolume.meta.axistags == self.RawVolume.meta.axistags
 

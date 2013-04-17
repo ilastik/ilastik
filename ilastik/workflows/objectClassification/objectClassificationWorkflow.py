@@ -5,6 +5,7 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 
@@ -36,6 +37,7 @@ class ObjectClassificationWorkflow(Workflow):
                                                              "FeatureSelections")
 
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Thresholding", "ThresholdTwoLevels")
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
@@ -44,6 +46,7 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
+        self._applets.append(self.thresholdingApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
@@ -61,12 +64,14 @@ class ObjectClassificationWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
+        opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         # connect input image
         opTrainingFeatures.InputImage.connect(opData.Image)
         opClassify.InputImages.connect(opData.Image)
+        opThreshold.RawInput.connect(opData.Image)
         opObjExtraction.RawImage.connect(opData.Image)
         opObjClassification.RawImages.connect(opData.Image)
 
@@ -80,13 +85,20 @@ class ObjectClassificationWorkflow(Workflow):
 
         # connect pixel output to object extraction
         # TODO: how to put operators between applets?
-        opseg = OpSegmentation(parent=self)
+        #opseg = OpSegmentation(parent=self)
+        #op5 = Op5ifyer(parent=self)
+        #opseg.Input.connect(opClassify.CachedPredictionProbabilities)
+        #opseg.Input.connect(opClassify.HeadlessPredictionProbabilities)
+        #op5.input.connect(opseg.Output)
+        
+        #we will cache thresholding output, no point in caching predictions
+        opThreshold.InputImage.connect(opClassify.HeadlessPredictionProbabilities)
         op5 = Op5ifyer(parent=self)
-        opseg.Input.connect(opClassify.CachedPredictionProbabilities)
-        op5.input.connect(opseg.Output)
+        op5.input.connect(opThreshold.CachedOutput)
+        
         opObjExtraction.BinaryImage.connect(op5.output)
 
-        opObjClassification.BinaryImages.connect(op5.output)
+        opObjClassification.BinaryImages.connect(opThreshold.CachedOutput)
 
         # connect object features
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
