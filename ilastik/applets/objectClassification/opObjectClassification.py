@@ -44,6 +44,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
     BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List)
     BadObjectImages = OutputSlot(level=1)
+    Warnings = OutputSlot(stype=Opaque)
 
     # TODO: not actually used
     Eraser = OutputSlot()
@@ -53,6 +54,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
@@ -65,6 +67,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
         self.opBadObjectsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opBadObjectsToWarningMessage = OpBadObjectsToWarningMessage(parent=self)
 
         self.classifier_cache = OpValueCache(parent=self)
 
@@ -98,6 +101,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opBadObjectsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opBadObjectsToImage.inputs["ObjectMap"].connect(self.opPredict.BadObjects)
         self.opBadObjectsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        
+        self.opBadObjectsToWarningMessage.inputs["BadObjects"].connect(self.opTrain.BadObjects)
 
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
@@ -112,6 +117,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
+        self.Warnings.connect(self.opBadObjectsToWarningMessage.WarningMessage)
         
         self.Classifier.connect(self.classifier_cache.Output)
 
@@ -163,7 +169,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
 
     def setupOutputs(self):
-        pass
+        super(OpObjectClassification, self).setupOutputs()
+        self.Warnings.meta.shape = (1,)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -427,14 +434,17 @@ def replace_missing(a):
     a[idx] = MISSING_VALUE
     return rows, cols
 
+
+
 def warn_bad(rows, cols, col_names, t):
     badfeats = set(col_names[c] for c in cols)
     if len(rows) > 0:
-        print 'Warning: the following objects in time slice {} had bad features: {}'.format(t, rows)
+        print("Warning: objects with bad features encountered: {}".format(rows))
     if len(badfeats) > 0:
-        print 'Warning: the following features in time slice {} had bad values: {}'.format(t, sorted(badfeats))
+        print("Warning: features with bad values encountered: {}".format(sorted(badfeats)))
+        
     return badfeats
-
+    
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
     description = "Train a random forest on multiple images"
@@ -446,6 +456,7 @@ class OpObjectTrain(Operator):
     ForestCount = InputSlot(stype="int", value=1)
 
     Classifier = OutputSlot()
+    BadObjects = OutputSlot(stype=Opaque)
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
@@ -457,14 +468,15 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.dtype = object
             self.outputs["Classifier"].meta.shape = (self.ForestCount.value,)
             self.outputs["Classifier"].meta.axistags = None
+        
+        self.BadObjects.meta.shape = (1,)
 
     def execute(self, slot, subindex, roi, result):
-
         featList = []
         all_col_names = []
         labelsList = []
 
-        # TODO: make these available in the GUI.
+        # will be available at slot self.Warnings
         all_bad_objects = {}
         all_bad_feats = set()
 
@@ -492,6 +504,8 @@ class OpObjectTrain(Operator):
             all_bad_objects[i] = rows
             all_bad_feats = all_bad_feats.union(badfeats)
 
+        self._warnBadObjects(all_bad_objects, all_bad_feats)
+        
         if not len(set(all_col_names)) == 1:
             raise Exception('different time slices did not have same features.')
 
@@ -528,6 +542,13 @@ class OpObjectTrain(Operator):
            self.inputs["FixClassifier"].value == False:
             slcs = (slice(0, self.ForestCount.value, None),)
             self.outputs["Classifier"].setDirty(slcs)
+            
+          
+    def _warnBadObjects(self, bad_objects, bad_feats):
+        messageTesting = False
+        self.BadObjects._value = {'objects': bad_objects, 'feats': bad_feats}
+        if len(bad_feats)>0 or any([len(bad_objects[i])>0 for i in bad_objects.keys()]) or messageTesting:
+            self.BadObjects.setDirty()
 
 
 class OpObjectPredict(Operator):
@@ -579,6 +600,9 @@ class OpObjectPredict(Operator):
         self.lock = RequestLock()
         self.prob_cache = dict()
         self.bad_objects = dict()
+        
+        # needed for OpWarning
+        super(OpObjectPredict, self).setupOutputs()
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels or slot==self.BadObjects
@@ -821,3 +845,36 @@ class OpMaxLabel(Operator):
                     maxValue = max(maxValue, subSlotMax)
 
         self._output = maxValue
+        
+        
+class OpBadObjectsToWarningMessage(Operator):
+   
+    name = "OpBadObjectsToWarningMessage"
+    
+    # the input slot
+    # format: BadObjects._value = {'objects': dict(tuple??()), 'feats': set()}
+    BadObjects = InputSlot(stype=Opaque)
+    
+    # the output slot 
+    # format: WarningMessage._value = {'title': a, 'text': b, 'info': c, 'details': d}
+    WarningMessage = OutputSlot(stype=Opaque)
+    
+    def setupOutputs(self):
+        super(OpBadObjectsToWarningMessage, self).setupOutputs()
+        self.WarningMessage.meta.shape = (1,)
+
+    def propagateDirty(self, slot, subindex, roi):
+        d = self.BadObjects[:].wait()
+        warn = {}
+        warn['title'] = 'Warning'
+        warn['text'] = 'Encountered bad objects while training.'
+        warn['info'] = None
+        warn['details'] = str(d)
+        self.WarningMessage._value = warn
+        self.WarningMessage.setDirty()
+        
+    def execute(self, slot, subindex, roi, result):
+        pass
+   
+    
+        
