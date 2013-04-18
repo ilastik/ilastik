@@ -1,7 +1,7 @@
 from PyQt4 import QtGui, QtCore
 from lazyflow.graph import Graph, Operator, InputSlot
 from lazyflow.stype import Opaque
-from opWarning import OpWarning, OpTestImplementation
+from opObjectClassification import OpBadObjectsToWarningMessage
 
 from ilastik.utility.gui import ThunkEventHandler
 
@@ -9,7 +9,8 @@ from ilastik.utility.gui import ThunkEventHandler
 class GuiDialog(QtGui.QMessageBox):
 
     title = "Warning"
-    description = None
+    text = None
+    info = None
     details = None
     
     _icon = QtGui.QMessageBox.Warning
@@ -29,32 +30,44 @@ class GuiDialog(QtGui.QMessageBox):
         self.show()
 
     def _setup(self):
-        
         def nn(a):
-            return "" if a is None else a
-        
-        self.setWindowTitle(nn(self.title))
+            return a if a is not None else ""
+        self.setWindowTitle(nn(self.getTitle()))
         self.setText(nn(self.getMessage()))
+        self.setInformativeText(nn(self.getInfo()))
         if self.hasDetails():
             self.setDetailedText(nn(self.getDetails()))
+            
         okButton = self.addButton(QtGui.QMessageBox.Ok)
         self.icon = self._icon
 
     def getMessage(self):
         """
-        Main content for message box, should be overridden.
+        Main content for message box.
         """ 
-        return self.description
+        return self.text
+    
+    def getTitle(self):
+        """
+        Title for message box.
+        """ 
+        return self.title
+    
+    def getInfo(self):
+        """
+        Informative content for message box.
+        """ 
+        return self.info
 
     def hasDetails(self):
         """
-        Should be overridden.
+        
         """
         return self.details is not None
 
     def getDetails(self):
         """
-        Main content for message box, should be overridden.
+        Details for message box.
         """ 
         return self.details
     
@@ -85,7 +98,7 @@ class LabelsChangedDialog(GuiDialog):
 
 
     
-class OpGuiDialog(OpWarning):
+class OpGuiDialog(Operator):
     name = "OpGuiDialog"
     inputslot = InputSlot(stype=Opaque)
     dialog = None
@@ -101,7 +114,8 @@ class OpGuiDialog(OpWarning):
             #TODO what if the dialog was not set up correctly?
             d = self.inputslot[:].wait()
             self.dialog.title = d['title']
-            self.dialog.description = d['description']
+            self.dialog.text = d['text']
+            self.dialog.info = d['info']
             self.dialog.details = d['details']
             self.dialog.showDialog()
             
@@ -145,11 +159,11 @@ class Example(QtGui.QWidget):
             
             
         elif case == 2: # OpWarning
-            opwarn = OpTestImplementation(graph=Graph())
+            opwarn = OpBadObjectsToWarningMessage(graph=Graph())
             opdialog = OpGuiDialog(graph=Graph())
-            opdialog.inputslot.connect(opwarn.Warnings)
+            opdialog.inputslot.connect(opwarn.WarningMessage)
             opdialog.dialog = GuiDialog(self)
-            opwarn.setWarning(title="Hello World!", description="test", details="More...")
+            opwarn.BadObjects.setValue("Hello World!")
             
             
         

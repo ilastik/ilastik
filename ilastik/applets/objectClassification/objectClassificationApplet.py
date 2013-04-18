@@ -11,6 +11,7 @@ class ObjectClassificationApplet(StandardApplet):
                  workflow=None,
                  projectFileGroupName="ObjectClassification"):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
+        self._trainDialog = OpGuiDialog(parent=workflow)
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
         self._serializableItems = [
@@ -34,15 +35,7 @@ class ObjectClassificationApplet(StandardApplet):
                                        self.guiControlSignal)
         
         # setup message chain
-        self._trainDialog = OpGuiDialog(parent=self._topLevelOperator.parent) #FIXME parent hack
         self._trainDialog.dialog = GuiDialog(gui)
-        self._trainDialog.inputslot.connect(self._topLevelOperator.opTrain.Warnings)
+        self._trainDialog.inputslot.connect(self._topLevelOperator.Warnings)
         
-        '''
-        unsure about OperatorWrapper and stuff like this
-        self._predictDialog = OpGuiDialog(parent=self._topLevelOperator.parent) #FIXME parent hack
-        self._predictDialog.dialog = GuiDialog(gui)
-        self._predictDialog.inputslot.level = 1
-        self._predictDialog.inputslot.connect(self._topLevelOperator.opPredict.Warnings)
-        '''
         return gui
