@@ -157,27 +157,25 @@ class DataSelectionGui(QWidget):
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
             self._detailViewerWidgets.append(detailViewer)
-            
+
+            # Buttons            
             addOneMenu = QMenu()
             addOneMenu.addAction( "Select File..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
             addOneMenu.addAction( "Specify Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
             detailViewer.addOneButton.setMenu( addOneMenu )
-            detailViewer.addOneButton.clicked.connect( partial(self.handleAddFiles, roleIndex) )
             self._retained.append(addOneMenu)
             
             addManyMenu = QMenu()
             addManyMenu.addAction( "Select Files..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
             addManyMenu.addAction( "Give Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
             detailViewer.addManyButton.setMenu( addManyMenu )
-            detailViewer.addManyButton.clicked.connect( partial(self.handleAddFiles, roleIndex) )
             self._retained.append(addManyMenu)
 
             detailViewer.clearButton.clicked.connect( partial( self.handleClearDatasets, roleIndex ) )
-            
-            #detailViewer.addFileButton.clicked.connect( partial(self.handleAddFileButtonClicked, roleIndex) )
-            #detailViewer.addByPatternButton.clicked.connect( partial(self.handleMassAddButtonClicked, roleIndex) )
-            #detailViewer.importStackFilesButton.clicked.connect( partial(self.handleAddStackFilesButtonClicked, roleIndex) )
-            #detailViewer.clearButton.clicked( partial(self.yadayada, roleIndex) )
+
+            # Context menu            
+            detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
+            detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
             
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
@@ -227,6 +225,12 @@ class DataSelectionGui(QWidget):
         self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
 
     def handleAddFiles(self, roleIndex):
+        self.addFiles(roleIndex)
+
+    def handleReplaceFile(self, roleIndex, startingLane):
+        self.addFiles(roleIndex, startingLane)
+
+    def addFiles(self, roleIndex, startingLane=None):
         """
         The user clicked the "Add File" button.
         Ask him to choose a file (or several) and add them to both
@@ -246,7 +250,7 @@ class DataSelectionGui(QWidget):
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
             try:
-                self.addFileNames(fileNames, roleIndex)
+                self.addFileNames(fileNames, roleIndex, startingLane)
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
 
@@ -298,15 +302,19 @@ class DataSelectionGui(QWidget):
                 break
         return firstNewLane
 
-    def addFileNames(self, fileNames, roleIndex):
+    def addFileNames(self, fileNames, roleIndex, startingLane=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
-        The filenames will be *appended* to the role's list of files.
+        If startingLane is None, the filenames will be *appended* to the role's list of files.
         """
         infos = []
-        
-        firstNewLane = self._findFirstEmptyLane(roleIndex)
-        totalLanes = firstNewLane+len(fileNames)
+
+        if startingLane is None:        
+            startingLane = self._findFirstEmptyLane(roleIndex)
+            endingLane = startingLane+len(fileNames)-1
+        else:
+            assert startingLane < len(self.topLevelOperator.DatasetGroup)
+            endingLane = startingLane+len(fileNames)-1
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
@@ -340,10 +348,10 @@ class DataSelectionGui(QWidget):
 
         # if no exception was thrown, set up the operator now
         opTop = self.topLevelOperator
-        if len( opTop.DatasetGroup ) < totalLanes:
-            opTop.DatasetGroup.resize( totalLanes )
+        if len( opTop.DatasetGroup ) < endingLane+1:
+            opTop.DatasetGroup.resize( endingLane+1 )
 
-        for laneIndex, info in zip(range(firstNewLane, totalLanes), infos):
+        for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
             self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
 
     def getPossibleInternalPaths(self, absPath):
@@ -358,53 +366,10 @@ class DataSelectionGui(QWidget):
             f.visititems(accumulateDatasetPaths)
         return datasetNames
 
-    def handleAddStackButtonClicked(self, roleIndex):
-        """
-        The user clicked the "Import Stack Directory" button.
-        """
-        # Find the directory of the most recently opened image file
-        mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
-        if mostRecentStackDirectory is not None:
-            defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
-
-        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QFileDialog.DontUseNativeDialog
-
-        # Launch the "Open File" dialog
-        directoryName = QFileDialog.getExistingDirectory(self,
-                                                         "Image Stack Directory",
-                                                         defaultDirectory,
-                                                         options=options)
-
-        # If the user didn't cancel
-        if not directoryName.isNull():
-            PreferencesManager().set('DataSelection', 'recent stack directory', str(directoryName))
-            globString = self.getGlobString( str(directoryName).replace("\\","/" ) )        
-            if globString is not None:
-                self.importStackFromGlobString( globString )
-
-    def getGlobString(self, directory):
-        exts = vigra.impex.listExtensions().split()
-        for ext in exts:
-            fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
-
-            if len(filenames) == 1:
-                QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There is only one image file in the selected directory.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )
-                return None
-
-            if len(filenames) > 0:
-                # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(filenames)
-                return prefix + '*.' + ext
-
-        # Couldn't find an image file in the directory...
-        return None
-
     def handleAddStack(self, roleIndex):
+        self.replaceWithStack(roleIndex, laneIndex=None)
+
+    def replaceWithStack(self, roleIndex, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
@@ -422,7 +387,8 @@ class DataSelectionGui(QWidget):
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
 
-        laneIndex = self._findFirstEmptyLane(roleIndex)
+        if laneIndex is None:
+            laneIndex = self._findFirstEmptyLane(roleIndex)
         if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
             self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
 

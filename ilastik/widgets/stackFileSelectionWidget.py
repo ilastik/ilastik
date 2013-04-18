@@ -102,21 +102,27 @@ class StackFileSelectionWidget(QDialog):
             fullGlob = directory + '/*.' + ext
             filenames = glob.glob(fullGlob)
 
-            if len(filenames) == 0:
-                QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There were no image files in the selected directory.' )
-                return None
-
-            if len(filenames) == 1:
-                QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There is only one image file in the selected directory.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )
-                return None
-
             if len(filenames) > 0:
                 # Be helpful: find the longest globstring we can
                 prefix = os.path.commonprefix(filenames)
-                return prefix + '*.' + ext
+                globstring = prefix + '*.' + ext
+                break
 
-        # Couldn't find an image file in the directory...
-        return None
+        if len(filenames) == 0:
+            msg = 'Cannot create stack: There were no image files in the selected directory:\n'
+            msg += directory
+            QMessageBox.warning(self, "Invalid selection", msg )
+            return None
+
+        if len(filenames) == 1:
+            msg = 'Cannot create stack: There is only one image file in the selected directory:\n'
+            msg += directory + '\n'
+            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
+            msg += ' please use the "Add File" button.'
+            QMessageBox.warning(self, "Invalid selection", msg )
+            return None
+
+        return globstring
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -144,8 +150,11 @@ class StackFileSelectionWidget(QDialog):
             return
 
         if len(fileNames) == 1:
-            QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There is only one image file in the selected directory.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )
-            return
+            msg = 'Cannot create stack: You only chose a single file.  '
+            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
+            msg += ' please use the "Add File" button.'
+            QMessageBox.warning(self, "Invalid selection", msg )
+            return None
 
         directory = os.path.split(fileNames[0])[0]        
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)

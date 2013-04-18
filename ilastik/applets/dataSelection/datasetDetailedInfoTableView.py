@@ -78,7 +78,7 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is editSharedPropertiesAction:
                 self.editRequested.emit( self._selectedLanes )
             if selection is editPropertiesAction:
-                self.editRequested.emit( row )
+                self.editRequested.emit( [row] )
             if selection is replaceWithFileAction:
                 self.replaceWithFileRequested.emit( row )
             if selection is replaceWithStackAction:
