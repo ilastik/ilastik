@@ -87,7 +87,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         UninitializedDisplayData = { DatasetDetailedInfoColumn.Name : "<please select>",
                                      DatasetDetailedInfoColumn.Location : "",
-                                     DatasetDetailedInfoColumn.InternalID : "",
+                                     DatasetDetailedInfoColumn.InternalID : "N/A",
                                      DatasetDetailedInfoColumn.AxisOrder : "",
                                      DatasetDetailedInfoColumn.Shape : "",
                                      DatasetDetailedInfoColumn.Range : "" }

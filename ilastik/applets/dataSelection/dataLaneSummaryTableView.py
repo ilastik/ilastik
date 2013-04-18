@@ -30,31 +30,35 @@ class DataLaneSummaryTableView(QTableView):
 #            self.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
 
         self.verticalHeader().hide()
+        self.setSelectionBehavior( QTableView.SelectRows )
 
     def selectionChanged(self, selected, deselected):
         super( DataLaneSummaryTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
         selectedIndexes = selected.indexes()
         if len(selectedIndexes) == 0:
-            self.update()
+            #self.update()
             self._selectedLane = -1
             self.dataLaneSelected.emit(-1)
             return
 
-        rowFirstIndex = self.model().index( selectedIndexes[0].row(), 0, selectedIndexes[0].parent() )
-        rowLastIndex = self.model().index( selectedIndexes[0].row(), self.model().columnCount(), selectedIndexes[0].parent() )
-        selection = QItemSelection( rowFirstIndex, rowLastIndex )
-        self.selectionModel().select( selection, QItemSelectionModel.Select )
+#        rowFirstIndex = self.model().index( selectedIndexes[0].row(), 0, selectedIndexes[0].parent() )
+#        rowLastIndex = self.model().index( selectedIndexes[0].row(), self.model().columnCount(), selectedIndexes[0].parent() )
+#        selection = QItemSelection( rowFirstIndex, rowLastIndex )
+#        self.selectionModel().select( selection, QItemSelectionModel.Select )
 
         self._selectedLane = selectedIndexes[0].row()
         self.dataLaneSelected.emit(self._selectedLane)
 
         # For some reason, changing the selection doesn't automatically trigger a paint event
-        self.update()
+        #self.update()
         
     def selectedLane(self):
         return self._selectedLane
 
+    def rowCountChanged(self, oldCount, newCount):
+        super( DataLaneSummaryTableView, oldCount, newCount )
+        self.resizeColumnsToContents()
 
 
 

@@ -3,12 +3,14 @@ import sys
 import traceback
 import copy
 
+import h5py
 import numpy
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QDialog, QMessageBox
 
+from ilastik.utility import getPathVariants, PathComponents
 from opDataSelection import OpDataSelection, DatasetInfo
 
 class DatasetInfoEditorWidget(QDialog):
@@ -45,24 +47,30 @@ class DatasetInfoEditorWidget(QDialog):
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
+        self._error_fields = set()
 
         self.okButton.clicked.connect( self.accept )
         self.cancelButton.clicked.connect( self.reject )
 
-        self._autoAppliedWidgets = { self.axesEdit : self._applyAxesToTempOps,
-                                     self.rangeMinSpinBox : self._applyRangeToTempOps,
-                                     self.rangeMaxSpinBox : self._applyRangeToTempOps }
         self._setUpEventFilters()
 
         self.axesEdit.setEnabled( self._shouldEnableAxesEdit() )
-        self.internalDatasetNameComboBox.setEnabled( self._shouldEnableInternalDatasetNameComboBox() )
 
-        self._showShape()
-        self._showDtype()
-        self._showRange()
-        self._showAxes()
+        self._initInternalDatasetNameCombo()
+        self.internalDatasetNameComboBox.currentIndexChanged.connect( self._applyInternalPathToTempOps )
+        self._updateInternalDatasetSelection()
+        
+        self._updateShape()
+        self._updateDtype()
+        self._updateRange()
+        self._updateAxes()
 
     def _setUpEventFilters(self):
+        # Changes to these widgets are detected via eventFilter()
+        self._autoAppliedWidgets = { self.axesEdit : self._applyAxesToTempOps,
+                                     self.rangeMinSpinBox : self._applyRangeToTempOps,
+                                     self.rangeMaxSpinBox : self._applyRangeToTempOps }
+
         for widget in self._autoAppliedWidgets.keys():
             widget.installEventFilter(self)
 
@@ -70,12 +78,6 @@ class DatasetInfoEditorWidget(QDialog):
         for widget in self._autoAppliedWidgets.keys():
             widget.removeEventFilter(self)
 
-#    def event(self, event):
-#        if ( event.type() == QEvent.KeyPress ): # and event.key() == Qt.Key_Enter ):
-#            print "got event: {}, key: {}".format( event, event.key() )
-#            return True
-#        return super( DatasetInfoEditorWidget, self ).event( event )
-    
     def eventFilter(self, watched, event):
         if watched in self._autoAppliedWidgets:
             if ( event.type() == QEvent.KeyPress \
@@ -88,12 +90,63 @@ class DatasetInfoEditorWidget(QDialog):
         return False
     
     def accept(self):
-        self._tearDownEventFilters()
-        super( DatasetInfoEditorWidget, self ).accept()
+        # Can't accept if there are errors.
+        if len(self._error_fields) > 0:
+            msg = "Error: Invalid data in the following fields:\n"
+            for field in self._error_fields:
+                msg += field + '\n'
+            QMessageBox.warning(self, "Error", msg)
+            return
+        
+        if not self._applyTempOpSettingsRealOp():
+            return
+        else:
+            # Success.  Close the dialog.
+            self._tearDownEventFilters()
+            self._cleanUpTempOperators()
+            super( DatasetInfoEditorWidget, self ).accept()
 
     def reject(self):
         self._tearDownEventFilters()
+        self._cleanUpTempOperators()
         super( DatasetInfoEditorWidget, self ).reject()
+
+    def _applyTempOpSettingsRealOp(self):
+        """
+        Apply the settings from our temporary operators to the real operators.
+        """
+        # Save a copy of our settings
+        originalInfos = {}
+        for laneIndex in self._laneIndexes:
+            realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+            originalInfos[laneIndex] = copy.copy( realSlot.value )
+
+        currentLane = self._laneIndexes[0]
+        try:
+            for laneIndex, op in self.tempOps.items():
+                info = copy.copy( op.Dataset.value )
+                realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+                realSlot.setValue( info )
+            return True
+        except Exception as e:
+            # Revert everything back to the previous state
+            for laneIndex, info in originalInfos.items():
+                realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+                realSlot.setValue( info )
+                if laneIndex == currentLane:
+                    # Only need to revert the lanes we actually changed.
+                    # Everything else wasn't touched
+                    break
+            
+            traceback.print_exc()
+            msg = "Failed to apply dialog settings due to an exception:\n"
+            msg += "{}".format( e )
+            QMessageBox.warning(self, "Error", msg)
+            return False
+
+    def _cleanUpTempOperators(self):
+        for laneIndex, op in self.tempOps.items():
+            op.cleanUp()
 
     def _getCommonMetadataValue(self, attr):
         # If this metadata attribute is common across all images,
@@ -106,14 +159,14 @@ class DatasetInfoEditorWidget(QDialog):
                 break
         return val
     
-    def _showShape(self):
+    def _updateShape(self):
         shape = self._getCommonMetadataValue("shape")
         if shape is None:
             self.shapeLabel.setText( "" )
         else:
             self.shapeLabel.setText( str(shape) )
 
-    def _showDtype(self):
+    def _updateDtype(self):
         dtype = self._getCommonMetadataValue("dtype")
         if dtype is None:
             self.dtypeLabel.setText( "" )
@@ -122,7 +175,7 @@ class DatasetInfoEditorWidget(QDialog):
             dtype = dtype.type
         self.dtypeLabel.setText( dtype.__name__ )
 
-    def _showRange(self):
+    def _updateRange(self):
         drange = self._getCommonMetadataValue("drange")
         if drange is None:
             # TODO: Override QSpinBox.textFromValue() to make a special display for invalid ranges
@@ -131,8 +184,8 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.rangeMinSpinBox.setValue( drange[0] )
             self.rangeMaxSpinBox.setValue( drange[1] )
-
-    def _showAxes(self):
+    
+    def _updateAxes(self):
         # If all images have the same axis keys,
         # then display it.  Otherwise, display default text.
         axiskeys = None
@@ -156,10 +209,6 @@ class DatasetInfoEditorWidget(QDialog):
             if len(op.Image.meta.shape) != numaxes:
                 return False
         return True
-
-    def _shouldEnableInternalDatasetNameComboBox(self):
-        # Enable IFF all datasets have at least one common internal dataset
-        return False
     
     def _applyAxesToTempOps(self):
         newAxisOrder = str(self.axesEdit.text())
@@ -174,11 +223,13 @@ class DatasetInfoEditorWidget(QDialog):
             
             if numaxes != len( newAxisOrder ):
                 QMessageBox.warning(self, "Error", "Can't use those axes: wrong number.")
+                self._error_fields.add('Axis Order')
                 return False
             
             for c in newAxisOrder:
                 if c not in 'txyzc':
                     QMessageBox.warning(self, "Error", "Can't use those axes: Don't understand axis ''.".format(c))
+                    self._error_fields.add('Axis Order')
                     return False
     
             if len(set(newAxisOrder)) != len(newAxisOrder):
@@ -196,6 +247,7 @@ class DatasetInfoEditorWidget(QDialog):
                     info = copy.copy( op.Dataset.value )
                     info.axisorder = newAxisOrder
                     op.Dataset.setValue( info )
+                self._error_fields.discard('Axis Order')
                 return True
             except Exception as e:
                 # Revert everything back to the previous state
@@ -210,12 +262,13 @@ class DatasetInfoEditorWidget(QDialog):
                 msg = "Could not apply axis settings due to an exception:\n"
                 msg += "{}".format( e )
                 QMessageBox.warning(self, "Error", msg)
+                self._error_fields += 'Axis Order'
                 return False
 
         finally:
             self.axesEdit.installEventFilter(self)
             # Either way, show the axes
-            self._showAxes()
+            self._updateAxes()
 
     def _applyRangeToTempOps(self):
         new_drange = ( self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value() )
@@ -228,6 +281,7 @@ class DatasetInfoEditorWidget(QDialog):
             
             if new_drange[0] >= new_drange[1]:
                 QMessageBox.warning(self, "Error", "Can't apply data range values: Data range MAX must be greater than MIN.")
+                self._error_fields.add('Data Range')
                 return False
 
             # Make sure the new bounds don't exceed the dtype range
@@ -238,6 +292,7 @@ class DatasetInfoEditorWidget(QDialog):
                         "Can't apply data range values:\n"
                         "Range {} is outside the allowed range for the data type of lane {}.\n"
                         "(Full range of {} is [{}, {}].)".format( new_drange, laneIndex, dtype_info.dtype.name, dtype_info.min, dtype_info.max ) )
+                    self._error_fields.add('Data Range')
                     return False
             
             # Save a copy of our settings
@@ -253,6 +308,7 @@ class DatasetInfoEditorWidget(QDialog):
                     dtype = dtype_info.dtype.type
                     info.drange = ( dtype(new_drange[0]), dtype(new_drange[1]) )
                     op.Dataset.setValue( info )
+                self._error_fields.discard('Data Range')
                 return True
             except Exception as e:
                 # Revert everything back to the previous state
@@ -267,13 +323,158 @@ class DatasetInfoEditorWidget(QDialog):
                 msg = "Could not apply data range settings due to an exception:\n"
                 msg += "{}".format( e )
                 QMessageBox.warning(self, "Error", msg)
+                self._error_fields.add('Data Range')
                 return False
 
         finally:
             self.rangeMinSpinBox.installEventFilter(self)
             self.rangeMaxSpinBox.installEventFilter(self)
             # Either way, show the current data range
-            self._showRange()
+            self._updateRange()
+
+    def _initInternalDatasetNameCombo(self):
+        # If any dataset is either (1) not hdf5 or (2) project-internal, then we can't change the internal path.
+        h5Exts = ['.ilp', '.h5', '.hdf5']
+        for laneIndex in self._laneIndexes:
+            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            externalPath = PathComponents( datasetInfo.filePath ).externalPath
+            if os.path.splitext(externalPath)[1] not in h5Exts \
+            or datasetInfo.location == DatasetInfo.Location.ProjectInternal:
+                self.internalDatasetNameComboBox.addItem( "N/A" )
+                self.internalDatasetNameComboBox.setEnabled(False)
+                return
+        
+        # Enable IFF all datasets have at least one common internal dataset, and only show COMMON datasets
+        allInternalPaths = set()
+        commonInternalPaths = None
+        
+        for laneIndex in self._laneIndexes:
+            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            
+            externalPath = PathComponents( datasetInfo.filePath ).externalPath
+            absPath, relPath = getPathVariants( externalPath, self._op.WorkingDirectory.value )
+            internalPaths = set( self._getPossibleInternalPaths(absPath) )
+            
+            if commonInternalPaths is None:
+                # Init with the first file's set of paths
+                commonInternalPaths = internalPaths
+            
+            # Set operations
+            allInternalPaths |= internalPaths
+            commonInternalPaths &= internalPaths
+            if len( commonInternalPaths ) == 0:
+                self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
+                self.internalDatasetNameComboBox.setEnabled(False)
+                return
+
+        uncommonInternalPaths = allInternalPaths - commonInternalPaths
+        # Add all common paths to the combo
+        for path in sorted(commonInternalPaths):
+            self.internalDatasetNameComboBox.addItem( path )
+        
+        # Add the remaining ones, but disable them since they aren't common to all files:
+        for path in sorted(uncommonInternalPaths):
+            self.internalDatasetNameComboBox.addItem( path )
+            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
+            model = self.internalDatasetNameComboBox.model()
+            index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
+            model.setData( index, 0, Qt.UserRole-1 )
+
+        # Finally, initialize with NO item selected
+        self.internalDatasetNameComboBox.setCurrentIndex(-1)
+
+    def _getPossibleInternalPaths(self, absPath):
+        datasetNames = []
+        # Open the file as a read-only so we can get a list of the internal paths
+        with h5py.File(absPath, 'r') as f:
+            # Define a closure to collect all of the dataset names in the file.
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                    datasetNames.append( '/' + name )
+            # Visit every group/dataset in the file
+            f.visititems(accumulateDatasetPaths)
+        return datasetNames
+
+    def _updateInternalDatasetSelection(self):
+        # If all lanes have the same dataset selected, choose that item.
+        # Otherwise, leave it uninitialized
+        if not self.internalDatasetNameComboBox.isEnabled():
+            return
+        
+        internalPath = None
+        
+        for laneIndex in self._laneIndexes:
+            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            
+            nextPath = PathComponents( datasetInfo.filePath ).internalPath
+            if internalPath is None:
+                internalPath = nextPath # init
+            if internalPath != nextPath:
+                self.internalDatasetNameComboBox.setCurrentIndex(-1)
+                return
+
+        # Make sure the correct index is selected.        
+        index = self.internalDatasetNameComboBox.findText( internalPath )
+        self.internalDatasetNameComboBox.setCurrentIndex( index )
+
+    def _applyInternalPathToTempOps(self, index):
+        if index == -1:
+            return
+        
+        newInternalPath = str( self.internalDatasetNameComboBox.currentText() )
+        
+        # Save a copy of our settings
+        oldInfos = {}
+        for laneIndex, op in self.tempOps.items():
+            oldInfos[laneIndex] = copy.copy( op.Dataset.value )
+        
+        # Attempt to apply to all temp operators
+        currentLane = self.tempOps.keys()[0]
+        try:
+            for laneIndex, op in self.tempOps.items():
+                info = copy.copy( op.Dataset.value )
+                pathComponents = PathComponents(info.filePath)
+                if pathComponents.internalPath != newInternalPath:
+                    pathComponents.internalPath = newInternalPath
+                    info.filePath = pathComponents.totalPath()
+                    op.Dataset.setValue( info )
+            self._error_fields.discard('Internal Dataset Name')
+            return True
+        except Exception as e:
+            # Revert everything back to the previous state
+            for laneIndex, op in self.tempOps.items():
+                op.Dataset.setValue( oldInfos[laneIndex] )
+                if laneIndex == currentLane:
+                    # Only need to revert the lanes we actually changed.
+                    # Everything else wasn't touched
+                    break
+            
+            traceback.print_exc()
+            msg = "Could not set new internal path settings due to an exception:\n"
+            msg += "{}".format( e )
+            QMessageBox.warning(self, "Error", msg)
+            self._error_fields.add('Internal Dataset Name')
+            return False
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

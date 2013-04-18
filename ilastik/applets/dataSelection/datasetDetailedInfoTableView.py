@@ -89,5 +89,8 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
     
-
+    def rowCountChanged(self, oldCount, newCount):
+        super( DatasetDetailedInfoTableView, oldCount, newCount )
+        self.resizeColumnsToContents()
+        
 
