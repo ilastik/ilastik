@@ -53,6 +53,7 @@ class OpFilterLabels(Operator):
             a = a.copy()
         if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
             return a
+        
         component_sizes = numpy.bincount( a.ravel() )
         bad_sizes = component_sizes < min_size
         if max_size is not None:
