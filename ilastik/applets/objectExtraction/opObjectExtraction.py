@@ -458,7 +458,7 @@ class OpObjectExtraction(Operator):
     RawImage = InputSlot()
     BinaryImage = InputSlot()
     BackgroundLabels = InputSlot()
-    Features = InputSlot(rtype=List, stype=Opaque)
+    Features = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
