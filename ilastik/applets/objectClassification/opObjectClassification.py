@@ -468,6 +468,11 @@ class OpObjectTrain(Operator):
             labels = self.Labels[i]([]).wait()
 
             featstmp, col_names, labelstmp = make_feature_array(feats, labels)
+            if featstmp.size == 0:
+                # nothing to do if there are no labels in this image.
+                assert labelstmp.size == 0
+                continue
+
             rows, cols = replace_missing(featstmp)
             badfeats = warn_bad(rows, cols, col_names, i)
 
