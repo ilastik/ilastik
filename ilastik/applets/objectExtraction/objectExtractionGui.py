@@ -287,9 +287,9 @@ class ObjectExtractionGui(LayerViewerGui):
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):
-        self.mainOperator.Features.setValue({})
+        self.topLevelOperatorView.Features.setValue({})
         self._calculateFeatures()
 
-    def _initAppletDrawerUi(self):
-        super(ObjectExtractionGuiNonInteractive, self)._initAppletDrawerUi()
+    def initAppletDrawerUi(self):
+        super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
         self._drawer.selectFeaturesButton.setText('Calculate features')
