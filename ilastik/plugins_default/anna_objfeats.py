@@ -60,6 +60,10 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         return result
 
     def lapl(self, image, label_bboxes, axes):
+        if image.shape[axes.z] == 1:
+            image = np.squeeze(image, axis=axes.z)
+            label_bboxes = list(np.squeeze(a, axis=axes.z) for a in label_bboxes)
+
         rawbbox = image
         ccbboxobject, passed, ccbboxexcl = label_bboxes
 
