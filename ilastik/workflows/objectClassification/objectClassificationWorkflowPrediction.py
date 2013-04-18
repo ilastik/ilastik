@@ -39,8 +39,6 @@ class ObjectClassificationWorkflowPrediction(Workflow):
 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, "Threshold & Size Filter", "ThresholdTwoLevels" )
 
-        self.fillMissingSlicesApplet = FillMissingSlicesApplet(self, "Fill Missing Slices", "Fill Missing Slices")
-
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
@@ -48,7 +46,6 @@ class ObjectClassificationWorkflowPrediction(Workflow):
         self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.predictionSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
-        self._applets.append(self.fillMissingSlicesApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
@@ -70,21 +67,19 @@ class ObjectClassificationWorkflowPrediction(Workflow):
         opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPredictionData = self.predictionSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
-        opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect Raw data -> Fill missing slices
-        opFillMissingSlices.Input.connect(opRawData.Image)
         op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect(opFillMissingSlices.Output)
+        op5Raw.input.connect(opRawData.Image)
         
         op5Predictions = Op5ifyer( parent=self )
         op5Predictions.input.connect( opPredictionData.Image )
 
         # Connect Predictions -> Thresholding
         opTwoLevelThreshold.InputImage.connect( op5Predictions.output )
-        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
+        opTwoLevelThreshold.RawInput.connect( op5Raw.output ) # Used for display only
 
         
         op5Binary = Op5ifyer( parent=self )
