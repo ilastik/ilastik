@@ -72,6 +72,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
         spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
         sigma = map( self._sigmas.get, spatialkeys )
         
+        
         # Smooth the input data
         smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[...,0]) # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
@@ -91,6 +92,11 @@ class OpAnisotropicGaussianSmoothing(Operator):
             spatialRoi[0].pop( axiskeys.index('t') )
             spatialRoi[1].pop( axiskeys.index('t') )
 
+        if 'z' in inputSpatialShape.keys() and inputSpatialShape['z']==1:
+            #2D image, avoid kernel longer than line exception
+            spatialRoi[0].pop( axiskeys.index('z'))
+            spatialRoi[1].pop( axiskeys.index('z'))
+            
         
         spatialRoi[0].pop( axiskeys.index('c') )
         spatialRoi[1].pop( axiskeys.index('c') )
