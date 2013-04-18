@@ -94,8 +94,10 @@ class OpMetadataInjector(Operator):
             setattr(self.Output.meta, k, v)
 
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        result[...] = self.Input(roi.start, roi.stop).wait()
+        req = self.Input(roi.start, roi.stop)
+        req.writeInto(result)
+        req.wait()
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         # Forward to the output slot
