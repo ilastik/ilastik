@@ -38,26 +38,34 @@ def cleanup(d, hasZero, isGlobal, features):
 
 class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
+    '''
     global_features = set(["RegionAxes",
                            "RegionRadii",
                            "Coord<ArgMaxWeight>",
-                           "Coord<ArgMinWeight>"])
+                           "Coord<ArgMinWeight>", 
+                           "Count",
+                           "RegionCenter",
+                           "Coord<Minimum>",
+                           "Coord<Maximum>",
+                           "Central<PowerSum<2>>",
+                           "Central<PowerSum<3>>",
+                           "Central<PowerSum<4>>",
+                           "Coord<PowerSum<1>>"])
 
-    # these features should not be presented to the user, since they
-    # are not useful for prediction.
-    # FIXME: add others to this list.
-    excluded_features = set(['RegionCenter',
-                             'Coord<Minimum>',
-                             'Coord<Maximum>',
-                             ])
+    '''
+    local_features = set(["Mean", "Variance", "Skewness", \
+                          "Kurtosis", "Histogram", \
+                          "Covariance", "Minimum", "Maximum"])
+    suffix = " in neighborhood" #note the space in front, it's important
 
     def availableFeatures(self, image, labels):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
-        names = set(names).difference(self.excluded_features)
+        local = set(names).intersection(self.local_features)
+        names.extend([x+self.suffix for x in local])
         result = dict((n, {}) for n in names)
         for f, v in result.iteritems():
-            if not f in self.global_features:
+            if self.suffix in f:
                 v['margin'] = 0
         return result
 
@@ -69,18 +77,23 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
     def compute_global(self, image, labels, features, axes):
         features = features.keys()
-        features = list(set(features).intersection(self.global_features))
+        local = [x+self.suffix for x in self.local_features]
+        features = list(set(features).difference(set(local)))
         return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, binary_bbox, features, axes):
         """helper that deals with individual objects"""
         margin = max_margin({'': features})
         features = features.keys()
-        features = list(set(features).difference(self.global_features))
+        local = [x+self.suffix for x in self.local_features]
+        features = list(set(features).intersection(set(local)))
+        features = [x.split(' ')[0] for x in features]
         results = []
+        #FIXME: this is done globally as if all the features have the same margin
+        #we should group features by their margins
         passed, excl = make_bboxes(binary_bbox, margin)
-        for label, suffix in zip([binary_bbox, passed, excl],
-                                 ['', '_incl', '_excl']):
+        for label, suffix in zip([passed, excl],
+                                 ['_incl', '_excl']):
             result = self._do_4d(image, label, features, axes)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)

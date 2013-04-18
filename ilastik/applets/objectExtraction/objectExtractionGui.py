@@ -122,7 +122,6 @@ class FeatureSelectionDialog(QDialog):
 
 class ObjectExtractionGui(LayerViewerGui):
 
-
     def setupLayers(self):
         mainOperator = self.topLevelOperatorView
         layers = []

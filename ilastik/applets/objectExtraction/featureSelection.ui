@@ -80,14 +80,14 @@
   <widget class="QLabel" name="marginLabel">
    <property name="geometry">
     <rect>
-     <x>370</x>
+     <x>260</x>
      <y>10</y>
-     <width>81</width>
-     <height>16</height>
+     <width>191</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
-    <string>Margin pixels</string>
+    <string>Neighborhood size in pixels</string>
    </property>
   </widget>
  </widget>
