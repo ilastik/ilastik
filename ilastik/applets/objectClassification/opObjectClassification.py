@@ -402,12 +402,15 @@ def make_feature_array(feats, labels=None):
             labellist.append(labellist_tmp_combined)
 
     featMatrix = _concatenate(featlist, axis=0)
+
+    if featMatrix.size == 0:
+        raise Exception('no features are available')
+
     if labels is not None:
         labelsMatrix = _concatenate(labellist, axis=0)
-        assert labelsMatrix.shape[0]==featMatrix.shape[0]
+        assert labelsMatrix.shape[0] == featMatrix.shape[0]
         return featMatrix, col_names, labelsMatrix
     return featMatrix, col_names
-
 
 def replace_missing(a):
     rows, cols = numpy.where(numpy.isnan(a) + numpy.isinf(a))
