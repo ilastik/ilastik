@@ -32,6 +32,8 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             self._drawer.noiseWeightSpinBox.setValue(parameters['noiseweight'])
         if 'epgap' in parameters.keys():
             self._drawer.epGapSpinBox.setValue(parameters['epgap'])
+        if 'with_divisions' in parameters.keys():
+            self._drawer.withDivisionsBox.setChecked(parameters['with_divisions'])
         
         return self._drawer
     
@@ -47,6 +49,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         noiseweight = self._drawer.noiseWeightSpinBox.value()
         epGap = self._drawer.epGapSpinBox.value()
         n_neighbors = self._drawer.nNeighborsSpinBox.value()
+        with_div = self._drawer.withDivisionsBox.isChecked()
 
         from_t = self._drawer.from_time.value()
         to_t = self._drawer.to_time.value()
@@ -75,7 +78,8 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                         noiseweight = noiseweight,
                         opp=opp,                        
                         ep_gap=epGap,
-                        n_neighbors=n_neighbors)
+                        n_neighbors=n_neighbors,
+                        with_div=with_div)
         except Exception:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)            

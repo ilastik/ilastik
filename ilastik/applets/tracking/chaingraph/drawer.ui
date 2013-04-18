@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>742</height>
+    <height>769</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -205,6 +205,19 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="withDivisionsBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Check if the objects to be tracked are able to divide. For instance, this option should be checked for the tracking of proliferating cells.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Divisible Objects</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="TrackButton">
@@ -469,6 +482,7 @@
   <tabstop>noiseWeightSpinBox</tabstop>
   <tabstop>epGapSpinBox</tabstop>
   <tabstop>nNeighborsSpinBox</tabstop>
+  <tabstop>withDivisionsBox</tabstop>
   <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>
   <tabstop>to_time</tabstop>

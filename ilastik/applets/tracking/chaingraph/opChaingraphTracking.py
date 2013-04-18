@@ -28,7 +28,8 @@ class OpChaingraphTracking(OpTrackingBase):
             mdd = 0,
             min_angle = 0,
             ep_gap = 0.2,
-            n_neighbors = 2):
+            n_neighbors = 2,
+            with_div = True):
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
@@ -40,7 +41,8 @@ class OpChaingraphTracking(OpTrackingBase):
         parameters['noiserate'] = noiserate
         parameters['noiseweight'] = noiseweight
         parameters['epgap'] = ep_gap
-        parameters['nneighbors'] = n_neighbors        
+        parameters['nneighbors'] = n_neighbors   
+        parameters['with_divisions'] = with_div     
         self.Parameters.setValue(parameters)
         
         det = noiseweight*(-1)*math.log(1-noiserate)
@@ -64,8 +66,11 @@ class OpChaingraphTracking(OpTrackingBase):
                                 mdd,
                                 min_angle,
                                 ep_gap,
-                                n_neighbors)
+                                n_neighbors
+                                )
 
+        tracker.set_with_divisions(with_div)
+                
         try:
             self.events = tracker(ts)
         except Exception as e:
