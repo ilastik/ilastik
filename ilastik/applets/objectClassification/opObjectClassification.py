@@ -41,7 +41,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
-    SegmentationImagesOut = OutputSlot(level=1) #input connected componen
+    SegmentationImagesOut = OutputSlot(level=1) #input connected components
+    BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List)
+    BadObjectImages = OutputSlot(level=1)
 
     # TODO: not actually used
     Eraser = OutputSlot()
@@ -62,6 +64,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
+        self.opBadObjectsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
 
         self.classifier_cache = OpValueCache(parent=self)
 
@@ -91,6 +94,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        
+        self.opBadObjectsToImage.inputs["Image"].connect(self.SegmentationImages)
+        self.opBadObjectsToImage.inputs["ObjectMap"].connect(self.opPredict.BadObjects)
+        self.opBadObjectsToImage.inputs["Features"].connect(self.ObjectFeatures)
 
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
@@ -103,7 +110,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
         self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
-        #self.Classifier.connect(self.opTrain.Classifier)
+        self.BadObjects.connect(self.opPredict.BadObjects)
+        self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
+        
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
@@ -537,6 +546,7 @@ class OpObjectPredict(Operator):
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
     ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
+    BadObjects = OutputSlot(stype=Opaque, rtype=List)
 
     #SegmentationThreshold = 0.5
 
@@ -550,6 +560,11 @@ class OpObjectPredict(Operator):
         self.Probabilities.meta.dtype = object
         self.Probabilities.meta.mapping_dtype = numpy.float32
         self.Probabilities.meta.axistags = None
+        
+        self.BadObjects.meta.shape = self.Features.meta.shape
+        self.BadObjects.meta.dtype = object
+        self.BadObjects.meta.mapping_dtype = numpy.uint8
+        self.BadObjects.meta.axistags = None
 
         if self.LabelsCount.ready():
             nlabels = self.LabelsCount[:].wait()
@@ -561,12 +576,12 @@ class OpObjectPredict(Operator):
                 oslot.meta.axistags = None
                 oslot.meta.mapping_dtype = numpy.float32
 
-
         self.lock = RequestLock()
         self.prob_cache = dict()
+        self.bad_objects = dict()
 
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels
+        assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels or slot==self.BadObjects
 
         times = roi._l
         if len(times) == 0:
@@ -592,6 +607,8 @@ class OpObjectPredict(Operator):
                 tmpfeats = self.Features([t]).wait()
                 ftmatrix, col_names = make_feature_array(tmpfeats)
                 rows, cols = replace_missing(ftmatrix)
+                self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
+                self.bad_objects[t][rows] = 1
                 warn_bad(rows, cols, col_names, t)
                 feats[t] = ftmatrix
                 prob_predictions[t] = [0] * len(forests)
@@ -645,6 +662,9 @@ class OpObjectPredict(Operator):
             elif slot == self.ProbabilityChannels:
                 prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
                 return prob_single_channel
+            
+            elif slot == self.BadObjects:
+                return { t : self.bad_objects[t] for t in times }
 
             else:
                 assert False, "Unknown input slot"

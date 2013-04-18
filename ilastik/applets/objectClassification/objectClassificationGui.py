@@ -280,6 +280,16 @@ class ObjectClassificationGui(LabelingGui):
             # put first, so that it is visible after hitting "live
             # predict".
             layers.insert(0, self.predictlayer)
+            
+        badObjectsSlot = self.op.BadObjectImages
+        if badObjectsSlot.ready():
+            ct_black = [0, QColor(Qt.black).rgba()]
+            self.badSrc = LazyflowSource(badObjectsSlot)
+            self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
+            self.badLayer.name = "Ambiguous objects"
+            self.badLayer.visible = False
+            layers.append(self.badLayer)
+            
         if rawSlot.ready():
             self.rawimagesrc = LazyflowSource(rawSlot)
             layer = self.createStandardLayerFromSlot(rawSlot)
@@ -289,7 +299,7 @@ class ObjectClassificationGui(LabelingGui):
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
         # __init__(), but it does not take effect there.
-        self.selectLabel(0)
+        #self.selectLabel(0)
 
         return layers
 
