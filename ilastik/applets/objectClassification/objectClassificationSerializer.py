@@ -2,7 +2,7 @@ import warnings
 
 from ilastik.applets.base.appletSerializer import \
   AppletSerializer, SerialSlot, SerialDictSlot, \
-  SerialClassifierSlot
+  SerialClassifierSlot, SerialListSlot
 
 
 class ObjectClassificationSerializer(AppletSerializer):
@@ -11,7 +11,11 @@ class ObjectClassificationSerializer(AppletSerializer):
 
     def __init__(self, topGroupName, operator):
         warnings.warn("FIXME: Not serializing/deserializing object predictions")        
-        serialSlots = [SerialDictSlot(operator.LabelInputs, transform=int),
+        serialSlots = [SerialListSlot(operator.LabelNames,
+                                transform=str),
+                       SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+                       SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                       SerialDictSlot(operator.LabelInputs, transform=int),
                        SerialClassifierSlot(operator.Classifier,
                                             operator.classifier_cache,
                                             name="ClassifierForests",

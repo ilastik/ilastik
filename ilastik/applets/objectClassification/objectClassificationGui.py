@@ -28,6 +28,13 @@ from volumina.interpreter import ClickInterpreter
 
 from guiMessage import LabelsChangedDialog
 
+def _listReplace(old, new):
+    if len(old) > len(new):
+        return new + old[len(new):]
+    else:
+        return new
+
+
 class ObjectClassificationGui(LabelingGui):
 
     def centralWidget(self):
@@ -101,6 +108,72 @@ class ObjectClassificationGui(LabelingGui):
         # separate object.
         self.drawer = uic.loadUi(localDir+"/drawer.ui")
 
+    ### Function dealing with label name and color consistency
+    def _getNext(self, slot, parentFun, transform=None):
+        numLabels = self.labelListData.rowCount()
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
+        else:
+            return parentFun()
+
+    def _onLabelChanged(self, parentFun, mapf, slot):
+        parentFun()
+        new = map(mapf, self.labelListData)
+        old = slot.value
+        slot.setValue(_listReplace(old, new))
+
+    def getNextLabelName(self):
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(ObjectClassificationGui, self).getNextLabelName)
+
+    def getNextLabelColor(self):
+        return self._getNext(
+            self.topLevelOperatorView.LabelColors,
+            super(ObjectClassificationGui, self).getNextLabelColor,
+            lambda x: QColor(*x)
+        )
+
+    def getNextPmapColor(self):
+        return self._getNext(
+            self.topLevelOperatorView.PmapColors,
+            super(ObjectClassificationGui, self).getNextPmapColor,
+            lambda x: QColor(*x)
+        )
+
+    def onLabelNameChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onLabelNameChanged,
+                             lambda l: l.name,
+                             self.topLevelOperatorView.LabelNames)
+
+    def onLabelColorChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onLabelColorChanged,
+                             lambda l: (l.brushColor().red(),
+                                        l.brushColor().green(),
+                                        l.brushColor().blue()),
+                             self.topLevelOperatorView.LabelColors)
+
+
+    def onPmapColorChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onPmapColorChanged,
+                             lambda l: (l.pmapColor().red(),
+                                        l.pmapColor().green(),
+                                        l.pmapColor().blue()),
+                             self.topLevelOperatorView.PmapColors)
+
+    def _onLabelRemoved(self, parent, start, end):
+        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+        op = self.topLevelOperatorView
+        op.removeLabel(start)
+        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
+            value = slot.value
+            value.pop(start)
+            slot.setValue(value)
+        
+        
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.
@@ -301,18 +374,21 @@ class ObjectClassificationGui(LabelingGui):
                 label = int(labels[obj])
             else:
                 label = "none"
-
-            preds = self.op.Predictions([t]).wait()[t]
-            if len(preds) < obj:
+            
+            if self.op.Predictions.ready():
+                preds = self.op.Predictions([t]).wait()[t]
+                if len(preds) >= obj:
+                    pred = int(preds[obj])
+            else:
                 pred = 'none'
-            else:
-                pred = int(preds[obj])
 
-            probs = self.op.Probabilities([t]).wait()[t]
-            if len(probs) < obj:
-                prob = 'none'
+
+            if self.op.Probabilities.ready():
+                probs = self.op.Probabilities([t]).wait()[t]
+                if len(probs) >= obj:
+                    prob = probs[obj]
             else:
-                prob = probs[obj]
+                prob = 'none'
 
             numpy.set_printoptions(precision=4)
 

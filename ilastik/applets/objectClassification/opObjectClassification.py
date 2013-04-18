@@ -45,6 +45,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     # TODO: not actually used
     Eraser = OutputSlot()
     DeleteLabel = OutputSlot()
+    
+    # GUI-only (not part of the pipeline, but saved to the project)
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
+    PmapColors = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
@@ -85,6 +90,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
+
+        self.LabelNames.setValue( [] )
+        self.LabelColors.setValue( [] )
+        self.PmapColors.setValue( [] )
 
         # connect outputs
         self.NumLabels.connect( self.opMaxLabel.Output )
@@ -129,6 +138,19 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             #initialize, because volumina needs to reshape to use it as a datasink
             labels[t] = numpy.zeros((2,))
         self.LabelInputs[imageIndex].setValue(labels)
+
+    def removeLabel(self, label):
+        #remove this label from the inputs
+        for islot, label_slot in enumerate(self.LabelInputs):
+            cur_labels = label_slot.value
+            nTimes = self.RawImages[islot].meta.shape[0]
+            nLabels = len(self.LabelNames.value)
+            for t in range(nTimes):
+                label_values = cur_labels[t]
+                label_values[label_values==label+1] = 0
+                for nextLabel in range(label, nLabels):
+                    label_values[label_values==nextLabel+1]=nextLabel
+                
 
     def setupOutputs(self):
         pass
