@@ -23,13 +23,13 @@ class ObjectClassificationWorkflowBinary(Workflow):
                                                        "Input Raw",
                                                        batchDataGui=False,
                                                        force5d=True)
-        
+
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input: Segmentation",
                                                        "Input Segmentation",
                                                        batchDataGui=False,
                                                        force5d=True)
-        
+
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
@@ -66,3 +66,4 @@ class ObjectClassificationWorkflowBinary(Workflow):
         # connect extraction -> classification
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
+        opObjClassification.SelectedFeatures.connect(opObjExtraction.SelectedFeatures)

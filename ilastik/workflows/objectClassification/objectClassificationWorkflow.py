@@ -103,3 +103,4 @@ class ObjectClassificationWorkflow(Workflow):
         # connect object features
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
+        opObjClassification.SelectedFeatures.connect(opObjExtraction.SelectedFeatures)

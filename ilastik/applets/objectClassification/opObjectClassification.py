@@ -27,6 +27,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1) #connected components
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
 

@@ -464,6 +464,9 @@ class OpObjectExtraction(Operator):
     ObjectCenterImage = OutputSlot()
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
+    # pass through the 'Features' input slot
+    SelectedFeatures = OutputSlot(rtype=List, stype=Opaque)
+
     BlockwiseRegionFeatures = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
                                            # has rtype=List, indexed by t.
                                            # For other workflows, output has rtype=ArrayLike, indexed by (t)
@@ -520,6 +523,7 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
         self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
+        self.SelectedFeatures.connect(self.Features)
 
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()

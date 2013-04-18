@@ -95,8 +95,13 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
 
+        self.op.ObjectFeatures.notifyDirty(bind(self.checkEnablePredictions))
+        self.op.NumLabels.notifyDirty(bind(self.checkEnablePredictions))
 
-        self.op.NumLabels.notifyDirty(bind(self.handleLabelSelectionChange))
+        self.labelingDrawerUi.checkInteractive.setEnabled(False)
+        self.labelingDrawerUi.checkShowPredictions.setEnabled(False)
+        self.checkEnablePredictions()
+
 
     def initAppletDrawerUi(self):
         """
@@ -172,8 +177,8 @@ class ObjectClassificationGui(LabelingGui):
             value = slot.value
             value.pop(start)
             slot.setValue(value)
-        
-        
+
+
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.
@@ -188,8 +193,8 @@ class ObjectClassificationGui(LabelingGui):
             return (None, None)
         else:
             self._colorTable16[15] = QColor(Qt.black).rgba() #for the objects with NaNs in features
-            
-            
+
+
             labelsrc = LazyflowSinkSource(labelOutput,
                                           labelInput)
             labellayer = ColortableLayer(labelsrc,
@@ -289,11 +294,20 @@ class ObjectClassificationGui(LabelingGui):
         return layers
 
     @pyqtSlot()
-    def handleLabelSelectionChange(self):
-        enabled = False
+    def checkEnablePredictions(self):
+        enabled = True
         if self.op.NumLabels.ready():
-            enabled = True
-            enabled &= self.op.NumLabels.value >= 2
+            if self.op.NumLabels.value < 2:
+                enabled = False
+        else:
+            enabled = False
+
+        if self.op.SelectedFeatures.ready():
+            featnames = self.op.SelectedFeatures([]).wait()
+            if len(featnames) == 0:
+                enabled = False
+        else:
+            enabled = False
 
         self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
@@ -353,7 +367,7 @@ class ObjectClassificationGui(LabelingGui):
 
         operatorAxisOrder = self.topLevelOperatorView.SegmentationImagesOut.meta.getAxisKeys()
         assert operatorAxisOrder == list('txyzc'), \
-            "Need to update onClick() if the operator no longer expects volumnia axis order.  Operator wants: {}".format( operatorAxisOrder )
+            "Need to update onClick() if the operator no longer expects volumina axis order.  Operator wants: {}".format( operatorAxisOrder )
         self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5d, label)
 
 
@@ -374,7 +388,7 @@ class ObjectClassificationGui(LabelingGui):
                 label = int(labels[obj])
             else:
                 label = "none"
-            
+
             if self.op.Predictions.ready():
                 preds = self.op.Predictions([t]).wait()[t]
                 if len(preds) >= obj:
@@ -409,25 +423,24 @@ class ObjectClassificationGui(LabelingGui):
                 ft = numpy.asarray(value.squeeze())[obj]
                 print ft
             print "------------------------------------------------------------"
-            
+
     def setVisible(self, visible):
         if visible:
             temp = self.op.triggerTransferLabels(self.op.current_view_index())
         else:
             temp = None
-            
+
         super(ObjectClassificationGui, self).setVisible(visible)
 
         if temp is not None:
             new_labels, old_labels_lost, new_labels_lost = temp
             # labels are lost, create a pop-up window
             pop=LabelsChangedDialog(self)
-            
+
             pop.labelsLost = {}
             for k in old_labels_lost.keys():
                 pop.labelsLost[k] = old_labels_lost[k]
             for k in new_labels_lost.keys():
                 pop.labelsLost[k] = new_labels_lost[k]
-                
+
             pop.showDialog(blocking=False)
-        
