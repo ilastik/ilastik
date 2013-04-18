@@ -82,7 +82,7 @@
      <item>
       <widget class="QToolButton" name="SaveButton">
        <property name="toolTip">
-        <string>delete layer</string>
+        <string>save layer</string>
        </property>
        <property name="text">
         <string>Remove</string>
