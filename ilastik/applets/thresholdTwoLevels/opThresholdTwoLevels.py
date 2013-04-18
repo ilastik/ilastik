@@ -57,12 +57,16 @@ class OpAnisotropicGaussianSmoothing(Operator):
     def execute(self, slot, subindex, roi, result):
         assert all(roi.stop <= self.Input.meta.shape), "Requested roi {} is too large for this input image of shape {}.".format( roi, self.Input.meta.shape )
         # Determine how much input data we'll need, and where the result will be relative to that input roi
-        inputRoi, computeRoi = self._getInputComputeRois(roi)
-
-        # Obtain the input data
+        inputRoi, computeRoi = self._getInputComputeRois(roi)        
+        # Obtain the input data 
         with Timer() as resultTimer:
             data = self.Input( *inputRoi ).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format( resultTimer.seconds(), inputRoi ))
+        
+        xIndex = self.Input.meta.axistags.index('x')
+        yIndex = self.Input.meta.axistags.index('y')
+        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
+        cIndex = self.Input.meta.axistags.index('c') if self.Input.meta.axistags.index('c')<len(self.Input.meta.shape) else None
         
         # Must be float32
         if data.dtype != numpy.float32:
@@ -70,11 +74,19 @@ class OpAnisotropicGaussianSmoothing(Operator):
         
         axiskeys = self.Input.meta.getAxisKeys()
         spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        
+        
+        
+        reskey = [slice(None, None, None)]*len(self.Input.meta.shape)
+        reskey[cIndex]=0
+        if zIndex and self.Input.meta.shape[zIndex]==1:            
+            data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
+            reskey[zIndex]=0
+            spatialkeys = filter( lambda k: k in 'xy', axiskeys )
+                
         sigma = map( self._sigmas.get, spatialkeys )
-        
-        
         # Smooth the input data
-        smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[...,0]) # FIXME: Assumes channel is last axis
+        smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[tuple(reskey)]) # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
         assert tuple(smoothed.shape) == expectedShape, "Smoothed data shape {} didn't match expected shape {}".format( smoothed.shape, roi.stop - roi.start )
         return result
@@ -85,21 +97,27 @@ class OpAnisotropicGaussianSmoothing(Operator):
         sigma = map( self._sigmas.get, spatialkeys )
         inputSpatialShape = self.Input.meta.getTaggedShape()
         spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
+        tIndex = None
+        cIndex = None
+        zIndex = None
         if 'c' in inputSpatialShape:
             del inputSpatialShape['c']
+            cIndex = axiskeys.index('c')
         if 't' in inputSpatialShape.keys():
             assert inputSpatialShape['t'] == 1
-            spatialRoi[0].pop( axiskeys.index('t') )
-            spatialRoi[1].pop( axiskeys.index('t') )
+            tIndex = axiskeys.index('t')
 
         if 'z' in inputSpatialShape.keys() and inputSpatialShape['z']==1:
             #2D image, avoid kernel longer than line exception
-            spatialRoi[0].pop( axiskeys.index('z'))
-            spatialRoi[1].pop( axiskeys.index('z'))
+            del inputSpatialShape['z']
+            zIndex = axiskeys.index('z')
             
-        
-        spatialRoi[0].pop( axiskeys.index('c') )
-        spatialRoi[1].pop( axiskeys.index('c') )
+        indices = [tIndex, cIndex, zIndex]
+        indices = sorted(indices, reverse=True)
+        for ind in indices:
+            if ind:
+                spatialRoi[0].pop(ind)
+                spatialRoi[1].pop(ind)
         
         inputSpatialRoi = extendSlice(spatialRoi[0], spatialRoi[1], inputSpatialShape.values(), sigma, window=2.0)
         
@@ -113,8 +131,10 @@ class OpAnisotropicGaussianSmoothing(Operator):
                        tuple(map(int, computeRoi[1])) )
         
         inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
-        inputRoi[0].insert( axiskeys.index('c'), 0 )
-        inputRoi[1].insert( axiskeys.index('c'), 1 )
+        for ind in reversed(indices):
+            if ind:
+                inputRoi[0].insert( ind, 0 )
+                inputRoi[1].insert( ind, 1 )
 
         return inputRoi, computeRoi
         
