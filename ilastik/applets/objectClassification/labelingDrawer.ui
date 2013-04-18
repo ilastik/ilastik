@@ -108,7 +108,7 @@
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,1,0">
+      <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,1,0,0,0">
        <property name="spacing">
         <number>2</number>
        </property>
@@ -151,6 +151,26 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="brushSizeCaption">
+         <property name="text">
+          <string>brush size:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="brushSizeComboBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
