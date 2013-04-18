@@ -77,7 +77,7 @@ class DataSelectionGui(QWidget):
         return []
 
     def viewerControlWidget(self):
-        return QWidget() # No viewer controls for this applet.
+        return self._viewerControlWidgetStack
 
     def setImageIndex(self, imageIndex):
         pass # This applet doesn't care which image is currently selected.  It always lists all inputs.
@@ -120,6 +120,8 @@ class DataSelectionGui(QWidget):
 
             self.initAppletDrawerUic()
             self.initCentralUic()
+            
+            self._viewerControlWidgetStack = QStackedWidget(self)
 
             def handleNewDataset( multislot, index, finalSize):
                 # Subtlety here: This if statement is needed due to the fact that
@@ -784,6 +786,8 @@ class DataSelectionGui(QWidget):
 
             self.volumeEditors[imageSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
+            self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
         self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
+        self._viewerControlWidgetStack.setCurrentWidget( self.volumeEditors[imageSlot].viewerControlWidget() )
