@@ -16,7 +16,7 @@ class ObjectExtractionApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return []
+        return ['Features']
 
     @property
     def singleLaneGuiClass(self):

@@ -81,7 +81,6 @@ class FeatureSelectionDialog(QDialog):
                     if name in self.selectedFeatures[pluginName]:
                         item.setCheckState(0, Qt.Checked)
 
-
     def set_margin(self):
         margin = max_margin(self.selectedFeatures, default=-1)
         if margin == -1:
