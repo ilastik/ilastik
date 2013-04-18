@@ -26,7 +26,7 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
-from guiMessage import LabelsChangedDialog
+from guiMessage import LabelsChangedDialog, GuiDialog
 
 def _listReplace(old, new):
     if len(old) > len(new):
