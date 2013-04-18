@@ -38,6 +38,7 @@ from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
+from datasetInfoEditorWidget import DatasetInfoEditorWidget
 
 from dataDetailViewerWidget import DataDetailViewerWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
@@ -176,6 +177,7 @@ class DataSelectionGui(QWidget):
             # Context menu            
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
             detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
+            detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
             
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
@@ -449,6 +451,10 @@ class DataSelectionGui(QWidget):
                 last_valid = laneIndex
                 break
         self.topLevelOperator.DatasetGroup.resize( last_valid+1 )
+
+    def editDatasetInfo(self, roleIndex, laneIndexes):
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
+        editorDlg.exec_()
 
 #    def importStackFromGlobString(self, globString, roleIndex):
 #        """

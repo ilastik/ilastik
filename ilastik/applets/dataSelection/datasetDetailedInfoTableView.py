@@ -36,11 +36,13 @@ class DatasetDetailedInfoTableView(QTableView):
 #            self.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
 
         self.verticalHeader().hide()
+        
+        self.setSelectionBehavior( QTableView.SelectRows )
 
     def selectionChanged(self, selected, deselected):
         super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
-        selectedIndexes = selected.indexes()
+        selectedIndexes = self.selectedIndexes()
         if len(selectedIndexes) == 0:
             #self.update()
             self._selectedLanes = []
@@ -62,19 +64,22 @@ class DatasetDetailedInfoTableView(QTableView):
         if col < self.model().columnCount() and row < self.model().rowCount():
             menu = QMenu(parent=self)
             editSharedPropertiesAction = QAction( "Edit shared properties...", menu )
+            editPropertiesAction = QAction( "Edit properties...", menu )
+            replaceWithFileAction = QAction( "Replace with file...", menu )
+            replaceWithStackAction = QAction( "Replace with stack...", menu )
+
             if row in self._selectedLanes and len(self._selectedLanes) > 1:
                 # Show the multi-lane menu, which allows for editing but not replacing
                 menu.addAction( editSharedPropertiesAction )
             else:
-                editPropertiesAction = QAction( "Edit properties...", menu )
-                replaceWithFileAction = QAction( "Replace with file...", menu )
-                replaceWithStackAction = QAction( "Replace with stack...", menu )
                 menu.addAction( editPropertiesAction )
                 menu.addAction( replaceWithFileAction )
                 menu.addAction( replaceWithStackAction )
     
             globalPos = self.mapToGlobal( pos )
             selection = menu.exec_( globalPos )
+            if selection is None:
+                return
             if selection is editSharedPropertiesAction:
                 self.editRequested.emit( self._selectedLanes )
             if selection is editPropertiesAction:

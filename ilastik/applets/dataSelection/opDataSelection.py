@@ -1,5 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
+from lazyflow.operators import OpMetadataInjector
 
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.operators import Op5ifyer
@@ -21,6 +22,7 @@ class DatasetInfo(object):
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
         self.axisorder = None
+        self.drange = None
 
     @property
     def filePath(self):
@@ -101,7 +103,7 @@ class OpDataSelection(Operator):
             op5.input.connect(providerSlot)
             providerSlot = op5.output
             self._opReaders.append(op5)
-
+        
         # If there is no channel axis, use an Op5ifyer to append one.
         if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
             op5 = Op5ifyer( parent=self )
@@ -110,6 +112,17 @@ class OpDataSelection(Operator):
             op5.input.connect( providerSlot )
             providerSlot = op5.output
             self._opReaders.append( op5 )
+
+        # Inject metadata if the dataset info specified any.
+        if datasetInfo.drange is not None:
+            metadata = {}
+            metadata['drange'] = datasetInfo.drange
+            # TODO: Update axiskeys with channel description...
+            opMetadataInjector = OpMetadataInjector( parent=self )
+            opMetadataInjector.Input.connect( providerSlot )
+            opMetadataInjector.Metadata.setValue( metadata )
+            providerSlot = opMetadataInjector.Output
+            self._opReaders.append( opMetadataInjector )
         
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)
