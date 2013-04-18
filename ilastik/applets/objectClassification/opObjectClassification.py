@@ -404,9 +404,6 @@ def make_feature_array(feats, labels=None):
 
     featMatrix = _concatenate(featlist, axis=0)
 
-    if featMatrix.size == 0:
-        raise Exception('no features are available')
-
     if labels is not None:
         labelsMatrix = _concatenate(labellist, axis=0)
         assert labelsMatrix.shape[0] == featMatrix.shape[0]
@@ -489,7 +486,7 @@ class OpObjectTrain(Operator):
 
         print "training on matrix of shape {}".format(featMatrix.shape)
 
-        if len(featMatrix) == 0 or len(labelsMatrix) == 0:
+        if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
         oob = [0] * self.ForestCount.value
