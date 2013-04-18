@@ -227,58 +227,96 @@ class LayerViewerGui(QWidget):
                 # Even in the case of integer data, which has more than 255 possible values,
                 # (like uint16), it seems reasonable to use this setting as default
                 return 'autoPercentiles'
-
-        # Examine channel dimension to determine Grayscale vs. RGB
+        
         shape = slot.meta.shape
         normalize = getRange(slot.meta)
+        
         try:
             channelAxisIndex = slot.meta.axistags.index('c')
             #assert channelAxisIndex < len(slot.meta.axistags), \
             #    "slot %s has shape = %r, axistags = %r, but no channel dimension" \
             #    % (slot.name, slot.meta.shape, slot.meta.axistags)
             numChannels = shape[channelAxisIndex]
+            axisinfo = slot.meta.axistags["c"].description
         except:
             numChannels = 1
-
-        if numChannels == 4:
-            lastChannelIsAlpha = True
+            axisinfo = "" # == no info on channels given
+        
+        rindex = None
+        bindex = None
+        gindex = None
+        aindex = None
+        
+        if axisinfo =="" or axisinfo == "default":
             
-        if lastChannelIsAlpha:
-            assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
+            # Examine channel dimension to determine Grayscale vs. RGB
 
-        if numChannels == 1 or (numChannels > 4):
-            assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
+            if numChannels == 4:
+                lastChannelIsAlpha = True
+                
+            if lastChannelIsAlpha:
+                assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
+
+            if numChannels == 1 or (numChannels > 4):
+                assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
+                source = LazyflowSource(slot)
+                layer = GrayscaleLayer(source)
+                layer.numberOfChannels = numChannels
+                return layer
+
+            assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
+                "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
+            
+            rindex = 0
+            gindex = 1
+            if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
+                bindex = 2
+            if lastChannelIsAlpha:
+                aindex = numChannels-1
+        
+        elif axisinfo == "grayscale":
             source = LazyflowSource(slot)
             layer = GrayscaleLayer(source)
             layer.numberOfChannels = numChannels
             return layer
+        
+        elif axisinfo == "rgba":
+            rindex = 0
+            if numChannels>=2:
+                gindex = 1
+            if numChannels>=3:
+                bindex = 2
+            if numChannels>=4:
+                aindex = numChannels-1
+        else:
+            raise RuntimeError("unknown channel display mode")
 
-        assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
-            "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
-        redProvider = OpSingleChannelSelector(graph=slot.graph)
-        redProvider.Input.connect(slot)
-        redProvider.Index.setValue( 0 )
-        redSource = LazyflowSource( redProvider.Output )
-
-        greenProvider = OpSingleChannelSelector(graph=slot.graph)
-        greenProvider.Input.connect(slot)
-        greenProvider.Index.setValue( 1 )
-        greenSource = LazyflowSource( greenProvider.Output )
-
-        blueNormSource = None
+        redSource = None
+        if rindex is not None:
+            redProvider = OpSingleChannelSelector(graph=slot.graph)
+            redProvider.Input.connect(slot)
+            redProvider.Index.setValue( rindex )
+            redSource = LazyflowSource( redProvider.Output )
+        
+        greenSource = None
+        if gindex is not None:
+            greenProvider = OpSingleChannelSelector(graph=slot.graph)
+            greenProvider.Input.connect(slot)
+            greenProvider.Index.setValue( gindex )
+            greenSource = LazyflowSource( greenProvider.Output )
+        
         blueSource = None
-        if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
-            blueProvider = OpSingleChannelSelector(graph=slot.graph)
-            blueProvider.Input.connect(slot)
-            blueProvider.Index.setValue( 2 )
-            blueSource = LazyflowSource( blueProvider.Output )
+        if bindex is not None:
+                blueProvider = OpSingleChannelSelector(graph=slot.graph)
+                blueProvider.Input.connect(slot)
+                blueProvider.Index.setValue( bindex )
+                blueSource = LazyflowSource( blueProvider.Output )
 
-        alphaNormSource = None
         alphaSource = None
-        if lastChannelIsAlpha:
+        if aindex is not None:
             alphaProvider = OpSingleChannelSelector(graph=slot.graph)
             alphaProvider.Input.connect(slot)
-            alphaProvider.Index.setValue( numChannels-1 )
+            alphaProvider.Index.setValue( aindex )
             alphaSource = LazyflowSource( alphaProvider.Output )
 
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource )
