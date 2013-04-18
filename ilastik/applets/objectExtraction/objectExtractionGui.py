@@ -72,9 +72,15 @@ class FeatureSelectionDialog(QDialog):
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+
+                # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
-                if pluginName not in self.selectedFeatures:
-                    item.setCheckState(0, Qt.Unchecked)
+                item.setCheckState(0, Qt.Unchecked)
+
+                if pluginName in self.selectedFeatures:
+                    if name in self.selectedFeatures[pluginName]:
+                        item.setCheckState(0, Qt.Checked)
+
 
     def set_margin(self):
         margin = max_margin(self.selectedFeatures, default=-1)
@@ -117,11 +123,11 @@ class FeatureSelectionDialog(QDialog):
 
 class ObjectExtractionGui(LayerViewerGui):
 
-    
+
     def setupLayers(self):
         mainOperator = self.topLevelOperatorView
         layers = []
-        
+
         if mainOperator.ObjectCenterImage.ready():
             self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
             #layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
@@ -130,7 +136,7 @@ class ObjectExtractionGui(LayerViewerGui):
             layer.name = "Object Centers"
             layer.visible = False
             layers.append(layer)
-        
+
         ct = colortables.create_default_16bit()
         if mainOperator.LabelImage.ready():
             self.objectssrc = LazyflowSource(mainOperator.LabelImage)
@@ -141,7 +147,7 @@ class ObjectExtractionGui(LayerViewerGui):
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
-        
+
         # white foreground on transparent background
         binct = [QColor(0, 0, 0, 0).rgba(), QColor(255, 255, 255, 255).rgba()]
         if mainOperator.BinaryImage.ready():
@@ -165,9 +171,9 @@ class ObjectExtractionGui(LayerViewerGui):
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
-        
+
         return layers
-        
+
     def _onMetaChanged(self, slot):
         #FiXME: why do we need that?
         if slot is self.topLevelOperatorView.BinaryImage:
