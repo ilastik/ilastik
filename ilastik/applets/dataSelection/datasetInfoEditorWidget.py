@@ -477,12 +477,16 @@ class DatasetInfoEditorWidget(QDialog):
     def _initStorageCombo(self):
         
         # If there's only one dataset, show the path in the combo
+        showpaths = False
         if len( self._laneIndexes ) == 1:
             op = self.tempOps.values()[0]
             info = op.Dataset.value
             cwd = op.WorkingDirectory.value
             filePath = info.filePath
             absPath, relPath = getPathVariants(filePath, cwd)
+            showpaths = not info.fromstack
+
+        if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link: " + absPath, userData=StorageLocation.AbsoluteLink )
             self.storageComboBox.addItem( "Relative Link: " + relPath, userData=StorageLocation.RelativeLink )
@@ -523,6 +527,23 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             comboIndex = self.storageComboBox.findData( QVariant(sharedStorageSetting) )
             self.storageComboBox.setCurrentIndex( comboIndex )
+
+        disableLinks = False
+        for laneIndex in self._laneIndexes:
+            op = self.tempOps[laneIndex]
+            info = op.Dataset.value
+            
+            disableLinks |= info.fromstack
+        
+        if disableLinks:
+            # If any of the files were loaded from a stack, then you can't refer to them via a link.
+            absIndex = self.storageComboBox.findData( QVariant(StorageLocation.AbsoluteLink) )
+            relIndex = self.storageComboBox.findData( QVariant(StorageLocation.RelativeLink) )
+
+            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
+            model = self.storageComboBox.model()
+            model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
+            model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
     def _applyStorageComboToTempOps(self, index):
         if index == -1:

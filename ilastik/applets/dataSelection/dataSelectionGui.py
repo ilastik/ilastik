@@ -393,6 +393,7 @@ class DataSelectionGui(QWidget):
 
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        info.fromstack = True
 
         if laneIndex is None:
             laneIndex = self._findFirstEmptyLane(roleIndex)

@@ -23,6 +23,7 @@ class DatasetInfo(object):
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
         self.axisorder = None
         self.drange = None
+        self.fromstack = False
 
     @property
     def filePath(self):
