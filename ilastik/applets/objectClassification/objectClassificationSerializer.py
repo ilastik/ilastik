@@ -20,7 +20,7 @@ class ObjectClassificationSerializer(AppletSerializer):
                                             operator.classifier_cache,
                                             name="ClassifierForests",
                                             subname="Forest{:04d}"),
-                       SerialDictSlot(operator.Probabilities,
+                       SerialDictSlot(operator.CachedProbabilities,
                                       operator.InputProbabilities,
                                       transform=int),
                        ]

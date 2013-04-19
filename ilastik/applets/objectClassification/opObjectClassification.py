@@ -42,6 +42,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
     Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
+
+    # pulls whatever is in the cache, but does not try to compute more.
+    CachedProbabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
+
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
@@ -118,6 +122,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
+        self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
         self.PredictionImages.connect(self.opPredictionsToImage.Output)
         self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
         self.BadObjects.connect(self.opPredict.BadObjects)
@@ -574,6 +579,7 @@ class OpObjectPredict(Operator):
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
+    CachedProbabilities = OutputSlot(stype=Opaque, rtype=List)
     ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
     BadObjects = OutputSlot(stype=Opaque, rtype=List)
 
@@ -610,12 +616,19 @@ class OpObjectPredict(Operator):
         self.bad_objects = dict()
         
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels or slot==self.BadObjects
+        assert slot in [self.Predictions,
+                        self.Probabilities,
+                        self.CachedProbabilities,
+                        self.ProbabilityChannels,
+                        self.BadObjects]
 
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
             times = range(self.Predictions.meta.shape[0])
+
+        if slot is self.CachedProbabilities:
+            return {t: self.prob_cache[t] for t in times if t in self.prob_cache}
 
         forests=self.inputs["Classifier"][:].wait()
         if forests is None or forests[0] is None:
