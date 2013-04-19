@@ -69,10 +69,15 @@ def make_bboxes(binary_bbox, margin):
     # object and context
     max_margin = np.max(margin).astype(np.float32)
     scaled_margin = (max_margin / margin)
-    if len(margin)>2:
-        dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32), background=True, pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
+    if len(margin) > 2:
+        dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32),
+                                               background=True,
+                                               pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
     else:
         dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32))
+        dt = dt.reshape(dt.shape + (1,))
+
+    assert dt.ndim == 3
     passed = np.asarray(dt < max_margin).astype(np.bool)
 
     # context only
@@ -92,7 +97,7 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        
+
         assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
         assert self.LabelVolume.meta.axistags == self.RawVolume.meta.axistags
 
@@ -140,24 +145,26 @@ class OpRegionFeatures3d(Operator):
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
         """Make a slicing to extract object i from the image."""
         #find the bounding box (margin is always 'xyz' order)
-        result = [None]*3
-        minx = max(mincoords[i][axes.x] - margin[0], 0)
-        miny = max(mincoords[i][axes.y] - margin[1], 0)
+        result = [None] * 3
+        minx = max(mincoords[i][axes.x] - margin[axes.x], 0)
+        miny = max(mincoords[i][axes.y] - margin[axes.y], 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
-        maxx = min(maxcoords[i][axes.x] + 1 + margin[0], image.shape[axes.x])
-        maxy = min(maxcoords[i][axes.y] + 1 + margin[1], image.shape[axes.y])
-        
+        maxx = min(maxcoords[i][axes.x] + 1 + margin[axes.x], image.shape[axes.x])
+        maxy = min(maxcoords[i][axes.y] + 1 + margin[axes.y], image.shape[axes.y])
+
         result[axes.x] = slice(minx, maxx)
         result[axes.y] = slice(miny, maxy)
-        
-        if len(margin)>2:
-            minz = max(mincoords[i][axes.z] - margin[2], 0)
-            maxz = min(maxcoords[i][axes.z] + 1 + margin[2], image.shape[axes.z])
-            result[axes.z] = slice(minz, maxz)
-        else:
-            result[axes.z] = 0
+
+        try:
+            minz = max(mincoords[i][axes.z] - margin[axes.z], 0)
+            maxz = min(maxcoords[i][axes.z] + 1 + margin[axes.z], image.shape[axes.z])
+        except:
+            minz = 0
+            maxz = 1
+
+        result[axes.z] = slice(minz, maxz)
 
         return result
 
