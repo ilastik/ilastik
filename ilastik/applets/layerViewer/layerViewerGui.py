@@ -564,7 +564,7 @@ class LayerViewerGui(QWidget):
         
         from PyQt4.QtCore import Qt
         mgr = ShortcutManager()
-        qsa = QShortcut(QKeySequence("I"),self,member = self.menuGui.actionFitImage.trigger,context = Qt.WidgetShortcut)
+        qsa = QShortcut(QKeySequence("K"),self,member = self.menuGui.actionFitImage.trigger,context = Qt.WidgetShortcut)
         mgr.register("Navigation","Fit image on screen",qsa)
         qsd = QShortcut(QKeySequence("Ctrl+D"),self,member = self.menuGui.actionShowDebugPatches.toggle,context = Qt.WidgetShortcut)
         mgr.register("Navigation","Show tiling",qsd)
