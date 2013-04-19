@@ -514,7 +514,7 @@ class OpObjectTrain(Operator):
             labelsList.append(labelstmp)
 
             all_bad_objects[i] = rows
-            all_bad_feats = all_bad_feats.union(badfeats)
+            all_bad_feats |= badfeats
 
         self._warnBadObjects(all_bad_objects, all_bad_feats)
         

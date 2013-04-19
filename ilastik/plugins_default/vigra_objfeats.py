@@ -33,26 +33,11 @@ def cleanup_value(val, hasZero, isGlobal):
 
 def cleanup(d, hasZero, isGlobal, features):
     result = dict((cleanup_key(k), cleanup_value(v, hasZero, isGlobal)) for k, v in d.iteritems())
-    newkeys = set(result.keys()).intersection(set(features))
+    newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
 class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
-    '''
-    global_features = set(["RegionAxes",
-                           "RegionRadii",
-                           "Coord<ArgMaxWeight>",
-                           "Coord<ArgMinWeight>", 
-                           "Count",
-                           "RegionCenter",
-                           "Coord<Minimum>",
-                           "Coord<Maximum>",
-                           "Central<PowerSum<2>>",
-                           "Central<PowerSum<3>>",
-                           "Central<PowerSum<4>>",
-                           "Coord<PowerSum<1>>"])
-
-    '''
     local_features = set(["Mean", "Variance", "Skewness", \
                           "Kurtosis", "Histogram", \
                           "Covariance", "Minimum", "Maximum"])
@@ -61,7 +46,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     def availableFeatures(self, image, labels):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
-        local = set(names).intersection(self.local_features)
+        local = set(names) & self.local_features
         names.extend([x+self.suffix for x in local])
         result = dict((n, {}) for n in names)
         for f, v in result.iteritems():
@@ -78,7 +63,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     def compute_global(self, image, labels, features, axes):
         features = features.keys()
         local = [x+self.suffix for x in self.local_features]
-        features = list(set(features).difference(set(local)))
+        features = list(set(features) - set(local))
         return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, binary_bbox, features, axes):
@@ -86,7 +71,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         margin = max_margin({'': features})
         features = features.keys()
         local = [x+self.suffix for x in self.local_features]
-        features = list(set(features).intersection(set(local)))
+        features = list(set(features) & set(local))
         features = [x.split(' ')[0] for x in features]
         results = []
         #FIXME: this is done globally as if all the features have the same margin
