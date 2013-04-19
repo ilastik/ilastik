@@ -39,6 +39,7 @@ from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
 from ilastik.utility.pathHelpers import compressPathForDisplay
+from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -95,7 +96,7 @@ class ProgressDisplayManager(QObject):
         self.statusBar = statusBar
         self.appletPercentages = {} # applet_index : percent_progress
         self.progressBar = None
-
+        
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
 
@@ -219,7 +220,9 @@ class IlastikShell( QMainWindow ):
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
         self._recorderGui = EventRecorderGui()
-    
+        
+        self.errorMessageFilter = ErrorMessageFilter(self)
+
     @property
     def _applets(self):
         if self.projectManager is None:
@@ -636,6 +639,12 @@ class IlastikShell( QMainWindow ):
         self.closeCurrentProject()
         self.mainStackedWidget.setCurrentIndex(0)
 
+    def postErrorMessage(self, caption, text):
+        '''Thread-safe function to have the GUI display an error dialog with
+           the given caption and text.
+        '''
+        self.thunkEventHandler.post(self.errorMessageFilter.showErrorMessage, caption, text)
+    
     def showMenus(self, applet_index):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)

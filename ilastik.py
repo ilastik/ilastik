@@ -83,6 +83,17 @@ if parsed_args.exit_on_failure:
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
     install_thread_excepthook()
+else:
+    old_excepthook = sys.excepthook
+    def exception_dialog(*args):
+        old_excepthook(*args)
+        try:
+           from ilastik.shell.gui.startShellGui import shell
+           shell.postErrorMessage(args[0].__name__, args[1].message)
+        except:
+           pass
+    sys.excepthook = exception_dialog
+    install_thread_excepthook()
 
 if parsed_args.debug:
     ilastik_config.set('ilastik', 'debug', 'true')
