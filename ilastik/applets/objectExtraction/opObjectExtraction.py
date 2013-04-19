@@ -157,7 +157,7 @@ class OpRegionFeatures3d(Operator):
             maxz = min(maxcoords[i][axes.z] + 1 + margin[2], image.shape[axes.z])
             result[axes.z] = slice(minz, maxz)
         else:
-            result[axes.z] = slice(0, 1, None)
+            result[axes.z] = 0
 
         return result
 
