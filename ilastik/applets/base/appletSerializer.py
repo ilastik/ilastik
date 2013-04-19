@@ -277,7 +277,9 @@ class SerialListSlot(SerialSlot):
         if slot.level > 0:
             raise NotImplementedError()
 
-        super(SerialListSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super(SerialListSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         if transform is None:
             transform = lambda x: x
         self.transform = transform
@@ -322,7 +324,9 @@ class SerialBlockSlot(SerialSlot):
         :param blockslot: provides non-zero blocks.
 
         """
-        super(SerialBlockSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super(SerialBlockSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         self.blockslot = blockslot
         self._bind(slot)
 
@@ -382,7 +386,9 @@ class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
     def __init__(self, slot, cache, inslot=None, name=None, subname=None,
                  default=None, depends=None, selfdepends=True):
-        super(SerialClassifierSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super(SerialClassifierSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         self.cache = cache
         if self.name is None:
             self.name = slot.name
@@ -465,7 +471,9 @@ class SerialDictSlot(SerialSlot):
         inserting it into the dictionary.
 
         """
-        super(SerialDictSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
+        super(SerialDictSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         if transform is None:
             transform = lambda x: x
         self.transform = transform
