@@ -470,6 +470,8 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.axistags = None
         
         self.BadObjects.meta.shape = (1,)
+        self.BadObjects.meta.dtype = object
+        self.BadObjects.meta.axistags = None
 
     def execute(self, slot, subindex, roi, result):
         featList = []
@@ -546,9 +548,9 @@ class OpObjectTrain(Operator):
           
     def _warnBadObjects(self, bad_objects, bad_feats):
         messageTesting = False
-        self.BadObjects._value = {'objects': bad_objects, 'feats': bad_feats}
         if len(bad_feats)>0 or any([len(bad_objects[i])>0 for i in bad_objects.keys()]) or messageTesting:
-            self.BadObjects.setDirty()
+            self.BadObjects.setValue( {'objects': bad_objects, 'feats': bad_feats} )
+            #self.BadObjects.setDirty()
 
 
 class OpObjectPredict(Operator):
@@ -601,9 +603,6 @@ class OpObjectPredict(Operator):
         self.prob_cache = dict()
         self.bad_objects = dict()
         
-        # needed for OpWarning
-        super(OpObjectPredict, self).setupOutputs()
-
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Predictions or slot == self.Probabilities or slot == self.ProbabilityChannels or slot==self.BadObjects
 

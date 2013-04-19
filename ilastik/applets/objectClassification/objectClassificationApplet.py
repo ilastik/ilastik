@@ -3,7 +3,6 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from opObjectClassification import OpObjectClassification
 from objectClassificationSerializer import ObjectClassificationSerializer
 
-from guiMessage import OpGuiDialog, GuiDialog
 
 class ObjectClassificationApplet(StandardApplet):
     def __init__(self,
@@ -11,7 +10,7 @@ class ObjectClassificationApplet(StandardApplet):
                  workflow=None,
                  projectFileGroupName="ObjectClassification"):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
-        self._trainDialog = OpGuiDialog(parent=workflow)
+        
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
         self._serializableItems = [
@@ -30,12 +29,6 @@ class ObjectClassificationApplet(StandardApplet):
     def createSingleLaneGui(self, imageLaneIndex):
         from objectClassificationGui import ObjectClassificationGui
         singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
-        gui = ObjectClassificationGui(singleImageOperator,
+        return ObjectClassificationGui(singleImageOperator,
                                        self.shellRequestSignal,
                                        self.guiControlSignal)
-        
-        # setup message chain
-        self._trainDialog.dialog = GuiDialog(gui)
-        self._trainDialog.inputslot.connect(self._topLevelOperator.Warnings)
-        
-        return gui

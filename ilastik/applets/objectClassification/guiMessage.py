@@ -38,7 +38,6 @@ class GuiDialog(QtGui.QMessageBox):
         if self.hasDetails():
             self.setDetailedText(nn(self.getDetails()))
             
-        okButton = self.addButton(QtGui.QMessageBox.Ok)
         self.icon = self._icon
 
     def getMessage(self):
@@ -100,7 +99,7 @@ class LabelsChangedDialog(GuiDialog):
     
 class OpGuiDialog(Operator):
     name = "OpGuiDialog"
-    inputslot = InputSlot(stype=Opaque)
+    Input = InputSlot(stype=Opaque)
     dialog = None
 
     def setupOutputs(self):
@@ -110,9 +109,9 @@ class OpGuiDialog(Operator):
         pass
         
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.inputslot and self.dialog is not None:
+        if slot == self.Input and self.dialog is not None:
             #TODO what if the dialog was not set up correctly?
-            d = self.inputslot[:].wait()
+            d = self.Input[:].wait()
             self.dialog.title = d['title']
             self.dialog.text = d['text']
             self.dialog.info = d['info']

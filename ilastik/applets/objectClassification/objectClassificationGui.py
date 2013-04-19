@@ -26,7 +26,7 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
-from guiMessage import LabelsChangedDialog, GuiDialog
+from guiMessage import LabelsChangedDialog, GuiDialog, OpGuiDialog
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -101,6 +101,11 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.setEnabled(False)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(False)
         self.checkEnablePredictions()
+        
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        self._trainWarningDialog = OpGuiDialog(parent=topLevelOp)
+        self._trainWarningDialog.dialog = GuiDialog(self)
+        self._trainWarningDialog.Input.connect(op.Warnings)
 
 
     def initAppletDrawerUi(self):
