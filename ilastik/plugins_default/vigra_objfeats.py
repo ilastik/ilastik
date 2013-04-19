@@ -91,6 +91,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         results = []
         #FIXME: this is done globally as if all the features have the same margin
         #we should group features by their margins
+        print "computing bboxes:", margin
         passed, excl = make_bboxes(binary_bbox, margin)
         for label, suffix in zip([passed, excl],
                                  ['_incl', '_excl']):

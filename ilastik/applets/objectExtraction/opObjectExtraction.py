@@ -20,6 +20,8 @@ try:
 except:
     print "Warning: could not import pluginManager"
 
+import collections
+
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.
 default_features = ['Coord<Minimum>',
@@ -31,21 +33,27 @@ default_features = ['Coord<Minimum>',
 # to distinguish them, their name gets this suffix
 default_features_suffix = '_default_only'
 
-def max_margin(d, default=0):
+def max_margin(d, default=(0, 0, 0)):
     """find any parameter named 'margin' in the nested feature
     dictionary 'd' and return the max.
 
     return 'default' if none are found.
 
     >>> max_margin({'plugin_one' : {'feature_one' : {'margin' : 10}}})
-    10
+    [10, 10, 10]
+
+    >>> max_margin({"p1": {"f1":{"margin":(10, 5, 2)}}})
+    [10, 5, 2]
 
     """
     margin = default
     for features in d.itervalues():
         for params in features.itervalues():
             try:
-                margin = max(margin, params['margin'])
+                pmargin = params['margin']
+                if not isinstance(pmargin, collections.Iterable):
+                    pmargin = len(default)*[pmargin]
+                margin = [max(x) for x in zip(margin, pmargin)]
             except (ValueError, KeyError):
                 continue
     return margin
@@ -59,8 +67,13 @@ def make_bboxes(binary_bbox, margin):
 
     """
     # object and context
-    dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32))
-    passed = np.asarray(dt < margin).astype(np.bool)
+    max_margin = np.max(margin).astype(np.float32)
+    scaled_margin = (max_margin / margin)
+    if len(margin)>2:
+        dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32), background=True, pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
+    else:
+        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32))
+    passed = np.asarray(dt < max_margin).astype(np.bool)
 
     # context only
     context = (passed - binary_bbox).astype(np.bool)
@@ -126,22 +139,27 @@ class OpRegionFeatures3d(Operator):
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
         """Make a slicing to extract object i from the image."""
-        #find the bounding box
-        minx = max(mincoords[i][axes.x] - margin, 0)
-        miny = max(mincoords[i][axes.y] - margin, 0)
-        minz = max(mincoords[i][axes.z] - margin, 0)
+        #find the bounding box (margin is always 'xyz' order)
+        result = [None]*3
+        minx = max(mincoords[i][axes.x] - margin[0], 0)
+        miny = max(mincoords[i][axes.y] - margin[1], 0)
 
         # Coord<Minimum> and Coord<Maximum> give us the [min,max]
         # coords of the object, but we want the bounding box: [min,max), so add 1
-        maxx = min(maxcoords[i][axes.x] + 1 + margin, image.shape[axes.x])
-        maxy = min(maxcoords[i][axes.y] + 1 + margin, image.shape[axes.y])
-        maxz = min(maxcoords[i][axes.z] + 1 + margin, image.shape[axes.z])
-
-        result = [None] * 3
+        maxx = min(maxcoords[i][axes.x] + 1 + margin[0], image.shape[axes.x])
+        maxy = min(maxcoords[i][axes.y] + 1 + margin[1], image.shape[axes.y])
+        
         result[axes.x] = slice(minx, maxx)
         result[axes.y] = slice(miny, maxy)
-        result[axes.z] = slice(minz, maxz)
-        return [slice(minx, maxx), slice(miny, maxy), slice(minz, maxz)]
+        
+        if len(margin)>2:
+            minz = max(mincoords[i][axes.z] - margin[2], 0)
+            maxz = min(maxcoords[i][axes.z] + 1 + margin[2], image.shape[axes.z])
+            result[axes.z] = slice(minz, maxz)
+        else:
+            result[axes.z] = slice(0, 1, None)
+
+        return result
 
     def compute_rawbbox(self, image, extent, axes):
         """essentially returns image[extent], preserving all channels."""
@@ -193,7 +211,7 @@ class OpRegionFeatures3d(Operator):
 
         local_features = defaultdict(list)
         margin = max_margin(feature_names)
-        if margin > 0:
+        if np.any(margin) > 0:
             for i in range(1, nobj):
                 print "processing object {}".format(i)
                 extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
@@ -201,7 +219,6 @@ class OpRegionFeatures3d(Operator):
                 binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
                 for plugin_name, feature_list in feature_names.iteritems():
                     plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-
                     feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
                     local_features = dictextend(local_features, feats)
 

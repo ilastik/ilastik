@@ -32,9 +32,9 @@ class FeatureSelectionDialog(QDialog):
     # for now all features get the same margin parameter. In the
     # future this should be selectable per feature, and only for
     # global features.
-    default_margin = 30
+    default_margin = (30, 30, 1)
 
-    def __init__(self, featureDict, selectedFeatures=None, parent=None):
+    def __init__(self, featureDict, selectedFeatures=None, parent=None, ndim=3):
         """
         Parameters:
         * featureDict: a nested dictionary. {plugin name : {feature name : {parameter name : parameter}}
@@ -56,9 +56,8 @@ class FeatureSelectionDialog(QDialog):
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
-        self.ui.marginEdit.setValidator(QIntValidator(0, 100))
-
         self.populate()
+        self.ndim = ndim
         self.set_margin()
 
     def populate(self):
@@ -82,15 +81,29 @@ class FeatureSelectionDialog(QDialog):
                         item.setCheckState(0, Qt.Checked)
 
     def set_margin(self):
-        margin = max_margin(self.selectedFeatures, default=-1)
-        if margin == -1:
+        if self.ndim>3 or self.ndim<2:
+            print "wrong dimensions setting for feature selection dialog"
+            return
+        default = [-1]*self.ndim
+        margin = max_margin(self.selectedFeatures, default)
+        
+        if -1 in margin:
             margin = self.default_margin
-        self.ui.marginEdit.setText(str(margin))
+        #self.ui.marginEdit.setText(str(margin))
+        self.ui.spinBox_X.setValue(margin[0])
+        self.ui.spinBox_Y.setValue(margin[1])
+        if self.ndim==3:
+            self.ui.spinBox_Z.setValue(margin[2])
+        else:
+            self.ui.spinBox_Z.setEnabled(False)
 
     def accept(self):
         QDialog.accept(self)
         selectedFeatures = defaultdict(list)
-        margin = int(str(self.ui.marginEdit.text()))
+        
+        margin = [self.ui.spinBox_X.value(), self.ui.spinBox_Y.value()]
+        if self.ndim==3:
+            margin.append(self.ui.spinBox_Z.value())
         root = self.ui.treeWidget.invisibleRootItem()
         for parent in root.takeChildren():
             plugin = str(parent.text(0))
@@ -221,11 +234,17 @@ class ObjectExtractionGui(LayerViewerGui):
         labelshape.pop(axistags.index('t'))
         labelshape.pop(axistags.index('c') - 1)
         fakelabels = np.empty(labelshape, dtype=np.uint32)
+        
+        ndim = 3
+        zIndex = axistags.index('z')
+        if len(labelshape)==2 or (zIndex<len(mainOperator.RawImage.meta.shape) and mainOperator.RawImage.meta.shape[zIndex]==1):
+            ndim=2
+        
 
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
         dlg = FeatureSelectionDialog(featureDict=featureDict,
-                                     selectedFeatures=selectedFeatures)
+                                     selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
 
         if dlg.result() == QDialog.Accepted:
