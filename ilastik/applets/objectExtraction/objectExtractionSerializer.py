@@ -75,9 +75,9 @@ class ObjectExtractionSerializer(AppletSerializer):
                                 operator.LabelInputHdf5,
                                 operator.CleanLabelBlocks,
                                 name="LabelImage"),
-            SerialDictSlot(operator.Features),
-            SerialObjectFeaturesSlot(operator.RegionFeaturesCacheInput,
-                                     operator.BlockwiseRegionFeatures,
+            SerialDictSlot(operator.Features, transform=str),
+            SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
+                                     operator.RegionFeaturesCacheInput,
                                      operator.RegionFeaturesCleanBlocks,
                                      name="RegionFeatures"),
         ]
