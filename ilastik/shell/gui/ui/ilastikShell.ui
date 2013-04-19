@@ -86,6 +86,12 @@
               <layout class="QGridLayout" name="gridlayout">
                <item row="1" column="0">
                 <widget class="QScrollArea" name="OpenList">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="lineWidth">
+                  <number>0</number>
+                 </property>
                  <property name="widgetResizable">
                   <bool>true</bool>
                  </property>
@@ -94,8 +100,8 @@
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>678</width>
-                    <height>199</height>
+                    <width>680</width>
+                    <height>201</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -130,6 +136,15 @@
                </item>
                <item row="0" column="0">
                 <widget class="QScrollArea" name="CreateList">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Plain</enum>
+                 </property>
+                 <property name="lineWidth">
+                  <number>0</number>
+                 </property>
                  <property name="widgetResizable">
                   <bool>true</bool>
                  </property>
@@ -138,8 +153,8 @@
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>678</width>
-                    <height>199</height>
+                    <width>680</width>
+                    <height>201</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_7">
