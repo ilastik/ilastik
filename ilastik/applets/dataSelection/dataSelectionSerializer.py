@@ -35,13 +35,13 @@ class DataSelectionSerializer( AppletSerializer ):
         self.topLevelOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.WorkingDirectory.notifyDirty( bind(handleDirty) )
         
-        def handleNewDataset(slot, index):
-            slot[index].notifyDirty( bind(handleDirty) )
-        # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
-        self.topLevelOperator.Dataset.notifyInserted( bind(handleNewDataset) )
-
-        # If a dataset was removed, we need to be reserialized.
-        self.topLevelOperator.Dataset.notifyRemoved( bind(handleDirty) )
+#        def handleNewDataset(slot, index):
+#            slot[index].notifyDirty( bind(handleDirty) )
+#        # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
+#        self.topLevelOperator.Dataset.notifyInserted( bind(handleNewDataset) )
+#
+#        # If a dataset was removed, we need to be reserialized.
+#        self.topLevelOperator.Dataset.notifyRemoved( bind(handleDirty) )
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Write any missing local datasets to the local_data group
@@ -137,10 +137,6 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.progressSignal.subscribe( self.progressSignal.emit )
             
             success = opWriter.WriteImage.value
-            
-            numDatasets = len(self.topLevelOperator.Dataset)
-            self.topLevelOperator.Dataset.resize( numDatasets + 1 )
-            self.topLevelOperator.Dataset[numDatasets].setValue(info)
             
         finally:
             self.progressSignal.emit(100)
