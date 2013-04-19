@@ -870,6 +870,10 @@ class OpMaxLabel(Operator):
 class OpBadObjectsToWarningMessage(Operator):
    
     name = "OpBadObjectsToWarningMessage"
+    _blockSep = "\n\n"
+    _itemSep = "\n"
+    _objectSep = ", "
+    _itemIndent = "    "
     
     # the input slot
     # format: BadObjects._value = {'objects': dict(tuple??()), 'feats': set()}
@@ -887,14 +891,94 @@ class OpBadObjectsToWarningMessage(Operator):
         d = self.BadObjects[:].wait()
         warn = {}
         warn['title'] = 'Warning'
-        warn['text'] = 'Encountered bad objects while training.'
+        warn['text'] = 'Encountered bad objects/features while training.'
         warn['info'] = None
-        warn['details'] = str(d)
-        self.WarningMessage._value = warn
+        warn['details'] = self._formatMessage(d)
+        
+        if len(warn['details']) == 0:
+            return
+        self.WarningMessage.setValue(warn)
         self.WarningMessage.setDirty()
         
     def execute(self, slot, subindex, roi, result):
         pass
    
-    
+    def _formatMessage(self, d):
+        a = []
         
+        try:
+            # a) objects
+            if 'objects' in d.keys():
+                s = self._formatObjects(d['objects'])
+                if len(s)>0:
+                    a.append(s)
+            # b) features
+            if 'features' in d.keys():
+                s = self._formatFeatures(sorted(d['features']))
+                if len(s)>0:
+                    a.append(s)
+        except AttributeError:
+            raise Exception("Expected message to be a dictionary, got {}".format(type(d)))
+            return ""
+        return self._blockSep.join(a)
+    
+    def _formatFeatures(self, f):
+        a = self._itemSep.join(f)
+        if len(a)>0:
+            a = "The following features had bad values:" + self._itemSep + a
+        return a
+        
+    def _formatObjects(self, obj):
+        a = []
+        indent = 1
+        
+        # loop image indices
+        for img in obj.keys():
+            imtext = self._itemIndent*indent + "at image index {}".format(img)
+            indent += 1
+            needTime = len(obj[img].keys())>1
+            b = []
+            
+            # loop time values
+            for t in obj[img].keys():
+                # object numbers
+                c = self._objectSep.join([str(s) for s in obj[img][t]])
+                
+                if len(c)>0:
+                    c = self._itemIndent*indent + "Objects " + c
+                    if needTime:
+                        c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
+                    b.append(c)
+                    
+            indent -= 1
+            if len(b)>0:
+                a.append(self._itemSep.join([imtext] + b))
+            
+        
+        if len(a)>0:
+            return self._itemSep.join(["The following objects had bad features:"] +a)
+        else:
+            return ""
+        
+            
+        
+                
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
