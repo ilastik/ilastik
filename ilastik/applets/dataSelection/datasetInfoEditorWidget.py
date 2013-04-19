@@ -7,11 +7,18 @@ import h5py
 import numpy
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtCore import Qt, QEvent, QVariant
 from PyQt4.QtGui import QDialog, QMessageBox
 
 from ilastik.utility import getPathVariants, PathComponents
 from opDataSelection import OpDataSelection, DatasetInfo
+
+class StorageLocation(object):
+    ProjectFile = 0
+    AbsoluteLink = 1
+    RelativeLink = 2
+    
+    NumOptions = 3
 
 class DatasetInfoEditorWidget(QDialog):
     
@@ -59,6 +66,10 @@ class DatasetInfoEditorWidget(QDialog):
         self._initInternalDatasetNameCombo()
         self.internalDatasetNameComboBox.currentIndexChanged.connect( self._applyInternalPathToTempOps )
         self._updateInternalDatasetSelection()
+        
+        self._initStorageCombo()
+        self.storageComboBox.currentIndexChanged.connect( self._applyStorageComboToTempOps )
+        self._updateStorageCombo()
         
         self._updateShape()
         self._updateDtype()
@@ -284,9 +295,16 @@ class DatasetInfoEditorWidget(QDialog):
                 self._error_fields.add('Data Range')
                 return False
 
+            def get_dtype_info(dtype):
+                try:
+                    return numpy.iinfo(dtype)
+                except ValueError:
+                    return numpy.finfo(dtype)
+
             # Make sure the new bounds don't exceed the dtype range
             for laneIndex, op in self.tempOps.items():
-                dtype_info = numpy.iinfo(op.Image.meta.dtype)
+                dtype_info = get_dtype_info(op.Image.meta.dtype)
+                    
                 if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
                     QMessageBox.warning(self, "Error",
                         "Can't apply data range values:\n"
@@ -304,7 +322,7 @@ class DatasetInfoEditorWidget(QDialog):
             try:
                 for laneIndex, op in self.tempOps.items():
                     info = copy.copy( op.Dataset.value )
-                    dtype_info = numpy.iinfo(op.Image.meta.dtype)
+                    dtype_info = get_dtype_info(op.Image.meta.dtype)
                     dtype = dtype_info.dtype.type
                     info.drange = ( dtype(new_drange[0]), dtype(new_drange[1]) )
                     op.Dataset.setValue( info )
@@ -456,10 +474,119 @@ class DatasetInfoEditorWidget(QDialog):
             self._error_fields.add('Internal Dataset Name')
             return False
         
+    def _initStorageCombo(self):
+        
+        # If there's only one dataset, show the path in the combo
+        if len( self._laneIndexes ) == 1:
+            op = self.tempOps.values()[0]
+            info = op.Dataset.value
+            cwd = op.WorkingDirectory.value
+            filePath = info.filePath
+            absPath, relPath = getPathVariants(filePath, cwd)
+            self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
+            self.storageComboBox.addItem( "Absolute Link: " + absPath, userData=StorageLocation.AbsoluteLink )
+            self.storageComboBox.addItem( "Relative Link: " + relPath, userData=StorageLocation.RelativeLink )
+        else:
+            self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
+            self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )
+            self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
 
+        self.storageComboBox.setCurrentIndex(-1)
 
+    def _updateStorageCombo(self):
+        sharedStorageSetting = None
+        for laneIndex in self._laneIndexes:
+            op = self.tempOps[laneIndex]
+            info = op.Dataset.value
 
+            # Determine the current setting
+            location = info.location
+    
+            if location == DatasetInfo.Location.ProjectInternal:
+                storageSetting = StorageLocation.ProjectFile
+            elif location == DatasetInfo.Location.FileSystem:
+                # Determine if the path is relative or absolute
+                if os.path.isabs(info.filePath):
+                    storageSetting = StorageLocation.AbsoluteLink
+                else:
+                    storageSetting = StorageLocation.RelativeLink
+        
+            if sharedStorageSetting is None:
+                sharedStorageSetting = storageSetting
+            elif sharedStorageSetting != storageSetting:
+                # Not all lanes have the same setting
+                sharedStorageSetting = -1
+                break
 
+        if sharedStorageSetting == -1:
+            self.storageComboBox.setCurrentIndex(-1)
+        else:
+            comboIndex = self.storageComboBox.findData( QVariant(sharedStorageSetting) )
+            self.storageComboBox.setCurrentIndex( comboIndex )
+
+    def _applyStorageComboToTempOps(self, index):
+        if index == -1:
+            return
+        
+        newStorageLocation = self.storageComboBox.itemData( index )
+        
+        # Save a copy of our settings
+        oldInfos = {}
+        for laneIndex, op in self.tempOps.items():
+            oldInfos[laneIndex] = copy.copy( op.Dataset.value )
+        
+        # Attempt to apply to all temp operators
+        currentLane = self.tempOps.keys()[0]
+        try:
+            for laneIndex, op in self.tempOps.items():
+                info = copy.copy( op.Dataset.value )
+                
+                if info.location == DatasetInfo.Location.ProjectInternal:
+                    thisLaneStorage = StorageLocation.ProjectFile
+                elif info.location == DatasetInfo.Location.FileSystem:
+                    # Determine if the path is relative or absolute
+                    if os.path.isabs(info.filePath):
+                        thisLaneStorage = StorageLocation.AbsoluteLink
+                    else:
+                        thisLaneStorage = StorageLocation.RelativeLink
+
+                if thisLaneStorage != newStorageLocation:
+                    if newStorageLocation == StorageLocation.ProjectFile:
+                        info.location = DatasetInfo.Location.ProjectInternal
+                    else:
+                        info.location = DatasetInfo.Location.FileSystem 
+                        cwd = op.WorkingDirectory.value
+                        absPath, relPath = getPathVariants( info.filePath, cwd )
+                        if newStorageLocation == StorageLocation.AbsoluteLink:
+                            info.filePath = absPath
+                        elif newStorageLocation == StorageLocation.RelativeLink:
+                            info.filePath = relPath
+                        else:
+                            assert False, "Uknown storage location setting."
+                    op.Dataset.setValue( info )
+            self._error_fields.discard('Storage Location')
+            return True
+        
+        except Exception as e:
+            # Revert everything back to the previous state
+            for laneIndex, op in self.tempOps.items():
+                op.Dataset.setValue( oldInfos[laneIndex] )
+                if laneIndex == currentLane:
+                    # Only need to revert the lanes we actually changed.
+                    # Everything else wasn't touched
+                    break
+            
+            traceback.print_exc()
+            msg = "Could not set new storage location settings due to an exception:\n"
+            msg += "{}".format( e )
+            QMessageBox.warning(self, "Error", msg)
+            self._error_fields.add('Storage Location')
+            return False
+        
+        finally:
+            self._updateStorageCombo()
+        
+            
 
 
 
