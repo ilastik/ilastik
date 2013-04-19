@@ -123,6 +123,7 @@ class OpGuiDialog(Operator):
 
 class Example(QtGui.QWidget):
     _a = False
+    _b = 0
     
     def __init__(self):
         super(Example, self).__init__()
@@ -140,9 +141,9 @@ class Example(QtGui.QWidget):
         qbtn2 = QtGui.QPushButton('Quit', self)
         qbtn2.clicked.connect(QtCore.QCoreApplication.instance().quit)
         qbtn2.resize(qbtn.sizeHint())
-        qbtn2.move(100, 50)
+        qbtn2.move(150, 50)
         
-        self.setGeometry(300, 300, 250, 150)
+        self.setGeometry(500, 300, 250, 150)
         self.setWindowTitle('Danger,Danger!')
         self.move(500,500)
         self.show()
@@ -160,10 +161,37 @@ class Example(QtGui.QWidget):
         elif case == 2: # OpWarning
             opwarn = OpBadObjectsToWarningMessage(graph=Graph())
             opdialog = OpGuiDialog(graph=Graph())
-            opdialog.inputslot.connect(opwarn.WarningMessage)
+            opdialog.Input.connect(opwarn.WarningMessage)
             opdialog.dialog = GuiDialog(self)
-            opwarn.BadObjects.setValue("Hello World!")
+            opwarn.BadObjects.setValue(self.getMsg())
+            self._b += 1
             
+    def getMsg(self):
+        validfeats = set(['a', 'b', 'c'])
+        emptyfeats = set()
+        
+        validobjects = {0: {0: [], 0.1: [], 0.2: []}, 1: {0: [1,2,3], 0.1: [], 0.2: [4,5]}, 2: {0: [], 0.1: [3], 0.2: []}}
+        emptyobjects = {0: {0: [], 0.1: [], 0.2: []}, 1: {0: [], 0.1: [], 0.2: []}, 2: {0: [], 0.1: [], 0.2: []}}
+        singletontimeobjects = {0: {0: []}, 1: {0: [1,2,3]}, 2: {0: []}}
+        if self._b == 0:
+            # objects filled
+            d = {'objects': validobjects, 'features': emptyfeats}
+        elif self._b == 1:
+            # features filled
+            d = {'objects': emptyobjects, 'features': validfeats}
+        elif self._b == 2:
+            # both filled
+            d = {'objects': validobjects, 'features': validfeats}
+        elif self._b == 3:
+            # both filled
+            d = {'objects': singletontimeobjects, 'features': emptyfeats}
+        elif self._b == 4:
+            # empty case
+            d = {}
+        else:
+            # error case
+            d = "some other case"
+        return d
             
         
 if __name__ == "__main__":
