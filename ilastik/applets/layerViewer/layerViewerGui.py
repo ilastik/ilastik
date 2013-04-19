@@ -247,7 +247,7 @@ class LayerViewerGui(QWidget):
         gindex = None
         aindex = None
         
-        if axisinfo =="" or axisinfo == "default":
+        if axisinfo == "" or axisinfo == "default":
             
             # Examine channel dimension to determine Grayscale vs. RGB
 
@@ -561,16 +561,17 @@ class LayerViewerGui(QWidget):
         #self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
         self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
+        
         from PyQt4.QtCore import Qt
         mgr = ShortcutManager()
         qsa = QShortcut(QKeySequence("I"),self,member = self.menuGui.actionFitImage.trigger,context = Qt.WidgetShortcut)
-        mgr.register("FitImage","fit image on screen",qsa)
+        mgr.register("Navigation","Fit image on screen",qsa)
         qsd = QShortcut(QKeySequence("Ctrl+D"),self,member = self.menuGui.actionShowDebugPatches.toggle,context = Qt.WidgetShortcut)
-        mgr.register("ShowTiling","show tiling",qsd)
+        mgr.register("Navigation","Show tiling",qsd)
         qsc = QShortcut(QKeySequence("C"),self,member = self.menuGui.actionCenterImage.trigger,context = Qt.WidgetShortcut)
-        mgr.register("CenterImage","center image",qsc)
+        mgr.register("Navigation","Center image",qsc)
         qsw = QShortcut(QKeySequence("W"),self,member = self.menuGui.actionReset_zoom.trigger,context = Qt.WidgetShortcut)
-        mgr.register("ResetZoom","reset zoom",qsw)
+        mgr.register("Navigation","Reset zoom",qsw)
         
     @traceLogged(traceLogger)
     def _initEditor(self, crosshair):

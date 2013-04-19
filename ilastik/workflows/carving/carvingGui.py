@@ -213,7 +213,7 @@ class CarvingGui(LabelingGui):
         addLayerToggleShortcut("segmentation", "s")
         addLayerToggleShortcut("raw", "r")
         addLayerToggleShortcut("pmap", "v")
-        addLayerToggleShortcut("hints","h")
+        addLayerToggleShortcut("hints","t")
 
         '''
         def updateLayerTimings():
