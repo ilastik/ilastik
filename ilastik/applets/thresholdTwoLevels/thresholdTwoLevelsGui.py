@@ -74,6 +74,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
         self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
+        
+        # Operator
+        self._drawer.tabWidget.setCurrentIndex( op.CurOperator.value )
     
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
