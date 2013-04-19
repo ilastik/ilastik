@@ -10,8 +10,12 @@ logger = logging.getLogger(__name__)
 
 class SerialPredictionSlot(SerialSlot):
 
-    def __init__(self, slot, operator, **kwargs):
-        super(SerialPredictionSlot, self).__init__(slot, **kwargs)
+    def __init__(self, slot, operator, inslot=None, name=None,
+                 subname=None, default=None, depends=None,
+                 selfdepends=True):
+        super(SerialPredictionSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         self.operator = operator
         self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
 

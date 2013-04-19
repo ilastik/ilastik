@@ -17,8 +17,13 @@ logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):
 
-    def __init__(self, slot, inslot, blockslot, *args, **kwargs):
-        super(SerialObjectFeaturesSlot, self).__init__(slot, *args, **kwargs )
+    def __init__(self, slot, inslot, blockslot, name=None,
+                 subname=None, default=None, depends=None,
+                 selfdepends=True):
+        super(SerialObjectFeaturesSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
+
         self.blockslot = blockslot
         self._bind(slot)
 
