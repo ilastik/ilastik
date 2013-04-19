@@ -1,8 +1,6 @@
 import pgmlink
 import math
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
-from lazyflow.graph import InputSlot
-
 
 class OpChaingraphTracking(OpTrackingBase): 
     
@@ -28,8 +26,9 @@ class OpChaingraphTracking(OpTrackingBase):
             mdd = 0,
             min_angle = 0,
             ep_gap = 0.2,
-            n_neighbors = 2,
-            with_div = True):
+            n_neighbors = 2,            
+            with_div = True,
+            cplex_timeout = None):
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
@@ -42,8 +41,12 @@ class OpChaingraphTracking(OpTrackingBase):
         parameters['noiseweight'] = noiseweight
         parameters['epgap'] = ep_gap
         parameters['nneighbors'] = n_neighbors   
-        parameters['with_divisions'] = with_div     
-        self.Parameters.setValue(parameters)
+        parameters['with_divisions'] = with_div
+        if cplex_timeout:
+            parameters['cplex_timeout'] = cplex_timeout
+        else:
+            parameters['cplex_timeout'] = ''
+        self.Parameters.setValue(parameters)        
         
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
@@ -69,7 +72,9 @@ class OpChaingraphTracking(OpTrackingBase):
                                 n_neighbors
                                 )
 
-        tracker.set_with_divisions(with_div)
+        tracker.set_with_divisions(with_div)        
+        if cplex_timeout:
+            tracker.set_cplex_timeout(cplex_timeout)
                 
         try:
             self.events = tracker(ts)

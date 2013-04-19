@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>769</height>
+    <height>801</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -49,6 +49,16 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_20">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the optimization. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Timeout in sec.</string>
+         </property>
+        </widget>
+       </item>
        <item row="3" column="1">
         <widget class="QDoubleSpinBox" name="noiseRateSpinBox">
          <property name="minimum">
@@ -64,6 +74,9 @@
           <double>0.100000000000000</double>
          </property>
         </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
        </item>
        <item row="0" column="1">
         <widget class="QSpinBox" name="appSpinBox">
@@ -181,16 +194,6 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Noise weight</string>
-         </property>
-        </widget>
-       </item>
        <item row="4" column="1">
         <widget class="QSpinBox" name="noiseWeightSpinBox">
          <property name="maximum">
@@ -201,6 +204,16 @@
          </property>
          <property name="value">
           <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Noise weight</string>
          </property>
         </widget>
        </item>
@@ -482,6 +495,7 @@
   <tabstop>noiseWeightSpinBox</tabstop>
   <tabstop>epGapSpinBox</tabstop>
   <tabstop>nNeighborsSpinBox</tabstop>
+  <tabstop>timeoutBox</tabstop>
   <tabstop>withDivisionsBox</tabstop>
   <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>

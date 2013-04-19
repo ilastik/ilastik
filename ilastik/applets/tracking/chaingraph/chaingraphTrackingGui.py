@@ -5,6 +5,7 @@ import logging
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 import sys
 import traceback
+import re
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -34,8 +35,20 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             self._drawer.epGapSpinBox.setValue(parameters['epgap'])
         if 'with_divisions' in parameters.keys():
             self._drawer.withDivisionsBox.setChecked(parameters['with_divisions'])
+        if 'cplex_timeout' in parameters.keys():
+            self._drawer.timeoutBox.setText(parameters['cplex_timeout'])
         
         return self._drawer
+    
+    def initAppletDrawerUi(self):
+        super(ChaingraphTrackingGui, self).initAppletDrawerUi()    
+        self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
+        self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
+                
+    def _onTimeoutBoxChanged(self):        
+        inString = str(self._drawer.timeoutBox.text())
+        if self._allowedTimeoutInputRegEx.match(inString) is None:
+            self._drawer.timeoutBox.setText(inString[:-1])
     
     def _onTrackButtonPressed( self ):    
         if not self.mainOperator.ObjectFeatures.ready():
@@ -50,7 +63,10 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         epGap = self._drawer.epGapSpinBox.value()
         n_neighbors = self._drawer.nNeighborsSpinBox.value()
         with_div = self._drawer.withDivisionsBox.isChecked()
-
+        cplex_timeout = None
+        if len(str(self._drawer.timeoutBox.text())):
+            cplex_timeout = int(self._drawer.timeoutBox.text())
+            
         from_t = self._drawer.from_time.value()
         to_t = self._drawer.to_time.value()
         from_x = self._drawer.from_x.value()
@@ -79,7 +95,8 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                         opp=opp,                        
                         ep_gap=epGap,
                         n_neighbors=n_neighbors,
-                        with_div=with_div)
+                        with_div=with_div,
+                        cplex_timeout=cplex_timeout)
         except Exception:
             ex_type, ex, tb = sys.exc_info()
             traceback.print_tb(tb)            
