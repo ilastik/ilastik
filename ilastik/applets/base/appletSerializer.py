@@ -13,6 +13,7 @@ import warnings
 
 from lazyflow.roi import TinyVector, roiToSlice
 from lazyflow.rtype import SubRegion
+from lazyflow.slot import OutputSlot
 
 #######################
 # Convenience methods #
@@ -98,6 +99,11 @@ class SerialSlot(object):
         if inslot is None:
             inslot = slot
         self.inslot = inslot
+
+        if isinstance(inslot, OutputSlot):
+            # should this be an exception? Or maybe an exception in lazyflow?
+            print ('Warning: this serial slot will try to call setValue on an OutputSlot.'
+                   'This is probably not what you wanted!')
         self.default = default
         self.depends = maybe(depends, [])
         if selfdepends:
