@@ -10,10 +10,10 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
                  SerialSlot(operator.SingleThreshold, selfdepends=True),
                  SerialDictSlot(operator.SmootherSigma, selfdepends=True),
                  SerialSlot(operator.Channel, selfdepends=True),
-                 SerialHdf5BlockSlot(operator.InputHdf5,
-                                     operator.OutputHdf5,
+                 SerialHdf5BlockSlot(operator.OutputHdf5,
+                                     operator.InputHdf5,
                                      operator.CleanBlocks,
                                      name="CachedThresholdOutput")
                 ]
-        
+
         super(self.__class__, self).__init__(projectFileGroupName, slots=slots)

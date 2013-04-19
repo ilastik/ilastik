@@ -17,12 +17,10 @@ logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):
 
-    def __init__(self, inslot, outslot, blockslot, *args, **kwargs):
-        super( SerialObjectFeaturesSlot, self).__init__(outslot, *args, **kwargs )
-        self.inslot = inslot
-        self.outslot = outslot
+    def __init__(self, slot, inslot, blockslot, *args, **kwargs):
+        super(SerialObjectFeaturesSlot, self).__init__(slot, *args, **kwargs )
         self.blockslot = blockslot
-        self._bind(outslot)
+        self._bind(slot)
 
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -36,7 +34,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
             cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
-                region_features_arr = self.outslot[i]( *roi ).wait()
+                region_features_arr = self.slot[i]( *roi ).wait()
                 assert region_features_arr.shape == (1,)
                 region_features = region_features_arr[0]
                 roi_grp = subgroup.create_group(name=str(roi))
@@ -54,22 +52,22 @@ class SerialObjectFeaturesSlot(SerialSlot):
             for roiString, roi_grp in subgroup.items():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
                 roi = eval(roiString)
-                
+
                 region_features = {}
                 for key, val in roi_grp.items():
                     region_features[key] = val[...]
-                
+
                 slicing = roiToSlice( *roi )
                 self.inslot[i][slicing] = numpy.array([region_features])
-        
+
         self.dirty = False
 
 
 class ObjectExtractionSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [
-            SerialHdf5BlockSlot(operator.LabelInputHdf5,
-                                operator.LabelOutputHdf5,
+            SerialHdf5BlockSlot(operator.LabelOutputHdf5,
+                                operator.LabelInputHdf5,
                                 operator.CleanLabelBlocks,
                                 name="LabelImage"),
             SerialDictSlot(operator.Features),

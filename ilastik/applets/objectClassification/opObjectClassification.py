@@ -31,6 +31,9 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
 
+    # for reading from disk
+    InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
+
     ################
     # Output slots #
     ################
@@ -103,6 +106,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opBadObjectsToImage.inputs["Features"].connect(self.ObjectFeatures)
         
         self.opBadObjectsToWarningMessage.inputs["BadObjects"].connect(self.opTrain.BadObjects)
+
+        self.opPredict.InputProbabilities.connect(self.InputProbabilities)
 
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
@@ -565,6 +570,7 @@ class OpObjectPredict(Operator):
     Features = InputSlot(rtype=List, stype=Opaque)
     Classifier = InputSlot()
     LabelsCount = InputSlot(stype='integer')
+    InputProbabilities = InputSlot(stype=Opaque, rtype=List, optional=True)
 
     Predictions = OutputSlot(stype=Opaque, rtype=List)
     Probabilities = OutputSlot(stype=Opaque, rtype=List)
@@ -695,7 +701,9 @@ class OpObjectPredict(Operator):
             self.lock.release()
 
     def propagateDirty(self, slot, subindex, roi):
-        self.prob_cache = dict()
+        self.prob_cache = {}
+        if slot is self.InputProbabilities:
+            self.prob_cache = self.InputProbabilities([]).wait()
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
         self.ProbabilityChannels.setDirty(())

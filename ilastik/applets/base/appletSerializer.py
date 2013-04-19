@@ -67,10 +67,13 @@ def stringToSlicing(strSlicing):
 
 class SerialSlot(object):
     """Implements the logic for serializing a slot."""
-    def __init__(self, slot, name=None, subname=None, default=None,
-                 depends=None, selfdepends=True):
+    def __init__(self, slot, inslot=None, name=None, subname=None,
+                 default=None, depends=None, selfdepends=True):
         """
-        :param slot: the slot to save/load
+        :param slot: where to get data to save
+
+        :param inslot: where to put loaded data. If None, it is the
+        same as 'slot'.
 
         :param name: name used for the group in the hdf5 file.
 
@@ -92,6 +95,9 @@ class SerialSlot(object):
             # FIXME: recursive serialization, to support arbitrary levels
             raise Exception('slots of levels > 1 not supported')
         self.slot = slot
+        if inslot is None:
+            inslot = slot
+        self.inslot = inslot
         self.default = default
         self.depends = maybe(depends, [])
         if selfdepends:
@@ -207,7 +213,7 @@ class SerialSlot(object):
         """
         if not self.name in group:
             return
-        self._deserialize(group[self.name], self.slot)
+        self._deserialize(group[self.name], self.inslot)
         self.dirty = False
 
     @staticmethod
@@ -235,7 +241,7 @@ class SerialSlot(object):
             if self.default is None:
                 self.slot.disconnect()
             else:
-                self.slot.setValue(self.default)
+                self.inslot.setValue(self.default)
         else:
             self.slot.resize(0)
 
@@ -255,7 +261,8 @@ class SerialListSlot(SerialSlot):
       (for instance, to convert it to the proper type).
 
     """
-    def __init__(self, slot, transform=None, **kwargs):
+    def __init__(self, slot, inslot=None, name=None, subname=None,
+                 default=None, depends=None, selfdepends=True, transform=None):
         """
         :param transform: function applied to members on deserialization.
 
@@ -264,7 +271,7 @@ class SerialListSlot(SerialSlot):
         if slot.level > 0:
             raise NotImplementedError()
 
-        super(SerialListSlot, self).__init__(slot, **kwargs)
+        super(SerialListSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         if transform is None:
             transform = lambda x: x
         self.transform = transform
@@ -287,7 +294,7 @@ class SerialListSlot(SerialSlot):
                 self.unload()
             else:
                 try:
-                    self.slot.setValue(list(map(self.transform, subgroup[()])))
+                    self.inslot.setValue(list(map(self.transform, subgroup[()])))
                 except:
                     self.unload()
         finally:
@@ -295,7 +302,7 @@ class SerialListSlot(SerialSlot):
 
     def unload(self):
         if self.slot.level == 0:
-            self.slot.setValue([])
+            self.inslot.setValue([])
         else:
             self.slot.resize(0)
         self.dirty = False
@@ -303,18 +310,15 @@ class SerialListSlot(SerialSlot):
 
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
-    def __init__(self, inslot, outslot, blockslot, **kwargs):
+    def __init__(self, slot, inslot, blockslot, name=None, subname=None,
+                 default=None, depends=None, selfdepends=True):
         """
-        :param inslot: where to put deserialized data.
-        :param outslot: where to take data for serialization.
         :param blockslot: provides non-zero blocks.
 
         """
-        super(SerialBlockSlot, self).__init__(inslot, **kwargs)
-        self.inslot = inslot
-        self.outslot = outslot
+        super(SerialBlockSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.blockslot = blockslot
-        self._bind(outslot)
+        self._bind(slot)
 
     def _serialize(self, group, name, slot):
         mygroup = group.create_group(name)
@@ -324,7 +328,7 @@ class SerialBlockSlot(SerialSlot):
             subgroup = mygroup.create_group(subname)
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex, slicing in enumerate(nonZeroBlocks):
-                block = self.outslot[index][slicing].wait()
+                block = self.slot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
                 subgroup.create_dataset(blockName, data=block)
                 subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
@@ -339,14 +343,7 @@ class SerialBlockSlot(SerialSlot):
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
                 self.inslot[index][slicing] = blockData[...]
 
-class SerialHdf5BlockSlot(SerialSlot):
-
-    def __init__(self, inslot, outslot, blockslot, *args, **kwargs):
-        super( SerialHdf5BlockSlot, self).__init__(outslot, *args, **kwargs )
-        self.inslot = inslot
-        self.outslot = outslot
-        self.blockslot = blockslot
-        self._bind(outslot)
+class SerialHdf5BlockSlot(SerialBlockSlot):
 
     def _serialize(self, group, name, slot):
         mygroup = group.create_group(name)
@@ -358,7 +355,7 @@ class SerialHdf5BlockSlot(SerialSlot):
             for roi in cleanBlockRois:
                 # The protocol for hdf5 slots is that they create appropriately 
                 #  named datasets within the subgroup that we provide via writeInto()
-                req = self.outslot[index]( *roi )
+                req = self.slot[index]( *roi )
                 req.writeInto( subgroup )
                 req.wait()
 
@@ -377,8 +374,9 @@ class SerialHdf5BlockSlot(SerialSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, **kwargs):
-        super(SerialClassifierSlot, self).__init__(slot, **kwargs)
+    def __init__(self, slot, cache, inslot=None, name=None, subname=None,
+                 default=None, depends=None, selfdepends=True):
+        super(SerialClassifierSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.cache = cache
         if self.name is None:
             self.name = slot.name
@@ -454,13 +452,14 @@ class SerialClassifierSlot(SerialSlot):
 
 class SerialDictSlot(SerialSlot):
     """For saving a dictionary."""
-    def __init__(self, slot, transform=None, **kwargs):
+    def __init__(self, slot, inslot=None, name=None, subname=None,
+                 default=None, depends=None, selfdepends=True, transform=None):
         """
         :param transform: a function called on each key before
         inserting it into the dictionary.
 
         """
-        super(SerialDictSlot, self).__init__(slot, **kwargs)
+        super(SerialDictSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         if transform is None:
             transform = lambda x: x
         self.transform = transform

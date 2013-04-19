@@ -20,7 +20,9 @@ class ObjectClassificationSerializer(AppletSerializer):
                                             operator.classifier_cache,
                                             name="ClassifierForests",
                                             subname="Forest{:04d}"),
-                       #SerialDictSlot(operator.Predictions, transform=int),
+                       SerialDictSlot(operator.Probabilities,
+                                      operator.InputProbabilities,
+                                      transform=int),
                        ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,

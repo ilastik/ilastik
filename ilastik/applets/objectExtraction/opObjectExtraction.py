@@ -376,7 +376,7 @@ class OpAdaptTimeListRoi(Operator):
 
     def setupOutputs(self):
         # Number of time steps
-        self.Output.meta.shape = self.Input.meta.getTaggedShape()['t']
+        self.Output.meta.shape = (self.Input.meta.getTaggedShape()['t'],)
         self.Output.meta.dtype = object
 
     def execute(self, slot, subindex, roi, destination):
