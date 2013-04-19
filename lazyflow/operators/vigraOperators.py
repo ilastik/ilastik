@@ -464,7 +464,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
             except RuntimeError as e:
                 if e.message.find('kernel longer than line') > -1:
-                    message = "Feature computation: Your image is too small to apply a filter with sigma=%f. Please select features with smaller sigmas." % self.scales[j]
+                    message = "Feature computation error:\nYour image is too small to apply a filter with sigma=%.1f. Please select features with smaller sigmas." % self.scales[j]
                     raise RuntimeError(message)
                 else:
                     raise e
