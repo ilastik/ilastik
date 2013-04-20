@@ -613,12 +613,15 @@ class LayerViewerGui(QWidget):
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
-                if isinstance(datasource, LazyflowSource):
+                try: # not all datasources have the dataSlot property, find out by trying
                     dataTags = datasource.dataSlot.meta.axistags
                     if dataTags is not None:
                         break
+                except AttributeError:
+                    pass
 
-        assert dataTags is not None, "Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer."
+        if(dataTags is None):
+            raise RuntimeError("Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer.")
         position = ()
         for tag in dataTags:
             position += (taggedPosition[tag.key],)
