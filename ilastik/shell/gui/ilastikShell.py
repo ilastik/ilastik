@@ -983,7 +983,7 @@ class IlastikShell( QMainWindow ):
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.statusBar.showMessage("Loading project %s ..." % projectFilePath)
             self.loadProject(hdf5File, projectFilePath, readOnly)
-            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            QApplication.restoreOverrideCursor()
             self.statusBar.clearMessage()
     
     def loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
