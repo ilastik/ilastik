@@ -8,7 +8,7 @@ import h5py
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+from lazyflow.operators import OpBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
@@ -148,7 +148,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         super( OpFeatureSelection, self).__init__( *args, **kwargs )
 
         # Create the cache
-        self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
+        self.opPixelFeatureCache = OpBlockedArrayCache(parent=self)
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
         # Connect the cache to the feature output
@@ -166,37 +166,17 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
             self.CachedOutputImage.meta.dtype = self.OutputImage.meta.dtype 
         
         else:
-            # We choose block shapes that have only 1 channel because the channels may be 
-            #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-            blockDimsX = { 't' : (1,1),
-                           'z' : (128,256),
-                           'y' : (128,256),
-                           'x' : (32,32),
-                           'c' : (1000,1000) } # Overestimate number of feature channels: Cache block dimensions will be clipped to the size of the actual feature image
-    
-            blockDimsY = { 't' : (1,1),
-                           'z' : (128,256),
-                           'y' : (32,32),
-                           'x' : (128,256),
-                           'c' : (1000,1000) }
-    
-            blockDimsZ = { 't' : (1,1),
-                           'z' : (32,32),
-                           'y' : (128,256),
-                           'x' : (128,256),
-                           'c' : (1000,1000) }
+            blockDims = { 't' : (1,1),
+                          'z' : (128,256),
+                          'y' : (128,256),
+                          'x' : (128,256),
+                          'c' : (1000,1000) }
             
             axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
-            innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-            outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-    
-            innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-            outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-    
-            innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-            outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+            
+            innerBlockShape = tuple( blockDims[k][0] for k in axisOrder )
+            outerBlockShape = tuple( blockDims[k][1] for k in axisOrder )
     
             # Configure the cache        
-            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-
+            self.opPixelFeatureCache.innerBlockShape.setValue( innerBlockShape )
+            self.opPixelFeatureCache.outerBlockShape.setValue( outerBlockShape )
