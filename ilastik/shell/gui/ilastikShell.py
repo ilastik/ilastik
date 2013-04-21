@@ -13,18 +13,18 @@ import threading
 
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList, QTimer
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QInputDialog, QIcon, QFont, QToolButton
-                        
-
+                        QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
+                        QVBoxLayout, QHBoxLayout
 
 # lazyflow
 from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
@@ -40,6 +40,7 @@ from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
 from ilastik.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
+from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -95,7 +96,27 @@ class ProgressDisplayManager(QObject):
         super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
         self.statusBar = statusBar
         self.appletPercentages = {} # applet_index : percent_progress
-        self.progressBar = None
+        
+        self.progressBar = QProgressBar()
+        self.statusBar.addWidget(self.progressBar)
+        self.progressBar.setHidden(True)
+        
+        l = QLabel("cached: 0.0 MB")
+        h = QHBoxLayout() 
+        h.setContentsMargins(0,0,0,0)
+        w = QWidget()
+        h.addWidget(l)
+        btn = QToolButton()
+        btn.setText("...")
+        btn.clicked.connect(statusBar.parent().showMemUsageDialog)
+        h.addWidget(btn)
+        w.setLayout(h)
+        self.statusBar.addPermanentWidget(w)
+        
+        mgr = ArrayCacheMemoryMgr.instance
+        def printIt(msg):
+            l.setText("cached: %1.1f MB" % (msg/1024.0**2.0,)) 
+        mgr.totalCacheMemory.subscribe(printIt)
         
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
@@ -146,10 +167,12 @@ class ProgressDisplayManager(QObject):
             
             if numActive == 0 or totalPercentage == 100:
                 if self.progressBar is not None:
-                    self.statusBar.removeWidget(self.progressBar)
-                    self.progressBar = None
+                    #self.statusBar.removeWidget(self.progressBar)
+                    #self.progressBar = None
+                    self.progressBar.setHidden(True)
                     self.appletPercentages.clear()
             else:
+                self.progressBar.setHidden(False)
                 if self.progressBar is None:
                     self.progressBar = QProgressBar()
                     self.statusBar.addWidget(self.progressBar)
@@ -176,6 +199,8 @@ class IlastikShell( QMainWindow ):
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
         
+        self._memDlg = None #this will hold the memory usage dialog once created
+        
         self.imageSelectionGroup.setHidden(True)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
@@ -187,9 +212,13 @@ class IlastikShell( QMainWindow ):
             
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
         self.menuBar().addMenu( self._projectMenu  )
         self.menuBar().addMenu( self._settingsMenu )
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuBar().addMenu( self._debugMenu )
         self.menuBar().addMenu( self._helpMenu    )
         
         assert self.thread() == QApplication.instance().thread()
@@ -384,6 +413,31 @@ class IlastikShell( QMainWindow ):
         dlg = QDialog()
         uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
         dlg.exec_() 
+        
+    def _createDebugMenu(self):
+        menu = QMenu("&Debug", self)
+        menu.setObjectName("debug_menu")
+        
+        detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
+        exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
+        exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
+        for name, level in detail_levels:
+            exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
+            exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
+    
+        menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
+       
+        menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
+        return menu
+    
+    def showMemUsageDialog(self):
+        if self._memDlg is None:
+            self._memDlg = MemUsageDialog()
+            self._memDlg.setWindowTitle("Memory Usage")
+            self._memDlg.showMaximized()
+        else:
+            self._memDlg.show()
+            self._memDlg.raise_()
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
@@ -393,16 +447,6 @@ class IlastikShell( QMainWindow ):
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
         menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
-
-        if ilastik_config.getboolean("ilastik", "debug"):
-            detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
-            exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-            exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-            for name, level in detail_levels:
-                exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
-                exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
-        
-            menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
 
         return menu
 
@@ -649,6 +693,8 @@ class IlastikShell( QMainWindow ):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
