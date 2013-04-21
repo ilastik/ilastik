@@ -408,9 +408,8 @@ class OpH5WriterBigDataset(Operator):
         self.d=g.create_dataset(datasetName,
                                 shape=dataShape,
                                 dtype=dtype,
-                                chunks=self.chunkShape
-                                #compression='gzip',
-                                #compression_opts=4
+                                chunks=self.chunkShape,
+                                compression='lzf'
                                 )
 
         if 'drange' in self.Image.meta:
