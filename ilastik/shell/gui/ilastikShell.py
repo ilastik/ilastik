@@ -978,8 +978,13 @@ class IlastikShell( QMainWindow ):
         except:
             logger.error( traceback.format_exc() )
             QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
-        else:
+        else:            
+            #as load project can take a while, show a wait cursor
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            self.statusBar.showMessage("Loading project %s ..." % projectFilePath)
             self.loadProject(hdf5File, projectFilePath, readOnly)
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            self.statusBar.clearMessage()
     
     def loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
         """
