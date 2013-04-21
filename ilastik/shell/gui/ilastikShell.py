@@ -2,6 +2,7 @@
 import re
 import traceback
 import os
+import time
 from functools import partial
 import weakref
 import logging
@@ -1008,6 +1009,7 @@ class IlastikShell( QMainWindow ):
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
             self.projectManager = ProjectManager( self._workflowClass)
+            
         except Exception, e:
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
@@ -1017,13 +1019,17 @@ class IlastikShell( QMainWindow ):
             for index, app in enumerate(self.projectManager.workflow.applets):
                 self.addApplet(index, app)
             
-            
+            start = time.time()
             #load the project data from file
             if importFromPath is None:
+                #FIXME: load the project asynchronously
                 self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
             else:
                 assert not readOnly, "Can't import into a read-only file."
                 self._importProject(importFromPath, hdf5File, projectFilePath)
+                
+            stop = time.time()
+            print "Loading the project took %f sec." % (stop-start,)
             
             #add file and workflow to users preferences
             mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
