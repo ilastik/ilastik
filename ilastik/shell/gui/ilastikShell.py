@@ -1264,17 +1264,3 @@ class IlastikShell( QMainWindow ):
                     drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
                     drawerTitleItem.setFlags( Qt.NoItemFlags )
-
-#    def scrollToTop(self):
-#        #self.appletBar.verticalScrollBar().setValue( 0 )
-#
-#        self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
-#        
-#        from PyQt4.QtCore import QPropertyAnimation, QVariant
-#        animation = QPropertyAnimation( self.appletBar.verticalScrollBar(), "value", self )
-#        animation.setDuration(2000)
-#        #animation.setStartValue( QVariant( self.appletBar.verticalScrollBar().minimum() ) )
-#        animation.setEndValue( QVariant( self.appletBar.verticalScrollBar().maximum() ) )
-#        animation.start()
-#
-#        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
