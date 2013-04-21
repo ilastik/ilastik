@@ -16,10 +16,11 @@ from lazyflow.drtile import drtile
 from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere, Tracer
+from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
-class OpArrayCache(OpArrayPiper):
+class OpArrayCache(OpCache):
     """ Allocates a block of memory as large as Input.meta.shape (==Output.meta.shape)
         with the same dtype in order to be able to cache results.
         
@@ -33,11 +34,13 @@ class OpArrayCache(OpArrayPiper):
     DefaultBlockSize = 64
 
     #Input
+    Input = InputSlot()
     blockShape = InputSlot(value = DefaultBlockSize)
     fixAtCurrent = InputSlot(value = False)
    
     #Output
     CleanBlocks = OutputSlot()
+    Output = OutputSlot()
 
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
@@ -66,15 +69,43 @@ class OpArrayCache(OpArrayPiper):
         self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
 
-    def _memorySize(self):
+    def usedMemory(self):
         if self._cache is not None:
             return self._cache.nbytes
         else:
             return 0
 
+    def _blockShapeForIndex(self, index):
+        cacheShape = numpy.array(self._cache.shape)
+        blockStart = index * self._blockShape
+        blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
+        
+    def fractionOfUsedMemoryDirty(self):
+        totAll   = numpy.prod(self.Output.meta.shape)
+        totDirty = 0
+        for i, v in enumerate(self._blockState.ravel()):
+            sh = self._blockShapeForIndex(i)
+            if sh is None:
+                continue
+            if v == self.DIRTY or v == self.FIXED_DIRTY:
+                totDirty += numpy.prod(sh)
+        return totDirty/float(totAll)
+    
+    def lastAccessTime(self):
+        return self._last_access
+        
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.dtype = self.Output.meta.dtype
+        report.type = type(self)
+        report.id = id(self)
+
     def _freeMemory(self, refcheck = True):
         with self._cacheLock:
-            freed  = self._memorySize()
+            freed  = self.usedMemory()
             if self._cache is not None:
                 fshape = self._cache.shape
                 try:
@@ -94,35 +125,28 @@ class OpArrayCache(OpArrayPiper):
 
     def _allocateManagementStructures(self):
         with Tracer(self.traceLogger):
+            shape = self.Output.meta.shape
             if type(self._origBlockShape) != tuple:
-                self._blockShape = (self._origBlockShape,)*len(self.shape)
+                self._blockShape = (self._origBlockShape,)*len(shape)
             else:
                 self._blockShape = self._origBlockShape
     
-            self._blockShape = numpy.minimum(self._blockShape, self.shape)
+            self._blockShape = numpy.minimum(self._blockShape, shape)
     
-            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+            self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape))
     
-            self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(self.shape, self._blockShape, self._dirtyShape, self._origBlockShape))
-    
-            # if the entry in _dirtyArray differs from _dirtyState
-            # the entry is considered dirty
+            self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
+   
+            #if a request has been submitted to get a block, the request object
+            #is stored within this array
             self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+           
+            #keep track of the dirty state of each block
             self._blockState = OpArrayCache.DIRTY * numpy.ones(self._dirtyShape, numpy.uint8)
     
-            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-            _blockNumbers.shape = self._dirtyShape
-    
-            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-            
             self._blockState[:]= OpArrayCache.DIRTY
             self._dirtyState = OpArrayCache.CLEAN
     
-            # allocate queryArray object
-            self._flatBlockIndices =  _blockIndices[:]
-            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-
     def _allocateCache(self):
         with self._cacheLock:
             self._last_access = None
@@ -130,7 +154,7 @@ class OpArrayCache(OpArrayPiper):
             self._running = 0
 
             if self._cache is None or (self._cache.shape != self.shape):
-                mem = numpy.zeros(self.shape, dtype = self.dtype)
+                mem = numpy.zeros(self.Output.meta.shape, dtype = self.Output.meta.dtype)
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
@@ -140,6 +164,7 @@ class OpArrayCache(OpArrayPiper):
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
+        
 
         reconfigure = False
         if  self.inputs["fixAtCurrent"].ready():
@@ -150,9 +175,12 @@ class OpArrayCache(OpArrayPiper):
             if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
-            OpArrayPiper.setupOutputs(self)
+            
+            inputSlot = self.inputs["Input"]
+            self.outputs["Output"].meta.assignFrom(inputSlot.meta)
 
-        if reconfigure and self.shape is not None:
+        shape = self.Output.meta.shape
+        if reconfigure and shape is not None:
             self._lock.acquire()
             self._allocateManagementStructures()
             if not self._lazyAlloc:
@@ -160,9 +188,11 @@ class OpArrayCache(OpArrayPiper):
             self._lock.release()
 
     def propagateDirty(self, slot, subindex, roi):
+        shape = self.Output.meta.shape
+        
         key = roi.toSlice()
         if slot == self.inputs["Input"]:
-            start, stop = sliceToRoi(key, self.shape)
+            start, stop = sliceToRoi(key, shape)
 
             with self._lock:
                 if self._cache is not None:
@@ -231,7 +261,8 @@ class OpArrayCache(OpArrayPiper):
     def _executeOutput(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
-        start, stop = sliceToRoi(key, self.shape)
+        shape = self.Output.meta.shape
+        start, stop = sliceToRoi(key, shape)
 
         self.traceLogger.debug("Acquiring ArrayCache lock...")
         self._lock.acquire()
@@ -291,8 +322,9 @@ class OpArrayCache(OpArrayPiper):
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
 
-            drStop = numpy.minimum(drStop, self.shape)
-            drStart = numpy.minimum(drStart, self.shape)
+            shape = self.Output.meta.shape
+            drStop = numpy.minimum(drStop, shape)
+            drStart = numpy.minimum(drStart, shape)
 
             key3 = roiToSlice(drStart3,drStop3)
             key2 = roiToSlice(drStart2,drStop2)

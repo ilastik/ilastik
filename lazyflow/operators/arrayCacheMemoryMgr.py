@@ -11,7 +11,24 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 import blist
 import psutil
 
+#lazyflow
+from lazyflow.utility import OrderedSignal
+
+class MemInfoNode:
+    def __init__(self):
+        self.type = None
+        self.id = None
+        self.usedMemory = None
+        self.dtype = None
+        self.roi = None
+        self.fractionOfUsedMemoryDirty = None
+        self.lastAccessTime = None
+        self.name = None
+        self.children = []
+
 class ArrayCacheMemoryMgr(threading.Thread):
+    
+    totalCacheMemory = OrderedSignal()
 
     loggingName = __name__ + ".ArrayCacheMemoryMgr"
     logger = logging.getLogger(loggingName)
@@ -22,6 +39,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self.daemon = True
 
         self.caches = self._new_list()
+        self.namedCaches = []
 
         self._max_usage = 85
         self._target_usage = 70
@@ -32,6 +50,16 @@ class ArrayCacheMemoryMgr(threading.Thread):
         def getPrio(array_cache):
             return array_cache._cache_priority
         return blist.sortedlist((), getPrio)
+
+    def addNamedCache(self, array_cache):
+        """add a cache to a special list of named caches
+        
+           The list of named caches should contain only top-level caches.
+           This way, when showing memory usage, we can provide a tree-view, where the
+           named caches are the top-level items and the user can then drill down into the caches
+           that are children of the top-level caches.
+        """
+        self.namedCaches.append(array_cache)
 
     def add(self, array_cache):
         with self._lock:
@@ -57,7 +85,13 @@ class ArrayCacheMemoryMgr(threading.Thread):
             if delta > 10:
                 self._last_usage = mem_usage
 
-            time.sleep(10)      
+            #calculate total memory usage and send as signal
+            tot = 0.0
+            for c in self.namedCaches:
+                tot += c.usedMemory()
+            self.totalCacheMemory(tot)
+                
+            time.sleep(10)
 
             if mem_usage > self._max_usage:
                 self.logger.info("freeing memory...")

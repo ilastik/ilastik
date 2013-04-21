@@ -10,8 +10,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Tracer
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.opCache import OpCache
 
-class OpSlicedBlockedArrayCache(Operator):
+class OpSlicedBlockedArrayCache(OpCache):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
@@ -35,6 +37,28 @@ class OpSlicedBlockedArrayCache(Operator):
             self._innerOps = []
             self._somethingIsDirty = False
 
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.dtype = self.Output.meta.dtype
+        report.type = type(self)
+        report.id = id(self)
+        sh = self.Output.meta.shape
+        report.roi = ([0]*len(sh), sh)
+        
+        for i, iOp in enumerate(self._innerOps):
+            n = MemInfoNode()
+            report.children.append(n)
+            iOp.generateReport(n)
+            
+    def usedMemory(self):
+        tot = 0.0
+        for iOp in self._innerOps:
+            tot += iOp.usedMemory()
+        return tot
+    
     def setupOutputs(self):
         self.shape = self.inputs["Input"].meta.shape
         self._outerShapes = self.inputs["outerBlockShape"].value

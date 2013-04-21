@@ -14,7 +14,6 @@ class InputDict(collections.OrderedDict):
         super(InputDict, self).__init__()
         self.operator = operator
 
-
     def __setitem__(self, key, value):
         assert isinstance(value, InputSlot), \
             ("ERROR: all elements of .inputs must be of type InputSlot."
@@ -37,7 +36,6 @@ class OutputDict(collections.OrderedDict):
     def __init__(self, operator):
         super(OutputDict, self).__init__()
         self.operator = operator
-
 
     def __setitem__(self, key, value):
         assert isinstance(value, OutputSlot), \
