@@ -5,7 +5,7 @@ from PyQt4.QtCore import pyqtSlot, Qt
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_suffix
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import os
 import numpy
@@ -429,14 +429,14 @@ class ObjectClassificationGui(LabelingGui):
 
             print 'features:'
             feats = self.op.ObjectFeatures([t]).wait()[t]
-            featnames = feats.keys()
-            for featname in featnames:
-                if default_features_suffix in featname:
+            for plugin in feats.keys():
+                if plugin == default_features_key:
                     continue
-                print "{}:".format(featname)
-                value = feats[featname]
-                ft = numpy.asarray(value.squeeze())[obj]
-                print ft
+                print "Feature category: {}".format(plugin)
+                for featname in feats[plugin].keys():
+                    value = feats[plugin][featname]
+                    ft = numpy.asarray(value.squeeze())[obj]
+                    print "{}: {}".format(featname, ft)
             print "------------------------------------------------------------"
 
     def setVisible(self, visible):

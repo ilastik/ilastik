@@ -30,8 +30,8 @@ default_features = ['Coord<Minimum>',
                     'Count',
                 ]
 
-# to distinguish them, their name gets this suffix
-default_features_suffix = '_default_only'
+# to distinguish them, they go in their own category with this name
+default_features_key = 'Default features'
 
 def max_margin(d, default=(0, 0, 0)):
     """find any parameter named 'margin' in the nested feature
@@ -197,18 +197,20 @@ class OpRegionFeatures3d(Operator):
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                         default_features,
                                                         ignoreLabel=0)
-        mincoords = extrafeats["Coord<Minimum >"]
-        maxcoords = extrafeats["Coord<Maximum >"]
+        extrafeats = dict((k.replace(' ', ''), v)
+                          for k, v in extrafeats.iteritems())
+
+        mincoords = extrafeats["Coord<Minimum>"]
+        maxcoords = extrafeats["Coord<Maximum>"]
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
 
         # do global features
-        global_features = defaultdict(list)
+        global_features = {}
         for plugin_name, feature_list in feature_names.iteritems():
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            feats = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
-            global_features = dict(global_features.items() + feats.items())
+            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
 
         # local features: loop over all objects
         def dictextend(a, b):
@@ -216,7 +218,7 @@ class OpRegionFeatures3d(Operator):
                 a[key].append(b[key])
             return a
 
-        local_features = defaultdict(list)
+        local_features = defaultdict(lambda: defaultdict(list))
         margin = max_margin(feature_names)
         if np.any(margin) > 0:
             for i in range(1, nobj):
@@ -227,41 +229,49 @@ class OpRegionFeatures3d(Operator):
                 for plugin_name, feature_list in feature_names.iteritems():
                     plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
                     feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
-                    local_features = dictextend(local_features, feats)
+                    local_features[plugin_name] = dictextend(local_features[plugin_name], feats)
 
-        for key in local_features.keys():
-            value = local_features[key]
-            try:
-                local_features[key] = np.vstack(list(v.reshape(1, -1) for v in value))
-            except:
-                print 'warning: feature {} failed'.format(key)
-                del local_features[key]
+        # remove local features that failed
+        for pname, pfeats in local_features.iteritems():
+            for key in pfeats.keys():
+                value = pfeats[key]
+                try:
+                    pfeats[key] = np.vstack(list(v.reshape(1, -1) for v in value))
+                except:
+                    print 'warning: feature {} failed'.format(key)
+                    del pfeats[key]
 
-        all_features = dict(global_features.items() + local_features.items())
+        # merge the global and local features
+        all_features = {}
+        plugin_names = set(global_features.keys()) | set(local_features.keys())
+        for name in plugin_names:
+            d1 = global_features.get(name, {})
+            d2 = local_features.get(name, {})
+            all_features[name] = dict(d1.items() + d2.items())
 
-        for key, value in all_features.iteritems():
-            if value.shape[0] != nobj - 1:
-                raise Exception('feature {} does not have enough rows')
+        # reshape all features
+        for pfeats in all_features.itervalues():
+            for key, value in pfeats.iteritems():
+                if value.shape[0] != nobj - 1:
+                    raise Exception('feature {} does not have enough rows')
 
-            # because object classification operator expects nobj to
-            # include background. we should change that assumption.
-            value = np.vstack((np.zeros(value.shape[1]),
-                               value))
+                # because object classification operator expects nobj to
+                # include background. we should change that assumption.
+                value = np.vstack((np.zeros(value.shape[1]),
+                                   value))
 
-            value = value.astype(np.float32) #turn Nones into numpy.NaNs
+                value = value.astype(np.float32) #turn Nones into numpy.NaNs
 
-            assert value.dtype == np.float32
-            assert value.shape[0] == nobj
-            assert value.ndim == 2
+                assert value.dtype == np.float32
+                assert value.shape[0] == nobj
+                assert value.ndim == 2
 
-            all_features[key] = value
+                pfeats[key] = value
 
         # add features needed by downstream applets. these should be
         # removed before classification.
-        extrafeats = dict((k.replace(' ', '') + default_features_suffix, v)
-                          for k, v in extrafeats.iteritems())
-
-        return dict(all_features.items() + extrafeats.items())
+        all_features[default_features_key] = extrafeats
+        return all_features
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Features:
@@ -460,7 +470,7 @@ class OpObjectCenterImage(Operator):
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
             for ch in range(roi.start[-1], roi.stop[-1]):
-                centers = obj_features[t]['RegionCenter' + default_features_suffix]
+                centers = obj_features[t][default_features_key]['RegionCenter']
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:

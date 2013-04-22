@@ -13,7 +13,7 @@ from functools import partial
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_suffix
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 MISSING_VALUE = 0
 
@@ -226,11 +226,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
 
             #the bboxes should be the same for all channels
-            mins = feats[timeCoord]["Coord<Minimum>"+default_features_suffix]
-            maxs = feats[timeCoord]["Coord<Maximum>"+default_features_suffix]
+            mins = feats[timeCoord][default_features_key]["Coord<Minimum>"]
+            maxs = feats[timeCoord][default_features_key]["Coord<Maximum>"]
             bboxes = dict()
-            bboxes["Coord<Minimum>"]=mins
-            bboxes["Coord<Maximum>"]=maxs
+            bboxes["Coord<Minimum>"] = mins
+            bboxes["Coord<Maximum>"] = maxs
             self._labelBBoxes[imageIndex][timeCoord]=bboxes
 
     def triggerTransferLabels(self, imageIndex):
@@ -250,12 +250,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             print "Transferring labels to the new segmentation. This might take a while..."
             new_feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
             coords = dict()
-            coords["Coord<Minimum>"]=new_feats[timeCoord]["Coord<Minimum>"+default_features_suffix]
-            coords["Coord<Maximum>"]=new_feats[timeCoord]["Coord<Maximum>"+default_features_suffix]
+            coords["Coord<Minimum>"] = new_feats[timeCoord][default_features_key]["Coord<Minimum>"]
+            coords["Coord<Maximum>"] = new_feats[timeCoord][default_features_key]["Coord<Maximum>"]
             #FIXME: pass axistags
-            new_labels, old_labels_lost, new_labels_lost = self.transferLabels(self._ambiguousLabels[imageIndex][timeCoord], \
-                                             self._labelBBoxes[imageIndex][timeCoord], \
-                                            coords)
+            new_labels, old_labels_lost, new_labels_lost = self.transferLabels(
+                self._ambiguousLabels[imageIndex][timeCoord],
+                self._labelBBoxes[imageIndex][timeCoord],
+                coords
+            )
             labels[timeCoord] = new_labels
 
             self._labelBBoxes[imageIndex][timeCoord]=coords
@@ -398,11 +400,7 @@ def _concatenate(arrays, axis):
 def make_feature_array(feats, labels=None):
     featlist = []
     labellist = []
-    featnames = feats.values()[0].keys()
 
-    # remove extra features used by applet only.
-    featnames = sorted(list(n for n in featnames
-                            if default_features_suffix not in n))
     row_names = []
     col_names = []
 
@@ -415,13 +413,16 @@ def make_feature_array(feats, labels=None):
             index = numpy.nonzero(lab)
             labellist_tmp.append(lab[index])
 
-        for featname in featnames:
-            value = feats[t][featname]
-            ft = numpy.asarray(value.squeeze())
-            if labels is not None:
-                ft = ft[index]
-            featsMatrix_tmp.append(ft)
-            col_names.extend([featname] * value.shape[1])
+        for plugin in sorted(feats[t].keys()):
+            if plugin == default_features_key:
+                continue
+            for featname in sorted(feats[t][plugin].keys()):
+                value = feats[t][plugin][featname]
+                ft = numpy.asarray(value.squeeze())
+                if labels is not None:
+                    ft = ft[index]
+                featsMatrix_tmp.append(ft)
+                col_names.extend([(plugin, featname)] * value.shape[1])
 
 
         #FIXME: we can do it all with just arrays
@@ -450,16 +451,6 @@ def replace_missing(a):
     a[idx] = MISSING_VALUE
     return rows, cols
 
-
-
-def warn_bad(rows, cols, col_names, t):
-    badfeats = set(col_names[c] for c in cols)
-    if len(rows) > 0:
-        print("Warning: objects with bad features encountered: {}".format(rows))
-    if len(badfeats) > 0:
-        print("Warning: features with bad values encountered: {}".format(sorted(badfeats)))
-
-    return badfeats
 
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
@@ -515,7 +506,6 @@ class OpObjectTrain(Operator):
                 continue
 
             rows, cols = replace_missing(featstmp)
-            badfeats = warn_bad(rows, cols, col_names, i)
 
             featList.append(featstmp)
             all_col_names.append(tuple(col_names))
@@ -525,7 +515,8 @@ class OpObjectTrain(Operator):
                 t, obj = row_names[idx]
                 all_bad_objects[i][t].append(obj)
 
-            all_bad_feats |= badfeats
+            for c in cols:
+                all_bad_feats.add(col_names[c])
 
         self._warnBadObjects(all_bad_objects, all_bad_feats)
 
@@ -660,7 +651,6 @@ class OpObjectPredict(Operator):
                 rows, cols = replace_missing(ftmatrix)
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1
-                warn_bad(rows, cols, col_names, t)
                 feats[t] = ftmatrix
                 prob_predictions[t] = [0] * len(forests)
 
@@ -790,8 +780,8 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    min_coords = feats[t]['Coord<Minimum>' + default_features_suffix][obj]
-                    max_coords = feats[t]['Coord<Maximum>' + default_features_suffix][obj]
+                    min_coords = feats[t][default_features_key]['Coord<Minimum>'][obj]
+                    max_coords = feats[t][default_features_key]['Coord<Maximum>'][obj]
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
@@ -931,7 +921,7 @@ class OpBadObjectsToWarningMessage(Operator):
         return self._blockSep.join(a)
 
     def _formatFeatures(self, f):
-        a = self._itemSep.join(f)
+        a = self._itemSep.join(map(str, f))
         if len(a)>0:
             a = "The following features had bad values:" + self._itemSep + a
         return a

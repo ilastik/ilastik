@@ -5,7 +5,7 @@ from lazyflow.stype import Opaque
 import numpy as np
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_suffix
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 
 class OpTrackingBase(Operator):
@@ -176,11 +176,11 @@ class OpTrackingBase(Operator):
         total_count = 0
         empty_frame = False
         for t in feats.keys():
-            rc = feats[t]['RegionCenter' + default_features_suffix]
+            rc = feats[t][default_features_key]['RegionCenter']
             if rc.size:
                 rc = rc[1:, ...]
 
-            ct = feats[t]['Count' + default_features_suffix]
+            ct = feats[t][default_features_key]['Count']
             if ct.size:
                 ct = ct[1:, ...]
             

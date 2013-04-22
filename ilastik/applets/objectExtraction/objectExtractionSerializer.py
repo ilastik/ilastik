@@ -45,7 +45,9 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 roi_grp = subgroup.create_group(name=str(roi))
                 logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
                 for key, val in region_features.iteritems():
-                    roi_grp.create_dataset(name=key, data=val)
+                    plugin_group = getOrCreateGroup(roi_grp, key)
+                    for featname, featval in val.iteritems():
+                        plugin_group.create_dataset(name=featname, data=featval)
 
         self.dirty = False
 
@@ -54,13 +56,15 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         opgroup = group[self.name]
         for i, (_, subgroup) in enumerate( sorted(opgroup.items() ) ):
-            for roiString, roi_grp in subgroup.items():
+            for roiString, roi_grp in subgroup.iteritems():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
                 roi = eval(roiString)
 
                 region_features = {}
-                for key, val in roi_grp.items():
-                    region_features[key] = val[...]
+                for key, val in roi_grp.iteritems():
+                    region_features[key] = {}
+                    for featname, featval in val.iteritems():
+                        region_features[key][featname] = featval[...]
 
                 slicing = roiToSlice( *roi )
                 self.inslot[i][slicing] = numpy.array([region_features])
