@@ -6,8 +6,10 @@ from lazyflow.operators import OpLabelImage
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
 from ilastik.plugins import pluginManager
 
+NAME = "Vigra Object Features"
+
 FEATURES = {
-    "Vigra Object Features": {
+    NAME : {
         "Count" : {},
         "RegionCenter" : {},
         "Coord<Principal<Kurtosis>>" : {},
@@ -91,18 +93,18 @@ class TestOpRegionFeatures(object):
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)== self.img.shape[0]
         for t in feats:
-            assert feats[t]['Count'].shape[0] > 0
-            assert feats[t]['RegionCenter'].shape[0] > 0
+            assert feats[t][NAME]['Count'].shape[0] > 0
+            assert feats[t][NAME]['RegionCenter'].shape[0] > 0
 
-        assert np.any(feats[0]['Count'] != feats[1]['Count'])
-        assert np.any(feats[0]['RegionCenter'] != feats[1]['RegionCenter'])
+        assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
+        assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
 
 
 class testOpRegionFeaturesAgainstNumpy(object):
     def setUp(self):
         g = Graph()
         self.features = {
-            "Vigra Object Features": {
+            NAME : {
                 "Count" : {},
                 "RegionCenter" : {},
                 "Mean" : {},
@@ -132,21 +134,21 @@ class testOpRegionFeaturesAgainstNumpy(object):
 
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)==self.img.shape[0]
-        for key in self.features["Vigra Object Features"]:
-            assert key in feats[0].keys()
+        for key in self.features[NAME]:
+            assert key in feats[0][NAME].keys()
 
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
         for t in range(nt):
             npcounts = np.bincount(labelimage[t,...].flat)
-            counts = feats[t]["Count"].astype(np.uint32)
-            means = feats[t]["Mean"]
-            sum_excl = feats[t]["Sum in neighborhood"] #sum, not mean, to avoid 0/0
-            sum_incl = feats[t]["Sum in object and neighborhood"]
-            sum = feats[t]["Sum"]
-            mins = feats[t]["Coord<Minimum>"]
-            maxs = feats[t]["Coord<Maximum>"]
-            centers = feats[t]["RegionCenter"]
+            counts = feats[t][NAME]["Count"].astype(np.uint32)
+            means = feats[t][NAME]["Mean"]
+            sum_excl = feats[t][NAME]["Sum in neighborhood"] #sum, not mean, to avoid 0/0
+            sum_incl = feats[t][NAME]["Sum in object and neighborhood"]
+            sum = feats[t][NAME]["Sum"]
+            mins = feats[t][NAME]["Coord<Minimum>"]
+            maxs = feats[t][NAME]["Coord<Maximum>"]
+            centers = feats[t][NAME]["RegionCenter"]
             #print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
