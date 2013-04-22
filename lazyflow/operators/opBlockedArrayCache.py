@@ -12,9 +12,11 @@ from lazyflow.roi import roiToSlice
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility import Tracer
+from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
-class OpBlockedArrayCache(Operator):
+class OpBlockedArrayCache(OpCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -61,11 +63,6 @@ class OpBlockedArrayCache(Operator):
                 self._configured = False
                 
             if min(shape) == 0:
-                # FIXME: This is evil, but there's no convenient way around it.
-                # We don't want our output to be flagged as 'ready'
-                # The only way to do that is to temporarily connect it to an unready operator
-#                opTmp = OpArrayPiper(parent=self, graph=self.graph)
-#                opTmp.Output.connect( self.Output )
                 self._configured = False
                 return
             else:
@@ -116,6 +113,29 @@ class OpBlockedArrayCache(Operator):
 
                 if notifyOutputDirty:
                     self.Output.setDirty(slice(None))
+
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.type = type(self)
+        report.id = id(self)
+       
+        for i, block in enumerate(self._cache_list.values()):
+            start = self._blockShape*self._flatBlockIndices[i]
+            stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
+            
+            n = MemInfoNode()
+            n.roi = (start, stop)
+            report.children.append(n)
+            block.generateReport(n)
+            
+    def usedMemory(self):
+        tot = 0.0
+        for block in self._cache_list.values():
+            tot += block.usedMemory()
+        return tot
 
     def execute(self, slot, subindex, roi, result):
         if not self._configured:

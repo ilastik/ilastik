@@ -456,6 +456,7 @@ class Slot(object):
             except ValueError:
                 pass
         self.partner = None
+        had_value = self._value is not None
         self._value = None
         oldReady = self.meta._ready
         self.meta = MetaDict()
@@ -464,7 +465,7 @@ class Slot(object):
             self.resize(0)
 
         # call callbacks
-        if had_partner:
+        if had_partner or had_value:
             self._sig_disconnect(self)
 
         # Notify our partners that we changed.

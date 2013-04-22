@@ -1,7 +1,8 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators import OpLabelImage, OpCompressedCache
+from lazyflow.operators.opCache import OpCache
 
-class OpCachedLabelImage(Operator):
+class OpCachedLabelImage(OpCache):
     """
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
     """

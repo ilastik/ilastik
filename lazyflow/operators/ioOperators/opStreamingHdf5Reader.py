@@ -74,7 +74,7 @@ class OpStreamingHdf5Reader(Operator):
             axistags = vigra.defaultAxistags(axisorder)
 
         # Configure our slot meta-info
-        self.OutputImage.meta.dtype = dataset.dtype
+        self.OutputImage.meta.dtype = dataset.dtype.type
         self.OutputImage.meta.shape = outputShape
         self.OutputImage.meta.axistags = axistags
 

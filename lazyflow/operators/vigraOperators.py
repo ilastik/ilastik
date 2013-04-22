@@ -431,36 +431,43 @@ class OpPixelFeaturesPresmoothed(Operator):
             sourceArraysForSigmas = [None]*dimCol
 
             #connect individual operators
-            for j in range(dimCol):
-                hasScale = False
-                for i in range(dimRow):
-                    if self.matrix[i,j]:
-                        hasScale = True
-                if not hasScale:
-                    continue
-                destSigma = 1.0
-                if self.scales[j] > destSigma:
-                    tempSigma = math.sqrt(self.scales[j]**2 - destSigma**2)
-                else:
-                    destSigma = 0.0
-                    tempSigma = self.scales[j]
-                vigOpSourceShape = list(vigOpSourceStop - vigOpSourceStart)
-                if hasTimeAxis:
-
-                    if timeAxis < channelAxis:
-                        vigOpSourceShape.insert(timeAxis, ( oldstop - oldstart)[timeAxis])
+            try:
+                for j in range(dimCol):
+                    hasScale = False
+                    for i in range(dimRow):
+                        if self.matrix[i,j]:
+                            hasScale = True
+                    if not hasScale:
+                        continue
+                    destSigma = 1.0
+                    if self.scales[j] > destSigma:
+                        tempSigma = math.sqrt(self.scales[j]**2 - destSigma**2)
                     else:
-                        vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
-                    vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
-
-                    sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
-                    for i,vsa in enumerate(sourceArrayV.timeIter()):
+                        destSigma = 0.0
+                        tempSigma = self.scales[j]
+                    vigOpSourceShape = list(vigOpSourceStop - vigOpSourceStart)
+                    if hasTimeAxis:
+    
+                        if timeAxis < channelAxis:
+                            vigOpSourceShape.insert(timeAxis, ( oldstop - oldstart)[timeAxis])
+                        else:
+                            vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
+                        vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
+    
+                        sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
+                        for i,vsa in enumerate(sourceArrayV.timeIter()):
+                            droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                            tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
+                            sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                    else:
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                        tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
-                        sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
+            except RuntimeError as e:
+                if e.message.find('kernel longer than line') > -1:
+                    message = "Feature computation error:\nYour image is too small to apply a filter with sigma=%.1f. Please select features with smaller sigmas." % self.scales[j]
+                    raise RuntimeError(message)
                 else:
-                    droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
+                    raise e
 
             del sourceArrayV
             try:

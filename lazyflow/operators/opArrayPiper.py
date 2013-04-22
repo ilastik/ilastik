@@ -37,12 +37,4 @@ class OpArrayPiper(Operator):
         assert slot == self.Input
         key = roi.toSlice()
         self.outputs["Output"][key] = value
-
-    @property
-    def shape(self):
-        return self.outputs["Output"].meta.shape
-
-    @property
-    def dtype(self):
-        return self.outputs["Output"].meta.dtype
     

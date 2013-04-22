@@ -68,9 +68,15 @@ class OpVigraLabelVolume(Operator):
                 bg = float(bg)
             else:
                 bg = int(bg)
-            vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg, out=resultView)
+            if len(inputData.shape)==2:
+                vigra.analysis.labelImageWithBackground(inputData, background_value=bg, out=resultView)
+            else:
+                vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg, out=resultView)
         else:
-            vigra.analysis.labelVolumeWithBackground(inputData, out=resultView)
+            if len(inputData.shape)==2:
+                vigra.analysis.labelImageWithBackground(inputData, out=resultView)
+            else:
+                vigra.analysis.labelVolumeWithBackground(inputData, out=resultView)
         
         return destination
 
