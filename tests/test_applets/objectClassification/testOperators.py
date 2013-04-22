@@ -72,6 +72,7 @@ class TestOpObjectTrain(unittest.TestCase):
         self.op = OpObjectTrain(graph=g)
         self.op.Features.resize(1)
         self.op.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.SelectedFeatures.setValue(FEATURES)
         self.op.FixClassifier.setValue(False)
         self.op.ForestCount.setValue(1)
 
@@ -111,6 +112,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.trainop = OpObjectTrain(graph=g)
         self.trainop.Features.resize(1)
         self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
+        self.trainop.SelectedFeatures.setValue(features)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
         self.trainop.FixClassifier.setValue(False)
@@ -120,6 +122,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op = OpObjectPredict(graph=g)
         self.op.Classifier.connect(self.trainop.Classifier)
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
+        self.op.SelectedFeatures.setValue(features)
         self.op.LabelsCount.setValue(2)
         assert self.op.Predictions.ready()
 
@@ -140,8 +143,8 @@ class TestOpObjectPredict(unittest.TestCase):
         assert np.all(probChannel0Time01[0]==probs[0][:, 0])
         assert np.all(probChannel0Time01[1]==probs[1][:, 0])
         
-''' 
-  
+
+ 
 class TestFeatureSelection(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
@@ -155,25 +158,32 @@ class TestFeatureSelection(unittest.TestCase):
 
         g = Graph()
 
-        FEATURES = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
-                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}}}
+        features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
+                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
+                                      "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
+        sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
+        '''
         objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
         objectExtraction.config.other_features = []
         objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
-        
+        '''
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
+        self.extrOp.Features.setValue(features)
+    
         assert self.extrOp.RegionFeatures.ready()
 
         self.trainop = OpObjectTrain(graph=g)
         self.trainop.Features.resize(1)
         self.trainop.Features.connect(self.extrOp.RegionFeatures)
+        self.trainop.SelectedFeatures.setValue(sel_features)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
         self.trainop.FixClassifier.setValue(False)
         self.trainop.ForestCount.setValue(1)
+        
         assert self.trainop.Classifier.ready()
 
         
@@ -200,19 +210,25 @@ class TestFullOperator(unittest.TestCase):
 
         g = Graph()
 
-        objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
-        objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
+        features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
+                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
+                                      "Mean in neighborhood":{"margin":(30, 30, 1)}}}
+        
+        sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
         
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
+        self.extrOp.Features.setValue(features)
         assert self.extrOp.RegionFeatures.ready()
         
         self.classOp = OpObjectClassification(graph=g)
         self.classOp.BinaryImages.resize(1)
         self.classOp.BinaryImages.setValues([binimg])
         self.classOp.SegmentationImages.resize(1)
-        self.classOp.SegmentationImages.setValues([segimg])
+        #FIXME: TODO: setting this by self.classOp.SegmentationImages.setValue(segimg) should work too!!!
+        
+        self.classOp.SegmentationImages.connect(self.extrOp.LabelImage)
         self.classOp.RawImages.resize(1)
         self.classOp.RawImages.setValues([rawimg])
         self.classOp.LabelInputs.resize(1)
@@ -220,12 +236,14 @@ class TestFullOperator(unittest.TestCase):
         self.classOp.LabelsAllowedFlags.resize(1)
         self.classOp.LabelsAllowedFlags.setValues([True])
         self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
+        self.classOp.SelectedFeatures.connect(self.extrOp.SelectedFeatures)
+        self.classOp.MySelectedFeatures.setValue(sel_features)
         
         
     def test(self):
         assert self.classOp.Predictions.ready()
         probs = self.classOp.PredictionImages[0][:].wait()
-'''     
+ 
 
 if __name__ == '__main__':
     unittest.main()

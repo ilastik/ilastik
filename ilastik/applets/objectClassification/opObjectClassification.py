@@ -193,7 +193,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot==self.SegmentationImages:
+        if slot==self.SegmentationImages and len(self.LabelInputs)>0:
+            
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
 
