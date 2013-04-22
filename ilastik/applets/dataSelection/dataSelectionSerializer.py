@@ -2,7 +2,7 @@ from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
 
 import os
-import copy
+import vigra
 from ilastik.utility import bind, PathComponents
 from ilastik.utility.pathHelpers import areOnSameDrive,getPathVariants
 import ilastik.utility.globals
@@ -34,7 +34,6 @@ class DataSelectionSerializer( AppletSerializer ):
         self.version = '0.2'
         
         def handleDirty():
-            print "marking data selection dirty..."
             self._dirty = True
         self.topLevelOperator.ProjectFile.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
@@ -129,8 +128,11 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
                     infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
+                    infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
                     if datasetInfo.axisorder is not None:
                         infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
+                    if datasetInfo.drange is not None:
+                        infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
         self._dirty = False
 
@@ -236,17 +238,33 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo._filePath = str(infoGroup['filePath'].value)
         datasetInfo._datasetId = str(infoGroup['datasetId'].value)
 
-        # Deserialize the "allow labels" flag
         try:
             datasetInfo.allowLabels = infoGroup['allowLabels'].value
         except KeyError:
             pass
 
-        # Deserialize the axisorder (if present)
         try:
             datasetInfo.axisorder = infoGroup['axisorder'].value
         except KeyError:
             pass
+        
+        try:
+            datasetInfo.drange = tuple( infoGroup['drange'].value )
+        except KeyError:
+            pass
+        
+        try:
+            datasetInfo.nickname = str( infoGroup['nickname'].value )
+        except KeyError:
+            datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
+        
+        try:
+            tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
+            datasetInfo.axistags = tags
+            datasetInfo.axisorder = "".join( tag.key for tag in tags )
+        except KeyError:
+            if datasetInfo.axisorder is not None:
+                datasetInfo.axistags = vigra.defaultAxistags(datasetInfo.axisorder)
         
         # If the data is supposed to be in the project,
         #  check for it now.

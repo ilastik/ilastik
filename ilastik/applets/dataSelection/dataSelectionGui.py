@@ -29,7 +29,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.utility.pathHelpers import getPathVariants,areOnSameDrive
+from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import ControlCommand
 from ilastik.widgets.massFileLoader import MassFileLoader
@@ -340,6 +340,8 @@ class DataSelectionGui(QWidget):
                 datasetInfo.filePath = relPath
             else:
                 datasetInfo.filePath = absPath
+                
+            datasetInfo.nickname = PathComponents(absPath).filenameBase
 
             h5Exts = ['.ilp', '.h5', '.hdf5']
             if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
@@ -390,6 +392,8 @@ class DataSelectionGui(QWidget):
 
         info = DatasetInfo()
         info.filePath = "//".join( files )
+        prefix = os.path.commonprefix(files)
+        info.nickname = PathComponents(prefix).filenameBase + "..."
 
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )

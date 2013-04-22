@@ -75,10 +75,13 @@ class DatasetInfoEditorWidget(QDialog):
         self._updateDtype()
         self._updateRange()
         self._updateAxes()
+        
+        self._updateNickname()
 
     def _setUpEventFilters(self):
         # Changes to these widgets are detected via eventFilter()
-        self._autoAppliedWidgets = { self.axesEdit : self._applyAxesToTempOps,
+        self._autoAppliedWidgets = { self.nicknameEdit : self._applyNicknameToTempOps,
+                                     self.axesEdit : self._applyAxesToTempOps,
                                      self.rangeMinSpinBox : self._applyRangeToTempOps,
                                      self.rangeMaxSpinBox : self._applyRangeToTempOps }
 
@@ -158,6 +161,63 @@ class DatasetInfoEditorWidget(QDialog):
     def _cleanUpTempOperators(self):
         for laneIndex, op in self.tempOps.items():
             op.cleanUp()
+
+    def _updateNickname(self):
+        firstOp = self.tempOps.values()[0]
+        nickname = firstOp.Dataset.value.nickname
+        for op in self.tempOps.values():
+            info = op.Dataset.value
+            if nickname != info.nickname:
+                nickname = None
+                break
+        if nickname is None:
+            self.nicknameEdit.setText("<multiple>")
+        else:
+            self.nicknameEdit.setText(nickname)
+
+    def _applyNicknameToTempOps(self):
+        newNickname = str(self.nicknameEdit.text())
+        if "<multiple>" in newNickname:
+            return
+
+        try:
+            # Remove the event filter while this function executes because we don't 
+            #  want to trigger additional calls to this very function.
+            self.nicknameEdit.removeEventFilter(self)
+            
+            # Save a copy of our settings
+            oldInfos = {}
+            for laneIndex, op in self.tempOps.items():
+                oldInfos[laneIndex] = copy.copy( op.Dataset.value )
+    
+            currentLane = self.tempOps.keys()[0]
+            try:
+                for laneIndex, op in self.tempOps.items():
+                    info = copy.copy( op.Dataset.value )
+                    info.nickname = newNickname
+                    op.Dataset.setValue( info )
+                self._error_fields.discard('Nickname')
+                return True
+            except Exception as e:
+                # Revert everything back to the previous state
+                for laneIndex, op in self.tempOps.items():
+                    op.Dataset.setValue( oldInfos[laneIndex] )
+                    if laneIndex == currentLane:
+                        # Only need to revert the lanes we actually changed.
+                        # Everything else wasn't touched
+                        break
+                
+                traceback.print_exc()
+                msg = "Could not set new nickname due to an exception:\n"
+                msg += "{}".format( e )
+                QMessageBox.warning(self, "Error", msg)
+                self._error_fields += 'Nickname'
+                return False
+
+        finally:
+            self.nicknameEdit.installEventFilter(self)
+            self._updateNickname()
+
 
     def _getCommonMetadataValue(self, attr):
         # If this metadata attribute is common across all images,

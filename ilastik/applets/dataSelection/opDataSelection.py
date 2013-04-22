@@ -21,9 +21,13 @@ class DatasetInfo(object):
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
-        self.axisorder = None
         self.drange = None
         self.fromstack = False
+        self.nickname = ""
+
+        # If present, axistags supercedes axisorder member.
+        self.axisorder = None
+        self.axistags = None
 
     @property
     def filePath(self):
@@ -118,7 +122,8 @@ class OpDataSelection(Operator):
         if datasetInfo.drange is not None:
             metadata = {}
             metadata['drange'] = datasetInfo.drange
-            # TODO: Update axiskeys with channel description...
+            if datasetInfo.axistags is not None:
+                metadata['axistags'] = datasetInfo.axistags
             opMetadataInjector = OpMetadataInjector( parent=self )
             opMetadataInjector.Input.connect( providerSlot )
             opMetadataInjector.Metadata.setValue( metadata )
@@ -130,7 +135,11 @@ class OpDataSelection(Operator):
         
         # Set the image name and usage flag
         self.AllowLabels.setValue( datasetInfo.allowLabels )
-        self.ImageName.setValue(datasetInfo.filePath)
+        
+        imageName = datasetInfo.nickname
+        if imageName == "":
+            imageName = datasetInfo.filePath
+        self.ImageName.setValue(imageName)
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators

@@ -6,7 +6,7 @@ from ilastik.utility import bind, PathComponents
 from opDataSelection import DatasetInfo
 
 class DatasetDetailedInfoColumn():
-    Name = 0
+    Nickname = 0
     Location = 1
     InternalID = 2
     AxisOrder = 3
@@ -78,7 +78,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return None
 
         if orientation == Qt.Horizontal:
-            InfoColumnNames = { DatasetDetailedInfoColumn.Name : "Name",
+            InfoColumnNames = { DatasetDetailedInfoColumn.Nickname : "Nickname",
                                 DatasetDetailedInfoColumn.Location : "Location",
                                 DatasetDetailedInfoColumn.InternalID : "Internal Path",
                                 DatasetDetailedInfoColumn.AxisOrder : "Axes",
@@ -91,9 +91,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
 
-        UninitializedDisplayData = { DatasetDetailedInfoColumn.Name : "<please select>",
+        UninitializedDisplayData = { DatasetDetailedInfoColumn.Nickname : "<empty>",
                                      DatasetDetailedInfoColumn.Location : "",
-                                     DatasetDetailedInfoColumn.InternalID : "N/A",
+                                     DatasetDetailedInfoColumn.InternalID : "",
                                      DatasetDetailedInfoColumn.AxisOrder : "",
                                      DatasetDetailedInfoColumn.Shape : "",
                                      DatasetDetailedInfoColumn.Range : "" }
@@ -110,22 +110,24 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         ## Input meta-data fields
 
         # Name
-        if index.column() == DatasetDetailedInfoColumn.Name:
-            return filePathComponents.filename
+        if index.column() == DatasetDetailedInfoColumn.Nickname:
+            return datasetInfo.nickname
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                 if os.path.isabs(datasetInfo.filePath):
-                    return "Absolute Link: {}".format( datasetInfo.filePath )
+                    return "Absolute Link: {}".format( filePathComponents.externalPath )
                 else:
-                    return "Relative Link: {}".format( datasetInfo.filePath )
+                    return "Relative Link: {}".format( filePathComponents.externalPath )
             else:
                 return "Project File"
 
         # Internal ID        
         if index.column() == DatasetDetailedInfoColumn.InternalID:
-            return filePathComponents.internalPath
+            if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                return filePathComponents.internalPath
+            return ""
 
         ## Output meta-data fields
         

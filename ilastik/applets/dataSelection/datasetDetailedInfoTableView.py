@@ -20,7 +20,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Name, QHeaderView.Interactive)
+        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
@@ -37,6 +37,7 @@ class DatasetDetailedInfoTableView(QTableView):
         
         self.setSelectionBehavior( QTableView.SelectRows )
         
+        self.setAcceptDrops(True)
 
     def selectionChanged(self, selected, deselected):
         super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
@@ -94,4 +95,21 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
         
+
+    def dragEnterEvent(self, event):
+        print "Accepting drag event"
+        # FIXME: This accepts everything, regardless of the event
+        event.acceptProposedAction()
+        #super( DatasetDetailedInfoTableView, self ).dragEnterEvent(event)
+        
+    def dragMoveEvent(self, event):
+        pass
+
+    def dropEvent(self, dropEvent):
+        print "Got a drop event."
+        print "hasText(): {}".format( dropEvent.mimeData().hasText() )
+        print "text(): {}".format( dropEvent.mimeData().text() )
+        print "hasUrls(): {}".format( dropEvent.mimeData().hasText() )
+        print "urls(): {}".format( dropEvent.mimeData().text() )
+        #super( DatasetDetailedInfoTableView, self ).dropEvent(dropEvent)
          
