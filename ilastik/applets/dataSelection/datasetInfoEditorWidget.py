@@ -71,6 +71,10 @@ class DatasetInfoEditorWidget(QDialog):
         self.storageComboBox.currentIndexChanged.connect( self._applyStorageComboToTempOps )
         self._updateStorageCombo()
         
+        self._initChannelDisplayCombo()
+        self.channelDisplayComboBox.currentIndexChanged.connect( self._applyChannelDescriptionToTempOps )
+        self._updateChannelDisplayCombo()
+        
         self._updateShape()
         self._updateDtype()
         self._updateRange()
@@ -299,7 +303,7 @@ class DatasetInfoEditorWidget(QDialog):
             
             for c in newAxisOrder:
                 if c not in 'txyzc':
-                    QMessageBox.warning(self, "Error", "Can't use those axes: Don't understand axis ''.".format(c))
+                    QMessageBox.warning(self, "Error", "Can't use those axes: Don't understand axis '{}'.".format(c))
                     self._error_fields.add('Axis Order')
                     return False
     
@@ -609,7 +613,8 @@ class DatasetInfoEditorWidget(QDialog):
         if index == -1:
             return
         
-        newStorageLocation = self.storageComboBox.itemData( index )
+        newStorageLocation, goodcast = self.storageComboBox.itemData( index ).toInt()
+        assert goodcast
         
         # Save a copy of our settings
         oldInfos = {}
@@ -643,7 +648,7 @@ class DatasetInfoEditorWidget(QDialog):
                         elif newStorageLocation == StorageLocation.RelativeLink:
                             info.filePath = relPath
                         else:
-                            assert False, "Uknown storage location setting."
+                            assert False, "Unknown storage location setting."
                     op.Dataset.setValue( info )
             self._error_fields.discard('Storage Location')
             return True
@@ -667,13 +672,73 @@ class DatasetInfoEditorWidget(QDialog):
         finally:
             self._updateStorageCombo()
         
+    def _initChannelDisplayCombo(self):
+        self.channelDisplayComboBox.addItem("Default", userData="default")
+        self.channelDisplayComboBox.addItem("Grayscale", userData="grayscale")
+        self.channelDisplayComboBox.addItem("RGBA", userData="rgba")
+
+    def _updateChannelDisplayCombo(self):
+        channel_description = None
+        for laneIndex, op in self.tempOps.items():
+            cmp_description = op.Image.meta.axistags['c'].description
+            if cmp_description == "":
+                cmp_description = "default"
+            if channel_description is None:
+                channel_description = cmp_description
+            elif channel_description != cmp_description:
+                channel_description = None
+                break
+
+        if channel_description is None:
+            self.channelDisplayComboBox.setCurrentIndex(-1)
+        else:
+            index = self.channelDisplayComboBox.findData( channel_description )
+            self.channelDisplayComboBox.setCurrentIndex(index)
+
+
+    def _applyChannelDescriptionToTempOps(self, index):
+        if index == -1:
+            return
+        
+        newChannelDescription = str( self.channelDisplayComboBox.itemData( index ).toString() )
+        
+        # Save a copy of our settings
+        oldInfos = {}
+        for laneIndex, op in self.tempOps.items():
+            oldInfos[laneIndex] = copy.copy( op.Dataset.value )
+        
+        # Attempt to apply to all temp operators
+        currentLane = self.tempOps.keys()[0]
+        try:
+            for laneIndex, op in self.tempOps.items():
+                info = copy.copy( op.Dataset.value )
+                if info.axistags is None or info.axistags['c'].description != newChannelDescription:
+                    if info.axistags is None:
+                        info.axistags = op.Image.meta.axistags
+                    info.axistags['c'].description = newChannelDescription
+                    op.Dataset.setValue( info )
+            self._error_fields.discard('Channel Display')
+            return True
+        
+        except Exception as e:
+            # Revert everything back to the previous state
+            for laneIndex, op in self.tempOps.items():
+                op.Dataset.setValue( oldInfos[laneIndex] )
+                if laneIndex == currentLane:
+                    # Only need to revert the lanes we actually changed.
+                    # Everything else wasn't touched
+                    break
             
-
-
-
-
-
-
+            traceback.print_exc()
+            msg = "Could not set new channel display settings due to an exception:\n"
+            msg += "{}".format( e )
+            QMessageBox.warning(self, "Error", msg)
+            self._error_fields.add('Channel Display')
+            return False
+        
+        finally:
+            self._updateChannelDisplayCombo()
+        
 
 
 
