@@ -15,6 +15,9 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+import logging
+logger = logging.getLogger(__name__)
+
 MISSING_VALUE = 0
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
@@ -247,7 +250,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         labels = dict()
         for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             #we have to get new object features to get bounding boxes
-            print "Transferring labels to the new segmentation. This might take a while..."
+            logger.info("Transferring labels to the new segmentation. This might take a while...")
             new_feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
             coords = dict()
             coords["Coord<Minimum>"] = new_feats[timeCoord][default_features_key]["Coord<Minimum>"]
@@ -526,7 +529,7 @@ class OpObjectTrain(Operator):
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
 
-        print "training on matrix of shape {}".format(featMatrix.shape)
+        logger.info("training on matrix of shape {}".format(featMatrix.shape))
 
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
@@ -539,16 +542,16 @@ class OpObjectTrain(Operator):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
                     oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                    print "intermediate oob:", oob[number]
+                    logger.info("intermediate oob: {}".format(oob[number]))
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
             pool.wait()
             pool.clean()
         except:
-            print ("couldn't learn classifier")
+            logger.warn("couldn't learn classifier")
             raise
         oob_total = numpy.mean(oob)
-        print "training finished, out of bag error:", oob_total
+        logger.info("training finished, out of bag error: {}".format(oob_total))
         return result
 
     def propagateDirty(self, slot, subindex, roi):

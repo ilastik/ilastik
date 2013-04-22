@@ -14,11 +14,14 @@ from lazyflow.rtype import List
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
+import logging
+logger = logging.getLogger(__name__)
+
 #ilastik
 try:
     from ilastik.plugins import pluginManager
 except:
-    print "Warning: could not import pluginManager"
+    logger.warn('could not import pluginManager')
 
 import collections
 
@@ -222,7 +225,7 @@ class OpRegionFeatures3d(Operator):
         margin = max_margin(feature_names)
         if np.any(margin) > 0:
             for i in range(1, nobj):
-                print "processing object {}".format(i)
+                logger.debug("processing object {}".format(i))
                 extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
                 rawbbox = self.compute_rawbbox(image, extent, axes)
                 binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
@@ -238,7 +241,7 @@ class OpRegionFeatures3d(Operator):
                 try:
                     pfeats[key] = np.vstack(list(v.reshape(1, -1) for v in value))
                 except:
-                    print 'warning: feature {} failed'.format(key)
+                    logger.warn('feature {} failed'.format(key))
                     del pfeats[key]
 
         # merge the global and local features

@@ -21,12 +21,12 @@ from ilastik.widgets.viewerControls import ViewerControls
 import vigra
 import numpy as np
 
-import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
-
 from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class FeatureSelectionDialog(QDialog):
     # for now all features get the same margin parameter. In the
@@ -81,8 +81,8 @@ class FeatureSelectionDialog(QDialog):
                         item.setCheckState(0, Qt.Checked)
 
     def set_margin(self):
-        if self.ndim>3 or self.ndim<2:
-            print "wrong dimensions setting for feature selection dialog"
+        if self.ndim > 3 or self.ndim < 2:
+            logger.warn("wrong dimensions setting for feature selection dialog")
             return
         default = [-1]*self.ndim
         margin = max_margin(self.selectedFeatures, default)
@@ -283,7 +283,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         def finished():
             self.topLevelOperatorView._opRegFeats.fixed = True
-            print 'Object Extraction: done.'
+            logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
         mainOperator._opRegFeats.fixed = False
