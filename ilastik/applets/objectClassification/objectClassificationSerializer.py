@@ -10,20 +10,21 @@ class ObjectClassificationSerializer(AppletSerializer):
     # would call setValue() on a connected slot
 
     def __init__(self, topGroupName, operator):
-        warnings.warn("FIXME: Not serializing/deserializing object predictions")        
-        serialSlots = [SerialListSlot(operator.LabelNames,
-                                transform=str),
-                       SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                       SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                       SerialDictSlot(operator.LabelInputs, transform=int),
-                       SerialClassifierSlot(operator.Classifier,
-                                            operator.classifier_cache,
-                                            name="ClassifierForests",
-                                            subname="Forest{:04d}"),
-                       SerialDictSlot(operator.CachedProbabilities,
-                                      operator.InputProbabilities,
-                                      transform=int),
-                       ]
+        serialSlots = [
+            SerialDictSlot(operator.MySelectedFeatures, transform=str),
+            SerialListSlot(operator.LabelNames,
+                           transform=str),
+            SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+            SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+            SerialDictSlot(operator.LabelInputs, transform=int),
+            SerialClassifierSlot(operator.Classifier,
+                                 operator.classifier_cache,
+                                 name="ClassifierForests",
+                                 subname="Forest{:04d}"),
+            SerialDictSlot(operator.CachedProbabilities,
+                           operator.InputProbabilities,
+                           transform=int),
+        ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
                                                               slots=serialSlots,

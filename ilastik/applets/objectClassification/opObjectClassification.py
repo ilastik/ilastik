@@ -31,7 +31,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1) #connected components
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
-    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque) # from object extraction
+    MySelectedFeatures = InputSlot(rtype=List, stype=Opaque) # from our own GUI
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
 
@@ -86,6 +87,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
+        self.opTrain.inputs['SelectedFeatures'].connect(self.MySelectedFeatures)
 
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
@@ -96,6 +98,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
         self.opPredict.inputs["LabelsCount"].connect(self.opMaxLabel.Output)
+        self.opPredict.inputs['SelectedFeatures'].connect(self.MySelectedFeatures)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -400,7 +403,7 @@ def _concatenate(arrays, axis):
     return numpy.concatenate(arrays, axis=axis)
 
 
-def make_feature_array(feats, labels=None):
+def make_feature_array(feats, selected, labels=None):
     featlist = []
     labellist = []
 
@@ -417,9 +420,11 @@ def make_feature_array(feats, labels=None):
             labellist_tmp.append(lab[index])
 
         for plugin in sorted(feats[t].keys()):
-            if plugin == default_features_key:
+            if plugin == default_features_key or plugin not in selected:
                 continue
             for featname in sorted(feats[t][plugin].keys()):
+                if featname not in selected[plugin]:
+                    continue
                 value = feats[t][plugin][featname]
                 ft = numpy.asarray(value.squeeze())
                 if labels is not None:
@@ -462,6 +467,7 @@ class OpObjectTrain(Operator):
 
     Labels = InputSlot(level=1, stype=Opaque, rtype=List)
     Features = InputSlot(level=1, rtype=List, stype=Opaque)
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
 
@@ -494,6 +500,8 @@ class OpObjectTrain(Operator):
         all_bad_objects = defaultdict(lambda: defaultdict(list))
         all_bad_feats = set()
 
+        selected = self.SelectedFeatures([]).wait()
+
         for i in range(len(self.Labels)):
             feats = self.Features[i]([]).wait()
 
@@ -502,7 +510,7 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, labels)
+            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels)
             if featstmp.size == 0:
                 # nothing to do if there are no labels in this image.
                 assert labelstmp.size == 0
@@ -576,6 +584,7 @@ class OpObjectPredict(Operator):
     name = "OpObjectPredict"
 
     Features = InputSlot(rtype=List, stype=Opaque)
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     Classifier = InputSlot()
     LabelsCount = InputSlot(stype='integer')
     InputProbabilities = InputSlot(stype=Opaque, rtype=List, optional=True)
@@ -641,6 +650,8 @@ class OpObjectPredict(Operator):
         feats = {}
         prob_predictions = {}
 
+        selected = self.SelectedFeatures([]).wait()
+
         # FIXME: self.prob_cache is shared, so we need to block.
         # However, this makes prediction single-threaded.
         self.lock.acquire()
@@ -650,7 +661,7 @@ class OpObjectPredict(Operator):
                     continue
 
                 tmpfeats = self.Features([t]).wait()
-                ftmatrix, _, col_names = make_feature_array(tmpfeats)
+                ftmatrix, _, col_names = make_feature_array(tmpfeats, selected)
                 rows, cols = replace_missing(ftmatrix)
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1

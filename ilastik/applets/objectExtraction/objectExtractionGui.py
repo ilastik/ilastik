@@ -240,7 +240,6 @@ class ObjectExtractionGui(LayerViewerGui):
         if len(labelshape)==2 or (zIndex<len(mainOperator.RawImage.meta.shape) and mainOperator.RawImage.meta.shape[zIndex]==1):
             ndim=2
         
-
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
         dlg = FeatureSelectionDialog(featureDict=featureDict,

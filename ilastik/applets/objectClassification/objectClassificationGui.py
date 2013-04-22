@@ -33,6 +33,15 @@ def _listReplace(old, new):
     else:
         return new
 
+from ilastik.applets.objectExtraction.objectExtractionGui import FeatureSelectionDialog
+
+class FeatureSubSelectionDialog(FeatureSelectionDialog):
+    def __init__(self, featureDict, selectedFeatures=None, parent=None, ndim=3):
+        super(FeatureSubSelectionDialog, self).__init__(featureDict, selectedFeatures, parent, ndim)
+        self.ui.spinBox_X.setEnabled(False)
+        self.ui.spinBox_Y.setEnabled(False)
+        self.ui.spinBox_Z.setEnabled(False)
+
 
 class ObjectClassificationGui(LabelingGui):
 
@@ -88,19 +97,23 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
             self.handleShowPredictionsClicked)
 
+        self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(
+            self.handleSubsetFeaturesClicked)
+
         self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
         self.labelingDrawerUi.savePredictionsButton.setVisible(False)
 
         self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
 
-        self.op.ObjectFeatures.notifyDirty(bind(self.checkEnablePredictions))
-        self.op.NumLabels.notifyDirty(bind(self.checkEnablePredictions))
+        self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
+        self.op.MySelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
 
         self.labelingDrawerUi.checkInteractive.setEnabled(False)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(False)
-        self.checkEnablePredictions()
-        
+        self.checkEnableButtons()
+
         topLevelOp = self.topLevelOperatorView.viewed_operator()
         self._trainWarningDialog = OpGuiDialog(parent=topLevelOp)
         self._trainWarningDialog.dialog = GuiDialog(self)
@@ -284,7 +297,7 @@ class ObjectClassificationGui(LabelingGui):
             # put first, so that it is visible after hitting "live
             # predict".
             layers.insert(0, self.predictlayer)
-            
+
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
             ct_black = [0, QColor(Qt.black).rgba()]
@@ -293,7 +306,7 @@ class ObjectClassificationGui(LabelingGui):
             self.badLayer.name = "Ambiguous objects"
             self.badLayer.visible = False
             layers.append(self.badLayer)
-            
+
         if rawSlot.ready():
             self.rawimagesrc = LazyflowSource(rawSlot)
             layer = self.createStandardLayerFromSlot(rawSlot)
@@ -308,23 +321,33 @@ class ObjectClassificationGui(LabelingGui):
         return layers
 
     @pyqtSlot()
-    def checkEnablePredictions(self):
-        enabled = True
-        if self.op.NumLabels.ready():
-            if self.op.NumLabels.value < 2:
-                enabled = False
-        else:
-            enabled = False
+    def checkEnableButtons(self):
+        feats_enabled = True
+        predict_enabled = True
 
         if self.op.SelectedFeatures.ready():
             featnames = self.op.SelectedFeatures([]).wait()
             if len(featnames) == 0:
-                enabled = False
+                feats_enabled = False
         else:
-            enabled = False
+            feats_enabled = False
 
-        self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
-        self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
+        if self.op.MySelectedFeatures.ready():
+            featnames = self.op.MySelectedFeatures([]).wait()
+            if len(featnames) == 0:
+                predict_enabled = False
+        else:
+            predict_enabled = False
+
+        if self.op.NumLabels.ready():
+            if self.op.NumLabels.value < 2:
+                predict_enabled = False
+        else:
+            predict_enabled = False
+
+        self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
+        self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
+        self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
@@ -383,6 +406,23 @@ class ObjectClassificationGui(LabelingGui):
         assert operatorAxisOrder == list('txyzc'), \
             "Need to update onClick() if the operator no longer expects volumina axis order.  Operator wants: {}".format( operatorAxisOrder )
         self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5d, label)
+
+
+    def handleSubsetFeaturesClicked(self):
+        mainOperator = self.topLevelOperatorView
+        slot = mainOperator.SelectedFeatures
+        selectedFeatures = mainOperator.SelectedFeatures([]).wait()
+        if mainOperator.MySelectedFeatures.ready():
+            mySelectedFeatures = mainOperator.MySelectedFeatures([]).wait()
+        else:
+            mySelectedFeatures = None
+
+        ndim = 3 # FIXME
+        dlg = FeatureSubSelectionDialog(selectedFeatures,
+                                        selectedFeatures=mySelectedFeatures, ndim=ndim)
+        dlg.exec_()
+        if dlg.result() == QDialog.Accepted:
+            mainOperator.MySelectedFeatures.setValue(dlg.selectedFeatures)
 
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
