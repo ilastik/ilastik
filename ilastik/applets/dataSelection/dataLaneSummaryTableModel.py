@@ -71,8 +71,10 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         return QModelIndex()
     
     def headerData(self, section, orientation, role=Qt.DisplayRole ):
-        if orientation != Qt.Horizontal or role != Qt.DisplayRole:
+        if role != Qt.DisplayRole:
             return None
+        if orientation == Qt.Vertical:
+            return section+1
         if section == LaneColumn.LabelsAllowed:
             return "Labelable"
         infoColumn = section - LaneColumn.NumColumns

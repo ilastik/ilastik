@@ -29,7 +29,6 @@ class DataLaneSummaryTableView(QTableView):
 #            self.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
 #            self.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
 
-        self.verticalHeader().hide()
         self.setSelectionBehavior( QTableView.SelectRows )
 
     def selectionChanged(self, selected, deselected):

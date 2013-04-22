@@ -34,11 +34,10 @@ class DatasetDetailedInfoTableView(QTableView):
 #            self.removeColumn( Column.LabelsAllowed )
 #            self.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
 #            self.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
-
-        self.verticalHeader().hide()
         
         self.setSelectionBehavior( QTableView.SelectRows )
         
+
     def selectionChanged(self, selected, deselected):
         super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
@@ -95,3 +94,4 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
         
+         

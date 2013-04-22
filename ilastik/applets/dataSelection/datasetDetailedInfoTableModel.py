@@ -74,16 +74,19 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         return QModelIndex()
     
     def headerData(self, section, orientation, role=Qt.DisplayRole ):
-        if orientation != Qt.Horizontal or role != Qt.DisplayRole:
+        if  role != Qt.DisplayRole:
             return None
 
-        InfoColumnNames = { DatasetDetailedInfoColumn.Name : "Name",
-                            DatasetDetailedInfoColumn.Location : "Location",
-                            DatasetDetailedInfoColumn.InternalID : "Internal Path",
-                            DatasetDetailedInfoColumn.AxisOrder : "Axes",
-                            DatasetDetailedInfoColumn.Shape : "Shape",
-                            DatasetDetailedInfoColumn.Range : "Data Range" }
-        return InfoColumnNames[section]
+        if orientation == Qt.Horizontal:
+            InfoColumnNames = { DatasetDetailedInfoColumn.Name : "Name",
+                                DatasetDetailedInfoColumn.Location : "Location",
+                                DatasetDetailedInfoColumn.InternalID : "Internal Path",
+                                DatasetDetailedInfoColumn.AxisOrder : "Axes",
+                                DatasetDetailedInfoColumn.Shape : "Shape",
+                                DatasetDetailedInfoColumn.Range : "Data Range" }
+            return InfoColumnNames[section]
+        elif orientation == Qt.Vertical:
+            return section+1
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
