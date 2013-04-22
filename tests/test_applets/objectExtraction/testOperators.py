@@ -6,31 +6,26 @@ from lazyflow.operators import OpLabelImage
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
 from ilastik.plugins import pluginManager
 
-'''
-FEATURES = \
-[
-    [ 'Count',
-      'RegionCenter',
-      'Coord<ArgMaxWeight>',
-      'Coord<Minimum>',
-      'Coord<Maximum>' ],
-    []
-]
-'''
-
-FEATURES = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
-                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}}}
+FEATURES = {
+    "Vigra Object Features": {
+        "Count" : {},
+        "RegionCenter" : {},
+        "Coord<Principal<Kurtosis>>" : {},
+        "Coord<Minimum>" : {},
+        "Coord<Maximum>" : {},
+    }
+}
 
 def binaryImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
     img[0,  0:10,  0:10,  0:10, 0] = 1
     img[0, 20:30, 20:30, 20:30, 0] = 1
     img[0, 40:45, 40:45, 40:45, 0] = 1
-    
+
     img[1, 20:30, 20:30, 20:30, 0] = 1
     img[1, 5:10, 5:10, 0, 0] = 1
     img[1, 12:15, 12:15, 0, 0] = 1
-    img = img.view( vigra.VigraArray )
+    img = img.view(vigra.VigraArray)
     img.axistags = vigra.defaultAxistags('txyzc')
 
     return img
@@ -39,12 +34,17 @@ def rawImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
     img[0,  0:10,  0:10,  0:10, 0] = 200
     img[0, 20:30, 20:30, 20:30, 0] = 100
-    img[0, 40:45, 40:45, 40:45, 0] = 75 #this object is further out than the margin and tests regionCenter feature
-    
+
+    # this object is further out than the margin and tests
+    # regionCenter feature
+    img[0, 40:45, 40:45, 40:45, 0] = 75
+
     img[1, 20:30, 20:30, 20:30, 0] = 50
-    img[1, 5:10, 5:10, 0, 0] = 25 #this and next object are in each other's excl features
-    img[1, 12:15, 12:15, 0, 0] = 13 
-    img = img.view( vigra.VigraArray )
+
+    # this and next object are in each other's excl features
+    img[1, 5:10, 5:10, 0, 0] = 25
+    img[1, 12:15, 12:15, 0, 0] = 13
+    img = img.view(vigra.VigraArray)
     img.axistags = vigra.defaultAxistags('txyzc')
 
     return img
@@ -60,10 +60,10 @@ class TestOpLabelImage(object):
         labelImg = self.op.Output.value
         labelImg = labelImg.astype(np.int)
         assert np.all(labelImg.shape==self.img.shape)
-        
+
         vigraImage0 = vigra.analysis.labelVolumeWithBackground(self.img[0,...])
         vigraImage1 = vigra.analysis.labelVolumeWithBackground(self.img[1,...])
-        
+
         assert np.all(np.asarray(vigraImage0)==labelImg[0,...])
         assert np.all(np.asarray(vigraImage1)==labelImg[1,...])
 
@@ -74,24 +74,25 @@ class TestOpRegionFeatures(object):
         self.labelop = OpLabelImage(graph=g)
         self.op = OpRegionFeatures(graph=g)
         self.op.LabelImage.connect(self.labelop.Output)
-        self.op.RawImage.connect(self.labelop.Output) # Raw image is arbitrary for our purposes.  Just re-use the label image
+
+        # Raw image is arbitrary for our purposes. Just re-use the
+        # label image
+        self.op.RawImage.connect(self.labelop.Output)
         self.op.Features.setValue(FEATURES)
         self.img = binaryImage()
         self.labelop.Input.setValue(self.img)
 
-
-
     def test_features(self):
         self.op.Output.fixed = False
         # FIXME: roi specification
-        opAdapt = OpAdaptTimeListRoi( graph=self.op.graph )
-        opAdapt.Input.connect( self.op.Output )
-        
+        opAdapt = OpAdaptTimeListRoi(graph=self.op.graph)
+        opAdapt.Input.connect(self.op.Output)
+
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)== self.img.shape[0]
         for t in feats:
-            assert feats[t]['Count'].shape[0]>0
-            assert feats[t]['RegionCenter'].shape[0]>0
+            assert feats[t]['Count'].shape[0] > 0
+            assert feats[t]['RegionCenter'].shape[0] > 0
 
         assert np.any(feats[0]['Count'] != feats[1]['Count'])
         assert np.any(feats[0]['RegionCenter'] != feats[1]['RegionCenter'])
@@ -100,15 +101,19 @@ class TestOpRegionFeatures(object):
 class testOpRegionFeaturesAgainstNumpy(object):
     def setUp(self):
         g = Graph()
-        self.features = dict()
-        #self.features["Vigra Object Features"] = ["Count", "Mean", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
-        
-        self.features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Mean":{}, \
-                                                   "Coord<Minimum>":{}, "Coord<Maximum>":{}, \
-                                                   "Mean in neighborhood":{"margin": (30, 30, 1)}, \
-                                                   "Sum":{}, "Sum in neighborhood":{"margin": (30, 30, 1)}}}
+        self.features = {
+            "Vigra Object Features": {
+                "Count" : {},
+                "RegionCenter" : {},
+                "Mean" : {},
+                "Coord<Minimum>" : {},
+                "Coord<Maximum>" : {},
+                "Mean in neighborhood" : {"margin" : (30, 30, 1)},
+                "Sum" : {},
+                "Sum in neighborhood" : {"margin" : (30, 30, 1)}
+            }
+        }
 
-        
         binimage = binaryImage()
         self.rawimage = rawImage()
         self.labelop = OpLabelImage(graph=g)
@@ -118,18 +123,18 @@ class testOpRegionFeaturesAgainstNumpy(object):
         self.op.Features.setValue(self.features)
         self.img = binaryImage()
         self.labelop.Input.setValue(binimage)
-        
+
     def test(self):
         self.op.Output.fixed = False
         # FIXME: roi specification
-        opAdapt = OpAdaptTimeListRoi( graph=self.op.graph )
-        opAdapt.Input.connect( self.op.Output )
-        
+        opAdapt = OpAdaptTimeListRoi(graph=self.op.graph)
+        opAdapt.Input.connect(self.op.Output)
+
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)==self.img.shape[0]
         for key in self.features["Vigra Object Features"]:
             assert key in feats[0].keys()
-        
+
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
         for t in range(nt):
@@ -153,24 +158,26 @@ class testOpRegionFeaturesAgainstNumpy(object):
                 #FIXME: make margin visible from outside and use it here
                 zmin = max(mins[iobj][2]-1, 0)
                 zmax = min(maxs[iobj][2]+1, self.rawimage.shape[3])
-                
+
                 exclmask = labelimage[t,:, :, zmin:zmax, :]!=iobj
                 npsum_excl = np.sum(np.asarray(self.rawimage)[t,:, :, zmin:zmax,:][exclmask])
                 assert npsum_excl == sum_excl[iobj]
-                
+
                 assert sum_incl[iobj] == sum[iobj]+sum_excl[iobj]
                 #check that regionCenter wasn't shifted
                 for icoord, coord in enumerate(centers[iobj]):
                     center_good = mins[iobj][icoord] + (maxs[iobj][icoord]-mins[iobj][icoord])/2.
                     assert abs(coord-center_good)<0.01
-                
-                
-       
 
 
 if __name__ == '__main__':
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    # Don't steal stdout. Show it on the console as usual.
+    sys.argv.append("--nocapture")
+
+    # Don't set the logging level to DEBUG. Leave it alone.
+    sys.argv.append("--nologcapture")
+
     nose.run(defaultTest=__file__)
