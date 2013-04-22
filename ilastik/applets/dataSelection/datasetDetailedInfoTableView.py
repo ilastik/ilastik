@@ -38,7 +38,7 @@ class DatasetDetailedInfoTableView(QTableView):
         self.verticalHeader().hide()
         
         self.setSelectionBehavior( QTableView.SelectRows )
-
+        
     def selectionChanged(self, selected, deselected):
         super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
@@ -69,10 +69,16 @@ class DatasetDetailedInfoTableView(QTableView):
             replaceWithStackAction = QAction( "Replace with stack...", menu )
 
             if row in self._selectedLanes and len(self._selectedLanes) > 1:
+                editable = True
+                for lane in self._selectedLanes:
+                    editable &= self.model().isEditable(lane)
+
                 # Show the multi-lane menu, which allows for editing but not replacing
                 menu.addAction( editSharedPropertiesAction )
+                editSharedPropertiesAction.setEnabled(editable)
             else:
                 menu.addAction( editPropertiesAction )
+                editPropertiesAction.setEnabled(self.model().isEditable(row))
                 menu.addAction( replaceWithFileAction )
                 menu.addAction( replaceWithStackAction )
     
@@ -89,4 +95,3 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
         
-

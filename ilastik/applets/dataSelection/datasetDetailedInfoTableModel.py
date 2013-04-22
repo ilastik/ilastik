@@ -54,6 +54,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
             handleNewLane( self._op.DatasetGroup, laneIndex )
 
+    def isEditable(self, row):
+        return self._op.DatasetGroup[row][self._roleIndex].ready()
+    
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
     
