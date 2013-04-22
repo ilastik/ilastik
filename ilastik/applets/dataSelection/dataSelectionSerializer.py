@@ -129,10 +129,12 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
-                    if datasetInfo.axisorder is not None:
-                        infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
+                    if datasetInfo.axistags is not None:
+                        infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
+                    elif datasetInfo.axisorder is not None:
+                        infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
 
         self._dirty = False
 
