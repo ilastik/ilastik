@@ -546,7 +546,7 @@ class DatasetInfoEditorWidget(QDialog):
             op = self.tempOps.values()[0]
             info = op.Dataset.value
             cwd = op.WorkingDirectory.value
-            filePath = info.filePath
+            filePath = PathComponents(info.filePath).externalPath
             absPath, relPath = getPathVariants(filePath, cwd)
             showpaths = not info.fromstack
 
