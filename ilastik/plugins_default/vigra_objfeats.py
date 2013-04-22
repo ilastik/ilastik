@@ -1,5 +1,6 @@
 from ilastik.plugins import ObjectFeaturesPlugin
-from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
+import ilastik.applets.objectExtraction.opObjectExtraction
+#from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
 import numpy as np
 from lazyflow.request import Request, RequestPool
@@ -39,18 +40,19 @@ def cleanup(d, hasZero, isGlobal, features):
 class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
     local_features = set(["Mean", "Variance", "Skewness", \
-                          "Kurtosis", "Histogram", \
+                          "Kurtosis", "Histogram", "Sum", \
                           "Covariance", "Minimum", "Maximum"])
-    suffix = " in neighborhood" #note the space in front, it's important
+    local_suffix = " in neighborhood" #note the space in front, it's important
+    local_out_suffixes = [local_suffix, " in object and neighborhood"]
 
     def availableFeatures(self, image, labels):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         local = set(names) & self.local_features
-        names.extend([x+self.suffix for x in local])
+        names.extend([x+self.local_suffix for x in local])
         result = dict((n, {}) for n in names)
         for f, v in result.iteritems():
-            if self.suffix in f:
+            if self.local_suffix in f:
                 v['margin'] = 0
         return result
 
@@ -62,23 +64,25 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
     def compute_global(self, image, labels, features, axes):
         features = features.keys()
-        local = [x+self.suffix for x in self.local_features]
+        local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
         return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, binary_bbox, features, axes):
         """helper that deals with individual objects"""
-        margin = max_margin({'': features})
+        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': features})
         features = features.keys()
-        local = [x+self.suffix for x in self.local_features]
+        local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) & set(local))
         features = [x.split(' ')[0] for x in features]
         results = []
         #FIXME: this is done globally as if all the features have the same margin
         #we should group features by their margins
-        passed, excl = make_bboxes(binary_bbox, margin)
-        for label, suffix in zip([passed, excl],
-                                 ['_incl', '_excl']):
+        passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)
+        assert np.all(passed==excl)==False
+        assert np.all(binary_bbox+excl==passed)
+        for label, suffix in zip([excl, passed],
+                                 self.local_out_suffixes):
             result = self._do_4d(image, label, features, axes)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)

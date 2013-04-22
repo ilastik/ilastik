@@ -4,7 +4,9 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelImage
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
+from ilastik.plugins import pluginManager
 
+'''
 FEATURES = \
 [
     [ 'Count',
@@ -14,12 +16,17 @@ FEATURES = \
       'Coord<Maximum>' ],
     []
 ]
+'''
+
+FEATURES = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
+                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}}}
 
 def binaryImage():
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
     img[0,  0:10,  0:10,  0:10, 0] = 1
     img[0, 20:30, 20:30, 20:30, 0] = 1
     img[0, 40:45, 40:45, 40:45, 0] = 1
+    
     img[1, 20:30, 20:30, 20:30, 0] = 1
     img[1, 5:10, 5:10, 0, 0] = 1
     img[1, 12:15, 12:15, 0, 0] = 1
@@ -33,6 +40,7 @@ def rawImage():
     img[0,  0:10,  0:10,  0:10, 0] = 200
     img[0, 20:30, 20:30, 20:30, 0] = 100
     img[0, 40:45, 40:45, 40:45, 0] = 75 #this object is further out than the margin and tests regionCenter feature
+    
     img[1, 20:30, 20:30, 20:30, 0] = 50
     img[1, 5:10, 5:10, 0, 0] = 25 #this and next object are in each other's excl features
     img[1, 12:15, 12:15, 0, 0] = 13 
@@ -59,14 +67,15 @@ class TestOpLabelImage(object):
         assert np.all(np.asarray(vigraImage0)==labelImg[0,...])
         assert np.all(np.asarray(vigraImage1)==labelImg[1,...])
 
-'''
+
 class TestOpRegionFeatures(object):
     def setUp(self):
         g = Graph()
         self.labelop = OpLabelImage(graph=g)
-        self.op = OpRegionFeatures(FEATURES, graph=g)
+        self.op = OpRegionFeatures(graph=g)
         self.op.LabelImage.connect(self.labelop.Output)
         self.op.RawImage.connect(self.labelop.Output) # Raw image is arbitrary for our purposes.  Just re-use the label image
+        self.op.Features.setValue(FEATURES)
         self.img = binaryImage()
         self.labelop.Input.setValue(self.img)
 
@@ -79,20 +88,26 @@ class TestOpRegionFeatures(object):
         opAdapt.Input.connect( self.op.Output )
         
         feats = opAdapt.Output([0, 1]).wait()
-        self.assertEquals(len(feats), self.img.shape[0])
+        assert len(feats)== self.img.shape[0]
         for t in feats:
-            self.assertIsInstance(t, int)
-            self.assertGreater(feats[t][0]['Count'].shape[0], 0)
-            self.assertGreater(feats[t][0]['RegionCenter'].shape[0], 0)
+            assert feats[t]['Count'].shape[0]>0
+            assert feats[t]['RegionCenter'].shape[0]>0
 
-        self.assertTrue(np.any(feats[0][0]['Count'] != feats[1][0]['Count']))
-        self.assertTrue(np.any(feats[0][0]['RegionCenter'] != feats[1][0]['RegionCenter']))
-'''
+        assert np.any(feats[0]['Count'] != feats[1]['Count'])
+        assert np.any(feats[0]['RegionCenter'] != feats[1]['RegionCenter'])
+
+
 class testOpRegionFeaturesAgainstNumpy(object):
     def setUp(self):
         g = Graph()
         self.features = dict()
-        self.features["Vigra Object Features"] = ["Count", "Mean", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
+        #self.features["Vigra Object Features"] = ["Count", "Mean", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter"]
+        
+        self.features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Mean":{}, \
+                                                   "Coord<Minimum>":{}, "Coord<Maximum>":{}, \
+                                                   "Mean in neighborhood":{"margin": (30, 30, 1)}, \
+                                                   "Sum":{}, "Sum in neighborhood":{"margin": (30, 30, 1)}}}
+
         
         binimage = binaryImage()
         self.rawimage = rawImage()
@@ -111,25 +126,22 @@ class testOpRegionFeaturesAgainstNumpy(object):
         opAdapt.Input.connect( self.op.Output )
         
         feats = opAdapt.Output([0, 1]).wait()
-        #print feats[0][0]
         assert len(feats)==self.img.shape[0]
-        #self.assertEquals(len(feats), self.img.shape[0])
-        for key in self.features[0]:
-            #FIXME: why does it have to be [0][0]? What is the second list for?
-            assert key in feats[0][0].keys()
+        for key in self.features["Vigra Object Features"]:
+            assert key in feats[0].keys()
         
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
         for t in range(nt):
             npcounts = np.bincount(labelimage[t,...].flat)
-            counts = feats[t][0]["Count"].astype(np.uint32)
-            means = feats[t][0]["Mean"]
-            sum_excl = feats[t][0]["Sum_excl"] #sum, not mean, to avoid 0/0
-            sum_incl = feats[t][0]["Sum_incl"]
-            sum = feats[t][0]["Sum"]
-            mins = feats[t][0]["Coord<Minimum>"]
-            maxs = feats[t][0]["Coord<Maximum>"]
-            centers = feats[t][0]["RegionCenter"]
+            counts = feats[t]["Count"].astype(np.uint32)
+            means = feats[t]["Mean"]
+            sum_excl = feats[t]["Sum in neighborhood"] #sum, not mean, to avoid 0/0
+            sum_incl = feats[t]["Sum in object and neighborhood"]
+            sum = feats[t]["Sum"]
+            mins = feats[t]["Coord<Minimum>"]
+            maxs = feats[t]["Coord<Maximum>"]
+            centers = feats[t]["RegionCenter"]
             #print mins, maxs
             nobj = npcounts.shape[0]
             for iobj in range(1, nobj):
@@ -139,8 +151,8 @@ class testOpRegionFeaturesAgainstNumpy(object):
                 assert npmean == means[iobj]
                 #currently, we have a margin of 30, this assert is very dependent on it
                 #FIXME: make margin visible from outside and use it here
-                zmin = mins[iobj][2]
-                zmax = maxs[iobj][2]+1
+                zmin = max(mins[iobj][2]-1, 0)
+                zmax = min(maxs[iobj][2]+1, self.rawimage.shape[3])
                 
                 exclmask = labelimage[t,:, :, zmin:zmax, :]!=iobj
                 npsum_excl = np.sum(np.asarray(self.rawimage)[t,:, :, zmin:zmax,:][exclmask])
@@ -153,7 +165,7 @@ class testOpRegionFeaturesAgainstNumpy(object):
                     assert abs(coord-center_good)<0.01
                 
                 
-            
+       
 
 
 if __name__ == '__main__':

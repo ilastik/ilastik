@@ -1,3 +1,7 @@
+#have to do that so that plugin manager has a handler
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+
 #Python
 from copy import copy
 import collections
@@ -208,7 +212,7 @@ class OpRegionFeatures3d(Operator):
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
-
+        
         # do global features
         global_features = {}
         for plugin_name, feature_list in feature_names.iteritems():

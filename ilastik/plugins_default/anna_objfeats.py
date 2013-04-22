@@ -1,5 +1,5 @@
 from ilastik.plugins import ObjectFeaturesPlugin
-from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
+import ilastik.applets.objectExtraction.opObjectExtraction
 import vigra
 import numpy as np
 
@@ -108,8 +108,8 @@ class AnnaObjFeats(ObjectFeaturesPlugin):
         return self.combine_dicts(results)
 
     def compute_local(self, image, binary_bbox, features, axes):
-        margin = max_margin({'': features})
-        passed, excl = make_bboxes(binary_bbox, margin)
+        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': features})
+        passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)
         return self.do_channels(self._do_3d, image,
                                 label_bboxes=[binary_bbox, passed, excl],
                                 features=features, axes=axes)
