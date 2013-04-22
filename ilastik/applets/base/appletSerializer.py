@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 from abc import ABCMeta, abstractmethod
 
 from ilastik.config import cfg as ilastik_config
@@ -102,9 +105,9 @@ class SerialSlot(object):
 
         if isinstance(inslot, OutputSlot):
             # should this be an exception? Or maybe an exception in lazyflow?
-            print 'Warning: this serial slot will try to call setValue on an OutputSlot.'
-            print 'This is probably not what you wanted!'
-            print 'inslot = %s, %s' % (type(inslot), inslot)
+            logger.warn('This SerialSlot will try to call setValue() on an OutputSlot.'
+                        ' This is probably not what you wanted!'
+                        ' slot: {}'.format(slot.name))
         self.default = default
         self.depends = maybe(depends, [])
         if selfdepends:
