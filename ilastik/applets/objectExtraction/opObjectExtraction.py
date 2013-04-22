@@ -501,10 +501,16 @@ class OpObjectExtraction(Operator):
     BackgroundLabels = InputSlot()
 
     # which features to compute.
+    # nested dictionary with format:
+    # dict[plugin_name][feature_name][parameter_name] = parameter_value
     Features = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
+
+    # the computed features.
+    # nested dictionary with format:
+    # dict[plugin_name][feature_name] = feature_value
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
     # pass through the 'Features' input slot

@@ -32,12 +32,15 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     SegmentationImages = InputSlot(level=1) #connected components
 
     # the actual feature arrays
+    # same format as OpObjectExtraction.RegionFeatures
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
 
     # the names of the features computed in the object extraction operator
+    # same format as OpObjectExtraction.ComputedFeatureNames
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
 
     # the features selected in our own GUI
+    # same format as ComputedFeatureNames
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
 
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
