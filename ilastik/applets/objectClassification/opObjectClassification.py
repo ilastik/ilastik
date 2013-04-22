@@ -30,9 +30,16 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     BinaryImages = InputSlot(level=1) # for visualization
     RawImages = InputSlot(level=1) # for visualization
     SegmentationImages = InputSlot(level=1) #connected components
+
+    # the actual feature arrays
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque, level=1)
-    SelectedFeatures = InputSlot(rtype=List, stype=Opaque) # from object extraction
-    MySelectedFeatures = InputSlot(rtype=List, stype=Opaque) # from our own GUI
+
+    # the names of the features computed in the object extraction operator
+    ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
+
+    # the features selected in our own GUI
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
+
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
 
@@ -87,7 +94,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
-        self.opTrain.inputs['SelectedFeatures'].connect(self.MySelectedFeatures)
+        self.opTrain.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
 
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
@@ -98,7 +105,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
         self.opPredict.inputs["LabelsCount"].connect(self.opMaxLabel.Output)
-        self.opPredict.inputs['SelectedFeatures'].connect(self.MySelectedFeatures)
+        self.opPredict.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
@@ -194,7 +201,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot==self.SegmentationImages and len(self.LabelInputs)>0:
-            
+
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
 

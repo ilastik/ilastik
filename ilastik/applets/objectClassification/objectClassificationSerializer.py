@@ -11,7 +11,7 @@ class ObjectClassificationSerializer(AppletSerializer):
 
     def __init__(self, topGroupName, operator):
         serialSlots = [
-            SerialDictSlot(operator.MySelectedFeatures, transform=str),
+            SerialDictSlot(operator.SelectedFeatures, transform=str),
             SerialListSlot(operator.LabelNames,
                            transform=str),
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),

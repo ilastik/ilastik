@@ -108,7 +108,7 @@ class ObjectClassificationGui(LabelingGui):
 
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
-        self.op.MySelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
 
         self.labelingDrawerUi.checkInteractive.setEnabled(False)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(False)
@@ -325,15 +325,15 @@ class ObjectClassificationGui(LabelingGui):
         feats_enabled = True
         predict_enabled = True
 
-        if self.op.SelectedFeatures.ready():
-            featnames = self.op.SelectedFeatures([]).wait()
+        if self.op.ComputedFeatureNames.ready():
+            featnames = self.op.ComputedFeatureNames([]).wait()
             if len(featnames) == 0:
                 feats_enabled = False
         else:
             feats_enabled = False
 
-        if self.op.MySelectedFeatures.ready():
-            featnames = self.op.MySelectedFeatures([]).wait()
+        if self.op.SelectedFeatures.ready():
+            featnames = self.op.SelectedFeatures([]).wait()
             if len(featnames) == 0:
                 predict_enabled = False
         else:
@@ -410,19 +410,18 @@ class ObjectClassificationGui(LabelingGui):
 
     def handleSubsetFeaturesClicked(self):
         mainOperator = self.topLevelOperatorView
-        slot = mainOperator.SelectedFeatures
-        selectedFeatures = mainOperator.SelectedFeatures([]).wait()
-        if mainOperator.MySelectedFeatures.ready():
-            mySelectedFeatures = mainOperator.MySelectedFeatures([]).wait()
+        computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
+        if mainOperator.SelectedFeatures.ready():
+            selectedFeatures = mainOperator.SelectedFeatures([]).wait()
         else:
-            mySelectedFeatures = None
+            selectedFeatures = None
 
         ndim = 3 # FIXME
-        dlg = FeatureSubSelectionDialog(selectedFeatures,
-                                        selectedFeatures=mySelectedFeatures, ndim=ndim)
+        dlg = FeatureSubSelectionDialog(computedFeatures,
+                                        selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
         if dlg.result() == QDialog.Accepted:
-            mainOperator.MySelectedFeatures.setValue(dlg.selectedFeatures)
+            mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
 
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):

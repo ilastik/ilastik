@@ -236,8 +236,8 @@ class TestFullOperator(unittest.TestCase):
         self.classOp.LabelsAllowedFlags.resize(1)
         self.classOp.LabelsAllowedFlags.setValues([True])
         self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
-        self.classOp.SelectedFeatures.connect(self.extrOp.SelectedFeatures)
-        self.classOp.MySelectedFeatures.setValue(sel_features)
+        self.classOp.ComputedFeatureNames.connect(self.extrOp.ComputedFeatureNames)
+        self.classOp.SelectedFeatures.setValue(sel_features)
         
         
     def test(self):

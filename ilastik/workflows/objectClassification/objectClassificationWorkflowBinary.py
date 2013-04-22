@@ -66,4 +66,4 @@ class ObjectClassificationWorkflowBinary(Workflow):
         # connect extraction -> classification
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        opObjClassification.SelectedFeatures.connect(opObjExtraction.SelectedFeatures)
+        opObjClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
