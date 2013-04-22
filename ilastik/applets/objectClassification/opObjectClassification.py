@@ -2,6 +2,7 @@ import numpy
 import vigra
 import warnings
 import itertools
+from collections import defaultdict
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -56,7 +57,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     # TODO: not actually used
     Eraser = OutputSlot()
     DeleteLabel = OutputSlot()
-    
+
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
@@ -104,11 +105,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
-        
+
         self.opBadObjectsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opBadObjectsToImage.inputs["ObjectMap"].connect(self.opPredict.BadObjects)
         self.opBadObjectsToImage.inputs["Features"].connect(self.ObjectFeatures)
-        
+
         self.opBadObjectsToWarningMessage.inputs["BadObjects"].connect(self.opTrain.BadObjects)
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
@@ -128,7 +129,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
         self.Warnings.connect(self.opBadObjectsToWarningMessage.WarningMessage)
-        
+
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
@@ -176,7 +177,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 label_values[label_values==label+1] = 0
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
-                
+
 
     def setupOutputs(self):
         super(OpObjectClassification, self).setupOutputs()
@@ -402,6 +403,7 @@ def make_feature_array(feats, labels=None):
     # remove extra features used by applet only.
     featnames = sorted(list(n for n in featnames
                             if default_features_suffix not in n))
+    row_names = []
     col_names = []
 
     for t in sorted(feats.keys()):
@@ -421,9 +423,12 @@ def make_feature_array(feats, labels=None):
             featsMatrix_tmp.append(ft)
             col_names.extend([featname] * value.shape[1])
 
+
         #FIXME: we can do it all with just arrays
         featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
         featlist.append(featsMatrix_tmp_combined)
+        row_names.extend(list((t, obj) for obj in range(featsMatrix_tmp_combined.shape[0])))
+
         if labels is not None:
             labellist_tmp_combined = _concatenate(labellist_tmp, axis=1)
             labellist.append(labellist_tmp_combined)
@@ -433,8 +438,9 @@ def make_feature_array(feats, labels=None):
     if labels is not None:
         labelsMatrix = _concatenate(labellist, axis=0)
         assert labelsMatrix.shape[0] == featMatrix.shape[0]
-        return featMatrix, col_names, labelsMatrix
-    return featMatrix, col_names
+        return featMatrix, row_names, col_names, labelsMatrix
+    return featMatrix, row_names, col_names
+
 
 def replace_missing(a):
     rows, cols = numpy.where(numpy.isnan(a) + numpy.isinf(a))
@@ -452,9 +458,9 @@ def warn_bad(rows, cols, col_names, t):
         print("Warning: objects with bad features encountered: {}".format(rows))
     if len(badfeats) > 0:
         print("Warning: features with bad values encountered: {}".format(sorted(badfeats)))
-        
+
     return badfeats
-    
+
 class OpObjectTrain(Operator):
     name = "TrainRandomForestObjects"
     description = "Train a random forest on multiple images"
@@ -478,7 +484,7 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].meta.dtype = object
             self.outputs["Classifier"].meta.shape = (self.ForestCount.value,)
             self.outputs["Classifier"].meta.axistags = None
-        
+
         self.BadObjects.meta.shape = (1,)
         self.BadObjects.meta.dtype = object
         self.BadObjects.meta.axistags = None
@@ -489,7 +495,9 @@ class OpObjectTrain(Operator):
         labelsList = []
 
         # will be available at slot self.Warnings
-        all_bad_objects = {}
+
+        # FIXME: this needs to be nested by {image : {time : []}}
+        all_bad_objects = defaultdict(lambda: defaultdict(list))
         all_bad_feats = set()
 
         for i in range(len(self.Labels)):
@@ -500,7 +508,7 @@ class OpObjectTrain(Operator):
             # do the right thing.
             labels = self.Labels[i]([]).wait()
 
-            featstmp, col_names, labelstmp = make_feature_array(feats, labels)
+            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, labels)
             if featstmp.size == 0:
                 # nothing to do if there are no labels in this image.
                 assert labelstmp.size == 0
@@ -513,11 +521,14 @@ class OpObjectTrain(Operator):
             all_col_names.append(tuple(col_names))
             labelsList.append(labelstmp)
 
-            all_bad_objects[i] = rows
+            for idx in rows:
+                t, obj = row_names[idx]
+                all_bad_objects[i][t].append(obj)
+
             all_bad_feats |= badfeats
 
         self._warnBadObjects(all_bad_objects, all_bad_feats)
-        
+
         if not len(set(all_col_names)) == 1:
             raise Exception('different time slices did not have same features.')
 
@@ -554,13 +565,11 @@ class OpObjectTrain(Operator):
            self.inputs["FixClassifier"].value == False:
             slcs = (slice(0, self.ForestCount.value, None),)
             self.outputs["Classifier"].setDirty(slcs)
-            
-          
+
     def _warnBadObjects(self, bad_objects, bad_feats):
         messageTesting = False
         if len(bad_feats)>0 or any([len(bad_objects[i])>0 for i in bad_objects.keys()]) or messageTesting:
             self.BadObjects.setValue( {'objects': bad_objects, 'feats': bad_feats} )
-            #self.BadObjects.setDirty()
 
 
 class OpObjectPredict(Operator):
@@ -595,7 +604,7 @@ class OpObjectPredict(Operator):
         self.Probabilities.meta.dtype = object
         self.Probabilities.meta.mapping_dtype = numpy.float32
         self.Probabilities.meta.axistags = None
-        
+
         self.BadObjects.meta.shape = self.Features.meta.shape
         self.BadObjects.meta.dtype = object
         self.BadObjects.meta.mapping_dtype = numpy.uint8
@@ -614,7 +623,7 @@ class OpObjectPredict(Operator):
         self.lock = RequestLock()
         self.prob_cache = dict()
         self.bad_objects = dict()
-        
+
     def execute(self, slot, subindex, roi, result):
         assert slot in [self.Predictions,
                         self.Probabilities,
@@ -647,7 +656,7 @@ class OpObjectPredict(Operator):
                     continue
 
                 tmpfeats = self.Features([t]).wait()
-                ftmatrix, col_names = make_feature_array(tmpfeats)
+                ftmatrix, _, col_names = make_feature_array(tmpfeats)
                 rows, cols = replace_missing(ftmatrix)
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1
@@ -704,7 +713,7 @@ class OpObjectPredict(Operator):
             elif slot == self.ProbabilityChannels:
                 prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
                 return prob_single_channel
-            
+
             elif slot == self.BadObjects:
                 return { t : self.bad_objects[t] for t in times }
 
@@ -865,24 +874,24 @@ class OpMaxLabel(Operator):
                     maxValue = max(maxValue, subSlotMax)
 
         self._output = maxValue
-        
-        
+
+
 class OpBadObjectsToWarningMessage(Operator):
-   
+
     name = "OpBadObjectsToWarningMessage"
     _blockSep = "\n\n"
     _itemSep = "\n"
     _objectSep = ", "
     _itemIndent = "    "
-    
+
     # the input slot
     # format: BadObjects._value = {'objects': dict(tuple??()), 'feats': set()}
     BadObjects = InputSlot(stype=Opaque)
-    
-    # the output slot 
+
+    # the output slot
     # format: WarningMessage._value = {'title': a, 'text': b, 'info': c, 'details': d}
     WarningMessage = OutputSlot(stype=Opaque)
-    
+
     def setupOutputs(self):
         super(OpBadObjectsToWarningMessage, self).setupOutputs()
         self.WarningMessage.meta.shape = (1,)
@@ -894,18 +903,17 @@ class OpBadObjectsToWarningMessage(Operator):
         warn['text'] = 'Encountered bad objects/features while training.'
         warn['info'] = None
         warn['details'] = self._formatMessage(d)
-        
+
         if len(warn['details']) == 0:
             return
         self.WarningMessage.setValue(warn)
         self.WarningMessage.setDirty()
-        
+
     def execute(self, slot, subindex, roi, result):
         pass
-   
+
     def _formatMessage(self, d):
         a = []
-        
         try:
             # a) objects
             if 'objects' in d.keys():
@@ -913,72 +921,49 @@ class OpBadObjectsToWarningMessage(Operator):
                 if len(s)>0:
                     a.append(s)
             # b) features
-            if 'features' in d.keys():
-                s = self._formatFeatures(sorted(d['features']))
+            if 'feats' in d.keys():
+                s = self._formatFeatures(sorted(d['feats']))
                 if len(s)>0:
                     a.append(s)
         except AttributeError:
             raise Exception("Expected message to be a dictionary, got {}".format(type(d)))
             return ""
         return self._blockSep.join(a)
-    
+
     def _formatFeatures(self, f):
         a = self._itemSep.join(f)
         if len(a)>0:
             a = "The following features had bad values:" + self._itemSep + a
         return a
-        
+
     def _formatObjects(self, obj):
         a = []
         indent = 1
-        
+
         # loop image indices
         for img in obj.keys():
             imtext = self._itemIndent*indent + "at image index {}".format(img)
             indent += 1
             needTime = len(obj[img].keys())>1
             b = []
-            
+
             # loop time values
             for t in obj[img].keys():
                 # object numbers
                 c = self._objectSep.join([str(s) for s in obj[img][t]])
-                
+
                 if len(c)>0:
                     c = self._itemIndent*indent + "Objects " + c
                     if needTime:
                         c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
                     b.append(c)
-                    
+
             indent -= 1
             if len(b)>0:
                 a.append(self._itemSep.join([imtext] + b))
-            
-        
+
+
         if len(a)>0:
             return self._itemSep.join(["The following objects had bad features:"] +a)
         else:
             return ""
-        
-            
-        
-                
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
