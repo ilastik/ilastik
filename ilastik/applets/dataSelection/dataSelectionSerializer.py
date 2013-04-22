@@ -197,7 +197,7 @@ class DataSelectionSerializer( AppletSerializer ):
             backwards_compatibility_mode = True
             pass
 
-        
+        force_dirty = False
         self.topLevelOperator.DatasetGroup.resize( len(infoDir) )
         for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
@@ -205,21 +205,22 @@ class DataSelectionSerializer( AppletSerializer ):
             # Handle projects that didn't support multiple datasets per lane
             if backwards_compatibility_mode:
                 assert 'location' in laneGroup
-                datasetInfo, force_dirty = self._readDatasetInfo(laneGroup, localDataGroup, projectFilePath, headless)
-                self._dirty |= force_dirty
+                datasetInfo, dirty = self._readDatasetInfo(laneGroup, localDataGroup, projectFilePath, headless)
+                force_dirty |= dirty
 
                 # Give the new info to the operator
                 self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
             else:
                 for roleName, infoGroup in sorted(laneGroup.items()):
                     roleIndex = roleNames.index( roleName )
-                    datasetInfo, force_dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
-                    self._dirty |= force_dirty
+                    datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
+                    force_dirty |= dirty
     
                     # Give the new info to the operator
                     if datasetInfo is not None:
                         self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
         
+        self._dirty = force_dirty
     
     def _readDatasetInfo(self, infoGroup, localDataGroup, projectFilePath, headless):
         # Unready datasets are represented with an empty group.
