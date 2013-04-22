@@ -4,7 +4,7 @@ from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel, DatasetDetailedInfoColumn
 
 class DatasetDetailedInfoTableView(QTableView):
-    dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)
+    dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
 
     replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex)
     replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)

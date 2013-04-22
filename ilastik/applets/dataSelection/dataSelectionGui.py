@@ -159,7 +159,6 @@ class DataSelectionGui(QWidget):
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
-            self._detailViewerWidgets.append(detailViewer)
 
             # Buttons            
             addOneMenu = QMenu()
@@ -180,6 +179,12 @@ class DataSelectionGui(QWidget):
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
             detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
             detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
+
+            # Selection handling
+            def showFirstSelectedDataset( lanes ):
+                if lanes:
+                    self.showDataset( lanes[0] )
+            detailViewer.datasetDetailTableView.dataLaneSelected.connect( showFirstSelectedDataset )
             
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
 
@@ -217,15 +222,29 @@ class DataSelectionGui(QWidget):
 
         # Create if necessary
         if imageSlot not in self.volumeEditors.keys():
-            layerViewer = LayerViewerGui(self.topLevelOperator.getLane(laneIndex), crosshair=False)
+            
+            class DatasetViewer(LayerViewerGui):
+                def setupLayers(self):
+                    opLaneView = self.topLevelOperatorView
+                    datasetRoles = opLaneView.DatasetRoles.value
+                    layers = []
+                    for roleIndex, slot in enumerate(opLaneView.ImageGroup):
+                        if slot.ready():
+                            roleName = datasetRoles[roleIndex]
+                            layer = self.createStandardLayerFromSlot(slot)
+                            layer.name = roleName
+                            layers.append(layer)
+                    return layers
 
+            opLaneView = self.topLevelOperator.getLane(laneIndex)
+            layerViewer = DatasetViewer(opLaneView, crosshair=False)
+            
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
 
             self.volumeEditors[imageSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
-
 
         # Show the right one
         self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
