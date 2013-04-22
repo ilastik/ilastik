@@ -209,6 +209,15 @@ class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
                          'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
         super( OpMultiLaneDataSelectionGroup, self ).__init__(OpDataSelectionGroup, *args, **kwargs )
     
+        # 'value' slots
+        assert self.ProjectFile.level == 0
+        assert self.ProjectDataGroup.level == 0
+        assert self.WorkingDirectory.level == 0
+        assert self.DatasetRoles.level == 0
+        
+        # Indexed by [lane][role]
+        assert self.DatasetGroup.level == 2, "DatasetGroup is supposed to be a level-2 slot, indexed by [lane][role]"
+    
     def addLane(self, laneIndex):
         """Reimplemented from base class."""
         numLanes = len(self.innerOperators)
