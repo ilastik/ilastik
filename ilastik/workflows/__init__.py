@@ -6,15 +6,8 @@ import pixelClassification
 #import vigraWatershed
 try:
     import objectClassification
-    import blockwiseObjectClassification
-    import synapseDetection
 except ImportError as e:
     logger.warn("Failed to import object workflow; check dependencies: " + str(e))
-
-try:
-    import autocontextClassification
-except ImportError as e:
-    logger.warn( "Failed to import autocontextClassification workflow; check context dependencies: " + str(e) )
 
 try:
     import carving 
