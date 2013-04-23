@@ -3,8 +3,8 @@ import glob
 from functools import partial
 
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, Qt, QEvent
-from PyQt4.QtGui import  QDialog, QFileDialog, QMessageBox
+from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtGui import QDialog, QFileDialog, QMessageBox
 
 import vigra
 

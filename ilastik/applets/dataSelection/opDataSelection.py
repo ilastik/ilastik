@@ -209,12 +209,6 @@ class OpDataSelectionGroup( Operator ):
             self.ImageName.connect( self._opDatasets.ImageName[0] )
 
     def execute(self, slot, subindex, rroi, result):
-#        if slot == self.Image:
-#            result[:] = self._opDatasets.Image(rroi.start, rroi.stop).wait()
-#        if slot == self.ImageName:
-#            result[:] = self._opDatasets.ImageName[0].value
-#            return result
-#        else:
             assert False, "Unknown or unconnected output slot."
 
     def propagateDirty(self, slot, subindex, roi):

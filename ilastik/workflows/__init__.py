@@ -27,5 +27,8 @@ except ImportError as e:
     logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
 
 # Examples
-import examples.layerViewer
-import examples.thresholdMasking
+import ilastik.config
+
+if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    import examples.layerViewer
+    import examples.thresholdMasking

@@ -1,7 +1,7 @@
 from PyQt4.QtCore import pyqtSignal, Qt
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction
 
-from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel, DatasetDetailedInfoColumn
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
@@ -26,16 +26,6 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
-#
-#        self.horizontalHeader().resizeSection(Column.Name, 200)
-#        self.horizontalHeader().resizeSection(Column.Location, 300)
-#        self.horizontalHeader().resizeSection(Column.InternalID, 200)
-#
-#        if self.guiMode == GuiMode.Batch:
-#            # It doesn't make sense to provide a labeling option in batch mode
-#            self.removeColumn( Column.LabelsAllowed )
-#            self.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
-#            self.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
         
         self.setSelectionBehavior( QTableView.SelectRows )
         

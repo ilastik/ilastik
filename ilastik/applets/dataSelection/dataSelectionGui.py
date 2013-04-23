@@ -1,21 +1,15 @@
 #Python
 from functools import partial
 import os
-import copy
-import glob
 import threading
 import h5py
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-#SciPy
-import vigra
-
 #PyQt
-from PyQt4.QtCore import Qt, QVariant
-from PyQt4.QtGui import *
 from PyQt4 import uic
+from PyQt4.QtGui import QWidget, QStackedWidget, QMenu, QMessageBox, QFileDialog, QDialog
 
 #lazyflow
 from lazyflow.utility import Tracer
@@ -26,7 +20,6 @@ from volumina.utility import PreferencesManager
 
 #ilastik
 from ilastik.config import cfg as ilastik_config
-from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
@@ -36,11 +29,8 @@ from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
-from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
-from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
-from datasetInfoEditorWidget import DatasetInfoEditorWidget
-
 from dataDetailViewerWidget import DataDetailViewerWidget
+from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -508,280 +498,3 @@ class DataSelectionGui(QWidget):
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
         editorDlg.exec_()
-
-#    def importStackFromGlobString(self, globString, roleIndex):
-#        """
-#        The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
-#        """
-#        globString = globString.replace("\\","/")
-#        info = DatasetInfo()
-#        info.filePath = globString
-#
-#        # Allow labels by default if this gui isn't being used for batch data.
-#        info.allowLabels = ( self.guiMode == GuiMode.Normal )
-#
-#        def importStack():
-#            self.guiControlSignal.emit( ControlCommand.DisableAll )
-#            # Serializer will update the operator for us, which will propagate to the GUI.
-#            try:
-#                self.serializer.importStackAsLocalDataset( info )
-#            finally:
-#                self.guiControlSignal.emit( ControlCommand.Pop )
-#
-#        req = Request( importStack )
-#        req.notify_failed( partial(self.handleFailedStackLoad, globString ) )
-#        req.submit()
-#
-#
-#    @threadRouted
-#    def updateTableForSlot(self, slot, *args):
-#        """
-#        Update the given rows using the top-level operator parameters
-#        """
-#        with Tracer(traceLogger):
-#
-#            # Don't update anything if the slot doesn't have data yet
-#            if not slot.connected():
-#                return
-#
-#            # Which index is this slot?
-#            row = -1
-#            for i in range( len(self.topLevelOperator.Dataset) ):
-#                if slot == self.topLevelOperator.Dataset[i]:
-#                    row = i
-#                    break
-#
-#            assert row != -1, "Unknown input slot!"
-#
-#            totalPath = self.topLevelOperator.Dataset[row].value.filePath
-#            lastDotIndex = totalPath.rfind('.')
-#            extensionAndInternal = totalPath[lastDotIndex:]
-#            extension = extensionAndInternal.split('/')[0]
-#            externalPath = totalPath[:lastDotIndex] + extension
-#
-#            internalPath = ''
-#            internalStart = extensionAndInternal.find('/')
-#            if internalStart != -1:
-#                internalPath = extensionAndInternal[internalStart:]
-#
-#            fileName = os.path.split(externalPath)[1]
-#
-#            tableWidget = self.fileInfoTableWidget
-#
-#            # Show the filename in the table (defaults to edit widget)
-#            tableWidget.setItem( row, Column.Name, QTableWidgetItem(fileName) )
-#
-#            # Create and add the combobox for the internal path selection
-#            self.updateInternalPathComboBox( row, externalPath, internalPath )
-#    #        tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
-#
-#            # Subscribe to changes
-#            tableWidget.itemChanged.connect( self.handleRowDataChange )
-#
-#            # Create and add the combobox for storage location options
-#            self.updateStorageOptionComboBox(row, externalPath)
-#
-#            if self.guiMode != GuiMode.Batch:
-#                # Create and add the checkbox for the 'allow labels' option
-#                allowLabelsCheckbox = QCheckBox()
-#                allowLabelsCheckbox.setChecked( self.topLevelOperator.Dataset[row].value.allowLabels )
-#                tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
-#                allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.topLevelOperator.Dataset[row]) )
-#
-#            # Update the operator, in case we need to select a new internal path based on the updated combo options
-#            # (Won't have any effect if nothing changed this time around.)
-#            self.updateFilePath(row)
-#
-#            # Select a row if there isn't one already selected.
-#            selectedRanges = self.fileInfoTableWidget.selectedRanges()
-#            if len(selectedRanges) == 0:
-#                self.fileInfoTableWidget.selectRow(0)
-#
-#    def handleAllowLabelsCheckbox(self, slot, checked):
-#        """
-#        The user (un)checked the "allow labels" checkbox in one of the table rows.
-#        Update the corresponding dataset info in the operator (which is given in the parameter 'slot')
-#        """
-#        with Tracer(traceLogger):
-#            # COPY the dataset so we trigger the slot to be dirty
-#            newDatasetInfo = copy.copy(slot.value)
-#            newDatasetInfo.allowLabels = ( checked == Qt.Checked )
-#
-#            # Only update if necessary
-#            if newDatasetInfo.allowLabels != slot.value.allowLabels:
-#                slot.setValue( newDatasetInfo )
-#
-#    def updateStorageOptionComboBox(self, row, filePath):
-#        """
-#        Create and add the combobox for storage location options
-#        """
-#        assert threading.current_thread().name == "MainThread"
-#        with Tracer(traceLogger):
-#            # Determine the relative path to this file
-#            absPath, relPath = getPathVariants(filePath, self.topLevelOperator.WorkingDirectory.value)
-#            # Add a prefixes to make the options clear
-#            absPath = "Absolute Link: " + absPath
-#            relPath = "Relative Link: <project directory>/" + relPath
-#
-#            combo = QComboBox()
-#            options = {} # combo data -> combo text
-#            options[ LocationOptions.AbsolutePath ] = absPath
-#            options[ LocationOptions.RelativePath ] = relPath
-#
-#            options[ LocationOptions.Project ] = "Store in Project File"
-#
-#            for option, text in sorted(options.items()):
-#                # Add to the combo, storing the option as the item data
-#                combo.addItem(text, option)
-#
-#            # Select the combo index that matches the current setting
-#            location = self.topLevelOperator.Dataset[row].value.location
-#
-#            if location == DatasetInfo.Location.ProjectInternal:
-#                comboData = LocationOptions.Project
-#            elif location == DatasetInfo.Location.FileSystem:
-#                # Determine if the path is relative or absolute
-#                if os.path.isabs(self.topLevelOperator.Dataset[row].value.filePath[0]):
-#                    comboData = LocationOptions.AbsolutePath
-#                else:
-#                    comboData = LocationOptions.RelativePath
-#
-#            comboIndex = combo.findData( QVariant(comboData) )
-#            combo.setCurrentIndex( comboIndex )
-#
-#            combo.currentIndexChanged.connect( partial(self.handleComboSelectionChanged, combo) )
-#            self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
-#
-#    def updateInternalPathComboBox( self, row, externalPath, internalPath ):
-#        assert threading.current_thread().name == "MainThread"
-#        with Tracer(traceLogger):
-#            combo = QComboBox()
-#            datasetNames = []
-#
-#            # Make sure we're dealing with the absolute path (to make this simple)
-#            absPath, relPath = getPathVariants(externalPath, self.topLevelOperator.WorkingDirectory.value)
-#            ext = os.path.splitext(absPath)[1]
-#            h5Exts = ['.ilp', '.h5', '.hdf5']
-#            if ext in h5Exts:
-#                datasetNames = self.getPossibleInternalPaths(absPath)
-#
-#            # Add each dataset option to the combo
-#            for path in datasetNames:
-#                combo.addItem( path )
-#
-#            # If the internal path we used previously is in the combo list, select it.
-#            prevSelection = combo.findText( internalPath )
-#            if prevSelection != -1:
-#                combo.setCurrentIndex( prevSelection )
-#
-#            # Define response to changes and add it to the GUI.
-#            # Pass in the corresponding the table item so we can figure out which row this came from
-#            combo.currentIndexChanged.connect( bind(self.handleComboSelectionChanged, combo) )
-#            self.fileInfoTableWidget.setCellWidget( row, Column.InternalID, combo )
-#
-#            # Since we just selected a new internal path, call the handler
-#            #self.handleComboSelectionChanged(combo, combo.currentIndex())
-#
-#    def handleRowDataChange(self, changedItem ):
-#        """
-#        The user manually edited a file name in the table.
-#        Update the operator and other GUI elements with the new file path.
-#        """
-#        with Tracer(traceLogger):
-#            # Figure out which row this widget is in
-#            row = changedItem.row()
-#            column = changedItem.column()
-#
-#            # Can't update until the row is fully initialized
-#            needUpdate = True
-#            needUpdate &= column == Column.Name or column == Column.InternalID
-#            needUpdate &= self.fileInfoTableWidget.item(row, Column.Name) != None
-#            needUpdate &= self.fileInfoTableWidget.cellWidget(row, Column.InternalID) != None
-#            needUpdate &= self.fileInfoTableWidget.cellWidget(row, column) is not None
-#
-#            if needUpdate:
-#                self.updateFilePath(row)
-
-#    @threadRouted
-#    def updateFilePath(self, index):
-#        """
-#        Update the operator's filePath input to match the gui
-#        """
-#        with Tracer(traceLogger):
-#            oldLocationSetting = self.topLevelOperator.Dataset[index].value.location
-#
-#            # Get the directory by inspecting the original operator path
-#            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath.replace('\\', '/')
-#            # Split into directory, filename, extension, and internal path
-#            lastDotIndex = oldTotalPath.rfind('.')
-#            extensionAndInternal = oldTotalPath[lastDotIndex:]
-#            extension = extensionAndInternal.split('/')[0]
-#            oldFilePath = oldTotalPath[:lastDotIndex] + extension
-#
-#            fileNameText = str(self.fileInfoTableWidget.item(index, Column.Name).text())
-#
-#            internalPathCombo = self.fileInfoTableWidget.cellWidget(index, Column.InternalID)
-#            #internalPath = str(self.fileInfoTableWidget.item(index, Column.InternalID).text())
-#            internalPath = str(internalPathCombo.currentText())
-#
-#            directory = os.path.split(oldFilePath)[0]
-#            newFileNamePath = fileNameText
-#            if directory != '':
-#                newFileNamePath = directory + '/' + fileNameText
-#
-#            newTotalPath = newFileNamePath
-#            if internalPath != '':
-#                if internalPath[0] != '/':
-#                    newTotalPath += '/'
-#                newTotalPath += internalPath
-#
-#            cwd = self.topLevelOperator.WorkingDirectory.value
-#            absTotalPath, relTotalPath = getPathVariants( newTotalPath, cwd )
-#            absTotalPath = absTotalPath.replace('\\','/')
-#            relTotalPath = relTotalPath.replace('\\','/')
-#
-#            # Check the location setting
-#            locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
-#            comboIndex = locationCombo.currentIndex()
-#            newLocationSelection = locationCombo.itemData(comboIndex).toInt()[0] # In PyQt, toInt() returns a tuple
-#
-#            if newLocationSelection == LocationOptions.Project:
-#                newLocationSetting = DatasetInfo.Location.ProjectInternal
-#            elif newLocationSelection == LocationOptions.AbsolutePath:
-#                newLocationSetting = DatasetInfo.Location.FileSystem
-#                newTotalPath = absTotalPath
-#            elif newLocationSelection == LocationOptions.RelativePath:
-#                newLocationSetting = DatasetInfo.Location.FileSystem
-#                newTotalPath = relTotalPath
-#
-#            if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
-#                # Be sure to copy so the slot notices the change when we setValue()
-#                datasetInfo = copy.copy(self.topLevelOperator.Dataset[index].value)
-#                datasetInfo.filePath = newTotalPath
-#                datasetInfo.location = newLocationSetting
-#
-#                # TODO: First check to make sure this file exists!
-#                self.topLevelOperator.Dataset[index].setValue( datasetInfo )
-#
-#                # Update the storage option combo to show the new path
-#                self.updateStorageOptionComboBox(index, newFileNamePath)
-
-#    def handleComboSelectionChanged(self, combo, index):
-#        """
-#        Handles changes to any combo change in the table (either external path or internal path)
-#        """
-#        with Tracer(traceLogger):
-#            logger.debug("Combo selection changed: " + combo.itemText(1) + str(index))
-#
-#            # Figure out which row this combo is in
-#            tableWidget = self.fileInfoTableWidget
-#            changedRow = -1
-#            for row in range(0, tableWidget.rowCount()):
-#                for column in range(Column.NumColumns):
-#                    widget = tableWidget.cellWidget(row, column)
-#                    if widget == combo:
-#                        changedRow = row
-#                        break
-#            assert changedRow != -1
-#
-#            self.updateFilePath( changedRow )
