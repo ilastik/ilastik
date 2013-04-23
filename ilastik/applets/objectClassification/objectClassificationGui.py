@@ -523,12 +523,21 @@ class ObjectClassificationGui(LabelingGui):
 
 
     def handleWarnings(self):
+        # FIXME: dialog should not steal focus
         warning = self.op.Warnings[:].wait()
-        box = QMessageBox(QMessageBox.Warning,
-                          warning['title'],
-                          warning['text'],
-                          QMessageBox.NoButton,
-                          self)
+        try:
+            box = self.badObjectBox
+        except AttributeError:
+            box = QMessageBox(QMessageBox.Warning,
+                              warning['title'],
+                              warning['text'],
+                              QMessageBox.NoButton,
+                              self)
+            box.setWindowModality(Qt.NonModal)
+            box.move(self.geometry().width(), 0)
+        box.setWindowTitle(warning['title'])
+        box.setText(warning['text'])
         box.setInformativeText(warning.get('info', ''))
         box.setDetailedText(warning.get('details', ''))
         box.show()
+        self.badObjectBox = box
