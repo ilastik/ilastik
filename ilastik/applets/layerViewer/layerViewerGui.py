@@ -248,7 +248,6 @@ class LayerViewerGui(QWidget):
         aindex = None
         
         if axisinfo == "" or axisinfo == "default":
-            
             # Examine channel dimension to determine Grayscale vs. RGB
 
             if numChannels == 4:

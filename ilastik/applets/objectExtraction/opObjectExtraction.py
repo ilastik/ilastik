@@ -112,7 +112,7 @@ class OpRegionFeatures3d(Operator):
         taggedRawShape = self.RawVolume.meta.getTaggedShape()
 
         if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
-                           for k in "xyzc")):
+                           for k in "txyz")):
             raise Exception("shapes do not match. label volume shape: {}."
                             " raw data shape: {}".format(self.LabelVolume.meta.shape,
                                                          self.RawVolume.meta.shape))
@@ -399,8 +399,17 @@ class OpCachedRegionFeatures(Operator):
         self.CleanBlocks.connect(self._opCache.CleanBlocks)
 
     def setupOutputs(self):
-        assert self.LabelImage.meta.shape == self.RawImage.meta.shape
         assert self.LabelImage.meta.axistags == self.RawImage.meta.axistags
+
+        taggedOutputShape = self.LabelImage.meta.getTaggedShape()
+        taggedRawShape = self.RawImage.meta.getTaggedShape()
+
+        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+                           for k in "txyz")):
+            raise Exception("shapes do not match. label volume shape: {}."
+                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
+                                                         self.RawVolume.meta.shape))
+
 
         # Every value in the regionfeatures output is cached seperately as it's own "block"
         blockshape = (1,) * len(self._opRegionFeatures.Output.meta.shape)
