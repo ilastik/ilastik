@@ -579,7 +579,6 @@ class OpObjectTrain(Operator):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
                     oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                    logger.info("intermediate oob: {}".format(oob[number]))
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
             pool.wait()

@@ -41,7 +41,7 @@ def emptyImage():
     return img
 
 
-class TestOpRelabelSegmentation(unittest.TestCase):
+class TestOpRelabelSegmentation(object):
     def setUp(self):
         g = Graph()
         self.op = OpRelabelSegmentation(graph=g)
@@ -55,19 +55,15 @@ class TestOpRelabelSegmentation(unittest.TestCase):
         self.op.Features._setReady() # hack because we do not use features
         img = self.op.Output.value
 
-        self.assertEquals(img[0, 49, 49, 49, 0], 10)
-        self.assertEquals(img[1, 49, 49, 49, 0], 40)
-        self.assertTrue(np.all(img[0,  0:10,  0:10,  0:10, 0] == 20))
-        self.assertTrue(np.all(img[0, 20:25, 20:25, 20:25, 0] == 30))
-        self.assertTrue(np.all(img[1,  0:10,  0:10,  0:10, 0] == 50))
-        self.assertTrue(np.all(img[1, 10:20, 10:20, 10:20, 0] == 60))
-        self.assertTrue(np.all(img[1, 20:25, 20:25, 20:25, 0] == 70))
+        assert img[0, 49, 49, 49, 0] == 10
+        assert img[1, 49, 49, 49, 0] == 40
+        assert (np.all(img[0,  0:10,  0:10,  0:10, 0] == 20))
+        assert (np.all(img[0, 20:25, 20:25, 20:25, 0] == 30))
+        assert (np.all(img[1,  0:10,  0:10,  0:10, 0] == 50))
+        assert (np.all(img[1, 10:20, 10:20, 10:20, 0] == 60))
+        assert (np.all(img[1, 20:25, 20:25, 20:25, 0] == 70))
 
 
-class TestOpObjectTrain(unittest.TestCase):
-    
-    nRandomForests = 1
-    
     def setUp(self):
         segimg = segImage()
 
@@ -116,7 +112,7 @@ class TestOpObjectTrain(unittest.TestCase):
             self.assertIsInstance(randomForest, vigra.learning.RandomForest)
 
 
-class TestOpObjectPredict(unittest.TestCase):
+class TestOpObjectPredict(object):
     def setUp(self):
         segimg = segImage()
         labels = {0 : np.array([0, 1, 2]),
@@ -189,7 +185,7 @@ class TestOpObjectPredict(unittest.TestCase):
         
 
  
-class TestFeatureSelection(unittest.TestCase):
+class TestFeatureSelection(object):
     def setUp(self):
         segimg = segImage()
         binimg = (segimg>0).astype(np.uint8)
@@ -286,7 +282,7 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.assertTrue('text' in messagedict.keys())
         
 
-class TestFullOperator(unittest.TestCase):
+class TestFullOperator(object):
     def setUp(self):
         segimg = segImage()
         binimg = (segimg>0).astype(np.uint8)
@@ -341,4 +337,13 @@ class TestFullOperator(unittest.TestCase):
  
 
 if __name__ == '__main__':
-    unittest.main()
+    import sys
+    import nose
+
+    # Don't steal stdout. Show it on the console as usual.
+    sys.argv.append("--nocapture")
+
+    # Don't set the logging level to DEBUG. Leave it alone.
+    sys.argv.append("--nologcapture")
+
+    nose.run(defaultTest=__file__)
