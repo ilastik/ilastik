@@ -164,7 +164,7 @@ class OpStackWriter(Operator):
             #image = self.Image[:].wait() #WIP, don't wait for everything at the same time
             imageShape = self.Image.meta.shape 
             slicings = self.computeRequestSlicings()
-            numSlicings = numpy.prod(self.iteratingShape)
+            numSlicings = numpy.prod(self.iteratingShape, dtype = numpy.int)
             axisKeys = self.Image.meta.getAxisKeys()
             iterationAxisDescriptors = [axisKeys[i] for i in self.iterationIndices]
             newImageShape = tuple([imageShape[key] for key in
