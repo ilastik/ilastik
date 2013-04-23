@@ -1,0 +1,18 @@
+===============
+Plugin System
+===============
+
+ilastik uses Yapsy for plugin management. Modules that want access to
+plugins should use `ilastik.plugins.pluginManager`, which is an
+instance of `yapsy.PluginManager`.
+
+The directory `ilastik/plugins_default` contains plugins distributed
+with ilastik. Other plugin directories may be set in the configuration
+file `~/.ilastikrc` which is handled in `ilastik.config`.
+
+Currently there is only one category of plugins defined: object
+feature plugins.
+
+.. currentmodule:: ilastik.plugins
+.. autoclass:: ObjectFeaturesPlugin
+   :members:

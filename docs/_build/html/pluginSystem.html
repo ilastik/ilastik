@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Plugin System &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="prev" title="Appendix: Testing Ilastik" href="testing.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="testing.html" title="Appendix: Testing Ilastik"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="plugin-system">
+<h1>Plugin System<a class="headerlink" href="#plugin-system" title="Permalink to this headline">¶</a></h1>
+<p>ilastik uses Yapsy for plugin management. Modules that want access to
+plugins should use <cite>ilastik.plugins.pluginManager</cite>, which is an
+instance of <cite>yapsy.PluginManager</cite>.</p>
+<p>The directory <cite>ilastik/plugins_default</cite> contains plugins distributed
+with ilastik. Other plugin directories may be set in the configuration
+file <cite>~/.ilastikrc</cite> which is handled in <cite>ilastik.config</cite>.</p>
+<p>Currently there is only one category of plugins defined: object
+feature plugins.</p>
+<dl class="class">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin">
+<em class="property">class </em><tt class="descclassname">ilastik.plugins.</tt><tt class="descname">ObjectFeaturesPlugin</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugins of this class calculate object features.</p>
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.availableFeatures">
+<tt class="descname">availableFeatures</tt><big>(</big><em>image</em>, <em>labels</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.availableFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.availableFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reports which features this plugin can compute on a
+particular image and label image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; numpy.ndarray</li>
+<li><strong>labels</strong> &#8211; numpy.ndarray, dtype=int</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a nested dictionary, where dict[feature_name] is a
+dictionary of parameters.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_global">
+<tt class="descname">compute_global</tt><big>(</big><em>image</em>, <em>labels</em>, <em>features</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_global"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_global" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate the requested features.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray</li>
+<li><strong>labels</strong> &#8211; np.ndarray, dtype=int</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=2 and
+shape[0] == number of objects</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_local">
+<tt class="descname">compute_local</tt><big>(</big><em>image</em>, <em>binary_bbox</em>, <em>features</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_local"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate features on a single object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray - image[expanded bounding box]</li>
+<li><strong>binary_bbox</strong> &#8211; binarize(labels[expanded bounding box])</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=1</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.do_channels">
+<tt class="descname">do_channels</tt><big>(</big><em>fn</em>, <em>image</em>, <em>axes</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.do_channels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.do_channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for features that only take one channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; function that computes features</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="testing.html"
+                        title="previous chapter">Appendix: Testing Ilastik</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/pluginSystem.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="testing.html" title="Appendix: Testing Ilastik"
+             >previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
