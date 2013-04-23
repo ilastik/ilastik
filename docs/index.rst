@@ -19,6 +19,7 @@ Contents:
    utilities
    dependencies
    testing
+   pluginSystem
 
 
 Indices and tables

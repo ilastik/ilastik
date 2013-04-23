@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Advanced Workflow Design &mdash; ilastik v0.6.0 documentation</title>
+    <title>Advanced Workflow Design &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
     <link rel="next" title="Applet Library" href="applet_library.html" />
     <link rel="prev" title="Applet Library" href="applet_library.html" /> 
   </head>
@@ -39,7 +42,7 @@
         <li class="right" >
           <a href="applet_library.html" title="Applet Library"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -61,16 +64,14 @@ The applet GUI should be a thin layer of code that simply configures the applet&
 <p>The ilastik-shell is designed to handle computation pipelines that handle multiple <em>image lanes</em> at once.  For that reason, it is always expected that applets pass their results via multi-slots (i.e. slots of level &gt;= 1).
 The multi-slot is always indexed by the image lane index.  As an example, here&#8217;s the diagram for the ThresholdMasking example workflow, shown with two image lanes loaded:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_low_detail.svg"><object data="_images/ThresholdMaskingWorkflow_low_detail.svg" type="image/svg+xml"><embed src="_images/ThresholdMaskingWorkflow_low_detail.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_low_detail.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_low_detail.svg" /></a>
 </div>
 <p>There are two applets in this workflow: DataSelection and ThresholdMasking.  Notice that the top-level operator for
 the DataSelection applet passes its output as a list of images (i.e. a slot of level=1) to the next applet in the workflow.</p>
 <p>Notice that these operators were implemented as simple single-image operators, which simplifies their implementation.  Under the hood, <tt class="docutils literal"><span class="pre">StandardApplet</span></tt> uses an <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> to achieve the multi-image functionality.
 The figure above omits the internal operators.  Here&#8217;s a more detailed figure:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_with_internal_ops.svg"><object data="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" type="image/svg+xml"><embed src="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_with_internal_ops.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" /></a>
 </div>
 </div>
 </div>
@@ -129,12 +130,12 @@ The figure above omits the internal operators.  Here&#8217;s a more detailed fig
         <li class="right" >
           <a href="applet_library.html" title="Applet Library"
              >previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

@@ -19,7 +19,8 @@ plugin_paths.append(os.path.join(os.path.split(__file__)[0], "plugins_default"))
 ##########################
 
 class ObjectFeaturesPlugin(IPlugin):
-    """Plugins of this class calculate object features"""
+    """Plugins of this class calculate object features."""
+
     name = "Base object features plugin"
 
     # TODO for now, only one margin will be set in the dialog. however, it
@@ -31,39 +32,43 @@ class ObjectFeaturesPlugin(IPlugin):
         self._selectedFeatures = []
 
     def availableFeatures(self, image, labels):
-        """returns a list of (feature name, feature parameters)"""
+        """Reports which features this plugin can compute on a
+        particular image and label image.
+
+        :param image: numpy.ndarray
+        :param labels: numpy.ndarray, dtype=int
+        :returns: a nested dictionary, where dict[feature_name] is a
+            dictionary of parameters.
+
+        """
         return []
 
     def compute_global(self, image, labels, features, axes):
+
         """calculate the requested features.
 
-        Params:
-        ------
-        image: np.ndarray
-        labels: np.ndarray of ints
-        axes: axis tags
+        :param image: np.ndarray
+        :param labels: np.ndarray, dtype=int
+        :param features: which features to compute
+        :param axes: axis tags
 
-        Returns: a dictionary with one entry per feature.
-        key: feature name
-        value: numpy.ndarray with ndim=2 and shape[0] == number of objects
+        :returns: a dictionary with one entry per feature.
+            dict[feature_name] is a numpy.ndarray with ndim=2 and
+            shape[0] == number of objects
 
         """
         return dict()
 
     def compute_local(self, image, binary_bbox, features, axes):
-        """calculate requested features on a single object.
+        """Calculate features on a single object.
 
-        Params:
-        ------
-        image: np.ndarray - image[expanded bounding box]
-        binary_img: binarize(labels[expanded bounding box])
-        axes: axis tags
+        :param image: np.ndarray - image[expanded bounding box]
+        :param binary_bbox: binarize(labels[expanded bounding box])
+        :param features: which features to compute
+        :param axes: axis tags
 
-        extend currently used for the slice-wise distance transform in anna's features
-
-        Returns: a dictionary with one entry per feature.
-        key: feature name
-        value: numpy.ndarray with ndim=1
+        :returns: a dictionary with one entry per feature.
+            dict[feature_name] is a numpy.ndarray with ndim=1
 
         """
         return dict()
@@ -93,7 +98,11 @@ class ObjectFeaturesPlugin(IPlugin):
         return dict((prefix + k + suffix, v) for k, v in d.items())
 
     def do_channels(self, fn, image, axes, **kwargs):
-        """helper for features that only take one channel."""
+        """Helper for features that only take one channel.
+
+        :param fn: function that computes features
+
+        """
         results = []
         slc = [slice(None)] * 4
         for channel in range(image.shape[axes.c]):
