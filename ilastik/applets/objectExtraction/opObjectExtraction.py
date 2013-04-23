@@ -81,7 +81,7 @@ def make_bboxes(binary_bbox, margin):
                                                background=True,
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
     else:
-        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32), 
+        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
         dt = dt.reshape(dt.shape + (1,))
 
@@ -105,14 +105,22 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-
-        assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
-        assert self.LabelVolume.meta.axistags == self.RawVolume.meta.axistags
+        if self.LabelVolume.meta.axistags != self.RawVolume.meta.axistags:
+            raise Exception('raw and label axis tags do not match')
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
-        if 't' in taggedOutputShape.keys():
-            assert taggedOutputShape['t'] == 1
-        assert set(taggedOutputShape.keys()) - set('t') == set('xyzc'), "Input volumes must have xyzc axes."
+        taggedRawShape = self.RawVolume.meta.getTaggedShape()
+
+        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+                           for k in "xyzc")):
+            raise Exception("shapes do not match. label volume shape: {}."
+                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
+                                                         self.RawVolume.meta.shape))
+
+        if taggedOutputShape.get('t', 1) != 1:
+            raise Exception('this operator cannot handle multiple time slices')
+        if set(taggedOutputShape.keys()) - set('t') != set('xyzc'):
+            raise Exception("Input volumes must have xyzc axes.")
 
         # Remove the spatial dims (keep t if present)
         del taggedOutputShape['x']
@@ -183,7 +191,9 @@ class OpRegionFeatures3d(Operator):
         return image[tuple(key)]
 
     def _extract(self, image, labels):
-        assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
+        if not (image.ndim == labels.ndim == 4):
+            raise Exception("both images must be 4D. raw image shape: {}"
+                            " label image shape: {}".format(image.shape, labels.shape))
 
         # FIXME: maybe simplify?
         class Axes(object):
@@ -213,7 +223,7 @@ class OpRegionFeatures3d(Operator):
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
-        
+
         # do global features
         global_features = {}
         for plugin_name, feature_list in feature_names.iteritems():
