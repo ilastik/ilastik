@@ -194,7 +194,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
 
-
     def setupOutputs(self):
         super(OpObjectClassification, self).setupOutputs()
         self.Warnings.meta.shape = (1,)
@@ -506,8 +505,6 @@ class OpObjectTrain(Operator):
         labelsList = []
 
         # will be available at slot self.Warnings
-
-        # FIXME: this needs to be nested by {image : {time : []}}
         all_bad_objects = defaultdict(lambda: defaultdict(list))
         all_bad_feats = set()
 
@@ -921,7 +918,6 @@ class OpBadObjectsToWarningMessage(Operator):
         if len(warn['details']) == 0:
             return
         self.WarningMessage.setValue(warn)
-        self.WarningMessage.setDirty()
 
     def execute(self, slot, subindex, roi, result):
         pass
