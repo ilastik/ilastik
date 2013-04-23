@@ -10,6 +10,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 import os
 import numpy
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.operators import OpSubRegion
 
 import logging
@@ -115,15 +116,8 @@ class ObjectClassificationGui(LabelingGui):
 
         topLevelOp = self.topLevelOperatorView.viewed_operator()
 
-        # TODO: make this a general ilastik utility
-        class Callback(QObject):
-            signal = pyqtSignal()
-            def __call__(self, *args, **kwargs):
-                self.signal.emit()
-
-        callback = Callback()
-        callback.signal.connect(self.handleWarnings)
-        op.Warnings.notifyDirty(callback)
+        self.threadRouter = ThreadRouter(self)
+        op.Warnings.notifyDirty(self.handleWarnings)
 
 
     def initAppletDrawerUi(self):
@@ -522,7 +516,8 @@ class ObjectClassificationGui(LabelingGui):
         box.show()
 
 
-    def handleWarnings(self):
+    @threadRouted
+    def handleWarnings(self, *args, **kwargs):
         # FIXME: dialog should not steal focus
         warning = self.op.Warnings[:].wait()
         try:

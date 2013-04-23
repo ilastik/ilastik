@@ -264,6 +264,8 @@ class ObjectExtractionGui(LayerViewerGui):
         # However, the callback will be called from a non-gui thread,
         # which cannot access gui elements directly. Therefore we use
         # this callback object to send signals back to this thread.
+
+        # FIXME: this could probably be done much more easily with threadRouted
         class Callback(QObject):
             ndone = 0
             timestep_done = pyqtSignal(int)
