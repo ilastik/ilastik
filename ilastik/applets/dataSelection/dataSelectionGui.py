@@ -174,12 +174,11 @@ class DataSelectionGui(QWidget):
             detailViewer.addManyButton.setMenu( addManyMenu )
             self._retained.append(addManyMenu)
 
-            detailViewer.clearButton.clicked.connect( partial( self.handleClearDatasets, roleIndex ) )
-
             # Context menu            
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
             detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
             detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
+            detailViewer.datasetDetailTableView.resetRequested.connect( partial(self.handleClearDatasets, roleIndex) )
 
             # Selection handling
             def showFirstSelectedDataset( lanes ):
@@ -485,12 +484,7 @@ class DataSelectionGui(QWidget):
             fileNames = []
         return fileNames
 
-    def handleClearDatasets(self, roleIndex):
-        detailViewer = self._detailViewerWidgets[roleIndex]
-        modelIndexes = detailViewer.datasetDetailTableView.selectedIndexes()
-        selectedRows = set()
-        for modelIndex in modelIndexes:
-            selectedRows.add( modelIndex.row() )
+    def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
         

@@ -9,6 +9,7 @@ class DatasetDetailedInfoTableView(QTableView):
     replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex)
     replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)
     editRequested = pyqtSignal(object) # Signature: (lane_index_list)
+    resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
@@ -67,6 +68,7 @@ class DatasetDetailedInfoTableView(QTableView):
             editPropertiesAction = QAction( "Edit properties...", menu )
             replaceWithFileAction = QAction( "Replace with file...", menu )
             replaceWithStackAction = QAction( "Replace with stack...", menu )
+            resetSelectedAction = QAction( "Reset", menu )
 
             if row in self._selectedLanes and len(self._selectedLanes) > 1:
                 editable = True
@@ -76,11 +78,13 @@ class DatasetDetailedInfoTableView(QTableView):
                 # Show the multi-lane menu, which allows for editing but not replacing
                 menu.addAction( editSharedPropertiesAction )
                 editSharedPropertiesAction.setEnabled(editable)
+                menu.addAction( resetSelectedAction )
             else:
                 menu.addAction( editPropertiesAction )
                 editPropertiesAction.setEnabled(self.model().isEditable(row))
                 menu.addAction( replaceWithFileAction )
                 menu.addAction( replaceWithStackAction )
+                menu.addAction( resetSelectedAction )
     
             globalPos = self.mapToGlobal( pos )
             selection = menu.exec_( globalPos )
@@ -94,7 +98,8 @@ class DatasetDetailedInfoTableView(QTableView):
                 self.replaceWithFileRequested.emit( row )
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
-        
+            if selection is resetSelectedAction:
+                self.resetRequested.emit( self._selectedLanes )
 
     def dragEnterEvent(self, event):
         print "Accepting drag event"
