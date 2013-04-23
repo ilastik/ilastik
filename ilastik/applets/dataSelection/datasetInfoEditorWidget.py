@@ -5,11 +5,13 @@ import copy
 
 import h5py
 import numpy
+import vigra
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent, QVariant
 from PyQt4.QtGui import QDialog, QMessageBox
 
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import getPathVariants, PathComponents
 from opDataSelection import OpDataSelection, DatasetInfo
 
@@ -146,7 +148,19 @@ class DatasetInfoEditorWidget(QDialog):
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                 realSlot.setValue( info )
             return True
-        except Exception as e:
+        except Exception as ex:
+            if isinstance(ex, DatasetConstraintError):
+                msg = "Failed to apply your new settings to the workflow " \
+                      "because they violate a constraint of the {} applet.\n\n".format( ex.appletName ) + \
+                      ex.message
+                QMessageBox.critical( self, "Unacceptable Settings", msg )
+            else:
+                traceback.print_exc()
+                msg = "Failed to apply dialog settings due to an exception:\n"
+                msg += "{}".format( ex )
+                QMessageBox.critical(self, "Error", msg)
+                return False
+
             # Revert everything back to the previous state
             for laneIndex, info in originalInfos.items():
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
@@ -155,12 +169,6 @@ class DatasetInfoEditorWidget(QDialog):
                     # Only need to revert the lanes we actually changed.
                     # Everything else wasn't touched
                     break
-            
-            traceback.print_exc()
-            msg = "Failed to apply dialog settings due to an exception:\n"
-            msg += "{}".format( e )
-            QMessageBox.warning(self, "Error", msg)
-            return False
 
     def _cleanUpTempOperators(self):
         for laneIndex, op in self.tempOps.items():
@@ -320,6 +328,14 @@ class DatasetInfoEditorWidget(QDialog):
             try:
                 for laneIndex, op in self.tempOps.items():
                     info = copy.copy( op.Dataset.value )
+                    # Use new order, but keep the data from the old axis tags
+                    # (for all axes that were kept)
+                    newTags = vigra.defaultAxistags(newAxisOrder)
+                    for tag in newTags:
+                        if tag.key in op.Image.meta.getAxisKeys():
+                            newTags[tag.key] = op.Image.meta.axistags[tag.key]
+                        
+                    info.axistags = newTags
                     info.axisorder = newAxisOrder
                     op.Dataset.setValue( info )
                 self._error_fields.discard('Axis Order')

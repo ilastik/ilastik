@@ -31,7 +31,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.base.applet import ControlCommand
+from ilastik.applets.base.applet import ControlCommand, DatasetConstraintError
 from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
@@ -159,6 +159,7 @@ class DataSelectionGui(QWidget):
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
+            self._detailViewerWidgets.append( detailViewer )
 
             # Buttons            
             addOneMenu = QMenu()
@@ -376,11 +377,28 @@ class DataSelectionGui(QWidget):
 
         # if no exception was thrown, set up the operator now
         opTop = self.topLevelOperator
-        if len( opTop.DatasetGroup ) < endingLane+1:
-            opTop.DatasetGroup.resize( endingLane+1 )
+        originalSize = len(opTop.DatasetGroup)
+            
+        try:
+            if len( opTop.DatasetGroup ) < endingLane+1:
+                opTop.DatasetGroup.resize( endingLane+1 )
+    
+            for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
+                self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
+        except DatasetConstraintError as ex:
+            self.handleDatasetConstraintError(info.filePath, ex)
+            opTop.DatasetGroup.resize( originalSize )
+        except:
+            QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
+            opTop.DatasetGroup.resize( originalSize )
+            raise
 
-        for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
-            self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
+    def handleDatasetConstraintError(self, filename, ex):
+            msg = "Can't use dataset:\n" + \
+                  filename + "\n" + \
+                  "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
+                  ex.message
+            QMessageBox.critical( self, "Unacceptable Dataset", msg )
 
     def getPossibleInternalPaths(self, absPath):
         datasetNames = []
@@ -418,6 +436,8 @@ class DataSelectionGui(QWidget):
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
         info.fromstack = True
 
+        originalNumLanes = len(self.topLevelOperator.DatasetGroup)
+
         if laneIndex is None:
             laneIndex = self._findFirstEmptyLane(roleIndex)
         if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
@@ -434,18 +454,24 @@ class DataSelectionGui(QWidget):
                 self.guiControlSignal.emit( ControlCommand.Pop )
 
         req = Request( importStack )
-        req.notify_failed( partial(self.handleFailedStackLoad, files ) )
+        req.notify_failed( partial(self.handleFailedStackLoad, files, originalNumLanes ) )
         req.submit()
 
     @threadRouted
-    def handleFailedStackLoad(self, files, exc, exc_info):
-        import traceback
-        traceback.print_tb(exc_info[2])
-        msg = "Failed to load stack due to the following error:\n{}".format( exc )
-        msg += "Attempted stack files were:"
-        for f in files:
-            msg += f + "\n"
-        QMessageBox.critical(self, "Failed to load image stack", msg)
+    def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
+        if isinstance(exc, DatasetConstraintError):
+            filename = files[0] + "\n...\n" + files[-1]
+            self.handleDatasetConstraintError( filename, exc )
+        else:
+            import traceback
+            traceback.print_tb(exc_info[2])
+            msg = "Failed to load stack due to the following error:\n{}".format( exc )
+            msg += "Attempted stack files were:"
+            for f in files:
+                msg += f + "\n"
+            QMessageBox.critical(self, "Failed to load image stack", msg)
+        
+        self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 
     def getMass(self, defaultDirectory):
         # TODO: launch dialog and get files

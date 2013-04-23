@@ -69,14 +69,23 @@ class OpDataSelection(Operator):
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.force5d = force5d
         self._opReaders = []
-    
-    def setupOutputs(self):
+
+        # If the gui calls disconnect() on an input slot without replacing it with something else,
+        #  we still need to clean up the internal operator that was providing our data.
+        self.ProjectFile.notifyUnready(self.internalCleanup)
+        self.ProjectDataGroup.notifyUnready(self.internalCleanup)
+        self.WorkingDirectory.notifyUnready(self.internalCleanup)
+        self.Dataset.notifyUnready(self.internalCleanup)
+
+    def internalCleanup(self, *args):
         if len(self._opReaders) > 0:
             self.Image.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
             self._opReaders = []
-        
+    
+    def setupOutputs(self):
+        self.internalCleanup()
         datasetInfo = self.Dataset.value
 
         # Data only comes from the project file if the user said so AND it exists in the project
