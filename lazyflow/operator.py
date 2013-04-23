@@ -398,16 +398,24 @@ class Operator(object):
                 self._settingUp = False
                 self._condition.notifyAll()
 
-            # Determine new "ready" flags
-            for k, oslot in self.outputs.items():
-                if oslot.partner is None:
-                    # All unconnected outputs are ready after
-                    # setupOutputs
-                    oslot._setReady()
-
-            #notify outputs of probably changed meta information
-            for k, v in self.outputs.items():
-                v._changed()
+            try:
+                # Determine new "ready" flags
+                for k, oslot in self.outputs.items():
+                    if oslot.partner is None:
+                        # All unconnected outputs are ready after
+                        # setupOutputs
+                        oslot._setReady()
+    
+                #notify outputs of probably changed meta information
+                for k, v in self.outputs.items():
+                    v._changed()
+            except:
+                # Something went wrong
+                # Make the operator-supplied outputs unready again
+                for k, oslot in self.outputs.items():
+                    if oslot.partner is None:
+                        oslot.disconnect() # Forces unready state
+                raise
 
     def handleInputBecameUnready(self, slot):
         with Tracer(self.traceLogger, msg=self.name):
