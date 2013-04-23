@@ -6,6 +6,7 @@ from yapsy.PluginManager import PluginManager
 import os
 from collections import namedtuple
 from functools import partial
+import numpy
 
 # these directories are searched for plugins
 plugin_paths = cfg.get('ilastik', 'plugin_directories')
@@ -72,6 +73,18 @@ class ObjectFeaturesPlugin(IPlugin):
         return dict(sum((d.items() for d in ds), []))
 
     @staticmethod
+    def combine_dicts_with_numpy(ds):
+        #stack arrays which correspond to the same keys
+        keys = ds[0].keys()
+        result = {}
+        for key in keys:
+            arrays = [d[key] for d in ds]
+            array_combined = numpy.hstack(arrays)
+            result[key] = array_combined
+        return result
+            
+
+    @staticmethod
     def update_keys(d, prefix=None, suffix=None):
         if prefix is None:
             prefix = ''
@@ -85,9 +98,11 @@ class ObjectFeaturesPlugin(IPlugin):
         slc = [slice(None)] * 4
         for channel in range(image.shape[axes.c]):
             slc[axes.c] = channel
+            #a dictionary for the channel
             result = fn(image[slc], axes=axes, **kwargs)
-            results.append(self.update_keys(result, suffix='_channel_{}'.format(channel)))
-        return self.combine_dicts(results)
+            results.append(result)
+        
+        return self.combine_dicts_with_numpy(results)
 
 
 ###############
