@@ -1,6 +1,6 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSlot, Qt
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -25,8 +25,6 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
-from guiMessage import LabelsChangedDialog, GuiDialog, OpGuiDialog
-
 def _listReplace(old, new):
     if len(old) > len(new):
         return new + old[len(new):]
@@ -34,6 +32,7 @@ def _listReplace(old, new):
         return new
 
 from ilastik.applets.objectExtraction.objectExtractionGui import FeatureSelectionDialog
+
 
 class FeatureSubSelectionDialog(FeatureSelectionDialog):
     def __init__(self, featureDict, selectedFeatures=None, parent=None, ndim=3):
@@ -115,9 +114,16 @@ class ObjectClassificationGui(LabelingGui):
         self.checkEnableButtons()
 
         topLevelOp = self.topLevelOperatorView.viewed_operator()
-        self._trainWarningDialog = OpGuiDialog(parent=topLevelOp)
-        self._trainWarningDialog.dialog = GuiDialog(self)
-        self._trainWarningDialog.Input.connect(op.Warnings)
+
+        # TODO: make this a general ilastik utility
+        class Callback(QObject):
+            signal = pyqtSignal()
+            def __call__(self, *args, **kwargs):
+                self.signal.emit()
+
+        callback = Callback()
+        callback.signal.connect(self.handleWarnings)
+        op.Warnings.notifyDirty(callback)
 
 
     def initAppletDrawerUi(self):
@@ -478,22 +484,51 @@ class ObjectClassificationGui(LabelingGui):
             print "------------------------------------------------------------"
 
     def setVisible(self, visible):
+        super(ObjectClassificationGui, self).setVisible(visible)
+
         if visible:
             temp = self.op.triggerTransferLabels(self.op.current_view_index())
         else:
             temp = None
-
-        super(ObjectClassificationGui, self).setVisible(visible)
-
         if temp is not None:
             new_labels, old_labels_lost, new_labels_lost = temp
-            # labels are lost, create a pop-up window
-            pop=LabelsChangedDialog(self)
+            labels_lost = dict(old_labels_lost.items() + new_labels_lost.items())
+            if sum(len(v) for v in labels_lost.itervalues()) > 0:
+                self.warnLost(labels_lost)
 
-            pop.labelsLost = {}
-            for k in old_labels_lost.keys():
-                pop.labelsLost[k] = old_labels_lost[k]
-            for k in new_labels_lost.keys():
-                pop.labelsLost[k] = new_labels_lost[k]
+    def warnLost(self, labels_lost):
+        box = QMessageBox(QMessageBox.Warning,
+                          'Warning',
+                          'Some of your labels could not be transferred',
+                          QMessageBox.NoButton,
+                          self)
+        messages = {
+            'full': "These labels were lost completely:",
+            'partial': "These labels were lost partially:",
+            'conflict': "These new labels conflicted:"
+        }
+        default_message = "These labels could not be transferred:"
 
-            pop.showDialog(blocking=False)
+        _sep = "\t"
+        cases = []
+        for k, val in labels_lost.iteritems():
+            if len(val) > 0:
+                msg = messages.get(k, default_message)
+                axis = _sep.join(["X", "Y", "Z"])
+                coords = "\n".join([_sep.join(["{:<8.1f}".format(i) for i in item])
+                                    for item in val])
+                cases.append("\n".join([msg, axis, coords]))
+        box.setDetailedText("\n\n".join(cases))
+        box.show()
+
+
+    def handleWarnings(self):
+        warning = self.op.Warnings[:].wait()
+        box = QMessageBox(QMessageBox.Warning,
+                          warning['title'],
+                          warning['text'],
+                          QMessageBox.NoButton,
+                          self)
+        box.setInformativeText(warning.get('info', ''))
+        box.setDetailedText(warning.get('details', ''))
+        box.show()

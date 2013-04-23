@@ -916,7 +916,6 @@ class OpBadObjectsToWarningMessage(Operator):
         warn = {}
         warn['title'] = 'Warning'
         warn['text'] = 'Encountered bad objects/features while training.'
-        warn['info'] = None
         warn['details'] = self._formatMessage(d)
 
         if len(warn['details']) == 0:
@@ -930,15 +929,13 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatMessage(self, d):
         a = []
         try:
-            # a) objects
             if 'objects' in d.keys():
                 s = self._formatObjects(d['objects'])
-                if len(s)>0:
+                if len(s) > 0:
                     a.append(s)
-            # b) features
             if 'feats' in d.keys():
                 s = self._formatFeatures(sorted(d['feats']))
-                if len(s)>0:
+                if len(s) > 0:
                     a.append(s)
         except AttributeError:
             raise Exception("Expected message to be a dictionary, got {}".format(type(d)))
