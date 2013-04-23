@@ -153,7 +153,11 @@ class DataSelectionGui(QWidget):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
+        self.laneSummaryTableView.addFilesRequested.connect( self.handleAddFiles )
+        self.laneSummaryTableView.addStackRequested.connect( self.handleAddStack )
+        self.laneSummaryTableView.addByPatternRequested.connect( self.handleAddByPattern )
         self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
+        self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
@@ -161,19 +165,14 @@ class DataSelectionGui(QWidget):
             detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
             self._detailViewerWidgets.append( detailViewer )
 
-            # Buttons            
-            addOneMenu = QMenu()
-            addOneMenu.addAction( "Select File..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
-            addOneMenu.addAction( "Specify Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
-            detailViewer.addOneButton.setMenu( addOneMenu )
-            self._retained.append(addOneMenu)
+            # Button
+            menu = QMenu()
+            menu.addAction( "Add File(s)..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
+            menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
+            menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
+            detailViewer.appendButton.setMenu( menu )
+            self._retained.append(menu)
             
-            addManyMenu = QMenu()
-            addManyMenu.addAction( "Select Files..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
-            addManyMenu.addAction( "Give Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
-            detailViewer.addManyButton.setMenu( addManyMenu )
-            self._retained.append(addManyMenu)
-
             # Context menu            
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
             detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
@@ -199,18 +198,23 @@ class DataSelectionGui(QWidget):
         The user clicked the "Remove" button.
         Remove the currently selected row(s) from both the GUI and the top-level operator.
         """
-        # Figure out which lane to remove
+        # Figure out which lanes to remove
         selectedIndexes = self.laneSummaryTableView.selectedIndexes()
-        row = selectedIndexes[0].row()
+        rows = set()
+        for modelIndex in selectedIndexes:
+            rows.add( modelIndex.row() )
+        rows.discard( self.laneSummaryTableView.model().rowCount() )
 
-        # Remove from the GUI
-        self.laneSummaryTableView.model().removeRow(row)
-        # Remove from the operator
-        finalSize = len(self.topLevelOperator.DatasetGroup) - 1
-        self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
-
-        # The gui and the operator should be in sync
-        assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)
+        # Remove in reverse order so row numbers remain consistent
+        for row in reversed(sorted(rows)):
+            # Remove from the GUI
+            self.laneSummaryTableView.model().removeRow(row)
+            # Remove from the operator
+            finalSize = len(self.topLevelOperator.DatasetGroup) - 1
+            self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
+    
+            # The gui and the operator should be in sync
+            assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
     def showDataset(self, laneIndex):
         if laneIndex == -1:

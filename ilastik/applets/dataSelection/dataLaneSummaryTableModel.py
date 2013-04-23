@@ -58,7 +58,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         return LaneColumn.NumColumns + DatasetInfoColumn.NumColumns * len(roles)
     
     def rowCount(self, parent=QModelIndex()):
-        return len( self._op.ImageGroup )
+        return len( self._op.ImageGroup ) + 1 # Add a row of buttons...
     
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -74,6 +74,8 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if role != Qt.DisplayRole:
             return None
         if orientation == Qt.Vertical:
+            if section == self.rowCount()-1:
+                return ""
             return section+1
         if section == LaneColumn.LabelsAllowed:
             return "Labelable"
@@ -87,6 +89,10 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         assert False, "Unknown header column: {}".format( section )
             
     def _getDisplayRoleData(self, index):
+        # Last row is just buttons
+        if index.row() == self.rowCount()-1:
+            return ""
+
         laneIndex = index.row()
         
         if index.column() < LaneColumn.NumColumns:

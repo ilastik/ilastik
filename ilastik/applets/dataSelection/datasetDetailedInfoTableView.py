@@ -14,6 +14,7 @@ class DatasetDetailedInfoTableView(QTableView):
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
 
+        self._selectedLanes = []
         self.setContextMenuPolicy( Qt.CustomContextMenu )
         self.customContextMenuRequested.connect( self.handleCustomContextMenuRequested )
 
@@ -45,7 +46,6 @@ class DatasetDetailedInfoTableView(QTableView):
         # Get the selected row and corresponding slot value
         selectedIndexes = self.selectedIndexes()
         if len(selectedIndexes) == 0:
-            #self.update()
             self._selectedLanes = []
             self.dataLaneSelected.emit(self._selectedLanes)
             return

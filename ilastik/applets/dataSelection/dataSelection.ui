@@ -36,7 +36,7 @@
           <item>
            <widget class="QPushButton" name="removeLaneButton">
             <property name="text">
-             <string>Remove Lane</string>
+             <string>Remove Selected</string>
             </property>
            </widget>
           </item>
