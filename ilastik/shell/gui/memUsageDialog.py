@@ -8,6 +8,8 @@ from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 #lazyflow
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
+import warnings
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== MemUsageDialog                                                                                                 ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -32,8 +34,11 @@ class MemUsageDialog(QDialog):
         reports = []
         for c in self.memMgr.namedCaches:
             r = MemInfoNode()
-            c.generateReport(r)
-            reports.append(r)
+            try:
+                c.generateReport(r)
+                reports.append(r)
+            except NotImplementedError:
+                warnings.warn('cache operator {} does not implement generateReport()'.format(c))
         self._showReports(reports)
         
         '''
