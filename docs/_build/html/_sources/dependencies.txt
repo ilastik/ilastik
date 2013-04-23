@@ -37,6 +37,7 @@ Python
 * wsgiref
 * qimage2ndarray
 * vigranumpy
+* Yapsy
 
 Ilastik Sub-projects
 ====================
