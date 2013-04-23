@@ -901,7 +901,12 @@ class OpBadObjectsToWarningMessage(Operator):
     _itemIndent = "    "
 
     # the input slot
-    # format: BadObjects.value = {'objects': dict(tuple??()), 'feats': set()}
+    # format: BadObjects.value = {      
+    #                               'objects': 
+    #                                   {img_key: {time_key: [obj_index, obj_index_2, ...]}}, 
+    #                               'feats': 
+    #                                   set()
+    #                            }
     BadObjects = InputSlot(stype=Opaque)
 
     # the output slot
