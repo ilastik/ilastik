@@ -2,14 +2,16 @@ import os
 import sys
 import traceback
 import copy
+import math
+from functools import partial
 
 import h5py
 import numpy
 import vigra
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent, QVariant
-from PyQt4.QtGui import QDialog, QMessageBox
+from PyQt4.QtCore import Qt, QEvent, QVariant, QString
+from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import getPathVariants, PathComponents
@@ -76,6 +78,12 @@ class DatasetInfoEditorWidget(QDialog):
         self._initChannelDisplayCombo()
         self.channelDisplayComboBox.currentIndexChanged.connect( self._applyChannelDescriptionToTempOps )
         self._updateChannelDisplayCombo()
+
+        self.rangeMinSpinBox.setSpecialValueText( "--" )
+        self.rangeMaxSpinBox.setSpecialValueText( "--" )
+        self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
+        self.rangeMaxSpinBox.setValue( self.rangeMaxSpinBox.minimum() )
+        self.clearRangeButton.clicked.connect( self._handleClearRangeButton )
         
         self._updateShape()
         self._updateDtype()
@@ -83,6 +91,12 @@ class DatasetInfoEditorWidget(QDialog):
         self._updateAxes()
         
         self._updateNickname()
+
+    def rangeDisplay(self, box, val):
+        drange = self._getCommonMetadataValue("drange")
+        if drange is None:
+            return QString("")
+        return QDoubleSpinBox.textFromValue(box, val)
 
     def _setUpEventFilters(self):
         # Changes to these widgets are detected via eventFilter()
@@ -260,14 +274,10 @@ class DatasetInfoEditorWidget(QDialog):
 
     def _updateRange(self):
         drange = self._getCommonMetadataValue("drange")
-        if drange is None:
-            # TODO: Override QSpinBox.textFromValue() to make a special display for invalid ranges
-            self.rangeMinSpinBox.setValue( 0.0 )
-            self.rangeMaxSpinBox.setValue( 0.0 )
-        else:
+        if drange is not None:
             self.rangeMinSpinBox.setValue( drange[0] )
-            self.rangeMaxSpinBox.setValue( drange[1] )
-    
+            self.rangeMaxSpinBox.setValue( drange[1] )            
+
     def _updateAxes(self):
         # If all images have the same axis keys,
         # then display it.  Otherwise, display default text.
@@ -361,37 +371,47 @@ class DatasetInfoEditorWidget(QDialog):
             # Either way, show the axes
             self._updateAxes()
 
+    def _handleClearRangeButton(self):
+        self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
+        self.rangeMaxSpinBox.setValue( self.rangeMaxSpinBox.minimum() )
+        self._applyRangeToTempOps()
+
     def _applyRangeToTempOps(self):
         new_drange = ( self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value() )
+
+        if new_drange[0] == self.rangeMinSpinBox.minimum() \
+        or new_drange[1] == self.rangeMaxSpinBox.minimum():
+            new_drange = None
+
+        def get_dtype_info(dtype):
+            try:
+                return numpy.iinfo(dtype)
+            except ValueError:
+                return numpy.finfo(dtype)
 
         try:
             # Remove the event filter while this function executes because we don't 
             #  want to trigger additional calls to this very function.
             self.rangeMinSpinBox.removeEventFilter(self)
             self.rangeMaxSpinBox.removeEventFilter(self)
-            
-            if new_drange[0] >= new_drange[1]:
-                QMessageBox.warning(self, "Error", "Can't apply data range values: Data range MAX must be greater than MIN.")
-                self._error_fields.add('Data Range')
-                return False
 
-            def get_dtype_info(dtype):
-                try:
-                    return numpy.iinfo(dtype)
-                except ValueError:
-                    return numpy.finfo(dtype)
-
-            # Make sure the new bounds don't exceed the dtype range
-            for laneIndex, op in self.tempOps.items():
-                dtype_info = get_dtype_info(op.Image.meta.dtype)
-                    
-                if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
-                    QMessageBox.warning(self, "Error",
-                        "Can't apply data range values:\n"
-                        "Range {} is outside the allowed range for the data type of lane {}.\n"
-                        "(Full range of {} is [{}, {}].)".format( new_drange, laneIndex, dtype_info.dtype.name, dtype_info.min, dtype_info.max ) )
+            if new_drange is not None:
+                if new_drange[0] >= new_drange[1]:
+                    QMessageBox.warning(self, "Error", "Can't apply data range values: Data range MAX must be greater than MIN.")
                     self._error_fields.add('Data Range')
                     return False
+    
+                # Make sure the new bounds don't exceed the dtype range
+                for laneIndex, op in self.tempOps.items():
+                    dtype_info = get_dtype_info(op.Image.meta.dtype)
+                        
+                    if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
+                        QMessageBox.warning(self, "Error",
+                            "Can't apply data range values:\n"
+                            "Range {} is outside the allowed range for the data type of lane {}.\n"
+                            "(Full range of {} is [{}, {}].)".format( new_drange, laneIndex, dtype_info.dtype.name, dtype_info.min, dtype_info.max ) )
+                        self._error_fields.add('Data Range')
+                        return False
             
             # Save a copy of our settings
             oldInfos = {}
@@ -404,7 +424,9 @@ class DatasetInfoEditorWidget(QDialog):
                     info = copy.copy( op.Dataset.value )
                     dtype_info = get_dtype_info(op.Image.meta.dtype)
                     dtype = dtype_info.dtype.type
-                    info.drange = ( dtype(new_drange[0]), dtype(new_drange[1]) )
+                    info.drange = None
+                    if new_drange is not None:
+                        info.drange = ( dtype(new_drange[0]), dtype(new_drange[1]) )
                     op.Dataset.setValue( info )
                 self._error_fields.discard('Data Range')
                 return True
