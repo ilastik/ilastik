@@ -13,6 +13,6 @@ def debug_with_new(shell):
     shell.onSaveProjectActionTriggered()
 
 if __name__ == "__main__":    
-    #startShellGui( LayerViewerWorkflow )
-    startShellGui( LayerViewerWorkflow, debug_with_new )
+    startShellGui( LayerViewerWorkflow )
+    #startShellGui( LayerViewerWorkflow, debug_with_new )
     
