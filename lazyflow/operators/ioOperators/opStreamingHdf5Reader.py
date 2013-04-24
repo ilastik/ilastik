@@ -34,9 +34,6 @@ class OpStreamingHdf5Reader(Operator):
         self._hdf5File = None
 
     def setupOutputs(self):
-        if self._hdf5File is not None:
-            self._hdf5File.close()
-        
         # Read the dataset meta-info from the HDF5 dataset
         self._hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
