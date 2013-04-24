@@ -15,9 +15,8 @@ class OpStreamingHdf5Reader(Operator):
     InternalPath = InputSlot(stype='string')
 
     # If the dataset has no axistags attribute, this slot specifies the assumed order.
-    # Must have all 5 axes, e.g. "txyzc"
-    # If the dataset has only 4 axes, then 't' is dropped from the ordering.
-    # If the dataset has only 4 axes, then 't' and 'z' are dropped from the ordering.
+    # If the dataset has fewer axes than the specified axis order, 
+    #  axes will be dropped in the following order: 't', 'z', 'c'
     DefaultAxisOrder = InputSlot(stype='string', value='txyzc')
 
     # Output data
@@ -50,8 +49,6 @@ class OpStreamingHdf5Reader(Operator):
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
             axisorder = self.DefaultAxisOrder.value
-            for a in 'txyzc':
-                assert a in axisorder
 
             # No axistags found.
             numDimensions = len(dataset.shape)
@@ -63,12 +60,16 @@ class OpStreamingHdf5Reader(Operator):
                 outputShape = outputShape + (1,)
                 numDimensions = len(outputShape)
 
-            if numDimensions < 5:
+            if numDimensions < len(axisorder):
                 axisorder = axisorder.replace('t', '')
-            if numDimensions < 4:
+            if numDimensions < len(axisorder):
                 axisorder = axisorder.replace('z', '')
+            if numDimensions < len(axisorder):
+                axisorder = axisorder.replace('c', '')
 
             axistags = vigra.defaultAxistags(axisorder)
+
+        assert len(axistags) == len( outputShape ), "Mismatch between shape {} and axisorder {}".format( outputShape, axisorder )
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype.type

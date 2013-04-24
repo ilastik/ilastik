@@ -11,9 +11,8 @@ class OpNpyFileReader(Operator):
     FileName = InputSlot(stype='filestring')
 
     # This slot specifies the assumed order of the data.
-    # Must have all 5 axes, e.g. "txyzc"
-    # If the dataset has only 4 axes, then 't' is dropped from the ordering.
-    # If the dataset has only 4 axes, then 't' and 'z' are dropped from the ordering.
+    # If the dataset has fewer axes than the specified axis order, 
+    #  axes will be dropped in the following order: 't', 'z', 'c'
     AxisOrder = InputSlot(stype='string', value='txyzc')
     Output = OutputSlot()
 
@@ -30,10 +29,6 @@ class OpNpyFileReader(Operator):
         Load the file specified via our input slot and present its data on the output slot.
         """
         fileName = self.FileName.value
-
-        axisorder = self.AxisOrder.value
-        for a in 'txyzc':
-            assert a in axisorder
 
         try:
             # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
@@ -59,10 +54,17 @@ class OpNpyFileReader(Operator):
         assert numDimensions != 1, "OpNpyFileReader: Support for 1-D data not yet supported"
         assert numDimensions != 2, "OpNpyFileReader: BUG: 2-D was supposed to be reshaped above."
         assert numDimensions <= 5, "OpNpyFileReader: No support for data with more than 5 dimensions."
-        if numDimensions < 5:
+
+        axisorder = self.AxisOrder.value
+
+        if numDimensions < len(axisorder):
             axisorder = axisorder.replace('t', '')
-        if numDimensions < 4:
+        if numDimensions < len(axisorder):
             axisorder = axisorder.replace('z', '')
+        if numDimensions < len(axisorder):
+            axisorder = axisorder.replace('c', '')
+
+        assert len(axisorder) == len( self.rawVigraArray.shape ), "Mismatch between shape {} and axisorder {}".format( self.rawVigraArray.shape, axisorder )
         self.rawVigraArray.axistags = vigra.defaultAxistags(axisorder)
 
         # Our output slot should match the shape of the array on disk
