@@ -923,7 +923,6 @@ class OpBadObjectsToWarningMessage(Operator):
     def setupOutputs(self):
         super(OpBadObjectsToWarningMessage, self).setupOutputs()
         self.WarningMessage.meta.shape = (1,)
-        self.WarningMessage.setValue({})
 
     def propagateDirty(self, slot, subindex, roi):
         try:
