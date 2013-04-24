@@ -81,8 +81,8 @@ def make_bboxes(binary_bbox, margin):
                                                background=True,
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
     else:
-        # FIXME: re-add pixel_pitch to this call when vigra supports it
-        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32))
+        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
+                                               pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
         dt = dt.reshape(dt.shape + (1,))
 
     assert dt.ndim == 3
