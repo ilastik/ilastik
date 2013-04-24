@@ -889,6 +889,10 @@ class OpMaxLabel(Operator):
 
 
 class OpBadObjectsToWarningMessage(Operator):
+    '''
+    parses an input dictionary of bad objects and bad features, and sets
+    an informative warning message to its output slot
+    '''
 
     name = "OpBadObjectsToWarningMessage"
     _blockSep = "\n\n"
@@ -897,19 +901,36 @@ class OpBadObjectsToWarningMessage(Operator):
     _itemIndent = "    "
 
     # the input slot
-    # format: BadObjects._value = {'objects': dict(tuple??()), 'feats': set()}
+    # format: BadObjects.value = {      
+    #                               'objects': 
+    #                                   {img_key: {time_key: [obj_index, obj_index_2, ...]}}, 
+    #                               'feats': 
+    #                                   set()
+    #                            }
     BadObjects = InputSlot(stype=Opaque)
 
     # the output slot
-    # format: WarningMessage._value = {'title': a, 'text': b, 'info': c, 'details': d}
-    WarningMessage = OutputSlot(stype=Opaque)
+    # format: WarningMessage.value = 
+    #           {'title': a, 'text': b, 'info': c, 'details': d} if message available, the keys 'info' and 'details' might be omitted
+    #           {} otherwise
+    WarningMessage = OutputSlot(stype=Opaque, value={})
 
     def setupOutputs(self):
         super(OpBadObjectsToWarningMessage, self).setupOutputs()
         self.WarningMessage.meta.shape = (1,)
+        self.WarningMessage.setValue({})
 
     def propagateDirty(self, slot, subindex, roi):
-        d = self.BadObjects[:].wait()
+        try:
+            d = self.BadObjects[:].wait()
+        except AssertionError as E:
+            if "has no value" in str(E):
+                # since we are in propagateDirty, the input got reset or we got disconnected, either case
+                # means we don't have to issue warnings any more
+                return
+            # don't know what this is about, raise again
+            raise
+            
         warn = {}
         warn['title'] = 'Warning'
         warn['text'] = 'Encountered bad objects/features while training.'
@@ -925,21 +946,34 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatMessage(self, d):
         a = []
         try:
-            if 'objects' in d.keys():
+            keys = d.keys()
+            # a) objects
+            if 'objects' in keys:
+                keys.remove('objects')
                 s = self._formatObjects(d['objects'])
                 if len(s) > 0:
                     a.append(s)
-            if 'feats' in d.keys():
-                s = self._formatFeatures(sorted(d['feats']))
-                if len(s) > 0:
+
+
+            # b) features
+            if 'feats' in keys:
+                keys.remove('feats')
+                s = self._formatFeatures(d['feats'])
+                if len(s)>0:
                     a.append(s)
+                    
+            if len(keys)>0:
+                logger.warning("Encountered unknown bad object keywords: {}".format(keys))
         except AttributeError:
-            raise Exception("Expected message to be a dictionary, got {}".format(type(d)))
-            return ""
+            raise TypeError("Expected input to be a dictionary, got {}".format(type(d)))
+
         return self._blockSep.join(a)
 
     def _formatFeatures(self, f):
-        a = self._itemSep.join(map(str, f))
+        try:
+            a = self._itemSep.join(map(str, f))
+        except TypeError:
+            raise TypeError("Expected bad features to be a set, got {}".format(type(f)))
         if len(a)>0:
             a = "The following features had bad values:" + self._itemSep + a
         return a
@@ -947,28 +981,33 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatObjects(self, obj):
         a = []
         indent = 1
+        
+        try:
+            # loop image indices
+            for img in obj.keys():
+                imtext = self._itemIndent*indent + "at image index {}".format(img)
+                indent += 1
+                
+                # just show time slice if more than 1 time slice exists (avoid confusion/obfuscation)
+                needTime = len(obj[img].keys())>1
+                b = []
 
-        # loop image indices
-        for img in obj.keys():
-            imtext = self._itemIndent*indent + "at image index {}".format(img)
-            indent += 1
-            needTime = len(obj[img].keys())>1
-            b = []
+                # loop time values
+                for t in obj[img].keys():
+                    # object numbers
+                    c = self._objectSep.join(map(str,obj[img][t]))
 
-            # loop time values
-            for t in obj[img].keys():
-                # object numbers
-                c = self._objectSep.join([str(s) for s in obj[img][t]])
+                    if len(c)>0:
+                        c = self._itemIndent*indent + "Objects " + c
+                        if needTime:
+                            c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
+                        b.append(c)
 
-                if len(c)>0:
-                    c = self._itemIndent*indent + "Objects " + c
-                    if needTime:
-                        c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
-                    b.append(c)
-
-            indent -= 1
-            if len(b)>0:
-                a.append(self._itemSep.join([imtext] + b))
+                indent -= 1
+                if len(b)>0:
+                    a.append(self._itemSep.join([imtext] + b))
+        except AttributeError:
+            raise TypeError("bad objects dictionary has wrong format.")
 
 
         if len(a)>0:
