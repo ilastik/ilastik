@@ -133,11 +133,11 @@ class OpPreprocessing(Operator):
             # true 3D volume
             if volume_filter == 0:
                 print "lowest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
+                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
             
             elif volume_filter == 1:
                 print "greatest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
+                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
                  
             elif volume_filter == 2:
                 print "Gaussian Gradient Magnitude"
@@ -163,11 +163,11 @@ class OpPreprocessing(Operator):
             fvol = fvol[:,:,0]
             if volume_filter == 0:
                 print "lowest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
+                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
             
             elif volume_filter == 1:
                 print "greatest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
+                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
                  
             elif volume_filter == 2:
                 print "Gaussian Gradient Magnitude"
