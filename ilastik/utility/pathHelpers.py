@@ -136,7 +136,7 @@ def getPathVariants(originalPath, workingDirectory):
 if __name__ == "__main__":
     abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
     assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '..\\ddd.txt'
+    assert rel == '../ddd.txt'
 
     abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
     assert abs == '/aaa/bbb/ccc/ddd.txt'

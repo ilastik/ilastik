@@ -540,10 +540,11 @@ class IlastikShell( QMainWindow ):
     @threadRouted
     def insertImageName(self, index, slot ):
         assert threading.current_thread().name == "MainThread"
-        self.imageSelectionCombo.setItemText( index, slot.value )
-        if self.currentImageIndex == -1:
-            self.changeCurrentInputImageIndex(index)
-
+        if slot.ready():
+            self.imageSelectionCombo.setItemText( index, slot.value )
+            if self.currentImageIndex == -1:
+                self.changeCurrentInputImageIndex(index)
+ 
     @threadRouted
     def handleImageNameSlotInsertion(self, multislot, index):
         assert threading.current_thread().name == "MainThread"
@@ -1231,7 +1232,8 @@ class IlastikShell( QMainWindow ):
                 response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
                 if response == QMessageBox.Cancel:
                     return False
-        return True
+
+        return self._recorderGui.confirmQuit()
 
     def closeAndQuit(self, quitApp=True):
         if self.projectManager is not None:

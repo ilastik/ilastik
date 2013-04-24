@@ -1,5 +1,5 @@
 from PyQt4.QtCore import QEvent 
-from PyQt4.QtGui import QMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QResizeEvent, QContextMenuEvent
+from PyQt4.QtGui import QMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QResizeEvent, QContextMenuEvent, QCloseEvent
 
 from eventTypeNames import get_event_type_name, get_mouse_button_string, get_key_modifiers_string
 
@@ -60,6 +60,10 @@ def QResizeEvent_to_string(resizeEvent):
 @register_serializer(QWindowStateChangeEvent)
 def QWindowStateChangeEvent_to_string(windowStateChangeEvent):
     return "PyQt4.QtGui.QWindowStateChangeEvent(0x{:x})".format( int(windowStateChangeEvent.oldState()) )
+
+@register_serializer(QCloseEvent)
+def QCloseEvent_to_string(closeEvent):
+    return "PyQt4.QtGui.QCloseEvent()"
 
 @register_serializer(QEvent)
 def QEvent_to_string(event):

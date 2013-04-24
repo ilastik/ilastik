@@ -14,6 +14,7 @@ import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
+import ilastik.config
 
 import functools
 
@@ -31,13 +32,17 @@ def startShellGui(workflowClass=None,*testFuncs):
        [xcb] Aborting, sorry about that.
        python: ../../src/xcb_io.c:178: dequeue_pending_request: Assertion !xcb_xlib_unknown_req_in_deq failed.
     """
-    if 'Ubuntu' in platform.platform():
-        QApplication.setAttribute(Qt.AA_X11InitThreads,True)
+    platform_str = platform.platform().lower() 
+    if 'ubuntu' in platform_str or 'fedora' in platform_str:
+        QApplication.setAttribute(Qt.AA_X11InitThreads, True)
+
+    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
     
     app = QApplication([])
 
     QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, *testFuncs ) )
-    
+        
     _applyStyleSheet(app)
 
     return app.exec_()
