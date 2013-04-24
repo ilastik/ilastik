@@ -170,6 +170,7 @@ class OpDataSelectionGroup( Operator ):
     # Outputs
     ImageGroup = OutputSlot(level=1)
     Image = OutputSlot() # The first dataset. Equivalent to ImageGroup[0]
+    AllowLabels = OutputSlot(stype='bool') # Pulled from the first dataset only.
 
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
@@ -207,6 +208,7 @@ class OpDataSelectionGroup( Operator ):
         if len( self._opDatasets.Image ) > 0:
             self.Image.connect( self._opDatasets.Image[0] )
             self.ImageName.connect( self._opDatasets.ImageName[0] )
+            self.AllowLabels.connect( self._opDatasets.AllowLabels[0] )
 
     def execute(self, slot, subindex, rroi, result):
             assert False, "Unknown or unconnected output slot."
