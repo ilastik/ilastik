@@ -30,6 +30,12 @@ class OpInterpMissingData(Operator):
 
         data = data.view( vigra.VigraArray )
         data.axistags = self.InputVolume.meta.axistags
+        
+        if data.shape[data.axistags.index('z')]==1:
+            #nothing to interpolate
+            result[:] = data
+            return result
+        
         self._interpMissingLayer(data.withAxes(*'xyz'))
 
         z_index = self.InputVolume.meta.axistags.index('z')
@@ -39,9 +45,8 @@ class OpInterpMissingData(Operator):
         old_start = roi.start
         old_stop = roi.stop
 
-
-        #   while rio top layer is empty, 
-        #   push layer from data to top of rio
+        #   while roi top layer is empty, 
+        #   push layer from data to top of roi
         offset0=0
         while(np.sum(data[:,:,0])==0):
 
@@ -60,17 +65,15 @@ class OpInterpMissingData(Operator):
 
 
 
-        #   while rio bottem layer is empty, 
-        #   push layer from data to bottem of rio 
+        #   while roi bottom layer is empty, 
+        #   push layer from data to bottom of roi 
         offset1=0
         while(np.sum(data[:,:,-1])==0):
-
-
             #searched depth reached
             if offset1==depth:
                 break
 
-            #bottem layer reached
+            #bottom layer reached
             if old_stop[z_index]+offset1==n_layers:
                 break
 
@@ -82,14 +85,14 @@ class OpInterpMissingData(Operator):
 
 
         #   apply Interpolation
-        self._interpMissingLayer(data)
+        if offset0!=0 or offset1!=0:
+            self._interpMissingLayer(data)
 
-
-        #   cut data to origin shape or rio
-        if offset0!=0:
-            data=data[:,:,offset0:]
-        if offset1!=0:
-            data=data[:,:,0:-offset1]
+            #   cut data to origin shape or roi
+            if offset0!=0:
+                data=data[:,:,offset0:]
+            if offset1!=0:
+                data=data[:,:,0:-offset1]
 
 
         result[:] = data
@@ -106,6 +109,8 @@ class OpInterpMissingData(Operator):
 
         :param data: Must be 3d, in xyz order.
         """
+        assert len(data.shape)==3
+        
         fl=data.sum(0).sum(0)==0 #False Layer Array
 
         #Interpolate First Block
