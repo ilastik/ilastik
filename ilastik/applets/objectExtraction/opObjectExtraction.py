@@ -27,6 +27,8 @@ try:
 except:
     logger.warn('could not import pluginManager')
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import collections
 
 # These features are always calculated, but not used for prediction.
@@ -593,6 +595,18 @@ class OpObjectExtraction(Operator):
         self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
         self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
         self.ComputedFeatureNames.connect(self.Features)
+
+        # As soon as input data is available, check its constraints
+        self.RawImage.notifyReady( self._checkConstraints )
+        self.BinaryImage.notifyReady( self._checkConstraints )
+
+    def _checkConstraints(self, *args):
+        if self.RawImage.ready() and self.BinaryImage.ready():
+            if self.RawImage.meta.shape != self.BinaryImage.meta.shape:
+                raise DatasetConstraintError( 
+                    "Object Extraction",
+                    "Raw Image shape {} does not match Binary Image shape {}.".format(
+                        self.RawImage.meta.shape, self.BinaryImage.meta.shape ))
 
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
