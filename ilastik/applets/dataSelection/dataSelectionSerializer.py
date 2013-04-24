@@ -66,15 +66,18 @@ class DataSelectionSerializer( AppletSerializer ):
                 and info.datasetId not in localDataGroup.keys():
                     # Obtain the data from the corresponding output and store it to the project.
                     dataSlot = self.topLevelOperator.ImageGroup[laneIndex][roleIndex]
-    
-                    opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
-                    opWriter.hdf5File.setValue( localDataGroup )
-                    opWriter.hdf5Path.setValue( info.datasetId )
-                    opWriter.Image.connect(dataSlot)
-    
-                    # Trigger the copy
-                    success = opWriter.WriteImage.value
-                    assert success
+
+                    try:    
+                        opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
+                        opWriter.hdf5File.setValue( localDataGroup )
+                        opWriter.hdf5Path.setValue( info.datasetId )
+                        opWriter.Image.connect(dataSlot)
+        
+                        # Trigger the copy
+                        success = opWriter.WriteImage.value
+                        assert success
+                    finally:
+                        opWriter.cleanUp()
     
                     # Add axistags and drange attributes, in case someone uses this dataset outside ilastik
                     localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
@@ -164,6 +167,7 @@ class DataSelectionSerializer( AppletSerializer ):
             success = opWriter.WriteImage.value
             
         finally:
+            opWriter.cleanUp()
             self.progressSignal.emit(100)
 
         return success
@@ -194,6 +198,7 @@ class DataSelectionSerializer( AppletSerializer ):
         try:
             roleNames = list(topGroup['Role Names'][...])
             backwards_compatibility_mode = False
+            assert self.topLevelOperator.DatasetRoles.ready(), "Expected dataset roles to be hard-coded by the workflow."
             assert roleNames == self.topLevelOperator.DatasetRoles.value, \
                 "Role names in project file ({}) don't match those given in workflow definition ({})".format( roleNames, self.topLevelOperator.DatasetRoles.value )
         except KeyError:

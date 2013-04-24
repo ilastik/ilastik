@@ -30,12 +30,12 @@ class TestOpDataSelectionGroup(object):
         graph = Graph()
         op = OpDataSelectionGroup( graph=graph )
         op.WorkingDirectory.setValue( self.workingDir )
-        op.DatasetRoles.setValues( ['RoleA', 'RoleB', 'RoleC'] )
+        op.DatasetRoles.setValue( ['RoleA', 'RoleB', 'RoleC'] )
 
-        op.Datasets.resize( 3 )
-        op.Datasets[0].setValue( infoA )
+        op.DatasetGroup.resize( 3 )
+        op.DatasetGroup[0].setValue( infoA )
         # Leave RoleB blank -- datasets other than the first are optional
-        op.Datasets[2].setValue( infoC )
+        op.DatasetGroup[2].setValue( infoC )
 
         assert op.ImageGroup[0].ready()
         assert op.ImageGroup[2].ready()
