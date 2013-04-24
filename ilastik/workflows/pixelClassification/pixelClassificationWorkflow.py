@@ -33,6 +33,9 @@ class PixelClassificationWorkflow(Workflow):
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
 
@@ -78,12 +81,15 @@ class PixelClassificationWorkflow(Workflow):
         Connect the batch-mode top-level operators to the training workflow and to eachother.
         """
         # Access applet operators from the training workflow
+        opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.pcApplet.topLevelOperator
         
         # Access the batch operators
         opBatchInputs = self.batchInputApplet.topLevelOperator
         opBatchResults = self.batchResultsApplet.topLevelOperator
+        
+        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
         
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )

@@ -18,23 +18,19 @@ class ObjectClassificationWorkflowBinary(Workflow):
         ######################
 
         ## Create applets
-        self.rawDataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input: Raw",
-                                                       "Input Raw",
+        self.dataSelectionApplet = DataSelectionApplet(self,
+                                                       "Input Data",
+                                                       "Input Data",
                                                        batchDataGui=False,
                                                        force5d=True)
 
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input: Segmentation",
-                                                       "Input Segmentation",
-                                                       batchDataGui=False,
-                                                       force5d=True)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Segmentation Image'] )
 
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
 
         self._applets = []
-        self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
@@ -49,18 +45,17 @@ class ObjectClassificationWorkflowBinary(Workflow):
 
     def connectLane( self, laneIndex ):
         ## Access applet operators
-        opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         # connect data -> extraction
-        opObjExtraction.RawImage.connect(opRawData.Image)
-        opObjExtraction.BinaryImage.connect(opData.Image)
+        opObjExtraction.RawImage.connect(opData.ImageGroup[0])
+        opObjExtraction.BinaryImage.connect(opData.ImageGroup[1])
 
         # connect data -> classification
-        opObjClassification.BinaryImages.connect(opData.Image)
-        opObjClassification.RawImages.connect(opRawData.Image)
+        opObjClassification.RawImages.connect(opData.ImageGroup[0])
+        opObjClassification.BinaryImages.connect(opData.ImageGroup[1])
         opObjClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
 
         # connect extraction -> classification

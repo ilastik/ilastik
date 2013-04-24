@@ -36,6 +36,8 @@ class CarvingWorkflow(Workflow):
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
         
         self.carvingApplet = CarvingApplet(workflow=self,
                                            projectFileGroupName="carving",

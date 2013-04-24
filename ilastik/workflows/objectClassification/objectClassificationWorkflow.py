@@ -32,6 +32,9 @@ class ObjectClassificationWorkflow(Workflow):
                                                        batchDataGui=False,
                                                        force5d=True)
 
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+
         self.featureSelectionApplet = FeatureSelectionApplet(self,
                                                              "Feature Selection",
                                                              "FeatureSelections")
