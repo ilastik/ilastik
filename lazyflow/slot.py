@@ -355,86 +355,94 @@ class Slot(object):
         Arguments:
           partner   : the slot to which this slot is conencted
         """
-        if partner is None:
-            self.disconnect()
-            return
+        try:
 
-        assert isinstance(partner, Slot), ("Slot.connect() can only be used to"
-                                           " connect other Slots.  Did you mean"
-                                           " to use Slot.setValue()?")
-
-        if self.partner == partner and partner.level == self.level:
-            return
-        if self.level == 0:
-            self.disconnect()
-
-        if partner is not None:
-            self._value = None
-            if partner.level == self.level:
-                assert isinstance(partner.stype, type(self.stype)), \
-                    "Can't connect slots of non-matching stypes!" \
-                    " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, partner.name, partner.stype)
-                self.partner = partner
-                notifyReady = (self.partner.meta._ready and
-                               not self.meta._ready)
-                self.meta = self.partner.meta.copy()
-
-                # the slot with more sub-slots determines
-                # the number of subslots
-                if len(self) < len(partner):
-                    self.resize(len(partner))
-                elif len(self) > len(partner):
-                    partner.resize(len(self))
-
-                partner.partners.append(self)
-                for i in range(len(self.partner)):
-                    p = self.partner[i]
-                    self[i].connect(p)
-
-                # call slot type connect function
-                self.stype.connect(partner)
-
-                if self.level > 0 or self.stype.isConfigured():
+            if partner is None:
+                self.disconnect()
+                return
+    
+            assert isinstance(partner, Slot), ("Slot.connect() can only be used to"
+                                               " connect other Slots.  Did you mean"
+                                               " to use Slot.setValue()?")
+    
+            if self.partner == partner and partner.level == self.level:
+                return
+            if self.level == 0:
+                self.disconnect()
+    
+            if partner is not None:
+                self._value = None
+                if partner.level == self.level:
+                    assert isinstance(partner.stype, type(self.stype)), \
+                        "Can't connect slots of non-matching stypes!" \
+                        " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, partner.name, partner.stype)
+                    self.partner = partner
+                    notifyReady = (self.partner.meta._ready and
+                                   not self.meta._ready)
+                    self.meta = self.partner.meta.copy()
+    
+                    # the slot with more sub-slots determines
+                    # the number of subslots
+                    if len(self) < len(partner):
+                        self.resize(len(partner))
+                    elif len(self) > len(partner):
+                        partner.resize(len(self))
+    
+                    partner.partners.append(self)
+                    for i in range(len(self.partner)):
+                        p = self.partner[i]
+                        self[i].connect(p)
+    
+                    # call slot type connect function
+                    self.stype.connect(partner)
+    
+                    if self.level > 0 or self.stype.isConfigured():
+                        self._changed()
+    
+                    # call connect callbacks
+                    self._sig_connect(self)
+    
+                    # Notify readiness after partner is updated
+                    if notifyReady:
+                        self._sig_ready(self)
+    
+                elif partner.level < self.level:
+                    self.partner = partner
+                    notifyReady = (self.partner.meta._ready and not
+                                   self.meta._ready)
+                    self.meta = self.partner.meta.copy()
+                    for i, slot in enumerate(self._subSlots):
+                        slot.connect(partner)
+    
+                    if notifyReady:
+                        self._sig_ready(self)
+    
                     self._changed()
+                    # call connect callbacks
+                    self._sig_connect(self)
+    
+                elif partner.level > self.level:
+                    msg = str("Can't connect slots:"
+                           " {}.{}.level={}, but"
+                           " {}.{}.level={}"
+                           " (Implicit OpearatorWrapper creation"
+                           " is no longer supported.)").format(
+                               self.getRealOperator().name,
+                               self.name, self.level,
+                               partner.getRealOperator().name,
+                               partner.name, partner.level)
+                    raise RuntimeError(msg)
+    
+                # propagate value changed signals from inner to outer
+                # operators.
+                if self._type == partner._type == "output":
+                    partner.notifyValueChanged(self._sig_value_changed)
 
-                # call connect callbacks
-                self._sig_connect(self)
-
-                # Notify readiness after partner is updated
-                if notifyReady:
-                    self._sig_ready(self)
-
-            elif partner.level < self.level:
-                self.partner = partner
-                notifyReady = (self.partner.meta._ready and not
-                               self.meta._ready)
-                self.meta = self.partner.meta.copy()
-                for i, slot in enumerate(self._subSlots):
-                    slot.connect(partner)
-
-                if notifyReady:
-                    self._sig_ready(self)
-
-                self._changed()
-                # call connect callbacks
-                self._sig_connect(self)
-
-            elif partner.level > self.level:
-                msg = str("Can't connect slots:"
-                       " {}.{}.level={}, but"
-                       " {}.{}.level={}"
-                       " (Implicit OpearatorWrapper creation"
-                       " is no longer supported.)").format(
-                           self.getRealOperator().name,
-                           self.name, self.level,
-                           partner.getRealOperator().name,
-                           partner.name, partner.level)
-                raise RuntimeError(msg)
-
-            # propagate value changed signals from inner to outer
-            # operators.
-            if self._type == partner._type == "output":
-                partner.notifyValueChanged(self._sig_value_changed)
+        except:
+            # If anything went wrong, we revert to the disconnected state.
+            self.disconnect()
+            raise
+            
 
     def disconnect(self):
         """
@@ -879,69 +887,77 @@ class Slot(object):
         (python is operator!). 
         The check can be turned off with the check_changed flag.
         """
-        assert isinstance(notify, bool)
-        assert isinstance(check_changed, bool)
-
-        # This assertion is here to prevent accidental use of setValue
-        # when connect should be used. If your use case requires
-        # passing slots as values, then this assertion can be refined.
-        assert not isinstance(value, Slot), \
-            "When using setValue, value cannot be a slot.  Use connect instead."
-
-        if not self.backpropagate_values:
-            assert self.partner is None, \
-                ("Cannot call setValue on this slot."
-                 " It is already connected to a partner."
-                 " Call disconnect first if that's what you really wanted.")
-        elif self.partner is not None:
-            self.partner.setValue(value, notify, check_changed)
-            return
-
-        changed = True
-       
-        if check_changed and value is self._value:
-            changed = False
-        
-        if changed:
-            # call disconnect callbacks
-            self._sig_disconnect(self)
-            self._value = value
-            self.stype.setupMetaForValue(value)
-            self.meta._dirty = True
-
-            for s in self._subSlots:
-                s.setValue(self._value)
-
-            notify = (self.meta._ready == False)
-
-            # a slot with a value is always ready
-            self.meta._ready = True
-            if notify:
-                self._sig_ready(self)
-
-            # call connect callbacks
-            self._sig_connect(self)
-            self._changed()
-
-            # Propagate dirtyness
-            if self.rtype == rtype.List:
-                self.setDirty(())
-            else:
-                self.setDirty(slice(None))
+        try:
+            assert isinstance(notify, bool)
+            assert isinstance(check_changed, bool)
+    
+            # This assertion is here to prevent accidental use of setValue
+            # when connect should be used. If your use case requires
+            # passing slots as values, then this assertion can be refined.
+            assert not isinstance(value, Slot), \
+                "When using setValue, value cannot be a slot.  Use connect instead."
+    
+            if not self.backpropagate_values:
+                assert self.partner is None, \
+                    ("Cannot call setValue on this slot."
+                     " It is already connected to a partner."
+                     " Call disconnect first if that's what you really wanted.")
+            elif self.partner is not None:
+                self.partner.setValue(value, notify, check_changed)
+                return
+    
+            changed = True
+           
+            if check_changed and value is self._value:
+                changed = False
+            
+            if changed:
+                # call disconnect callbacks
+                self._sig_disconnect(self)
+                self._value = value
+                self.stype.setupMetaForValue(value)
+                self.meta._dirty = True
+    
+                for s in self._subSlots:
+                    s.setValue(self._value)
+    
+                notify = (self.meta._ready == False)
+    
+                # a slot with a value is always ready
+                self.meta._ready = True
+                if notify:
+                    self._sig_ready(self)
+    
+                # call connect callbacks
+                self._sig_connect(self)
+                self._changed()
+    
+                # Propagate dirtyness
+                if self.rtype == rtype.List:
+                    self.setDirty(())
+                else:
+                    self.setDirty(slice(None))
+        except:
+            self.disconnect()
+            raise
 
     def setValues(self, values):
         """Set values of subslots with arraylike object. Resizes the
         multinputslot with the length of the values array
 
         """
-        # call disconnect callbacks
-        self._sig_disconnect(self)
-        self.resize(len(values))
-        for i, s in enumerate(self._subSlots):
-            s.setValue(values[i])
-        # call connect callbacks
-        self._changed()
-        self._sig_connect(self)
+        try:
+            # call disconnect callbacks
+            self._sig_disconnect(self)
+            self.resize(len(values))
+            for i, s in enumerate(self._subSlots):
+                s.setValue(values[i])
+            # call connect callbacks
+            self._changed()
+            self._sig_connect(self)
+        except:
+            self.disconnect()
+            raise
 
     @property
     def backpropagate_values(self):

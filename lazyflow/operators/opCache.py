@@ -12,7 +12,7 @@ class OpCache(Operator):
             ArrayCacheMemoryMgr.instance.addNamedCache(self)
             
     def generateReport(self, report):
-        pass
+        raise NotImplementedError()
         
     def usedMemory(self):
         """used memory in bytes"""

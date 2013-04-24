@@ -153,7 +153,7 @@ class OpArrayCache(OpCache):
             self._cache_priority = 0
             self._running = 0
 
-            if self._cache is None or (self._cache.shape != self.shape):
+            if self._cache is None or (self._cache.shape != self.Output.meta.shape):
                 mem = numpy.zeros(self.Output.meta.shape, dtype = self.Output.meta.dtype)
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 if self._blockState is None:
@@ -417,13 +417,13 @@ class OpArrayCache(OpCache):
         start, stop = roi.start, roi.stop
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
-        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+        blockStop = numpy.where(stop == self.Output.meta.shape, self._dirtyShape, blockStop)
         blockKey = roiToSlice(blockStart,blockStop)
 
         if (self._blockState[blockKey] != OpArrayCache.CLEAN).any():
             start2 = blockStart * self._blockShape
             stop2 = blockStop * self._blockShape
-            stop2 = numpy.minimum(stop2, self.shape)
+            stop2 = numpy.minimum(stop2, self.Output.meta.shape)
             key2 = roiToSlice(start2,stop2)
             self._lock.acquire()
             if self._cache is None:
