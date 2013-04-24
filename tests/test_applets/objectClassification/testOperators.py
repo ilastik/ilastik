@@ -311,9 +311,7 @@ class TestFullOperator(unittest.TestCase):
         self.classOp.BinaryImages.resize(1)
         self.classOp.BinaryImages.setValues([binimg])
         self.classOp.SegmentationImages.resize(1)
-        #FIXME: TODO: setting this by self.classOp.SegmentationImages.setValue(segimg) should work too!!!
-        
-        self.classOp.SegmentationImages.connect(self.extrOp.LabelImage)
+        self.classOp.SegmentationImages.setValue(segimg)
         self.classOp.RawImages.resize(1)
         self.classOp.RawImages.setValues([rawimg])
         self.classOp.LabelInputs.resize(1)

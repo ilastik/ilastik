@@ -181,6 +181,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             #initialize, because volumina needs to reshape to use it as a datasink
             labels[t] = numpy.zeros((2,))
         self.LabelInputs[imageIndex].setValue(labels)
+        if imageIndex in range(len(self._ambiguousLabels)):
+            self._ambiguousLabels[imageIndex] = None
+            self._labelBBoxes[imageIndex] = dict()
+        else:
+            self._ambiguousLabels.insert(imageIndex, None)
+            self._labelBBoxes.insert(imageIndex, dict())
 
     def removeLabel(self, label):
         #remove this label from the inputs
@@ -375,8 +381,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             if slot.level > 0 and len(slot) == laneIndex:
                 slot.resize(numLanes + 1)
 
-        self._ambiguousLabels.insert(laneIndex, None)
-        self._labelBBoxes.insert(laneIndex, dict())
+        
 
     def removeLane(self, laneIndex, finalLength):
         for slot in self.inputs.values():
