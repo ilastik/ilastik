@@ -360,7 +360,7 @@ class DatasetInfoEditorWidget(QDialog):
                 msg = "Could not apply axis settings due to an exception:\n"
                 msg += "{}".format( e )
                 QMessageBox.warning(self, "Error", msg)
-                self._error_fields += 'Axis Order'
+                self._error_fields.add('Axis Order')
                 return False
 
         finally:
