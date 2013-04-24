@@ -69,7 +69,10 @@ class DataSelectionGui(QWidget):
         return self._viewerControlWidgetStack
 
     def setImageIndex(self, imageIndex):
-        pass # This applet doesn't care which image is currently selected.  It always lists all inputs.
+        if imageIndex is not None:
+            self.laneSummaryTableView.selectRow(imageIndex)
+            for detailWidget in self._detailViewerWidgets:
+                detailWidget.datasetDetailTableView.selectRow(imageIndex)
 
     def stopAndCleanUp(self):
         for editor in self.volumeEditors.values():
@@ -78,7 +81,10 @@ class DataSelectionGui(QWidget):
         self.volumeEditors.clear()
 
     def imageLaneAdded(self, laneIndex):
-        # We assume that there's nothing to do here because THIS GUI initiated the lane addition
+        if len(self.laneSummaryTableView.selectedIndexes()) == 0:
+            self.laneSummaryTableView.selectRow(laneIndex)
+        
+        # We don't have any real work to do because this gui initiated the lane addition in the first place
         if self.guiMode != GuiMode.Batch:
             if(len(self.topLevelOperator.DatasetGroup) != laneIndex+1):
                 import warnings
