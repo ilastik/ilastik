@@ -215,6 +215,16 @@ class OpPreprocessing(Operator):
         self._dirty = False
         self.enableDownstream(True)
         
+        # copy over seeds, and saved objects
+        if self._prepData[0] is not None:
+            mst.seeds[:] = self._prepData[0].seeds[:]
+            mst.object_lut = self._prepData[0].object_lut
+            mst.object_names = self._prepData[0].object_names
+            mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
+            mst.object_seeds_fg_voxels = self._prepData[0].object_seeds_fg_voxels
+            mst.bg_priority = self._prepData[0].bg_priority
+            mst.no_bias_below = self._prepData[0].no_bias_below
+            
         
         #Cache result
         self._prepData = result
