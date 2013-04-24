@@ -29,10 +29,11 @@ class TestOpBlockwiseObjectClassification(object):
         Half of the image will be white, the other half gray.
         """
         
-        self.testingFeatures = ['Count', 'Mean']
-        objectExtraction.config.vigra_features = self.testingFeatures
-        objectExtraction.config.other_features = []
-        objectExtraction.config.selected_features = self.testingFeatures
+        #self.testingFeatures = ['Count', 'Mean']
+        #objectExtraction.config.vigra_features = self.testingFeatures
+        #objectExtraction.config.other_features = []
+        #objectExtraction.config.selected_features = self.testingFeatures
+        self.testingFeatures = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.
@@ -83,9 +84,7 @@ class TestOpBlockwiseObjectClassification(object):
         opObjectExtraction.RawImage.connect( op5Raw.output )
         opObjectExtraction.BinaryImage.connect( op5Binary.output )
         opObjectExtraction.BackgroundLabels.setValue( [0] )
-        
-        # Ensure subset
-        assert set(self.testingFeatures) <= set(opObjectExtraction._opRegFeats._featureNames[0]) 
+        opObjectExtraction.Features.setValue(self.testingFeatures)
 
         opObjectClassification = OpObjectClassification( graph=graph )
         opObjectClassification.RawImages.resize(1)
@@ -99,6 +98,9 @@ class TestOpBlockwiseObjectClassification(object):
 
         opObjectClassification.ObjectFeatures.resize(1)
         opObjectClassification.ObjectFeatures[0].connect( opObjectExtraction.RegionFeatures )
+        
+        opObjectClassification.SelectedFeatures.setValue(self.testingFeatures)
+        opObjectClassification.ComputedFeatureNames.connect(opObjectExtraction.ComputedFeatureNames)
 
         opObjectClassification.LabelsAllowedFlags.setValues( [True] )
 
@@ -157,15 +159,17 @@ class TestOpBlockwiseObjectClassification(object):
         opBlockwise.BinaryImage.connect( opObjectClassification.BinaryImages[0] )
         opBlockwise.Classifier.connect( opObjectClassification.Classifier )
         opBlockwise.LabelsCount.connect( opObjectClassification.NumLabels )
+        opBlockwise.SelectedFeatures.connect( opObjectClassification.SelectedFeatures )
 
         assert (opBlockwise.PredictionImage[:].wait() == prediction_volume).all(), \
             "Blockwise prediction operator did not produce the same prediction image" \
             "as the non-blockwise prediction operator!"
 
+        
         # Now try with smaller blocks.
         warnings.warn("FIXME: This halo choice is sensitive to OpRegionFeatures3d.margin")
         opBlockwise.BlockShape3dDict.setValue( {'x' : 42, 'y' : 42, 'z' : 42} )
-        opBlockwise.HaloPadding3dDict.setValue( {'x' : 30, 'y' : 30, 'z' : 30} )
+        opBlockwise.HaloPadding3dDict.setValue( {'x' : 35, 'y' : 35, 'z' : 30} )
         
         blockwise_prediction_volume = opBlockwise.PredictionImage[:].wait()
         blockwise_prediction_volume.view(vigra.VigraArray).writeHDF5('/tmp/blockwise_prediction_volume.h5', 'volume')
@@ -183,7 +187,7 @@ class TestOpBlockwiseObjectClassification(object):
         assert not (blockwise_prediction_volume == prediction_volume).all(), \
             "Blockwise prediction operator produced the same prediction image" \
             "as the non-blockwise prediction operator, despite having a pathological block/halo combination!"
-
+        
 
 if __name__ == "__main__":
 

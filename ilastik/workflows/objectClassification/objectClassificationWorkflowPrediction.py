@@ -60,7 +60,7 @@ class ObjectClassificationWorkflowPrediction(Workflow):
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
-        # Connect Raw data -> Fill missing slices
+        # Connect Raw data
         op5Raw = Op5ifyer(parent=self)
         op5Raw.input.connect(opDataSelection.ImageGroup[0])
         
