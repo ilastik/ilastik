@@ -772,3 +772,6 @@ class OpWrapSlot(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        self.Output[0][roi.toSlice()] = value
