@@ -415,12 +415,16 @@ class OpSingleChannelSelector(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = outshape
-        
+
+        # Output can't be accessed unless the input has enough channels
+        if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
+            self.Output.meta.NOTREADY = True
         
     def execute(self, slot, subindex, roi, result):
         index=self.inputs["Index"].value
         channelIndex = self.Input.meta.axistags.channelIndex
-        assert self.inputs["Input"].meta.shape[channelIndex] > index, ("Requested channel, %d, is out of Range" % index)
+        assert self.inputs["Input"].meta.shape[channelIndex] > index, \
+            "Requested channel, {}, is out of Range (input shape is {})".format( index, self.Input.meta.shape )
 
         # Only ask for the channel we need
         key = roiToSlice(roi.start,roi.stop)
