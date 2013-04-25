@@ -96,4 +96,4 @@ class SynapseObjectClassificationWorkflow(Workflow):
         # connect extraction -> classification
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        
+        opObjClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
