@@ -1,7 +1,7 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from objectClassificationWorkflow import ObjectClassificationWorkflow as pixel_workflow
-from objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary as binary_workflow
-from objectClassificationWorkflowPrediction import ObjectClassificationWorkflowPrediction as prediction_workflow
+from objectClassificationWorkflow import ObjectClassificationWorkflowPixel as pixel_workflow
+from objectClassificationWorkflow import ObjectClassificationWorkflowBinary as binary_workflow
+from objectClassificationWorkflow import ObjectClassificationWorkflowPrediction as prediction_workflow
 
 def debug_with_existing(shell):
     """
