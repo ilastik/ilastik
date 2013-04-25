@@ -96,10 +96,10 @@ else:
     def exception_dialog(*args):
         old_excepthook(*args)
         try:
-           from ilastik.shell.gui.startShellGui import shell
-           shell.postErrorMessage(args[0].__name__, args[1].message)
+            from ilastik.shell.gui.startShellGui import shell
+            shell.postErrorMessage(args[0].__name__, args[1].message)
         except:
-           pass
+            pass
     sys.excepthook = exception_dialog
     install_thread_excepthook()
 
