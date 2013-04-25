@@ -1,4 +1,5 @@
 #Python
+import sys
 import copy
 import logging
 import itertools
@@ -440,7 +441,17 @@ class Slot(object):
 
         except:
             # If anything went wrong, we revert to the disconnected state.
-            self.disconnect()
+            try:
+                exc_info = sys.exc_info()
+                self.disconnect()
+            except:
+                # Well, this is bad.  We caused an exception while handling an exception.
+                # We're more interested in the FIRST excpetion, so print this one out and
+                #  continue unwinding the stack with the first one.
+                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                import traceback
+                traceback.print_exc() 
+                raise exc_info[0], exc_info[1], exc_info[2]
             raise
             
 
@@ -938,7 +949,17 @@ class Slot(object):
                 else:
                     self.setDirty(slice(None))
         except:
-            self.disconnect()
+            try:
+                exc_info = sys.exc_info()
+                self.disconnect()
+            except:
+                # Well, this is bad.  We caused an exception while handling an exception.
+                # We're more interested in the FIRST excpetion, so print this one out and
+                #  continue unwinding the stack with the first one.
+                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                import traceback
+                traceback.print_exc() 
+                raise exc_info[0], exc_info[1], exc_info[2]
             raise
 
     def setValues(self, values):
@@ -956,7 +977,17 @@ class Slot(object):
             self._changed()
             self._sig_connect(self)
         except:
-            self.disconnect()
+            try:
+                exc_info = sys.exc_info()
+                self.disconnect()
+            except:
+                # Well, this is bad.  We caused an exception while handling an exception.
+                # We're more interested in the FIRST excpetion, so print this one out and
+                #  continue unwinding the stack with the first one.
+                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                import traceback
+                traceback.print_exc() 
+                raise exc_info[0], exc_info[1], exc_info[2]
             raise
 
     @property
