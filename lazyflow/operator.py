@@ -402,9 +402,18 @@ class Operator(object):
                 # Determine new "ready" flags
                 for k, oslot in self.outputs.items():
                     if oslot.partner is None:
-                        # All unconnected outputs are ready after
-                        # setupOutputs
-                        oslot._setReady()
+                        # Special case, operators can flag an output as not actually being ready yet,
+                        #  in which case we do NOT notify downstream connections.
+                        if oslot.meta.NOTREADY:
+                            oslot.disconnect() # Forces unready state
+                        else:
+                            # All unconnected outputs are ready after
+                            # setupOutputs
+                            oslot._setReady()
+                    else:
+                        assert oslot.meta.NOTREADY is None, \
+                            "The special NOTREADY setting can only be used for output " \
+                            "slots that have no explicit upstream connection."
     
                 #notify outputs of probably changed meta information
                 for k, v in self.outputs.items():
