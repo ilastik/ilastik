@@ -213,10 +213,15 @@ class OpRegionFeatures3d(Operator):
 
         labels = labels[slc3d]
 
+        
+        logger.debug("Computing default features")
+
         #FIXME: clamp the global vigra features here
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                         default_features,
                                                         ignoreLabel=0)
+        logger.debug("computed default features")
+
         extrafeats = dict((k.replace(' ', ''), v)
                           for k, v in extrafeats.iteritems())
 
@@ -232,6 +237,7 @@ class OpRegionFeatures3d(Operator):
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
             global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
 
+        logger.debug("computing global features")
         # local features: loop over all objects
         def dictextend(a, b):
             for key in b:
@@ -251,6 +257,7 @@ class OpRegionFeatures3d(Operator):
                     feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
                     local_features[plugin_name] = dictextend(local_features[plugin_name], feats)
 
+        logger.debug("computing done, removing failures")
         # remove local features that failed
         for pname, pfeats in local_features.iteritems():
             for key in pfeats.keys():
@@ -262,6 +269,7 @@ class OpRegionFeatures3d(Operator):
                     del pfeats[key]
 
         # merge the global and local features
+        logger.debug("removed failed, merging")
         all_features = {}
         plugin_names = set(global_features.keys()) | set(local_features.keys())
         for name in plugin_names:
@@ -287,7 +295,7 @@ class OpRegionFeatures3d(Operator):
                 assert value.ndim == 2
 
                 pfeats[key] = value
-
+        logger.debug("merged, returning")
         # add features needed by downstream applets. these should be
         # removed before classification.
         all_features[default_features_key] = extrafeats
