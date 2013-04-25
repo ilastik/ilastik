@@ -30,7 +30,7 @@ class ObjectClassificationWorkflow(Workflow):
                                                        "Data Selection",
                                                        "DataSelection",
                                                        batchDataGui=False,
-                                                       force5d=True)
+                                                       force5d=False)
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
@@ -63,6 +63,10 @@ class ObjectClassificationWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def connectLane(self, laneIndex):
+        op5raw = Op5ifyer(parent=self)
+        op5prob = Op5ifyer(parent=self)
+        op5threshold = Op5ifyer(parent=self)
+
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -74,9 +78,12 @@ class ObjectClassificationWorkflow(Workflow):
         # connect input image
         opTrainingFeatures.InputImage.connect(opData.Image)
         opClassify.InputImages.connect(opData.Image)
-        opThreshold.RawInput.connect(opData.Image)
-        opObjExtraction.RawImage.connect(opData.Image)
-        opObjClassification.RawImages.connect(opData.Image)
+
+        op5raw.input.connect(opData.Image)
+
+        opThreshold.RawInput.connect(op5raw.output)
+        opObjExtraction.RawImage.connect(op5raw.output)
+        opObjClassification.RawImages.connect(op5raw.output)
 
         # training flags
         opClassify.LabelsAllowedFlags.connect(opData.AllowLabels)
@@ -86,20 +93,12 @@ class ObjectClassificationWorkflow(Workflow):
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
-        # connect pixel output to object extraction
-        # TODO: how to put operators between applets?
-        #opseg = OpSegmentation(parent=self)
-        #op5 = Op5ifyer(parent=self)
-        #opseg.Input.connect(opClassify.CachedPredictionProbabilities)
-        #opseg.Input.connect(opClassify.HeadlessPredictionProbabilities)
-        #op5.input.connect(opseg.Output)
-        
         #we will cache thresholding output, no point in caching predictions
-        opThreshold.InputImage.connect(opClassify.HeadlessPredictionProbabilities)
-        op5 = Op5ifyer(parent=self)
-        op5.input.connect(opThreshold.CachedOutput)
-        
-        opObjExtraction.BinaryImage.connect(op5.output)
+        op5prob.input.connect(opClassify.HeadlessPredictionProbabilities)
+        opThreshold.InputImage.connect(op5prob.output)
+
+        op5threshold.input.connect(opThreshold.CachedOutput)
+        opObjExtraction.BinaryImage.connect(op5threshold.output)
 
         opObjClassification.BinaryImages.connect(opThreshold.CachedOutput)
 
