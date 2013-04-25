@@ -51,8 +51,16 @@ class SvgSlot(DrawableABC, ConnectableABC):
         x,y = upperLeft
         cx = x + self.Radius
         cy = y + self.Radius
+        
+        if self._slot.ready():
+            fill = 'white'
+        elif self._slot._optional:
+            fill = 'blue'
+        else:
+            fill = 'red'
+
         canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, 
-                             fill='white', stroke='black', class_=self.name, id_=self.key())
+                             fill=fill, stroke='black', class_=self.name, id_=self.key())
         
         lowerRight = (x + 2*self.Radius, y + 2 * self.Radius)
         return lowerRight
@@ -352,7 +360,11 @@ def get_column_within_parent( op ):
             continue
         upstream_op = slot.partner.getRealOperator()
         if upstream_op is not op.parent and upstream_op is not op:
-            assert upstream_op.parent is op.parent
+            assert upstream_op.parent is op.parent, \
+                "Slot '{}' of operator '{}' and it's upstream partner" \
+                " (slot '{}' of operator '{}') do not have the same parent operator.\n" \
+                "parent is '{}', upstream parent is '{}'".format(
+                 slot.name, op.name, slot.partner.name, upstream_op.name, op.parent.name, upstream_op.parent.name)
             max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
 
     memoized_columns[op] = max_column
