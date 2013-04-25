@@ -198,15 +198,18 @@ class ObjectClassificationGui(LabelingGui):
         else:
             feats_enabled = False
 
-        if self.op.SelectedFeatures.ready():
-            featnames = self.op.SelectedFeatures([]).wait()
-            if len(featnames) == 0:
+        if feats_enabled:
+            if self.op.SelectedFeatures.ready():
+                featnames = self.op.SelectedFeatures([]).wait()
+                if len(featnames) == 0:
+                    predict_enabled = False
+            else:
                 predict_enabled = False
-        else:
-            predict_enabled = False
 
-        if self.op.NumLabels.ready():
-            if self.op.NumLabels.value < 2:
+            if self.op.NumLabels.ready():
+                if self.op.NumLabels.value < 2:
+                    predict_enabled = False
+            else:
                 predict_enabled = False
         else:
             predict_enabled = False
