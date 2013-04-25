@@ -444,11 +444,12 @@ class CarvingGui(LabelingGui):
 
         #raw data
         #(here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons)
-        raw5D = self.topLevelOperatorView.RawData.value
-        layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
-        layer.name = "raw"
-        layer.visible = True
-        layer.opacity = 1.0
-        layers.append(layer)
+        if self.topLevelOperatorView.RawData.ready():
+            raw5D = self.topLevelOperatorView.RawData.value
+            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+            layer.name = "raw"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
 
         return layers
