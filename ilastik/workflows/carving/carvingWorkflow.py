@@ -69,8 +69,7 @@ class CarvingWorkflow(Workflow):
         ## Connect operators
         opPreprocessing.RawData.connect(op5.output)
         opCarvingTopLevel.RawData.connect(op5.output)
-        opCarvingTopLevel.opCarving.MST.connect(opPreprocessing.PreprocessedData)
-        opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
+        opCarvingTopLevel.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
         
         self.preprocessingApplet.enableDownstream(False)

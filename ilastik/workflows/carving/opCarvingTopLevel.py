@@ -11,7 +11,7 @@ class OpCarvingTopLevel(Operator):
     name = "OpCarvingTopLevel"
     
     RawData = InputSlot(level=1)
-    #MST = InputSlot(level=1)
+    MST = InputSlot(level=1)
     
     Segmentation = OutputSlot(level=1)
     DoneObjects = OutputSlot(level=1)
@@ -49,7 +49,7 @@ class OpCarvingTopLevel(Operator):
                          'pmapOverlayFile': pmapOverlayFile }
         self.opCarving = OpMultiLaneWrapper( OpCarving, operator_kwargs=operator_kwargs, parent=self )
         self.opCarving.RawData.connect(op5.output)
-        #self.opCarving.MST.connect( self.MST )
+        self.opCarving.MST.connect( self.MST )
         
         # Special connection: WriteSeeds metadata must mirror the raw data
         self.opCarving.WriteSeeds.connect( self.opCarving.RawData )
@@ -63,3 +63,8 @@ class OpCarvingTopLevel(Operator):
         self.Supervoxels.connect( self.opCarving.Supervoxels )
         self.Supervoxels.connect( self.opCarving.Supervoxels )
         self.Uncertainty.connect( self.opCarving.Uncertainty )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+    
