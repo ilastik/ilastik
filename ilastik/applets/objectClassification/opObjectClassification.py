@@ -728,7 +728,13 @@ class OpObjectPredict(Operator):
                 return labels
 
             elif slot == self.ProbabilityChannels:
-                prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
+                try:
+                    prob_single_channel = {t: self.prob_cache[t][:, subindex[0]]
+                                           for t in times}
+                except:
+                    # no probabilities available for this class; return zeros
+                    prob_single_channel = {t: numpy.zeros((self.prob_cache[t].shape[0], 1))
+                                           for t in times}
                 return prob_single_channel
 
             elif slot == self.BadObjects:
