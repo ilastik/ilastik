@@ -14,7 +14,7 @@ class DatasetDetailedInfoTableView(QTableView):
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
 
-        self._selectedLanes = []
+        self.selectedLanes = []
         self.setContextMenuPolicy( Qt.CustomContextMenu )
         self.customContextMenuRequested.connect( self.handleCustomContextMenuRequested )
 
@@ -31,22 +31,26 @@ class DatasetDetailedInfoTableView(QTableView):
         
         self.setAcceptDrops(True)
 
+    def dataChanged(self, topLeft, bottomRight):
+        self.dataLaneSelected.emit( self.selectedLanes )
+
     def selectionChanged(self, selected, deselected):
         super( DatasetDetailedInfoTableView, self ).selectionChanged(selected, deselected)
         # Get the selected row and corresponding slot value
         selectedIndexes = self.selectedIndexes()
+        
         if len(selectedIndexes) == 0:
-            self._selectedLanes = []
-            self.dataLaneSelected.emit(self._selectedLanes)
-            return
-        rows = set()
-        for index in selectedIndexes:
-            rows.add(index.row())
-        self._selectedLanes = sorted(rows)
-        self.dataLaneSelected.emit(self._selectedLanes)
+            self.selectedLanes = []
+        else:
+            rows = set()
+            for index in selectedIndexes:
+                rows.add(index.row())
+            self.selectedLanes = sorted(rows)
+
+        self.dataLaneSelected.emit(self.selectedLanes)
         
     def selectedLanes(self):
-        return self._selectedLanes
+        return self.selectedLanes
     
     def handleCustomContextMenuRequested(self, pos):
         col = self.columnAt( pos.x() )
@@ -60,9 +64,9 @@ class DatasetDetailedInfoTableView(QTableView):
             replaceWithStackAction = QAction( "Replace with stack...", menu )
             resetSelectedAction = QAction( "Reset", menu )
 
-            if row in self._selectedLanes and len(self._selectedLanes) > 1:
+            if row in self.selectedLanes and len(self.selectedLanes) > 1:
                 editable = True
-                for lane in self._selectedLanes:
+                for lane in self.selectedLanes:
                     editable &= self.model().isEditable(lane)
 
                 # Show the multi-lane menu, which allows for editing but not replacing
@@ -81,7 +85,7 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is None:
                 return
             if selection is editSharedPropertiesAction:
-                self.editRequested.emit( self._selectedLanes )
+                self.editRequested.emit( self.selectedLanes )
             if selection is editPropertiesAction:
                 self.editRequested.emit( [row] )
             if selection is replaceWithFileAction:
@@ -89,7 +93,7 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is replaceWithStackAction:
                 self.replaceWithStackRequested.emit( row )
             if selection is resetSelectedAction:
-                self.resetRequested.emit( self._selectedLanes )
+                self.resetRequested.emit( self.selectedLanes )
 
     def mouseDoubleClickEvent(self, event):
         col = self.columnAt( event.pos().x() )
