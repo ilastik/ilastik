@@ -29,6 +29,7 @@ from ilastik.widgets.viewerControls import ViewerControls
 #ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -546,6 +547,13 @@ class LayerViewerGui(QWidget):
             for i, s in enumerate(self.editor.imageScenes):
                 s.resetAxes()
         
+        def blockGuiForRendering():
+            print "BLOCK"
+            for v in self.editor.imageViews:
+                v.scene().joinRenderingAllTiles()
+                v.repaint()
+            QApplication.processEvents()
+        
         self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
         self.menuGui.actionCenterImage.triggered.connect(centerImage)
         self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
@@ -571,6 +579,13 @@ class LayerViewerGui(QWidget):
         mgr.register("Navigation","Center image",qsc)
         qsw = QShortcut(QKeySequence("W"),self,member = self.menuGui.actionReset_zoom.trigger,context = Qt.WidgetShortcut)
         mgr.register("Navigation","Reset zoom",qsw)
+        
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuGui.actionBlockGui.triggered.connect(blockGuiForRendering)
+            qsw = QShortcut(QKeySequence("Ctrl+B"),self,member = self.menuGui.actionBlockGui.trigger,context = Qt.WidgetShortcut)
+            mgr.register("Navigation","Block gui for rendering",qsw)
+        else:
+            self.menuGui.actionBlockGui.setVisible(False)
         
     @traceLogged(traceLogger)
     def _initEditor(self, crosshair):
