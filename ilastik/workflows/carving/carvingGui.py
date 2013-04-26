@@ -283,7 +283,7 @@ class CarvingGui(LabelingGui):
 
         op = self.topLevelOperatorView.opCarving
         if not self._renderMgr.ready:
-            self._renderMgr.setup(op.MST.value.raw.shape)
+            self._renderMgr.setup(op.RawData.value.shape)
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
