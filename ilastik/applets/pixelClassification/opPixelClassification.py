@@ -13,6 +13,7 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainR
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
 
 #ilastik
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -134,6 +135,7 @@ class OpPixelClassification( Operator ):
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
+                self._checkConstraints( index )
                 self.setupCaches( multislot.index(slot) )
             multislot[index].notifyReady(handleInputReady)
                 
@@ -174,6 +176,27 @@ class OpPixelClassification( Operator ):
         self.LabelInputs[imageIndex].meta.shape = tuple(shapeList)
         self.LabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
 
+    def _checkConstraints(self, laneIndex):
+        """
+        Ensure that all input images have the same number of channels.
+        """
+        thisLaneChannels = self.InputImages[laneIndex].meta.getTaggedShape()['c']
+
+        # Find a different lane and use it for comparison
+        expectedChannels = thisLaneChannels
+        for i, slot in enumerate(self.InputImages):
+            if slot.ready() and i != laneIndex:
+                expectedChannels = slot.meta.getTaggedShape()['c']
+                break
+
+        if expectedChannels != thisLaneChannels:
+            raise DatasetConstraintError(
+                 "Pixel Classification",
+                 "All input images must have the same number of channels.  "\
+                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
+                 .format( thisLaneChannels, expectedChannels ) )
+            
+    
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
