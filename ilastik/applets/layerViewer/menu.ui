@@ -37,6 +37,7 @@
     <addaction name="actionShowDebugPatches"/>
     <addaction name="actionSetCacheSize"/>
     <addaction name="actionUsePrefetching"/>
+    <addaction name="actionBlockGui"/>
     <addaction name="separator"/>
     <addaction name="actionOnly_for_current_view"/>
     <addaction name="actionFitImage"/>
@@ -228,6 +229,11 @@
    </property>
    <property name="toolTip">
     <string>Cache slices nearby such that they display faster when scrolling through a volume (needs more memory)</string>
+   </property>
+  </action>
+  <action name="actionBlockGui">
+   <property name="text">
+    <string>Block for rendering</string>
    </property>
   </action>
  </widget>
