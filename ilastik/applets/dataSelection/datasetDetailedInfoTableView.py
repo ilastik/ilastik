@@ -91,6 +91,18 @@ class DatasetDetailedInfoTableView(QTableView):
             if selection is resetSelectedAction:
                 self.resetRequested.emit( self._selectedLanes )
 
+    def mouseDoubleClickEvent(self, event):
+        col = self.columnAt( event.pos().x() )
+        row = self.rowAt( event.pos().y() )
+
+        if not ( 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() ):
+            return
+
+        if self.model().isEditable(row):
+            self.editRequested.emit([row])
+        else:
+            self.replaceWithFileRequested.emit(row)
+
     def dragEnterEvent(self, event):
         print "Accepting drag event"
         # FIXME: This accepts everything, regardless of the event
