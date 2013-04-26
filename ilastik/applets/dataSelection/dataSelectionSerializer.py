@@ -34,7 +34,9 @@ class DataSelectionSerializer( AppletSerializer ):
         self.version = '0.2'
         
         def handleDirty():
-            self._dirty = True
+            if not self.ignoreDirty:
+                self._dirty = True
+
         self.topLevelOperator.ProjectFile.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.WorkingDirectory.notifyDirty( bind(handleDirty) )

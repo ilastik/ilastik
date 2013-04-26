@@ -1019,6 +1019,8 @@ class IlastikShell( QMainWindow ):
             # Add all the applets from the workflow
             for index, app in enumerate(self.projectManager.workflow.applets):
                 self.addApplet(index, app)
+                for serializer in app.dataSerializers:
+                    serializer.ignoreDirty = True
             
             start = time.time()
             #load the project data from file
@@ -1069,7 +1071,11 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
-            
+
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                for serializer in app.dataSerializers:
+                    serializer.ignoreDirty = False
+
             if "currentApplet" in hdf5File.keys():
                 appletName = hdf5File["currentApplet"].value
                 self.setSelectedAppletDrawer(appletName)

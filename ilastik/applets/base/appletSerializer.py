@@ -121,6 +121,7 @@ class SerialSlot(object):
 
         self._dirty = False
         self._bind()
+        self.ignoreDirty = True
 
     @property
     def dirty(self):
@@ -128,7 +129,10 @@ class SerialSlot(object):
 
     @dirty.setter
     def dirty(self, value):
-        self._dirty = value
+        if value and self.ignoreDirty:
+            return
+        else:
+            self._dirty = value
 
     def setDirty(self, *args, **kwargs):
         self.dirty = True
@@ -565,6 +569,7 @@ class AppletSerializer(object):
         self.serialSlots = maybe(slots, [])
         self.operator = operator
         self.caresOfHeadless = False # should _deserializeFromHdf5 should be called with headless-argument?
+        self._ignoreDirty = False
 
     def isDirty(self):
         """Returns true if the current state of this item (in memory)
@@ -574,7 +579,18 @@ class AppletSerializer(object):
         is not enough.
 
         """
-        return any(list(ss.dirty for ss in self.serialSlots))
+        result = any(list(ss.dirty for ss in self.serialSlots))
+        return result
+
+    @property
+    def ignoreDirty(self):
+        return self._ignoreDirty
+
+    @ignoreDirty.setter
+    def ignoreDirty(self, value):
+        self._ignoreDirty = value
+        for ss in self.serialSlots:
+            ss.ignoreDirty = value
 
     def unload(self):
         """Called if either
@@ -649,7 +665,6 @@ class AppletSerializer(object):
             self._serializeToHdf5(topGroup, hdf5File, projectFilePath)
         finally:
             self.progressSignal.emit(100)
-
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
         """Read the the current applet state from the given hdf5File
