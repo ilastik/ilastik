@@ -39,7 +39,7 @@ class DataLaneSummaryTableView(QTableView):
             menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.addStackRequested.emit, roleIndex) )
             menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.addByPatternRequested.emit, roleIndex) )
             
-            button = QPushButton("Append...", self)
+            button = QPushButton("Add File(s)...", self)
             button.setMenu( menu )
 
             lastRow = self.model().rowCount()-1
