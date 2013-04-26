@@ -999,7 +999,6 @@ class IlastikShell( QMainWindow ):
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
-        workflow = self._workflowClass
 
         #setup the workflow if none was selected yet
         if self._workflowClass is None:
@@ -1013,12 +1012,12 @@ class IlastikShell( QMainWindow ):
             if workflow is None:
                 return
 
-        if "workflow_kwargs" in hdf5File.keys():
-            workflow_kwargs = load_dict(hdf5File["workflow_kwargs"], str)
-        else:
-            workflow_kwargs = None
+            if "workflow_kwargs" in hdf5File.keys():
+                workflow_kwargs = load_dict(hdf5File["workflow_kwargs"], str)
+            else:
+                workflow_kwargs = self._workflow_kwargs
 
-        self.setWorkflowClass(workflow, workflow_kwargs)
+            self.setWorkflowClass(workflow, workflow_kwargs)
         
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
