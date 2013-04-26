@@ -35,7 +35,7 @@ from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.shell.projectManager import ProjectManager
+from ilastik.shell.projectManager import ProjectManager, load_dict
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
@@ -188,13 +188,15 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflowClass = None, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
-        QMainWindow.__init__(self, parent = parent, flags = flags )
+    def __init__(self, workflowClass = None, workflow_kwargs=None,
+                 parent = None, flags = Qt.WindowFlags(0),
+                 sideSplitterSizePolicy=SideSplitterSizePolicy.Manual):
+        QMainWindow.__init__(self, parent = parent, flags = flags)
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
-        self._workflowClass = workflowClass
+        self.setWorkflowClass(workflowClass, workflow_kwargs)
         
         self._loaduifile()
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
@@ -246,6 +248,7 @@ class IlastikShell( QMainWindow ):
 
         self.projectManager = None
         self.projectDisplayManager = None
+
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
@@ -260,8 +263,11 @@ class IlastikShell( QMainWindow ):
         else:
             return self.projectManager.workflow.applets
     
-    def setWorkflowClass(self,w):
+    def setWorkflowClass(self, w, kwargs=None):
         self._workflowClass = w
+        if kwargs is None:
+            kwargs = {}
+        self._workflow_kwargs = kwargs
     
     def loadWorkflow(self,i):
         self.onNewProjectActionTriggered(i)
@@ -848,7 +854,7 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def onNewProjectActionTriggered(self,w = None):
+    def onNewProjectActionTriggered(self, w=None, workflow_kwargs=None):
         logger.debug("New Project action triggered")
         newProjectFilePath = self.getProjectPathToCreate()
         if newProjectFilePath is not None:
@@ -856,7 +862,7 @@ class IlastikShell( QMainWindow ):
             if not self.ensureNoCurrentProject():
                 return
             
-            self.setWorkflowClass(w)
+            self.setWorkflowClass(w, workflow_kwargs)
             self.createAndLoadNewProject(newProjectFilePath)
             
     def createAndLoadNewProject(self, newProjectFilePath):
@@ -993,7 +999,8 @@ class IlastikShell( QMainWindow ):
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
-        
+        workflow = self._workflowClass
+
         #setup the workflow if none was selected yet
         if self._workflowClass is None:
             if "workflowName" in hdf5File.keys():
@@ -1005,11 +1012,18 @@ class IlastikShell( QMainWindow ):
                 workflow = self.getWorkflow()
             if workflow is None:
                 return
-            self.setWorkflowClass(workflow)
+
+        if "workflow_kwargs" in hdf5File.keys():
+            workflow_kwargs = load_dict(hdf5File["workflow_kwargs"], str)
+        else:
+            workflow_kwargs = None
+
+        self.setWorkflowClass(workflow, workflow_kwargs)
         
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self._workflowClass)
+            self.projectManager = ProjectManager( self._workflowClass,
+                                                  workflow_kwargs=self._workflow_kwargs)
             
         except Exception, e:
             traceback.print_exc()
