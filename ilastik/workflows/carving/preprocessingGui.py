@@ -116,7 +116,7 @@ class PreprocessingGui(QMainWindow):
         return []
         
     def viewerControlWidget(self):
-        return QWidget()
+        return self.centralGui.viewerControlWidget()
     
     def setImageIndex(self,imageIndex):
         pass
