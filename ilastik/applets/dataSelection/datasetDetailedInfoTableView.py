@@ -1,4 +1,4 @@
-from PyQt4.QtCore import pyqtSignal, Qt
+from PyQt4.QtCore import pyqtSignal, Qt, QUrl
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
@@ -10,6 +10,8 @@ class DatasetDetailedInfoTableView(QTableView):
     replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)
     editRequested = pyqtSignal(object) # Signature: (lane_index_list)
     resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
+
+    addFilesRequested = pyqtSignal(object) # Signature: ( filepath_list )
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
@@ -108,19 +110,47 @@ class DatasetDetailedInfoTableView(QTableView):
             self.replaceWithFileRequested.emit(row)
 
     def dragEnterEvent(self, event):
-        print "Accepting drag event"
-        # FIXME: This accepts everything, regardless of the event
-        event.acceptProposedAction()
-        #super( DatasetDetailedInfoTableView, self ).dragEnterEvent(event)
+        # Only accept drag-and-drop events that consist of urls to local files.
+        if not event.mimeData().hasUrls():
+            return
+        urls = event.mimeData().urls()
+        if all( map( QUrl.isLocalFile, urls ) ):        
+            event.acceptProposedAction()
         
     def dragMoveEvent(self, event):
+        # Must override this or else the QTableView base class steals dropEvents from us.
         pass
 
     def dropEvent(self, dropEvent):
-        print "Got a drop event."
-        print "hasText(): {}".format( dropEvent.mimeData().hasText() )
-        print "text(): {}".format( dropEvent.mimeData().text() )
-        print "hasUrls(): {}".format( dropEvent.mimeData().hasText() )
-        print "urls(): {}".format( dropEvent.mimeData().text() )
-        #super( DatasetDetailedInfoTableView, self ).dropEvent(dropEvent)
-         
+        urls = dropEvent.mimeData().urls()
+        filepaths = map( QUrl.toLocalFile, urls )
+        filepaths = map( str, filepaths )
+        self.addFilesRequested.emit( filepaths )    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
