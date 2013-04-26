@@ -128,11 +128,9 @@ class SerialSlot(object):
         return self._dirty
 
     @dirty.setter
-    def dirty(self, value):
-        if value and self.ignoreDirty:
-            return
-        else:
-            self._dirty = value
+    def dirty(self, isDirty):
+        if not isDirty or (isDirty and not self.ignoreDirty):
+            self._dirty = isDirty
 
     def setDirty(self, *args, **kwargs):
         self.dirty = True
@@ -579,8 +577,7 @@ class AppletSerializer(object):
         is not enough.
 
         """
-        result = any(list(ss.dirty for ss in self.serialSlots))
-        return result
+        return any(list(ss.dirty for ss in self.serialSlots))
 
     @property
     def ignoreDirty(self):
