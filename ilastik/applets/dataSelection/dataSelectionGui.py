@@ -175,6 +175,9 @@ class DataSelectionGui(QWidget):
             detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
             detailViewer.datasetDetailTableView.resetRequested.connect( partial(self.handleClearDatasets, roleIndex) )
 
+            # Drag-and-drop
+            detailViewer.datasetDetailTableView.addFilesRequested.connect( partial( self.addFileNames, roleIndex=roleIndex ) )
+
             # Selection handling
             def showFirstSelectedDataset( _roleIndex, lanes ):
                 if lanes:
