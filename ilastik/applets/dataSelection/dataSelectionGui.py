@@ -176,14 +176,23 @@ class DataSelectionGui(QWidget):
             detailViewer.datasetDetailTableView.resetRequested.connect( partial(self.handleClearDatasets, roleIndex) )
 
             # Selection handling
-            def showFirstSelectedDataset( lanes ):
+            def showFirstSelectedDataset( _roleIndex, lanes ):
                 if lanes:
-                    self.showDataset( lanes[0] )
-            detailViewer.datasetDetailTableView.dataLaneSelected.connect( showFirstSelectedDataset )
-            
-            self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
+                    self.showDataset( lanes[0], _roleIndex )
+            detailViewer.datasetDetailTableView.dataLaneSelected.connect( partial(showFirstSelectedDataset, roleIndex) )
 
+            self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
+                
+        self.fileInfoTabWidget.currentChanged.connect( self.handleSwitchTabs )
         self.fileInfoTabWidget.setCurrentIndex(0)
+
+    def handleSwitchTabs(self, tabIndex ):
+        if tabIndex < len(self._detailViewerWidgets):
+            roleIndex = tabIndex # If summary tab is moved to the front, change this line.
+            detailViewer = self._detailViewerWidgets[roleIndex]
+            selectedLanes = detailViewer.datasetDetailTableView.selectedLanes
+            if selectedLanes:
+                self.showDataset( selectedLanes[0], roleIndex )
 
     def _initViewerStack(self):
         self.volumeEditors = {}
@@ -212,7 +221,7 @@ class DataSelectionGui(QWidget):
             # The gui and the operator should be in sync
             assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
-    def showDataset(self, laneIndex):
+    def showDataset(self, laneIndex, roleIndex=None):
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
             return
@@ -224,6 +233,18 @@ class DataSelectionGui(QWidget):
         if imageSlot not in self.volumeEditors.keys():
             
             class DatasetViewer(LayerViewerGui):
+                def moveToTop(self, roleIndex):
+                    opLaneView = self.topLevelOperatorView
+                    datasetRoles = opLaneView.DatasetRoles.value
+                    roleName = datasetRoles[roleIndex]
+                    try:
+                        layerIndex = [l.name for l in self.layerstack].index(roleName)
+                    except ValueError:
+                        return
+                    else:
+                        self.layerstack.selectRow(layerIndex)
+                        self.layerstack.moveSelectedToTop()
+
                 def setupLayers(self):
                     opLaneView = self.topLevelOperatorView
                     datasetRoles = opLaneView.DatasetRoles.value
@@ -247,8 +268,11 @@ class DataSelectionGui(QWidget):
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
-        self._viewerControlWidgetStack.setCurrentWidget( self.volumeEditors[imageSlot].viewerControlWidget() )
+        viewer = self.volumeEditors[imageSlot]
+        if roleIndex is not None:
+            viewer.moveToTop(roleIndex)
+        self.viewerStack.setCurrentWidget( viewer )
+        self._viewerControlWidgetStack.setCurrentWidget( viewer.viewerControlWidget() )
 
     def handleAddFiles(self, roleIndex):
         self.addFiles(roleIndex)
