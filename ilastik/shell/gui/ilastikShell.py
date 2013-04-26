@@ -340,30 +340,14 @@ class IlastikShell( QMainWindow ):
         
         return (menu, shellActions)
     
-    def _loaduifile(self):
-        localDir = os.path.split(__file__)[0]
-        if localDir == "":localDir = os.getcwd()
+    def setupOpenFileButtons(self):
         
-        self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
-        
-        self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
-        self.startscreen.CreateList.setWidgetResizable(True)
-        self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
-        self.startscreen.OpenList.setWidgetResizable(True)
-        
-        self.startscreen.label1.setFont(ILASTIKFont)
-        self.startscreen.label2.setFont(ILASTIKFont)
+        for b in self.openFileButtons:
+            b.close()
+            b.deleteLater()
+        self.openFileButtons = []
         
         projects = PreferencesManager().get("shell","recently opened list")
-        
-        buttons = []
-        
-        self.startscreen.browseFilesButton.setAutoRaise(True)
-        self.startscreen.browseFilesButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.startscreen.browseFilesButton.setIcon( QIcon(ilastikIcons.OpenFolder) )
-        self.startscreen.browseFilesButton.setFont(ILASTIKFont)
-        self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
-        buttons.append(self.startscreen.browseFilesButton)
         
         if projects is not None:
             for path,workflow in projects:
@@ -385,7 +369,33 @@ class IlastikShell( QMainWindow ):
                 b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
                 self.startscreen.VL2.addWidget(b,2)
-                buttons.append(b)
+                self.openFileButtons.append(b)
+    
+    def _loaduifile(self):
+        localDir = os.path.split(__file__)[0]
+        if localDir == "":localDir = os.getcwd()
+        
+        self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
+        self.startscreen.CreateList.setWidgetResizable(True)
+        self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
+        self.startscreen.OpenList.setWidgetResizable(True)
+        
+        self.startscreen.label1.setFont(ILASTIKFont)
+        self.startscreen.label2.setFont(ILASTIKFont)
+        
+        self.openFileButtons = []
+        otherButtons = []
+        
+        self.startscreen.browseFilesButton.setAutoRaise(True)
+        self.startscreen.browseFilesButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.startscreen.browseFilesButton.setIcon( QIcon(ilastikIcons.OpenFolder) )
+        self.startscreen.browseFilesButton.setFont(ILASTIKFont)
+        self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
+        otherButtons.append(self.startscreen.browseFilesButton)
+        
+        self.setupOpenFileButtons()
         
         for workflow,_name in getAvailableWorkflows():
             b = QToolButton(self.startscreen)
@@ -397,10 +407,10 @@ class IlastikShell( QMainWindow ):
             b.setText(_name)
             b.setFont(ILASTIKFont)
             self.startscreen.VL1.addWidget(b)
-            buttons.append(b)
+            otherButtons.append(b)
         
-        m = max(b.sizeHint().width() for b in buttons)
-        for b in buttons:
+        m = max(b.sizeHint().width() for b in self.openFileButtons+otherButtons)
+        for b in self.openFileButtons+otherButtons:
             b.setFixedSize(QSize(m,20))
     
     def openFileAndCloseStartscreen(self,path):
@@ -689,6 +699,8 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
         self.closeCurrentProject()
+        
+        self.setupOpenFileButtons()
         self.mainStackedWidget.setCurrentIndex(0)
 
     def postErrorMessage(self, caption, text):
