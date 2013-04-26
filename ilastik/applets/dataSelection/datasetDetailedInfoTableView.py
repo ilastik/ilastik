@@ -51,8 +51,8 @@ class DatasetDetailedInfoTableView(QTableView):
     def handleCustomContextMenuRequested(self, pos):
         col = self.columnAt( pos.x() )
         row = self.rowAt( pos.y() )
-
-        if col < self.model().columnCount() and row < self.model().rowCount():
+        
+        if 0<= col < self.model().columnCount() and 0<= row < self.model().rowCount():
             menu = QMenu(parent=self)
             editSharedPropertiesAction = QAction( "Edit shared properties...", menu )
             editPropertiesAction = QAction( "Edit properties...", menu )
