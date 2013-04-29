@@ -24,9 +24,6 @@ class DatasetInfo(object):
         self.drange = None
         self.fromstack = False
         self.nickname = ""
-
-        # If present, axistags supercedes axisorder member.
-        self.axisorder = None
         self.axistags = None
 
     @property
@@ -105,13 +102,23 @@ class OpDataSelection(Operator):
         else:
             # Use a normal (filesystem) reader
             opReader = OpInputDataReader(parent=self)
-            if datasetInfo.axisorder is not None:
-                opReader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
             opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
             opReader.FilePath.setValue(datasetInfo.filePath)
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
 
+        # Inject metadata if the dataset info specified any.
+        if datasetInfo.drange or datasetInfo.axistags is not None:
+            metadata = {}
+            metadata['drange'] = datasetInfo.drange
+            if datasetInfo.axistags is not None:
+                metadata['axistags'] = datasetInfo.axistags
+            opMetadataInjector = OpMetadataInjector( parent=self )
+            opMetadataInjector.Input.connect( providerSlot )
+            opMetadataInjector.Metadata.setValue( metadata )
+            providerSlot = opMetadataInjector.Output
+            self._opReaders.append( opMetadataInjector )
+        
         if self.force5d:
             op5 = Op5ifyer(parent=self)
             op5.input.connect(providerSlot)
@@ -127,18 +134,6 @@ class OpDataSelection(Operator):
             providerSlot = op5.output
             self._opReaders.append( op5 )
 
-        # Inject metadata if the dataset info specified any.
-        if datasetInfo.drange or datasetInfo.axistags is not None:
-            metadata = {}
-            metadata['drange'] = datasetInfo.drange
-            if datasetInfo.axistags is not None:
-                metadata['axistags'] = datasetInfo.axistags
-            opMetadataInjector = OpMetadataInjector( parent=self )
-            opMetadataInjector.Input.connect( providerSlot )
-            opMetadataInjector.Metadata.setValue( metadata )
-            providerSlot = opMetadataInjector.Output
-            self._opReaders.append( opMetadataInjector )
-        
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)
         

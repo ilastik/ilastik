@@ -138,8 +138,8 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
                     if datasetInfo.axistags is not None:
                         infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
-                    elif datasetInfo.axisorder is not None:
-                        infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
+                        axisorder = "".join(tag.key for tag in datasetInfo.axistags)
+                        infoGroup.create_dataset('axisorder', data=axisorder)
 
         self._dirty = False
 
@@ -251,11 +251,6 @@ class DataSelectionSerializer( AppletSerializer ):
             datasetInfo.allowLabels = infoGroup['allowLabels'].value
         except KeyError:
             pass
-
-        try:
-            datasetInfo.axisorder = infoGroup['axisorder'].value
-        except KeyError:
-            pass
         
         try:
             datasetInfo.drange = tuple( infoGroup['drange'].value )
@@ -270,10 +265,13 @@ class DataSelectionSerializer( AppletSerializer ):
         try:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
             datasetInfo.axistags = tags
-            datasetInfo.axisorder = "".join( tag.key for tag in tags )
         except KeyError:
-            if datasetInfo.axisorder is not None:
-                datasetInfo.axistags = vigra.defaultAxistags(datasetInfo.axisorder)
+            # Old projects just have an 'axisorder' field instead of full axistags
+            try:
+                axisorder = infoGroup['axisorder'].value
+                datasetInfo.axistags = vigra.defaultAxistags(axisorder)
+            except KeyError:
+                pass
         
         # If the data is supposed to be in the project,
         #  check for it now.
@@ -395,7 +393,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             if default_axis_order is not None:
                 import warnings
                 warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
-                datasetInfo.axisorder = default_axis_order
+                datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
             
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'

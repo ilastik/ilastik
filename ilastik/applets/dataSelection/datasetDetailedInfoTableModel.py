@@ -138,13 +138,20 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Axis order            
         if index.column() == DatasetDetailedInfoColumn.AxisOrder:
-            if imageSlot.meta.axistags is None:
-                return ""
-            return "".join( imageSlot.meta.getAxisKeys() )
+            original_axistags = imageSlot.meta.original_axistags
+            axistags = imageSlot.meta.axistags
+            if original_axistags is not None:
+                return "".join( tag.key for tag in original_axistags )            
+            if axistags is not None:
+                return "".join( imageSlot.meta.getAxisKeys() )
+            return ""
 
         # Shape
         if index.column() == DatasetDetailedInfoColumn.Shape:
+            original_shape = imageSlot.meta.original_shape
             shape = imageSlot.meta.shape
+            if original_shape is not None:
+                return str(original_shape)
             if shape is None:
                 return ""
             return str(shape)

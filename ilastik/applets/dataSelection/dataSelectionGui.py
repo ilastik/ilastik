@@ -238,6 +238,8 @@ class DataSelectionGui(QWidget):
             class DatasetViewer(LayerViewerGui):
                 def moveToTop(self, roleIndex):
                     opLaneView = self.topLevelOperatorView
+                    if not opLaneView.DatasetRoles.ready():
+                        return
                     datasetRoles = opLaneView.DatasetRoles.value
                     roleName = datasetRoles[roleIndex]
                     try:
@@ -250,8 +252,10 @@ class DataSelectionGui(QWidget):
 
                 def setupLayers(self):
                     opLaneView = self.topLevelOperatorView
-                    datasetRoles = opLaneView.DatasetRoles.value
+                    if not opLaneView.DatasetRoles.ready():
+                        return []
                     layers = []
+                    datasetRoles = opLaneView.DatasetRoles.value
                     for roleIndex, slot in enumerate(opLaneView.ImageGroup):
                         if slot.ready():
                             roleName = datasetRoles[roleIndex]
