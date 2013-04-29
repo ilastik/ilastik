@@ -90,7 +90,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             
     def _getDisplayRoleData(self, index):
         # Last row is just buttons
-        if index.row() == self.rowCount()-1:
+        if index.row() >= self.rowCount()-1:
             return ""
 
         laneIndex = index.row()

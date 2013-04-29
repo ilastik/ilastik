@@ -1044,8 +1044,6 @@ class IlastikShell( QMainWindow ):
             # Add all the applets from the workflow
             for index, app in enumerate(self.projectManager.workflow.applets):
                 self.addApplet(index, app)
-                for serializer in app.dataSerializers:
-                    serializer.ignoreDirty = True
             
             start = time.time()
             #load the project data from file
@@ -1054,7 +1052,7 @@ class IlastikShell( QMainWindow ):
                 self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
             else:
                 assert not readOnly, "Can't import into a read-only file."
-                self._importProject(importFromPath, hdf5File, projectFilePath)
+                self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
                 
             stop = time.time()
             print "Loading the project took %f sec." % (stop-start,)
@@ -1096,10 +1094,6 @@ class IlastikShell( QMainWindow ):
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
-
-            for index, app in enumerate(self.projectManager.workflow.applets):
-                for serializer in app.dataSerializers:
-                    serializer.ignoreDirty = False
 
             if "currentApplet" in hdf5File.keys():
                 appletName = hdf5File["currentApplet"].value

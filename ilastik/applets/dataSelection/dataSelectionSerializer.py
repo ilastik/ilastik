@@ -340,7 +340,7 @@ class DataSelectionSerializer( AppletSerializer ):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.topLevelOperator.Dataset.resize( 0 )
+        self.topLevelOperator.DatasetGroup.resize( 0 )
 
 
 class Ilastik05DataSelectionDeserializer(AppletSerializer):
@@ -374,10 +374,10 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             dataDir = hdf5File["DataSets"]
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
-            self.topLevelOperator.Dataset.resize( 0 )
+            self.topLevelOperator.DatasetGroup.resize( 0 )
             return
         
-        self.topLevelOperator.Dataset.resize( len(dataDir) )
+        self.topLevelOperator.DatasetGroup.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
             datasetInfo = DatasetInfo()
 
@@ -399,9 +399,10 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
             datasetInfo._filePath = str(totalDatasetPath)
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
+            datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )
             
             # Give the new info to the operator
-            self.topLevelOperator.Dataset[index].setValue(datasetInfo)
+            self.topLevelOperator.DatasetGroup[index][0].setValue(datasetInfo)
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
@@ -425,7 +426,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.topLevelOperator.Dataset.resize( 0 )
+        self.topLevelOperator.DatasetGroup.resize( 0 )
 
 
 

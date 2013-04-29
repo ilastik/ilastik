@@ -12,8 +12,8 @@ class DataSelectionApplet( Applet ):
         super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
         self._serializableItems = [ DataSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
-#        if supportIlastik05Import:
-#            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self.topLevelOperator))
+        if supportIlastik05Import:
+            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self.topLevelOperator))
 
         self._gui = None
         self._batchDataGui = batchDataGui
