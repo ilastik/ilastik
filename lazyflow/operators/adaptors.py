@@ -4,11 +4,9 @@ Volumina works with 5d array-like objects assuming the coordinate
 system (time, x, y, z, channel). This module provides methods to convert other
 data types to this expected format.
 '''
-import os
-import os.path as path
+import copy
 import numpy as np
-from lazyflow.utility.slicingtools import sl, slicing2shape
-import numpy
+from lazyflow.utility.slicingtools import slicing2shape
 
 _has_vigra = True
 try:
@@ -64,9 +62,15 @@ if _has_lazyflow and _has_vigra:
                 else:
                     outputShape += [1]                
             
+            self.output.meta.assignFrom( self.input.meta )
             self.outputs["output"].meta.dtype = self.inputs["input"].meta.dtype
             self.outputs["output"].meta.shape = tuple(outputShape)
             self.outputs["output"].meta.axistags = outputTags
+            if self.output.meta.original_axistags is None:
+                self.output.meta.original_axistags = copy.copy(inputAxistags)
+                self.output.meta.original_shape = self.input.meta.shape
+                assert len(inputAxistags) == len(self.input.meta.shape)
+                
             
         def execute(self, slot, subindex, roi, result):
             sl = [slice(0,roi.stop[i]-roi.start[i],None) if sl != 0\
