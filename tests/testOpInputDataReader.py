@@ -46,7 +46,7 @@ class TestOpInputDataReader(object):
 
         # Read the entire NPY file and verify the contents
         npyData = npyReader.Output[:].wait()
-        assert npyData.shape == (10,11,1)
+        assert npyData.shape == (10,11)
         for x in range(0,10):
             for y in range(0,11):
                 assert npyData[x,y] == x+y

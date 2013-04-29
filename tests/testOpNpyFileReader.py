@@ -27,7 +27,7 @@ class TestOpNpyFileReader(object):
 
         # Read the entire file and verify the contents
         a = npyReader.Output[:].wait()
-        assert a.shape == (10,11,1) # OpNpyReader automatically added a channel axis
+        assert a.shape == (10,11) # OpNpyReader automatically added a channel axis
         assert npyReader.Output.meta.dtype == self.testData.dtype
 
         # Why doesn't this work?  Numpy bug?
@@ -37,7 +37,7 @@ class TestOpNpyFileReader(object):
         # Check each of the values
         for i in range(10):
             for j in range(11):
-                assert a[i,j,0] == self.testData[i,j]
+                assert a[i,j] == self.testData[i,j]
         npyReader.cleanUp()
 
 if __name__ == "__main__":
