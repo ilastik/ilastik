@@ -720,4 +720,4 @@ class Counting3dGui(LabelingGui):
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
         except:
-
+            pass
