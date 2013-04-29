@@ -1,5 +1,5 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
 import vigra
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 class OpStreamingHdf5Reader(Operator):
     """
@@ -13,11 +13,6 @@ class OpStreamingHdf5Reader(Operator):
 
     # The internal path for project-local datasets
     InternalPath = InputSlot(stype='string')
-
-    # If the dataset has no axistags attribute, this slot specifies the assumed order.
-    # If the dataset has fewer axes than the specified axis order, 
-    #  axes will be dropped in the following order: 't', 'z', 'c'
-    DefaultAxisOrder = InputSlot(stype='string', value='txyzc')
 
     # Output data
     OutputImage = OutputSlot()
@@ -41,39 +36,36 @@ class OpStreamingHdf5Reader(Operator):
             raise OpStreamingHdf5Reader.DatasetReadError(internalPath)
 
         dataset = self._hdf5File[internalPath]
-        outputShape = dataset.shape
 
         try:
             # Read the axistags property without actually importing the data
             axistagsJson = self._hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
-            axisorder = self.DefaultAxisOrder.value
-
             # No axistags found.
-            numDimensions = len(dataset.shape)
-            assert numDimensions != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
-            assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
+            ndims = len(dataset.shape)
+            assert ndims != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
+            assert ndims != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
+            assert ndims <= 5, "OpStreamingHdf5Reader: No support for data with more than 5 dimensions."
 
-            if numDimensions == 2 or (numDimensions == 3 and dataset.shape[2] > 3):
-                # Add a singleton channel dimension to the data
-                outputShape = outputShape + (1,)
-                numDimensions = len(outputShape)
-
-            if numDimensions < len(axisorder):
-                axisorder = axisorder.replace('t', '')
-            if numDimensions < len(axisorder):
-                axisorder = axisorder.replace('z', '')
-            if numDimensions < len(axisorder):
-                axisorder = axisorder.replace('c', '')
+            axisorders = { 2 : 'xy',
+                           3 : 'xyz',
+                           4 : 'xyzc',
+                           5 : 'txyzc' }
+    
+            axisorder = axisorders[ndims]
+            if ndims == 3 and dataset.shape[2] <= 4:
+                # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
+                axisorder = 'xyc'
 
             axistags = vigra.defaultAxistags(axisorder)
 
-        assert len(axistags) == len( outputShape ), "Mismatch between shape {} and axisorder {}".format( outputShape, axisorder )
+        assert len(axistags) == len( dataset.shape ),\
+            "Mismatch between shape {} and axisorder {}".format( dataset.shape, axisorder )
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype.type
-        self.OutputImage.meta.shape = outputShape
+        self.OutputImage.meta.shape = dataset.shape
         self.OutputImage.meta.axistags = axistags
 
         # If the dataset specifies a datarange, add it to the slot metadata
@@ -87,21 +79,10 @@ class OpStreamingHdf5Reader(Operator):
         hdf5File = self._hdf5File
         internalPath = self.InternalPath.value
         
-        # On windows, internalPath may have backslashes, so replace them with forward slashes.
-        # Ulli: this is not the right place to fix this -- we need to do it during filename analysis
-        # internalPath = internalPath.replace('\\', '/')
-
-        if len(key) > len(hdf5File[internalPath].shape):
-            key = key[:len(hdf5File[internalPath].shape)]
-            if result.flags.c_contiguous:
-                hdf5File[internalPath].read_direct( result[...,0], key )
-            else:
-                result[...,0] = hdf5File[internalPath][key]
+        if result.flags.c_contiguous:
+            hdf5File[internalPath].read_direct( result[...], key )
         else:
-            if result.flags.c_contiguous:
-                hdf5File[internalPath].read_direct( result[...], key )
-            else:
-                result[...] = hdf5File[internalPath][key]
+            result[...] = hdf5File[internalPath][key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:
