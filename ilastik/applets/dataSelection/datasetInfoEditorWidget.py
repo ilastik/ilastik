@@ -254,7 +254,19 @@ class DatasetInfoEditorWidget(QDialog):
         return val
     
     def _updateShape(self):
-        shape = self._getCommonMetadataValue("shape")
+        firstOp = self.tempOps.values()[0]
+        shape = firstOp.Image.meta.original_shape
+        if shape is None:
+            shape = firstOp.Image.meta.shape
+        for laneIndex, op in self.tempOps.items():
+            nextShape = op.Image.meta.original_shape
+            if nextShape is None:
+                nextShape = op.Image.meta.shape
+            
+            if nextShape != shape:
+                shape = None
+                break
+
         if shape is None:
             self.shapeLabel.setText( "" )
         else:
@@ -280,12 +292,16 @@ class DatasetInfoEditorWidget(QDialog):
         # then display it.  Otherwise, display default text.
         axiskeys = None
         for laneIndex, op in self.tempOps.items():
-            cmpkeys = "".join(op.Image.meta.getAxisKeys())
+            tags = op.Image.meta.original_axistags
+            if tags is None:
+                tags = op.Image.meta.axistags
+            cmpkeys = "".join([ tag.key for tag in tags ])
             if axiskeys is None:
                 axiskeys = cmpkeys
             elif axiskeys != cmpkeys:
                 axiskeys = None
                 break
+
         if axiskeys is None:
             self.axesEdit.setText( "<multiple>" )
         else:
@@ -294,9 +310,17 @@ class DatasetInfoEditorWidget(QDialog):
     def _shouldEnableAxesEdit(self):
         # Enable IFF all datasets have the same number of axes.
         firstOp = self.tempOps.values()[0]
-        numaxes = len(firstOp.Image.meta.shape)
+        original_shape = firstOp.Image.meta.original_shape
+        shape = firstOp.Image.meta.shape
+        if original_shape is not None:
+            numaxes = len(original_shape)
+        else:
+            numaxes = len(shape)
         for op in self.tempOps.values():
-            if len(op.Image.meta.shape) != numaxes:
+            nextShape = op.Image.meta.original_shape
+            if nextShape is None:
+                nextShape = op.Image.meta.shape
+            if len(nextShape) != numaxes:
                 return False
         return True
     
@@ -304,7 +328,12 @@ class DatasetInfoEditorWidget(QDialog):
         newAxisOrder = str(self.axesEdit.text())
         # Check for errors
         firstOp = self.tempOps.values()[0]
-        numaxes = len(firstOp.Image.meta.shape)
+        shape = firstOp.Image.meta.shape
+        original_shape = firstOp.Image.meta.original_shape
+        if original_shape is not None:
+            numaxes = len(original_shape)
+        else:
+            numaxes = len(shape)
 
         try:
             # Remove the event filter while this function executes because we don't 
@@ -343,7 +372,6 @@ class DatasetInfoEditorWidget(QDialog):
                             newTags[tag.key] = op.Image.meta.axistags[tag.key]
                         
                     info.axistags = newTags
-                    info.axisorder = newAxisOrder
                     op.Dataset.setValue( info )
                 self._error_fields.discard('Axis Order')
                 return True
