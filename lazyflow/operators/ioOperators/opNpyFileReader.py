@@ -41,8 +41,8 @@ class OpNpyFileReader(Operator):
 
         shape = rawNumpyArray.shape
         ndims = len( shape )
+        assert ndims != 0, "OpNpyFileReader: Support for 0-D data not yet supported"
         assert ndims != 1, "OpNpyFileReader: Support for 1-D data not yet supported"
-        assert ndims != 2, "OpNpyFileReader: BUG: 2-D was supposed to be reshaped above."
         assert ndims <= 5, "OpNpyFileReader: No support for data with more than 5 dimensions."
 
         axisorder = axisorders[ndims]
