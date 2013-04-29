@@ -31,11 +31,6 @@ class OpInterpMissingData(Operator):
         data = data.view( vigra.VigraArray )
         data.axistags = self.InputVolume.meta.axistags
         
-        if data.shape[data.axistags.index('z')]==1:
-            #nothing to interpolate
-            result[:] = data
-            return result
-        
         self._interpMissingLayer(data.withAxes(*'xyz'))
 
         z_index = self.InputVolume.meta.axistags.index('z')
