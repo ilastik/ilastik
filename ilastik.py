@@ -83,6 +83,9 @@ if parsed_args.playback_script is not None:
         player.play_script(parsed_args.playback_script, onfinish)
     init_funcs.append( partial(play_recording) )
 
+if parsed_args.debug:
+    ilastik_config.set('ilastik', 'debug', 'true')
+    
 if parsed_args.exit_on_failure:
     old_excepthook = sys.excepthook
     def print_exc_and_exit(*args):
@@ -91,7 +94,7 @@ if parsed_args.exit_on_failure:
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
     install_thread_excepthook()
-else:
+elif ilastik_config.getboolean('ilastik', 'debug'):
     old_excepthook = sys.excepthook
     def exception_dialog(*args):
         old_excepthook(*args)
@@ -103,9 +106,6 @@ else:
     sys.excepthook = exception_dialog
     install_thread_excepthook()
 
-if parsed_args.debug:
-    ilastik_config.set('ilastik', 'debug', 'true')
-    
 if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
 
