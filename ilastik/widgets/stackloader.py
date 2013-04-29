@@ -37,7 +37,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 
 from PyQt4 import QtCore, QtGui
 from shutil import rmtree
-from volumina.adaptors import Op5ifyer
+from lazyflow.operators.adaptors import Op5ifyer
 
 
 #*******************************************************************************

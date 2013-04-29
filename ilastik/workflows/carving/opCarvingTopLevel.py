@@ -1,6 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from volumina.adaptors import Op5ifyer
+from lazyflow.operators.adaptors import Op5ifyer
 
 from opCarving import OpCarving
 from opPreprocessing import OpPreprocessing
