@@ -21,7 +21,7 @@ from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
                          LayerStackModel, VolumeEditor
 from volumina.utility import ShortcutManager
-from volumina.adaptors import Op5ifyer
+from lazyflow.operators.adaptors import Op5ifyer
 from volumina.interpreter import ClickReportingInterpreter
 
 from ilastik.widgets.viewerControls import ViewerControls
