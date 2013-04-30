@@ -134,6 +134,15 @@ class OpDataSelection(Operator):
             providerSlot = op5.output
             self._opReaders.append( op5 )
 
+        # If there is no time axis, use an Op5ifyer to prepend one.
+        if providerSlot.meta.axistags.index('t') >= len( providerSlot.meta.axistags ):
+            op5 = Op5ifyer( parent=self )
+            providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
+            op5.order.setValue('t' + providerKeys)
+            op5.input.connect( providerSlot )
+            providerSlot = op5.output
+            self._opReaders.append( op5 )
+            
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)
         
@@ -241,11 +250,4 @@ class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
         numLanes = len(self.innerOperators)
         if numLanes > finalLength:
             super( OpMultiLaneDataSelectionGroup, self ).removeLane( laneIndex, finalLength )
-
-
-
-
-
-
-
 
