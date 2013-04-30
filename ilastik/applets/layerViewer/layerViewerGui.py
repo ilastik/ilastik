@@ -548,7 +548,6 @@ class LayerViewerGui(QWidget):
                 s.resetAxes()
         
         def blockGuiForRendering():
-            print "BLOCK"
             for v in self.editor.imageViews:
                 v.scene().joinRenderingAllTiles()
                 v.repaint()
