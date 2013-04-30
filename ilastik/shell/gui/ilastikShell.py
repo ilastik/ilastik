@@ -713,14 +713,14 @@ class IlastikShell( QMainWindow ):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
-        if ilastik_config.getboolean("ilastik", "debug"):
-            self.menuBar().addMenu(self._debugMenu)
-        self.menuBar().addMenu(self._helpMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
                 for m in appletMenus:
                     self.menuBar().addMenu(m)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuBar().addMenu(self._debugMenu)
+        self.menuBar().addMenu(self._helpMenu)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
