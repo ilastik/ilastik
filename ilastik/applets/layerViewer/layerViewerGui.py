@@ -70,7 +70,8 @@ class LayerViewerGui(QWidget):
         return self._drawer
 
     def menus( self ):
-        return [self.menuView] # From the .ui file
+        debug_mode = ilastik_config.getboolean("ilastik", "debug")
+        return [ self.volumeEditorWidget.getViewMenu(debug_mode) ]
 
     def viewerControlWidget(self):
         return self.__viewerControlWidget
@@ -343,12 +344,7 @@ class LayerViewerGui(QWidget):
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
-           
-            #if  the image is 2D, do not show the HUD action (issue #190) 
-            is2D = numpy.sum(numpy.asarray(newDataShape[1:4]) == 1) == 1
-            self.menuGui.actionToggleSelectedHud.setVisible(not is2D)
-            self.menuGui.actionToggleAllHuds.setVisible(not is2D)
-            
+                       
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
             midpos3d = midpos5d[1:4]
@@ -458,134 +454,6 @@ class LayerViewerGui(QWidget):
         localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir+"/centralWidget.ui", self)
 
-        # Menu is specified in a separate ui file with a dummy window
-        self.menuGui = uic.loadUi(localDir+"/menu.ui") # Save as member so it doesn't get picked up by GC
-        self.menuBar = self.menuGui.menuBar
-        self.menuView = self.menuGui.menuView
-
-        def toggleDebugPatches(show):
-            self.editor.showDebugPatches = show
-
-        def setCacheSize( cache_size ):
-            dlg = QDialog(self)
-            layout = QHBoxLayout()
-            layout.addWidget( QLabel("Cached Slices Per View:") )
-
-            cache_size = [self.editor.cacheSize]
-            def parseCacheSize( strSize ):
-                try:
-                    cache_size[0] = int(strSize)
-                except:
-                    pass
-
-            edit = QLineEdit( str(cache_size[0]), parent=dlg )
-            edit.textChanged.connect( parseCacheSize )
-            layout.addWidget( edit )
-            okButton = QPushButton( "OK", parent=dlg )
-            okButton.clicked.connect( dlg.accept )
-            layout.addWidget( okButton )
-            dlg.setLayout( layout )
-            dlg.setModal(True)
-            dlg.exec_()
-            self.editor.cacheSize = cache_size[0]
-
-        def enablePrefetching( enable ):
-            for scene in self.editor.imageScenes:
-                scene.setPrefetchingEnabled( enable )
-
-        def fitToScreen():
-            shape = self.editor.posModel.shape
-            for i, v in enumerate(self.editor.imageViews):
-                s = list(shape)
-                del s[i]
-                v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))
-
-        def fitImage():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
-
-        def restoreImageToOriginalSize():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
-
-        '''
-        def rubberBandZoom():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
-                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
-                    self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup = self.editor.imageViews[self.editor._lastImageViewFocus].cursor()
-                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(Qt.CrossCursor)
-                else:
-                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
-                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
-        '''
-
-        def hideHud():
-            hide = not self.editor.imageViews[0]._hud.isVisible()
-            for i, v in enumerate(self.editor.imageViews):
-                v.setHudVisible(hide)
-
-        def toggleSelectedHud():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
-
-        def centerAllImages():
-            for i, v in enumerate(self.editor.imageViews):
-                v.centerImage()
-
-        def centerImage():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
-                self.menuGui.actionOnly_for_current_view.setEnabled(True)
-
-        def resetAxes():
-            if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageScenes[self.editor._lastImageViewFocus].resetAxes()
-                self.menuGui.actionOnly_for_current_view.setEnabled(True)
-
-        def resetAllAxes():
-            for i, s in enumerate(self.editor.imageScenes):
-                s.resetAxes()
-        
-        def blockGuiForRendering():
-            for v in self.editor.imageViews:
-                v.scene().joinRenderingAllTiles()
-                v.repaint()
-            QApplication.processEvents()
-        
-        self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
-        self.menuGui.actionCenterImage.triggered.connect(centerImage)
-        self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
-        self.menuGui.actionResetAllAxes.triggered.connect(resetAllAxes)
-        self.menuGui.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
-        self.menuGui.actionResetAxes.triggered.connect(resetAxes)
-        self.menuGui.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
-        self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
-        self.menuGui.actionFitImage.triggered.connect(fitImage)
-        self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-        #FIXME: this needs bug fixing
-        #self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
-        self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
-        self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
-        
-        from PyQt4.QtCore import Qt
-        mgr = ShortcutManager()
-        qsa = QShortcut(QKeySequence("K"),self,member = self.menuGui.actionFitImage.trigger,context = Qt.WidgetShortcut)
-        mgr.register("Navigation","Fit image on screen",qsa)
-        qsd = QShortcut(QKeySequence("Ctrl+D"),self,member = self.menuGui.actionShowDebugPatches.toggle,context = Qt.WidgetShortcut)
-        mgr.register("Navigation","Show tiling",qsd)
-        qsc = QShortcut(QKeySequence("C"),self,member = self.menuGui.actionCenterImage.trigger,context = Qt.WidgetShortcut)
-        mgr.register("Navigation","Center image",qsc)
-        qsw = QShortcut(QKeySequence("W"),self,member = self.menuGui.actionReset_zoom.trigger,context = Qt.WidgetShortcut)
-        mgr.register("Navigation","Reset zoom",qsw)
-        
-        if ilastik_config.getboolean("ilastik", "debug"):
-            self.menuGui.actionBlockGui.triggered.connect(blockGuiForRendering)
-            qsw = QShortcut(QKeySequence("Ctrl+B"),self,member = self.menuGui.actionBlockGui.trigger,context = Qt.WidgetShortcut)
-            mgr.register("Navigation","Block gui for rendering",qsw)
-        else:
-            self.menuGui.actionBlockGui.setVisible(False)
-        
     @traceLogged(traceLogger)
     def _initEditor(self, crosshair):
         """
@@ -599,7 +467,6 @@ class LayerViewerGui(QWidget):
         self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
         self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
 
-        self.editor.newImageView2DFocus.connect(self._setIconToViewMenu)
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
 
@@ -608,14 +475,6 @@ class LayerViewerGui(QWidget):
         # Zoom at a 1-1 scale to avoid loading big datasets entirely...
         for view in self.editor.imageViews:
             view.doScaleTo(1)
-
-    @traceLogged(traceLogger)
-    def _setIconToViewMenu(self):
-        """
-        In the "Only for Current View" menu item of the View menu,
-        show the user which axis is the current one by changing the menu item icon.
-        """
-        self.menuGui.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
     @traceLogged(traceLogger)
     def _convertPositionToDataSpace(self, voluminaPosition):
