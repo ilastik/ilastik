@@ -33,7 +33,8 @@ class DataLaneSummaryTableView(QTableView):
         self._retained = []
         roleIndex = 0
         for column in range( LaneColumn.NumColumns, model.columnCount(), DatasetInfoColumn.NumColumns ):
-            menu = QMenu()
+            menu = QMenu(parent=self)
+            menu.setObjectName( "SummaryTable_AddButton_{}".format( roleIndex ) )
             self._retained.append(menu)
             menu.addAction( "Add File(s)..." ).triggered.connect( partial(self.addFilesRequested.emit, roleIndex) )
             menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.addStackRequested.emit, roleIndex) )

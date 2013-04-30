@@ -250,6 +250,7 @@ class CarvingGui(LabelingGui):
         op = self.topLevelOperatorView.opCarving
         
         menu = QMenu(self)
+        menu.setObjectName("carving_context_menu")
         menu.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
         for name in names:
             menu.addAction("edit %s" % name)
