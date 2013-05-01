@@ -121,7 +121,7 @@ class SerialSlot(object):
 
         self._dirty = False
         self._bind()
-        self.ignoreDirty = True
+        self.ignoreDirty = False
 
     @property
     def dirty(self):
