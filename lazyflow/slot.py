@@ -8,6 +8,8 @@ import threading
 #SciPy
 import numpy
 
+import vigra
+
 #lazyflow
 from lazyflow import rtype
 from lazyflow.request import Request
@@ -898,8 +900,8 @@ class Slot(object):
         value.
 
         If check_changed is True, the new value is compared to the
-        current one and updates are onyl triggerd if they are different objects
-        (python is operator!). 
+        current one and updates are only triggered if the new value differs 
+        from the old one according to the __eq__ operator.
         The check can be turned off with the check_changed flag.
         """
         try:
@@ -923,8 +925,19 @@ class Slot(object):
     
             changed = True
            
-            if check_changed and value is self._value:
-                changed = False
+            # We use == here instead of 'is' to avoid subtle bugs that 
+            #  can occur if you supplied an equivalent value that 'is not' the original.
+            # For example: x=numpy.uint8(3); y=numpy.int64(3); assert x == y;  assert x is not y
+            if check_changed:
+                if type(value) != type(self._value):
+                    changed = True
+                elif isinstance(value, vigra.VigraArray) and value.axistags != self._value.axistags:
+                    changed = True
+                else:
+                    same = ( value == self._value )
+                    if isinstance(same, numpy.ndarray):
+                        same = same.all()
+                    changed = not same
             
             if changed:
                 # call disconnect callbacks
