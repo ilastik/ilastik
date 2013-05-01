@@ -19,7 +19,7 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
 try:
@@ -406,6 +406,9 @@ class PixelClassificationGui(LabelingGui):
 
             originalButtonText = "Full Volume Predict and Save"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
+            
+            # Make sure the user can't paint anything while the computation is in progress.
+            self._changeInteractionMode(Tool.Navigation)
 
             @traceLogged(traceLogger)
             def saveThreadFunc():
