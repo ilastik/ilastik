@@ -175,7 +175,10 @@ def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOut
 
     # Configure batch input operator
     opBatchInputs = workflow.batchInputApplet.topLevelOperator
-    opBatchInputs.Dataset.setValues( batchInputInfos )
+    opBatchInputs.DatasetGroup.resize( len(batchInputInfos) )
+    for info, multislot in zip(batchInputInfos, opBatchInputs.DatasetGroup):
+        # FIXME: This assumes that the workflow has exactly one dataset role.
+        multislot[0].setValue( info )
     
     # Configure batch export operator
     opBatchResults = workflow.batchResultsApplet.topLevelOperator
