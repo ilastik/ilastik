@@ -455,8 +455,10 @@ class LabelingGui(LayerViewerGui):
         """
         # Get the number of labels in the label data
         # (Or the number of the labels the user has added.)
-        numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
-        if numLabels == None:
+        numLabels = None
+        if self._labelingSlots.maxLabelValue.ready():
+            numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
+        if numLabels is None:
             numLabels = 0
 
         # Add rows until we have the right number

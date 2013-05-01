@@ -195,7 +195,7 @@ class LayerViewerGui(QWidget):
         An item is about to be removed from the multislot that is providing our layers.
         Remove the layer from the GUI.
         """
-        self.updateAllLayers()
+        self.updateAllLayers(slot)
 
     def generateAlphaModulatedLayersFromChannels(self, slot):
         # TODO
@@ -325,8 +325,10 @@ class LayerViewerGui(QWidget):
 
     @traceLogged(traceLogger)
     @threadRouted
-    def updateAllLayers(self):
+    def updateAllLayers(self, slot=None):
         if self._stopped or not self._initialized:
+            return
+        if slot is not None and slot.meta.axistags is None:
             return
 
         # Ask for the updated layer list (usually provided by the subclass)

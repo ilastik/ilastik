@@ -866,7 +866,7 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def onNewProjectActionTriggered(self, w=None, workflow_kwargs=None):
+    def onNewProjectActionTriggered(self, workflow=None, workflow_kwargs=None):
         logger.debug("New Project action triggered")
         newProjectFilePath = self.getProjectPathToCreate()
         if newProjectFilePath is not None:
@@ -874,10 +874,10 @@ class IlastikShell( QMainWindow ):
             if not self.ensureNoCurrentProject():
                 return
             
-            self.setWorkflowClass(w, workflow_kwargs)
-            self.createAndLoadNewProject(newProjectFilePath)
+            self.createAndLoadNewProject(newProjectFilePath, workflow, workflow_kwargs)
             
-    def createAndLoadNewProject(self, newProjectFilePath):
+    def createAndLoadNewProject(self, newProjectFilePath, workflow, workflow_kwargs=None):
+        self.setWorkflowClass(workflow, workflow_kwargs)
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
         self.loadProject(newProjectFile, newProjectFilePath, False)
 

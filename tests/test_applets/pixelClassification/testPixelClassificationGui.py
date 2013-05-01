@@ -78,7 +78,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             shell = self.shell
             
             # New project
-            shell.createAndLoadNewProject(projFilePath)
+            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
         
             # Add a file
@@ -86,8 +86,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             info = DatasetInfo()
             info.filePath = self.SAMPLE_DATA
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
-            opDataSelection.Dataset.resize(1)
-            opDataSelection.Dataset[0].setValue(info)
+            opDataSelection.DatasetGroup.resize(1)
+            opDataSelection.DatasetGroup[0][0].setValue(info)
             
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
@@ -150,7 +150,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.shell.setSelectedAppletDrawer(3)
             
             # Turn off the huds and so we can capture the raw image
-            gui.currentGui().menuGui.actionToggleAllHuds.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position  
@@ -231,6 +232,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui.currentGui()._labelControlUi.labelListModel.selectedRow())
             
             # Did the label get removed from the label array?
+            assert opPix.MaxLabelValue.ready(), "Expected max label value to be available"
             assert opPix.MaxLabelValue.value == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( opPix.MaxLabelValue.value  )
 
             self.waitForViews(gui.currentGui().editor.imageViews)
@@ -399,7 +401,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.test_4_AddLabels()
             
             # Make sure the entire slice is visible
-            gui.currentGui().menuGui.actionFitToScreen.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionFitToScreen.trigger()
 
             with Timer() as timer:
                 # Enable interactive mode            

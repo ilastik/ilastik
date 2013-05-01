@@ -207,13 +207,13 @@ class PixelClassificationGui(LabelingGui):
                 def setLayerColor(c, predictLayer=predictLayer):
                     predictLayer.tintColor = c
 
-                def setLayerName(n, predictLayer=predictLayer):
+                def setPredLayerName(n, predictLayer=predictLayer):
                     newName = "Prediction for %s" % n
                     predictLayer.name = newName
 
-                setLayerName(ref_label.name)
+                setPredLayerName(ref_label.name)
                 ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setLayerName)
+                ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
 
 
@@ -235,7 +235,7 @@ class PixelClassificationGui(LabelingGui):
                     segLayer.tintColor = c
                     self._update_rendering()
 
-                def setLayerName(n, segLayer=segLayer):
+                def setSegLayerName(n, segLayer=segLayer):
                     oldname = segLayer.name
                     newName = "Segmentation (%s)" % n
                     segLayer.name = newName
@@ -245,10 +245,10 @@ class PixelClassificationGui(LabelingGui):
                         label = self._renderedLayers.pop(oldname)
                         self._renderedLayers[newName] = label
 
-                setLayerName(ref_label.name)
+                setSegLayerName(ref_label.name)
 
                 ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setLayerName)
+                ref_label.nameChanged.connect(setSegLayerName)
                 #check if layer is 3d before adding the "Toggle 3D" option
                 #this check is done this way to match the VolumeRenderer, in
                 #case different 3d-axistags should be rendered like t-x-y
