@@ -86,6 +86,10 @@ class Slot(object):
           being considered lane-indexed
 
         """
+        # This assertion is here for a reason: default values do NOT work on OutputSlots.
+        # (We should probably change that at some point...)
+        assert value is None or isinstance(self, InputSlot), "Only InputSlots can have default values.  OutputSlots cannot."
+        
         if not hasattr(self, "_type"):
             self._type = None
         if type(stype) == str:
