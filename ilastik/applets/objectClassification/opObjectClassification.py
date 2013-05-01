@@ -924,11 +924,11 @@ class OpBadObjectsToWarningMessage(Operator):
     # format: WarningMessage.value = 
     #           {'title': a, 'text': b, 'info': c, 'details': d} if message available, the keys 'info' and 'details' might be omitted
     #           {} otherwise
-    WarningMessage = OutputSlot(stype=Opaque, value={})
+    WarningMessage = OutputSlot(stype=Opaque)
 
     def setupOutputs(self):
         super(OpBadObjectsToWarningMessage, self).setupOutputs()
-        self.WarningMessage.meta.shape = (1,)
+        self.WarningMessage.setValue( {} )
 
     def propagateDirty(self, slot, subindex, roi):
         try:
