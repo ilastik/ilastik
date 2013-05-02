@@ -12,7 +12,7 @@ from ilastik.applets.blockwiseObjectClassification \
     import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpSegmentation, Op5ifyer
+from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots
 from lazyflow.graph import OperatorWrapper
 
 class ObjectClassificationWorkflow(Workflow):
@@ -53,7 +53,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         if batch:
             self.dataSelectionAppletBatch = DataSelectionApplet(
-                self, "Input Data", "Input Data", batchDataGui=False, force5d=True)
+                self, "Batch Inputs", "Batch Inputs", batchDataGui=True, force5d=True)
             self.opDataSelectionBatch = self.dataSelectionAppletBatch.topLevelOperator
             if isinstance(self, ObjectClassificationWorkflowBinary):
                 self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
@@ -66,6 +66,7 @@ class ObjectClassificationWorkflow(Workflow):
 
             self.batchResultsApplet = BlockwiseObjectClassificationBatchApplet(
                 self, "Prediction Output Locations")
+            self._applets.append(self.dataSelectionAppletBatch)
             self._applets.append(self.batchResultsApplet)
 
             self._initBatchWorkflow()
@@ -130,26 +131,40 @@ class ObjectClassificationWorkflow(Workflow):
 
         # FIXME: need op5ifiers
 
+        # OpDataSelectionGroup.ImageGroup is indexed by [laneIndex][roleIndex],
+        # but we need a slot that is indexed by [roleIndex][laneIndex]
+        # so we can pass each role to the appropriate slots.
+        # We use OpTransposeSlots to do this.
+        opBatchInputByRole = OpTransposeSlots( parent=self )
+        opBatchInputByRole.Inputs.connect( self.opDataSelectionBatch.ImageGroup )
+        opBatchInputByRole.OutputLength.setValue(2)
+        
+        # Lane-indexed multislot for raw data
+        batchInputsRaw = opBatchInputByRole.Outputs[0]
+        # Lane-indexed multislot for binary/prediction-map data
+        batchInputsOther = opBatchInputByRole.Outputs[1]
+        
         #  but image inputs come from the batch data selection.
-        opBatchThreshold.RawInput.connect(self.opDataSelectionBatch.ImageGroup[0])
-        opBatchThreshold.InputImage.connect(self.opDataSelectionBatch.ImageGroup[1])
+        opBatchThreshold.RawInput.connect(batchInputsRaw)
+        opBatchThreshold.InputImage.connect(batchInputsOther)
 
         # Connect the blockwise classification operator
         # Parameter inputs are cloned from the interactive workflow,
-        opBatchClassify = OperatorWrapper(OpBlockwiseObjectClassification, parent=self)
+        opBatchClassify = OperatorWrapper(OpBlockwiseObjectClassification, parent=self,
+                                          promotedSlotNames=['RawImage', 'BinaryImage'])
         opBatchClassify.Classifier.connect(opTrainingTopLevel.Classifier)
         opBatchClassify.LabelsCount.connect(opTrainingTopLevel.NumLabels)
         opBatchClassify.BlockShape3dDict.connect(opBlockwiseObjectClassification.BlockShape3dDict)
         opBatchClassify.HaloPadding3dDict.connect(opBlockwiseObjectClassification.HaloPadding3dDict)
 
         #  but image pathway is from the batch pipeline
-        opBatchFillMissingSlices.Input.connect(self.opDataSelectionBatch.ImageGroup[0])
+        opBatchFillMissingSlices.Input.connect(batchInputsRaw)
         op5Raw = OperatorWrapper(Op5ifyer, parent=self)
         op5Raw.input.connect(opBatchFillMissingSlices.Output)
         op5Binary = OperatorWrapper(Op5ifyer, parent=self)
         op5Binary.input.connect(opBatchThreshold.Output)
 
-        opBatchClassify.RawImage.connect(self.opDataSelectionBatch.ImageGroup[0])
+        opBatchClassify.RawImage.connect(batchInputsRaw)
         opBatchClassify.BinaryImage.connect(op5Binary.output)
 
         self.opBatchClassify = opBatchClassify
@@ -157,7 +172,7 @@ class ObjectClassificationWorkflow(Workflow):
         # Connect the batch OUTPUT applet
         opBatchOutput = self.batchResultsApplet.topLevelOperator
         opBatchOutput.DatasetPath.connect(self.opDataSelectionBatch.ImageName)
-        opBatchOutput.RawImage.connect(self.opDataSelectionBatch.ImageGroup[0])
+        opBatchOutput.RawImage.connect(batchInputsRaw)
         opBatchOutput.ImageToExport.connect(opBatchClassify.PredictionImage)
 
     def getHeadlessOutputSlot(self, slotId):
