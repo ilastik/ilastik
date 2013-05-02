@@ -9,10 +9,9 @@ import numpy
 import vigra
 
 #lazyflow
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.utility import Tracer
 
 def axisTagObjectFromFlag(flag):
 
@@ -779,3 +778,59 @@ class OpWrapSlot(Operator):
 
     def setInSlot(self, slot, subindex, roi, value):
         self.Output[0][roi.toSlice()] = value
+
+
+class OpTransposeSlots(Operator):
+    """
+    Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
+    Note: Only works for a slot of level 2.
+    
+    This operator is designed to be usable even if the inputs are only partially 
+    configured (e.g. if not all input multi-slots have the same length).
+    The length of the output multi-slot must be specified explicitly.
+    """
+    OutputLength = InputSlot() # The length of the j dimension = J.
+    Inputs = InputSlot(level=2, optional=True) # Optional so that the Output mslot is configured even if len(Inputs) == 0
+    Outputs = OutputSlot(level=2)   # A level-2 multislot of len J.
+                                    # For each inner (level-1) multislot, len(multislot) == len(self.Inputs)
+
+    _Dummy = InputSlot(optional=True) # Internal use only.  Do not connect.
+
+    def __init__(self, *args, **kwargs):
+        super( OpTransposeSlots, self ).__init__(*args, **kwargs)
+
+    def setupOutputs(self):
+        self.Outputs.resize( self.OutputLength.value )
+        for j, mslot in enumerate( self.Outputs ):
+            mslot.resize( len(self.Inputs) )
+            for i, oslot in enumerate( mslot ):
+                if i < len(self.Inputs) and j < len(self.Inputs[i]):
+                    oslot.connect( self.Inputs[i][j] )
+                else:
+                    # Ensure that this output is NOT ready.
+                    oslot.connect( self._Dummy )
+
+    def execute(self, slot, subindex, roi, result):
+        # Should never be called.  All output slots are directly connected to an input slot.
+        assert False
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        # Nothing to do here.
+        # All outputs are directly connected to an input slot.
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
