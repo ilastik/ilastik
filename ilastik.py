@@ -94,7 +94,7 @@ if parsed_args.exit_on_failure:
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
     install_thread_excepthook()
-elif ilastik_config.getboolean('ilastik', 'debug'):
+elif not ilastik_config.getboolean('ilastik', 'debug'):
     old_excepthook = sys.excepthook
     def exception_dialog(*args):
         old_excepthook(*args)
