@@ -19,7 +19,7 @@ class BlockwiseObjectClassificationApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['BlockShape', 'HaloPadding', 'Classifier']
+        return ['Classifier', 'LabelsCount', 'SelectedFeatures', 'BlockShape3dDict', 'HaloPadding3dDict']
     
     @property
     def singleLaneGuiClass(self):
