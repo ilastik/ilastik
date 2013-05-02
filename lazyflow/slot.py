@@ -1039,7 +1039,7 @@ class Slot(object):
         considered "configured" if it is ready.
 
         """
-        return self.ready()
+        return self._optional or self.ready()
 
     def ready(self):
         if self.level == 0:
