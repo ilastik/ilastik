@@ -71,19 +71,28 @@ class OperatorWrapper(Operator):
 
         self._customName = False
 
+        allInputSlotNames = set(map(lambda s: s.name, operatorClass.inputSlots))
+
         if promotedSlotNames is not None:
             assert broadcastingSlotNames is None, \
                 ("Please specify either the promoted slots or the"
                  " broadcasting slots, not both.")
+            for name in promotedSlotNames:
+                assert name in allInputSlotNames, \
+                    "Didn't recognize slot name to promote: '{}' is not a valid input slot name for this operator".format( name )
+
             # 'Promoted' slots will be exposed as multi-slots
             # All others will be broadcasted
             promotedSlotNames = set(promotedSlotNames)
-
+            
         elif broadcastingSlotNames is not None:
             # 'Broadcasting' slots are NOT exposed as multi-slots.
             # Each is exposed as a single slot that is shared by all
             # inner operators.
-            allInputSlotNames = set(map(lambda s: s.name, operatorClass.inputSlots))
+
+            for name in broadcastingSlotNames:
+                assert name in allInputSlotNames, \
+                    "Didn't recognize slot name to broadcast: '{}' is not a valid input slot name for this operator".format( name )
 
             # set difference
             promotedSlotNames = allInputSlotNames - set(broadcastingSlotNames)
