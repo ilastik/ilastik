@@ -26,9 +26,10 @@
 #    authors and should not be interpreted as representing official policies, either expressed
 
 
-from PyQt4.QtGui import QVBoxLayout, QLabel, QHBoxLayout, QDialog, QToolButton, QGroupBox, QLayout, QSpacerItem
-import numpy
-import sys
+from PyQt4.QtGui import QDialog
+import sys        
+import os
+from PyQt4 import uic
 import qimage2ndarray
 import featureTableWidget
 import preView
@@ -39,56 +40,16 @@ class FeatureDlg(QDialog):
         
         # init
         # ------------------------------------------------
-        self.setWindowTitle("Spatial Features")
+
+        localDir = os.path.split(os.path.abspath(__file__))[0]
+        uic.loadUi(localDir+"/featureDialog.ui", self)
         
-        # widgets and layouts
-        # ------------------------------------------------
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
-        
-        self.tableAndViewGroupBox = QGroupBox(" Scales and Groups")
-        self.tableAndViewGroupBox.setFlat(True)
-        self.featureTableWidget = featureTableWidget.FeatureTableWidget()
-        
-        self.tableAndViewLayout = QVBoxLayout()
-        self.tableAndViewLayout.setSizeConstraint(QLayout.SetNoConstraint)
-        self.tableAndViewLayout.addWidget(self.featureTableWidget)
-        
-        self.viewAndButtonLayout =  QVBoxLayout() 
+        #the preview is currently shown in a separate window
         self.preView = preView.PreView()
-        self.viewAndButtonLayout.addWidget(self.preView)
-        self.viewAndButtonLayout.addStretch()
-        
-        self.buttonsLayout = QHBoxLayout()
-        self.memReqLabel = QLabel()
-        self.buttonsLayout.addWidget(self.memReqLabel)
-        
-        self.buttonsLayout.addStretch()
-
-        # Add Cancel
-        self.cancel = QToolButton()
-        self.cancel.setText("Cancel")
-        self.cancel.clicked.connect(self.on_cancelClicked)
-        self.buttonsLayout.addWidget(self.cancel)
-
-        # Add OK
-        self.ok = QToolButton()
-        self.ok.setText("OK")
-        self.ok.clicked.connect(self.on_okClicked)
-        self.buttonsLayout.addWidget(self.ok)
-
-        self.buttonsLayout.addSpacerItem(QSpacerItem(10,0))
-        self.viewAndButtonLayout.addSpacerItem(QSpacerItem(0,10))
-        self.tableAndViewGroupBox.setLayout(self.tableAndViewLayout)
-        self.tableAndViewLayout.addLayout(self.buttonsLayout)
-        self.layout.addWidget(self.tableAndViewGroupBox)
-        
-        self.layout.setContentsMargins(0,0,0,0)
-        self.tableAndViewGroupBox.setContentsMargins(4,10,4,4)
-        self.tableAndViewLayout.setContentsMargins(0,10,0,0)
+        self.cancel.clicked.connect(self.reject)
+        self.ok.clicked.connect(self.accept)
         
         self.featureTableWidget.brushSizeChanged.connect(self.preView.setFilledBrsuh)
-        self.setMemReq()        
                 
     # methods
     # ------------------------------------------------
@@ -113,34 +74,7 @@ class FeatureDlg(QDialog):
         
     def setIconsToTableWidget(self, checked, partiallyChecked, unchecked):
         self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked)
-    
-    def setMemReq(self):
-#        featureSelectionList = self.featureTableWidget.createFeatureList()
-        #TODO
-        #memReq = self.ilastik.project.dataMgr.Classification.featureMgr.computeMemoryRequirement(featureSelectionList)
-        #self.memReqLabel.setText("%8.2f MB" % memReq)
-        pass
-    
-    def on_okClicked(self):
-#        featureSelectionList = self.featureTableWidget.createFeatureList()
-#        selectedFeatureList = self.featureTableWidget.createSelectedFeatureList()
-#        sigmaList = self.featureTableWidget.createSigmaList()
-#        featureMgr.ilastikFeatureGroups.newGroupScaleValues = sigmaList
-#        featureMgr.ilastikFeatureGroups.newSelection = selectedFeatureList
-#        res = self.parent().project.dataMgr.Classification.featureMgr.setFeatureItems(featureSelectionList)
-#        if res is True:
-#            self.parent().labelWidget.setBorderMargin(int(self.parent().project.dataMgr.Classification.featureMgr.maxContext))
-#            self.ilastik.project.dataMgr.Classification.featureMgr.computeMemoryRequirement(featureSelectionList)           
-#            self.accept() 
-#        else:
-#            QErrorMessage.qtHandler().showMessage("Not enough Memory, please select fewer features !")
-#            self.on_cancelClicked()
-        self.accept()
-    
-    def on_cancelClicked(self):
-        self.reject()
-        
-        
+
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
@@ -151,43 +85,18 @@ if __name__ == "__main__":
     
     app = QApplication(sys.argv)
     
-#    app.setStyle("windows")
-#    app.setStyle("motif")
-#    app.setStyle("cde")
-#    app.setStyle("plastique")
-#    app.setStyle("macintosh")
-#    app.setStyle("cleanlooks")
+    #app.setStyle("windows")
+    #app.setStyle("motif")
+    #app.setStyle("cde")
+    #app.setStyle("plastique")
+    #app.setStyle("macintosh")
+    #app.setStyle("cleanlooks")
     
-    ex1 = FeatureDlg()
-    ex1.createFeatureTable({"Color": [FeatureEntry("Banana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
-    ex1.setWindowTitle("ex1")
-    ex1.setImageToPreView((numpy.random.rand(200,200)*256).astype(numpy.uint8))
-    ex1.setIconsToTableWidget("icons/CheckboxFull.png", "icons/CheckboxPartially.png", "icons/CheckboxEmpty.png")
-#    print "table ", ex1.featureTableWidget.sizeHint()
-#    print "horiHeader", ex1.featureTableWidget.horizontalHeader().sizeHint()
-#    print "verticalHeader", ex1.featureTableWidget.verticalHeader().sizeHint().height()
-#    print "HHeader columnWidth ", ex1.featureTableWidget.columnWidth(6)
-#    print "tableHHeader ", ex1.featureTableWidget.horizontalHeaderItem(1).sizeHint()
-#    print "tableAndViewLayout ", ex1.tableAndViewLayout.sizeHint()
-#    print "tableAndViewGroupBox ", ex1.tableAndViewGroupBox.size()
-#    print "layout ", ex1.layout.sizeHint()
+    ex = FeatureDlg()
+    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])], [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    ex.setWindowTitle("FeatureTest")
+    ex.setImageToPreView(None)
+    ex.exec_()
     
-    ex1.show()
-    ex1.raise_()
+    app.exec_()
     
-    ex2 = FeatureDlg()
-    ex2.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
-    ex2.setWindowTitle("ex2")
-    ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
-    ex2.show()
-    ex2.raise_()
-    
-    
-    def test():
-        selectedFeatures = ex1.featureTableWidget.createSelectedFeaturesBoolMatrix()
-        ex2.featureTableWidget.setSelectedFeatureBoolMatrix(selectedFeatures)
-            
-    ex1.accepted.connect(test)
-    
-    
-    app.exec_()       
