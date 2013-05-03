@@ -935,9 +935,16 @@ class Slot(object):
                 elif isinstance(value, vigra.VigraArray) and value.axistags != self._value.axistags:
                     changed = True
                 else:
-                    same = ( value == self._value )
-                    if isinstance(same, numpy.ndarray):
-                        same = same.all()
+                    same = (value is self._value)
+                    if not same:
+                        try:
+                            same = ( value == self._value )
+                        except ValueError:
+                            # Some values can't be compared with __eq__,
+                            # in which case we assume the values are different
+                            same = False
+                        if isinstance(same, numpy.ndarray):
+                            same = same.all()
                     changed = not same
             
             if changed:
