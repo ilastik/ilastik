@@ -930,10 +930,9 @@ class Slot(object):
             #  can occur if you supplied an equivalent value that 'is not' the original.
             # For example: x=numpy.uint8(3); y=numpy.int64(3); assert x == y;  assert x is not y
             if check_changed:
-                if type(value) != type(self._value):
-                    changed = True
-                elif isinstance(value, vigra.VigraArray) and value.axistags != self._value.axistags:
-                    changed = True
+                if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
+                    if type(value) != type(self._value) or value.axistags != self._value.axistags:
+                        changed = True
                 else:
                     same = (value is self._value)
                     if not same:
