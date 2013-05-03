@@ -77,6 +77,8 @@ def launchShell(workflowClass=None, *testFuncs, **kwargs):
 
     # Start the shell GUI.
     shell.show()
+    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        shell.showMaximized()
 
     # Hide the splash screen
     splashScreen.finish(shell)
