@@ -220,10 +220,15 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # We assume that there are three labels to start with (see previous test)
             assert opPix.MaxLabelValue.value == 3, "Max label value was {}".format( opPix.MaxLabelValue.value )
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
             gui.currentGui()._labelControlUi.labelListModel.select(1)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
+
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
