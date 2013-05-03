@@ -100,6 +100,7 @@ class Slot(object):
         self.name = name
         self._optional = optional
         self.operator = operator
+        self._real_operator = None # Memoized in getRealOperator()
 
         # in the case of an InputSlot this is the slot to which it is
         # connected
@@ -1085,10 +1086,16 @@ class Slot(object):
         finds the actual operator this slot belongs to.
 
         """
+        if self._real_operator is not None:
+            # use memoized
+            return self._real_operator
+        
         if isinstance(self.operator, Slot):
-            return self.operator.getRealOperator()
+            self._real_operator = self.operator.getRealOperator()
         else:
-            return self.operator
+            self._real_operator = self.operator
+
+        return self._real_operator
 
     #####################
     #  Private  Methods #
