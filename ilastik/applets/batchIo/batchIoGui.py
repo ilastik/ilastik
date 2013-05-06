@@ -92,7 +92,7 @@ class BatchIoGui(QWidget):
                 
                 # Update the table row data when this slot has new data
                 # We can't bind in the row here because the row may change in the meantime.
-                multislot[index].notifyDirty( bind( self.updateTableForSlot ) )
+                multislot[index].notifyReady( bind( self.updateTableForSlot ) )
                 if multislot[index].ready():
                     self.updateTableForSlot( multislot[index] )
     
@@ -404,7 +404,9 @@ class BatchIoGui(QWidget):
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        self.viewerStack.setCurrentWidget( self.layerViewerGuis[imageSlot] )
+        layerViewer = self.layerViewerGuis[imageSlot]
+        self.viewerStack.setCurrentWidget( layerViewer )
+        self._viewerControlWidgetStack.setCurrentWidget( layerViewer.viewerControlWidget() )
 
 
     def createLayerViewer(self, opLane):
