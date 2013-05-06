@@ -43,6 +43,10 @@ class TestOpBlockwiseObjectClassification(object):
 
     def testSmallerBlocks(self):
         # this block and halo size combination should be large enough for our cubes
+        # Note: To produce results that are identical to the non-blockwise classification,
+        #       the halo must be large enough to accommodate the 'margin' setting (see setupSources()),
+        #       or the 'margin' must be small enough that it makes no difference anyway 
+        #       (e.g. in our test data, no more than 10 pixels)
         self.op.BlockShape3dDict.setValue( {'x' : 42, 'y' : 42, 'z' : 42} )
         self.op.HaloPadding3dDict.setValue( {'x' : 35, 'y' : 35, 'z' : 30} )
         
@@ -55,6 +59,10 @@ class TestOpBlockwiseObjectClassification(object):
             
     def testTinyBlocks(self):
         # 5x5x5 cubes should fit into a 10x10x10 halo
+        # Note: To produce results that are identical to the non-blockwise classification,
+        #       the halo must be large enough to accommodate the 'margin' setting (see setupSources()),
+        #       or the 'margin' must be small enough that it makes no difference anyway 
+        #       (e.g. in our test data, no more than 10 pixels)
         self.op.BlockShape3dDict.setValue( {'x' : 40, 'y' : 40, 'z' : 40} )
         self.op.HaloPadding3dDict.setValue( {'x' : 10, 'y' : 10, 'z' : 10} )
         
@@ -67,6 +75,8 @@ class TestOpBlockwiseObjectClassification(object):
 
     def testZeroHalo(self):
         # If we shrink the halo down to zero, then we get different predictions...
+        # This block shape/halo combination will slice through some of the big blocks, causing mis-classification.
+        # That's what we expect.
         self.op.BlockShape3dDict.setValue( {'x' : 42, 'y' : 42, 'z' : 42} )
         self.op.HaloPadding3dDict.setValue( {'x' : 0, 'y' : 0, 'z' : 0} )
         
@@ -82,7 +92,7 @@ class TestOpBlockwiseObjectClassification(object):
         Half of the image will be white, the other half gray.
         """
         
-        self.testingFeatures = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}}}
+        self.testingFeatures = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(10, 10, 1)}}}
         
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.
