@@ -38,9 +38,15 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
                 self.dataChanged.emit(firstIndex, lastIndex)
             
+            def handleNewDatasetInserted(slot, index):
+                if index == self._roleIndex:
+                    datasetMultiSlot[self._roleIndex].notifyDirty( bind(handleDatasetInfoChanged) )
+                    datasetMultiSlot[self._roleIndex].notifyDisconnect( bind(handleDatasetInfoChanged) )
+
             for laneIndex, datasetMultiSlot in enumerate( self._op.DatasetGroup ):
-                datasetMultiSlot[self._roleIndex].notifyDirty( bind(handleDatasetInfoChanged) )
-                datasetMultiSlot[self._roleIndex].notifyDisconnect( bind(handleDatasetInfoChanged) )
+                datasetMultiSlot.notifyInserted( bind(handleNewDatasetInserted) )
+                if self._roleIndex < len(datasetMultiSlot):
+                    handleNewDatasetInserted(datasetMultiSlot, self._roleIndex)
 
         self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
 
