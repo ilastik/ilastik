@@ -177,7 +177,7 @@ class OpDataSelectionGroup( Operator ):
         self._opDatasets = None
         self._roles = []
         self._force5d = force5d
-    
+        
     def setupOutputs(self):
         # Create internal operators
         if self.DatasetRoles.value == self._roles:
@@ -213,6 +213,8 @@ class OpDataSelectionGroup( Operator ):
         pass
 
 class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
+    # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience 
+    #       to save clients the trouble of instantiating/using OpTransposeSlots.
     def __init__(self, force5d=False, *args, **kwargs):
         kwargs.update( { 'operator_kwargs' : {'force5d' : force5d},
                          'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
