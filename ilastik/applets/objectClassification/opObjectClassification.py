@@ -209,7 +209,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot==self.SegmentationImages and len(self.LabelInputs)>0:
-
+            
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
 
@@ -981,7 +981,7 @@ class OpBadObjectsToWarningMessage(Operator):
 
     def _formatFeatures(self, f):
         try:
-            a = self._itemSep.join(map(str, f))
+            a = self._itemSep.join(map(str, sorted(f)))
         except TypeError:
             raise TypeError("Expected bad features to be a set, got {}".format(type(f)))
         if len(a)>0:

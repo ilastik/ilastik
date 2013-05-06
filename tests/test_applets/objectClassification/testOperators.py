@@ -31,6 +31,15 @@ def segImage():
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
 
+def emptyImage():
+    '''
+    an empty 5D image 
+    '''
+    img = np.zeros((2, 50, 50, 50, 0), dtype=np.int)
+    img = img.view(vigra.VigraArray)
+    img.axistags = vigra.defaultAxistags('txyzc')    
+    return img
+
 
 class TestOpRelabelSegmentation(unittest.TestCase):
     def setUp(self):
@@ -281,7 +290,6 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.assertTrue('text' in messagedict.keys())
         
 
-
 class TestFullOperator(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
@@ -326,6 +334,14 @@ class TestFullOperator(unittest.TestCase):
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
         probs = self.classOp.PredictionImages[0][:].wait()
+        
+    def test_unfavorable_conditions(self):
+        #TODO write test with not so nice input
+        pass
+        
+        
+        
+        
  
 
 if __name__ == '__main__':
