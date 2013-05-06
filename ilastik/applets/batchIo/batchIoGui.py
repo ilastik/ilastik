@@ -56,7 +56,10 @@ class BatchIoGui(QWidget):
         pass
 
     def stopAndCleanUp(self):
-        pass
+        for editor in self.layerViewerGuis.values():
+            self.viewerStack.removeWidget( editor )
+            editor.stopAndCleanUp()
+        self.layerViewerGuis.clear()
 
     def imageLaneAdded(self, laneIndex):
         pass
