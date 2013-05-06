@@ -1,6 +1,6 @@
 #Python
+import time
 import numpy, h5py
-import copy
 
 #carving
 from cylemon.segmentation import MSTSegmentor
@@ -13,19 +13,20 @@ from lazyflow.rtype import List
 #ilastik
 from ilastik.applets.labeling import OpLabelingSingleLane
 
+from cylemon.segmentation import MSTSegmentor
 
 class OpCarving(Operator):
     name = "Carving"
     category = "interactive segmentation"
 
     # I n p u t s #
-
-    #filename of the pre-processed carving graph file
-    CarvingGraphFile = InputSlot()
-
+    
+    #MST of preprocessed Graph
+    MST = InputSlot()
+    
     #raw data on which carving works
     RawData      = InputSlot()
-
+    
     #write the seeds that the users draw into this slot
     WriteSeeds   = InputSlot()
 
@@ -73,19 +74,17 @@ class OpCarving(Operator):
     #Pmap Overlay
     PmapOverlay = OutputSlot()
 
-    def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
+    def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
-   
         blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
         self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
-        
         self.opLabeling.LabelInput.connect( self.RawData )
         self.opLabeling.InputImage.connect( self.RawData )
         self.opLabeling.LabelDelete.setValue(-1)
+        self.opLabeling.LabelsAllowedFlag.setValue( True )
         
-        print "[Carving id=%d] CONSTRUCTOR" % id(self) 
-        self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
         self._hintOverlayFile = hintOverlayFile
+        self._mst = None
 
         #supervoxels of finished and saved objects
         self._done_lut = None
@@ -99,8 +98,7 @@ class OpCarving(Operator):
                 print "Could not open hint overlay '%s'" % hintOverlayFile
                 raise e
             self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
-            
-        print "xxxxx ", pmapOverlayFile
+        
         if pmapOverlayFile is not None:
             try:
                 f = h5py.File(pmapOverlayFile,"r")
@@ -143,7 +141,7 @@ class OpCarving(Operator):
             assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
             self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         print ""
-
+    
     def dataIsStorable(self):
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
@@ -152,21 +150,45 @@ class OpCarving(Operator):
             return False
         else:
             return True
+        
+    def _checkMeta(self, slot):
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(ax) != 5:
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if sh[0] != 1:
+            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
+        if sh[4] != 1:
+            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
+        self._checkMeta(self.RawData)
+        
         self.Segmentation.meta.assignFrom(self.RawData.meta)
-        self.Supervoxels.meta.assignFrom(self.RawData.meta)
-        self.DoneObjects.meta.assignFrom(self.RawData.meta)
-        self.DoneSegmentation.meta.assignFrom(self.RawData.meta)
+        self.Segmentation.meta.dtype = numpy.int32
+        
+        self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
+        self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
+        self.DoneSegmentation.meta.assignFrom(self.Segmentation.meta)
+
         self.HintOverlay.meta.assignFrom(self.RawData.meta)
         self.PmapOverlay.meta.assignFrom(self.RawData.meta)
+
         self.Uncertainty.meta.assignFrom(self.RawData.meta)
+        self.Uncertainty.meta.dtype = numpy.uint8
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
        
-        objects = self._mst.object_names.keys()
-        self.AllObjectNames.meta.shape = len(objects)
+        if self._mst is not None:
+            objects = self._mst.object_names.keys()
+            self.AllObjectNames.meta.shape = len(objects)
+        else: 
+            self.AllObjectNames.meta.shape = 0
+        
         self.AllObjectNames.meta.dtype = object
 
     def hasCurrentObject(self):
@@ -351,7 +373,7 @@ class OpCarving(Operator):
         self._dirtyObjects.add(name)
         
         objects = self._mst.object_names.keys()
-        print "save: len = ", len(object)
+        print "save: len = ", len(objects)
         self.AllObjectNames.meta.shape = len(objects)
         
         return True
@@ -462,9 +484,22 @@ class OpCarving(Operator):
         
         self._dirtyObjects.add(name)
 
+
+    def getMaxUncertaintyPos(self, label):
+        # FIXME: currently working on
+        uncertainties = self._mst.uncertainty.lut
+        segmentation = self._mst.segmentation.lut
+        uncertainty_fg = numpy.where(segmentation == label, uncertainties, 0)
+        index_max_uncert = numpy.argmax(uncertainty_fg, axis = 0)
+        pos = self._mst.regionCenter[index_max_uncert, :]
+
+        return pos
+
     def execute(self, slot, subindex, roi, result):
-        if self._mst is None:
-            return
+        start = time.time()
+        
+        self._mst = self.MST.value
+        
         if slot == self.AllObjectNames:
             ret = self._mst.object_names.keys()
             return ret
@@ -513,7 +548,6 @@ class OpCarving(Operator):
             temp.shape = (1,) + temp.shape + (1,)
         else:
             raise RuntimeError("unknown slot")
-
         return temp #avoid copying data
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -534,7 +568,6 @@ class OpCarving(Operator):
             raise RuntimeError("unknown slots")
 
     def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
         if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow or slot == self.UncertaintyType:
             if self._mst is None:
                 return
@@ -554,24 +587,11 @@ class OpCarving(Operator):
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
 
-            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1)).astype(numpy.float32)
+            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
             #assert numpy.sum(self._mst.seeds > 2) == 0, "seeds > 2 at %r" % numpy.where(self._mst.seeds > 2)
             self._mst.run(unaries, **params)
 
             self.Segmentation.setDirty(slice(None))
             self.HasSegmentation.setValue(True)
-
-        elif slot == self.CarvingGraphFile:
-            if self._mst is not None:
-                objects = self._mst.object_names.keys()
-                self.AllObjectNames.meta.shape = len(objects)
-                #if the carving graph file is not valid, all outputs must be invalid
-                for output in self.outputs.values():
-                    if output is self.AllObjectNames:
-                        continue
-                    output.setDirty(slice(0,None))
-
-            self.Segmentation.setDirty(slice(None))
-
-        else:
-            super(OpCarving, self).notifyDirty(slot, key)
+        elif slot == self.MST:
+            self._mst = self.MST.value

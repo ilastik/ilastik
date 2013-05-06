@@ -1,5 +1,4 @@
-from ilastik.shell.gui.startShellGui import startShellGui
-from pixelClassificationWorkflow import PixelClassificationWorkflow
+from functools import partial
 
 def debug_with_existing(shell):
     """
@@ -87,20 +86,51 @@ if __name__ == "__main__":
     import ilastik.utility.globals
     ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
 
-    from optparse import OptionParser
-    usage = "%prog [options] filename"
-    parser = OptionParser(usage)
-   
-    (options, args) = parser.parse_args()
+    import sys
 
-    if len(args) == 1:
+    #sys.argv.append( "/Users/bergs/MyProject.ilp" )
+    
+    ## EXAMPLE PLAYBACK TESTING ARGS
+    #sys.argv.append( "--playback_script=/Users/bergs/Documents/workspace/ilastik-meta/ilastik/tests/event_based/recording-20130450-2111.py" )
+    #sys.argv.append( "--playback_speed=3" )
+    #sys.argv.append( "--exit_on_failure" )
+
+    import argparse
+    parser = argparse.ArgumentParser( description="Ilastik Pixel Classification Workflow" )
+    parser.add_argument('--playback_script', help='An event recording to play back after the main window has opened.', required=False)
+    parser.add_argument('--playback_speed', help='Speed to play the playback script.', default=0.5, type=float)
+    parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
+    parser.add_argument('project', nargs='?', help='A project file to open on startup.')
+
+    parsed_args = parser.parse_args()
+
+    init_funcs = []
+
+    # Start the GUI
+    if parsed_args.project is not None:
         def loadProject(shell):
-            shell.openProjectFile(args[0])
-        startShellGui( PixelClassificationWorkflow, loadProject )
-    elif len(args) == 0:
-        startShellGui( PixelClassificationWorkflow )
-    else:
-        parser.error("incorrect number of arguments")
+            shell.openProjectFile(parsed_args.project)
+        init_funcs.append( loadProject )
+
+    if parsed_args.playback_script is not None:
+        from ilastik.utility.gui.eventRecorder import EventPlayer
+        def play_recording(shell):
+            player = EventPlayer(parsed_args.playback_speed)
+            player.play_script(parsed_args.playback_script)
+        init_funcs.append( partial(play_recording) )
+
+    if parsed_args.exit_on_failure:
+        old_excepthook = sys.excepthook
+        def print_exc_and_exit(*args):
+            old_excepthook(*args)
+            sys.stderr.write("Exiting early due to an unhandled exception.  See error output above.\n")
+            from PyQt4.QtGui import QApplication
+            QApplication.exit(1)
+        sys.excepthook = print_exc_and_exit
+
+    from ilastik.shell.gui.startShellGui import startShellGui
+    from pixelClassificationWorkflow import PixelClassificationWorkflow
+    startShellGui( PixelClassificationWorkflow, *init_funcs )
 
     # Start the GUI with a debug project    
 

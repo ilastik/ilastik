@@ -67,8 +67,8 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         info = DatasetInfo()
         info.filePath = cls.SAMPLE_DATA
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
-        opDataSelection.Dataset.resize(1)
-        opDataSelection.Dataset[0].setValue(info)
+        opDataSelection.DatasetGroup.resize(1)
+        opDataSelection.DatasetGroup[0][0].setValue(info)
         
         
         # Set some features

@@ -11,9 +11,13 @@ class LabelingApplet( StandardApplet ):
         # Provide a custom top-level operator before we init the base class.
         if blockDims is None:
             blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
-        self.__topLevelOperator = OpLabelingTopLevel(parent=workflow, blockDims=blockDims)
+        
+        self.__topLevelOperator = None
+        if self.topLevelOperator is None:
+            self.__topLevelOperator = OpLabelingTopLevel(parent=workflow, blockDims=blockDims)
+            self._serializableItems = [ LabelingSerializer( self.__topLevelOperator, projectFileGroupName ) ]
+
         super(LabelingApplet, self).__init__( "Labeling" )
-        self._serializableItems = [ LabelingSerializer( self.__topLevelOperator, projectFileGroupName ) ]
         self._gui = None
             
     @property

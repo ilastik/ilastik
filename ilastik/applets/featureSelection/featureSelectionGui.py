@@ -24,6 +24,7 @@ from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
+from volumina.utility import PreferencesManager
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -34,7 +35,6 @@ class FeatureSelectionGui(LayerViewerGui):
     
     # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
-    DefaultColorTable = None
 
     # Map feature groups to lists of feature IDs
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
@@ -230,8 +230,18 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         self.initFeatureOrder()
 
-        self.featureDlg = FeatureDlg()
+        self.featureDlg = FeatureDlg(parent = self)
         self.featureDlg.setWindowTitle("Features")
+        try:
+            size = PreferencesManager().get("featureSelection","dialog size")
+            self.featureDlg.resize(*size)
+        except TypeError:pass
+        
+        def saveSize():
+            size = self.featureDlg.size()
+            s = (size.width(),size.height())
+            PreferencesManager().set("featureSelection","dialog size",s)
+        self.featureDlg.accepted.connect(saveSize)
         
         # Map from groups of feature IDs to groups of feature NAMEs
         groupedNames = []
@@ -253,7 +263,11 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
     def onUsePrecomputedFeaturesButtonClicked(self):
-        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.')
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+
+        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
         
         #sanity checks on the given file
         if not filename:

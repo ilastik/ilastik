@@ -1,36 +1,7 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from ilastik import __version__
 
-packages=['ilastik',
-          'ilastik.applets',
-          'ilastik.applets.base',
-          'ilastik.applets.batchIo',
-          'ilastik.applets.carving',
-          'ilastik.applets.dataSelection',          
-          'ilastik.applets.divisionFeatureExtraction',
-          'ilastik.applets.featureSelection',
-          'ilastik.applets.labeling',          
-          'ilastik.applets.layerViewer',
-          'ilastik.applets.objectClassification',
-          'ilastik.applets.objectExtraction',
-          'ilastik.applets.opticalTranslation',
-          'ilastik.applets.pixelClassification',
-          'ilastik.applets.projectMetadata',
-          'ilastik.applets.stopWatch',
-          'ilastik.applets.thresholdMasking',
-          'ilastik.applets.tracking',
-          'ilastik.applets.tracking.base',
-          'ilastik.applets.tracking.chaingraph',
-          'ilastik.applets.tracking.conservation',
-          'ilastik.applets.tracking.fastApproximate',
-          'ilastik.applets.vigraWatershedViewer',
-          'ilastik.shell',
-          'ilastik.shell.gui',
-          'ilastik.shell.headless',
-          'ilastik.ilastik_logging',
-          'ilastik.utility',
-          'ilastik.utility.gui',
-          'ilastik.widgets']
+packages=find_packages(exclude=["tests", "tests.*"])
 
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf'],
@@ -56,7 +27,15 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
           'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
           'ilastik.ilastik_logging': ['logging_config.json'],
-          'ilastik.widgets': ['*.ui']
+          'ilastik.widgets': ['*.ui'],
+          'ilastik.plugins': ['*.yapsy-plugin'],
+              }
+package_data={'ilastik': ['ilastik-splash.png',
+                          'ilastik-splash.xcf'],
+              'ilastik.applets.labeling': ['*.ui', 'icons/*.png', 'icons/*.jpg'],
+              'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
+              'ilastik.ilastik_logging': ['logging_config.json'],
+              '': ['*.ui']
               }
 
 setup(name='ilastik',

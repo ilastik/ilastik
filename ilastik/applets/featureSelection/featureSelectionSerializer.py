@@ -22,7 +22,9 @@ class FeatureSelectionSerializer(AppletSerializer):
         self._dirty = False
 
         def handleDirty():
-            self._dirty = True
+            if not self.ignoreDirty:
+                self._dirty = True
+
         self.topLevelOperator.Scales.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.FeatureIds.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
@@ -62,8 +64,8 @@ class FeatureSelectionSerializer(AppletSerializer):
                 scales = topGroup['Scales'].value
                 featureIds = topGroup['FeatureIds'].value
                 
-                scales = list( map(lambda x: float(x), scales) )
-                featureIds = list( map(lambda s: str(s), featureIds) )
+                scales = list( map(float, scales) )
+                featureIds = list( map(str, featureIds) )
             except KeyError:
                 pass
             else:

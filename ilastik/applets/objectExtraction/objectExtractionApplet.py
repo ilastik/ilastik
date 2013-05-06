@@ -1,24 +1,31 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
-from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
 
-class ObjectExtractionApplet( StandardApplet ):
-    def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction" ):
-        super(ObjectExtractionApplet, self).__init__( name=name, workflow=workflow )
+class ObjectExtractionApplet(StandardApplet):
+    def __init__(self, name="Object Extraction", workflow=None,
+                 projectFileGroupName="ObjectExtraction",
+                 interactive=True):
+        super(ObjectExtractionApplet, self).__init__(name=name, workflow=workflow)
         self._serializableItems = [ ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._interactive = interactive
 
     @property
-    def singleLaneOperatorClass( self ):
+    def singleLaneOperatorClass(self):
         return OpObjectExtraction
 
     @property
-    def broadcastingSlots( self ):
-        return []
+    def broadcastingSlots(self):
+        return ['Features']
 
     @property
-    def singleLaneGuiClass( self ):
-        return ObjectExtractionGui
+    def singleLaneGuiClass(self):
+        from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
+        from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGuiNonInteractive
+        if self._interactive:
+            return ObjectExtractionGui
+        else:
+            return ObjectExtractionGuiNonInteractive
 
     @property
     def dataSerializers(self):

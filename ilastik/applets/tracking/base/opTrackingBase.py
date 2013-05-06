@@ -5,6 +5,7 @@ from lazyflow.stype import Opaque
 import numpy as np
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 
 class OpTrackingBase(Operator):
@@ -13,31 +14,32 @@ class OpTrackingBase(Operator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
-#    RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
     RawImage = InputSlot()
+    Parameters = InputSlot( value={} ) 
 
-    Output = OutputSlot()
+    Output = OutputSlot()    
     
     def __init__(self, parent=None, graph=None):
-        super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
-        self.label2color = []
-        self.last_timerange = ()
-        self.last_x_range = ()
-        self.last_y_range = ()
-        self.last_z_range = ()        
+        super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
+        self.label2color = []  
     
     def setupOutputs(self):        
-        self.Output.meta.assignFrom(self.LabelImage.meta)
+        self.Output.meta.assignFrom(self.LabelImage.meta)        
     
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
             result = self.LabelImage.get(roi).wait()
+            if not self.Parameters.ready():
+                raise Exception("Parameter slot is not ready")        
+            parameters = self.Parameters.value
             
-            t = roi.start[0]
-            if (self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]):
-                result[0, ..., 0] = relabel(result[0, ..., 0], self.label2color[t])
-            else:
-                result[...] = 0
+            t_start = roi.start[0]
+            t_end = roi.stop[0]
+            for t in range(t_start, t_end):
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):                
+                    result[t-t_start, ..., 0] = relabel(result[t-t_start, ..., 0], self.label2color[t])
+                else:
+                    result[t-t_start,...] = 0
             return result          
         
     def propagateDirty(self, inputSlot, subindex, roi):     
@@ -53,7 +55,7 @@ class OpTrackingBase(Operator):
         maxId = 1 #  misdetections have id 1
 
         # handle start time offsets
-        for i in range(time_range[0]):
+        for i in range(time_range[0]):            
             label2color.append({})
             mergers.append({})
 
@@ -73,9 +75,8 @@ class OpTrackingBase(Operator):
                     div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
                 if event.type == pgmlink.EventType.Move:
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-                if( hasattr(pgmlink.EventType, "Merger") ):
-                    if event.type == pgmlink.EventType.Merger:
-                        merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+                if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
+                    merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
                 if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:
                     multi.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))                              
 
@@ -137,15 +138,10 @@ class OpTrackingBase(Operator):
                 label2color[int(t)][l] = 0                
 
         self.label2color = label2color
-        self.mergers = mergers
-        self.last_timerange = time_range
-        self.last_x_range = x_range
-        self.last_y_range = y_range
-        self.last_z_range = z_range
+        self.mergers = mergers        
         
-        m = self.LabelImage.meta
-        roi = SubRegion(self.Output, start=5*(0,), stop=m.shape)
-        self.Output.setDirty(roi)
+        self.Output._value = None
+        self.Output.setDirty(slice(None))
         
 
     def _generate_traxelstore(self,
@@ -164,6 +160,18 @@ class OpTrackingBase(Operator):
                                with_opt_correction=False,
                                with_coordinate_list=False,
                                with_classifier_prior=False):
+                
+        if not self.Parameters.ready():
+            raise Exception("Parameter slot is not ready")
+        
+        parameters = self.Parameters.value
+        parameters['scales'] = [x_scale,y_scale,z_scale] 
+        parameters['time_range'] = [min(time_range),max(time_range)]
+        parameters['x_range'] = x_range
+        parameters['y_range'] = y_range
+        parameters['z_range'] = z_range
+        parameters['size_range'] = size_range
+        self.Parameters.setValue(parameters)
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -187,7 +195,7 @@ class OpTrackingBase(Operator):
         total_count = 0
         empty_frame = False
         for t in feats.keys():
-            rc = feats[t][0]['RegionCenter']
+            rc = feats[t][default_features_key]['RegionCenter']
             if rc.size:
                 rc = rc[1:, ...]
                 
@@ -199,7 +207,7 @@ class OpTrackingBase(Operator):
                 if rc_corr.size:
                     rc_corr = rc_corr[1:,...]
 
-            ct = feats[t][0]['Count']
+            ct = feats[t][default_features_key]['Count']
             if ct.size:
                 ct = ct[1:, ...]
 

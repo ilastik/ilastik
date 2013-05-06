@@ -62,14 +62,12 @@ class LabelListView(QStackedWidget):
 
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == ColumnID.Color:
-            self._colorDialog.setBrushColor(self.model()[modelIndex.row()].brushColor())
-            self._colorDialog.setPmapColor (self.model()[modelIndex.row()].pmapColor())
+            self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
+            self._colorDialog.setPmapColor (self._table.model()[modelIndex.row()].pmapColor())
             self._colorDialog.exec_()
-
-            print "brush color = {}".format(self._colorDialog.brushColor().name())
-            print "pmap color  = {}".format(self._colorDialog.pmapColor().name())
-
-            self.model().setData(modelIndex, (self._colorDialog.brushColor(),
+            #print "brush color = {}".format(self._colorDialog.brushColor().name())
+            #print "pmap color  = {}".format(self._colorDialog.pmapColor().name())
+            self._table.model().setData(modelIndex, (self._colorDialog.brushColor(),
                                               self._colorDialog.pmapColor ()))
 
     def rowMovedTest(self, logicalIndex, oldVisualIndex, newVisualIndex):

@@ -6,12 +6,15 @@ from carvingSerializer import CarvingSerializer
 from carvingGui import CarvingGui
 
 class CarvingApplet(LabelingApplet):
-
-    def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None, pmapOverlayFile=None):
+    
+    workflowName = "Carving"
+    workflowDescription = "this is obviously self-explanatory"
+    
+    def __init__(self, workflow, projectFileGroupName,  hintOverlayFile=None, pmapOverlayFile=None):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
+        self._topLevelOperator = OpCarvingTopLevel( parent=workflow,  hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
 
@@ -20,14 +23,14 @@ class CarvingApplet(LabelingApplet):
     @property
     def dataSerializers(self):
         return [ CarvingSerializer(self._topLevelOperator, "carving") ]
-
+    
     @property
     def topLevelOperator(self):
         """
         Override from base class.
         """
         return self._topLevelOperator
-
+    
     def createSingleLaneGui(self, laneIndex):
         """
         Override from base class.

@@ -6,8 +6,8 @@ class LabelingSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialBlockSlot(operator.LabelInputs,
-                                 operator.LabelImages,
+        slots = [SerialBlockSlot(operator.LabelImages,
+                                 operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,
                                  name='LabelSets',
                                  subname='labels{:03d}',)

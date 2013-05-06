@@ -44,6 +44,7 @@ class ilastikIcons(object):
     Clear = iconPath + 'actions/edit-clear.png'
     Play = iconPath + "actions/media-playback-start.png"
     Pause = iconPath + "actions/media-playback-pause.png"
+    Stop = iconPath + "actions/media-playback-stop.png"
     View = iconPath + 'emotes/face-glasses.png'
     Segment = iconPath + "actions/my-segment.png" 
     Undo = iconPath + 'actions/edit-undo.png'
@@ -53,6 +54,8 @@ class ilastikIcons(object):
     Preferences = iconPath + 'categories/preferences-system.png'
     New = iconPath + "actions/document-new.png" 
     Open = iconPath + "actions/document-open.png" 
+    OpenFolder = iconPath + "status/folder-open.png" 
+    GoNext = iconPath + "actions/go-next.png" 
     Save = iconPath + "actions/document-save.png" 
     SaveAs = iconPath + "actions/document-save-as.png"
     Edit = iconPath + "actions/document-properties.png" 

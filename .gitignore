@@ -2,6 +2,7 @@
 build
 tests/*.h5
 *.pyc
+*.goutputstream
 *.pyo
 *.kdev4
 .DS_Store
@@ -21,3 +22,4 @@ ilastik.egg-info/
 .settings
 
 test.svg
+geany_run_script.bat

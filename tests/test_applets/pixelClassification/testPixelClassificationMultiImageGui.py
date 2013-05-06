@@ -66,7 +66,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             shell = self.shell
             
             # New project
-            shell.createAndLoadNewProject(projFilePath)
+            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
 
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
@@ -75,8 +75,8 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 # Add a file
                 info = DatasetInfo()
                 info.filePath = dataFile
-                opDataSelection.Dataset.resize(i+1)
-                opDataSelection.Dataset[i].setValue(info)
+                opDataSelection.DatasetGroup.resize(i+1)
+                opDataSelection.DatasetGroup[i][0].setValue(info)
             
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
@@ -138,7 +138,8 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             self.shell.setSelectedAppletDrawer(3)
             
             # Turn off the huds and so we can capture the raw image
-            gui.currentGui().menuGui.actionToggleAllHuds.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position  
@@ -148,7 +149,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0
             
             # Add label classes
@@ -211,13 +212,13 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             self.test_4_AddLabels()
 
             # Enable interactive mode            
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Disable iteractive mode.            
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 

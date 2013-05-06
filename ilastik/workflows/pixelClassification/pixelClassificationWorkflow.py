@@ -11,7 +11,11 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from lazyflow.graph import Graph, OperatorWrapper
 
 class PixelClassificationWorkflow(Workflow):
-
+    
+    workflowName = "Pixel Classification"
+    workflowDescription = "This is obviously self-explanoratory."
+    defaultAppletIndex = 1 # show DataSelection by default
+    
     @property
     def applets(self):
         return self._applets
@@ -29,6 +33,9 @@ class PixelClassificationWorkflow(Workflow):
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
 
@@ -74,6 +81,7 @@ class PixelClassificationWorkflow(Workflow):
         Connect the batch-mode top-level operators to the training workflow and to eachother.
         """
         # Access applet operators from the training workflow
+        opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.pcApplet.topLevelOperator
         
@@ -81,13 +89,15 @@ class PixelClassificationWorkflow(Workflow):
         opBatchInputs = self.batchInputApplet.topLevelOperator
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
+        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
+        
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
         ## Connect Operators ## 
         
-        # Provide dataset paths from data selection applet to the batch export applet via an attribute selector
+        # Provide dataset paths from data selection applet to the batch export applet
         opBatchResults.DatasetPath.connect( opBatchInputs.ImageName )
         
         # Connect (clone) the feature operator inputs from 

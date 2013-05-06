@@ -1,18 +1,20 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
+from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import os
 import numpy
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.operators import OpSubRegion
 
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.applets.labeling import LabelingGui
@@ -24,7 +26,21 @@ from volumina.api import \
 
 from volumina.interpreter import ClickInterpreter
 
-from ilastik.applets.objectExtraction import config
+def _listReplace(old, new):
+    if len(old) > len(new):
+        return new + old[len(new):]
+    else:
+        return new
+
+from ilastik.applets.objectExtraction.objectExtractionGui import FeatureSelectionDialog
+
+
+class FeatureSubSelectionDialog(FeatureSelectionDialog):
+    def __init__(self, featureDict, selectedFeatures=None, parent=None, ndim=3):
+        super(FeatureSubSelectionDialog, self).__init__(featureDict, selectedFeatures, parent, ndim)
+        self.ui.spinBox_X.setEnabled(False)
+        self.ui.spinBox_Y.setEnabled(False)
+        self.ui.spinBox_Z.setEnabled(False)
 
 
 class ObjectClassificationGui(LabelingGui):
@@ -72,15 +88,11 @@ class ObjectClassificationGui(LabelingGui):
         self.guiControlSignal = guiControlSignal
         self.shellRequestSignal = shellRequestSignal
 
-        self.interactiveModeActive = False
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        self.threadRouter = ThreadRouter(self)
+        op.Warnings.notifyDirty(self.handleWarnings)
 
-        self.labelingDrawerUi.checkInteractive.setEnabled(True)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(
-            self.toggleInteractive)
-        self.labelingDrawerUi.checkShowPredictions.setEnabled(True)
-        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
-            self.handleShowPredictionsClicked)
-
+        # unused
         self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
         self.labelingDrawerUi.savePredictionsButton.setVisible(False)
 
@@ -88,7 +100,128 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
 
 
-        self.op.NumLabels.notifyDirty(bind(self.handleLabelSelectionChange))
+        # button handlers
+        self._interactiveMode = False
+        self._showPredictions = False
+        self._labelMode = True
+
+        self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(
+            self.handleSubsetFeaturesClicked)
+        self.labelingDrawerUi.checkInteractive.toggled.connect(
+            self.handleInteractiveModeClicked)
+        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
+            self.handleShowPredictionsClicked)
+
+        # enable/disable buttons logic
+        self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
+        self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.checkEnableButtons()
+
+    @property
+    def labelMode(self):
+        return self._labelMode
+
+    @labelMode.setter
+    def labelMode(self, val):
+        self.labelingDrawerUi.labelListView.allowDelete = val
+        self.labelingDrawerUi.AddLabelButton.setEnabled(val)
+        self._labelMode = val
+
+    @property
+    def interactiveMode(self):
+        return self._interactiveMode
+
+    @interactiveMode.setter
+    def interactiveMode(self, val):
+        logger.debug("setting interactive mode to '%r'" % val)
+        self._interactiveMode = val
+        self.labelingDrawerUi.checkInteractive.setChecked(val)
+        if val:
+            self.showPredictions = True
+        self.labelMode = not val
+
+    @pyqtSlot()
+    def handleInteractiveModeClicked(self):
+        self.interactiveMode = self.labelingDrawerUi.checkInteractive.isChecked()
+
+    @property
+    def showPredictions(self):
+        return self._showPredictions
+
+    @showPredictions.setter
+    def showPredictions(self, val):
+        self._showPredictions = val
+        self.labelingDrawerUi.checkShowPredictions.setChecked(val)
+        for layer in self.layerstack:
+            if "Prediction" in layer.name:
+                layer.visible = val
+
+        if self.labelMode and not val:
+            self.labelMode = False
+            # And hide all segmentation layers
+            for layer in self.layerstack:
+                if "Segmentation" in layer.name:
+                    layer.visible = False
+
+    @pyqtSlot()
+    def handleShowPredictionsClicked(self):
+        self.showPredictions = self.labelingDrawerUi.checkShowPredictions.isChecked()
+
+    @pyqtSlot()
+    def handleSubsetFeaturesClicked(self):
+        mainOperator = self.topLevelOperatorView
+        computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
+        if mainOperator.SelectedFeatures.ready():
+            selectedFeatures = mainOperator.SelectedFeatures([]).wait()
+        else:
+            selectedFeatures = None
+
+        ndim = 3 # FIXME
+        dlg = FeatureSubSelectionDialog(computedFeatures,
+                                        selectedFeatures=selectedFeatures, ndim=ndim)
+        dlg.exec_()
+        if dlg.result() == QDialog.Accepted:
+            if len(dlg.selectedFeatures) == 0:
+                self.interactiveMode = False
+            mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
+
+    @pyqtSlot()
+    def checkEnableButtons(self):
+        feats_enabled = True
+        predict_enabled = True
+
+        if self.op.ComputedFeatureNames.ready():
+            featnames = self.op.ComputedFeatureNames([]).wait()
+            if len(featnames) == 0:
+                feats_enabled = False
+        else:
+            feats_enabled = False
+
+        if feats_enabled:
+            if self.op.SelectedFeatures.ready():
+                featnames = self.op.SelectedFeatures([]).wait()
+                if len(featnames) == 0:
+                    predict_enabled = False
+            else:
+                predict_enabled = False
+
+            if self.op.NumLabels.ready():
+                if self.op.NumLabels.value < 2:
+                    predict_enabled = False
+            else:
+                predict_enabled = False
+        else:
+            predict_enabled = False
+
+        if not predict_enabled:
+            self.interactiveMode = False
+            self.showPredictions = False
+
+        self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
+        self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
+        self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
+
 
     def initAppletDrawerUi(self):
         """
@@ -99,6 +232,72 @@ class ObjectClassificationGui(LabelingGui):
         # We don't pass self here because we keep the drawer ui in a
         # separate object.
         self.drawer = uic.loadUi(localDir+"/drawer.ui")
+
+    ### Function dealing with label name and color consistency
+    def _getNext(self, slot, parentFun, transform=None):
+        numLabels = self.labelListData.rowCount()
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
+        else:
+            return parentFun()
+
+    def _onLabelChanged(self, parentFun, mapf, slot):
+        parentFun()
+        new = map(mapf, self.labelListData)
+        old = slot.value
+        slot.setValue(_listReplace(old, new))
+
+    def getNextLabelName(self):
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(ObjectClassificationGui, self).getNextLabelName)
+
+    def getNextLabelColor(self):
+        return self._getNext(
+            self.topLevelOperatorView.LabelColors,
+            super(ObjectClassificationGui, self).getNextLabelColor,
+            lambda x: QColor(*x)
+        )
+
+    def getNextPmapColor(self):
+        return self._getNext(
+            self.topLevelOperatorView.PmapColors,
+            super(ObjectClassificationGui, self).getNextPmapColor,
+            lambda x: QColor(*x)
+        )
+
+    def onLabelNameChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onLabelNameChanged,
+                             lambda l: l.name,
+                             self.topLevelOperatorView.LabelNames)
+
+    def onLabelColorChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onLabelColorChanged,
+                             lambda l: (l.brushColor().red(),
+                                        l.brushColor().green(),
+                                        l.brushColor().blue()),
+                             self.topLevelOperatorView.LabelColors)
+
+
+    def onPmapColorChanged(self):
+        self._onLabelChanged(super(ObjectClassificationGui, self).onPmapColorChanged,
+                             lambda l: (l.pmapColor().red(),
+                                        l.pmapColor().green(),
+                                        l.pmapColor().blue()),
+                             self.topLevelOperatorView.PmapColors)
+
+    def _onLabelRemoved(self, parent, start, end):
+        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+        op = self.topLevelOperatorView
+        op.removeLabel(start)
+        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
+            value = slot.value
+            value.pop(start)
+            slot.setValue(value)
+
 
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
@@ -113,6 +312,9 @@ class ObjectClassificationGui(LabelingGui):
         if not labelOutput.ready():
             return (None, None)
         else:
+            self._colorTable16[15] = QColor(Qt.black).rgba() #for the objects with NaNs in features
+
+
             labelsrc = LazyflowSinkSource(labelOutput,
                                           labelInput)
             labellayer = ColortableLayer(labelsrc,
@@ -136,8 +338,6 @@ class ObjectClassificationGui(LabelingGui):
 
         # Base class provides the label layer.
         layers = super(ObjectClassificationGui, self).setupLayers()
-        #This is just for colors
-        labels = self.labelListData
 
         labelOutput = self._labelingSlots.labelOutput
         binarySlot = self.op.BinaryImages
@@ -151,12 +351,7 @@ class ObjectClassificationGui(LabelingGui):
             layer = ColortableLayer(self.objectssrc, ct)
             layer.name = "Objects"
             layer.opacity = 0.5
-            layers.append(layer)
-
-        if rawSlot.ready():
-            self.rawimagesrc = LazyflowSource(rawSlot)
-            layer = self.createStandardLayerFromSlot(rawSlot)
-            layer.name = "Raw data"
+            layer.visible = True
             layers.append(layer)
 
         if binarySlot.ready():
@@ -165,7 +360,33 @@ class ObjectClassificationGui(LabelingGui):
             self.binaryimagesrc = LazyflowSource(binarySlot)
             layer = ColortableLayer(self.binaryimagesrc, ct_binary)
             layer.name = "Binary Image"
+            layer.visible = False
             layers.append(layer)
+
+        #This is just for colors
+        labels = self.labelListData
+        for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
+            if probSlot.ready() and channel < len(labels):
+                ref_label = labels[channel]
+                probsrc = LazyflowSource(probSlot)
+                probLayer = AlphaModulatedLayer( probsrc,
+                                                 tintColor=ref_label.pmapColor(),
+                                                 range=(0.0, 1.0),
+                                                 normalize=(0.0, 1.0) )
+                probLayer.opacity = 0.25
+                probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+
+                def setLayerColor(c, predictLayer=probLayer):
+                    predictLayer.tintColor = c
+
+                def setLayerName(n, predictLayer=probLayer):
+                    newName = "Prediction for %s" % n
+                    predictLayer.name = newName
+
+                setLayerName(ref_label.name)
+                ref_label.pmapColorChanged.connect(setLayerColor)
+                ref_label.nameChanged.connect(setLayerName)
+                layers.insert(0, probLayer)
 
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
@@ -180,58 +401,27 @@ class ObjectClassificationGui(LabelingGui):
             # predict".
             layers.insert(0, self.predictlayer)
 
+        badObjectsSlot = self.op.BadObjectImages
+        if badObjectsSlot.ready():
+            ct_black = [0, QColor(Qt.black).rgba()]
+            self.badSrc = LazyflowSource(badObjectsSlot)
+            self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
+            self.badLayer.name = "Ambiguous objects"
+            self.badLayer.visible = False
+            layers.append(self.badLayer)
+
+        if rawSlot.ready():
+            self.rawimagesrc = LazyflowSource(rawSlot)
+            layer = self.createStandardLayerFromSlot(rawSlot)
+            layer.name = "Raw data"
+            layers.append(layer)
+
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
         # __init__(), but it does not take effect there.
-        self.selectLabel(0)
+        #self.selectLabel(0)
 
         return layers
-
-    @pyqtSlot()
-    def handleLabelSelectionChange(self):
-        enabled = False
-        if self.op.NumLabels.ready():
-            enabled = True
-            enabled &= self.op.NumLabels.value >= 2
-
-        self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
-        self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
-
-    def toggleInteractive(self, checked):
-        logger.debug("toggling interactive mode to '%r'" % checked)
-        self.op.FreezePredictions.setValue(not checked)
-
-        # Auto-set the "show predictions" state according to what the
-        # user just clicked.
-        if checked:
-            self.labelingDrawerUi.checkShowPredictions.setChecked(True)
-            self.handleShowPredictionsClicked()
-
-        # If we're changing modes, enable/disable our controls and
-        # other applets accordingly
-        if self.interactiveModeActive != checked:
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled(False)
-            else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                self.labelingDrawerUi.AddLabelButton.setEnabled(True)
-        self.interactiveModeActive = checked
-
-    @pyqtSlot()
-    def handleShowPredictionsClicked(self):
-        checked = self.labelingDrawerUi.checkShowPredictions.isChecked()
-        for layer in self.layerstack:
-            if "Prediction" in layer.name:
-                layer.visible = checked
-
-        # If we're being turned off, turn off live prediction mode, too.
-        if not checked and self.labelingDrawerUi.checkInteractive.isChecked():
-            self.labelingDrawerUi.checkInteractive.setChecked(False)
-            # And hide all segmentation layers
-            for layer in self.layerstack:
-                if "Segmentation" in layer.name:
-                    layer.visible = False
 
     @staticmethod
     def _getObject(slot, pos5d):
@@ -246,28 +436,15 @@ class ObjectClassificationGui(LabelingGui):
         """
         label = self.editor.brushingModel.drawnNumber
         if label == self.editor.brushingModel.erasingNumber:
-            label = 0        
+            label = 0
 
-        obj = self._getObject(layer.segmentationImageSlot, pos5d)
-        if obj == 0: # background; FIXME: do not hardcode
-            return
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 
-        t = pos5d[0]
-
-        labelslot = layer._datasources[0]._inputSlot
-        labelsdict = labelslot.value
-        labels = labelsdict[t]
-
-        nobjects = len(labels)
-        if obj >= nobjects:
-            newLabels = numpy.zeros((obj + 1),)
-            newLabels[:nobjects] = labels[:]
-            labels = newLabels
-        labels[obj] = label
-        labelsdict[t] = labels
-        labelslot.setValue(labelsdict)
-        labelslot.setDirty([(t, obj)])
-
+        operatorAxisOrder = self.topLevelOperatorView.SegmentationImagesOut.meta.getAxisKeys()
+        assert operatorAxisOrder == list('txyzc'), \
+            "Need to update onClick() if the operator no longer expects volumina axis order.  Operator wants: {}".format( operatorAxisOrder )
+        self.topLevelOperatorView.assignObjectLabel(imageIndex, pos5d, label)
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         layer = self.getLayer('Labels')
@@ -287,45 +464,97 @@ class ObjectClassificationGui(LabelingGui):
             else:
                 label = "none"
 
-            feats = self.op.ObjectFeatures([t]).wait()[t]
-            vector = []
-            names = []
-            for i, channel in enumerate(feats):
-                for featname in sorted(channel.keys()):
-                    value = channel[featname]
-#                    if not featname in config.selected_features:
-                    if not featname in self.op.selectedFeatures:
-                        continue
-                    ft = numpy.array(numpy.asarray(value.squeeze())[obj])
-                    if ft.size > 1:
-                        for ii, f in enumerate(ft):
-                            vector.append(f)
-                            names.append("{} {} {}".format(featname, ii, i))
-                    else:
-                        vector.append(ft)
-                        names.append("{} {}".format(featname, i))
-                        
-            vector = numpy.array(vector)
-
-            preds = self.op.Predictions([t]).wait()[t]
-            if len(preds) < obj:
+            if self.op.Predictions.ready():
+                preds = self.op.Predictions([t]).wait()[t]
+                if len(preds) >= obj:
+                    pred = int(preds[obj])
+            else:
                 pred = 'none'
-            else:
-                pred = int(preds[obj])
 
-            probs = self.op.Probabilities([t]).wait()[t]
-            if len(probs) < obj:
-                prob = 'none'
+
+            if self.op.Probabilities.ready():
+                probs = self.op.Probabilities([t]).wait()[t]
+                if len(probs) >= obj:
+                    prob = probs[obj]
             else:
-                prob = probs[obj]
+                prob = 'none'
 
             numpy.set_printoptions(precision=4)
 
             print "------------------------------------------------------------"
             print "object:         {}".format(obj)
             print "label:          {}".format(label)
-            print "feature values: {}".format(vector)
-            print "features names: {}".format(names)
             print "probabilities:  {}".format(prob)
             print "prediction:     {}".format(pred)
+
+            print 'features:'
+            feats = self.op.ObjectFeatures([t]).wait()[t]
+            for plugin in feats.keys():
+                if plugin == default_features_key:
+                    continue
+                print "Feature category: {}".format(plugin)
+                for featname in feats[plugin].keys():
+                    value = feats[plugin][featname]
+                    ft = numpy.asarray(value.squeeze())[obj]
+                    print "{}: {}".format(featname, ft)
             print "------------------------------------------------------------"
+
+    def setVisible(self, visible):
+        super(ObjectClassificationGui, self).setVisible(visible)
+
+        if visible:
+            temp = self.op.triggerTransferLabels(self.op.current_view_index())
+        else:
+            temp = None
+        if temp is not None:
+            new_labels, old_labels_lost, new_labels_lost = temp
+            labels_lost = dict(old_labels_lost.items() + new_labels_lost.items())
+            if sum(len(v) for v in labels_lost.itervalues()) > 0:
+                self.warnLost(labels_lost)
+
+    def warnLost(self, labels_lost):
+        box = QMessageBox(QMessageBox.Warning,
+                          'Warning',
+                          'Some of your labels could not be transferred',
+                          QMessageBox.NoButton,
+                          self)
+        messages = {
+            'full': "These labels were lost completely:",
+            'partial': "These labels were lost partially:",
+            'conflict': "These new labels conflicted:"
+        }
+        default_message = "These labels could not be transferred:"
+
+        _sep = "\t"
+        cases = []
+        for k, val in labels_lost.iteritems():
+            if len(val) > 0:
+                msg = messages.get(k, default_message)
+                axis = _sep.join(["X", "Y", "Z"])
+                coords = "\n".join([_sep.join(["{:<8.1f}".format(i) for i in item])
+                                    for item in val])
+                cases.append("\n".join([msg, axis, coords]))
+        box.setDetailedText("\n\n".join(cases))
+        box.show()
+
+
+    @threadRouted
+    def handleWarnings(self, *args, **kwargs):
+        # FIXME: dialog should not steal focus
+        warning = self.op.Warnings[:].wait()
+        try:
+            box = self.badObjectBox
+        except AttributeError:
+            box = QMessageBox(QMessageBox.Warning,
+                              warning['title'],
+                              warning['text'],
+                              QMessageBox.NoButton,
+                              self)
+            box.setWindowModality(Qt.NonModal)
+            box.move(self.geometry().width(), 0)
+        box.setWindowTitle(warning['title'])
+        box.setText(warning['text'])
+        box.setInformativeText(warning.get('info', ''))
+        box.setDetailedText(warning.get('details', ''))
+        box.show()
+        self.badObjectBox = box

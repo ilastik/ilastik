@@ -16,15 +16,19 @@ class LayerViewerWorkflow(Workflow):
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.viewerApplet = LayerViewerApplet(self)
 
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ["Raw Data", "Other Data"] )
+
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opLayerViewer = self.viewerApplet.topLevelOperator.getLane(laneIndex)
+        opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opLayerViewerView = self.viewerApplet.topLevelOperator.getLane(laneIndex)
 
-        # Connect top-level operators
-        opLayerViewer.RawInput.connect( opDataSelection.Image )
+        # Connect top-level operators                                                                                                                 
+        opLayerViewerView.RawInput.connect( opDataSelectionView.ImageGroup[0] )
+        opLayerViewerView.OtherInput.connect( opDataSelectionView.ImageGroup[1] )
 
     @property
     def applets(self):

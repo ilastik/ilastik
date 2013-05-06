@@ -90,7 +90,7 @@ class ProjectManager(object):
         projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
             projectVersion = hdf5File["ilastikVersion"].value
-
+        
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
             # Must use _importProject() for old project files.
@@ -102,7 +102,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None, headless=False):
+    def __init__(self, workflowClass, headless=False, workflow_kwargs=None):
         """
         Constructor.
         
@@ -112,6 +112,9 @@ class ProjectManager(object):
         :param readOnly: Set to True if the project file should NOT be modified.
         :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
+        if workflow_kwargs is None:
+            workflow_kwargs = {}
+
         # Init
         self.workflow = None
         self.currentProjectFile = None
@@ -120,19 +123,17 @@ class ProjectManager(object):
 
         # Instantiate the workflow.
         self._workflowClass = workflowClass
+        self._workflow_kwargs = workflow_kwargs
         self._headless = headless
-        self.workflow = workflowClass(headless=headless)
-
-        if importFromPath is None:
-            # Normal load        
-            self._loadProject(hdf5File, projectFilePath, readOnly)
-        else:
-            assert not readOnly, "Can't import into a read-only file."
-            self._importProject(importFromPath, hdf5File, projectFilePath)
-
-    def __del__(self):
+        
+        #the workflow class has to be specified at this point
+        assert workflowClass is not None
+        self.workflow = workflowClass(headless=headless, **workflow_kwargs)
+    
+    
+    def cleanUp(self):
         """
-        Destructor.  Closes the project file.
+        Should be called when the Projectmanager is canceled. Closes the project file.
         """
         try:
             self._closeCurrentProject()
@@ -180,6 +181,16 @@ class ProjectManager(object):
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     if item.isDirty():
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
+            
+            #save the current workflow as standard workflow
+            if "workflowName" in self.currentProjectFile:
+                del self.currentProjectFile["workflowName"]
+            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
+
+            if "workflow_kwargs" in self.currentProjectFile:
+                del self.currentProjectFile["workflow_kwargs"]
+            save_dict(self.currentProjectFile, 'workflow_kwargs', self._workflow_kwargs)
+
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()
@@ -239,10 +250,9 @@ class ProjectManager(object):
         2) touch Old.ilp
         3) copycontents New.ilp -> Old.ilp
         4) Save current applet state to current project (New.ilp)
-        
         Postconditions: - Original project state is saved to a new file with the original name.
-                        - Current project file is still open, but has a new name.
-                        - Current project file has been saved (it is in sync with the applet states)
+        - Current project file is still open, but has a new name.
+        - Current project file has been saved (it is in sync with the applet states)
         """
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
@@ -252,7 +262,11 @@ class ProjectManager(object):
 
         oldPath = self.currentProjectPath
         try:
+            self.currentProjectFile.close()
+            if os.path.isfile(newPath):
+                os.remove(newPath)
             os.rename( oldPath, newPath )
+            self.currentProjectFile = h5py.File(newPath)
         except OSError, err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
@@ -264,12 +278,16 @@ class ProjectManager(object):
 
         # The file has been renamed
         self.currentProjectPath = newPath
-
-        # Copy the contents of the current project file to a newly-created file (with the old name)        
-        with h5py.File(oldPath, 'w') as oldFile:
+        
+        # Copy the contents of the current project file to a newly-created file (with the old name)
+        with h5py.File(oldPath, 'a') as oldFile:
             for key in self.currentProjectFile.keys():
                 oldFile.copy(self.currentProjectFile[key], key)
-
+        
+        for aplt in self._applets:
+            for item in aplt.dataSerializers:
+                item.updateWorkingDirectory(newPath,oldPath)
+        
         # Save the current project state
         self.saveProject()
         
@@ -304,14 +322,20 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-        except Exception, e:
+                    item.ignoreDirty = True
+                                        
+                    if item.caresOfHeadless:
+                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+                    else:
+                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+
+                    item.ignoreDirty = False
+        except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()
             logger.error("Aborting Project Open Action")
             self._closeCurrentProject()
-
-            raise e
+            raise
         finally:
             for aplt in self._applets:
                 aplt.progressSignal.emit(100)
@@ -358,7 +382,7 @@ class ProjectManager(object):
         self._closeCurrentProject()
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(headless=self._headless)
+        self.workflow = self._workflowClass(headless=self._headless, **self._workflow_kwargs)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)
@@ -372,3 +396,26 @@ class ProjectManager(object):
             self.currentProjectFile = None
             self.currentProjectPath = None
             self.currentProjectIsReadOnly = False
+
+
+
+# utility functions for saving/loading workflow kwargs
+# FIXME: code is similar to SerialDictSlot
+
+def save_dict(group, name, d):
+    sg = group.create_group(name)
+    for key, v in d.iteritems():
+        if isinstance(v, dict):
+            save_dict(sg, key, v)
+        else:
+            sg.create_dataset(str(key), data=v)
+
+def load_dict(group, transform=lambda x: x):
+    result = {}
+    for key in group.keys():
+        if isinstance(group[key], h5py.Group):
+            value = load_dict(group[key])
+        else:
+            value = group[key][()]
+        result[transform(key)] = value
+    return result

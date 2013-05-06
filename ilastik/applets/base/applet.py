@@ -30,7 +30,7 @@ class Applet( object ):
         #: .. note:: To update the progress bar correctly, the shell expects that progress updates always 
         #:           begin with at least one zero update and end with at least one 100 update.
         #:           That is: 
-        #:           ``self.progressSignal(0)`` ... more updates ... ``self.progressSignal(100)``
+        #:           ``self.progressSignal.emit(0)`` ... more updates ... ``self.progressSignal.emit(100)``
         self.progressSignal = SimpleSignal()
         
         #: GUI control signal
@@ -78,6 +78,13 @@ class Applet( object ):
         # Do not override this property.
         # Used by the shell to ensure that Applet.__init__ was called by your subclass.
         return self._base_initialized
+
+class DatasetConstraintError(Exception):
+    def __init__(self, appletName, message ):
+        super( DatasetConstraintError, self ).__init__()
+        self.appletName = appletName
+        self.message = message
+        
 
 class ControlCommand(object):
     """

@@ -37,7 +37,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 
 from PyQt4 import QtCore, QtGui
 from shutil import rmtree
-from volumina.adaptors import Op5ifyer
+from lazyflow.operators.adaptors import Op5ifyer
 
 
 #*******************************************************************************
@@ -219,7 +219,7 @@ class TestOperatorChain():
 
         OpChain = OpStackChainLoader(self.g)
         OpChain.inputs["globstring"].setValue(self.testdir + '*.png')
-        result = OpChain.outputs["output"][:].allocate().wait()
+        result = OpChain.outputs["output"][:].wait()
         assert(result == self.block).all()
     
     def stackAndTestConfig(self,filetype = "png"):

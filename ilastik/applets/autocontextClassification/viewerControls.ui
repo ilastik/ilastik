@@ -123,85 +123,7 @@
        </layout>
       </item>
       <item>
-       <widget class="QGroupBox" name="groupBox_2">
-        <property name="title">
-         <string>Layer Visibility</string>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="margin">
-          <number>6</number>
-         </property>
-         <item>
-          <widget class="LayerWidget" name="layerWidget">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QToolButton" name="UpButton">
-             <property name="toolTip">
-              <string>move layer up</string>
-             </property>
-             <property name="text">
-              <string>Up</string>
-             </property>
-             <property name="icon">
-              <iconset>
-               <normaloff>../../shell/gui/icons/16x16/actions/go-up.png</normaloff>../../shell/gui/icons/16x16/actions/go-up.png</iconset>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QToolButton" name="DownButton">
-             <property name="toolTip">
-              <string>move layer down</string>
-             </property>
-             <property name="text">
-              <string>Down</string>
-             </property>
-             <property name="icon">
-              <iconset>
-               <normaloff>../../shell/gui/icons/16x16/actions/go-down.png</normaloff>../../shell/gui/icons/16x16/actions/go-down.png</iconset>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QToolButton" name="DeleteButton">
-             <property name="toolTip">
-              <string>delete layer</string>
-             </property>
-             <property name="text">
-              <string>Remove</string>
-             </property>
-             <property name="icon">
-              <iconset>
-               <normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</iconset>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
+       <widget class="ViewerControls" name="viewerControls" native="true"/>
       </item>
      </layout>
     </widget>
@@ -210,9 +132,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>LayerWidget</class>
-   <extends>QListView</extends>
-   <header>volumina.widgets.layerwidget</header>
+   <class>ViewerControls</class>
+   <extends>QWidget</extends>
+   <header>ilastik.widgets.viewerControls</header>
   </customwidget>
  </customwidgets>
  <resources/>

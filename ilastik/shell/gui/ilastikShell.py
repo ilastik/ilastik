@@ -1,40 +1,55 @@
-#Python
+# Standard
 import re
 import traceback
 import os
+import time
 from functools import partial
 import weakref
 import logging
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
-#SciPy
+# SciPy
 import numpy
 import platform
 import threading
 
-#PyQt
+# PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QMenuBar, \
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList, QTimer
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog
+                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
+                        QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
+                        QVBoxLayout, QHBoxLayout
 
-#lazyflow
+# lazyflow
 from lazyflow.utility import Tracer
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
-#volumina
+# volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
 
-#ilastik
+# ilastik
+from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-import ilastik.ilastik_logging
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.shell.projectManager import ProjectManager
+from ilastik.shell.projectManager import ProjectManager, load_dict
+from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
+from iconMgr import ilastikIcons
+from ilastik.utility.pathHelpers import compressPathForDisplay
+from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
+from ilastik.shell.gui.memUsageDialog import MemUsageDialog
+
+# Import all known workflows now to make sure they are all registered with getWorkflowFromName()
+import ilastik.workflows
+
+ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -82,8 +97,28 @@ class ProgressDisplayManager(QObject):
         super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
         self.statusBar = statusBar
         self.appletPercentages = {} # applet_index : percent_progress
-        self.progressBar = None
-
+        
+        self.progressBar = QProgressBar()
+        self.statusBar.addWidget(self.progressBar)
+        self.progressBar.setHidden(True)
+        
+        l = QLabel("cached: 0.0 MB")
+        h = QHBoxLayout() 
+        h.setContentsMargins(0,0,0,0)
+        w = QWidget()
+        h.addWidget(l)
+        btn = QToolButton()
+        btn.setText("...")
+        btn.clicked.connect(statusBar.parent().showMemUsageDialog)
+        h.addWidget(btn)
+        w.setLayout(h)
+        self.statusBar.addPermanentWidget(w)
+        
+        mgr = ArrayCacheMemoryMgr.instance
+        def printIt(msg):
+            l.setText("cached: %1.1f MB" % (msg/1024.0**2.0,)) 
+        mgr.totalCacheMemory.subscribe(printIt)
+        
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
 
@@ -91,7 +126,7 @@ class ProgressDisplayManager(QObject):
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
     
-    def __del__(self):
+    def cleanUp(self):
         # Disconnect everything
         self.dispatchSignal.disconnect()
         if self.progressBar is not None:
@@ -133,10 +168,12 @@ class ProgressDisplayManager(QObject):
             
             if numActive == 0 or totalPercentage == 100:
                 if self.progressBar is not None:
-                    self.statusBar.removeWidget(self.progressBar)
-                    self.progressBar = None
+                    #self.statusBar.removeWidget(self.progressBar)
+                    #self.progressBar = None
+                    self.progressBar.setHidden(True)
                     self.appletPercentages.clear()
             else:
+                self.progressBar.setHidden(False)
                 if self.progressBar is None:
                     self.progressBar = QProgressBar()
                     self.statusBar.addWidget(self.progressBar)
@@ -151,31 +188,46 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflowClass, parent = None, flags = Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
-        QMainWindow.__init__(self, parent = parent, flags = flags )
+    def __init__(self, workflowClass = None, workflow_kwargs=None,
+                 parent = None, flags = Qt.WindowFlags(0),
+                 sideSplitterSizePolicy=SideSplitterSizePolicy.Manual):
+        QMainWindow.__init__(self, parent = parent, flags = flags)
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
-        self._workflowClass = workflowClass
-
-        localDir = os.path.split(__file__)[0]
-        uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        self.setWorkflowClass(workflowClass, workflow_kwargs)
+        
+        self._loaduifile()
+        self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
+        self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
+        
+        self._memDlg = None #this will hold the memory usage dialog once created
         
         self.imageSelectionGroup.setHidden(True)
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
-        if 'Ubuntu' in platform.platform():
+        if ilastik_config.getboolean("ilastik", "debug") or 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
+            # Navive menus also required for event-recorded tests
             self.menuBar().setNativeMenuBar(False)
-
+            
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self._settingsMenu = self._createSettingsMenu()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
         self.menuBar().addMenu( self._projectMenu  )
         self.menuBar().addMenu( self._settingsMenu )
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuBar().addMenu( self._debugMenu )
         self.menuBar().addMenu( self._helpMenu    )
+        
+        assert self.thread() == QApplication.instance().thread()
+        assert self.menuBar().thread() == self.thread()
+        assert self._projectMenu.thread() == self.thread()
+        assert self._settingsMenu.thread() == self.thread()
         
         self.appletBar.expanded.connect(self.handleAppletBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
@@ -196,9 +248,13 @@ class IlastikShell( QMainWindow ):
 
         self.projectManager = None
         self.projectDisplayManager = None
+
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
+        self._recorderGui = EventRecorderGui()
+        
+        self.errorMessageFilter = ErrorMessageFilter(self)
 
     @property
     def _applets(self):
@@ -206,23 +262,54 @@ class IlastikShell( QMainWindow ):
             return []
         else:
             return self.projectManager.workflow.applets
-
+    
+    def setWorkflowClass(self, w, kwargs=None):
+        self._workflowClass = w
+        if kwargs is None:
+            kwargs = {}
+        self._workflow_kwargs = kwargs
+    
+    def loadWorkflow(self,i):
+        self.onNewProjectActionTriggered(i)
+    
+    def getWorkflow(self,w = None):
+        
+        listOfItems = [workflowName for _,workflowName in getAvailableWorkflows()]
+        if w is not None and w in listOfItems:
+            cur = listOfItems.index(w)
+        else:
+            cur = 0
+        
+        res,ok = QInputDialog.getItem(self,
+                        "Workflow Selection",
+                        "Select a workflow which should open the file.",
+                        listOfItems,
+                        cur,
+                        False)
+        
+        if ok:
+            return getWorkflowFromName(str(res))
+    
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
         menu = QMenu("&Project", self)
+        menu.setObjectName("project_menu")
 
         shellActions = ShellActions()
 
         # Menu item: New Project
-        shellActions.newProjectAction = menu.addAction("&New Project...")
-        shellActions.newProjectAction.setShortcuts( QKeySequence.New )
-        shellActions.newProjectAction.triggered.connect(self.onNewProjectActionTriggered)
-
+        newProjectMenu = menu.addMenu("&New Project...")
+        
+        workflowActions = []
+        for w,_name in getAvailableWorkflows():
+            a = newProjectMenu.addAction(_name)
+            a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
+        
         # Menu item: Open Project 
         shellActions.openProjectAction = menu.addAction("&Open Project...")
         shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
-
+        
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project")
         shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
@@ -234,13 +321,17 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
-
+        
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
-
+        
+        shellActions.closeAction = menu.addAction("&Close")
+        shellActions.closeAction.setShortcuts( QKeySequence.Close )
+        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
         shellActions.quitAction.setShortcuts( QKeySequence.Quit )
@@ -248,9 +339,88 @@ class IlastikShell( QMainWindow ):
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
         return (menu, shellActions)
-   
+    
+    def setupOpenFileButtons(self):
+        
+        for b in self.openFileButtons:
+            b.close()
+            b.deleteLater()
+        self.openFileButtons = []
+        
+        projects = PreferencesManager().get("shell","recently opened list")
+        
+        if projects is not None:
+            for path,workflow in projects:
+                b = QToolButton(self.startscreen)
+                #b.setDescription(workflow)
+                b.setAutoRaise(True)
+                b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+                b.setIcon( QIcon(ilastikIcons.Open) )
+                b.setFont(ILASTIKFont)
+                
+                #parse path
+                b.setToolTip(path)
+                compressedpath = compressPathForDisplay(path,50)
+                if len(workflow)>30:
+                    compressedworkflow = workflow[:27]+"..."
+                else:
+                    compressedworkflow = workflow
+                text = "{0} ({1})".format(compressedpath,compressedworkflow)
+                b.setText(text)
+                b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
+                self.startscreen.VL2.addWidget(b,2)
+                self.openFileButtons.append(b)
+    
+    def _loaduifile(self):
+        localDir = os.path.split(__file__)[0]
+        if localDir == "":localDir = os.getcwd()
+        
+        self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        
+        self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
+        self.startscreen.CreateList.setWidgetResizable(True)
+        self.startscreen.OpenList.setWidget(self.startscreen.VL2.widget())
+        self.startscreen.OpenList.setWidgetResizable(True)
+        
+        self.startscreen.label1.setFont(ILASTIKFont)
+        self.startscreen.label2.setFont(ILASTIKFont)
+        
+        self.openFileButtons = []
+        otherButtons = []
+        
+        self.startscreen.browseFilesButton.setAutoRaise(True)
+        self.startscreen.browseFilesButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.startscreen.browseFilesButton.setIcon( QIcon(ilastikIcons.OpenFolder) )
+        self.startscreen.browseFilesButton.setFont(ILASTIKFont)
+        self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
+        otherButtons.append(self.startscreen.browseFilesButton)
+        
+        self.setupOpenFileButtons()
+        
+        for workflow,_name in getAvailableWorkflows():
+            b = QToolButton(self.startscreen)
+            #b.setDescription(workflow)
+            b.setAutoRaise(True)
+            b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            b.clicked.connect(partial(self.loadWorkflow,workflow))
+            b.setIcon( QIcon(ilastikIcons.GoNext) )
+            b.setText(_name)
+            b.setFont(ILASTIKFont)
+            self.startscreen.VL1.addWidget(b)
+            otherButtons.append(b)
+        
+        m = max(b.sizeHint().width() for b in self.openFileButtons+otherButtons)
+        for b in self.openFileButtons+otherButtons:
+            b.setFixedSize(QSize(m,20))
+    
+    def openFileAndCloseStartscreen(self,path):
+        #self.startscreen.setParent(None)
+        #del self.startscreen
+        self.openProjectFile(path)
+    
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
+        menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(self._showAboutDialog)
         return menu
@@ -260,50 +430,40 @@ class IlastikShell( QMainWindow ):
         dlg = QDialog()
         uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
         dlg.exec_() 
+        
+    def _createDebugMenu(self):
+        menu = QMenu("&Debug", self)
+        menu.setObjectName("debug_menu")
+        
+        detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
+        exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
+        exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
+        for name, level in detail_levels:
+            exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
+            exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
+    
+        menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
+       
+        menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
+        return menu
+    
+    def showMemUsageDialog(self):
+        if self._memDlg is None:
+            self._memDlg = MemUsageDialog()
+            self._memDlg.setWindowTitle("Memory Usage")
+            self._memDlg.showMaximized()
+        else:
+            self._memDlg.show()
+            self._memDlg.raise_()
     
     def _createSettingsMenu(self):
         menu = QMenu("&Settings", self)
+        menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
 
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
-        shortcutsAction = menu.addAction("&Keyboard Shortcuts")
-        shortcutsAction.triggered.connect(editShortcuts)
-
-        dbg = ilastik_config.getboolean("ilastik", "debug")
-
-        if dbg:
-            exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
-            export0 = exportDebugSubmenu.addAction("Lowest Detail")
-            export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
-    
-            export1 = exportDebugSubmenu.addAction("Some Detail")
-            export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
-    
-            export2 = exportDebugSubmenu.addAction("More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
-    
-            export2 = exportDebugSubmenu.addAction("Even More Detail")
-            export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
-    
-            export3 = exportDebugSubmenu.addAction("Unlimited Detail")
-            export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
-    
-            exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
-            exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
-            exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
-    
-            exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
-            exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
-    
-            exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
-            exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
-    
-            exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
-            exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
-    
-            exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
-            exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
+        menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
 
         return menu
 
@@ -322,7 +482,7 @@ class IlastikShell( QMainWindow ):
             defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
-
+        
         svgPath = QFileDialog.getSaveFileName(
            self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
@@ -330,6 +490,9 @@ class IlastikShell( QMainWindow ):
         if not svgPath.isNull():
             PreferencesManager().set( 'shell', 'recent debug diagram', str(svgPath) )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
+
+    def _openRecorderControls(self):
+        self._recorderGui.show()
     
     def show(self):
         """
@@ -355,11 +518,14 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath
-
+            
+            if self._workflowClass is not None:
+                windowTitle+=" - "+self.projectManager.workflow.workflowName
+            
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
                 windowTitle += " [Read Only]"
-
+            
         self.setWindowTitle(windowTitle)        
 
         # Enable/Disable menu items
@@ -367,6 +533,7 @@ class IlastikShell( QMainWindow ):
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
+        self._shellActions.closeAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -389,10 +556,11 @@ class IlastikShell( QMainWindow ):
     @threadRouted
     def insertImageName(self, index, slot ):
         assert threading.current_thread().name == "MainThread"
-        self.imageSelectionCombo.setItemText( index, slot.value )
-        if self.currentImageIndex == -1:
-            self.changeCurrentInputImageIndex(index)
-
+        if slot.ready():
+            self.imageSelectionCombo.setItemText( index, slot.value )
+            if self.currentImageIndex == -1:
+                self.changeCurrentInputImageIndex(index)
+ 
     @threadRouted
     def handleImageNameSlotInsertion(self, multislot, index):
         assert threading.current_thread().name == "MainThread"
@@ -487,6 +655,8 @@ class IlastikShell( QMainWindow ):
                 if self.appletStack.indexOf( centralWidget ) == -1:
                     self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
                     self.appletStack.insertWidget( applet_index, centralWidget )
+                    # For test recording purposes, every gui we add MUST have a unique name
+                    centralWidget.setObjectName("centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
             self.appletStack.setCurrentIndex(applet_index)
 
@@ -498,6 +668,8 @@ class IlastikShell( QMainWindow ):
                 if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
                     self.viewerControlStack.addWidget( viewerControlWidget )
                 self.viewerControlStack.setCurrentWidget(viewerControlWidget)
+                # For test recording purposes, every gui we add MUST have a unique name
+                viewerControlWidget.setObjectName( "viewerControls_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
@@ -517,19 +689,38 @@ class IlastikShell( QMainWindow ):
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
                 appletDrawerItem.setSizeHint( 0, sizeHint )
+                # For test recording purposes, every gui we add MUST have a unique name
+                appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
+    
+    def onCloseActionTriggered(self):
+        if not self.confirmQuit():
+            return
+        if not self.ensureNoCurrentProject():
+            return
+        self.closeCurrentProject()
+        
+        self.setupOpenFileButtons()
+        self.mainStackedWidget.setCurrentIndex(0)
 
-
+    def postErrorMessage(self, caption, text):
+        '''Thread-safe function to have the GUI display an error dialog with
+           the given caption and text.
+        '''
+        self.thunkEventHandler.post(self.errorMessageFilter.showErrorMessage, caption, text)
+    
     def showMenus(self, applet_index):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
-        self.menuBar().addMenu(self._helpMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
                 for m in appletMenus:
                     self.menuBar().addMenu(m)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            self.menuBar().addMenu(self._debugMenu)
+        self.menuBar().addMenu(self._helpMenu)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
@@ -568,6 +759,11 @@ class IlastikShell( QMainWindow ):
         self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
 
     def handleAppletBarClick(self, modelIndex):
+        #bug #193
+        drawerTitleItem = self.appletBar.invisibleRootItem().child(modelIndex.row())
+        if drawerTitleItem.isDisabled():
+            return
+        
         # If the user clicks on a top-level item, automatically expand it.
         if modelIndex.parent() == self.appletBar.rootIndex():
             self.appletBar.expand(modelIndex)
@@ -610,7 +806,7 @@ class IlastikShell( QMainWindow ):
 
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
-
+        
         return applet_index
 
     def removeAllAppletWidgets(self):
@@ -636,6 +832,7 @@ class IlastikShell( QMainWindow ):
         A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
         If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
         """
+        
         if command == ControlCommand.Pop:
             command = self._controlCmds[applet_index].pop()
             step = -1 # Since we're popping this command, we'll subtract from the disable counts
@@ -669,22 +866,21 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def onNewProjectActionTriggered(self):
+    def onNewProjectActionTriggered(self, workflow=None, workflow_kwargs=None):
         logger.debug("New Project action triggered")
-        
         newProjectFilePath = self.getProjectPathToCreate()
-
         if newProjectFilePath is not None:
             # Make sure the user is finished with the currently open project
             if not self.ensureNoCurrentProject():
                 return
-        
-            self.createAndLoadNewProject(newProjectFilePath)
-
-    def createAndLoadNewProject(self, newProjectFilePath):
+            
+            self.createAndLoadNewProject(newProjectFilePath, workflow, workflow_kwargs)
+            
+    def createAndLoadNewProject(self, newProjectFilePath, workflow, workflow_kwargs=None):
+        self.setWorkflowClass(workflow, workflow_kwargs)
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
         self.loadProject(newProjectFile, newProjectFilePath, False)
-    
+
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
         Ask the user where he would like to create a project file.
@@ -694,14 +890,17 @@ class IlastikShell( QMainWindow ):
         
         fileSelected = False
         while not fileSelected:
-            projectFilePath = QFileDialog.getSaveFileName(
-               self, caption, defaultPath, "Ilastik project files (*.ilp)",
-               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
-            
+            options = QFileDialog.Options()
+            if ilastik_config.getboolean("ilastik", "debug"):
+                options |= QFileDialog.DontUseNativeDialog
+                # For testing, it's easier if we don't record the overwrite confirmation
+                options |= QFileDialog.DontConfirmOverwrite
+
+            projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath, 
+                                          "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if projectFilePath.isNull():
+            if projectFilePath.isEmpty():
                 return None
-    
             projectFilePath = str(projectFilePath)
             fileSelected = True
             
@@ -720,7 +919,7 @@ class IlastikShell( QMainWindow ):
                         fileSelected = False
 
         return projectFilePath
-    
+
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
@@ -758,9 +957,12 @@ class IlastikShell( QMainWindow ):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
+        
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)",
-           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
@@ -773,7 +975,7 @@ class IlastikShell( QMainWindow ):
         
         # Find the directory of the most recently opened project
         mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
-        if mostRecentProjectPath is not None:
+        if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -783,8 +985,7 @@ class IlastikShell( QMainWindow ):
             # Make sure the user is finished with the currently open project
             if not self.ensureNoCurrentProject():
                 return
-
-            PreferencesManager().set('shell', 'recently opened', projectFilePath)
+            
             self.openProjectFile(projectFilePath)
     
     def openProjectFile(self, projectFilePath):
@@ -797,32 +998,97 @@ class IlastikShell( QMainWindow ):
         except:
             logger.error( traceback.format_exc() )
             QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
-        else:
+        else:            
+            #as load project can take a while, show a wait cursor
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            self.statusBar.showMessage("Loading project %s ..." % projectFilePath)
             self.loadProject(hdf5File, projectFilePath, readOnly)
+            QApplication.restoreOverrideCursor()
+            self.statusBar.clearMessage()
     
     def loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
+        workflow = self._workflowClass
+
+        #setup the workflow if none was selected yet
+        if self._workflowClass is None:
+            if "workflowName" in hdf5File.keys():
+                #if workflow is found in file, take it
+                workflowName = hdf5File["workflowName"].value
+                workflow = getWorkflowFromName(workflowName)
+            else:
+                #ask the user to name a workflow
+                workflow = self.getWorkflow()
+            if workflow is None:
+                return
+
+        if "workflow_kwargs" in hdf5File.keys():
+            workflow_kwargs = load_dict(hdf5File["workflow_kwargs"], str)
+        else:
+            workflow_kwargs = None
+
+        self.setWorkflowClass(workflow, workflow_kwargs)
+        
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
+            self.projectManager = ProjectManager( self._workflowClass,
+                                                  workflow_kwargs=self._workflow_kwargs)
+            
         except Exception, e:
             traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
+            
+            # Add all the applets from the workflow
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                self.addApplet(index, app)
+            
+            start = time.time()
+            #load the project data from file
+            if importFromPath is None:
+                #FIXME: load the project asynchronously
+                self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+            else:
+                assert not readOnly, "Can't import into a read-only file."
+                self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
+                
+            stop = time.time()
+            print "Loading the project took %f sec." % (stop-start,)
+            
+            #add file and workflow to users preferences
+            mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
+            if mostRecentProjectPaths is None:
+                mostRecentProjectPaths = []
+            
+            workflowName = self.projectManager.workflow.workflowName
+            
+            for proj,work in mostRecentProjectPaths[:]:
+                if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
+                    mostRecentProjectPaths.remove((proj,work))
+            
+            mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
+            
+            #cut list of stored files at randomly chosen number of 5
+            if len(mostRecentProjectPaths) > 5:
+                mostRecentProjectPaths = mostRecentProjectPaths[:5]
+            
+            PreferencesManager().set('shell', 'recently opened list', mostRecentProjectPaths)
+            PreferencesManager().set('shell', 'recently opened', projectFilePath)
+            
+            #be friendly to user: if this file has not specified a default workflow, do it now
+            if not "workflowName" in hdf5File.keys() and not readOnly:
+                hdf5File.create_dataset("workflowName",data = workflowName)
+            
             #switch away from the startup screen to show the loaded project
             self.mainStackedWidget.setCurrentIndex(1)
             # By default, make the splitter control expose a reasonable width of the applet bar
             self.mainSplitter.setSizes([300,1])
             
-            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
-
-            # Add all the applets from the workflow
-            for index, app in enumerate(self.projectManager.workflow.applets):
-                self.addApplet(index, app)
-    
+            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)
+                
             self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
             self.updateShellProjectDisplay()
 
@@ -830,12 +1096,25 @@ class IlastikShell( QMainWindow ):
             self.enableWorkflow = True
             self.updateAppletControlStates()
 
+            if "currentApplet" in hdf5File.keys():
+                appletName = hdf5File["currentApplet"].value
+                self.setSelectedAppletDrawer(appletName)
+            else:
+                self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
+
     def closeCurrentProject(self):
         """
         Undo everything that was done in loadProject()
         """
         assert threading.current_thread().name == "MainThread"
         if self.projectManager is not None:
+            
+            projectFile = self.projectManager.currentProjectFile 
+            if projectFile is not None:
+                if "currentApplet" in projectFile.keys():
+                    del projectFile["currentApplet"]
+                self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
+            
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
                 f()
@@ -845,15 +1124,18 @@ class IlastikShell( QMainWindow ):
 
             if self.projectDisplayManager is not None: 
                 old = weakref.ref(self.projectDisplayManager)
+                self.projectDisplayManager.cleanUp()
                 self.projectDisplayManager = None # Destroy display manager
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
 
             old = weakref.ref(self.projectManager)
+            self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
-
+        
+        self._workflowClass = None
         self.enableWorkflow = False
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
@@ -976,10 +1258,13 @@ class IlastikShell( QMainWindow ):
                 response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
                 if response == QMessageBox.Cancel:
                     return False
-        return True
+
+        return self._recorderGui.confirmQuit()
 
     def closeAndQuit(self, quitApp=True):
-        self.projectManager = None # Destroy project manager
+        if self.projectManager is not None:
+            self.projectManager.cleanUp()
+            self.projectManager = None # Destroy project manager
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
@@ -1013,61 +1298,3 @@ class IlastikShell( QMainWindow ):
                     drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
                     drawerTitleItem.setFlags( Qt.NoItemFlags )
-
-#    def scrollToTop(self):
-#        #self.appletBar.verticalScrollBar().setValue( 0 )
-#
-#        self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
-#        
-#        from PyQt4.QtCore import QPropertyAnimation, QVariant
-#        animation = QPropertyAnimation( self.appletBar.verticalScrollBar(), "value", self )
-#        animation.setDuration(2000)
-#        #animation.setStartValue( QVariant( self.appletBar.verticalScrollBar().minimum() ) )
-#        animation.setEndValue( QVariant( self.appletBar.verticalScrollBar().maximum() ) )
-#        animation.start()
-#
-#        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
-
-#===----------------------------------------------------------------------------------------------------------------===
-#=== __name__ == "__main__"                                                                                         ===
-#===----------------------------------------------------------------------------------------------------------------===
-
-#
-# Simple standalone test for the IlastikShell
-#
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import QApplication
-    import sys
-    from ilastik.applets.base.applet import Applet
-
-    qapp = QApplication(sys.argv)
-    
-    # Create some simple applets to load
-    defaultApplet = Applet()
-    trackingApplet = Applet("Tracking")
-
-    # Normally applets would provide their own menu items,
-    # but for this test we'll add them here (i.e. from the outside).
-    defaultApplet._menuWidget = QMenuBar()
-    defaultApplet._menuWidget.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
-    defaultMenu = QMenu("Default Applet", defaultApplet._menuWidget)
-    defaultMenu.addAction("Default Action 1")
-    defaultMenu.addAction("Default Action 2")
-    defaultApplet._menuWidget.addMenu(defaultMenu)
-    
-    trackingApplet._menuWidget = QMenuBar()
-    trackingApplet._menuWidget.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
-    trackingMenu = QMenu("Tracking Applet", trackingApplet._menuWidget)
-    trackingMenu.addAction("Tracking Options...")
-    trackingMenu.addAction("Track...")
-    trackingApplet._menuWidget.addMenu(trackingMenu)
-
-    # Create a shell with our test applets    
-    shell = IlastikShell( [defaultApplet, trackingApplet] )
-
-    shell.show()
-    qapp.exec_()
-

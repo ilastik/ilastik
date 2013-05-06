@@ -1,16 +1,12 @@
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, OperatorMetaClass
 from ilastik.utility.subclassRegistry import SubclassRegistryMeta
-
-# This metaclass provides automatic factory registration and still allows us to inherit from Operator
-class WorkflowMeta(SubclassRegistryMeta, OperatorMetaClass):
-    pass
+from string import ascii_uppercase
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
-    __metaclass__ = WorkflowMeta # Provides Workflow.all_subclasses member
     name = "Workflow (base class)"
 
     ###############################
@@ -32,11 +28,27 @@ class Workflow( Operator ):
         This slot is typically provided by the DataSelection applet via its ImageName slot.
         """
         return None
-
+    
     @property
-    def finalOutputSlot(self):
+    def workflowName(self):
+        originalName = self.__class__.__name__
+        wname = originalName[0]
+        for i in originalName[1:]:
+            if i in ascii_uppercase:
+                wname+=" "
+            wname+=i
+        if wname.endswith(" Workflow"):
+            wname = wname[:-9]
+        return wname
+    
+    @property
+    def workflowDescription(self):
         return None
-
+    
+    @property
+    def defaultAppletIndex(self):
+        return 0
+    
     @abstractmethod
     def connectLane(self, laneIndex):
         """
@@ -46,7 +58,7 @@ class Workflow( Operator ):
         2) Ask the subclass to hook up the new image lane by calling this function.
         """
         raise NotImplementedError
-
+    
     ##################
     # Public methods #
     ##################
@@ -122,3 +134,44 @@ class Workflow( Operator ):
         for a in self.applets:
             if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)
+
+def all_subclasses(cls):
+    return cls.__subclasses__() + [g for s in cls.__subclasses__()
+                                   for g in all_subclasses(s)]
+
+def getAvailableWorkflows():
+    '''iterate over all workflows that were imported'''
+    alreadyListed = set()
+
+    for W in all_subclasses(Workflow):
+        if W.__name__ in alreadyListed:
+            continue
+        alreadyListed.add(W.__name__)
+
+        # this is a hack to ensure the base object workflow does not
+        # appear in the list of available workflows.
+        try:
+            isbase = 'base' in W.workflowName.lower()
+        except:
+            isbase = False
+        if isbase:
+            continue
+
+        if isinstance(W.workflowName, str):
+            yield W, W.workflowName
+        else:
+            originalName = W.__name__
+            wname = originalName[0]
+            for i in originalName[1:]:
+                if i in ascii_uppercase:
+                    wname+=" "
+                wname += i
+            if wname.endswith(" Workflow"):
+                wname = wname[:-9]
+            yield W, wname
+
+def getWorkflowFromName(Name):
+    '''return workflow by naming its workflowName variable'''
+    for w,_name in getAvailableWorkflows():
+        if _name==Name or w.__name__==Name:
+            return w

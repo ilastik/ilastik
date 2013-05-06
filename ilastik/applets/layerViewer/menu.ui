@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>1339</width>
-     <height>29</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -37,6 +37,7 @@
     <addaction name="actionShowDebugPatches"/>
     <addaction name="actionSetCacheSize"/>
     <addaction name="actionUsePrefetching"/>
+    <addaction name="actionBlockGui"/>
     <addaction name="separator"/>
     <addaction name="actionOnly_for_current_view"/>
     <addaction name="actionFitImage"/>
@@ -92,9 +93,6 @@
    </property>
    <property name="text">
     <string>&amp;Show Tiling</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+D</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>false</bool>
@@ -152,12 +150,6 @@
    <property name="toolTip">
     <string>toggle selected hud</string>
    </property>
-   <property name="shortcut">
-    <string>H</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::WidgetShortcut</enum>
-   </property>
   </action>
   <action name="actionCenterAllImages">
    <property name="text">
@@ -168,12 +160,6 @@
    <property name="text">
     <string>Center Image</string>
    </property>
-   <property name="shortcut">
-    <string>C</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::WidgetShortcut</enum>
-   </property>
   </action>
   <action name="actionFitImage">
    <property name="text">
@@ -182,12 +168,6 @@
    <property name="toolTip">
     <string>fit image into view</string>
    </property>
-   <property name="shortcut">
-    <string>F</string>
-   </property>
-   <property name="shortcutContext">
-    <enum>Qt::ApplicationShortcut</enum>
-   </property>
   </action>
   <action name="actionReset_zoom">
    <property name="text">
@@ -195,9 +175,6 @@
    </property>
    <property name="toolTip">
     <string>reset zoom</string>
-   </property>
-   <property name="shortcut">
-    <string>W</string>
    </property>
   </action>
   <action name="actionOpenStack">
@@ -249,6 +226,14 @@
    </property>
    <property name="text">
     <string>Use Prefetching</string>
+   </property>
+   <property name="toolTip">
+    <string>Cache slices nearby such that they display faster when scrolling through a volume (needs more memory)</string>
+   </property>
+  </action>
+  <action name="actionBlockGui">
+   <property name="text">
+    <string>Block for rendering</string>
    </property>
   </action>
  </widget>

@@ -19,7 +19,7 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.opTempDifference import OpTempDifference
 from lazyflow.operators.generic import OpSubRegion
@@ -126,16 +126,8 @@ class PixelClassificationGui(LabelingGui):
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self._viewerControlUi.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self._viewerControlUi.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self._viewerControlUi.DeleteButton.setEnabled)
-
-        # Connect our layer movement buttons to the appropriate layerstack actions
-        self._viewerControlUi.layerWidget.init(model)
-        self._viewerControlUi.UpButton.clicked.connect(model.moveSelectedUp)
-        self._viewerControlUi.DownButton.clicked.connect(model.moveSelectedDown)
-        self._viewerControlUi.DeleteButton.clicked.connect(model.deleteSelected)
-
+        self._viewerControlUi.viewerControls.setupConnections(model)
+       
     def _initShortcuts(self):
         mgr = ShortcutManager()
         shortcutGroupName = "Predictions"
@@ -217,17 +209,17 @@ class PixelClassificationGui(LabelingGui):
                 def setLayerColor(c, predictLayer=predictLayer):
                     predictLayer.tintColor = c
 
-                def setLayerName(n, predictLayer=predictLayer):
+                def setPredLayerName(n, predictLayer=predictLayer):
                     newName = "Prediction for %s" % n
                     predictLayer.name = newName
 
-                setLayerName(ref_label.name)
+                setPredLayerName(ref_label.name)
                 ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setLayerName)
+                ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
 
 
-        # Add each of the segementations
+        # Add each of the segmentations
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
@@ -245,7 +237,7 @@ class PixelClassificationGui(LabelingGui):
                     segLayer.tintColor = c
                     self._update_rendering()
 
-                def setLayerName(n, segLayer=segLayer):
+                def setSegLayerName(n, segLayer=segLayer):
                     oldname = segLayer.name
                     newName = "Segmentation (%s)" % n
                     segLayer.name = newName
@@ -255,11 +247,18 @@ class PixelClassificationGui(LabelingGui):
                         label = self._renderedLayers.pop(oldname)
                         self._renderedLayers[newName] = label
 
-                setLayerName(ref_label.name)
+                setSegLayerName(ref_label.name)
 
                 ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setLayerName)
-                self._setup_contexts(segLayer)
+                ref_label.nameChanged.connect(setSegLayerName)
+                #check if layer is 3d before adding the "Toggle 3D" option
+                #this check is done this way to match the VolumeRenderer, in
+                #case different 3d-axistags should be rendered like t-x-y
+                #_axiskeys = segmentationSlot.meta.getAxisKeys()
+                if len(segmentationSlot.meta.shape) == 4:
+                    #the Renderer will cut out the last shape-dimension, so
+                    #we're checking for 4 dimensions
+                    self._setup_contexts(segLayer)
                 layers.append(segLayer)
 
 
@@ -308,7 +307,8 @@ class PixelClassificationGui(LabelingGui):
                 QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
                 inputLayer )
             layers.append(inputLayer)
-
+        
+        self.handleLabelSelectionChange()
         return layers
 
     @traceLogged(traceLogger)
@@ -352,14 +352,6 @@ class PixelClassificationGui(LabelingGui):
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = checked
-
-        # If we're being turned off, turn off live prediction mode, too.
-        if not checked and self.labelingDrawerUi.liveUpdateButton.isChecked():
-            self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-            # And hide all segmentation layers
-            for layer in self.layerstack:
-                if "Segmentation" in layer.name:
-                    layer.visible = False
 
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -439,6 +431,9 @@ class PixelClassificationGui(LabelingGui):
 
             originalButtonText = "Full Volume Predict and Save"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
+            
+            # Make sure the user can't paint anything while the computation is in progress.
+            self._changeInteractionMode(Tool.Navigation)
 
             @traceLogged(traceLogger)
             def saveThreadFunc():

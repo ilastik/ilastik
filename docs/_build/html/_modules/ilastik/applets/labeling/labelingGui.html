@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.labeling.labelingGui &mdash; ilastik v0.6.0 documentation</title>
+    <title>ilastik.applets.labeling.labelingGui &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -32,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,6 +46,8 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.labeling.labelingGui</h1><div class="highlight"><pre>
+<span class="c"># Built-in</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
@@ -51,8 +56,8 @@
 <span class="c"># Third-party</span>
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">from</span> <span class="nn">PyQt4</span> <span class="kn">import</span> <span class="n">uic</span>
-<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">QRectF</span><span class="p">,</span> <span class="n">Qt</span>
-<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QIcon</span><span class="p">,</span> <span class="n">QColor</span><span class="p">,</span> <span class="n">QShortcut</span><span class="p">,</span> <span class="n">QKeySequence</span><span class="p">,</span> <span class="n">QWidget</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="kn">import</span> <span class="n">Qt</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="kn">import</span> <span class="n">QIcon</span><span class="p">,</span> <span class="n">QColor</span><span class="p">,</span> <span class="n">QShortcut</span><span class="p">,</span> <span class="n">QKeySequence</span>
 
 <span class="c"># HCI</span>
 <span class="kn">from</span> <span class="nn">lazyflow.utility</span> <span class="kn">import</span> <span class="n">traceLogged</span>
@@ -71,15 +76,17 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
 <span class="n">traceLogger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&quot;TRACE.&quot;</span> <span class="o">+</span> <span class="n">__name__</span><span class="p">)</span>
 
+<span class="c">#===----------------------------------------------------------------------------------------------------------------===</span>
+
 <span class="k">class</span> <span class="nc">Tool</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Enumerate the types of toolbar buttons.&quot;&quot;&quot;</span>
     <span class="n">Navigation</span> <span class="o">=</span> <span class="mi">0</span> <span class="c"># Arrow</span>
-    <span class="n">Paint</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">Erase</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">Paint</span>      <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">Erase</span>      <span class="o">=</span> <span class="mi">2</span>
 
-<span class="k">class</span> <span class="nc">LabelingGui</span><span class="p">(</span><span class="n">LayerViewerGui</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui">[docs]</a><span class="k">class</span> <span class="nc">LabelingGui</span><span class="p">(</span><span class="n">LayerViewerGui</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui">[docs]</a><span class="sd">    Provides all the functionality of a simple layerviewer</span>
+<span class="sd">    Provides all the functionality of a simple layerviewer</span>
 <span class="sd">    applet with the added functionality of labeling.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c">###########################################</span>
@@ -129,14 +136,14 @@
     <span class="k">def</span> <span class="nf">labelListData</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span>
 
-    <span class="k">def</span> <span class="nf">selectLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelIndex</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui.selectLabel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.selectLabel">[docs]</a>    <span class="k">def</span> <span class="nf">selectLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelIndex</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Programmatically select the given labelIndex, which start from 0.</span>
-<div class="viewcode-block" id="LabelingGui.selectLabel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.selectLabel">[docs]</a><span class="sd">           Equivalent to clicking on the (labelIndex+1)&#39;th position in the label widget.&quot;&quot;&quot;</span>
+<span class="sd">           Equivalent to clicking on the (labelIndex+1)&#39;th position in the label widget.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">labelIndex</span><span class="p">)</span>
-
-    <span class="k">class</span> <span class="nc">LabelingSlots</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="LabelingGui.LabelingSlots"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots">[docs]</a><span class="sd">        This class serves as the parameter for the LabelingGui constructor.</span>
+</div>
+<div class="viewcode-block" id="LabelingGui.LabelingSlots"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots">[docs]</a>    <span class="k">class</span> <span class="nc">LabelingSlots</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This class serves as the parameter for the LabelingGui constructor.</span>
 <span class="sd">        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user&#39;s mouse clicks.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -153,11 +160,11 @@
 
             <span class="c"># Slot to specify which images the user is allowed to label.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">labelsAllowed</span> <span class="o">=</span> <span class="bp">None</span> <span class="c"># labelsAllowed.value == True</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelingSlots</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="n">drawerUiPath</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">rawInputSlot</span><span class="o">=</span><span class="bp">None</span> <span class="p">):</span></div>
+<div class="viewcode-block" id="LabelingGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labelingSlots</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="n">drawerUiPath</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">rawInputSlot</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">crosshair</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.__init__">[docs]</a><span class="sd">        Constructor.</span>
+<span class="sd">        Constructor.</span>
 
 <span class="sd">        :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.</span>
 <span class="sd">        :param topLevelOperatorView: is provided to the LayerViewerGui (the base class)</span>
@@ -186,7 +193,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_initLabelUic</span><span class="p">(</span><span class="n">drawerUiPath</span><span class="p">)</span>
 
         <span class="c"># Init base class</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">LabelingGui</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="p">[</span><span class="n">labelingSlots</span><span class="o">.</span><span class="n">labelInput</span><span class="p">,</span> <span class="n">labelingSlots</span><span class="o">.</span><span class="n">labelOutput</span><span class="p">]</span> <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">LabelingGui</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">topLevelOperatorView</span><span class="p">,</span>
+                                          <span class="p">[</span><span class="n">labelingSlots</span><span class="o">.</span><span class="n">labelInput</span><span class="p">,</span> <span class="n">labelingSlots</span><span class="o">.</span><span class="n">labelOutput</span><span class="p">],</span>
+                                          <span class="n">crosshair</span><span class="o">=</span><span class="n">crosshair</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">__initShortcuts</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_labelingSlots</span><span class="o">.</span><span class="n">labelEraserValue</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">erasingNumber</span><span class="p">)</span>
@@ -194,9 +203,9 @@
         <span class="c"># Register for thunk events (easy UI calls from non-GUI threads)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">thunkEventHandler</span> <span class="o">=</span> <span class="n">ThunkEventHandler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_changeInteractionMode</span><span class="p">(</span><span class="n">Tool</span><span class="o">.</span><span class="n">Navigation</span><span class="p">)</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_initLabelUic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">drawerUiPath</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_initLabelUic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">drawerUiPath</span><span class="p">):</span>
         <span class="n">_labelControlUi</span> <span class="o">=</span> <span class="n">uic</span><span class="o">.</span><span class="n">loadUi</span><span class="p">(</span><span class="n">drawerUiPath</span><span class="p">)</span>
 
         <span class="c"># We own the applet bar ui</span>
@@ -210,8 +219,9 @@
         <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">labelSelected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onLabelSelected</span><span class="p">)</span>
 
         <span class="c"># Connect Applet GUI to our event handlers</span>
-        <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span> <span class="n">QIcon</span><span class="p">(</span><span class="n">ilastikIcons</span><span class="o">.</span><span class="n">AddSel</span><span class="p">)</span> <span class="p">)</span>
-        <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_addNewLabel</span><span class="p">)</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">_labelControlUi</span><span class="p">,</span> <span class="s">&quot;AddLabelButton&quot;</span><span class="p">):</span>
+            <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span> <span class="n">QIcon</span><span class="p">(</span><span class="n">ilastikIcons</span><span class="o">.</span><span class="n">AddSel</span><span class="p">)</span> <span class="p">)</span>
+            <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_addNewLabel</span><span class="p">)</span> <span class="p">)</span>
         <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">dataChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onLabelListDataChanged</span><span class="p">)</span>
 
         <span class="c"># Initialize the arrow tool button with an icon and handler</span>
@@ -240,17 +250,10 @@
                              <span class="n">Tool</span><span class="o">.</span><span class="n">Paint</span>      <span class="p">:</span> <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="p">,</span>
                              <span class="n">Tool</span><span class="o">.</span><span class="n">Erase</span>      <span class="p">:</span> <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span> <span class="p">}</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span> <span class="o">=</span> <span class="p">[</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span>  <span class="s">&quot;&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">3</span><span class="p">,</span>  <span class="s">&quot;Tiny&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">5</span><span class="p">,</span>  <span class="s">&quot;Small&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">7</span><span class="p">,</span>  <span class="s">&quot;Medium&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s">&quot;Large&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">23</span><span class="p">,</span> <span class="s">&quot;Huge&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="s">&quot;Megahuge&quot;</span><span class="p">),</span>
-                            <span class="p">(</span><span class="mi">61</span><span class="p">,</span> <span class="s">&quot;Gigahuge&quot;</span><span class="p">)</span> <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span> <span class="o">=</span> <span class="p">[</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">31</span><span class="p">,</span> <span class="mi">61</span> <span class="p">]</span>
 
-        <span class="k">for</span> <span class="n">size</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">:</span>
-            <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="p">)</span>
+        <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">:</span>
+            <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="p">)</span>
 
         <span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">currentIndexChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_onBrushSizeChange</span><span class="p">)</span>
 
@@ -258,9 +261,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span> <span class="o">=</span> <span class="n">PreferencesManager</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span> <span class="s">&#39;labeling&#39;</span><span class="p">,</span> <span class="s">&#39;eraser brush size&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">4</span> <span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">onLabelListDataChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLeft</span><span class="p">,</span> <span class="n">bottomRight</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui.onLabelListDataChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged">[docs]</a>    <span class="k">def</span> <span class="nf">onLabelListDataChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLeft</span><span class="p">,</span> <span class="n">bottomRight</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Handle changes to the label list selections.&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.onLabelListDataChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged">[docs]</a>        <span class="n">firstRow</span> <span class="o">=</span> <span class="n">topLeft</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
+        <span class="n">firstRow</span> <span class="o">=</span> <span class="n">topLeft</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
         <span class="n">lastRow</span>  <span class="o">=</span> <span class="n">bottomRight</span><span class="o">.</span><span class="n">row</span><span class="p">()</span>
 
         <span class="n">firstCol</span> <span class="o">=</span> <span class="n">topLeft</span><span class="o">.</span><span class="n">column</span><span class="p">()</span>
@@ -272,8 +275,6 @@
 
             <span class="c">#in this case, the actual data (for example color) has changed</span>
             <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="p">[</span><span class="n">firstRow</span><span class="p">]</span><span class="o">.</span><span class="n">brushColor</span><span class="p">()</span>
-            <span class="n">pmapColor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="p">[</span><span class="n">firstRow</span><span class="p">]</span><span class="o">.</span><span class="n">pmapColor</span><span class="p">()</span>
-            <span class="k">print</span> <span class="s">&quot;onLabelListDataChanged: color = </span><span class="si">%s</span><span class="s">, pmapColor = </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">color</span><span class="o">.</span><span class="n">name</span><span class="p">(),</span> <span class="n">pmapColor</span><span class="o">.</span><span class="n">name</span><span class="p">())</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable16</span><span class="p">[</span><span class="n">firstRow</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span><span class="o">.</span><span class="n">rgba</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setBrushColor</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
 
@@ -281,16 +282,17 @@
             <span class="n">labellayer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getLabelLayer</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">labellayer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
                 <span class="n">labellayer</span><span class="o">.</span><span class="n">colorTable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_colorTable16</span>
-
+</div>
     <span class="k">def</span> <span class="nf">__initShortcuts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">mgr</span> <span class="o">=</span> <span class="n">ShortcutManager</span><span class="p">()</span></div>
+        <span class="n">mgr</span> <span class="o">=</span> <span class="n">ShortcutManager</span><span class="p">()</span>
         <span class="n">shortcutGroupName</span> <span class="o">=</span> <span class="s">&quot;Labeling&quot;</span>
 
-        <span class="n">addLabel</span> <span class="o">=</span> <span class="n">QShortcut</span><span class="p">(</span> <span class="n">QKeySequence</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">click</span> <span class="p">)</span>
-        <span class="n">mgr</span><span class="o">.</span><span class="n">register</span><span class="p">(</span> <span class="n">shortcutGroupName</span><span class="p">,</span>
-                      <span class="s">&quot;Add New Label Class&quot;</span><span class="p">,</span>
-                      <span class="n">addLabel</span><span class="p">,</span>
-                      <span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">AddLabelButton</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="p">,</span> <span class="s">&quot;AddLabelButton&quot;</span><span class="p">):</span>
+            <span class="n">addLabel</span> <span class="o">=</span> <span class="n">QShortcut</span><span class="p">(</span> <span class="n">QKeySequence</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">click</span> <span class="p">)</span>
+            <span class="n">mgr</span><span class="o">.</span><span class="n">register</span><span class="p">(</span> <span class="n">shortcutGroupName</span><span class="p">,</span>
+                          <span class="s">&quot;Add New Label Class&quot;</span><span class="p">,</span>
+                          <span class="n">addLabel</span><span class="p">,</span>
+                          <span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">AddLabelButton</span> <span class="p">)</span>
 
         <span class="n">navMode</span> <span class="o">=</span> <span class="n">QShortcut</span><span class="p">(</span> <span class="n">QKeySequence</span><span class="p">(</span><span class="s">&quot;n&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">click</span> <span class="p">)</span>
         <span class="n">mgr</span><span class="o">.</span><span class="n">register</span><span class="p">(</span> <span class="n">shortcutGroupName</span><span class="p">,</span>
@@ -309,13 +311,13 @@
                       <span class="s">&quot;Eraser Cursor&quot;</span><span class="p">,</span>
                       <span class="n">eraserMode</span><span class="p">,</span>
                       <span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">eraserToolButton</span> <span class="p">)</span>
-
-        <span class="n">changeBrushSize</span> <span class="o">=</span> <span class="n">QShortcut</span><span class="p">(</span> <span class="n">QKeySequence</span><span class="p">(</span><span class="s">&quot;c&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="p">,</span> <span class="n">member</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">showPopup</span> <span class="p">)</span>
-        <span class="n">mgr</span><span class="o">.</span><span class="n">register</span><span class="p">(</span> <span class="n">shortcutGroupName</span><span class="p">,</span>
-                      <span class="s">&quot;Change Brush Size&quot;</span><span class="p">,</span>
-                      <span class="n">changeBrushSize</span><span class="p">,</span>
-                      <span class="bp">self</span><span class="o">.</span><span class="n">labelingDrawerUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span> <span class="p">)</span>
-
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        changeBrushSize = QShortcut( QKeySequence(&quot;c&quot;), self, member=self.labelingDrawerUi.brushSizeComboBox.showPopup )</span>
+<span class="sd">        mgr.register( shortcutGroupName,</span>
+<span class="sd">                      &quot;Change Brush Size&quot;,</span>
+<span class="sd">                      changeBrushSize,</span>
+<span class="sd">                      self.labelingDrawerUi.brushSizeComboBox )</span>
+<span class="sd">        &#39;&#39;&#39;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_labelShortcuts</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -338,9 +340,9 @@
             <span class="n">description</span> <span class="o">=</span> <span class="s">&quot;Select &quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
             <span class="n">ShortcutManager</span><span class="p">()</span><span class="o">.</span><span class="n">setDescription</span><span class="p">(</span><span class="n">shortcut</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">hideEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui.hideEvent"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.hideEvent">[docs]</a>    <span class="k">def</span> <span class="nf">hideEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.hideEvent"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.hideEvent">[docs]</a><span class="sd">        QT event handler.</span>
+<span class="sd">        QT event handler.</span>
 <span class="sd">        The user has selected another applet or is closing the whole app.</span>
 <span class="sd">        Save all preferences.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -348,9 +350,9 @@
             <span class="n">prefsMgr</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;labeling&#39;</span><span class="p">,</span> <span class="s">&#39;paint brush size&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paintBrushSizeIndex</span><span class="p">)</span>
             <span class="n">prefsMgr</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;labeling&#39;</span><span class="p">,</span> <span class="s">&#39;eraser brush size&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">LabelingGui</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">hideEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_handleToolButtonClicked</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">checked</span><span class="p">,</span> <span class="n">toolId</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_handleToolButtonClicked</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">checked</span><span class="p">,</span> <span class="n">toolId</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Called when the user clicks any of the &quot;tool&quot; buttons in the label applet bar GUI.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -382,13 +384,6 @@
                       <span class="n">Tool</span><span class="o">.</span><span class="n">Paint</span>        <span class="p">:</span> <span class="s">&quot;brushing&quot;</span><span class="p">,</span>
                       <span class="n">Tool</span><span class="o">.</span><span class="n">Erase</span>        <span class="p">:</span> <span class="s">&quot;brushing&quot;</span> <span class="p">}</span>
 
-        <span class="c"># Hide everything by default</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-
         <span class="c"># If the user can&#39;t label this image, disable the button and say why its disabled</span>
         <span class="n">labelsAllowed</span> <span class="o">=</span> <span class="bp">False</span>
 
@@ -396,61 +391,70 @@
         <span class="k">if</span> <span class="n">labelsAllowedSlot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
             <span class="n">labelsAllowed</span> <span class="o">=</span> <span class="n">labelsAllowedSlot</span><span class="o">.</span><span class="n">value</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">labelsAllowed</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxLabelNumber</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">())</span>
-            <span class="k">if</span> <span class="n">labelsAllowed</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Add Label&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;(Labeling Not Allowed)&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="p">,</span> <span class="s">&quot;AddLabelButton&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">labelsAllowed</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxLabelNumber</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">())</span>
+                <span class="k">if</span> <span class="n">labelsAllowed</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Add Label&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;(Labeling Not Allowed)&quot;</span><span class="p">)</span>
 
+        <span class="n">e</span> <span class="o">=</span> <span class="n">labelsAllowed</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gui_enableLabeling</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        
         <span class="k">if</span> <span class="n">labelsAllowed</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
             <span class="c"># Update the applet bar caption</span>
             <span class="k">if</span> <span class="n">toolId</span> <span class="o">==</span> <span class="n">Tool</span><span class="o">.</span><span class="n">Navigation</span><span class="p">:</span>
-                <span class="c"># Make sure the arrow button is pressed</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
-                <span class="c"># Hide the brush size control</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">hide</span><span class="p">()</span>
+                <span class="c"># update GUI </span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_gui_setNavigation</span><span class="p">()</span>
+                
             <span class="k">elif</span> <span class="n">toolId</span> <span class="o">==</span> <span class="n">Tool</span><span class="o">.</span><span class="n">Paint</span><span class="p">:</span>
-                <span class="c"># Make sure the paint button is pressed</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
-                <span class="c"># Show the brush size control and set its caption</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Size:&quot;</span><span class="p">)</span>
-
                 <span class="c"># If necessary, tell the brushing model to stop erasing</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">erasing</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">disableErasing</span><span class="p">()</span>
                 <span class="c"># Set the brushing size</span>
-                <span class="n">brushSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">paintBrushSizeIndex</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">brushSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">paintBrushSizeIndex</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">brushSize</span><span class="p">)</span>
-
-                <span class="c"># Make sure the GUI reflects the correct size</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paintBrushSizeIndex</span><span class="p">)</span>
+                <span class="c"># update GUI </span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_gui_setBrushing</span><span class="p">()</span>
 
             <span class="k">elif</span> <span class="n">toolId</span> <span class="o">==</span> <span class="n">Tool</span><span class="o">.</span><span class="n">Erase</span><span class="p">:</span>
-                <span class="c"># Make sure the erase button is pressed</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
-                <span class="c"># Show the brush size control and set its caption</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Size:&quot;</span><span class="p">)</span>
-
                 <span class="c"># If necessary, tell the brushing model to start erasing</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">erasing</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setErasing</span><span class="p">()</span>
                 <span class="c"># Set the brushing size</span>
-                <span class="n">eraserSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">eraserSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span><span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">eraserSize</span><span class="p">)</span>
-
-                <span class="c"># Make sure the GUI reflects the correct size</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span><span class="p">)</span>
+                <span class="c"># update GUI </span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_gui_setErasing</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">setInteractionMode</span><span class="p">(</span> <span class="n">modeNames</span><span class="p">[</span><span class="n">toolId</span><span class="p">]</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_toolId</span> <span class="o">=</span> <span class="n">toolId</span>
+        
+    <span class="k">def</span> <span class="nf">_gui_setErasing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Size:&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_gui_setNavigation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">arrowToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_gui_setBrushing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="c"># Make sure the paint button is pressed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="c"># Show the brush size control and set its caption</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="s">&quot;Size:&quot;</span><span class="p">)</span>
+        <span class="c"># Make sure the GUI reflects the correct size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setCurrentIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paintBrushSizeIndex</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_gui_enableLabeling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">enable</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">paintToolButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">enable</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">eraserToolButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">enable</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeCaption</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">enable</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">brushSizeComboBox</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">enable</span><span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_onBrushSizeChange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
@@ -461,7 +465,7 @@
 <span class="sd">              However, we maintain two different sizes for the user and swap</span>
 <span class="sd">              them depending on which tool is selected.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">newSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">newSize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">brushSizes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">erasing</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">eraserSizeIndex</span> <span class="o">=</span> <span class="n">index</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setBrushSize</span><span class="p">(</span><span class="n">newSize</span><span class="p">)</span>
@@ -480,7 +484,6 @@
         <span class="c">#FIXME: shouldn&#39;t be just row+1 here</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setDrawnNumber</span><span class="p">(</span><span class="n">row</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">brushColor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">brushColor</span><span class="p">()</span>
-        <span class="k">print</span> <span class="s">&quot;_onLabelSelected: brushColor = &quot;</span><span class="p">,</span> <span class="n">brushColor</span><span class="o">.</span><span class="n">name</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">brushingModel</span><span class="o">.</span><span class="n">setBrushColor</span><span class="p">(</span> <span class="n">brushColor</span> <span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
@@ -508,7 +511,8 @@
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">numLabels</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_addNewLabel</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">numLabels</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxLabelNumber</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="p">,</span> <span class="s">&quot;AddLabelButton&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">AddLabelButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="n">numLabels</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxLabelNumber</span><span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_addNewLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -516,7 +520,9 @@
 <span class="sd">        Add a new label to the label list GUI control.</span>
 <span class="sd">        Return the new number of labels in the control.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">label</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">getNextLabelName</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getNextLabelColor</span><span class="p">()</span> <span class="p">)</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">getNextLabelName</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">getNextLabelColor</span><span class="p">(),</span>
+                       <span class="n">pmapColor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getNextPmapColor</span><span class="p">(),</span>
+                   <span class="p">)</span>
         <span class="n">label</span><span class="o">.</span><span class="n">nameChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_updateLabelShortcuts</span><span class="p">)</span>
         <span class="n">label</span><span class="o">.</span><span class="n">nameChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onLabelNameChanged</span><span class="p">)</span>
         <span class="n">label</span><span class="o">.</span><span class="n">colorChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">onLabelColorChanged</span><span class="p">)</span>
@@ -527,16 +533,24 @@
         <span class="n">newColorIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">newRow</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">onLabelListDataChanged</span><span class="p">(</span><span class="n">newColorIndex</span><span class="p">,</span> <span class="n">newColorIndex</span><span class="p">)</span> <span class="c"># Make sure label layer colortable is in sync with the new color</span>
 
+        <span class="c"># Call the &#39;changed&#39; callbacks immediately to initialize any listeners</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onLabelNameChanged</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onLabelColorChanged</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onPmapColorChanged</span><span class="p">()</span>
+
         <span class="c"># Make the new label selected</span>
         <span class="n">nlabels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span>
         <span class="n">selectedRow</span> <span class="o">=</span> <span class="n">nlabels</span><span class="o">-</span><span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">selectedRow</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_updateLabelShortcuts</span><span class="p">()</span>
+       
+        <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gui_enableLabeling</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">getNextLabelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui.getNextLabelName"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName">[docs]</a>    <span class="k">def</span> <span class="nf">getNextLabelName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.getNextLabelName"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName">[docs]</a><span class="sd">        Return a suitable name for the next label added by the user.</span>
+<span class="sd">        Return a suitable name for the next label added by the user.</span>
 <span class="sd">        Subclasses may override this.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">maxNum</span> <span class="o">=</span> <span class="mi">0</span>
@@ -545,10 +559,10 @@
             <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nums</span><span class="p">:</span>
                 <span class="n">maxNum</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maxNum</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
         <span class="k">return</span> <span class="s">&quot;Label {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">maxNum</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">getNextLabelColor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="LabelingGui.getNextLabelColor"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor">[docs]</a><span class="sd">        Return a QColor to use for the next label.</span>
+</div>
+<div class="viewcode-block" id="LabelingGui.getNextLabelColor"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor">[docs]</a>    <span class="k">def</span> <span class="nf">getNextLabelColor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a QColor to use for the next label.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">numLabels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">numLabels</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable16</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
@@ -560,27 +574,33 @@
         <span class="n">color</span> <span class="o">=</span> <span class="n">QColor</span><span class="p">()</span>
         <span class="n">color</span><span class="o">.</span><span class="n">setRgba</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_colorTable16</span><span class="p">[</span><span class="n">numLabels</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="c"># First entry is transparent (for zero label)</span>
         <span class="k">return</span> <span class="n">color</span>
-
-    <span class="k">def</span> <span class="nf">onLabelNameChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="LabelingGui.onLabelNameChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged">[docs]</a><span class="sd">        Subclasses can override this to respond to changes in the label names.</span>
+</div>
+<div class="viewcode-block" id="LabelingGui.getNextPmapColor"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getNextPmapColor">[docs]</a>    <span class="k">def</span> <span class="nf">getNextPmapColor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a QColor to use for the next label.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="LabelingGui.onLabelNameChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged">[docs]</a>    <span class="k">def</span> <span class="nf">onLabelNameChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subclasses can override this to respond to changes in the label names.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">onLabelColorChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="LabelingGui.onLabelColorChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged">[docs]</a><span class="sd">        Subclasses can override this to respond to changes in the label colors.</span>
+</div>
+<div class="viewcode-block" id="LabelingGui.onLabelColorChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged">[docs]</a>    <span class="k">def</span> <span class="nf">onLabelColorChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subclasses can override this to respond to changes in the label colors.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
-    
-    <span class="k">def</span> <span class="nf">onPmapColorChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="LabelingGui.onPmapColorChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onPmapColorChanged">[docs]</a><span class="sd">        Subclasses can override this to respond to changes in a label associated probability color.</span>
+    </div>
+<div class="viewcode-block" id="LabelingGui.onPmapColorChanged"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.onPmapColorChanged">[docs]</a>    <span class="k">def</span> <span class="nf">onPmapColorChanged</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subclasses can override this to respond to changes in a label associated probability color.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_removeLastLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_removeLastLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Programmatically (i.e. not from the GUI) reduce the size of the label list by one.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -634,20 +654,26 @@
         <span class="c">#  Otherwise, you can never delete the same label twice in a row.</span>
         <span class="c">#  (Only *changes* to the input are acted upon.)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_labelingSlots</span><span class="o">.</span><span class="n">labelDelete</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+       
+        <span class="n">e</span> <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">_labelControlUi</span><span class="o">.</span><span class="n">labelListModel</span><span class="o">.</span><span class="n">rowCount</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gui_enableLabeling</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_getLabelLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c"># Find the labellayer in the viewer stack</span>
+<div class="viewcode-block" id="LabelingGui.getLayer"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.getLayer">[docs]</a>    <span class="k">def</span> <span class="nf">getLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;find a layer by name&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">labellayer</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">ifilter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">l</span><span class="p">:</span> <span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&quot;Labels&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="p">)</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+            <span class="n">labellayer</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">ifilter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">l</span><span class="p">:</span> <span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="p">)</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">None</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">labellayer</span>
+</div>
+    <span class="k">def</span> <span class="nf">_getLabelLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s">&#39;Labels&#39;</span><span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">createLabelLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+<div class="viewcode-block" id="LabelingGui.createLabelLayer"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.createLabelLayer">[docs]</a>    <span class="k">def</span> <span class="nf">createLabelLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direct</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.createLabelLayer"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.createLabelLayer">[docs]</a><span class="sd">        Return a colortable layer that displays the label slot data, along with its associated label source.</span>
+<span class="sd">        Return a colortable layer that displays the label slot data, along with its associated label source.</span>
 <span class="sd">        direct: whether this layer is drawn synchronously by volumina</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">labelOutput</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labelingSlots</span><span class="o">.</span><span class="n">labelOutput</span>
@@ -664,11 +690,11 @@
             <span class="n">labellayer</span><span class="o">.</span><span class="n">ref_object</span> <span class="o">=</span> <span class="bp">None</span>
 
             <span class="k">return</span> <span class="n">labellayer</span><span class="p">,</span> <span class="n">labelsrc</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="LabelingGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.setupLayers">[docs]</a>    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="LabelingGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.labelingGui.LabelingGui.setupLayers">[docs]</a><span class="sd">        Sets up the label layer for display by our base class (LayerViewerGui).</span>
+<span class="sd">        Sets up the label layer for display by our base class (LayerViewerGui).</span>
 <span class="sd">        If our subclass overrides this function to add his own layers,</span>
 <span class="sd">        he **must** call this function explicitly.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -702,14 +728,12 @@
             <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">layers</span>
-
+</div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_createDefault16ColorColorTable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_createDefault16ColorColorTable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">colors</span> <span class="o">=</span> <span class="p">[]</span>
-
         <span class="c"># Transparent for the zero label</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">QColor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
-
         <span class="c"># ilastik v0.5 colors</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span> <span class="n">Qt</span><span class="o">.</span><span class="n">red</span> <span class="p">)</span> <span class="p">)</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span> <span class="n">Qt</span><span class="o">.</span><span class="n">green</span> <span class="p">)</span> <span class="p">)</span>
@@ -718,7 +742,6 @@
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span> <span class="n">Qt</span><span class="o">.</span><span class="n">magenta</span> <span class="p">)</span> <span class="p">)</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span> <span class="n">Qt</span><span class="o">.</span><span class="n">darkYellow</span> <span class="p">)</span> <span class="p">)</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span> <span class="n">Qt</span><span class="o">.</span><span class="n">lightGray</span> <span class="p">)</span> <span class="p">)</span>
-
         <span class="c"># Additional colors</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">105</span><span class="p">,</span> <span class="mi">180</span><span class="p">)</span> <span class="p">)</span> <span class="c">#hot pink</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">102</span><span class="p">,</span> <span class="mi">205</span><span class="p">,</span> <span class="mi">170</span><span class="p">)</span> <span class="p">)</span> <span class="c">#dark aquamarine</span>
@@ -728,15 +751,9 @@
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">173</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span>  <span class="mi">47</span><span class="p">)</span> <span class="p">)</span> <span class="c">#green-yellow</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span> <span class="p">)</span>    <span class="c">#purple</span>
         <span class="n">colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">QColor</span><span class="p">(</span><span class="mi">240</span><span class="p">,</span> <span class="mi">230</span><span class="p">,</span> <span class="mi">140</span><span class="p">)</span> <span class="p">)</span> <span class="c">#khaki</span>
-
-<span class="c">#        colors.append( QColor(192, 192, 192) ) #silver</span>
-<span class="c">#        colors.append( QColor(69, 69, 69) )    # dark grey</span>
-<span class="c">#        colors.append( QColor( Qt.cyan ) )</span>
-
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">16</span>
-
-        <span class="k">return</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">rgba</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">]</span>
-</pre></div></div>
+        <span class="k">return</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">rgba</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">]</span></div>
+</pre></div>
 
           </div>
         </div>
@@ -766,13 +783,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

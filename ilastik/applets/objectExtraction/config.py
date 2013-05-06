@@ -1,10 +1,12 @@
 # FIXME: use ilastik config file
-
-compress_labels = True
-
+compress_labels = False
+'''
 # all these features are precalculated in opExtractObjects
+'''
 vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'Coord<ValueList>', \
                   'RegionRadii']
+#vigra_features = ['Count', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'RegionCenter', 'RegionAxes']
+other_features = []
 
 # only these features are used. eventually these will be chosen
 # interactively. They many include features not in 'vigra_features',

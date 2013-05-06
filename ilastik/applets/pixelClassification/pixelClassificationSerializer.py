@@ -1,8 +1,7 @@
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialClassifierSlot, \
     SerialBlockSlot, SerialListSlot
-from lazyflow.operators import OpH5WriterBigDataset
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
 from ilastik.utility.simpleSignal import SimpleSignal
 
@@ -11,8 +10,12 @@ logger = logging.getLogger(__name__)
 
 class SerialPredictionSlot(SerialSlot):
 
-    def __init__(self, slot, operator, **kwargs):
-        super(SerialPredictionSlot, self).__init__(slot, **kwargs)
+    def __init__(self, slot, operator, inslot=None, name=None,
+                 subname=None, default=None, depends=None,
+                 selfdepends=True):
+        super(SerialPredictionSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
         self.operator = operator
         self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
 
@@ -169,12 +172,12 @@ class PixelClassificationSerializer(AppletSerializer):
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialBlockSlot(operator.LabelInputs,
-                                 operator.LabelImages,
+                 SerialBlockSlot(operator.LabelImages,
+                                 operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,
                                  name='LabelSets',
                                  subname='labels{:03d}',
-                                 autodepends=False),
+                                 selfdepends=False),
                  SerialClassifierSlot(operator.Classifier,
                                       operator.classifier_cache,
                                       name="ClassifierForests",

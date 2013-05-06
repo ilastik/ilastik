@@ -5,8 +5,7 @@ import h5py
 import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent, slicingToString, stringToSlicing
 from ilastik.utility import bind
-from lazyflow.operators import OpH5WriterBigDataset
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
 
 import tempfile
@@ -36,7 +35,8 @@ class AutocontextClassificationSerializer(AppletSerializer):
    
             # Set up handlers for dirty detection
             def handleDirty(section):
-                self._dirtyFlags[section] = True
+                if not self.ignoreDirty:
+                    self._dirtyFlags[section] = True
 
             def handleNewClassifier(slot, index):
                 slot[index].notifyDirty( bind(handleDirty, 1))
@@ -149,7 +149,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                 # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
                 # Instead, we'll use vigra to write the classifier to a temporary file.
                 tmpDir = tempfile.mkdtemp()
-                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
                 for j, forest in enumerate(classifier_forests):
                     forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(j) )
                 
@@ -290,7 +290,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                         break
                     classifierGroup = topGroup[fullpath]
                     tmpDir = tempfile.mkdtemp()
-                    cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                    cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
                     with h5py.File(cachePath, 'w') as cacheFile:
                         cacheFile.copy(classifierGroup, 'ClassifierForests')
             

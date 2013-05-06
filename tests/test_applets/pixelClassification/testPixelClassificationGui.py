@@ -47,11 +47,11 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         
         # Start the timer
         cls.timer = Timer()
-        cls.timer.start()
+        cls.timer.unpause()
 
     @classmethod
     def teardownClass(cls):
-        cls.timer.stop()
+        cls.timer.pause()
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!
@@ -78,7 +78,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             shell = self.shell
             
             # New project
-            shell.createAndLoadNewProject(projFilePath)
+            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
         
             # Add a file
@@ -86,8 +86,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             info = DatasetInfo()
             info.filePath = self.SAMPLE_DATA
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
-            opDataSelection.Dataset.resize(1)
-            opDataSelection.Dataset[0].setValue(info)
+            opDataSelection.DatasetGroup.resize(1)
+            opDataSelection.DatasetGroup[0][0].setValue(info)
             
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
@@ -150,7 +150,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.shell.setSelectedAppletDrawer(3)
             
             # Turn off the huds and so we can capture the raw image
-            gui.currentGui().menuGui.actionToggleAllHuds.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position  
@@ -160,7 +161,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
             # Add label classes
@@ -219,10 +220,15 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # We assume that there are three labels to start with (see previous test)
             assert opPix.MaxLabelValue.value == 3, "Max label value was {}".format( opPix.MaxLabelValue.value )
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
             gui.currentGui()._labelControlUi.labelListModel.select(1)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
+
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
@@ -231,6 +237,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui.currentGui()._labelControlUi.labelListModel.selectedRow())
             
             # Did the label get removed from the label array?
+            assert opPix.MaxLabelValue.ready(), "Expected max label value to be available"
             assert opPix.MaxLabelValue.value == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( opPix.MaxLabelValue.value  )
 
             self.waitForViews(gui.currentGui().editor.imageViews)
@@ -281,7 +288,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
             
             # Use the first view for this test
@@ -329,7 +336,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
 
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             assert opPix.MaxLabelValue.value == 2, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
@@ -399,12 +406,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.test_4_AddLabels()
             
             # Make sure the entire slice is visible
-            gui.currentGui().menuGui.actionFitToScreen.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionFitToScreen.trigger()
 
             with Timer() as timer:
                 # Enable interactive mode            
-                assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-                gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+                assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+                gui.currentGui()._labelControlUi.liveUpdateButton.click()
     
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
@@ -412,7 +420,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
             # Disable iteractive mode.            
-            gui.currentGui()._viewerControlUi.pauseUpdateButton.click()
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 

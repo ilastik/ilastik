@@ -4,6 +4,7 @@ import io, os
 default_config = """
 [ilastik]
 debug: false
+plugin_directories: ~/.ilastik/plugins,
 """
 
 cfg = ConfigParser.SafeConfigParser()

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>710</height>
+    <height>801</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -49,6 +49,16 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_20">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the optimization. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Timeout in sec.</string>
+         </property>
+        </widget>
+       </item>
        <item row="3" column="1">
         <widget class="QDoubleSpinBox" name="noiseRateSpinBox">
          <property name="minimum">
@@ -65,11 +75,11 @@
          </property>
         </widget>
        </item>
+       <item row="7" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
+       </item>
        <item row="0" column="1">
         <widget class="QSpinBox" name="appSpinBox">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -123,9 +133,6 @@
        </item>
        <item row="1" column="1">
         <widget class="QSpinBox" name="disSpinBox">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
          <property name="maximum">
           <number>10000</number>
          </property>
@@ -155,27 +162,27 @@
         </widget>
        </item>
        <item row="6" column="0">
-	 <widget class="QLabel" name="label_23">
-	   <property name="toolTip">
-	     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of nearest neighbors for building hypotheses graph. Less neighbors speed up optimization time, but might have negative impact on tracking results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-	   </property>
-	   <property name="text">
-	     <string>Number of Neighbors</string>
-	   </property>
-	 </widget>
+        <widget class="QLabel" name="label_23">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of neighbors to be considered as potential association candidates. Less neighbors speed up optimization time, but might have negative impact on tracking results. A reasonable value might be 2 or 3.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Number of Neighbors</string>
+         </property>
+        </widget>
        </item>
        <item row="6" column="1">
-	 <widget class="QSpinBox" name="nNeighborsSpinBox">
-	   <property name="minimum">
-	     <number>1</number>
-	   </property>
-	   <property name="singleStep">
-	     <number>1</number>
-	   </property>
-	   <property name="value">
-	     <number>2</number>
-	   </property>
-	 </widget>
+        <widget class="QSpinBox" name="nNeighborsSpinBox">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="singleStep">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>2</number>
+         </property>
+        </widget>
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
@@ -184,16 +191,6 @@
          </property>
          <property name="text">
           <string>Appearance</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Noise weight</string>
          </property>
         </widget>
        </item>
@@ -210,7 +207,30 @@
          </property>
         </widget>
        </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Noise weight</string>
+         </property>
+        </widget>
+       </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="withDivisionsBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Check if the objects to be tracked are able to divide. For instance, this option should be checked for the tracking of proliferating cells.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Divisible Objects</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="TrackButton">
@@ -240,9 +260,6 @@
          <weight>75</weight>
          <bold>true</bold>
         </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Field of view selection.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Field of View Selection:</string>
@@ -477,6 +494,9 @@
   <tabstop>noiseRateSpinBox</tabstop>
   <tabstop>noiseWeightSpinBox</tabstop>
   <tabstop>epGapSpinBox</tabstop>
+  <tabstop>nNeighborsSpinBox</tabstop>
+  <tabstop>timeoutBox</tabstop>
+  <tabstop>withDivisionsBox</tabstop>
   <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>
   <tabstop>to_time</tabstop>

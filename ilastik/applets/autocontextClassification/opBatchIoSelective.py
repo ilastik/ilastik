@@ -5,7 +5,8 @@ import threading
 import logging
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
-from lazyflow.operators import OpH5WriterBigDataset, OpBlockedArrayCache
+from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from ilastik.utility.pathHelpers import PathComponents
 from lazyflow.rtype import SubRegion
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class OpBatchIoSelective(Operator):
             filenameBase = PathComponents(self.OutputFileNameBase.value).filenameBase
         else:
             filenameBase = inputPathComponents.filenameBase
-        outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext) 
+        outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext).replace('\\', '/')
         
         # Set up the path for H5 export
         if formatId == ExportFormat.H5:

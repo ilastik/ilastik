@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>260</width>
-    <height>331</height>
+    <width>288</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -37,6 +37,17 @@
      <property name="spacing">
       <number>3</number>
      </property>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QPushButton" name="subsetFeaturesButton">
+         <property name="text">
+          <string>Subset Features</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
      <item>
       <widget class="QLabel" name="label">
        <property name="sizePolicy">
@@ -155,7 +166,7 @@
        <item>
         <widget class="QLabel" name="brushSizeCaption">
          <property name="text">
-          <string>Size:</string>
+          <string>brush size:</string>
          </property>
         </widget>
        </item>
@@ -173,9 +184,6 @@
         </widget>
        </item>
       </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
      </item>
     </layout>
    </item>

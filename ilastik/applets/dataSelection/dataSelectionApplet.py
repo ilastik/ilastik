@@ -1,5 +1,5 @@
 from ilastik.applets.base.applet import Applet
-from opDataSelection import OpMultiLaneDataSelection
+from opDataSelection import OpMultiLaneDataSelectionGroup
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 class DataSelectionApplet( Applet ):
@@ -8,7 +8,7 @@ class DataSelectionApplet( Applet ):
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, force5d=False):
-        self.__topLevelOperator = OpMultiLaneDataSelection(parent=workflow, force5d=force5d)
+        self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, force5d=force5d)
         super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
         self._serializableItems = [ DataSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]

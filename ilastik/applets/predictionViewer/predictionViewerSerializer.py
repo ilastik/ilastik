@@ -11,7 +11,10 @@ class PredictionViewerSerializer(AppletSerializer):
         pass
     
     def deserializeFromHdf5(self, hdf5File, projectFilePath):
-        predictionGroup = hdf5File[self._predictionGroupName]
+        try:
+            predictionGroup = hdf5File[self._predictionGroupName]
+        except:
+            return
 
         pmapColors = None
         labelNames = None

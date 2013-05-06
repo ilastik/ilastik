@@ -1,18 +1,21 @@
-import numpy
-import h5py
+#Python
 import os
 
+#SciPy
+import numpy
+import h5py
+
+#lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
-#from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed
 
-class OpFeatureSelection(Operator):
+class OpFeatureSelectionNoCache(Operator):
     """
-    The top-level operator for the feature selection applet.
+    The top-level operator for the feature selection applet for headless workflows.
     """
     name = "OpFeatureSelection"
     category = "Top-level"
@@ -34,7 +37,6 @@ class OpFeatureSelection(Operator):
     # Output can be optionally accessed via an internal cache.
     # (Training a classifier benefits from caching, but predicting with an existing classifier does not.)
     OutputImage = OutputSlot()
-    CachedOutputImage = OutputSlot()
 
     FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
 
@@ -43,7 +45,7 @@ class OpFeatureSelection(Operator):
     FilterImplementations = ['Original', 'Refactored', 'Interpolated']
     
     def __init__(self, filter_implementation, *args, **kwargs):
-        super(OpFeatureSelection, self).__init__(*args, **kwargs)
+        super(OpFeatureSelectionNoCache, self).__init__(*args, **kwargs)
 
         # Create the operator that actually generates the features
         if filter_implementation == 'Original':
@@ -54,15 +56,7 @@ class OpFeatureSelection(Operator):
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
             self.opPixelFeatures.InterpolationScaleZ.setValue(2)
         else:
-            assert False, "Unknown filter implementation option: {}".format( filter_implementation )
-
-        # Create the cache
-        self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
-        self.opPixelFeatureCache.name = "opPixelFeatureCache"
-
-        # Connect the cache to the feature output
-        self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
-        self.opPixelFeatureCache.fixAtCurrent.setValue(False)
+            raise RuntimeError("Unknown filter implementation option: {}".format( filter_implementation ))
 
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
@@ -81,7 +75,6 @@ class OpFeatureSelection(Operator):
             f.close()
             
             self.OutputImage.disconnect()
-            self.CachedOutputImage.disconnect()
             self.FeatureLayers.disconnect()
             
             axistags = self.inputs["InputImage"].meta.axistags
@@ -103,48 +96,11 @@ class OpFeatureSelection(Operator):
             self.OutputImage.meta.axistags = axistags 
             
             self.CachedOutputImage.meta.shape    = (shape) + (len(self._files),)
-            self.CachedOutputImage.meta.dtype    = dtype 
             self.CachedOutputImage.meta.axistags = axistags 
-            return
-           
-        # Connect our external outputs to our internal operators
-        self.OutputImage.connect( self.opPixelFeatures.Output )
-        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
-        self.FeatureLayers.connect( self.opPixelFeatures.Features )
-
-        # We choose block shapes that have only 1 channel because the channels may be 
-        #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-        blockDimsX = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (128,256),
-                       'x' : (32,32),
-                       'c' : (1000,1000) } # Overestimate number of feature channels: Cache block dimensions will be clipped to the size of the actual feature image
-
-        blockDimsY = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (32,32),
-                       'x' : (128,256),
-                       'c' : (1000,1000) }
-
-        blockDimsZ = { 't' : (1,1),
-                       'z' : (32,32),
-                       'y' : (128,256),
-                       'x' : (128,256),
-                       'c' : (1000,1000) }
-        
-        axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        # Configure the cache        
-        self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        else:
+            # Connect our external outputs to our internal operators
+            self.OutputImage.connect( self.opPixelFeatures.Output )
+            self.FeatureLayers.connect( self.opPixelFeatures.Features )
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
@@ -179,4 +135,68 @@ class OpFeatureSelection(Operator):
                 result[:,:,:,j] = r 
                 j += 1
             return result  
-        pass
+
+class OpFeatureSelection( OpFeatureSelectionNoCache ):
+    """
+    This is the top-level operator of the feature selection applet when used in a GUI.
+    It provides an extra output for cached data.
+    """
+
+    CachedOutputImage = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpFeatureSelection, self).__init__( *args, **kwargs )
+
+        # Create the cache
+        self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
+        self.opPixelFeatureCache.name = "opPixelFeatureCache"
+
+        # Connect the cache to the feature output
+        self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
+        self.opPixelFeatureCache.fixAtCurrent.setValue(False)
+
+        # Connect external output to internal output
+        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
+
+    def setupOutputs(self):
+        super( OpFeatureSelection, self ).setupOutputs()
+
+        if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
+            self.CachedOutputImage.disconnect()
+            self.CachedOutputImage.meta.dtype = self.OutputImage.meta.dtype 
+        
+        else:
+            # We choose block shapes that have only 1 channel because the channels may be 
+            #  coming from different features (e.g different filters) and probably shouldn't be cached together.
+            blockDimsX = { 't' : (1,1),
+                           'z' : (128,256),
+                           'y' : (128,256),
+                           'x' : (32,32),
+                           'c' : (1000,1000) } # Overestimate number of feature channels: Cache block dimensions will be clipped to the size of the actual feature image
+    
+            blockDimsY = { 't' : (1,1),
+                           'z' : (128,256),
+                           'y' : (32,32),
+                           'x' : (128,256),
+                           'c' : (1000,1000) }
+    
+            blockDimsZ = { 't' : (1,1),
+                           'z' : (32,32),
+                           'y' : (128,256),
+                           'x' : (128,256),
+                           'c' : (1000,1000) }
+            
+            axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
+            innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+            outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+    
+            innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+            outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+    
+            innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
+            outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+    
+            # Configure the cache        
+            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
