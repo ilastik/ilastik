@@ -75,7 +75,7 @@ class OpBatchIo(Operator):
         self.ProgressSignal.setValue( self.progressSignal )
         
         self._createDirLock = threading.Lock()
-        
+                
     def cleanupPreview(self):
         if self._opExportedImageProvider is not None:
             self.ExportedImage.disconnect()
@@ -186,8 +186,8 @@ class OpBatchIo(Operator):
                 hdf5File.close()
                 opH5Writer.cleanUp()
                 
-                self.setupPreview()
                 self.Dirty.setValue( dirtyState )
+                self.setupPreview()
 
 #            elif exportFormat == ExportFormat.Npy:
 #                assert False # TODO
