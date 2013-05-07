@@ -8,8 +8,8 @@ import os
 import sys
 import copy
 import ilastik.utility # This is the ilastik shell utility module
-from ilastik.utility import bind
-from ilastik.utility import PathComponents
+from ilastik.utility import bind, PathComponents
+from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 import ilastik.applets.base.applet
@@ -77,6 +77,8 @@ class BatchIoGui(QWidget):
             self.title = title
             self.drawer = None
             self.topLevelOperator = topLevelOperator
+
+            self.threadRouter = ThreadRouter(self)
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -249,6 +251,7 @@ class BatchIoGui(QWidget):
                     return index
             return -1
 
+    @threadRouted
     def updateTableForSlot(self, slot):
         """
         Update the table row that corresponds to the given slot of the top-level operator (could be either input slot)
