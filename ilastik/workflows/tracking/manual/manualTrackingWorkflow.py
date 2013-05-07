@@ -1,10 +1,6 @@
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
-from ilastik.applets.divisionFeatureExtraction.divisionFeatureExtractionApplet import DivisionFeatureExtractionApplet
-from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
-from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalTranslationApplet
 from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 
