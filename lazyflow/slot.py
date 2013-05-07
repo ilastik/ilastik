@@ -356,6 +356,15 @@ class Slot(object):
         """
         self._sig_inserted.unsubscribe(function)
 
+    def _handleUpstreamUnready(self, slot):
+        """
+        This handler ensures that UNready status propagates quickly 
+        through the graph (before the normal _changed path)
+        """
+        if self.meta._ready:
+            self.meta._ready = False
+            self._sig_unready(self)
+    
     def connect(self, partner, notify=True):
         """
         Connect a slot to another slot
@@ -379,6 +388,7 @@ class Slot(object):
                 self.disconnect()
     
             if partner is not None:
+                partner._sig_unready.subscribe( self._handleUpstreamUnready )
                 self._value = None
                 if partner.level == self.level:
                     assert isinstance(partner.stype, type(self.stype)), \
