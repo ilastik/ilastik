@@ -1,5 +1,6 @@
 #Python
 import copy
+import numpy
 import collections
 
 class MetaDict(dict):
