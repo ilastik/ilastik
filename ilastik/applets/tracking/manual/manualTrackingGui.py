@@ -406,10 +406,15 @@ class ManualTrackingGui(LayerViewerGui):
     def _addNewTrack(self):
         activeTrackBox = self._drawer.activeTrackBox
         allTracks = [int(activeTrackBox.itemText(i)) for i in range(activeTrackBox.count())]
-        if len(allTracks) == 1: # trackid self.misdetIdx is misdetection
+        if len(allTracks) == 0:
             activeTrackBox.addItem(str(1), self.ct[1])
         else:
-            newTrack = max(allTracks)+1
+            # lowest id of a real track should be at least 1
+            # there could be already only negative or zero ids in the list
+            # (negative track ids are use for special cases like misdetections)
+            newTrack = max(allTracks + [0,])+1
+            
+            # avoid these track ids
             if newTrack % 255 == 0:
                 newTrack += 2
             elif newTrack % 256 == 0:
