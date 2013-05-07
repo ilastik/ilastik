@@ -524,14 +524,13 @@ class Slot(object):
             self.logger.debug("Resizing slot {} of operator {} to size {}".format(
                 self.name, self.operator.name, size))
 
-
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
 
+        new_subslots = []
         while size > len(self):
             self.insertSlot(len(self), len(self)+1, propagate=False)
-            # connect newly added slots
-            self._connectSubSlot(len(self) - 1)
+            new_subslots.append( len(self) - 1 )
 
         while size < len(self):
             self.removeSlot(len(self)-1, len(self)-1, propagate=False)
@@ -544,6 +543,12 @@ class Slot(object):
         # propagate size change upward
         if (self.partner and len(self.partner) < size and self.partner.level == self.level):
             self.partner.resize(size)
+
+        # connect newly added slots
+        # We must connect these subslots here, AFTER all resizes have propagated up and down through the graph.
+        # Otherwise, our new subslots may lose downstream partners (happens in "diamond" shaped graphs.)
+        for i in new_subslots:
+            self._connectSubSlot(i)
 
         # call after resize callbacks
         self._sig_resized(self, oldsize, size)
@@ -569,11 +574,13 @@ class Slot(object):
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.insertSlot(position, finalsize)
-            self._connectSubSlot(position)
 
             for p in self.partners:
                 if p.level == self.level:
                     p.insertSlot(position, finalsize)
+
+            self._connectSubSlot(position)
+
 
         # call after insert callbacks
         self._sig_inserted(self, position, finalsize)
@@ -1248,22 +1255,21 @@ class Slot(object):
         self.meta.shape = tuple(tmpshape)
 
     def __str__(self):
-        if self.meta.axistags is None:
-            axisStr = 'Axistags \tNone\n'
-        else:
-            axisStr = str(self.meta.axistags)
-        return self.name + '\n' + 'Shape \t\t'+str(self.meta.shape) +'\n'\
-                +axisStr +\
-               'Dtype \t\t' + str(self.meta.dtype)
+        mslot_info = ""
+        if self.level > 0 or isinstance(self.operator, Slot):
+            mslot_info += "["
+            if isinstance(self.operator, Slot):
+                mslot_info += " index={}".format( self.operator.index(self) )
+            if self.level > 0:
+                mslot_info += " len={}".format( len(self) )
+                if self.level > 1:
+                    mslot_info += " level={}".format( self.level )
+            mslot_info += " ] "
+                
+        return '"{}" {}: \t{}\n'.format( self.name, mslot_info, self.meta )
 
     def __repr__(self):
-        if self.meta.axistags is None:
-            axisStr = 'Axistags \tNone\n'
-        else:
-            axisStr = str(self.meta.axistags)
-        return self.name + '\n' + 'Shape \t\t'+str(self.meta.shape) +'\n'\
-                + axisStr +\
-               'Dtype \t\t' + str(self.meta.dtype)
+        return self.__str__()
 
 class InputSlot(Slot):
     """The base class for input slots, it provides methods to connect
