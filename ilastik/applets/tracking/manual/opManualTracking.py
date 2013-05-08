@@ -3,8 +3,6 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 import numpy as np
-import pgmlink
-
 
 class OpManualTracking(Operator):
     name = "Manual Tracking"
