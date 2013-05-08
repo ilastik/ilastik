@@ -38,8 +38,8 @@ class OpSingleBlockObjectPrediction( Operator ):
     # RawImage -----> opRawSubRegion ------                        _______________________ 
     #                                      \                      /                       \
     # BinaryImage --> opBinarySubRegion --> opExtract --(features)--> opPredict --(map)--> opPredictionImage --via execute()--> PredictionImage
-    #                                       /       \               /                    /
-    #                 SelectedFeatures------                \    Classifier                    /
+    #                                      /         \               /                    /
+    #                 SelectedFeatures-----           \   Classifier                     /
     #                                                  \                                /
     #                                                   (labels)------------------------
 

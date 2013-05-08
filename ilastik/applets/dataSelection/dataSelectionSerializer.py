@@ -157,6 +157,8 @@ class DataSelectionSerializer( AppletSerializer ):
 
             globstring = info.filePath
             info.location = DatasetInfo.Location.ProjectInternal
+            firstPathParts = PathComponents(info.filePath.split('//')[0])
+            info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
             
             opWriter = OpStackToH5Writer(graph=self.topLevelOperator.graph)
             opWriter.hdf5Group.setValue(localDataGroup)

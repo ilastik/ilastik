@@ -180,21 +180,28 @@ class OpPixelClassification( Operator ):
         """
         Ensure that all input images have the same number of channels.
         """
-        thisLaneChannels = self.InputImages[laneIndex].meta.getTaggedShape()['c']
+        thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
 
         # Find a different lane and use it for comparison
-        expectedChannels = thisLaneChannels
+        validShape = thisLaneTaggedShape
         for i, slot in enumerate(self.InputImages):
             if slot.ready() and i != laneIndex:
-                expectedChannels = slot.meta.getTaggedShape()['c']
+                validShape = slot.meta.getTaggedShape()
                 break
 
-        if expectedChannels != thisLaneChannels:
+        if validShape['c'] != thisLaneTaggedShape['c']:
             raise DatasetConstraintError(
                  "Pixel Classification",
                  "All input images must have the same number of channels.  "\
                  "Your new image has {} channel(s), but your other images have {} channel(s)."\
-                 .format( thisLaneChannels, expectedChannels ) )
+                 .format( thisLaneTaggedShape['c'], validShape['c'] ) )
+            
+        if len(validShape) != len(thisLaneTaggedShape):
+            raise DatasetConstraintError(
+                 "Pixel Classification",
+                 "All input images must have the same dimensionality.  "\
+                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
+                 .format( len(thisLaneTaggedShape), len(validShape) ) )
             
     
     def setInSlot(self, slot, subindex, roi, value):

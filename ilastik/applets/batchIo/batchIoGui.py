@@ -8,8 +8,8 @@ import os
 import sys
 import copy
 import ilastik.utility # This is the ilastik shell utility module
-from ilastik.utility import bind
-from ilastik.utility import PathComponents
+from ilastik.utility import bind, PathComponents
+from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 import ilastik.applets.base.applet
@@ -56,7 +56,10 @@ class BatchIoGui(QWidget):
         pass
 
     def stopAndCleanUp(self):
-        pass
+        for editor in self.layerViewerGuis.values():
+            self.viewerStack.removeWidget( editor )
+            editor.stopAndCleanUp()
+        self.layerViewerGuis.clear()
 
     def imageLaneAdded(self, laneIndex):
         pass
@@ -74,6 +77,8 @@ class BatchIoGui(QWidget):
             self.title = title
             self.drawer = None
             self.topLevelOperator = topLevelOperator
+
+            self.threadRouter = ThreadRouter(self)
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -89,7 +94,7 @@ class BatchIoGui(QWidget):
                 
                 # Update the table row data when this slot has new data
                 # We can't bind in the row here because the row may change in the meantime.
-                multislot[index].notifyDirty( bind( self.updateTableForSlot ) )
+                multislot[index].notifyReady( bind( self.updateTableForSlot ) )
                 if multislot[index].ready():
                     self.updateTableForSlot( multislot[index] )
     
@@ -246,6 +251,7 @@ class BatchIoGui(QWidget):
                     return index
             return -1
 
+    @threadRouted
     def updateTableForSlot(self, slot):
         """
         Update the table row that corresponds to the given slot of the top-level operator (could be either input slot)
@@ -401,7 +407,9 @@ class BatchIoGui(QWidget):
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        self.viewerStack.setCurrentWidget( self.layerViewerGuis[imageSlot] )
+        layerViewer = self.layerViewerGuis[imageSlot]
+        self.viewerStack.setCurrentWidget( layerViewer )
+        self._viewerControlWidgetStack.setCurrentWidget( layerViewer.viewerControlWidget() )
 
 
     def createLayerViewer(self, opLane):

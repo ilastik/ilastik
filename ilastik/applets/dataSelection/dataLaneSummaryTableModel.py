@@ -25,7 +25,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
             self.endInsertRows()
 
-            def handleDatasetInfoChanged(slot, roi):
+            def handleDatasetInfoChanged(slot):
                 # Get the row of this slot
                 laneSlot = slot.operator
                 laneIndex = laneSlot.operator.index( laneSlot )
@@ -34,10 +34,14 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
                 firstIndex = self.createIndex(laneIndex, 0)
                 lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
                 self.dataChanged.emit(firstIndex, lastIndex)
+
+            def handleNewDatasetInserted(mslot, index):
+                mslot[index].notifyDirty( bind(handleDatasetInfoChanged) )
             
             for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
+                datasetMultiSlot.notifyInserted( bind(handleNewDatasetInserted) )
                 for roleIndex, datasetSlot in enumerate(datasetMultiSlot):
-                    datasetSlot.notifyDirty( handleDatasetInfoChanged )
+                    handleNewDatasetInserted( datasetMultiSlot, roleIndex )
 
         self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
 

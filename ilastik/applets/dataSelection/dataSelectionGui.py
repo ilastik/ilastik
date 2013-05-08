@@ -425,8 +425,8 @@ class DataSelectionGui(QWidget):
             raise
 
     def handleDatasetConstraintError(self, filename, ex):
-            msg = "Can't use dataset:\n" + \
-                  filename + "\n" + \
+            msg = "Can't use dataset:\n\n" + \
+                  filename + "\n\n" + \
                   "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
                   ex.message
             QMessageBox.critical( self, "Unacceptable Dataset", msg )

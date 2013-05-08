@@ -568,8 +568,6 @@ class IlastikShell( QMainWindow ):
         self.populatingImageSelectionCombo = True
         self.imageSelectionCombo.insertItem(index, "uninitialized")
         self.populatingImageSelectionCombo = False
-        if self.imageSelectionCombo.count() > 1:
-            self.imageSelectionGroup.setHidden(False)
         multislot[index].notifyDirty( bind( self.insertImageName, index) )
 
     @threadRouted
@@ -579,8 +577,6 @@ class IlastikShell( QMainWindow ):
         self.imageSelectionCombo.removeItem(index)
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
-        if self.imageSelectionCombo.count() <= 1:
-            self.imageSelectionGroup.setHidden(True)
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
@@ -646,6 +642,10 @@ class IlastikShell( QMainWindow ):
             
             self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
             self._refreshDrawerRecursionGuard = False
+            
+            applet = self._applets[applet_index]
+            # Only show the combo if the applet is lane-aware and there is more than one lane loaded.
+            self.imageSelectionGroup.setVisible( applet.syncWithImageIndex and self.imageSelectionCombo.count() > 1 )
 
     def showCentralWidget(self, applet_index):
         if applet_index < len(self._applets):

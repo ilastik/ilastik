@@ -177,33 +177,40 @@ class OpDataSelectionGroup( Operator ):
         self._opDatasets = None
         self._roles = []
         self._force5d = force5d
-    
+
+        def handleNewRoles(*args):
+            self.DatasetGroup.resize( len(self.DatasetRoles.value) )
+        self.DatasetRoles.notifyReady( handleNewRoles )
+        
     def setupOutputs(self):
         # Create internal operators
-        if self.DatasetRoles.value == self._roles:
-            # No additional setup needed; Internal operators will set themselves up as needed.
-            return
-        self._roles = self.DatasetRoles.value
-        # Clean up the old operators
-        self.ImageGroup.disconnect()
-        self.Image.disconnect()
-        if self._opDatasets is not None:
-            self._opDatasets.cleanUp()
+        if self.DatasetRoles.value != self._roles:
+            self._roles = self.DatasetRoles.value
+            # Clean up the old operators
+            self.ImageGroup.disconnect()
+            self.Image.disconnect()
+            if self._opDatasets is not None:
+                self._opDatasets.cleanUp()
+    
+            self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'force5d' : self._force5d },
+                                                broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
+            self.ImageGroup.connect( self._opDatasets.Image )
+            self._opDatasets.Dataset.connect( self.DatasetGroup )
+            self._opDatasets.ProjectFile.connect( self.ProjectFile )
+            self._opDatasets.ProjectDataGroup.connect( self.ProjectDataGroup )
+            self._opDatasets.WorkingDirectory.connect( self.WorkingDirectory )
 
-        self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'force5d' : self._force5d },
-                                            broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
-        self.ImageGroup.connect( self._opDatasets.Image )
-        self._opDatasets.ProjectFile.connect( self.ProjectFile )
-        self._opDatasets.ProjectDataGroup.connect( self.ProjectDataGroup )
-        self._opDatasets.WorkingDirectory.connect( self.WorkingDirectory )
-        self._opDatasets.Dataset.connect( self.DatasetGroup )
-
-        self.DatasetGroup.resize( len(self._roles) )
-        
         if len( self._opDatasets.Image ) > 0:
             self.Image.connect( self._opDatasets.Image[0] )
             self.ImageName.connect( self._opDatasets.ImageName[0] )
             self.AllowLabels.connect( self._opDatasets.AllowLabels[0] )
+        else:
+            self.Image.disconnect()
+            self.ImageName.disconnect()
+            self.AllowLabels.disconnect()
+            self.Image.meta.NOTREADY = True
+            self.ImageName.meta.NOTREADY = True
+            self.AllowLabels.meta.NOTREADY = True
 
     def execute(self, slot, subindex, rroi, result):
             assert False, "Unknown or unconnected output slot."
@@ -213,6 +220,8 @@ class OpDataSelectionGroup( Operator ):
         pass
 
 class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
+    # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience 
+    #       to save clients the trouble of instantiating/using OpTransposeSlots.
     def __init__(self, force5d=False, *args, **kwargs):
         kwargs.update( { 'operator_kwargs' : {'force5d' : force5d},
                          'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
