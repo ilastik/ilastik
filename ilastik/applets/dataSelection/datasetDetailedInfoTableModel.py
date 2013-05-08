@@ -15,6 +15,7 @@ class DatasetDetailedInfoColumn():
     NumColumns = 6
 
 class DatasetDetailedInfoTableModel(QAbstractItemModel):
+    
     def __init__(self, parent, topLevelOperator, roleIndex):
         """
         :param topLevelOperator: An instance of OpMultiLaneDataSelectionGroup
@@ -62,6 +63,18 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
     def isEditable(self, row):
         return self._op.DatasetGroup[row][self._roleIndex].ready()
+
+    def hasInternalPaths(self):
+        for mslot in self._op.DatasetGroup:
+            if self._roleIndex < len(mslot):
+                slot = mslot[self._roleIndex]
+                if slot.ready():
+                    datasetInfo = slot.value
+                    filePathComponents = PathComponents(datasetInfo.filePath)
+                    if ( datasetInfo.location == DatasetInfo.Location.FileSystem
+                         and filePathComponents.internalPath is not None ):
+                        return True
+        return False                
     
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
