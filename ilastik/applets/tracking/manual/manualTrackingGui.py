@@ -1,13 +1,13 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic, QtGui
 
+import h5py
 import os
 import numpy
 
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
-from ilastik.applets.tracking.base.trackingUtilities import LineageH5
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -811,7 +811,7 @@ class ManualTrackingGui(LayerViewerGui):
             multiMoves_at = numpy.asarray(multiMoves[t])
                     
             # write only if file exists
-            with LineageH5(fn, 'a') as f_curr:
+            with h5py.File(fn, 'a') as f_curr:
                 # delete old label image
                 if "segmentation" in f_curr.keys():
                     del f_curr["segmentation"]
