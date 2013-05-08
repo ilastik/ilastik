@@ -1,7 +1,7 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot,\
-    deleteIfPresent, getOrCreateGroup
+    deleteIfPresent, getOrCreateGroup, SerialHdf5BlockSlot, SerialDictSlot
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer,\
-    SerialLabelImageSlot
+    SerialObjectFeaturesSlot
 
 import numpy as np
 import collections
@@ -17,11 +17,11 @@ class SerialExtendedFeaturesSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             opgroup = getOrCreateGroup(group, str(i))
-            for t in op._opDivFeats._cache.keys():
+            for t in op._opCellFeats._cache.keys():
                 t_gr = opgroup.create_group(str(t))
-                for ch in range(len(op._opDivFeats._cache[t])):
+                for ch in range(len(op._opCellFeats._cache[t])):
                     ch_gr = t_gr.create_group(str(ch))
-                    feats = op._opDivFeats._cache[t][ch]
+                    feats = op._opCellFeats._cache[t][ch]
                     for key, val in feats.iteritems():
                         # workaround for Coord<ValueList> which is stored as list of numpy arrays of different sizes:
                         # create numpy array with shape (n_objects*max_length, 3)
@@ -88,16 +88,31 @@ class SerialExtendedFeaturesSlot(SerialSlot):
                         else:
                             feat[key] = gr[t][ch][key].value
                     cache[int(t)].append(feat)
-            op._opDivFeats._cache = cache
+            op._opCellFeats._cache = cache
         self.dirty = False
 
-class DivisionFeatureExtractionSerializer(AppletSerializer):
+class TrackingFeatureExtractionSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):        
+#        slots = [
+#            SerialHdf5BlockSlot(operator.LabelOutputHdf5,
+#                        operator.LabelInputHdf5,
+#                        operator.CleanLabelBlocks,
+#                        name="LabelImage"),            
+#            SerialExtendedFeaturesSlot(operator.RegionFeatures, name="samples"),
+#        ]
         slots = [
-            SerialLabelImageSlot(operator.LabelImage, name="LabelImage"),
-            SerialExtendedFeaturesSlot(operator.RegionFeatures, name="samples"),
+            SerialHdf5BlockSlot(operator.LabelOutputHdf5,
+                                operator.LabelInputHdf5,
+                                operator.CleanLabelBlocks,
+                                name="LabelImage"),
+            SerialDictSlot(operator.Features, transform=str),
+            SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
+                                     operator.RegionFeaturesCacheInput,
+                                     operator.RegionFeaturesCleanBlocks,
+                                     name="RegionFeatures"),
         ]
 
-        super(DivisionFeatureExtractionSerializer, self).__init__(projectFileGroupName,
+
+        super(TrackingFeatureExtractionSerializer, self).__init__(projectFileGroupName,
                                                          slots=slots)
         

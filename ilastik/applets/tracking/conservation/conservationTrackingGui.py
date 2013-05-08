@@ -1,14 +1,14 @@
 from PyQt4 import uic, QtGui
 import os
 import logging
-from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
 import sys
 import traceback
+from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class ConservationTrackingGui( TrackingGuiBase ):     
+class ConservationTrackingGui( TrackingBaseGui ):     
     
     withMergers = True
     

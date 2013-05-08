@@ -16,6 +16,7 @@ from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 MISSING_VALUE = 0
@@ -82,12 +83,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         assert len(kwargs) == 2, 'assume that kwargs only consists of parent and featurename'
         super(OpObjectClassification, self).__init__(*args, parent=kwargs['parent'])
 
-        if 'featurename' in kwargs and kwargs['featurename'] == "Division Detection":
-            self.selectedFeatures = config.selected_features_division_detection
-        elif 'featurename' in kwargs and kwargs['featurename'] == "Cell Classification":
-            self.selectedFeatures = config.selected_features_cell_classification
-        else:
-            self.selectedFeatures = config.selected_features
+#        if 'featurename' in kwargs and kwargs['featurename'] == "Division Detection":
+#            self.selectedFeatures = config.selected_features_division_detection
+#        elif 'featurename' in kwargs and kwargs['featurename'] == "Cell Classification":
+#            self.selectedFeatures = config.selected_features_cell_classification
+#        else:
+#            self.selectedFeatures = config.selected_features
             
         # internal operators
         opkwargs = dict(parent=self)
@@ -105,8 +106,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
         self.opTrain.inputs['Labels'].connect(self.LabelInputs)
         self.opTrain.inputs['FixClassifier'].setValue(False)
-        self.opTrain.inputs['SelectedFeatures'].setValue(self.selectedFeatures)
-        #self.opTrain.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
+#        self.opTrain.inputs['SelectedFeatures'].setValue(self.selectedFeatures)
+        self.opTrain.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
 
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
@@ -117,8 +118,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
         self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
         self.opPredict.inputs["LabelsCount"].connect(self.opMaxLabel.Output)
-        #self.opPredict.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
-        self.opPredict.inputs["SelectedFeatures"].setValue(self.selectedFeatures)
+        self.opPredict.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
+#        self.opPredict.inputs["SelectedFeatures"].setValue(self.selectedFeatures)
 
         self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
         self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)

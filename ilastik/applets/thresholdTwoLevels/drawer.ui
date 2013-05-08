@@ -29,7 +29,7 @@
         <string>Selected Input Channel</string>
        </property>
        <property name="maximum">
-        <number>0</number>
+        <number>1</number>
        </property>
       </widget>
      </item>

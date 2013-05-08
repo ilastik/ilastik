@@ -41,8 +41,8 @@ class SerialTranslationVectorsSlot(SerialSlot):
 
 class OpticalTranslationSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialDictSlot(operator.Parameters, autodepends=True),
-                 SerialTranslationVectorsSlot(operator.TranslationVectors, autodepends=True),                 
+        slots = [SerialDictSlot(operator.Parameters, selfdepends=True),
+                 SerialTranslationVectorsSlot(operator.TranslationVectors, selfdepends=True),                 
                 ]
 
         super(OpticalTranslationSerializer, self).__init__(projectFileGroupName, slots=slots)

@@ -231,6 +231,7 @@ class OpRegionFeatures3d(Operator):
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
+        print '_extract: feature_names:', feature_names        
 
         # do global features
         global_features = {}
