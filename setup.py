@@ -5,7 +5,7 @@ packages=find_packages(exclude=["tests", "tests.*"])
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf'],
               'ilastik.applets.labeling': ['*.ui', 'icons/*.png', 'icons/*.jpg'],
-              'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
+              'ilastik.shell.gui': ['ui/*.ui', '*.qss', '*.png'],
               'ilastik.ilastik_logging': ['logging_config.json'],
               'ilastik.plugins': ['*.yapsy-plugin'],
               '': ['*.ui']
