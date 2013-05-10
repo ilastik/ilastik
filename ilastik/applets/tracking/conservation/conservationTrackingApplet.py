@@ -5,7 +5,7 @@ from ilastik.applets.tracking.conservation.conservationTrackingGui import Conser
 
 
 class ConservationTrackingApplet( StandardApplet ):
-    def __init__( self, name="Tracking", workflow=None, projectFileGroupName="Tracking" ):
+    def __init__( self, name="Tracking", workflow=None, projectFileGroupName="ConservationTracking" ):
         super(ConservationTrackingApplet, self).__init__( name=name, workflow=workflow )        
         self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
 

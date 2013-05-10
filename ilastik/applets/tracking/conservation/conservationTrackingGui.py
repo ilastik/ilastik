@@ -22,7 +22,36 @@ class ConservationTrackingGui( TrackingBaseGui ):
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")        
+        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        
+        parameters = self.topLevelOperatorView.Parameters.value        
+        if 'maxDist' in parameters.keys():
+            self._drawer.maxDistBox.setValue(parameters['maxDist'])
+        if 'maxObj' in parameters.keys():
+            self._drawer.maxObjectsBox.setValue(parameters['maxObj'])
+        if 'divThreshold' in parameters.keys():
+            self._drawer.divThreshBox.setValue(parameters['divThreshold'])
+        if 'avgSize' in parameters.keys():
+            self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
+        if 'withTracklets' in parameters.keys():
+            self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
+        if 'sizeDependent' in parameters.keys():
+            self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
+        if 'divWeight' in parameters.keys():
+            self._drawer.divWeightBox.setValue(parameters['divWeight'])
+        if 'transWeight' in parameters.keys():
+            self._drawer.transWeight.setValue(parameters['transWeight'])
+        if 'withDivisions' in parameters.keys():
+            self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
+        if 'withOpticalCorrection' in parameters.keys():
+            self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
+#        if 'withCoordinateList' in parameters.keys():
+#            self._drawer.coordinateListBox.setChecked(parameters['withCoordinateList'])
+        if 'withClassifierPrior' in parameters.keys():
+            self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])        
+#        if 'cplex_timeout' in parameters.keys():
+#            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
+        
         return self._drawer
 
     def initAppletDrawerUi(self):

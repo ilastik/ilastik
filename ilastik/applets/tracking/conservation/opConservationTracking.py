@@ -52,8 +52,32 @@ class OpConservationTracking(OpTrackingBase):
             withOpticalCorrection=True,
             withCoordinateList=True,
             withClassifierPrior=False,
-            ndim=3
+            ndim=3,
+            cplex_timeout=None
             ):
+        
+        if not self.Parameters.ready():
+            raise Exception("Parameter slot is not ready")
+        
+        parameters = self.Parameters.value
+        parameters['maxDist'] = maxDist
+        parameters['maxObj'] = maxObj
+        parameters['divThreshold'] = divThreshold
+        parameters['avgSize'] = avgSize
+        parameters['withTracklets'] = withTracklets
+        parameters['sizeDependent'] = sizeDependent
+        parameters['divWeight'] = divWeight   
+        parameters['transWeight'] = transWeight
+        parameters['withDivisions'] = withDivisions
+        parameters['withOpticalCorrection'] = withOpticalCorrection
+        parameters['withCoordinateList'] = withCoordinateList
+        parameters['withClassifierPrior'] = withClassifierPrior
+                
+        if cplex_timeout:
+            parameters['cplex_timeout'] = cplex_timeout
+        else:
+            parameters['cplex_timeout'] = ''
+        self.Parameters.setValue(parameters)        
         
         if withClassifierPrior:
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):

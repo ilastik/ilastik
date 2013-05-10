@@ -144,6 +144,10 @@ class OpTrackingBase(Operator):
         self.Output._value = None
         self.Output.setDirty(slice(None))
         
+        if 'MergerOutput' in self.outputSlots:
+            self.MergerOutput._value = None
+            self.MergerOutput.setDirty(slice(None))            
+        
 
     def _generate_traxelstore(self,
                                time_range,
