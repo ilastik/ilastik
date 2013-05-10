@@ -152,11 +152,11 @@ class OpCellFeatures(Operator):
                     
                     for label in range(1,feats_vigra_cur['RegionCenter'].shape[0]):
                         coord = feats_vigra_cur['RegionCenter'][label]
-                        coord = [int(round(x)) for x in coord]
-                        coord_end = [x+1 for x in coord]
+                        coord_rounded = [int(round(x)) for x in coord]
+                        coord_rounded_end = [x+1 for x in coord_rounded]
                         coord_roi = SubRegion(self.TranslationVectors, 
-                                             start=[t,] + coord + [0,],
-                                             stop=[t+1,] + coord_end + [3,])
+                                             start=[t,] + coord_rounded + [0,],
+                                             stop=[t+1,] + coord_rounded_end + [3,])
                         translation = self.TranslationVectors.get(coord_roi).wait().flatten() 
                         feats_vigra_cur[name][label] = coord + translation
                     

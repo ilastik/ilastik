@@ -109,6 +109,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
         opDivDetection.SelectedFeatures.setValue(selected_features_div)
+#        opDivDetection.LabelInputs.setValue(['Not Dividing', 'Dividing'])        
         
         selected_features_cell = {}
         for plugin_name in config.selected_features_cell_classification.keys():
@@ -119,7 +120,8 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
-        opCellClassification.SelectedFeatures.setValue( selected_features_cell )
+        opCellClassification.SelectedFeatures.setValue( selected_features_cell )        
+#        opCellClassification.LabelInputs.setValue([ str(i) + ' Objects' for i in range(0,config.num_max_objects) ] )
         
         opTracking.RawImage.connect( op5Raw.output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )

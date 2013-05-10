@@ -194,7 +194,6 @@ class ObjectClassificationGui(LabelingGui):
         if self.op.ComputedFeatureNames.ready():
             featnames = self.op.ComputedFeatureNames([]).wait()
             if len(featnames) == 0:
-                print 'checkEnableButtons: featnames == 0'
                 feats_enabled = False
         else:
             print 'checkEnableButtons: ComputedFeatureNames not ready'
@@ -203,20 +202,18 @@ class ObjectClassificationGui(LabelingGui):
         if feats_enabled:
             if self.op.SelectedFeatures.ready():
                 featnames = self.op.SelectedFeatures([]).wait()
-                if len(featnames) == 0:
-                    print 'checkEnableButtons: featnames == 0'
+                if len(featnames) == 0:                    
                     predict_enabled = False
-            else:
-                print 'checkEnableButtons: SelectedFeatures not ready'
+            else:                
                 predict_enabled = False
 
             if self.op.NumLabels.ready():
+                print 'FIXME: objectClassificationGui:checkEnableButtons: commented out opNumLabels.value < 2'
                 pass
 #                if self.op.NumLabels.value < 2:
 #                    print 'checkEnableButtons: NumLabels.value < 2'
 #                    predict_enabled = False
             else:
-                print 'checkEnableButtons: NumLabels not ready'
                 predict_enabled = False
         else:            
             predict_enabled = False
