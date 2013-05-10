@@ -350,7 +350,9 @@ class IlastikShell( QMainWindow ):
         projects = PreferencesManager().get("shell","recently opened list")
         
         if projects is not None:
-            for path,workflow in projects:
+            for path,workflow in projects[::-1]:
+                if not os.path.exists(path):
+                    continue
                 b = QToolButton(self.startscreen)
                 #b.setDescription(workflow)
                 b.setAutoRaise(True)
@@ -368,7 +370,7 @@ class IlastikShell( QMainWindow ):
                 text = "{0} ({1})".format(compressedpath,compressedworkflow)
                 b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
-                self.startscreen.VL2.addWidget(b,2)
+                self.startscreen.VL2.insertWidget(3,b,2)
                 self.openFileButtons.append(b)
     
     def _loaduifile(self):
