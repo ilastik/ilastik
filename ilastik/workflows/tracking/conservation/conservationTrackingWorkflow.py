@@ -91,29 +91,35 @@ class ConservationTrackingWorkflow( Workflow ):
         opOptTranslation.BinaryImage.connect( op5Binary.output )
         
         ## Connect operators ##        
-#        vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'Coord<ValueList>', 'RegionRadii']
-#        features = { 'Vigra Object Features' : { name : {} for name in vigra_features } }
-#        print 'conservationTrackingWorkflow: features = ', features        
+        features = {}
+        features[config.features_vigra_name] = { name: {} for name in config.vigra_features }                
         opObjExtraction.RawImage.connect( op5Raw.output )
         opObjExtraction.BinaryImage.connect( op5Binary.output )
         opObjExtraction.TranslationVectors.connect( opOptTranslation.TranslationVectors )
-#        opObjExtraction.Features.setValue(features)        
+        opObjExtraction.Features.setValue(features)        
         
-#        opDivDetection.SelectedFeatures.setValue({ { name: {} } for name in config.selected_features_division_detection } )
+        
+        selected_features_div = {}
+        for plugin_name in config.selected_features_division_detection.keys():
+            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division_detection[plugin_name] }
         opDivDetection.BinaryImages.connect( op5Binary.output )
         opDivDetection.RawImages.connect( op5Raw.output )        
         opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
+        opDivDetection.SelectedFeatures.setValue(selected_features_div)
         
-#        opCellClassification.SelectedFeatures.setValue({ { name: {} } for name in config.selected_features_cell_classification } )
+        selected_features_cell = {}
+        for plugin_name in config.selected_features_cell_classification.keys():
+            selected_features_cell[plugin_name] = { name: {} for name in config.selected_features_cell_classification[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.output )
         opCellClassification.RawImages.connect( op5Raw.output )
         opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
+        opCellClassification.SelectedFeatures.setValue( selected_features_cell )
         
         opTracking.RawImage.connect( op5Raw.output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )

@@ -6,6 +6,7 @@ import numpy as np
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectExtraction import config
 
 
 class OpTrackingBase(Operator):
@@ -201,7 +202,7 @@ class OpTrackingBase(Operator):
                 
             if with_opt_correction:
                 try:
-                    rc_corr = feats[t][0]['RegionCenter_corr']
+                    rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
                 except:
                     raise Exception, 'cannot consider optical correction since it has not been computed before'
                 if rc_corr.size:
@@ -212,7 +213,7 @@ class OpTrackingBase(Operator):
                 ct = ct[1:, ...]
 
             if with_coordinate_list:
-                coordinates = feats[t][0]['Coord<ValueList >']
+                coordinates = feats[t][config.features_vigra_name]['Coord<ValueList>']
                 if len(coordinates):
                     coordinates = coordinates[1:]
                 
@@ -277,9 +278,9 @@ class OpTrackingBase(Operator):
                     obj_sizes.append(float(size))
 
                 if with_coordinate_list:
-                    tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
+                    tr.add_feature_array("coordinates", 3*len(coordinates[idx][0]))
 
-                    for i, v in enumerate(coordinates[idx]):
+                    for i, v in enumerate(coordinates[idx][0]):
                         tr.set_feature_value("coordinates", 3*i,   float(v[0]))
                         tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
                         tr.set_feature_value("coordinates", 3*i+2, float(v[2]))

@@ -21,8 +21,10 @@ class OpConservationTracking(OpTrackingBase):
         
         if slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()
-            t = roi.start[0]
-            if (self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]):
+            parameters = self.Parameters.value
+            
+            t = roi.start[0]            
+            if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):            
                 result[0,...,0] = relabelMergers(result[0,...,0], self.mergers[t])
             else:
                 result[...] = 0

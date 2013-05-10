@@ -231,13 +231,13 @@ class OpRegionFeatures3d(Operator):
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
-        print '_extract: feature_names:', feature_names        
 
         # do global features
         global_features = {}
         for plugin_name, feature_list in feature_names.iteritems():
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
+            print 'FIXME: OpObjectExtraction:_extract reshapes image'
+            global_features[plugin_name] = plugin.plugin_object.compute_global(np.reshape(image, labels.shape), labels, feature_list, axes)
 
         logger.debug("computing global features")
         # local features: loop over all objects
@@ -289,10 +289,12 @@ class OpRegionFeatures3d(Operator):
                 # include background. we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
-
-                value = value.astype(np.float32) #turn Nones into numpy.NaNs
-
-                assert value.dtype == np.float32
+                try:
+                    value = value.astype(np.float32) #turn Nones into numpy.NaNs
+                    assert value.dtype == np.float32
+                except:
+                    print 'FIXME: OpObjectExtraction:_extract: not converting values from Nones to numpy.NaNs for feature', key
+                
                 assert value.shape[0] == nobj
                 assert value.ndim == 2
 

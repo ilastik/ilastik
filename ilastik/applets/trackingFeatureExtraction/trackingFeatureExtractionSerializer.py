@@ -100,6 +100,7 @@ class TrackingFeatureExtractionSerializer(AppletSerializer):
 #                        name="LabelImage"),            
 #            SerialExtendedFeaturesSlot(operator.RegionFeatures, name="samples"),
 #        ]
+        
         slots = [
             SerialHdf5BlockSlot(operator.LabelOutputHdf5,
                                 operator.LabelInputHdf5,

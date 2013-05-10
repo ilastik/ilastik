@@ -106,13 +106,11 @@ class OpCellFeatures(Operator):
                         
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNames:
-            print 'result before = ', result
-            print 'roi = ', roi
             computed_features = {}
             if self.Features.ready():
                 computed_features = self.Features.get([]).wait()
-            computed_features[config.features_division_detection_name] = { name: {} for name in config.selected_features_division_detection }
-            computed_features[config.features_cell_classification_name] = { name: {} for name in config.selected_features_cell_classification }
+            computed_features[config.features_division_detection_name] = { name: {} for name in config.selected_features_division_detection[config.features_division_detection_name] }
+            computed_features[config.features_cell_classification_name] = { name: {} for name in config.selected_features_cell_classification[config.features_cell_classification_name] }
             return computed_features                    
 
         if slot == self.RegionFeaturesExtended:                
@@ -231,7 +229,7 @@ class OpCellFeatures(Operator):
                         
                 feats_at[config.features_cell_classification_name] = feats_cell_class    
                 feats_at[config.features_division_detection_name] = feats_cell_div
-                feats_at[config.features_vigra_name] = feats_cell_div
+                feats_at[config.features_vigra_name] = feats_vigra_cur
                 feats_at[default_features_key] = region_feats_cur[default_features_key]
     
                 self._cache[t] = feats_at                

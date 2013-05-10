@@ -46,17 +46,19 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     local_out_suffixes = [local_suffix, " in object and neighborhood"]
 
     def availableFeatures(self, image, labels):
-        names = vigra.analysis.supportedRegionFeatures(image, labels)
+        #FIXME: remove the squeeze
+        print 'FIXME: VigraObjFeats.availableFeatures() uses squeeze()'
+        names = vigra.analysis.supportedRegionFeatures(image.squeeze(), labels.squeeze())
         names = list(f.replace(' ', '') for f in names)
         local = set(names) & self.local_features
-        names.extend([x+self.local_suffix for x in local])
+        names.extend([x+self.local_suffix for x in local])        
         result = dict((n, {}) for n in names)
         for f, v in result.iteritems():
             if self.local_suffix in f:
                 v['margin'] = 0
         return result
 
-    def _do_4d(self, image, labels, features, axes):
+    def _do_4d(self, image, labels, features, axes):        
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
         result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
