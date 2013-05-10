@@ -198,6 +198,9 @@ class IlastikShell( QMainWindow ):
 
         self.setWorkflowClass(workflowClass, workflow_kwargs)
         
+        self.projectManager = None
+        self.projectDisplayManager = None
+        
         self._loaduifile()
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
@@ -246,9 +249,7 @@ class IlastikShell( QMainWindow ):
 
         self._refreshDrawerRecursionGuard = False
 
-        self.projectManager = None
-        self.projectDisplayManager = None
-
+        self.setupOpenFileButtons()
         self.updateShellProjectDisplay()
         
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
@@ -396,8 +397,6 @@ class IlastikShell( QMainWindow ):
         self.startscreen.browseFilesButton.setFont(ILASTIKFont)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
         otherButtons.append(self.startscreen.browseFilesButton)
-        
-        self.setupOpenFileButtons()
         
         for workflow,_name in getAvailableWorkflows():
             b = QToolButton(self.startscreen)
