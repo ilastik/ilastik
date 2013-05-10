@@ -1138,6 +1138,8 @@ class IlastikShell( QMainWindow ):
         
         self._workflowClass = None
         self.enableWorkflow = False
+        self._controlCmds = []
+        self._disableCounts = []
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
         
