@@ -1,6 +1,7 @@
 #Python
 import time
 import numpy, h5py
+import copy
 
 #carving
 from cylemon.segmentation import MSTSegmentor
@@ -348,6 +349,10 @@ class OpCarving(Operator):
         del self._mst.object_seeds_bg_voxels[name]
         del self._mst.bg_priority[name]
         del self._mst.no_bias_below[name]
+        
+        #delete it from object_names, as it indicates
+        #whether the object exists
+        del self._mst.object_names[name]
 
         self._setCurrObjectName("")
 

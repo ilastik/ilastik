@@ -469,7 +469,11 @@ class LayerViewerGui(QWidget):
         self.editor.setNavigationInterpreter( self.clickReporter )
         self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
         self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
-
+        
+        clickReporter2 = ClickReportingInterpreter( self.editor.brushingInterpreter, self.editor.posModel )
+        clickReporter2.rightClickReceived.connect( self._handleEditorRightClick )
+        self.editor.brushingInterpreter = clickReporter2
+        
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
 

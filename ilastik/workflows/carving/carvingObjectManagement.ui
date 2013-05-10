@@ -24,7 +24,11 @@
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QListWidget" name="objectNames"/>
+     <widget class="QListWidget" name="objectNames">
+      <property name="selectionMode">
+       <enum>QAbstractItemView::MultiSelection</enum>
+      </property>
+     </widget>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
