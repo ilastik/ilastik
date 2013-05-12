@@ -53,7 +53,8 @@ class OpConservationTracking(OpTrackingBase):
             withCoordinateList=True,
             withClassifierPrior=False,
             ndim=3,
-            cplex_timeout=None
+            cplex_timeout=None,
+            withMergerResolution=True
             ):
         
         if not self.Parameters.ready():
@@ -72,6 +73,7 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withOpticalCorrection'] = withOpticalCorrection
         parameters['withCoordinateList'] = withCoordinateList
         parameters['withClassifierPrior'] = withClassifierPrior
+        parameters['withMergerResolution'] = withMergerResolution
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -103,7 +105,6 @@ class OpConservationTracking(OpTrackingBase):
         print 'median_obj_size = ', median_obj_size
         print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
-        with_merger_resolution = True
         transition_parameter = 5
             
         tracker = pgmlink.ConsTracking(maxObj,
@@ -120,7 +121,7 @@ class OpConservationTracking(OpTrackingBase):
                                          withDivisions,
                                          500.0, # disappearance cost
                                          500.0, # appearance cost
-                                         with_merger_resolution,
+                                         withMergerResolution,
                                          ndim,
                                          transition_parameter)
         
