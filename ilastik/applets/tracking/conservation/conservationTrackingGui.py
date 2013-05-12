@@ -45,8 +45,6 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.divisionsBox.setCheckState(2*parameters['withDivisions'])
         if 'withOpticalCorrection' in parameters.keys():
             self._drawer.opticalBox.setCheckState(2*parameters['withOpticalCorrection'])
-#        if 'withCoordinateList' in parameters.keys():
-#            self._drawer.coordinateListBox.setChecked(parameters['withCoordinateList'])
         if 'withClassifierPrior' in parameters.keys():
             self._drawer.classifierPriorBox.setCheckState(2*parameters['withClassifierPrior'])
         if 'withMergerResolution' in parameters.keys():

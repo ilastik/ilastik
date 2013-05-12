@@ -50,7 +50,6 @@ class OpConservationTracking(OpTrackingBase):
             transWeight=10.0,
             withDivisions=True,
             withOpticalCorrection=True,
-            withCoordinateList=True,
             withClassifierPrior=False,
             ndim=3,
             cplex_timeout=None,
@@ -71,7 +70,6 @@ class OpConservationTracking(OpTrackingBase):
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
-        parameters['withCoordinateList'] = withCoordinateList
         parameters['withClassifierPrior'] = withClassifierPrior
         parameters['withMergerResolution'] = withMergerResolution
                 
@@ -92,7 +90,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=withCoordinateList,
+                                                                      with_coordinate_list=withMergerResolution,
                                                                       with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
