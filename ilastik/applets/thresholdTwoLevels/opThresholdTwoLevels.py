@@ -359,8 +359,8 @@ class OpThresholdTwoLevels(Operator):
             
             self._beforeFilterStacker.Images.connect(self.opThreshold1.BeforeSizeFilter)
             
-            assert self.Output.ready()
-            assert self.BeforeSizeFilter.ready()
+            # assert self.Output.ready()
+            # assert self.BeforeSizeFilter.ready()
             #FIXME: these asserts fail because there is no way to make an operator "partially ready"
             #assert self.BigRegions.ready()==False
             
