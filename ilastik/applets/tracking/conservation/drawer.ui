@@ -498,6 +498,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="mergerResolutionBox">
+       <property name="text">
+        <string>With Merger Resolution</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="TrackButton">
        <property name="styleSheet">
         <string notr="true"/>
@@ -758,6 +768,7 @@
   <tabstop>transWeightBox</tabstop>
   <tabstop>divisionsBox</tabstop>
   <tabstop>opticalBox</tabstop>
+  <tabstop>mergerResolutionBox</tabstop>
   <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>
   <tabstop>to_time</tabstop>
