@@ -34,7 +34,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if 'avgSize' in parameters.keys():
             self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
         if 'withTracklets' in parameters.keys():
-            self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
+            self._drawer.trackletsBox.setValue(parameters['withTracklets'])
         if 'sizeDependent' in parameters.keys():
             self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
         if 'divWeight' in parameters.keys():
@@ -42,13 +42,15 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if 'transWeight' in parameters.keys():
             self._drawer.transWeight.setValue(parameters['transWeight'])
         if 'withDivisions' in parameters.keys():
-            self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
+            self._drawer.divisionsBox.setCheckState(2*parameters['withDivisions'])
         if 'withOpticalCorrection' in parameters.keys():
-            self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
+            self._drawer.opticalBox.setCheckState(2*parameters['withOpticalCorrection'])
 #        if 'withCoordinateList' in parameters.keys():
 #            self._drawer.coordinateListBox.setChecked(parameters['withCoordinateList'])
         if 'withClassifierPrior' in parameters.keys():
-            self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])        
+            self._drawer.classifierPriorBox.setCheckState(2*parameters['withClassifierPrior'])
+        if 'withMergerResolution' in parameters.keys():
+            self._drawer.mergerResolutionBox.setCheckState(2*parameters['withMergerResolution'])
 #        if 'cplex_timeout' in parameters.keys():
 #            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
         
@@ -100,6 +102,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         transWeight = self._drawer.transWeightBox.value()
         withDivisions = self._drawer.divisionsBox.isChecked()        
         withOpticalCorrection = self._drawer.opticalBox.isChecked()
+        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
 
         ndim=3
         if (to_z - from_z == 0):
@@ -126,7 +129,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                 withDivisions=withDivisions,
                 withOpticalCorrection=withOpticalCorrection,
                 withClassifierPrior=classifierPrior,
-                ndim=ndim
+                ndim=ndim,
+                withMergerResolution=withMergerResolution
                 )
         except Exception:            
             ex_type, ex, tb = sys.exc_info()
