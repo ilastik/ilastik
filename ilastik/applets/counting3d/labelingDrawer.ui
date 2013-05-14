@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>254</width>
-    <height>540</height>
+    <height>542</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -53,6 +53,13 @@
      </item>
      <item>
       <widget class="QToolButton" name="eraserToolButton">
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="boxToolButton">
        <property name="text">
         <string>...</string>
        </property>
