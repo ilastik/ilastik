@@ -227,7 +227,7 @@ class OpCounting3d( Operator ):
         self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
         self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
         self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
-        self.Density.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        self.Density.connect(self.opPredictionPipeline.PredictionProbabilities)
         self.opVolumeSum = OpMultiLaneWrapper(OpVolumeOperator,parent=self, graph = self.graph )
         self.opVolumeSum.Input.connect(self.Density)
         self.opVolumeSum.Function.setValue(numpy.sum)

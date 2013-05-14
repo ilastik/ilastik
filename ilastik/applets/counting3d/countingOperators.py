@@ -74,12 +74,12 @@ class OpTrainCounter(Operator):
 
         # train and store self._forest_count forests in parallel
 
-        pool = RequestPool()
+        #pool = RequestPool()
 
-        #result[0].fitPrepared(featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value)
-        req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
-        pool.wait()
-        pool.clean()
+        result[0].fitPrepared(featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value)
+        #req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
+        #pool.wait()
+        #pool.clean()
 
         return result
 
@@ -274,6 +274,7 @@ class OpPredictCounter(Operator):
         newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
 
         res = self.inputs["Image"][newKey].wait()
+        print newKey
 
         shape=res.shape
         prod = np.prod(shape[:-1])
@@ -281,10 +282,6 @@ class OpPredictCounter(Operator):
         features=res
 
         predictions = [0]*len(forests)
-
-        #def predict_forest(number):
-        #    #predictions[number] = forests[number].predictProbabilities(np.asarray(features, dtype=np.float32))
-        #    predictions[number] = forests[number].predict(np.asarray(features, dtype=np.float32))
 
         t2 = time.time()
 
@@ -294,16 +291,33 @@ class OpPredictCounter(Operator):
         #for i,f in enumerate(forests):
         #    req = pool.request(partial(predict_forest, i))
 
+        #def predictCounter(number):
+        #    predictions[number] = forests[number].predict(np.asarray(features, dtype = np.float32), normalize = False)
+        #    predictions[number] = predictions[number].reshape(result.shape)
+        ##req = pool.request(partial(forests[0].predict, np.asarray(features, dtype=np.float32), normalize = False))
+        #for i,f in enumerate(forests):
+        #    req = pool.request(partial(predictCounter, i))
+
         #pool.wait()
         #pool.clean()
-        predictions[0] = forests[0].predict(np.asarray(features, dtype=np.float32), normalize = False)
 
         #prediction=np.dstack(predictions)
         #prediction = np.average(prediction, axis=2)
         #prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
         #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
         
-        result[...] = predictions[0].reshape(result.shape)
+        #import sitecustomize
+        #sitecustomize.debug_trace()
+
+        #result[...] = 0
+        #for i,p in enumerate(predictions):
+        #    result[...] += p
+        #result[...] /= len(predictions)
+        
+
+        predictions[0] = forests[0].predict(np.asarray(features, dtype = np.float32), normalize = False)
+        predictions[0] = predictions[0].reshape(result.shape)
+        result[...] = predictions[0]
         # If our LabelsCount is higher than the number of labels in the training set,
         # then our results aren't really valid.  FIXME !!!
         # Duplicate the last label's predictions

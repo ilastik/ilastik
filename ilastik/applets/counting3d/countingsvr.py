@@ -4,6 +4,7 @@ import numpy as np
 from scipy import ndimage
 import sklearn
 from sklearn import preprocessing
+from sklearn.metrics import pairwise
 import itertools
 
 import h5py, cPickle
@@ -28,12 +29,13 @@ import gurobipy
 from scipy import spatial
 
 
-def kernelize(B, tags, kernel):
+def kernelize(B, dot, tags,epsilon, kernel, boxConstraints):
     coeff = tags[:,None] * tags[None,:]
     if kernel == "linear":
         Q = np.multiply(coeff,(B * B.transpose()))
         #debug_trace()
-        return Q
+        c = dot * (-tags) + epsilon
+        return Q, c
     elif kernel == "gaussian":
         gamma = 10000
         #debug_trace()
@@ -43,20 +45,86 @@ def kernelize(B, tags, kernel):
         Q = np.multiply(coeff,Q)
         return Q
 
-def optimizepossdef(tags, B, c, upperBounds):
-    pass
-    B = np.multiply(tags[:,None], B) 
-    model = gurobipy.Model()
+def createKernel(B, dot, tags, epsilon, kernel, boxConstraints):
+    n_jobs = 1
+    num_features = B.shape[1]
+    #coeffUpperLeft = tags[:,None] * tags[None,:]
+    #if kernel == "linear":
+    numTrainingExamples = B.shape[0]
+    QUpperRight = np.ndarray((numTrainingExamples, len(boxConstraints)))
+    QLowerRight = np.ndarray((len(boxConstraints), len(boxConstraints)))
+    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
+    print "beep"
+    if kernel == "linear":
+        def _evaluate(x,y):
+            return np.matrix(x) * np.matrix(y).transpose()
 
-    for j in range(tags.shape[0]):
-        model.addVar(lb=0., ub=float(upperBounds[tags[j]]), vtype=gurobipy.GRB.CONTINUOUS)
+    elif kernel == "rbf":
+        def _evaluate(x,y):
+            metric = "euclidean"
+            tmp = pairwise.pairwise_distances(x, y, metric = metric, n_jobs = n_jobs)
+            tmp = np.exp(-(tmp**2) / (num_features * 1000))
+            return tmp
+
+    boxValues = []
+    for i, constraint in enumerate(boxConstraints):
+        import sitecustomize
+        sitecustomize.debug_trace()
+        val,features = constraint
+        boxValues.append(val)
+        features = features.reshape(-1, features.shape[-1])
+        tmp = _evaluate(B, features)
+        QUpperRight[:,i] = np.sum(tmp, axis = 1).flatten()
+
+        #boxMatrix[i] = np.sum(features, axis = 0)
+    #boxMatrix = np.matrix(boxMatrix)
+    for i, j in zip(range(len(boxConstraints)), range(len(boxConstraints))):
+        val1, features1 = boxConstraints[i]
+        val2, features2 = boxConstraints[j]
+        features1 = features1.reshape(-1, features1.shape[-1])
+        features2 = features2.reshape(-1, features2.shape[-1])
+        tmp = _evaluate(features1, features2)
+        QLowerRight[i,j] = np.sum(tmp).flatten()
+
+         
+    QLowerLeft = QUpperRight.transpose()
+    QUpperLeft = _evaluate(B,B) 
+    QUpper     = np.concatenate((QUpperLeft, QUpperRight), axis = 1)
+    QLower     = np.concatenate((QLowerLeft, QLowerRight), axis = 1)
+    Q          = np.concatenate((QUpper, QLower), axis = 0)
+
+    coeff      = expandedTags[:,None] * expandedTags[None, :]
+    Q          = np.multiply(coeff, Q)
+
+    #QUpperLeft = np.multiply(coeff,(B * B.transpose()))
+    #QLowerLeft = B * boxConstraints.transpose()
+    #QLowerRight= boxConstraints * B.transpose()
+    #QUpperRight= -boxConstraints*boxConstraints.transpose()
+    print "boop"
+    
+    c = np.concatenate((dot, boxValues))  * (-expandedTags) + epsilon
+    return Q,c
+    
+
+
+
+def optimizepossdef(tags, B, c, upperBounds, boxConstraints = None):
+    model = gurobipy.Model()
+    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
+    B = np.multiply(expandedTags[:,None], B) 
+
+    for j in range(tags[0]):
+        model.addVar(lb=0., ub=float(upperBounds[1]), vtype=gurobipy.GRB.CONTINUOUS)
+    
+    for j in range(sum(tags[1:])):
+        model.addVar(lb=0., ub=float(upperBounds[-1]), vtype=gurobipy.GRB.CONTINUOUS)
 
     model.update()
     vars = model.getVars()
 
     expr = gurobipy.LinExpr()
-    for j in range(tags.shape[0]):
-        expr += -tags[j]*vars[j]
+    for j in range(sum(tags)):
+        expr += expandedTags[j]*vars[j]
 
     model.addConstr(expr, gurobipy.GRB.EQUAL, 0)
     print "ping"
@@ -65,6 +133,8 @@ def optimizepossdef(tags, B, c, upperBounds):
     for i in range(B.shape[1]):
         y[i] = model.addVar(name = 'y_%s' % (i))
     model.update()
+    import sitecustomize
+    sitecustomize.debug_trace()
 
     for i in range(B.shape[1]):
         expr = gurobipy.LinExpr()
@@ -89,7 +159,7 @@ def optimizepossdef(tags, B, c, upperBounds):
   # Solve
     model.optimize()
     print "blob"
-    solution = np.ndarray((tags.shape[0]))
+    solution = np.ndarray((expandedTags.shape[0]))
     if model.status == gurobipy.GRB.OPTIMAL:
         for i in range(solution.shape[0]):
             solution[i] = vars[i].x
@@ -97,277 +167,24 @@ def optimizepossdef(tags, B, c, upperBounds):
     else:
         return False
 
-
-
-class SMO:
-
-    def __init__(self, tags, X,Y, upperBounds, mapping = None, epsilon = 0):
-        if mapping == None:
-            mapping = np.arange((X.shape[0]))
-        
-        self.X = X[mapping,:]
-        self.Y = Y[mapping]
-        self.w = np.zeros((X.shape[1]))
-        self.bounds = [upperBounds[tag] for tag in tags]
-        self.tags = tags
-
-        self.numVariables = len(tags)
-        self.numPos = len(np.where(tags == 1)[0])
-        self.numL = self.numVariables - self.numPos
-        #get all residuals
-        self.alpha = np.zeros((self.numVariables))
-        #select i and j
-        #import random
-        self.I = np.concatenate(
-            (np.ones((self.numPos)) * 1,
-            np.ones((self.numL)) * 4)
-        )
-
-        self.fcache = np.empty((self.numVariables)) * np.nan
-        self.blow = -float('inf')
-        self.ilow = 0
-        self.bup = float('inf')
-        self.iup = self.numPos
-        self.tol = 1E-6 #machine tolerance
-        self.eps = epsilon #epsilon in the SVR formulation
-        
-    def checkAlpha(self, tag, alpha, bound):
-        if tag == 1:
-            if alpha == 0:
-                return 1
-            elif alpha == bound:
-                return 3
-        else:
-            if alpha == 0:
-                return 4
-            elif alpha == bound:
-                return 2
-
-
-    def eval(self, i):
-        val = np.nan
-        try:
-            val = np.sum(self.X[i,:] * self.w)
-        except:
-            debug_trace()
-        return val
-
-    def examine(self, i2):
-        #print "ping"
-        y2 = self.Y[i2]
-        alpha2 = self.alpha[i2]
-        F2 = self.fcache[i2]
-        if np.isnan(F2):
-            #compute value for F2
-            F2 = (y2 - self.tags[i2] * self.eps) - self.eval(i2)
-            self.fcache[i2] = F2
-        if self.I[i2] in [1,2] and F2 > self.blow:
-            self.blow = F2
-            self.ilow = i2
-        elif self.I[i2] in [3,4] and F2 < self.bup:
-            self.bup = F2
-            self.iup = i2
-
-        optimality = True
-        i1 = -1
-        if self.I[i2] in [0,3,4]:
-            if self.blow - F2 > 2* self.eps:
-                optimality = False
-                i1 = self.ilow
-        if self.I[i2] in [0,1,2]:
-            if F2 - self.bup > 2* self.eps:
-                optimality = False
-                i1 = self.iup
-
-        if optimality == True:
-            return 0
-        
-        if self.I[i2] is 0:
-            if self.blow - F2 > F2 - self.bup:
-                i1 = self.ilow
-            else:
-                i1 = self.iup
-
-        return self.takeStep(i1, i2)
-
-
-
-    def mainLoop(self):
-        #debug_trace()
-        checkAllIndices = True
-        numChanged = 0
-        finished = False
-        while True:
-            #print "loopStart"
-            numChanged = 0
-
-            if checkAllIndices:
-                for i in range(len(self.I)):
-                    numChanged = numChanged + self.examine(i)
-                    #print self.blow, self.bup
-                    #print self.w
-                    #print numChanged
-                if numChanged == 0:
-                    finished = True
-
-            for i in range(len(self.I)):
-                if self.I[i] == 0:
-                    numChanged = numChanged + self.examine(i)
-
-            #if self.bup > self.blow - 2* self.tol:
-            #    numChanged = 0
-            
-            if finished == True:
-                break
-            elif numChanged == 0:
-                checkAllIndices = True
-        #debug_trace()
-        self.b = 0.5 * (self.bup + self.blow)
-        return np.matrix(self.w), self.b, 1
-
-    def scp(self, x1, x2):
-        return np.sum(x1 * x2)
-
-    def takeStep(self, i1, i2):
-
-        if i1 == i2: 
-            return 0
-        y1 = self.Y[i1]
-        F1 = self.fcache[i1]
-        if np.isnan(F1):
-            F1 = (y1 - self.tags[i1] * self.eps) - self.eval(i1)
-            #debug_trace()
-        #y2 = self.Y[i2]
-        F2 = self.fcache[2]
-        if np.isnan(F2):
-            print "beep"
-            #debug_trace()
-        #force F1 > F2, 
-        #print "F1, F2: ", F1, F2
-        if F1 < F2:
-            i1,i2 = i2,i1
-            F1,F2 = F2,F1
-        #print "F1, F2: ", F1, F2
-         
-        alpha1 = self.alpha[i1]
-        alpha2 = self.alpha[i2]
-        x1 = self.X[i1,:]
-        x2 = self.X[i2,:]
-        x1x1 = self.scp(x1,x1)
-        x2x2 = self.scp(x2,x2)
-        x1x2 = self.scp(x1,x2)
-
-#        def checkValue(a1, a2):
-#            y2 = self.Y[i2]
-#`            _quad = 0.5 * (a1 * x1x1 * a1 + 2 * a1 * a2 * x1x2 + a2 * x2x2 * a2)
-#            _lin = self.tags[i1] * a1 * y1 + self.tags[i2] * a2 * y2 + self.eps * a1 + self.eps * a2
-#            return _quad + _lin
-
-#        def checkUpdate(a1, a2, delta):
-#            #delta = -tags[2] * d
-#            #a2_new = a2 + delta
-#            #a1_new = a1 - tags[1] * tags[2] * delta
-#            y2 = self.Y[i2]
-#            _quad = 0.5 * (a1 * x1x1 * a1 + 2 * a1 * a2 * x1x2 + a2 * x2x2 * a2)
-#            _quad_new = _quad + 0.5 * 
-#            (
-#             delta**2 * x2x2 + 2 * x2x2 * a2 * delta +
-#             delta**2 * x1x1 - 2 * x1x1 * a1 * delta * tags[1] * tags[2]+
-#             2 * x1x2 * (a1 * delta - a2 * tags[1] * tags[2] + delta**2 * tags[1] * tags[2]  )
-#            )
-#            _lin = self.tags[i1] * a1 * y1 + self.tags[i2] * a2 * y2 + self.eps * a1 + self.eps * a2
-#            return _quad + _lin
-
-
-        #print x1,x2
-        #print x1x1,x1x2, x2x2
-        #reverse engineer delta:  
-        eta = x1x1 + x2x2 - 2 * x1x2
-        print "eta: ", eta
-        lamb = float('inf')
-        print "before", checkValue(alpha1, alpha2)
-        if eta > 0:
-            lamb = (F1 - F2) / eta
-        #b2 = [np.nan, self.bounds[i2] - self.alpha[i2], self.alpha[i2]]
-        #b1 = [np.nan, self.alpha[i1], self.bounds[i1] - self.alpha[i1]]
-        b1 = [np.nan, self.bounds[i1] - self.alpha[i1], self.alpha[i1]]
-        b2 = [np.nan, self.alpha[i2], self.bounds[i2] - self.alpha[i2]]
-        lambClipped = min(lamb, b1[self.tags[i1]], b2[self.tags[i2]])
-
-        delta2 = -lambClipped * self.tags[i2]
-        if abs(lambClipped) < self.tol * (self.alpha[i2] + lambClipped + self.tol):
-            return 0
-        #delta1 = self.tags[i1] * delta
-        #delta2 = self.tags[i2] * delta
-        s = self.tags[i1] * self.tags[i2]
-        delta1 = -s * delta2
-        #check boundaries:
-
-       
-        self.alpha[i1] = alpha1 + delta1
-        self.alpha[i2] = alpha2 + delta2
-        print "after", checkValue(self.alpha[i1], self.alpha[i2])
-
-        for i in [i1, i2]:
-            self.I[i] = 0
-            if self.tags[i] == 1:
-                if self.alpha[i] == 0:
-                    self.I[i] = 1
-                elif self.alpha[i] == self.bounds[i]:
-                    self.I[i] = 3
-            else:
-                if self.alpha[i] == 0:
-                    self.I[i] = 4
-                elif self.alpha[i] == self.bounds[i]:
-                    self.I[i] = 2
-        
-
-        self.updateW(i1, i2, delta1, delta2)
-        #print "fcache ", self.fcache
-        self.fcache[i1]= self.fcache[i1] - self.tags[i1] * delta1 * x1x1 - \
-        self.tags[i2] * delta2 * x1x2
-        self.fcache[i2]= self.fcache[i2] - self.tags[i2] * delta2 * x2x2 - \
-        self.tags[i1] * delta1 * x1x2
-        #print (y1 - self.tags[i1] * self.eps) - self.eval(i1)
-        #print (self.Y[i2] - self.tags[i2] * self.eps) - self.eval(i2)
-        #print "fcache ", self.fcache
-        for i in [i1, i2]:
-            F = self.fcache[i]
-                
-            if self.I[i] in [0,1,2]:
-                self.blow = F
-                self.ilow = i
-            if self.I[i] in [0,3,4]:
-                self.bup = F
-                self.iup = i
-        #print "beep", self.blow, self.bup
-            
-        self.sanityCheck()
-        return 1
-
-    def sanityCheck(self):
-        pass
-    def updateW(self, i1, i2, delta1, delta2):
-        self.w = self.w + self.tags[i1] * delta1 * self.X[i1,:]
-        self.w = self.w + self.tags[i2] * delta2 * self.X[i2,:]
-        
-        #self.w = np.squeeze(np.matrix(self.tags * self.alpha) * self.X)
-
-
 def optimize(tags, Q, c, upperBounds):
 
     model = gurobipy.Model()
 
+    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
     # Add variables to model
-    for j in range(tags.shape[0]):
-        model.addVar(lb=0., ub=float(upperBounds[tags[j]]), vtype=gurobipy.GRB.CONTINUOUS)
+    for j in range(tags[0]):
+        model.addVar(lb=0., ub=float(upperBounds[1]), vtype=gurobipy.GRB.CONTINUOUS)
+
+    for j in range(sum(tags[1:])):
+        model.addVar(lb=0., ub=float(upperBounds[-1]), vtype=gurobipy.GRB.CONTINUOUS)
 
     model.update()
     vars = model.getVars()
 
     expr = gurobipy.LinExpr()
-    for j in range(tags.shape[0]):
-        expr += tags[j]*vars[j]
+    for j in range(sum(tags)):
+        expr += expandedTags[j]*vars[j]
 
     model.addConstr(expr, gurobipy.GRB.EQUAL, 0)
     print "ping"
@@ -385,6 +202,8 @@ def optimize(tags, Q, c, upperBounds):
     #        if Q[i,j] != 0:
     #            obj += Q[i,j]*vars[i]*vars[j]
     
+
+
     print "ping"
     obj.addTerms(c, vars)
     model.setObjective(obj,gurobipy.GRB.MINIMIZE)
@@ -392,56 +211,20 @@ def optimize(tags, Q, c, upperBounds):
   # Write model to a file
     model.update()
     model.write('dense.lp')
-    print "blub"
+    #print Q
+    print np.linalg.eigvalsh(Q)
+    #print "blub"
   # Solve
+    model.setParam("PSDTol", float("inf"))
     model.optimize()
     print "blob"
-    solution = np.ndarray((tags.shape[0]))
+    solution = np.ndarray((len(expandedTags)))
     if model.status == gurobipy.GRB.OPTIMAL:
         for i in range(solution.shape[0]):
             solution[i] = vars[i].x
         return True, solution
     else:
         return False
-
-def convertAlphaToSol(alpha, x, tags, limits, y, epsilon):
-    x_rel = x
-    y_rel = y
-
-    w = np.matrix(tags * alpha) * x_rel
-
-    pIndices = np.where(tags == 1)
-    lIndices = np.where(tags == -1)
-    #debug_trace()
-    #lowerBound = np.concatenate((np.where(alpha[pIndices] < limits[1])[0],
-    #np.where(alpha[lIndices] > 0)[0]))
-    #upperBound = np.concatenate((
-    #np.where(alpha[pIndices] > 0)[0],
-    #np.where(alpha[lIndices] < limits[-1])[0]))
-    #low = -epsilon*tags[lowerBound] + y_rel[lowerBound] - (x_rel[lowerBound] *
-    #w.transpose()).view(np.ndarray).flatten()
-    residual = y_rel - (x_rel * w.transpose()).view(np.ndarray).flatten()
-
-
-    lowPBound = np.where(alpha[pIndices] < limits[1])[0]
-    lowP = residual[pIndices][lowPBound] - epsilon
-
-    lowLBound = np.where(alpha[lIndices] > 0)[0]
-    lowL = residual[lIndices][lowLBound] + epsilon
-
-    highPBound = np.where(alpha[pIndices] > 0)[0]
-    highP = residual[pIndices][highPBound] - epsilon
-    
-    highLBound = np.where(alpha[lIndices] < limits[-1])[0]
-    highL = residual[lIndices][highLBound] + epsilon
-
-    low = np.concatenate((lowL, lowP))
-    high = np.concatenate((highL, highP))
-    #print np.max(lowL), np.max(lowP), np.min(highL), np.min(highP)
-    b = 0 #TODO
-    b = (np.min(high) + np.max(low)) / 2
-    
-    return w, b
 
 
 
@@ -453,6 +236,8 @@ class SVR(object):
     {"optimization" : "svr", "kernel" : "poly"},
     {"optimization" : "svr", "kernel" : "sigmoid"},
     {"optimization" : "quadratic", "kernel" : "linear"},
+    {"optimization" : "quadratic", "kernel" : "rbf"},
+    {"optimization" : "rf"}
     #{"optimization" : "smo", "kernel" : "linear"},
     #{"optimization" : "smo", "kernel" : "gaussian"}
     ]
@@ -502,12 +287,13 @@ class SVR(object):
             dot[backupindices] = 0
 
         #is terrible for debugging
-        nindices = np.ravel_multi_index(backupindices, dot.shape)
+        nindices = np.ravel_multi_index(backupindices, dot.shape) #TODO: CHANGE BACK
         dot = dot.reshape(-1)
         img = np.copy(oldImg.reshape((-1,oldImg.shape[-1])))
         if normalize:
             img = sklearn.preprocessing.normalize(img, axis=0)
-        pindices = np.where(dot > 0.01)[0]
+        pindices = np.where(dot > 0.1)[0]
+        #pindices = pindices[:250]
         lindices = None
         if self.DENSITYBOUND:
             lindices = np.concatenate((nindices, pindices))
@@ -519,9 +305,7 @@ class SVR(object):
 
         mapping = np.concatenate((pindices, lindices))
 
-        tags = np.zeros(numVariables,dtype=np.int8)
-        tags[0:len(pindices)] = 1
-        tags[len(pindices):] = -1
+        tags = [len(pindices), len(lindices)]
         #print dot
         self.dot = dot
         self.img = img
@@ -535,48 +319,103 @@ class SVR(object):
         self.prepareData(img, dot, sigma, smooth, normalize)
         self.fitPrepared(newImg[mapping,:], newDot[mapping], tags, epsilon)
 
-    def fitPrepared(self,img, dot, tags, epsilon):
+    def fitPrepared(self, img, dot, tags, epsilon, boxConstraints = []):
         
+
         numFeatures = img.shape[-1]
-        numVariables = len(tags)
+        numVariables = sum(img.shape[:-1])
+        expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:])))).astype(np.int)
         if numVariables == 0:
             return False
         success = False
+        tags.append(len(boxConstraints))
+
+        if self.optimization == "rf":
+            from sklearn.ensemble import RandomForestRegressor as RFR
+            svr = RFR(n_jobs = -1)
+            svr.fit(img, dot)
+
+            #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
+            #svr.fit(img, dot, tags, sample_weight = C) 
+            #svr.fit(img, dot) 
+            #print svr.predict(img)
+            #print svr.dual_coef_
+            self.svr = svr
+            success = True
+
         if self.optimization == "quadratic":
-            B = np.ndarray((numVariables, numFeatures))
-            #B[0:len(pindices), :] = img[pindices,:]
-            #B[len(pindices):, :] = img[lindices,:] 
-            B[:,:] = img
-            B = np.matrix(B)
+            B = img.view(np.matrix).reshape((numVariables, numFeatures))
             
             #Q = B * B.transpose()
 
-            c = dot * (-tags)+ epsilon
-            Q = kernelize(B, tags, kernel = self.kernel)
             #debug_trace()
+            #if self.kernel == "rbf":
+            #    from sklearn.kernel_approximation import RBFSampler
+            #    rbf_feature = RBFSampler(random_state = 1)
+            #    B = rbf_feature.fit_transform(B)
+            #Q = kernelize(B, tags, kernel = self.kernel, boxConstraints)
+            #Q,c = kernelize(B, dot, tags, epsilon, self.kernel, boxConstraints)
+            if self.kernel == "linear":
+                #c = dot * (-expandedTags) + epsilon
+                #success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
+
+                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
             #version 1 
-            #success, solution = optimize(tags, Q, c, self.upperBounds)
+                import sitecustomize
+                sitecustomize.debug_trace()
+                success, alpha = optimize(tags, Q, c, self.upperBounds)
+            else:
+                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
+            #version 1 
+                success, alpha = optimize(tags, Q, c, self.upperBounds)
             #version 2
-            success, solution = optimizepossdef(tags, B, c, self.upperBounds)
+            #success, solution = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
             
             
-            solution[np.where(solution < 1E-5)] = 0
+            alpha[np.where(alpha < 1E-5)] = 0
             #debug_trace()
 
-            indices = np.where(solution)
-            self.factors = solution[indices]
+            indices = np.nonzero(alpha)
+            self.factors = alpha[indices] * expandedTags[indices]
             self.supportVectors = B[indices[0],:]
-            self.w, self.b = convertAlphaToSol(solution, img, tags,
-                                               self.upperBounds, dot,
-                                               epsilon)
+
+            #import sitecustomize
+            #sitecustomize.debug_trace()
+            if self.kernel == "linear":
+                self.w = self.factors * self.supportVectors 
+                residual = dot - np.matrix(img) * self.w.transpose()
+            else:
+                residual = dot - expandedTags * (np.matrix(alpha) * np.matrix(Q[:,:len(expandedTags)])).view(np.ndarray)
+                residual = residual.flatten()
+                import sitecustomize
+                sitecustomize.debug_trace()
+            self.b = self.findB(alpha[:sum(tags[:-1])], residual, expandedTags[:sum(tags[:-1])], self.upperBounds, epsilon)
+                
+            #self.w, self.b = self.convertAlphaToSol(alpha, tags,
+            #                                   self.upperBounds, dot,
+            #                                   epsilon)
         #elif self.optimization == "smo":
         #    smo = SMO(tags, img, dot, self.upperBounds, mapping)
         #    self.w, self.b,success = smo.mainLoop()
         elif self.optimization == "svr":
             from sklearn.svm import SVR as skSVR
-            svr = skSVR(C = 1, epsilon = epsilon, kernel = self.kernel)
-            C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
-            svr.fit(img, dot, tags, sample_weight = C) 
+            svr = skSVR(C = 1, epsilon = epsilon, kernel = self.kernel, gamma = 0.05)
+            C = np.array([self.upperBounds[tag] for tag in expandedTags], dtype = np.float)
+            bcValues = []
+            bcFeatures = np.array([],dtype = np.float)
+            bcIndices = []
+            for value, features in boxConstraints:
+                bcValues.append(value)
+                bcFeatures = np.concatenate((bcFeatures, features))
+                bcIndices.append(np.sum(bcIndices) + features.shape[0])
+            bcValues = np.array(bcValues, dtype = np.float)
+            bcIndices = np.array(bcIndices, dtype = np.int)
+            import sitecustomize
+            sitecustomize.debug_trace()
+            #svr.fit(img, dot, tags, sample_weight = C, bcValues = bcValues, bcFeatures = bcFeatures, bcIndices =
+            #        bcIndices) 
+            svr.fit(img, dot, expandedTags.astype(np.int8), sample_weight = C)
+            #svr.fit(img, dot) 
             #print svr.predict(img)
             #print svr.dual_coef_
             self.svr = svr
@@ -596,17 +435,37 @@ class SVR(object):
         if self.optimization == "svr":
             res = self.svr.predict(image)
             #print res
-        else:
-            w,b = None,None
-            if self.optimization == "quadratic":
-                w,b = self.w, self.b
-            elif self.optimization == "smo":
-                w,b = self.w, self.b
+        elif self.optimization == "rf":
+            res = self.svr.predict(image)
 
-            res = np.zeros(oldShape[:-1])
+        elif self.optimization == "quadratic":
             if self.kernel == "linear":
+                w,b = self.w, self.b
                 res = np.squeeze(image *
                              w.transpose() + b)
+                
+
+        #elif self.optimization == "smo":
+        #    w,b = self.w, self.b
+
+            elif self.kernel == "rbf":
+
+                #import sitecustomize
+                #sitecustomize.debug_trace()
+                #from sklearn.kernel_approximation import RBFSampler
+                #rbf_feature = RBFSampler(gamma = 1, random_state = 1)
+                #image = rbf_feature.fit_transform(image)
+                num_features = image.shape[1]
+                metric = "euclidean"
+                transform = lambda x: np.exp(-(x**2) / (num_features * 1000))
+
+                import sitecustomize
+                sitecustomize.debug_trace()
+                tmp = pairwise.pairwise_distances(image, self.supportVectors, metric = metric, n_jobs = -1)
+                tmp = transform(tmp)
+
+                res = np.matrix(tmp) * np.matrix(self.factors).transpose() + self.b
+
             elif self.kernel == "gaussian":
                 gamma = 10000
                 #debug_trace()
@@ -616,9 +475,74 @@ class SVR(object):
                 res = res + b
 
 
+        #res = np.zeros(oldShape[:-1])
+        res = res.view(np.ndarray)
         res[np.where(res < 0)] = 0
         res.reshape(oldShape[:-1])
         return res
+
+    def findB(self, alpha, residual, tags, limits, epsilon):
+
+        pIndices = np.where(tags == 1)
+        lIndices = np.where(tags == -1)
+
+        lowPBound = np.where(alpha[pIndices] < limits[1])[0]
+        lowP = residual[pIndices][lowPBound] - epsilon
+
+        lowLBound = np.where(alpha[lIndices] > 0)[0]
+        lowL = residual[lIndices][lowLBound] + epsilon
+
+        highPBound = np.where(alpha[pIndices] > 0)[0]
+        highP = residual[pIndices][highPBound] - epsilon
+        
+        highLBound = np.where(alpha[lIndices] < limits[-1])[0]
+        highL = residual[lIndices][highLBound] + epsilon
+
+        low = np.concatenate((lowL, lowP))
+        high = np.concatenate((highL, highP))
+        #print np.max(lowL), np.max(lowP), np.min(highL), np.min(highP)
+        b = (np.min(high) + np.max(low)) / 2
+        
+        return b
+
+    def convertAlphaToSol(self, alpha, x, tags, limits, y, epsilon):
+        x_rel = x
+        y_rel = y
+
+        w = np.matrix(tags * alpha) * x_rel
+
+        pIndices = np.where(tags == 1)
+        lIndices = np.where(tags == -1)
+        #debug_trace()
+        #lowerBound = np.concatenate((np.where(alpha[pIndices] < limits[1])[0],
+        #np.where(alpha[lIndices] > 0)[0]))
+        #upperBound = np.concatenate((
+        #np.where(alpha[pIndices] > 0)[0],
+        #np.where(alpha[lIndices] < limits[-1])[0]))
+        #low = -epsilon*tags[lowerBound] + y_rel[lowerBound] - (x_rel[lowerBound] *
+        #w.transpose()).view(np.ndarray).flatten()
+        residual = y_rel - (x_rel * w.transpose()).view(np.ndarray).flatten()
+
+
+        lowPBound = np.where(alpha[pIndices] < limits[1])[0]
+        lowP = residual[pIndices][lowPBound] - epsilon
+
+        lowLBound = np.where(alpha[lIndices] > 0)[0]
+        lowL = residual[lIndices][lowLBound] + epsilon
+
+        highPBound = np.where(alpha[pIndices] > 0)[0]
+        highP = residual[pIndices][highPBound] - epsilon
+        
+        highLBound = np.where(alpha[lIndices] < limits[-1])[0]
+        highL = residual[lIndices][highLBound] + epsilon
+
+        low = np.concatenate((lowL, lowP))
+        high = np.concatenate((highL, highP))
+        print np.max(lowL), np.max(lowP), np.min(highL), np.min(highP)
+        b = 0 #TODO
+        b = (np.min(high) + np.max(low)) / 2
+        
+        return w, b
 
 
     def writeHDF5(self, cachePath, targetname):
@@ -638,30 +562,35 @@ if __name__ == "__main__":
     np.set_printoptions(threshold = 'nan')
     img = np.load("img.npy")
     dot = np.load("dot.npy")
-    img = img[...,:]
+    #img = img[...,[2]]
     #img = img[..., None]
     
     DENSITYBOUND=True
     pMult = 100 #This is the penalty-multiplier for underestimating the density
     lMult = 100 #This is the penalty-multiplier for overestimating the density
 
+    #shortExample
+    limits = [120, 200]
+    img = img[limits[0]:limits[1],limits[0]:limits[1],:]
+    dot = dot[limits[0]:limits[1],limits[0]:limits[1]]
 
    #ToyExample
-#    img = np.ones((9,9,1),dtype=np.float32)
-#    dot = np.zeros((9,9))
-#    img = 1 * img
-#    #img[:,:,1] = np.random.rand(*img.shape[:-1])
-#    #img[0,0] = 3
-#    #img[1,1] = 3
-#    img[3:6,3:6] = 50
-#    dot[4,4] = 2
-#    dot[0,0] = 1
-#    dot[1,1] = 1
+    #img = np.ones((9,9,2),dtype=np.float32)
+    #dot = np.zeros((9,9))
+    #img = 1 * img
+    #img[:,:,1] = np.random.rand(*img.shape[:-1])
+    #img[0,0] = 3
+    #img[1,1] = 3
+    #img[3:6,3:6] = 50
+    #dot[4,4] = 1
+    #dot[5,5] = 1
+    #dot[0,0] = 2
+    #dot[1,1] = 2
 
     backup_image = np.copy(img)
-    Counter = SVR(pMult, lMult, DENSITYBOUND, kernel = "rbf", optimization =
-                 "svr")
-    sigma = [4]
+    Counter = SVR(pMult, lMult, DENSITYBOUND, kernel = "linear", optimization =
+                 "quadratic")
+    sigma = [2]
     testimg, testdot, testmapping, testtags = Counter.prepareData(img, dot,
                                                                   sigma,
                                                                   normalize =
@@ -671,10 +600,15 @@ if __name__ == "__main__":
     #print "blub", testimg.shape
     #print testimg
     #print testdot, np.sum(testdot)
-    success = Counter.fit(img, dot, sigma, epsilon = 0.001, smooth = True, normalize
-                          = False)
+    boxConstraints = []
+    #boxConstraints = [(12, img[:,:,:])]
+    #boxConstraints = [(3, img[0:30,0:30,:])]
+    #boxConstraints.reshape((-1, boxConstraints.shape[-1]))
+    success = Counter.fitPrepared(testimg[testmapping,:], testdot[testmapping], testtags, epsilon = 0.000,
+                                  boxConstraints = boxConstraints)
+    #success = Counter.fitPrepared(testimg[indices,:], testdot[indices], testtags[:len(indices)], epsilon = 0.000)
     #print Counter.w, Counter.
-
+    print "learning finished"
 
     #conversion step
     #Q = kernelize(B, method = "gaussian")
@@ -686,12 +620,13 @@ if __name__ == "__main__":
     #upperBounds = [None, pMult, lMult]
     #success,solution = optimize(tags,Q,c,upperBounds)
     ## Put model data into dense matrices
+    #print Counter.b, Counter.w
     newdot = Counter.predict(backup_image, normalize = False)
 
     print "prediction"
     #print img
     #print newdot
-    print "sum", np.sum(newdot)
+    print "sum", np.sum(newdot) / 255
     
     fig = plt.figure()
     fig.add_subplot(1,3,1)

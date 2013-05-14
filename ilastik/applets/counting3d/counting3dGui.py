@@ -90,6 +90,64 @@ class ClickReportingInterpreter(QObject):
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
+
+
+class BoxInterpreter(QObject):
+    rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
+    leftClickReceived = pyqtSignal(object, QPoint)  # ditto
+    leftClickReleased = pyqtSignal(object, object)
+    
+    def __init__(self, navigationInterpreter, positionModel, editor):
+        QObject.__init__(self)
+        self.baseInterpret = navigationInterpreter
+        self.posModel      = positionModel
+        self.rubberBand = QRubberBand(QRubberBand.Rectangle, editor)
+        self.origin = QPoint()
+        self.originpos = object()
+
+    def start( self ):
+        self.baseInterpret.start()
+
+    def stop( self ):
+        self.baseInterpret.stop()
+
+    def eventFilter( self, watched, event ):
+        if event.type() == QEvent.MouseButtonPress:
+            pos = [int(i) for i in self.posModel.cursorPos]
+            pos = [self.posModel.time] + pos + [self.posModel.channel]
+
+            if event.button() == Qt.LeftButton:
+                self.origin = QPoint(event.pos())
+                self.originpos = pos
+                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+                self.rubberBand.show()
+                gPos = watched.mapToGlobal( event.pos() )
+                self.leftClickReceived.emit( pos, gPos )
+            if event.button() == Qt.RightButton:
+                gPos = watched.mapToGlobal( event.pos() )
+                self.rightClickReceived.emit( pos, gPos )                
+        if event.type() == QEvent.MouseMove:
+            if not self.origin.isNull():
+                self.rubberBand.setGeometry(QRect(self.origin,
+                                                  event.pos()).normalized())
+        if event.type() == QEvent.MouseButtonRelease:
+            pos = [int(i) for i in self.posModel.cursorPos]
+            pos = [self.posModel.time] + pos + [self.posModel.channel]
+            if event.button() == Qt.LeftButton:
+                self.rubberBand.hide()
+                self.leftClickReleased.emit( self.originpos,pos )                
+
+    
+
+        # Event is always forwarded to the navigation interpreter.
+        return self.baseInterpret.eventFilter(watched, event)
+class Tool():
+    
+    Navigation = 0 # Arrow
+    Paint      = 1
+    Erase      = 2
+    Box        = 3
+
 class Counting3dGui(LabelingGui):
 
     ###########################################
@@ -292,93 +350,9 @@ class Counting3dGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(Counting3dGui, self).setupLayers()
 
-        # Add the uncertainty estimate layer
-        #uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
-        #if uncertaintySlot.ready():
-        #    uncertaintySrc = LazyflowSource(uncertaintySlot)
-        #    uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
-        #                                            tintColor=QColor( Qt.cyan ),
-        #                                            range=(0.0, 1.0),
-        #                                            normalize=(0.0, 1.0) )
-        #    uncertaintyLayer.name = "Uncertainty"
-        #    uncertaintyLayer.visible = False
-        #    uncertaintyLayer.opacity = 1.0
-        #    uncertaintyLayer.shortcutRegistration = (
-        #        "Prediction Layers",
-        #        "Show/Hide Uncertainty",
-        #        QShortcut( QKeySequence("u"), self.viewerControlWidget(), uncertaintyLayer.toggleVisible ),
-        #        uncertaintyLayer )
-        #    layers.append(uncertaintyLayer)
-
         # Add each of the predictions
         labels = self.labelListData
-        #for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
-        #    if predictionSlot.ready() and channel < len(labels):
-        #        ref_label = labels[channel]
-        #        predictsrc = LazyflowSource(predictionSlot)
-        #        predictLayer = AlphaModulatedLayer( predictsrc,
-        #                                            tintColor=ref_label.pmapColor(),
-        #                                            range=(0.0, 1.0),
-        #                                            normalize=(0.0, 1.0) )
-        #        predictLayer.opacity = 0.25
-        #        predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
-        #        predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
-
-        #        def setLayerColor(c, predictLayer=predictLayer):
-        #            predictLayer.tintColor = c
-
-        #        def setLayerName(n, predictLayer=predictLayer):
-        #            newName = "Prediction for %s" % n
-        #            predictLayer.name = newName
-
-        #        setLayerName(ref_label.name)
-        #        ref_label.pmapColorChanged.connect(setLayerColor)
-        #        ref_label.nameChanged.connect(setLayerName)
-        #        layers.append(predictLayer)
-
-
-        ## Add each of the segmentations
-        #for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
-        #    if segmentationSlot.ready() and channel < len(labels):
-        #        ref_label = labels[channel]
-        #        segsrc = LazyflowSource(segmentationSlot)
-        #        segLayer = AlphaModulatedLayer( segsrc,
-        #                                        tintColor=ref_label.pmapColor(),
-        #                                        range=(0.0, 1.0),
-        #                                        normalize=(0.0, 1.0) )
-
-        #        segLayer.opacity = 1
-        #        segLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
-        #        segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
-
-        #        def setLayerColor(c, segLayer=segLayer):
-        #            segLayer.tintColor = c
-        #            self._update_rendering()
-
-        #        def setLayerName(n, segLayer=segLayer):
-        #            oldname = segLayer.name
-        #            newName = "Segmentation (%s)" % n
-        #            segLayer.name = newName
-        #            if not self.render:
-        #                return
-        #            if oldname in self._renderedLayers:
-        #                label = self._renderedLayers.pop(oldname)
-        #                self._renderedLayers[newName] = label
-
-        #        setLayerName(ref_label.name)
-
-        #        ref_label.pmapColorChanged.connect(setLayerColor)
-        #        ref_label.nameChanged.connect(setLayerName)
-        #        #check if layer is 3d before adding the "Toggle 3D" option
-        #        #this check is done this way to match the VolumeRenderer, in
-        #        #case different 3d-axistags should be rendered like t-x-y
-        #        #_axiskeys = segmentationSlot.meta.getAxisKeys()
-        #        if len(segmentationSlot.meta.shape) == 4:
-        #            #the Renderer will cut out the last shape-dimension, so
-        #            #we're checking for 4 dimensions
-        #            self._setup_contexts(segLayer)
-        #        layers.append(segLayer)
-
+     
 
         # Add the raw data last (on the bottom)
 
@@ -700,6 +674,107 @@ class Counting3dGui(LabelingGui):
             self.rubberbandClickReporter.leftClickReleased.connect( self.test )
         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
+    def _gui_setBox(self):
+        if not hasattr(self, "rubberbandClickReporter"):
+            self.rubberbandClickReporter2 = BoxInterpreter(
+                self.editor.navInterpret, self.editor.posModel, self.centralWidget() )
+            self.rubberbandClickReporter2.leftClickReleased.connect( self.test2 )
+        self.editor.setNavigationInterpreter(self.rubberbandClickReporter2)
+        
+
+    
+    def _changeInteractionMode( self, toolId ):
+        """
+        Implement the GUI's response to the user selecting a new tool.
+        """
+        # Uncheck all the other buttons
+        for tool, button in self.toolButtons.items():
+            if tool != toolId:
+                button.setChecked(False)
+
+        # If we have no editor, we can't do anything yet
+        if self.editor is None:
+            return
+
+        # The volume editor expects one of two specific names
+        modeNames = { Tool.Navigation   : "navigation",
+                      Tool.Paint        : "brushing",
+                      Tool.Erase        : "brushing",
+                      Tool.Box          : "navigation"
+                    }
+
+        # If the user can't label this image, disable the button and say why its disabled
+        labelsAllowed = False
+
+        labelsAllowedSlot = self._labelingSlots.labelsAllowed
+        if labelsAllowedSlot.ready():
+            labelsAllowed = labelsAllowedSlot.value
+
+            if hasattr(self._labelControlUi, "AddLabelButton"):
+                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+                if labelsAllowed:
+                    self._labelControlUi.AddLabelButton.setText("Add Label")
+                else:
+                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+
+        e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
+        self._gui_enableLabeling(e)
+        
+        if labelsAllowed:
+            # Update the applet bar caption
+            if toolId == Tool.Navigation:
+                # update GUI 
+                self._gui_setNavigation()
+                
+            elif toolId == Tool.Paint:
+                # If necessary, tell the brushing model to stop erasing
+                if self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.disableErasing()
+                # Set the brushing size
+                brushSize = self.brushSizes[self.paintBrushSizeIndex]
+                self.editor.brushingModel.setBrushSize(brushSize)
+                # update GUI 
+                self._gui_setBrushing()
+
+            elif toolId == Tool.Erase:
+                # If necessary, tell the brushing model to start erasing
+                if not self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.setErasing()
+                # Set the brushing size
+                eraserSize = self.brushSizes[self.eraserSizeIndex]
+                self.editor.brushingModel.setBrushSize(eraserSize)
+                # update GUI 
+                self._gui_setErasing()
+            elif toolId == Tool.Box:
+                self._gui_setBox()
+
+        self.editor.setInteractionMode( modeNames[toolId] )
+        self._toolId = toolId
+
+
+
+    def _initLabelUic(self, drawerUiPath):
+        super(Counting3dGui, self)._initLabelUic(drawerUiPath)
+        self._labelControlUi.boxToolButton.setCheckable(True)
+        self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
+                                                                                                          Tool.Box) )
+        self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
+
+
+    def test2(self, position5d_start, position5d_stop):
+
+        roi = SubRegion(self.op.Density, position5d_start,
+                                       position5d_stop)
+        key = roi.toSlice()
+        key = tuple(k for k in key if k != slice(0,0, None))
+        newKey = []
+        for k in key:
+            if k != slice(0,0,None):
+                if k.stop < k.start:
+                    k = slice(k.stop, k.start)
+            newKey.append(k)
+        newKey = tuple(newKey)
+
     def test(self, position5d_start, position5d_stop):
         from lazyflow.rtype import SubRegion
         import numpy
