@@ -11,3 +11,8 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import manual tracking workflow; check dependencies: " + str(e) )
     
+try:    
+    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflow
+except ImportError as e:
+    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
+    
