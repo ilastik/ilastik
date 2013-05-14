@@ -143,8 +143,8 @@ class OpTrackingBase(Operator):
         
         self.Output._value = None
         self.Output.setDirty(slice(None))
-        
-        if 'MergerOutput' in self.outputSlots:
+
+        if 'MergerOutput' in self.outputs:
             self.MergerOutput._value = None
             self.MergerOutput.setDirty(slice(None))            
         
