@@ -23,20 +23,12 @@ class ManualTrackingWorkflow( Workflow ):
         
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
-                                                       "Input: Segmentation", 
-                                                       "Input Segmentation", 
+                                                       "Input Data", 
+                                                       "Input Data", 
                                                        batchDataGui=False,
                                                        force5d=True)
         opSegDataSelection = self.dataSelectionApplet.topLevelOperator
-        opSegDataSelection.DatasetRoles.setValue( ['Binary Segmentation'] )        
-
-        self.rawDataSelectionApplet = DataSelectionApplet(self, 
-                                                          "Input: Raw Data", 
-                                                          "Input Raw", 
-                                                          batchDataGui=False,
-                                                          force5d=True)
-        opRawDataSelection = self.rawDataSelectionApplet.topLevelOperator
-        opRawDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        opSegDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Segmentation'] )        
                                                                    
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self,
                                                                       name="Object Extraction")
@@ -44,22 +36,22 @@ class ManualTrackingWorkflow( Workflow ):
         self.trackingApplet = ManualTrackingApplet( workflow=self )
         
         self._applets = []        
-        self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.dataSelectionApplet)        
         self._applets.append(self.objectExtractionApplet)        
         self._applets.append(self.trackingApplet)
             
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)        
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)            
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
                 
-        ## Connect operators ##        
-        opObjExtraction.RawImage.connect( opRawData.Image )
-        opObjExtraction.BinaryImage.connect( opData.Image )        
+        ## Connect operators ##
+        rawSlot = opData.ImageGroup[0]
+        segSlot = opData.ImageGroup[1]
+        opObjExtraction.RawImage.connect( rawSlot )
+        opObjExtraction.BinaryImage.connect( segSlot )    
         
-        opTracking.RawImage.connect( opRawData.Image )
+        opTracking.RawImage.connect( rawSlot )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        opTracking.BinaryImage.connect( opData.Image )        
+        opTracking.BinaryImage.connect( segSlot )        
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
