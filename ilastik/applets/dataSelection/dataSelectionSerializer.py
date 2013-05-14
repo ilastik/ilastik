@@ -2,7 +2,7 @@ from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
 
 import os
-import copy
+import vigra
 from ilastik.utility import bind, PathComponents
 from ilastik.utility.pathHelpers import areOnSameDrive,getPathVariants
 import ilastik.utility.globals
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class DataSelectionSerializer( AppletSerializer ):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
+    
+    The model operator for this serializer is the ``OpMultiLaneDataSelectionGroup``
     """
     # Constants    
     LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
@@ -29,56 +31,70 @@ class DataSelectionSerializer( AppletSerializer ):
         
         self._projectFilePath = None
         
+        self.version = '0.2'
+        
         def handleDirty():
-            self._dirty = True
+            if not self.ignoreDirty:
+                self._dirty = True
+
         self.topLevelOperator.ProjectFile.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.WorkingDirectory.notifyDirty( bind(handleDirty) )
         
-        def handleNewDataset(slot, index):
-            slot[index].notifyDirty( bind(handleDirty) )
-        # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
-        self.topLevelOperator.Dataset.notifyInserted( bind(handleNewDataset) )
+        def handleNewDataset(slot, roleIndex):
+            slot[roleIndex].notifyDirty( bind(handleDirty) )
+            slot[roleIndex].notifyDisconnect( bind(handleDirty) )
+        def handleNewLane(multislot, laneIndex):
+            assert multislot == self.topLevelOperator.DatasetGroup
+            multislot[laneIndex].notifyInserted( bind(handleNewDataset) )
+            for roleIndex in range( len(multislot[laneIndex]) ):
+                handleNewDataset(multislot[laneIndex], roleIndex)
+        self.topLevelOperator.DatasetGroup.notifyInserted( bind(handleNewLane) )
 
         # If a dataset was removed, we need to be reserialized.
-        self.topLevelOperator.Dataset.notifyRemoved( bind(handleDirty) )
+        self.topLevelOperator.DatasetGroup.notifyRemoved( bind(handleDirty) )
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Write any missing local datasets to the local_data group
         localDataGroup = getOrCreateGroup(topGroup, 'local_data')
         wroteInternalData = False
-        for index, slot in enumerate(self.topLevelOperator.Dataset):
-            info = slot.value
-            # If this dataset should be stored in the project, but it isn't there yet
-            if  info.location == DatasetInfo.Location.ProjectInternal \
-            and info.datasetId not in localDataGroup.keys():
-                # Obtain the data from the corresponding output and store it to the project.
-                dataSlot = self.topLevelOperator.Image[index]
+        for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
+            for roleIndex, slot in enumerate( multislot ):
+                if not slot.ready():
+                    continue
+                info = slot.value
+                # If this dataset should be stored in the project, but it isn't there yet
+                if  info.location == DatasetInfo.Location.ProjectInternal \
+                and info.datasetId not in localDataGroup.keys():
+                    # Obtain the data from the corresponding output and store it to the project.
+                    dataSlot = self.topLevelOperator.ImageGroup[laneIndex][roleIndex]
 
-                opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
-                opWriter.hdf5File.setValue( localDataGroup )
-                opWriter.hdf5Path.setValue( info.datasetId )
-                opWriter.Image.connect(dataSlot)
-
-                # Trigger the copy
-                success = opWriter.WriteImage.value
-                assert success
-
-                # Add the axistags attribute to the dataset we just created
-                localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
-
-                # Update the dataset info with no path, just filename base to remind us what this data is
-                # (operator will react to the change when we call setValue(), below)
-                # Directly set the private member to avoid getting a new datasetid
-                info._filePath = PathComponents(info.filePath).filenameBase
-                wroteInternalData = True
+                    try:    
+                        opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
+                        opWriter.hdf5File.setValue( localDataGroup )
+                        opWriter.hdf5Path.setValue( info.datasetId )
+                        opWriter.Image.connect(dataSlot)
+        
+                        # Trigger the copy
+                        success = opWriter.WriteImage.value
+                        assert success
+                    finally:
+                        opWriter.cleanUp()
+    
+                    # Add axistags and drange attributes, in case someone uses this dataset outside ilastik
+                    localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
+                    if dataSlot.meta.drange is not None:
+                        localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
+    
+                    wroteInternalData = True
 
         # Construct a list of all the local dataset ids we want to keep
-        localDatasetIds = [ slot.value.datasetId
-                             for index, slot 
-                             in enumerate(self.topLevelOperator.Dataset)
-                             if slot.value.location == DatasetInfo.Location.ProjectInternal ]
-
+        localDatasetIds = set()
+        for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
+            for roleIndex, slot in enumerate(multislot):
+                if slot.ready() and slot.value.location == DatasetInfo.Location.ProjectInternal:
+                    localDatasetIds.add( slot.value.datasetId )
+        
         # Delete any datasets in the project that aren't needed any more
         for datasetName in localDataGroup.keys():
             if datasetName not in localDatasetIds:
@@ -89,8 +105,11 @@ class DataSelectionSerializer( AppletSerializer ):
             # We know we're saving a snapshot if the project file isn't the one we deserialized with.
             if self._projectFilePath is None or self._projectFilePath == projectFilePath:
                 # Force the operator to setupOutputs() again so it gets data from the project, not external files
-                firstInfo = self.topLevelOperator.Dataset[0].value
-                self.topLevelOperator.Dataset[0].setValue(firstInfo, False)
+                firstInfo = self.topLevelOperator.DatasetGroup[0][0].value
+                self.topLevelOperator.DatasetGroup[0][0].setValue(firstInfo, check_changed=False)
+
+        deleteIfPresent(topGroup, 'Role Names')
+        topGroup.create_dataset('Role Names', data=self.topLevelOperator.DatasetRoles.value)
 
         # Access the info group
         infoDir = getOrCreateGroup(topGroup, 'infos')
@@ -100,23 +119,34 @@ class DataSelectionSerializer( AppletSerializer ):
             del infoDir[infoName]
                 
         # Rebuild the list of infos
-        for index, slot in enumerate(self.topLevelOperator.Dataset):
-            infoGroup = infoDir.create_group('info{:04d}'.format(index))
-            datasetInfo = slot.value
-            locationString = self.LocationStrings[datasetInfo.location]
-            infoGroup.create_dataset('location', data=locationString)
-            infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
-            infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
-            infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
-            if datasetInfo.axisorder is not None:
-                infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
-        
+        roleNames = self.topLevelOperator.DatasetRoles.value
+        for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
+            laneGroupName = 'lane{:04d}'.format(laneIndex)
+            laneGroup = infoDir.create_group( laneGroupName )
+            
+            for roleIndex, slot in enumerate(multislot):
+                infoGroup = laneGroup.create_group( roleNames[roleIndex] )
+                if slot.ready():
+                    datasetInfo = slot.value
+                    locationString = self.LocationStrings[datasetInfo.location]
+                    infoGroup.create_dataset('location', data=locationString)
+                    infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
+                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
+                    infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
+                    infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
+                    if datasetInfo.drange is not None:
+                        infoGroup.create_dataset('drange', data=datasetInfo.drange)
+                    if datasetInfo.axistags is not None:
+                        infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
+                        axisorder = "".join(tag.key for tag in datasetInfo.axistags)
+                        infoGroup.create_dataset('axisorder', data=axisorder)
+
         self._dirty = False
 
     def importStackAsLocalDataset(self, info):
         """
         Add the given stack data to the project file as a local dataset.
-        Create a datainfo and append it to our operator.
+        Does not update the topLevelOperator
         """
         try:
             self.progressSignal.emit(0)
@@ -127,6 +157,8 @@ class DataSelectionSerializer( AppletSerializer ):
 
             globstring = info.filePath
             info.location = DatasetInfo.Location.ProjectInternal
+            firstPathParts = PathComponents(info.filePath.split('//')[0])
+            info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
             
             opWriter = OpStackToH5Writer(graph=self.topLevelOperator.graph)
             opWriter.hdf5Group.setValue(localDataGroup)
@@ -138,16 +170,16 @@ class DataSelectionSerializer( AppletSerializer ):
             
             success = opWriter.WriteImage.value
             
-            numDatasets = len(self.topLevelOperator.Dataset)
-            self.topLevelOperator.Dataset.resize( numDatasets + 1 )
-            self.topLevelOperator.Dataset[numDatasets].setValue(info)
-            
         finally:
+            opWriter.cleanUp()
             self.progressSignal.emit(100)
 
         return success
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
+        """
+        Overridden from AppletSerializer.initWithoutTopGroup
+        """
         # The 'working directory' for the purpose of constructing absolute 
         #  paths from relative paths is the project file's directory.
         projectDir = os.path.split(projectFilePath)[0]
@@ -164,58 +196,108 @@ class DataSelectionSerializer( AppletSerializer ):
         # normally the serializer is not dirty after loading a project file
         # however, when the file was corrupted, the user has the possibility
         # to save the fixed file after loading it.
-        dirty = False 
-        
         infoDir = topGroup['infos']
+        localDataGroup = topGroup['local_data']
         
-        self.topLevelOperator.Dataset.resize( len(infoDir) )
-        for index, (infoGroupName, infoGroup) in enumerate( sorted(infoDir.items()) ):
-            datasetInfo = DatasetInfo()
+        try:
+            roleNames = list(topGroup['Role Names'][...])
+            backwards_compatibility_mode = False
+            assert self.topLevelOperator.DatasetRoles.ready(), "Expected dataset roles to be hard-coded by the workflow."
+            assert roleNames == self.topLevelOperator.DatasetRoles.value, \
+                "Role names in project file ({}) don't match those given in workflow definition ({})".format( roleNames, self.topLevelOperator.DatasetRoles.value )
+        except KeyError:
+            roleNames = ['Raw Data']
+            backwards_compatibility_mode = True
+            pass
 
-            # Make a reverse-lookup of the location storage strings            
-            LocationLookup = { v:k for k,v in self.LocationStrings.items() }
-            datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
+        force_dirty = False
+        self.topLevelOperator.DatasetGroup.resize( len(infoDir) )
+        for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
-            # Write to the 'private' members to avoid resetting the dataset id
-            datasetInfo._filePath = str(infoGroup['filePath'].value)
-            datasetInfo._datasetId = str(infoGroup['datasetId'].value)
+            # BACKWARDS COMPATIBILITY:
+            # Handle projects that didn't support multiple datasets per lane
+            if backwards_compatibility_mode:
+                assert 'location' in laneGroup
+                datasetInfo, dirty = self._readDatasetInfo(laneGroup, localDataGroup, projectFilePath, headless)
+                force_dirty |= dirty
 
-            # Deserialize the "allow labels" flag
+                # Give the new info to the operator
+                self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
+            else:
+                for roleName, infoGroup in sorted(laneGroup.items()):
+                    roleIndex = roleNames.index( roleName )
+                    datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
+                    force_dirty |= dirty
+    
+                    # Give the new info to the operator
+                    if datasetInfo is not None:
+                        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+        
+        self._dirty = force_dirty
+    
+    def _readDatasetInfo(self, infoGroup, localDataGroup, projectFilePath, headless):
+        # Unready datasets are represented with an empty group.
+        if len( infoGroup ) == 0:
+            return None, False
+        datasetInfo = DatasetInfo()
+
+        # Make a reverse-lookup of the location storage strings
+        LocationLookup = { v:k for k,v in self.LocationStrings.items() }
+        datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
+        
+        # Write to the 'private' members to avoid resetting the dataset id
+        datasetInfo._filePath = str(infoGroup['filePath'].value)
+        datasetInfo._datasetId = str(infoGroup['datasetId'].value)
+
+        try:
+            datasetInfo.allowLabels = infoGroup['allowLabels'].value
+        except KeyError:
+            pass
+        
+        try:
+            datasetInfo.drange = tuple( infoGroup['drange'].value )
+        except KeyError:
+            pass
+        
+        try:
+            datasetInfo.nickname = str( infoGroup['nickname'].value )
+        except KeyError:
+            datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
+        
+        try:
+            tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
+            datasetInfo.axistags = tags
+        except KeyError:
+            # Old projects just have an 'axisorder' field instead of full axistags
             try:
-                datasetInfo.allowLabels = infoGroup['allowLabels'].value
+                axisorder = infoGroup['axisorder'].value
+                datasetInfo.axistags = vigra.defaultAxistags(axisorder)
             except KeyError:
                 pass
+        
+        # If the data is supposed to be in the project,
+        #  check for it now.
+        if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
+            if not datasetInfo.datasetId in localDataGroup.keys():
+                raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroup.name)
 
-            # Deserialize the axisorder (if present)
-            try:
-                datasetInfo.axisorder = infoGroup['axisorder'].value
-            except KeyError:
-                pass
-            
-            # If the data is supposed to be in the project,
-            #  check for it now.
-            if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                if not datasetInfo.datasetId in topGroup['local_data'].keys():
-                    raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroupName)
-
-            # If the data is supposed to exist outside the project, make sure it really does.
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                pathData = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0])
-                filePath = pathData.externalPath
-                if not os.path.exists(filePath):
-                    if headless:
-                        raise RuntimeError("Could not find data at " + filePath)
-                    filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
-                    newpath = self.repairFile(filePath, filt)
-                    if pathData.internalPath is not None:
-                        newpath += pathData.internalPath
-                    datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
-                    dirty = True
-                    
-            # Give the new info to the operator
-            self.topLevelOperator.Dataset[index].setValue(datasetInfo)
-
-        self._dirty = dirty
+        dirty = False
+        # If the data is supposed to exist outside the project, make sure it really does.
+        if datasetInfo.location == DatasetInfo.Location.FileSystem:
+            pathData = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0])
+            filePath = pathData.externalPath
+            if not os.path.exists(filePath):
+                if headless:
+                    raise RuntimeError("Could not find data at " + filePath)
+                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+                newpath = self.repairFile(filePath, filt)
+                if pathData.internalPath is not None:
+                    newpath += pathData.internalPath
+                datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
+                dirty = True
+        
+        return datasetInfo, dirty
+                
     
     def updateWorkingDirectory(self,newpath,oldpath):
         
@@ -224,20 +306,23 @@ class DataSelectionSerializer( AppletSerializer ):
         if newpath==oldpath:
             return
         
-        for slot in self.topLevelOperator.Dataset:
-            datasetInfo = slot.value
-            if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                
-                #construct absolute path and recreate relative to the new path
-                fp = PathComponents(datasetInfo.filePath,oldpath).totalPath()
-                abspath,relpath = getPathVariants(fp,newpath)
-                
-                # Same convention as in dataSelectionGui:
-                # Relative by default, unless the file is in a totally different tree from the working directory.
-                if len(os.path.commonprefix([fp, abspath])) > 1: datasetInfo.filePath = relpath
-                else:datasetInfo.filePath = abspath
-                
-                slot.setValue(datasetInfo)
+        for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
+            for roleIndex, slot in enumerate(multislot):
+                datasetInfo = slot.value
+                if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                    
+                    #construct absolute path and recreate relative to the new path
+                    fp = PathComponents(datasetInfo.filePath,oldpath).totalPath()
+                    abspath,relpath = getPathVariants(fp,newpath)
+                    
+                    # Same convention as in dataSelectionGui:
+                    # Relative by default, unless the file is in a totally different tree from the working directory.
+                    if len(os.path.commonprefix([fp, abspath])) > 1:
+                        datasetInfo.filePath = relpath
+                    else:
+                        datasetInfo.filePath = abspath
+                    
+                    slot.setValue(datasetInfo, check_changed=False)
         
         self.topLevelOperator.WorkingDirectory.setValue(newpath)
         self._projectFilePath = newpath
@@ -257,7 +342,7 @@ class DataSelectionSerializer( AppletSerializer ):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.topLevelOperator.Dataset.resize( 0 )
+        self.topLevelOperator.DatasetGroup.resize( 0 )
 
 
 class Ilastik05DataSelectionDeserializer(AppletSerializer):
@@ -291,10 +376,10 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             dataDir = hdf5File["DataSets"]
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
-            self.topLevelOperator.Dataset.resize( 0 )
+            self.topLevelOperator.DatasetGroup.resize( 0 )
             return
         
-        self.topLevelOperator.Dataset.resize( len(dataDir) )
+        self.topLevelOperator.DatasetGroup.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
             datasetInfo = DatasetInfo()
 
@@ -310,15 +395,16 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             if default_axis_order is not None:
                 import warnings
                 warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
-                datasetInfo.axisorder = default_axis_order
+                datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
             
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
             datasetInfo._filePath = str(totalDatasetPath)
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
+            datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )
             
             # Give the new info to the operator
-            self.topLevelOperator.Dataset[index].setValue(datasetInfo)
+            self.topLevelOperator.DatasetGroup[index][0].setValue(datasetInfo)
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
@@ -342,7 +428,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.topLevelOperator.Dataset.resize( 0 )
+        self.topLevelOperator.DatasetGroup.resize( 0 )
 
 
 

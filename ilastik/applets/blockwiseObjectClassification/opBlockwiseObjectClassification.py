@@ -10,6 +10,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
 from lazyflow.operators import OpSubRegion
+from lazyflow.stype import Opaque
+from lazyflow.rtype import List
 
 # ilastik
 from ilastik.utility import bind
@@ -23,6 +25,8 @@ class OpSingleBlockObjectPrediction( Operator ):
     RawImage = InputSlot()
     BinaryImage = InputSlot()
 
+    SelectedFeatures = InputSlot(rtype = List, stype=Opaque)
+
     Classifier = InputSlot()
     LabelsCount = InputSlot()
     
@@ -34,8 +38,8 @@ class OpSingleBlockObjectPrediction( Operator ):
     # RawImage -----> opRawSubRegion ------                        _______________________ 
     #                                      \                      /                       \
     # BinaryImage --> opBinarySubRegion --> opExtract --(features)--> opPredict --(map)--> opPredictionImage --via execute()--> PredictionImage
-    #                                                \               /                    /
-    #                                                 \    Classifier                    /
+    #                                      /         \               /                    /
+    #                 SelectedFeatures-----           \   Classifier                     /
     #                                                  \                                /
     #                                                   (labels)------------------------
 
@@ -87,10 +91,12 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opExtract = OpObjectExtraction( parent=self )
         self._opExtract.BinaryImage.connect( self._opBinarySubRegion.Output )
         self._opExtract.RawImage.connect( self._opRawSubRegion.Output )
+        self._opExtract.Features.connect(self.SelectedFeatures)
         self.BlockwiseRegionFeatures.connect( self._opExtract.BlockwiseRegionFeatures )
         
         self._opPredict = OpObjectPredict( parent=self )
         self._opPredict.Features.connect( self._opExtract.RegionFeatures )
+        self._opPredict.SelectedFeatures.connect( self.SelectedFeatures )
         self._opPredict.Classifier.connect( self.Classifier )
         self._opPredict.LabelsCount.connect( self.LabelsCount )
         
@@ -174,6 +180,7 @@ class OpBlockwiseObjectClassification( Operator ):
     BinaryImage = InputSlot()
     Classifier = InputSlot()
     LabelsCount = InputSlot()
+    SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     BlockShape3dDict = InputSlot( value={'x' : 512, 'y' : 512, 'z' : 512} ) # A dict of SPATIAL block dims
     HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
@@ -294,6 +301,7 @@ class OpBlockwiseObjectClassification( Operator ):
             opBlockPipeline.BinaryImage.connect( self.BinaryImage )
             opBlockPipeline.Classifier.connect( self.Classifier )
             opBlockPipeline.LabelsCount.connect( self.LabelsCount )
+            opBlockPipeline.SelectedFeatures.connect( self.SelectedFeatures )
 
             # Forward dirtyness
             opBlockPipeline.PredictionImage.notifyDirty( bind(self._handleDirtyBlock, block_start ) )

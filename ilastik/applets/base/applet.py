@@ -79,6 +79,13 @@ class Applet( object ):
         # Used by the shell to ensure that Applet.__init__ was called by your subclass.
         return self._base_initialized
 
+class DatasetConstraintError(Exception):
+    def __init__(self, appletName, message ):
+        super( DatasetConstraintError, self ).__init__()
+        self.appletName = appletName
+        self.message = message
+        
+
 class ControlCommand(object):
     """
     This class enumerates the GUI control commands that applets can ask the shell to perform via :py:attr:`Applet.guiControlSignal`.

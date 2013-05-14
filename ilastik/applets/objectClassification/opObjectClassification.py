@@ -181,6 +181,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             #initialize, because volumina needs to reshape to use it as a datasink
             labels[t] = numpy.zeros((2,))
         self.LabelInputs[imageIndex].setValue(labels)
+        if imageIndex in range(len(self._ambiguousLabels)):
+            self._ambiguousLabels[imageIndex] = None
+            self._labelBBoxes[imageIndex] = dict()
+        else:
+            self._ambiguousLabels.insert(imageIndex, None)
+            self._labelBBoxes.insert(imageIndex, dict())
 
     def removeLabel(self, label):
         #remove this label from the inputs
@@ -194,7 +200,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
 
-
     def setupOutputs(self):
         super(OpObjectClassification, self).setupOutputs()
         self.Warnings.meta.shape = (1,)
@@ -204,7 +209,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot==self.SegmentationImages and len(self.LabelInputs)>0:
-
+            
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
 
@@ -376,8 +381,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             if slot.level > 0 and len(slot) == laneIndex:
                 slot.resize(numLanes + 1)
 
-        self._ambiguousLabels.insert(laneIndex, None)
-        self._labelBBoxes.insert(laneIndex, dict())
+        
 
     def removeLane(self, laneIndex, finalLength):
         for slot in self.inputs.values():
@@ -506,8 +510,6 @@ class OpObjectTrain(Operator):
         labelsList = []
 
         # will be available at slot self.Warnings
-
-        # FIXME: this needs to be nested by {image : {time : []}}
         all_bad_objects = defaultdict(lambda: defaultdict(list))
         all_bad_feats = set()
 
@@ -726,7 +728,13 @@ class OpObjectPredict(Operator):
                 return labels
 
             elif slot == self.ProbabilityChannels:
-                prob_single_channel = {t: self.prob_cache[t][:, subindex[0]] for t in times}
+                try:
+                    prob_single_channel = {t: self.prob_cache[t][:, subindex[0]]
+                                           for t in times}
+                except:
+                    # no probabilities available for this class; return zeros
+                    prob_single_channel = {t: numpy.zeros((self.prob_cache[t].shape[0], 1))
+                                           for t in times}
                 return prob_single_channel
 
             elif slot == self.BadObjects:
@@ -892,6 +900,10 @@ class OpMaxLabel(Operator):
 
 
 class OpBadObjectsToWarningMessage(Operator):
+    '''
+    parses an input dictionary of bad objects and bad features, and sets
+    an informative warning message to its output slot
+    '''
 
     name = "OpBadObjectsToWarningMessage"
     _blockSep = "\n\n"
@@ -900,19 +912,35 @@ class OpBadObjectsToWarningMessage(Operator):
     _itemIndent = "    "
 
     # the input slot
-    # format: BadObjects._value = {'objects': dict(tuple??()), 'feats': set()}
+    # format: BadObjects.value = {      
+    #                               'objects': 
+    #                                   {img_key: {time_key: [obj_index, obj_index_2, ...]}}, 
+    #                               'feats': 
+    #                                   set()
+    #                            }
     BadObjects = InputSlot(stype=Opaque)
 
     # the output slot
-    # format: WarningMessage._value = {'title': a, 'text': b, 'info': c, 'details': d}
+    # format: WarningMessage.value = 
+    #           {'title': a, 'text': b, 'info': c, 'details': d} if message available, the keys 'info' and 'details' might be omitted
+    #           {} otherwise
     WarningMessage = OutputSlot(stype=Opaque)
 
     def setupOutputs(self):
         super(OpBadObjectsToWarningMessage, self).setupOutputs()
-        self.WarningMessage.meta.shape = (1,)
+        self.WarningMessage.setValue( {} )
 
     def propagateDirty(self, slot, subindex, roi):
-        d = self.BadObjects[:].wait()
+        try:
+            d = self.BadObjects[:].wait()
+        except AssertionError as E:
+            if "has no value" in str(E):
+                # since we are in propagateDirty, the input got reset or we got disconnected, either case
+                # means we don't have to issue warnings any more
+                return
+            # don't know what this is about, raise again
+            raise
+            
         warn = {}
         warn['title'] = 'Warning'
         warn['text'] = 'Encountered bad objects/features while training.'
@@ -921,7 +949,6 @@ class OpBadObjectsToWarningMessage(Operator):
         if len(warn['details']) == 0:
             return
         self.WarningMessage.setValue(warn)
-        self.WarningMessage.setDirty()
 
     def execute(self, slot, subindex, roi, result):
         pass
@@ -929,21 +956,34 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatMessage(self, d):
         a = []
         try:
-            if 'objects' in d.keys():
+            keys = d.keys()
+            # a) objects
+            if 'objects' in keys:
+                keys.remove('objects')
                 s = self._formatObjects(d['objects'])
                 if len(s) > 0:
                     a.append(s)
-            if 'feats' in d.keys():
-                s = self._formatFeatures(sorted(d['feats']))
-                if len(s) > 0:
+
+
+            # b) features
+            if 'feats' in keys:
+                keys.remove('feats')
+                s = self._formatFeatures(d['feats'])
+                if len(s)>0:
                     a.append(s)
+                    
+            if len(keys)>0:
+                logger.warning("Encountered unknown bad object keywords: {}".format(keys))
         except AttributeError:
-            raise Exception("Expected message to be a dictionary, got {}".format(type(d)))
-            return ""
+            raise TypeError("Expected input to be a dictionary, got {}".format(type(d)))
+
         return self._blockSep.join(a)
 
     def _formatFeatures(self, f):
-        a = self._itemSep.join(map(str, f))
+        try:
+            a = self._itemSep.join(map(str, sorted(f)))
+        except TypeError:
+            raise TypeError("Expected bad features to be a set, got {}".format(type(f)))
         if len(a)>0:
             a = "The following features had bad values:" + self._itemSep + a
         return a
@@ -951,28 +991,33 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatObjects(self, obj):
         a = []
         indent = 1
+        
+        try:
+            # loop image indices
+            for img in obj.keys():
+                imtext = self._itemIndent*indent + "at image index {}".format(img)
+                indent += 1
+                
+                # just show time slice if more than 1 time slice exists (avoid confusion/obfuscation)
+                needTime = len(obj[img].keys())>1
+                b = []
 
-        # loop image indices
-        for img in obj.keys():
-            imtext = self._itemIndent*indent + "at image index {}".format(img)
-            indent += 1
-            needTime = len(obj[img].keys())>1
-            b = []
+                # loop time values
+                for t in obj[img].keys():
+                    # object numbers
+                    c = self._objectSep.join(map(str,obj[img][t]))
 
-            # loop time values
-            for t in obj[img].keys():
-                # object numbers
-                c = self._objectSep.join([str(s) for s in obj[img][t]])
+                    if len(c)>0:
+                        c = self._itemIndent*indent + "Objects " + c
+                        if needTime:
+                            c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
+                        b.append(c)
 
-                if len(c)>0:
-                    c = self._itemIndent*indent + "Objects " + c
-                    if needTime:
-                        c = self._itemIndent*indent + "at time {}".format(t) + self._itemSep + self._itemIndent + c
-                    b.append(c)
-
-            indent -= 1
-            if len(b)>0:
-                a.append(self._itemSep.join([imtext] + b))
+                indent -= 1
+                if len(b)>0:
+                    a.append(self._itemSep.join([imtext] + b))
+        except AttributeError:
+            raise TypeError("bad objects dictionary has wrong format.")
 
 
         if len(a)>0:

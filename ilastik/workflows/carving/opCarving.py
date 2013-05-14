@@ -1,6 +1,7 @@
 #Python
 import time
 import numpy, h5py
+import copy
 
 #carving
 from cylemon.segmentation import MSTSegmentor
@@ -81,6 +82,7 @@ class OpCarving(Operator):
         self.opLabeling.LabelInput.connect( self.RawData )
         self.opLabeling.InputImage.connect( self.RawData )
         self.opLabeling.LabelDelete.setValue(-1)
+        self.opLabeling.LabelsAllowedFlag.setValue( True )
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
@@ -167,12 +169,17 @@ class OpCarving(Operator):
         self._checkMeta(self.RawData)
         
         self.Segmentation.meta.assignFrom(self.RawData.meta)
-        self.Supervoxels.meta.assignFrom(self.RawData.meta)
-        self.DoneObjects.meta.assignFrom(self.RawData.meta)
-        self.DoneSegmentation.meta.assignFrom(self.RawData.meta)
+        self.Segmentation.meta.dtype = numpy.int32
+        
+        self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
+        self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
+        self.DoneSegmentation.meta.assignFrom(self.Segmentation.meta)
+
         self.HintOverlay.meta.assignFrom(self.RawData.meta)
         self.PmapOverlay.meta.assignFrom(self.RawData.meta)
+
         self.Uncertainty.meta.assignFrom(self.RawData.meta)
+        self.Uncertainty.meta.dtype = numpy.uint8
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
@@ -342,6 +349,10 @@ class OpCarving(Operator):
         del self._mst.object_seeds_bg_voxels[name]
         del self._mst.bg_priority[name]
         del self._mst.no_bias_below[name]
+        
+        #delete it from object_names, as it indicates
+        #whether the object exists
+        del self._mst.object_names[name]
 
         self._setCurrObjectName("")
 
@@ -562,7 +573,6 @@ class OpCarving(Operator):
             raise RuntimeError("unknown slots")
 
     def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
         if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow or slot == self.UncertaintyType:
             if self._mst is None:
                 return
@@ -589,6 +599,4 @@ class OpCarving(Operator):
             self.Segmentation.setDirty(slice(None))
             self.HasSegmentation.setValue(True)
         elif slot == self.MST:
-			self._mst = self.MST.value
-        else:
-            super(OpCarving, self).notifyDirty(slot, key)
+            self._mst = self.MST.value

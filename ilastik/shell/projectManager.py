@@ -102,7 +102,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, headless=False):
+    def __init__(self, workflowClass, headless=False, workflow_kwargs=None):
         """
         Constructor.
         
@@ -112,6 +112,9 @@ class ProjectManager(object):
         :param readOnly: Set to True if the project file should NOT be modified.
         :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
+        if workflow_kwargs is None:
+            workflow_kwargs = {}
+
         # Init
         self.workflow = None
         self.currentProjectFile = None
@@ -120,11 +123,12 @@ class ProjectManager(object):
 
         # Instantiate the workflow.
         self._workflowClass = workflowClass
+        self._workflow_kwargs = workflow_kwargs
         self._headless = headless
         
         #the workflow class has to be specified at this point
         assert workflowClass is not None
-        self.workflow = workflowClass(headless=headless)
+        self.workflow = workflowClass(headless=headless, **workflow_kwargs)
     
     
     def cleanUp(self):
@@ -182,7 +186,11 @@ class ProjectManager(object):
             if "workflowName" in self.currentProjectFile:
                 del self.currentProjectFile["workflowName"]
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
-            
+
+            if "workflow_kwargs" in self.currentProjectFile:
+                del self.currentProjectFile["workflow_kwargs"]
+            save_dict(self.currentProjectFile, 'workflow_kwargs', self._workflow_kwargs)
+
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()
@@ -314,11 +322,14 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    
+                    item.ignoreDirty = True
+                                        
                     if item.caresOfHeadless:
                         item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
                     else:
                         item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+
+                    item.ignoreDirty = False
         except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()
@@ -371,7 +382,7 @@ class ProjectManager(object):
         self._closeCurrentProject()
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(headless=self._headless)
+        self.workflow = self._workflowClass(headless=self._headless, **self._workflow_kwargs)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)
@@ -385,3 +396,26 @@ class ProjectManager(object):
             self.currentProjectFile = None
             self.currentProjectPath = None
             self.currentProjectIsReadOnly = False
+
+
+
+# utility functions for saving/loading workflow kwargs
+# FIXME: code is similar to SerialDictSlot
+
+def save_dict(group, name, d):
+    sg = group.create_group(name)
+    for key, v in d.iteritems():
+        if isinstance(v, dict):
+            save_dict(sg, key, v)
+        else:
+            sg.create_dataset(str(key), data=v)
+
+def load_dict(group, transform=lambda x: x):
+    result = {}
+    for key in group.keys():
+        if isinstance(group[key], h5py.Group):
+            value = load_dict(group[key])
+        else:
+            value = group[key][()]
+        result[transform(key)] = value
+    return result

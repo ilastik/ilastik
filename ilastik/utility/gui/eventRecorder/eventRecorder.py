@@ -1,7 +1,6 @@
-from functools import partial
 from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtCore import Qt, QObject, QEvent, QChildEvent, QTimerEvent
-from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent, QCursor, QComboBox
+from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent, QCursor, QComboBox, QMenu
 
 from objectNameUtils import get_fully_qualified_name
 from eventSerializers import event_to_string
@@ -85,6 +84,7 @@ class EventPlayer(object):
         if self._playback_speed is not None:
             self._timer.sleep_until(timestamp_in_seconds / self._playback_speed)
         assert threading.current_thread().name != "MainThread"
+        event.spont = True
         QApplication.postEvent(obj, event)
         assert QApplication.instance().thread() == obj.thread()
         
@@ -173,9 +173,12 @@ class EventRecorder( QObject ):
                 and int(event.buttons()) == 0 \
                 and int(event.modifiers()) == 0:
                 # Somewhat hackish (and slow), but we have to record mouse movements during combo box usage.
+                # Same for QMenu usage (on Mac, it doesn't seem to matter, but on Fedora it does matter.)
                 widgetUnderCursor = QApplication.instance().widgetAt( QCursor.pos() )
                 if widgetUnderCursor is not None and widgetUnderCursor.objectName() == "qt_scrollarea_viewport":
                     return has_ancestor(widgetUnderCursor, QComboBox)
+                if isinstance(widgetUnderCursor, QMenu):
+                    return True 
                 return False
             else:
                 return True

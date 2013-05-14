@@ -4,7 +4,7 @@ import vigra
 import numpy
 import tempfile
 from lazyflow.graph import Graph, OperatorWrapper
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
 import logging
@@ -50,7 +50,7 @@ class TestDataSelectionSerializer(object):
         
             # Create an operator to work with and give it some input
             graph = Graph()
-            operatorToSave = OperatorWrapper( OpDataSelection, graph=graph )
+            operatorToSave = OpMultiLaneDataSelectionGroup( graph=graph )
             serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
             assert serializer.base_initialized
         
@@ -61,9 +61,10 @@ class TestDataSelectionSerializer(object):
             info = DatasetInfo()
             info.filePath = self.tmpFilePath
             info.location = DatasetInfo.Location.ProjectInternal
-            
-            operatorToSave.Dataset.resize(1)
-            operatorToSave.Dataset[0].setValue(info)
+
+            operatorToSave.DatasetRoles.setValue( ['Raw Data'] )
+            operatorToSave.DatasetGroup.resize(1)
+            operatorToSave.DatasetGroup[0][0].setValue(info)
             
             # Now serialize!
             serializer.serializeToHdf5(testProject, self.testProjectName)
@@ -73,7 +74,9 @@ class TestDataSelectionSerializer(object):
             dataset = testProject[datasetInternalPath][...]
             
             # Check axistags attribute
-            axistags = vigra.AxisTags.fromJSON(testProject[datasetInternalPath].attrs['axistags'])
+            assert 'axistags' in testProject[datasetInternalPath].attrs
+            axistags_json = testProject[datasetInternalPath].attrs['axistags']
+            axistags = vigra.AxisTags.fromJSON(axistags_json)
             
             # Debug info...
             #logging.basicConfig(level=logging.DEBUG)
@@ -97,13 +100,14 @@ class TestDataSelectionSerializer(object):
         
             # Create an empty operator
             graph = Graph()
-            operatorToLoad = OperatorWrapper( OpDataSelection, graph=graph )
+            operatorToLoad = OpMultiLaneDataSelectionGroup( graph=graph )
+            operatorToLoad.DatasetRoles.setValue( ['Raw Data'] )
             
             deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
             assert deserializer.base_initialized
             deserializer.deserializeFromHdf5(testProject, self.testProjectName)
             
-            assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
+            assert len(operatorToLoad.DatasetGroup) == len(operatorToSave.DatasetGroup)
             assert len(operatorToLoad.Image) == len(operatorToSave.Image)
             
             assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape

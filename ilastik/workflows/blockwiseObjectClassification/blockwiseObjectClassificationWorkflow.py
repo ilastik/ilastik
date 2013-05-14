@@ -1,7 +1,7 @@
 import warnings
 
 from lazyflow.graph import OperatorWrapper
-from ilastik.workflows.objectClassification.objectClassificationWorkflowBinary import ObjectClassificationWorkflowBinary
+from ilastik.workflows.objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflowBinary
 from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 

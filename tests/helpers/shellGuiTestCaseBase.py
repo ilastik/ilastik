@@ -3,13 +3,16 @@ import nose
 import threading
 import traceback
 import atexit
+import platform
 from functools import partial
-from ilastik.shell.gui.startShellGui import launchShell
-from ilastik.utility.gui.threadRouter import ThreadRouter
-from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer
 from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+
+import ilastik.config
+from ilastik.shell.gui.startShellGui import launchShell
+from ilastik.utility.gui.threadRouter import ThreadRouter
+from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 @atexit.register
 def quitApp():
@@ -87,6 +90,13 @@ class ShellGuiTestCaseBase(object):
             # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
             run_in_main_thread( createApp )
             appCreationEvent.wait()
+
+        platform_str = platform.platform().lower()
+        if 'ubuntu' in platform_str or 'fedora' in platform_str:
+            QApplication.setAttribute(Qt.AA_X11InitThreads, True)
+    
+        if ilastik.config.cfg.getboolean("ilastik", "debug"):
+            QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
         # Use the thread router to launch the shell in the app thread
         ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, cls.workflowClass(), initTest ) )

@@ -26,24 +26,19 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         ### BATCH ###
 
         # Create applets for batch workflow
-        self.rawBatchInputApplet = DataSelectionApplet( self,
-                                                     "Raw Batch Input Selections",
-                                                     "RawBatchDataSelection",
-                                                     supportIlastik05Import=False,
-                                                     batchDataGui=True)
+        self.dataSelectionAppletBatch = DataSelectionApplet(self,
+                                                       "Input Data",
+                                                       "Input Data",
+                                                       batchDataGui=False,
+                                                       force5d=True)
 
-        # Create applets for batch workflow
-        self.predictionBatchInputApplet = DataSelectionApplet( self,
-                                                     "Prediction Batch Input Selections",
-                                                     "PredictionBatchDataSelection",
-                                                     supportIlastik05Import=False,
-                                                     batchDataGui=True)
+        opDataSelectionBatch = self.dataSelectionAppletBatchs.topLevelOperator
+        opDataSelectionBatch.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
 
         self.batchResultsApplet = BlockwiseObjectClassificationBatchApplet(self, "Prediction Output Locations")
 
         # Expose in shell        
-        self._applets.append(self.rawBatchInputApplet)
-        self._applets.append(self.predictionBatchInputApplet)
+        self._applets.append(self.dataSelectionAppletBatch)
         self._applets.append(self.batchResultsApplet)
 
         # Connect batch workflow (NOT lane-based)
@@ -69,10 +64,6 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         opInteractiveThreshold = self.thresholdTwoLevelsApplet.topLevelOperator
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
 
-        # Access the batch INPUT applets
-        opRawBatchInput = self.rawBatchInputApplet.topLevelOperator
-        opPredictionBatchInput = self.predictionBatchInputApplet.topLevelOperator
-        
         opBatchFillMissingSlices = OperatorWrapper( OpFillMissingSlicesNoCache, parent=self )
 
         # Connect the thresholding operator.
@@ -82,11 +73,13 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         opBatchThreshold.MaxSize.connect( opInteractiveThreshold.MaxSize )
         opBatchThreshold.HighThreshold.connect( opInteractiveThreshold.HighThreshold )
         opBatchThreshold.LowThreshold.connect( opInteractiveThreshold.LowThreshold )
+        opBatchThreshold.SingleThreshold.connect( opInteractiveThreshold.SingleThreshold )
         opBatchThreshold.SmootherSigma.connect( opInteractiveThreshold.SmootherSigma )
         opBatchThreshold.Channel.connect( opInteractiveThreshold.Channel )
+        opBatchThreshold.CurOperator.connect( opInteractiveThreshold.CurOperator )
         #  but image inputs come from the batch data selection.        
-        opBatchThreshold.RawInput.connect( opRawBatchInput.Image )
-        opBatchThreshold.InputImage.connect( opPredictionBatchInput.Image )
+        opBatchThreshold.RawInput.connect( self.opDataSelectionBatch.ImageGroup[0] )
+        opBatchThreshold.InputImage.connect( self.opDataSelectionBatch.ImageGroup[1] )
         
         # Connect the blockwise classification operator
         # Parameter inputs are cloned from the interactive workflow,
@@ -97,21 +90,21 @@ class SynapseBlockwiseWorkflow(SynapseObjectClassificationWorkflow):
         opBatchClassify.HaloPadding3dDict.connect( opBlockwiseObjectClassification.HaloPadding3dDict )
         
         #  but image pathway is from the batch pipeline
-        opBatchFillMissingSlices.Input.connect( opRawBatchInput.Image )
+        opBatchFillMissingSlices.Input.connect( self.opDataSelectionBatch.ImageGroup[0] )
         op5Raw = OperatorWrapper( Op5ifyer, parent=self )
         op5Raw.input.connect( opBatchFillMissingSlices.Output )
         op5Binary = OperatorWrapper( Op5ifyer, parent=self )
         op5Binary.input.connect( opBatchThreshold.Output )
         
-        opBatchClassify.RawImage.connect( op5Raw.output )
+        opBatchClassify.RawImage.connect( self.opDataSelectionBatch.ImageGroup[0] )
         opBatchClassify.BinaryImage.connect( op5Binary.output )
         
         self.opBatchClassify = opBatchClassify
         
         # Connect the batch OUTPUT applet
         opBatchOutput = self.batchResultsApplet.topLevelOperator
-        opBatchOutput.DatasetPath.connect( opRawBatchInput.ImageName )
-        opBatchOutput.RawImage.connect( opRawBatchInput.Image )
+        opBatchOutput.DatasetPath.connect( self.opDataSelectionBatch.ImageName )
+        opBatchOutput.RawImage.connect( self.opDataSelectionBatch.ImageGroup[0] )
         opBatchOutput.ImageToExport.connect( opBatchClassify.PredictionImage )
 
     def getHeadlessOutputSlot(self, slotId):

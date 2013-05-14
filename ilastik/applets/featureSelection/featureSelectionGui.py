@@ -23,6 +23,7 @@ from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
+from volumina.utility import PreferencesManager
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -225,8 +226,18 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         self.initFeatureOrder()
 
-        self.featureDlg = FeatureDlg()
+        self.featureDlg = FeatureDlg(parent = self)
         self.featureDlg.setWindowTitle("Features")
+        try:
+            size = PreferencesManager().get("featureSelection","dialog size")
+            self.featureDlg.resize(*size)
+        except TypeError:pass
+        
+        def saveSize():
+            size = self.featureDlg.size()
+            s = (size.width(),size.height())
+            PreferencesManager().set("featureSelection","dialog size",s)
+        self.featureDlg.accepted.connect(saveSize)
         
         # Map from groups of feature IDs to groups of feature NAMEs
         groupedNames = []

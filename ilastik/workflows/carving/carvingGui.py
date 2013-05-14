@@ -31,7 +31,10 @@ class CarvingGui(LabelingGui):
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
         carvingDrawerUiPath = os.path.join(directory, 'carvingDrawer.ui')
+        self.dialogdirCOM = os.path.join(directory, 'carvingObjectManagement.ui')
+        self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
+        
         super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, carvingDrawerUiPath, rawInputSlot)
         
         mgr = ShortcutManager()
@@ -54,10 +57,8 @@ class CarvingGui(LabelingGui):
         except:
             self.render = False
 
-        def onSegmentButton():
-            print "segment button clicked"
-            self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
-        self.labelingDrawerUi.segment.clicked.connect(onSegmentButton)
+        
+        self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
         def onUncertaintyFGButton():
@@ -112,77 +113,14 @@ class CarvingGui(LabelingGui):
             self.topLevelOperatorView.opCarving.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
 
-        def onSaveAsButton():
-            print "save object as?"
-            if self.topLevelOperatorView.opCarving.dataIsStorable():
-                name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
-                name = str(name)
-                if not ok:
-                    return
-                objects = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
-                if name in objects:
-                    QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
-                    return
-                self.topLevelOperatorView.opCarving.saveObjectAs(name)
-                print "save object as %s" % name
-            else:
-                msgBox = QMessageBox(self)
-                msgBox.setText("The data does not seem fit to be stored.")
-                msgBox.setWindowTitle("Problem with Data")
-                msgBox.setIcon(2)
-                msgBox.exec_()
-                print "object not saved due to faulty data."
-
-        self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
-
-        def onSaveButton():
-            if self.topLevelOperatorView.opCarving.dataIsStorable():
-                if self.topLevelOperatorView.opCarving.hasCurrentObject():
-                    name = self.topLevelOperatorView.opCarving.currentObjectName()
-                    self.topLevelOperatorView.opCarving.saveObjectAs( name )
-                else:
-                    onSaveAsButton()
-            else:
-                msgBox = QMessageBox(self)
-                msgBox.setText("The data does no seem fit to be stored.")
-                msgBox.setWindowTitle("Lousy Data")
-                msgBox.setIcon(2)
-                msgBox.exec_()
-                print "object not saved due to faulty data."
-        self.labelingDrawerUi.save.clicked.connect(onSaveButton)
+        self.labelingDrawerUi.saveAs.clicked.connect(self.onSaveAsButton)
+        self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
         self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
 
-        def onClearButton():
-            self.topLevelOperatorView.opCarving._clear()
-            self.topLevelOperatorView.opCarving.clearCurrentLabeling()
-            # trigger a re-computation
-            self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
-        self.labelingDrawerUi.clear.clicked.connect(onClearButton)
+        self.labelingDrawerUi.clear.clicked.connect(self.onClearButton)
         self.labelingDrawerUi.clear.setEnabled(True)
         
-        def onShowObjectNames():
-            '''show object names and allow user to load/delete them'''
-            dialog = uic.loadUi(os.path.join(directory, 'carvingObjectManagement.ui'))
-            listOfItems = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
-            dialog.objectNames.addItems(sorted(listOfItems))
-            
-            def loadSelection():
-                for name in dialog.objectNames.selectedItems():
-                    objectname = str(name.text())
-                    self.topLevelOperatorView.opCarving.loadObject(objectname)
-            
-            def deleteSelection():
-                for name in dialog.objectNames.selectedItems():
-                    objectname = str(name.text())
-                    self.topLevelOperatorView.opCarving.deleteObject(objectname)
-                    name.setHidden(True)
-            
-            dialog.loadButton.clicked.connect(loadSelection)
-            dialog.deleteButton.clicked.connect(deleteSelection)
-            dialog.cancelButton.clicked.connect(dialog.close)
-            dialog.exec_()
-        
-        self.labelingDrawerUi.namesButton.clicked.connect(onShowObjectNames)
+        self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
         
         def labelBackground():
             self.selectLabel(0)
@@ -243,47 +181,176 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
         #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
+    
+    def onClearButton(self):
+            self.topLevelOperatorView.opCarving._clear()
+            self.topLevelOperatorView.opCarving.clearCurrentLabeling()
+            # trigger a re-computation
+            self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
+    
+    def onSegmentButton(self):
+        print "segment button clicked"
+        self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
+    
+    def saveAsDialog(self):
+        '''special functionality: reject names given to other objects'''
+        dialog = uic.loadUi(self.dialogdirSAD)
+        dialog.warning.setVisible(False)
+        dialog.Ok.clicked.connect(dialog.accept)
+        dialog.Cancel.clicked.connect(dialog.reject)
+        listOfItems = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
+        dialog.isDisabled = False
+        def validate():
+            name = dialog.lineEdit.text()
+            if name in listOfItems:
+                dialog.Ok.setEnabled(False)
+                dialog.warning.setVisible(True)
+                dialog.isDisabled = True
+            elif dialog.isDisabled:
+                dialog.Ok.setEnabled(True)
+                dialog.warning.setVisible(False)
+                dialog.isDisabled = False
+        dialog.lineEdit.textChanged.connect(validate)
+        result = dialog.exec_()
+        if result:
+            return str(dialog.lineEdit.text())
+    
+    def onSaveAsButton(self):
+        print "save object as?"
+        if self.topLevelOperatorView.opCarving.dataIsStorable():
+            name = self.saveAsDialog()
+            if name is None:
+                return
+            objects = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
+            if name in objects:
+                QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
+                return
+            self.topLevelOperatorView.opCarving.saveObjectAs(name)
+            print "save object as %s" % name
+        else:
+            msgBox = QMessageBox(self)
+            msgBox.setText("The data does not seem fit to be stored.")
+            msgBox.setWindowTitle("Problem with Data")
+            msgBox.setIcon(2)
+            msgBox.exec_()
+            print "object not saved due to faulty data."
+    
+    def onSaveButton(self):
+        if self.topLevelOperatorView.opCarving.dataIsStorable():
+            if self.topLevelOperatorView.opCarving.hasCurrentObject():
+                name = self.topLevelOperatorView.opCarving.currentObjectName()
+                self.topLevelOperatorView.opCarving.saveObjectAs( name )
+            else:
+                self.onSaveAsButton()
+        else:
+            msgBox = QMessageBox(self)
+            msgBox.setText("The data does no seem fit to be stored.")
+            msgBox.setWindowTitle("Lousy Data")
+            msgBox.setIcon(2)
+            msgBox.exec_()
+            print "object not saved due to faulty data."
+    
+    def onShowObjectNames(self):
+        '''show object names and allow user to load/delete them'''
+        dialog = uic.loadUi(self.dialogdirCOM)
+        listOfItems = self.topLevelOperatorView.opCarving.AllObjectNames[:].wait()
+        dialog.objectNames.addItems(sorted(listOfItems))
         
-    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
-        names = self.topLevelOperatorView.opCarving.doneObjectNamesForPosition(position5d[1:4])
-       
-        op = self.topLevelOperatorView.opCarving
+        def loadSelection():
+            for name in dialog.objectNames.selectedItems():
+                objectname = str(name.text())
+                self.topLevelOperatorView.opCarving.loadObject(objectname)
         
+        def deleteSelection():
+            items = dialog.objectNames.selectedItems()
+            if self.confirmAndDelete([str(name.text()) for name in items]):
+                for name in items:
+                    name.setHidden(True)
+        
+        dialog.loadButton.clicked.connect(loadSelection)
+        dialog.deleteButton.clicked.connect(deleteSelection)
+        dialog.cancelButton.clicked.connect(dialog.close)
+        dialog.exec_()
+    
+    def confirmAndDelete(self,namelist):
+        print namelist
+        objectlist = "".join("\n  "+str(i) for i in namelist)
+        confirmed = QMessageBox.question(self, "Delete Object", \
+                    "Do you want to delete these objects?"+objectlist, \
+                    QMessageBox.Yes | QMessageBox.Cancel, \
+                    defaultButton=QMessageBox.Yes)
+            
+        if confirmed == QMessageBox.Yes:
+            for name in namelist:
+                self.topLevelOperatorView.opCarving.deleteObject(name)
+            return True
+        return False
+    
+    def labelingContextMenu(self,names,op,position5d):
         menu = QMenu(self)
+        menu.setObjectName("carving_context_menu")
         menu.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
+        menu.addSeparator()
         for name in names:
-            menu.addAction("edit %s" % name)
-            menu.addAction("delete %s" % name)
+            submenu = QMenu(name,menu)
+            submenu.addAction("Load %s" % name)
+            submenu.addAction("Delete %s" % name)
             if self.render:
                 if name in self._shownObjects3D:
-                    menu.addAction("remove %s from 3D view" % name)
+                    submenu.addAction("Remove %s from 3D view" % name)
                 else:
-                    menu.addAction("show 3D %s" % name)
-
-        act = menu.exec_(globalWindowCoordinate)
-        for name in names:
-            if act is not None and act.text() == "edit %s" %name:
-                op.loadObject(name)
-            elif act is not None and act.text() =="delete %s" % name:
-                op.deleteObject(name)
-                if self.render and self._renderMgr.ready:
+                    submenu.addAction("Show 3D %s" % name)
+            menu.addMenu(submenu)
+        if names:menu.addSeparator()
+        
+        if op.dataIsStorable():
+            menu.addAction("Save objects")
+        menu.addAction("Browse objects")
+        menu.addAction("Segment")
+        menu.addAction("Clear")
+        return menu
+    
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
+        names = self.topLevelOperatorView.opCarving.doneObjectNamesForPosition(position5d[1:4])
+        op = self.topLevelOperatorView.opCarving
+        
+        act = self.labelingContextMenu(names,op,position5d).exec_(globalWindowCoordinate)
+        if act is None:
+            return
+        
+        text = act.text()
+        if text =="Segment":
+            self.onSegmentButton()
+        elif text =="Clear":
+            self.onClearButton()
+        elif text =="Browse objects":
+            self.onShowObjectNames()
+        elif text == "Save objects":
+            self.onSaveButton()
+        else:
+            for name in names:
+                if text == "Load %s" %name:
+                    op.loadObject(name)
+                elif text == "Delete %s" % name:
+                    self.confirmAndDelete([name])
+                    if self.render and self._renderMgr.ready:
+                        self._update_rendering()
+                elif text == "Show 3D %s" % name:
+                    label = self._renderMgr.addObject()
+                    self._shownObjects3D[name] = label
                     self._update_rendering()
-            elif act is not None and act.text() == "show 3D %s" % name:
-                label = self._renderMgr.addObject()
-                self._shownObjects3D[name] = label
-                self._update_rendering()
-            elif act is not None and act.text() == "remove %s from 3D view" % name:
-                label = self._shownObjects3D.pop(name)
-                self._renderMgr.removeObject(label)
-                self._update_rendering()
-
+                elif text == "Remove %s from 3D view" % name:
+                    label = self._shownObjects3D.pop(name)
+                    self._renderMgr.removeObject(label)
+                    self._update_rendering()
+        
     def _update_rendering(self):
         if not self.render:
             return
 
         op = self.topLevelOperatorView.opCarving
         if not self._renderMgr.ready:
-            self._renderMgr.setup(op.MST.value.raw.shape)
+            self._renderMgr.setup(op.RawData.value.shape[1:4])
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
@@ -444,11 +511,12 @@ class CarvingGui(LabelingGui):
 
         #raw data
         #(here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons)
-        raw5D = self.topLevelOperatorView.RawData.value
-        layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
-        layer.name = "raw"
-        layer.visible = True
-        layer.opacity = 1.0
-        layers.append(layer)
+        if self.topLevelOperatorView.RawData.ready():
+            raw5D = self.topLevelOperatorView.RawData.value
+            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+            layer.name = "raw"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
 
         return layers

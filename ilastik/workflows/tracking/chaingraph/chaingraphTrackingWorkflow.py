@@ -16,17 +16,14 @@ class ChaingraphTrackingWorkflow( Workflow ):
         super(ChaingraphTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
-        self.rawDataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input: Raw",
-                                                       "Input Raw",
-                                                       batchDataGui=False,
-                                                       force5d=False)
-        
         self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input: Prediction",
-                                                       "Input Prediction",
+                                                       "Input Data",
+                                                       "Input Data",
                                                        batchDataGui=False,
                                                        force5d=False)
+
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
                                                                   "Threshold & Size Filter", 
@@ -37,7 +34,6 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self.trackingApplet = ChaingraphTrackingApplet( workflow=self )
         
         self._applets = []                
-        self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
@@ -53,20 +49,19 @@ class ChaingraphTrackingWorkflow( Workflow ):
     
     def connectLane( self, laneIndex ):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
                 
         ## Connect operators ##
         op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect(opRawData.Image)
+        op5Raw.input.connect(opData.ImageGroup[0])
         
         op5Predictions = Op5ifyer( parent=self )
-        op5Predictions.input.connect( opData.Image )
+        op5Predictions.input.connect( opData.ImageGroup[1] )
                
-        opTwoLevelThreshold.InputImage.connect( opData.Image )
-        opTwoLevelThreshold.RawInput.connect( opRawData.Image ) # Used for display only
+        opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
+        opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
         
         # Use Op5ifyers for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding

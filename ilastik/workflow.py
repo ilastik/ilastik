@@ -135,26 +135,40 @@ class Workflow( Operator ):
             if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)
 
+def all_subclasses(cls):
+    return cls.__subclasses__() + [g for s in cls.__subclasses__()
+                                   for g in all_subclasses(s)]
+
 def getAvailableWorkflows():
     '''iterate over all workflows that were imported'''
     alreadyListed = set()
-    for W in Workflow.__subclasses__():
+
+    for W in all_subclasses(Workflow):
         if W.__name__ in alreadyListed:
             continue
-        
         alreadyListed.add(W.__name__)
-        if isinstance(W.workflowName,str):
-            yield W,W.workflowName
+
+        # this is a hack to ensure the base object workflow does not
+        # appear in the list of available workflows.
+        try:
+            isbase = 'base' in W.workflowName.lower()
+        except:
+            isbase = False
+        if isbase:
+            continue
+
+        if isinstance(W.workflowName, str):
+            yield W, W.workflowName
         else:
             originalName = W.__name__
             wname = originalName[0]
             for i in originalName[1:]:
                 if i in ascii_uppercase:
                     wname+=" "
-                wname+=i
+                wname += i
             if wname.endswith(" Workflow"):
                 wname = wname[:-9]
-            yield W,wname
+            yield W, wname
 
 def getWorkflowFromName(Name):
     '''return workflow by naming its workflowName variable'''

@@ -31,6 +31,8 @@ class MassFileLoader(QDialog):
                                       for f in fnmatch.filter(filenames, pattern))
         else:
             self.filenames = [k.replace('\\', '/') for k in glob.glob(os.path.join(directory, pattern))]
+        
+        self.filenames = sorted( self.filenames )
 
     def handleDirectoryButtonClicked(self):
         options = QFileDialog.Options()

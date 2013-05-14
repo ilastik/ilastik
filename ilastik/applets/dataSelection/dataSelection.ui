@@ -13,75 +13,50 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="margin">
-    <number>0</number>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <property name="childrenCollapsible">
-      <bool>true</bool>
-     </property>
-     <widget class="QTableWidget" name="fileInfoTableWidget">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="toolTip">
-       <string/>
-      </property>
-      <property name="styleSheet">
-       <string notr="true"/>
-      </property>
-      <attribute name="horizontalHeaderCascadingSectionResizes">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="horizontalHeaderStretchLastSection">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderCascadingSectionResizes">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderStretchLastSection">
-       <bool>false</bool>
-      </attribute>
-      <column>
-       <property name="text">
-        <string>Name</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Location</string>
-       </property>
-       <property name="toolTip">
-        <string>Where the data is located on your hard disk.</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Internal Path</string>
-       </property>
-       <property name="toolTip">
-        <string>For file formats that may contain more than one dataset (e.g. hdf5), this is the dataset's ID within the file.</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Labels Allowed</string>
-       </property>
-       <property name="toolTip">
-        <string>If checked, the user is allowed to label this image in subsequent training applets.</string>
-       </property>
-      </column>
+     <widget class="QTabWidget" name="fileInfoTabWidget">
+      <widget class="QWidget" name="fileInfoTabWidgetPage1">
+       <attribute name="title">
+        <string/>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <property name="margin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="DataLaneSummaryTableView" name="laneSummaryTableView"/>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="removeLaneButton">
+            <property name="text">
+             <string>Remove Selected</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
      </widget>
      <widget class="QStackedWidget" name="viewerStack">
       <property name="sizePolicy">
@@ -100,6 +75,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DataLaneSummaryTableView</class>
+   <extends>QTableView</extends>
+   <header>ilastik.applets.dataSelection.dataLaneSummaryTableView</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -27,6 +27,8 @@ try:
 except:
     logger.warn('could not import pluginManager')
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import collections
 
 # These features are always calculated, but not used for prediction.
@@ -81,7 +83,8 @@ def make_bboxes(binary_bbox, margin):
                                                background=True,
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
     else:
-        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32))
+        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
+                                               pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
         dt = dt.reshape(dt.shape + (1,))
 
     assert dt.ndim == 3
@@ -104,14 +107,22 @@ class OpRegionFeatures3d(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-
-        assert self.LabelVolume.meta.shape == self.RawVolume.meta.shape, "different shapes for label volume {} and raw data {}".format(self.LabelVolume.meta.shape, self.RawVolume.meta.shape)
-        assert self.LabelVolume.meta.axistags == self.RawVolume.meta.axistags
+        if self.LabelVolume.meta.axistags != self.RawVolume.meta.axistags:
+            raise Exception('raw and label axis tags do not match')
 
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
-        if 't' in taggedOutputShape.keys():
-            assert taggedOutputShape['t'] == 1
-        assert set(taggedOutputShape.keys()) - set('t') == set('xyzc'), "Input volumes must have xyzc axes."
+        taggedRawShape = self.RawVolume.meta.getTaggedShape()
+
+        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+                           for k in "txyz")):
+            raise Exception("shapes do not match. label volume shape: {}."
+                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
+                                                         self.RawVolume.meta.shape))
+
+        if taggedOutputShape.get('t', 1) != 1:
+            raise Exception('this operator cannot handle multiple time slices')
+        if set(taggedOutputShape.keys()) - set('t') != set('xyzc'):
+            raise Exception("Input volumes must have xyzc axes.")
 
         # Remove the spatial dims (keep t if present)
         del taggedOutputShape['x']
@@ -182,7 +193,9 @@ class OpRegionFeatures3d(Operator):
         return image[tuple(key)]
 
     def _extract(self, image, labels):
-        assert image.ndim == labels.ndim == 4, "Images must be 4D.  Shapes were: {} and {}".format(image.shape, labels.shape)
+        if not (image.ndim == labels.ndim == 4):
+            raise Exception("both images must be 4D. raw image shape: {}"
+                            " label image shape: {}".format(image.shape, labels.shape))
 
         # FIXME: maybe simplify?
         class Axes(object):
@@ -200,10 +213,15 @@ class OpRegionFeatures3d(Operator):
 
         labels = labels[slc3d]
 
+        
+        logger.debug("Computing default features")
+
         #FIXME: clamp the global vigra features here
         extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
                                                         default_features,
                                                         ignoreLabel=0)
+        logger.debug("computed default features")
+
         extrafeats = dict((k.replace(' ', ''), v)
                           for k, v in extrafeats.iteritems())
 
@@ -212,13 +230,14 @@ class OpRegionFeatures3d(Operator):
         nobj = mincoords.shape[0]
 
         feature_names = self.Features([]).wait()
-        
+
         # do global features
         global_features = {}
         for plugin_name, feature_list in feature_names.iteritems():
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
             global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_list, axes)
 
+        logger.debug("computing global features")
         # local features: loop over all objects
         def dictextend(a, b):
             for key in b:
@@ -238,6 +257,7 @@ class OpRegionFeatures3d(Operator):
                     feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
                     local_features[plugin_name] = dictextend(local_features[plugin_name], feats)
 
+        logger.debug("computing done, removing failures")
         # remove local features that failed
         for pname, pfeats in local_features.iteritems():
             for key in pfeats.keys():
@@ -249,6 +269,7 @@ class OpRegionFeatures3d(Operator):
                     del pfeats[key]
 
         # merge the global and local features
+        logger.debug("removed failed, merging")
         all_features = {}
         plugin_names = set(global_features.keys()) | set(local_features.keys())
         for name in plugin_names:
@@ -274,7 +295,7 @@ class OpRegionFeatures3d(Operator):
                 assert value.ndim == 2
 
                 pfeats[key] = value
-
+        logger.debug("merged, returning")
         # add features needed by downstream applets. these should be
         # removed before classification.
         all_features[default_features_key] = extrafeats
@@ -388,8 +409,17 @@ class OpCachedRegionFeatures(Operator):
         self.CleanBlocks.connect(self._opCache.CleanBlocks)
 
     def setupOutputs(self):
-        assert self.LabelImage.meta.shape == self.RawImage.meta.shape
         assert self.LabelImage.meta.axistags == self.RawImage.meta.axistags
+
+        taggedOutputShape = self.LabelImage.meta.getTaggedShape()
+        taggedRawShape = self.RawImage.meta.getTaggedShape()
+
+        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+                           for k in "txyz")):
+            raise Exception("shapes do not match. label volume shape: {}."
+                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
+                                                         self.RawVolume.meta.shape))
+
 
         # Every value in the regionfeatures output is cached seperately as it's own "block"
         blockshape = (1,) * len(self._opRegionFeatures.Output.meta.shape)
@@ -573,6 +603,18 @@ class OpObjectExtraction(Operator):
         self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
         self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
         self.ComputedFeatureNames.connect(self.Features)
+
+        # As soon as input data is available, check its constraints
+        self.RawImage.notifyReady( self._checkConstraints )
+        self.BinaryImage.notifyReady( self._checkConstraints )
+
+    def _checkConstraints(self, *args):
+        if self.RawImage.ready() and self.BinaryImage.ready():
+            if self.RawImage.meta.shape != self.BinaryImage.meta.shape:
+                raise DatasetConstraintError( 
+                    "Object Extraction",
+                    "Raw Image shape {} does not match Binary Image shape {}.".format(
+                        self.RawImage.meta.shape, self.BinaryImage.meta.shape ))
 
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()

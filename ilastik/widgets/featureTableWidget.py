@@ -239,7 +239,9 @@ class ItemDelegate(QItemDelegate):
             else:
                 painter.fillRect(option.rect.adjusted(3,3,-3,-3), QColor(0,250,154))
                 painter.drawPixmap(option.rect, self.pixmapCkecked)
-        self.parent().update()
+        
+        #Be careful with this! It may call itself recursively.
+        #self.parent().update()
         
     def setCheckBoxIcons(self, checked, partiallyChecked, unchecked):
         self.checkedIcon = QImage(checked)
@@ -323,8 +325,6 @@ class FeatureTableWidget(QTableWidget):
     # methods
     # ------------------------------------------------
         
-    def setChangeSizeCallback(self, changeSizeCallback):
-        self.changeSizeCallback = changeSizeCallback
         
     def setSelectedFeatureBoolMatrix(self, featureMatrix):
         r = 0
@@ -530,8 +530,7 @@ class FeatureTableWidget(QTableWidget):
                 hHeader = self.horizontalHeaderItem(item.column())
                 self.brushSizeChanged.emit(hHeader.brushSize)
                 self._highlightHeaders(item.column(), item.row())
-        return False
-        
+        return super(FeatureTableWidget, self).eventFilter(obj, event)
         
     def _deselectAllTableItems(self):
         for item in self.selectedItems():

@@ -9,6 +9,7 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 
 from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -33,6 +34,9 @@ class PixelClassificationWorkflow(Workflow):
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
 
@@ -78,6 +82,7 @@ class PixelClassificationWorkflow(Workflow):
         Connect the batch-mode top-level operators to the training workflow and to eachother.
         """
         # Access applet operators from the training workflow
+        opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.pcApplet.topLevelOperator
         
@@ -85,14 +90,23 @@ class PixelClassificationWorkflow(Workflow):
         opBatchInputs = self.batchInputApplet.topLevelOperator
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
+        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
+        
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
-        ## Connect Operators ## 
+        ## Connect Operators ##
+        opTranspose = OpTransposeSlots( parent=self )
+        opTranspose.OutputLength.setValue(1)
+        opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
+        
+        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
+        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
+        opFilePathProvider.AttributeName.setValue( 'filePath' )
         
         # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.DatasetPath.connect( opBatchInputs.ImageName )
+        opBatchResults.DatasetPath.connect( opFilePathProvider.Result )
         
         # Connect (clone) the feature operator inputs from 
         #  the interactive workflow's features operator (which gets them from the GUI)

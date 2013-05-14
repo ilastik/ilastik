@@ -35,7 +35,8 @@ class AutocontextClassificationSerializer(AppletSerializer):
    
             # Set up handlers for dirty detection
             def handleDirty(section):
-                self._dirtyFlags[section] = True
+                if not self.ignoreDirty:
+                    self._dirtyFlags[section] = True
 
             def handleNewClassifier(slot, index):
                 slot[index].notifyDirty( bind(handleDirty, 1))

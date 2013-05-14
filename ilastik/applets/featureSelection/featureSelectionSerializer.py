@@ -22,7 +22,9 @@ class FeatureSelectionSerializer(AppletSerializer):
         self._dirty = False
 
         def handleDirty():
-            self._dirty = True
+            if not self.ignoreDirty:
+                self._dirty = True
+
         self.topLevelOperator.Scales.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.FeatureIds.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
