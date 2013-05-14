@@ -13,6 +13,8 @@ from ilastik.applets.base.appletSerializer import AppletSerializer,\
 
 from ilastik.utility.timer import timeLogged
 
+import collections
+
 logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):
@@ -47,7 +49,42 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 for key, val in region_features.iteritems():
                     plugin_group = getOrCreateGroup(roi_grp, key)
                     for featname, featval in val.iteritems():
-                        plugin_group.create_dataset(name=featname, data=featval)
+                        # workaround for Coord<ValueList> which is stored as list of numpy arrays of different sizes:
+                        # create numpy array with shape (n_objects*max_length, 3)
+                        # if an object has less pixels than max_length, fill the first spare coordinate row with -1,
+                        # the rest with 0
+                        is_list_of_iterable = False
+                        storage_val = featval
+                        attribute_dict = {}
+                        if featname == 'Coord<ValueList>':
+                            if isinstance(featval[0], collections.Iterable):
+                                is_list_of_iterable = True
+                                max_len = 0
+                                for tmp_el in featval[1:]:
+                                    el = tmp_el[0]
+                                    curr_len = el.shape[0]
+                                    if curr_len > max_len:
+                                        max_len = curr_len
+                                storage_val = numpy.zeros((len(featval)*max_len, 3),dtype=numpy.float)
+                                attribute_dict['stride'] = max_len
+                                attribute_dict['was_list'] = True
+                                attribute_dict['n_objects'] = len(featval)
+                                for idx, tmp_el in enumerate(featval):
+                                    if idx == 0:
+                                        el = numpy.array([], dtype=numpy.float).reshape((0,3))
+                                    else:
+                                        el = tmp_el[0]
+                                    curr_len = el.shape[0]
+                                    storage_val[idx*max_len:idx*max_len+curr_len,...] = numpy.array(el)
+                                    if curr_len < max_len:
+                                        storage_val[idx*max_len+curr_len,...] = numpy.array([-1.0,-1.0,-1.0])
+                            else:
+                                pass
+                        else:
+                            pass
+                        ds = plugin_group.create_dataset(name=featname, data=storage_val)
+                        for k, v in attribute_dict.iteritems():
+                            ds.attrs[k] = v
 
         self.dirty = False
 
@@ -64,7 +101,22 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 for key, val in roi_grp.iteritems():
                     region_features[key] = {}
                     for featname, featval in val.iteritems():
-                        region_features[key][featname] = featval[...]
+                        # for special feature Coord<ValueList>:
+                        # copy meaningful coordinates into python list
+                        # for each region omit everything after [-1 -1 -1]
+                        if featname == 'Coord<ValueList>':
+                            stride = featval.attrs['stride']
+                            n_obj = featval.attrs['n_objects']
+                            list_feat = [[]]
+                            for idx in xrange(stride, stride*n_obj, stride):
+                                max_valid = numpy.where(featval[idx:idx+stride,0] == -1)
+                                curr_stride = stride
+                                if max_valid[0].shape[0] > 0:
+                                    curr_stride = max_valid[0][0]
+                                list_feat.append(numpy.array([numpy.array(featval[idx:idx+curr_stride,...], dtype=object)], dtype=object))
+                            region_features[key][featname] = numpy.array(list_feat, dtype=object)
+                        else:
+                            region_features[key][featname] = featval[...]
 
                 slicing = roiToSlice( *roi )
                 self.inslot[i][slicing] = numpy.array([region_features])

@@ -50,10 +50,10 @@ class OpConservationTracking(OpTrackingBase):
             transWeight=10.0,
             withDivisions=True,
             withOpticalCorrection=True,
-            withCoordinateList=True,
             withClassifierPrior=False,
             ndim=3,
-            cplex_timeout=None
+            cplex_timeout=None,
+            withMergerResolution=True
             ):
         
         if not self.Parameters.ready():
@@ -70,8 +70,8 @@ class OpConservationTracking(OpTrackingBase):
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
-        parameters['withCoordinateList'] = withCoordinateList
         parameters['withClassifierPrior'] = withClassifierPrior
+        parameters['withMergerResolution'] = withMergerResolution
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -90,7 +90,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=withCoordinateList,
+                                                                      with_coordinate_list=withMergerResolution,
                                                                       with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
@@ -103,7 +103,6 @@ class OpConservationTracking(OpTrackingBase):
         print 'median_obj_size = ', median_obj_size
         print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
-        with_merger_resolution = True
         transition_parameter = 5
             
         tracker = pgmlink.ConsTracking(maxObj,
@@ -120,7 +119,7 @@ class OpConservationTracking(OpTrackingBase):
                                          withDivisions,
                                          500.0, # disappearance cost
                                          500.0, # appearance cost
-                                         with_merger_resolution,
+                                         withMergerResolution,
                                          ndim,
                                          transition_parameter)
         
