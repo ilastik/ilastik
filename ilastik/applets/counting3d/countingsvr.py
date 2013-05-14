@@ -68,8 +68,6 @@ def createKernel(B, dot, tags, epsilon, kernel, boxConstraints):
 
     boxValues = []
     for i, constraint in enumerate(boxConstraints):
-        import sitecustomize
-        sitecustomize.debug_trace()
         val,features = constraint
         boxValues.append(val)
         features = features.reshape(-1, features.shape[-1])
@@ -133,8 +131,6 @@ def optimizepossdef(tags, B, c, upperBounds, boxConstraints = None):
     for i in range(B.shape[1]):
         y[i] = model.addVar(name = 'y_%s' % (i))
     model.update()
-    import sitecustomize
-    sitecustomize.debug_trace()
 
     for i in range(B.shape[1]):
         expr = gurobipy.LinExpr()
@@ -356,14 +352,12 @@ class SVR(object):
             #Q = kernelize(B, tags, kernel = self.kernel, boxConstraints)
             #Q,c = kernelize(B, dot, tags, epsilon, self.kernel, boxConstraints)
             if self.kernel == "linear":
-                #c = dot * (-expandedTags) + epsilon
-                #success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
+                c = dot * (-expandedTags) + epsilon
+                success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
 
-                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
+                #Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
             #version 1 
-                import sitecustomize
-                sitecustomize.debug_trace()
-                success, alpha = optimize(tags, Q, c, self.upperBounds)
+                #success, alpha = optimize(tags, Q, c, self.upperBounds)
             else:
                 Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
             #version 1 
@@ -387,8 +381,6 @@ class SVR(object):
             else:
                 residual = dot - expandedTags * (np.matrix(alpha) * np.matrix(Q[:,:len(expandedTags)])).view(np.ndarray)
                 residual = residual.flatten()
-                import sitecustomize
-                sitecustomize.debug_trace()
             self.b = self.findB(alpha[:sum(tags[:-1])], residual, expandedTags[:sum(tags[:-1])], self.upperBounds, epsilon)
                 
             #self.w, self.b = self.convertAlphaToSol(alpha, tags,
@@ -410,8 +402,6 @@ class SVR(object):
                 bcIndices.append(np.sum(bcIndices) + features.shape[0])
             bcValues = np.array(bcValues, dtype = np.float)
             bcIndices = np.array(bcIndices, dtype = np.int)
-            import sitecustomize
-            sitecustomize.debug_trace()
             #svr.fit(img, dot, tags, sample_weight = C, bcValues = bcValues, bcFeatures = bcFeatures, bcIndices =
             #        bcIndices) 
             svr.fit(img, dot, expandedTags.astype(np.int8), sample_weight = C)
@@ -459,8 +449,6 @@ class SVR(object):
                 metric = "euclidean"
                 transform = lambda x: np.exp(-(x**2) / (num_features * 1000))
 
-                import sitecustomize
-                sitecustomize.debug_trace()
                 tmp = pairwise.pairwise_distances(image, self.supportVectors, metric = metric, n_jobs = -1)
                 tmp = transform(tmp)
 
@@ -589,7 +577,7 @@ if __name__ == "__main__":
 
     backup_image = np.copy(img)
     Counter = SVR(pMult, lMult, DENSITYBOUND, kernel = "linear", optimization =
-                 "quadratic")
+                 "svr")
     sigma = [2]
     testimg, testdot, testmapping, testtags = Counter.prepareData(img, dot,
                                                                   sigma,

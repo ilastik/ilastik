@@ -38,6 +38,8 @@ class CountingWorkflow(Workflow):
                                                        batchDataGui=False,
                                                        force5d=False
                                                       )
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self,
                                                              "Feature Selection",
