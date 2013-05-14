@@ -47,7 +47,7 @@ class OpTrainCounter(Operator):
     def execute(self, slot, subindex, roi, result):
         featMatrix=[]
         labelsMatrix=[]
-        tagsMatrix = []
+        tagList = []
 
         result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **self.SelectedOption.value)
         for i,labels in enumerate(self.inputs["Labels"]):
@@ -65,18 +65,40 @@ class OpTrainCounter(Operator):
 
                 featMatrix.append(features)
                 labelsMatrix.append(labels)
-                tagsMatrix.append(tags)
+                tagList.append(tags)
+                #tagsMatrix.append(tags)
+
+        posTags = [tag[0] for tag in tagList]
+        negTags = [tag[1] for tag in tagList]
+        numPosTags = np.sum(posTags)
+        numTags = np.sum(posTags) + np.sum(negTags)
+        fullFeatMatrix = np.ndarray((numTags, self.Images[0].meta.shape[-1]))
+        fullLabelsMatrix = np.ndarray((numTags))
+        fullFeatMatrix[:] = np.NAN
+        fullLabelsMatrix[:] = np.NAN
+        currPosCount = 0
+        currNegCount = numPosTags
+        for i, posCount in enumerate(posTags):
+            fullFeatMatrix[currPosCount:currPosCount + posTags[i],:] = featMatrix[i][:posCount,:]
+            fullLabelsMatrix[currPosCount:currPosCount + posTags[i]] = labelsMatrix[i][:posCount]
+            fullFeatMatrix[currNegCount:currNegCount + negTags[i],:] = featMatrix[i][posCount:,:]
+            fullLabelsMatrix[currNegCount:currNegCount + negTags[i]] = labelsMatrix[i][posCount:]
+            currPosCount += posTags[i]
+            currNegCount += negTags[i]
 
 
-        featMatrix=np.concatenate(featMatrix,axis=0)
-        labelsMatrix=np.concatenate(labelsMatrix,axis=0)
-        tagsMatrix=np.concatenate(tagsMatrix,axis=0)
+        if np.isnan(np.sum(fullFeatMatrix)):
+            raise Exception("NAN NAN NAN NAN BATMAN")
+        #featMatrix=np.concatenate(featMatrix,axis=0)
+        #labelsMatrix=np.concatenate(labelsMatrix,axis=0)
+        #tagsMatrix=np.concatenate(tagsMatrix,axis=0)
 
         # train and store self._forest_count forests in parallel
 
+        fullTags = [np.sum(posTags), np.sum(negTags)]
         #pool = RequestPool()
 
-        result[0].fitPrepared(featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value)
+        result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, fullTags, self.Epsilon.value)
         #req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
         #pool.wait()
         #pool.clean()
