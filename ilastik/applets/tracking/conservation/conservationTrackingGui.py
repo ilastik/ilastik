@@ -34,21 +34,21 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if 'avgSize' in parameters.keys():
             self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
         if 'withTracklets' in parameters.keys():
-            self._drawer.trackletsBox.setValue(parameters['withTracklets'])
+            self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
         if 'sizeDependent' in parameters.keys():
             self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
         if 'divWeight' in parameters.keys():
             self._drawer.divWeightBox.setValue(parameters['divWeight'])
         if 'transWeight' in parameters.keys():
-            self._drawer.transWeight.setValue(parameters['transWeight'])
+            self._drawer.transWeightBox.setValue(parameters['transWeight'])
         if 'withDivisions' in parameters.keys():
-            self._drawer.divisionsBox.setCheckState(2*parameters['withDivisions'])
+            self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
         if 'withOpticalCorrection' in parameters.keys():
-            self._drawer.opticalBox.setCheckState(2*parameters['withOpticalCorrection'])
+            self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
         if 'withClassifierPrior' in parameters.keys():
-            self._drawer.classifierPriorBox.setCheckState(2*parameters['withClassifierPrior'])
+            self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])
         if 'withMergerResolution' in parameters.keys():
-            self._drawer.mergerResolutionBox.setCheckState(2*parameters['withMergerResolution'])
+            self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
 #        if 'cplex_timeout' in parameters.keys():
 #            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
         
