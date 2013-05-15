@@ -412,7 +412,7 @@ class OpH5WriterBigDataset(Operator):
                                 compression='lzf'
                                 )
 
-        if 'drange' in self.Image.meta:
+        if self.Image.meta.drange is not None:
             self.d.attrs['drange'] = self.Image.meta.drange
 
     def execute(self, slot, subindex, rroi, result):

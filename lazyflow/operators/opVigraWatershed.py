@@ -104,7 +104,7 @@ class OpVigraWatershed(Operator):
         
         # If we know the range of the data, then convert to uint8
         # so we can automatically benefit from vigra's "turbo" mode
-        if 'drange' in self.InputImage.meta:
+        if self.InputImage.meta.drange is not None:
             drange = self.InputImage.meta.drange
             inputRegion = numpy.asarray(inputRegion, dtype=numpy.float32)
             inputRegion -= drange[0]
