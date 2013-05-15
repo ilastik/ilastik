@@ -5,22 +5,14 @@ APP = ['ilastik.py']
 DATA_FILES = []
 
 includes = [\
-                'distutils', 'sip', 'ctypes','ctypes.util','h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
+                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
                 'vtk.vtkCommonPythonSIP',
-#                #'vtk.vtkFilteringPythonSIP',
-#                'vtk.vtkRenderingPythonSIP',
-#                'vtk.vtkFilteringPythonSIP',
-                'numpy.core.multiarray',
-                'vigra', #'h5py._proxy', 'csv', #'vigra.svs',
-                'qimage2ndarray',
-                'greenlet',
-                'psutil',
              ]
 
-OPTIONS = {'argv_emulation': True, 'includes':includes }
+OPTIONS = {'argv_emulation': True, 'includes':includes, 'iconfile' : 'appIcon.icns' }
 
 packages=find_packages(exclude=["tests", "tests.*"])
 package_data={'ilastik': ['ilastik-splash.png',
