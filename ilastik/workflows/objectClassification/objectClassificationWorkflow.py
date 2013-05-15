@@ -112,22 +112,24 @@ class ObjectClassificationWorkflow(Workflow):
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
         opTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
-        opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
+        
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
 
         opBatchFillMissingSlices = OperatorWrapper(OpFillMissingSlicesNoCache, parent=self)
 
-        # Connect the thresholding operator.
+        # If we are not in the binary workflow, connect the thresholding operator.
         # Parameter inputs are cloned from the interactive workflow,
-        opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
-        opBatchThreshold.MinSize.connect(opInteractiveThreshold.MinSize)
-        opBatchThreshold.MaxSize.connect(opInteractiveThreshold.MaxSize)
-        opBatchThreshold.HighThreshold.connect(opInteractiveThreshold.HighThreshold)
-        opBatchThreshold.LowThreshold.connect(opInteractiveThreshold.LowThreshold)
-        opBatchThreshold.SingleThreshold.connect(opInteractiveThreshold.SingleThreshold)
-        opBatchThreshold.SmootherSigma.connect(opInteractiveThreshold.SmootherSigma)
-        opBatchThreshold.Channel.connect(opInteractiveThreshold.Channel)
-        opBatchThreshold.CurOperator.connect(opInteractiveThreshold.CurOperator)
+        if not isinstance(self, ObjectClassificationWorkflowBinary):
+            opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
+            opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
+            opBatchThreshold.MinSize.connect(opInteractiveThreshold.MinSize)
+            opBatchThreshold.MaxSize.connect(opInteractiveThreshold.MaxSize)
+            opBatchThreshold.HighThreshold.connect(opInteractiveThreshold.HighThreshold)
+            opBatchThreshold.LowThreshold.connect(opInteractiveThreshold.LowThreshold)
+            opBatchThreshold.SingleThreshold.connect(opInteractiveThreshold.SingleThreshold)
+            opBatchThreshold.SmootherSigma.connect(opInteractiveThreshold.SmootherSigma)
+            opBatchThreshold.Channel.connect(opInteractiveThreshold.Channel)
+            opBatchThreshold.CurOperator.connect(opInteractiveThreshold.CurOperator)
 
         # FIXME: need op5ifiers
 
@@ -143,10 +145,6 @@ class ObjectClassificationWorkflow(Workflow):
         batchInputsRaw = opBatchInputByRole.Outputs[0]
         # Lane-indexed multislot for binary/prediction-map data
         batchInputsOther = opBatchInputByRole.Outputs[1]
-        
-        #  but image inputs come from the batch data selection.
-        opBatchThreshold.RawInput.connect(batchInputsRaw)
-        opBatchThreshold.InputImage.connect(batchInputsOther)
 
         # Connect the blockwise classification operator
         # Parameter inputs are cloned from the interactive workflow,
@@ -162,9 +160,14 @@ class ObjectClassificationWorkflow(Workflow):
         op5Raw = OperatorWrapper(Op5ifyer, parent=self)
         op5Raw.input.connect(opBatchFillMissingSlices.Output)
         op5Binary = OperatorWrapper(Op5ifyer, parent=self)
-        op5Binary.input.connect(opBatchThreshold.Output)
+        if not isinstance(self, ObjectClassificationWorkflowBinary):
+            opBatchThreshold.RawInput.connect(batchInputsRaw)
+            opBatchThreshold.InputImage.connect(batchInputsOther)
+            op5Binary.input.connect(opBatchThreshold.Output)
+        else:
+            op5Binary.input.connect(batchInputsOther)
 
-        opBatchClassify.RawImage.connect(batchInputsRaw)
+        opBatchClassify.RawImage.connect(op5Raw.output)
         opBatchClassify.BinaryImage.connect(op5Binary.output)
 
         self.opBatchClassify = opBatchClassify
