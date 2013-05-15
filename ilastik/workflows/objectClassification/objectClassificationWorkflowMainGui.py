@@ -65,6 +65,11 @@ if __name__=="__main__":
                       dest="filter",
                       default='Original',
                       help="pixel feature filter implementation. 'Original', 'Refactored', or 'Interpolated'")
+    parser.add_option("--nobatch",
+                      dest="nobatch",
+                      action="store_true",
+                      default=False,
+                      help="do not append batch applets")
 
 
     (options, args) = parser.parse_args()
@@ -80,6 +85,7 @@ if __name__=="__main__":
     workflow_kwargs = {}
     workflow_kwargs['fillMissing'] = options.fill_missing
     workflow_kwargs['filterImplementation'] = options.filter
+    workflow_kwargs['batch'] = not options.nobatch
 
     # Start the GUI
     if len(args) != 1:

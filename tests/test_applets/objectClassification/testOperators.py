@@ -262,10 +262,6 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         test whether right formats are accepted and correctly processed
         '''
         
-        # the format is valid, but no bad objects or features are specified -> no output
-        self.op.BadObjects.setValue({'popjects': None, 'creatures': None})
-        self.assertEquals(self.op.WarningMessage.value, {})
-        
         # valid format, bad features existent
         self.op.BadObjects.setValue({'objects':{1: {0: [1,2]}}, 'feats': set()})
         self.assertNotEquals(self.op.WarningMessage.value, {})

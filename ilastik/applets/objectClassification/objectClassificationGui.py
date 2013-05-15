@@ -190,6 +190,7 @@ class ObjectClassificationGui(LabelingGui):
     def checkEnableButtons(self):
         feats_enabled = True
         predict_enabled = True
+        labels_enabled = True
 
         if self.op.ComputedFeatureNames.ready():
             featnames = self.op.ComputedFeatureNames([]).wait()
@@ -221,6 +222,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
+        self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
 
 
     def initAppletDrawerUi(self):
@@ -457,46 +459,51 @@ class ObjectClassificationGui(LabelingGui):
         menu.addAction(text)
         action = menu.exec_(globalWindowCoordinate)
         if action is not None and action.text() == text:
+            numpy.set_printoptions(precision=4)
+            print "------------------------------------------------------------"
+            print "object:         {}".format(obj)
+            
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
             if len(labels) > obj:
                 label = int(labels[obj])
             else:
                 label = "none"
-
-            if self.op.Predictions.ready():
-                preds = self.op.Predictions([t]).wait()[t]
-                if len(preds) >= obj:
-                    pred = int(preds[obj])
-            else:
-                pred = 'none'
-
-
-            if self.op.Probabilities.ready():
-                probs = self.op.Probabilities([t]).wait()[t]
-                if len(probs) >= obj:
-                    prob = probs[obj]
-            else:
-                prob = 'none'
-
-            numpy.set_printoptions(precision=4)
-
-            print "------------------------------------------------------------"
-            print "object:         {}".format(obj)
             print "label:          {}".format(label)
-            print "probabilities:  {}".format(prob)
-            print "prediction:     {}".format(pred)
-
+            
             print 'features:'
             feats = self.op.ObjectFeatures([t]).wait()[t]
-            for plugin in feats.keys():
-                if plugin == default_features_key:
+            selected = self.op.SelectedFeatures([]).wait()
+            for plugin in sorted(feats.keys()):
+                if plugin == default_features_key or plugin not in selected:
                     continue
                 print "Feature category: {}".format(plugin)
-                for featname in feats[plugin].keys():
+                for featname in sorted(feats[plugin].keys()):
+                    if featname not in selected[plugin]:
+                        continue
                     value = feats[plugin][featname]
                     ft = numpy.asarray(value.squeeze())[obj]
                     print "{}: {}".format(featname, ft)
+
+            if len(selected)>0 and label!='none':
+                if self.op.Predictions.ready():
+                    preds = self.op.Predictions([t]).wait()[t]
+                    if len(preds) >= obj:
+                        pred = int(preds[obj])
+                else:
+                    pred = 'none'
+    
+                if self.op.Probabilities.ready():
+                    probs = self.op.Probabilities([t]).wait()[t]
+                    if len(probs) >= obj:
+                        prob = probs[obj]
+                else:
+                    prob = 'none'
+    
+                print "probabilities:  {}".format(prob)
+                print "prediction:     {}".format(pred)
+
+            
             print "------------------------------------------------------------"
 
     def setVisible(self, visible):
