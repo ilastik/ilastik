@@ -491,11 +491,14 @@ class ObjectClassificationGui(LabelingGui):
 
             print 'features:'
             feats = self.op.ObjectFeatures([t]).wait()[t]
-            for plugin in feats.keys():
-                if plugin == default_features_key:
+            selected = self.op.SelectedFeatures([]).wait()
+            for plugin in sorted(feats.keys()):
+                if plugin == default_features_key or plugin not in selected:
                     continue
                 print "Feature category: {}".format(plugin)
-                for featname in feats[plugin].keys():
+                for featname in sorted(feats[plugin].keys()):
+                    if featname not in selected[plugin]:
+                        continue
                     value = feats[plugin][featname]
                     ft = numpy.asarray(value.squeeze())[obj]
                     print "{}: {}".format(featname, ft)
