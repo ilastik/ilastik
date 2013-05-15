@@ -1,3 +1,6 @@
+# Setup script that uses py2app to generate a redistributable binary from an existing ilastik build.
+# To run: python setup_mac.py py2app
+
 from setuptools import setup, find_packages
 from ilastik import __version__
 
