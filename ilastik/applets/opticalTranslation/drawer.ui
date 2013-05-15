@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>87</height>
+    <height>177</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -36,17 +36,27 @@
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
       <layout class="QFormLayout" name="formLayout">
-       <item row="1" column="0">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
+       <item row="0" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Method:</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Templ. Size:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
         <widget class="QComboBox" name="methodBox">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <item>
           <property name="text">
@@ -55,7 +65,7 @@
          </item>
          <item>
           <property name="text">
-           <string>Normalized Cross Correlation</string>
+           <string>Norm. Cross Correlation</string>
           </property>
          </item>
          <item>
@@ -63,6 +73,53 @@
            <string>Cross Correlation</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="templateSizeBox">
+         <property name="maximum">
+          <number>100000</number>
+         </property>
+         <property name="singleStep">
+          <number>10</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>max. Translation:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="maxTranslationBox">
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>10</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>foreground values:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="maxDiffValsBox">
+         <property name="maximum">
+          <number>99999999</number>
+         </property>
+         <property name="value">
+          <number>10</number>
+         </property>
         </widget>
        </item>
       </layout>

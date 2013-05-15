@@ -32,6 +32,7 @@ class OpOpticalTranslation(Operator):
         self._lock_warped = lazyflow.request.RequestLock()
         
     def setupOutputs(self):
+        # FIXME: assumes c to be last index
         assert self.BinaryImage.meta.shape[-1] == 1, "this operator does only work with binary labels yet"
         
         self.TranslationVectors.meta.assignFrom(self.BinaryImage.meta)
@@ -44,8 +45,7 @@ class OpOpticalTranslation(Operator):
         self.TranslationVectorsComputation.meta.shape = [0]
     
         self.TranslationVectorsDisplay.meta.assignFrom(self.TranslationVectors.meta)
-        self.TranslationVectorsDisplay.meta.dtype = numpy.uint8
-        
+        self.TranslationVectorsDisplay.meta.dtype = numpy.uint8        
         self.WarpedImage.meta.assignFrom(self.BinaryImage.meta)
         self.WarpedImage.meta.dtype = numpy.uint8
         

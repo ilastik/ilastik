@@ -1,11 +1,11 @@
 from ilastik.applets.layerViewer import LayerViewerGui
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
 from volumina.layer import GrayscaleLayer, ColortableLayer, RGBALayer
 import volumina.colortables as colortables
 from lazyflow.rtype import SubRegion
 
 from PyQt4.QtGui import QColor, QProgressDialog
-from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion, OpSingleChannelSelector
 from PyQt4.QtCore import Qt, QString
 from PyQt4 import uic
 
@@ -66,9 +66,8 @@ class OpticalTranslationGui( LayerViewerGui ):
         stop[-1] = 3
         opSubRegion.Start.setValue( tuple(start) )
         opSubRegion.Stop.setValue( tuple(stop) )
-        translationLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
+        translationLayer = self.createStandardLayerFromSlot( opSubRegion.Output )        
 #        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)#        
-#        translationLayer = RGBALayer(self.translationsrc)
         translationLayer.name = "Translation Vector"
         translationLayer.opacity = 0.8
         translationLayer.visible = False
@@ -110,6 +109,9 @@ class OpticalTranslationGui( LayerViewerGui ):
         
         self._onParametersChanged()        
         self._drawer.methodBox.currentIndexChanged.connect(self._onMethodChanged)
+        self._drawer.templateSizeBox.valueChanged.connect(self._onMethodChanged)
+        self._drawer.maxTranslationBox.valueChanged.connect(self._onMethodChanged)
+        self._drawer.maxDiffValsBox.valueChanged.connect(self._onMethodChanged)
                 
         return layers
     
@@ -132,6 +134,10 @@ class OpticalTranslationGui( LayerViewerGui ):
             self._drawer.methodBox.setCurrentIndex(1)
         elif method == 'xcorr':
             self._drawer.methodBox.setCurrentIndex(2)
+        
+        self._drawer.templateSizeBox.setValue(self.mainOperator.Parameters.value['templateSize'])
+        self._drawer.maxTranslationBox.setValue(self.mainOperator.Parameters.value['maxTranslation'])
+        self._drawer.maxDiffValsBox.setValue(self.mainOperator.Parameters.value['maxDiffVals'])
     
     def _onMethodChanged(self):
         if self._drawer.methodBox.currentIndex() == 0:
@@ -140,6 +146,11 @@ class OpticalTranslationGui( LayerViewerGui ):
             self.mainOperator.Parameters.value['method'] = 'nxcorr'
         elif self._drawer.methodBox.currentIndex() == 2:
             self.mainOperator.Parameters.value['method'] = 'xcorr'
+        
+        self.mainOperator.Parameters.value['templateSize'] = self._drawer.templateSizeBox.value()
+        self.mainOperator.Parameters.value['maxTranslation'] = self._drawer.maxTranslationBox.value()
+        self.mainOperator.Parameters.value['maxDiffVals'] = self._drawer.maxDiffValsBox.value()
+        
         self.mainOperator.Parameters.setDirty([])
             
     def _onComputeTranslationButtonPressed(self):        
