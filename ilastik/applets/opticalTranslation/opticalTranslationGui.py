@@ -67,7 +67,7 @@ class OpticalTranslationGui( LayerViewerGui ):
         opSubRegion.Start.setValue( tuple(start) )
         opSubRegion.Stop.setValue( tuple(stop) )
         translationLayer = self.createStandardLayerFromSlot( opSubRegion.Output )        
-#        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)#        
+#        self.translationsrc = LazyflowSource( self.mainOperator.TranslationVectorsDisplay)   
         translationLayer.name = "Translation Vector"
         translationLayer.opacity = 0.8
         translationLayer.visible = False

@@ -23,6 +23,7 @@ class OpTrackingBase(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []  
+        self.mergers = []
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)        

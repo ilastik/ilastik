@@ -10,7 +10,7 @@ class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     
-    MergerOutput = OutputSlot()
+    MergerOutput = OutputSlot()    
     
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()        
@@ -23,11 +23,12 @@ class OpConservationTracking(OpTrackingBase):
             result = self.LabelImage.get(roi).wait()
             parameters = self.Parameters.value
             
-            t = roi.start[0]            
-            if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):            
-                result[0,...,0] = relabelMergers(result[0,...,0], self.mergers[t])
-            else:
-                result[...] = 0
+            trange = range(roi.start[0], roi.stop[0])
+            for t in trange:
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):            
+                    result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                else:
+                    result[t-roi.start[0],...][:] = 0
             
         return result     
 
