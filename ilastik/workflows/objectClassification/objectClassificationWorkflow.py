@@ -318,4 +318,4 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
 
         op5Binary.input.connect(opTwoLevelThreshold.CachedOutput)
 
-        return op5raw.output, op5predictions.output
+        return op5raw.output, op5Binary.output
