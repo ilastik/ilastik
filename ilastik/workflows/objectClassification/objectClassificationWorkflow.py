@@ -107,6 +107,7 @@ class ObjectClassificationWorkflow(Workflow):
             opBlockwiseObjectClassification.BinaryImage.connect(opObjClassification.BinaryImages)
             opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
             opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
+            opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
 
 
     def _initBatchWorkflow(self):
@@ -152,6 +153,7 @@ class ObjectClassificationWorkflow(Workflow):
                                           promotedSlotNames=['RawImage', 'BinaryImage'])
         opBatchClassify.Classifier.connect(opTrainingTopLevel.Classifier)
         opBatchClassify.LabelsCount.connect(opTrainingTopLevel.NumLabels)
+        opBatchClassify.SelectedFeatures.connect(opTrainingTopLevel.SelectedFeatures)
         opBatchClassify.BlockShape3dDict.connect(opBlockwiseObjectClassification.BlockShape3dDict)
         opBatchClassify.HaloPadding3dDict.connect(opBlockwiseObjectClassification.HaloPadding3dDict)
 
