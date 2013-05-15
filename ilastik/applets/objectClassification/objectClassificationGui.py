@@ -190,6 +190,7 @@ class ObjectClassificationGui(LabelingGui):
     def checkEnableButtons(self):
         feats_enabled = True
         predict_enabled = True
+        labels_enabled = True
 
         if self.op.ComputedFeatureNames.ready():
             featnames = self.op.ComputedFeatureNames([]).wait()
@@ -221,6 +222,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
+        self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
 
 
     def initAppletDrawerUi(self):
