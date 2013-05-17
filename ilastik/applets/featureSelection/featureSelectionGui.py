@@ -7,6 +7,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 #SciPy
 import numpy
 import h5py
+import threading
 
 #PyQt
 from PyQt4.QtGui import *
@@ -21,6 +22,7 @@ from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.base.applet import ControlCommand
 from ilastik.config import cfg as ilastik_config
 
 from volumina.utility import PreferencesManager
@@ -72,12 +74,12 @@ class FeatureSelectionGui(LayerViewerGui):
     ###########################################
     
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, topLevelOperatorView, applet):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
         super(FeatureSelectionGui, self).__init__(topLevelOperatorView, crosshair=False)
-
+        self.applet = applet
         self.topLevelOperatorView.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
         self.topLevelOperatorView.FeatureListFilename.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
         self.onFeaturesSelectionsChanged()
@@ -324,8 +326,16 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
-                opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                def setMatrix():
+                    self.applet.guiControlSignal.emit(ControlCommand.DisableUpstream)
+                    self.applet.guiControlSignal.emit(ControlCommand.DisableDownstream)
+                    opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                    self.applet.guiControlSignal.emit(ControlCommand.Pop)
+                    self.applet.guiControlSignal.emit(ControlCommand.Pop)
+                matrixThread = threading.Thread(target = setMatrix)
+                matrixThread.start()
                 self.topLevelOperatorView._setupOutputs()
+                
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
