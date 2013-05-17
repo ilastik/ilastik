@@ -69,15 +69,6 @@ class ShellActions(object):
         self.QuitAction = None
         
 #===----------------------------------------------------------------------------------------------------------------===
-#=== SideSplitterSizePolicy                                                                                         ===
-#===----------------------------------------------------------------------------------------------------------------===
-
-class SideSplitterSizePolicy(object):
-    Manual            = 0
-    AutoCurrentDrawer = 1
-    AutoLargestDrawer = 2
-
-#===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -188,12 +179,10 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__(self, parent = None, new_workflow_cmdline_args=None, flags = Qt.WindowFlags(0),
-                 sideSplitterSizePolicy=SideSplitterSizePolicy.Manual):
+    def __init__( self, parent = None, new_workflow_cmdline_args=None, flags = Qt.WindowFlags(0) ):
         QMainWindow.__init__(self, parent = parent, flags = flags)
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-        self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
         self._new_workflow_cmdline_args = new_workflow_cmdline_args
         
@@ -495,12 +484,9 @@ class IlastikShell( QMainWindow ):
         self.enableWorkflow = (self.projectManager is not None)
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
-        if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
-            # Default to a 50-50 split
-            totalSplitterHeight = sum(self.sideSplitter.sizes())
-            self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
-        else:
-            self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
+        # Default to a 50-50 split
+        totalSplitterHeight = sum(self.sideSplitter.sizes())
+        self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
 
     def updateShellProjectDisplay(self):
         """
@@ -631,7 +617,6 @@ class IlastikShell( QMainWindow ):
             self.showMenus(applet_index)
             self.refreshAppletDrawer( applet_index )
             
-            self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
             self._refreshDrawerRecursionGuard = False
             
             applet = self._applets[applet_index]
@@ -717,38 +702,6 @@ class IlastikShell( QMainWindow ):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
         return self.appletBar.indexFromItem(drawerTitleItem)
                 
-    def autoSizeSideSplitter(self, sizePolicy):
-        if sizePolicy == SideSplitterSizePolicy.Manual:
-            # In manual mode, don't resize the splitter at all.
-            return
-
-        if sizePolicy == SideSplitterSizePolicy.AutoCurrentDrawer:
-            # Get the height of the current applet drawer
-            rootItem = self.appletBar.invisibleRootItem()
-            appletDrawerItem = rootItem.child(self.currentAppletIndex).child(0)
-            appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-            appletDrawerHeight = appletDrawerWidget.frameSize().height()
-
-        if sizePolicy == SideSplitterSizePolicy.AutoLargestDrawer:
-            appletDrawerHeight = 0
-            # Get the height of the largest drawer in the bar
-            for applet_index in range( len(self._applets) ):
-                rootItem = self.appletBar.invisibleRootItem()
-                appletDrawerItem = rootItem.child(applet_index).child(0)
-                appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-                appletDrawerHeight = max( appletDrawerHeight, appletDrawerWidget.frameSize().height() )
-        
-        # Get total height of the titles in the applet bar (not the widgets)
-        firstItem = self.appletBar.invisibleRootItem().child(0)
-        titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
-        numDrawers = len(self._applets)
-        totalTitleHeight = numDrawers * titleHeight    
-    
-        # Auto-size the splitter height based on the height of the applet bar.
-        totalSplitterHeight = sum(self.sideSplitter.sizes())
-        appletBarHeight = totalTitleHeight + appletDrawerHeight + 10 # Add a small margin so the scroll bar doesn't appear
-        self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
-
     def handleAppletBarClick(self, modelIndex):
         #bug #193
         drawerTitleItem = self.appletBar.invisibleRootItem().child(modelIndex.row())

@@ -77,12 +77,11 @@ def launchShell(workflow_cmdline_args, *testFuncs):
     """
     # This will import a lot of stuff (essentially the entire program).
     # We use a late import here so the splash screen is shown while this lengthy import happens.
-    from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
+    from ilastik.shell.gui.ilastikShell import IlastikShell
     
     # Create the shell and populate it
     global shell
-    shell = IlastikShell(None, workflow_cmdline_args,
-                         sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+    shell = IlastikShell(None, workflow_cmdline_args)
 
     assert QApplication.instance().thread() == shell.thread()
 
