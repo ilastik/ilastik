@@ -19,7 +19,7 @@ import functools
 
 shell = None
 
-def startShellGui(workflowClass=None, *testFuncs, **kwargs):
+def startShellGui(workflow_cmdline_args, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
@@ -43,7 +43,7 @@ def startShellGui(workflowClass=None, *testFuncs, **kwargs):
 
     showSplashScreen()
     app.processEvents()
-    QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, *testFuncs, **kwargs ) )
+    QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, *testFuncs ) )
     QTimer.singleShot( 0, hideSplashScreen)
 
     return app.exec_()
@@ -70,12 +70,10 @@ def hideSplashScreen():
     global shell
     splashScreen.finish(shell)
 
-def launchShell(workflowClass=None, *testFuncs, **kwargs):
+def launchShell(workflow_cmdline_args, *testFuncs):
     """
     Start the ilastik shell GUI with the given workflow type.
     Note: A QApplication must already exist, and you must call this function from its event loop.
-
-    workflowClass - the type of workflow to instantiate for the shell.
     """
     # This will import a lot of stuff (essentially the entire program).
     # We use a late import here so the splash screen is shown while this lengthy import happens.
@@ -83,7 +81,7 @@ def launchShell(workflowClass=None, *testFuncs, **kwargs):
     
     # Create the shell and populate it
     global shell
-    shell = IlastikShell(workflowClass=workflowClass, workflow_kwargs=kwargs,
+    shell = IlastikShell(None, workflow_cmdline_args,
                          sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
 
     assert QApplication.instance().thread() == shell.thread()

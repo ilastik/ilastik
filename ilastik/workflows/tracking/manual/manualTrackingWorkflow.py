@@ -16,10 +16,10 @@ class ManualTrackingWorkflow( Workflow ):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__( self, *args, **kwargs ):
+    def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(ManualTrackingWorkflow, self).__init__(graph=graph, *args, **kwargs)
+        super(ManualTrackingWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 

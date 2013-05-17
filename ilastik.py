@@ -50,7 +50,7 @@ parser.add_argument('--debug', help='Start ilastik in debug mode.', action='stor
 # Example:
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
-parsed_args = parser.parse_args()
+parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
 if parsed_args.start_recording:
@@ -108,6 +108,6 @@ if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
 
 from ilastik.shell.gui.startShellGui import startShellGui
-sys.exit(startShellGui(None,*init_funcs))
+sys.exit(startShellGui(workflow_cmdline_args,*init_funcs))
 
     

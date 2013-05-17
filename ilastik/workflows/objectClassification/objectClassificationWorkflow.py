@@ -1,3 +1,4 @@
+import warnings
 from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -15,23 +16,33 @@ from lazyflow.graph import Graph
 from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots
 from lazyflow.graph import OperatorWrapper
 
+import argparse
+
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 1 # show DataSelection by default
 
     def __init__(self, headless,
-                 fillMissing=False,
-                 filterImplementation='Original',
-                 batch=True,
+                 workflow_cmdline_args,
                  *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs:
             del kwargs['graph']
         super(ObjectClassificationWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
 
-        self.fillMissing = fillMissing
-        self.filter_implementation = filterImplementation
-        self.batch = batch
+        # Parse workflow-specific command-line args
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--fillmissing', help="use 'fill missing' applet", action='store_true', default=False)
+        parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
+        parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
+        
+        parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        if unused_args:
+            warnings.warn("Unused command-line args: {}".format( unused_args ))
+
+        self.fillMissing = parsed_args.fillmissing
+        self.filter_implementation = parsed_args.filter
+        self.batch = not parsed_args.nobatch
 
         self._applets = []
 
@@ -40,7 +51,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         self.setupInputs()
 
-        if fillMissing:
+        if self.fillMissing:
             self.fillMissingSlicesApplet = FillMissingSlicesApplet(
                 self, "Fill Missing Slices", "Fill Missing Slices")
             self._applets.append(self.fillMissingSlicesApplet)
@@ -51,7 +62,7 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
-        if batch:
+        if self.batch:
             self.dataSelectionAppletBatch = DataSelectionApplet(
                 self, "Batch Inputs", "Batch Inputs", batchDataGui=True, force5d=True)
             self.opDataSelectionBatch = self.dataSelectionAppletBatch.topLevelOperator
