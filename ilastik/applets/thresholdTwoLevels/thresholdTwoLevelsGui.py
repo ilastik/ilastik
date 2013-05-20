@@ -9,6 +9,7 @@ from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,18 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             widget.installEventFilter( self )
 
         self._updateGuiFromOperator()
+        self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
+        self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
     
     @threadRouted
     def _updateGuiFromOperator(self):
         op = self.topLevelOperatorView
-        
-        # Channel
-        channelIndex = op.InputImage.meta.axistags.index('c')
-        numChannels = op.InputImage.meta.shape[channelIndex]
+
+        numChannels = 0        
+        if op.InputImage.ready():
+            # Channel
+            channelIndex = op.InputImage.meta.axistags.index('c')
+            numChannels = op.InputImage.meta.shape[channelIndex]
         self._drawer.inputChannelSpinBox.setRange( 0, numChannels-1 )
         self._drawer.inputChannelSpinBox.setValue( op.Channel.value )
 
