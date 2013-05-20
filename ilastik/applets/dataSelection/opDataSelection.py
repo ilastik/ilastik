@@ -60,6 +60,8 @@ class OpDataSelection(Operator):
     Image = OutputSlot() #: The output image
     AllowLabels = OutputSlot(stype='bool') #: A bool indicating whether or not this image can be used for training
 
+    _NonTransposedImage = OutputSlot() #: The output slot, in the data's original axis ordering (regardless of force5d)
+
     ImageName = OutputSlot(stype='string') #: The name of the output image
     
     def __init__(self, force5d=False, *args, **kwargs):
@@ -77,6 +79,7 @@ class OpDataSelection(Operator):
     def internalCleanup(self, *args):
         if len(self._opReaders) > 0:
             self.Image.disconnect()
+            self._NonTransposedImage.disconnect()
             for reader in reversed(self._opReaders):
                 reader.cleanUp()
             self._opReaders = []
@@ -118,6 +121,8 @@ class OpDataSelection(Operator):
             opMetadataInjector.Metadata.setValue( metadata )
             providerSlot = opMetadataInjector.Output
             self._opReaders.append( opMetadataInjector )
+        
+        self._NonTransposedImage.connect(providerSlot)
         
         if self.force5d:
             op5 = Op5ifyer(parent=self)
@@ -167,6 +172,8 @@ class OpDataSelectionGroup( Operator ):
     Image = OutputSlot() # The first dataset. Equivalent to ImageGroup[0]
     AllowLabels = OutputSlot(stype='bool') # Pulled from the first dataset only.
 
+    _NonTransposedImageGroup = OutputSlot(level=1)
+
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
     #  it assumes all the others have already been resized.
@@ -189,12 +196,14 @@ class OpDataSelectionGroup( Operator ):
             # Clean up the old operators
             self.ImageGroup.disconnect()
             self.Image.disconnect()
+            self._NonTransposedImageGroup.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
     
             self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'force5d' : self._force5d },
                                                 broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
             self.ImageGroup.connect( self._opDatasets.Image )
+            self._NonTransposedImageGroup.connect( self._opDatasets._NonTransposedImage )
             self._opDatasets.Dataset.connect( self.DatasetGroup )
             self._opDatasets.ProjectFile.connect( self.ProjectFile )
             self._opDatasets.ProjectDataGroup.connect( self.ProjectDataGroup )
