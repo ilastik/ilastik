@@ -373,13 +373,16 @@ class OpH5WriterBigDataset(Operator):
 
         dataShape=self.Image.meta.shape
         axistags = self.Image.meta.axistags
+        taggedShape = self.Image.meta.getTaggedShape()
         dtype = self.Image.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
 
-        numChannels = dataShape[ axistags.index('c') ]
+        numChannels = 1
+        if 'c' in taggedShape:
+            numChannels = taggedShape['c']
 
         # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
