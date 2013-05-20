@@ -77,6 +77,7 @@ class DataSelectionGui(QWidget):
     def stopAndCleanUp(self):
         for editor in self.volumeEditors.values():
             self.viewerStack.removeWidget( editor )
+            self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
             editor.stopAndCleanUp()
         self.volumeEditors.clear()
 
@@ -122,6 +123,7 @@ class DataSelectionGui(QWidget):
                 if imageSlot in self.volumeEditors.keys():
                     editor = self.volumeEditors[imageSlot]
                     self.viewerStack.removeWidget( editor )
+                    self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
                     editor.stopAndCleanUp()
 
             self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
@@ -519,19 +521,16 @@ class DataSelectionGui(QWidget):
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
-        
-        # Search for the last lane that has any valid role
-        # This would be cleaner in Python 3...
+
+        # Remove all operators that no longer have any connected slots        
         last_valid = -1
         laneIndexes = range( len(self.topLevelOperator.DatasetGroup) )
         for laneIndex, multislot in reversed(zip(laneIndexes, self.topLevelOperator.DatasetGroup)):
-            all_disconnected = True
+            any_ready = False
             for slot in multislot:
-                all_disconnected &= not slot.ready()
-            if not all_disconnected:
-                last_valid = laneIndex
-                break
-        self.topLevelOperator.DatasetGroup.resize( last_valid+1 )
+                any_ready |= slot.ready()
+            if not any_ready:
+                self.topLevelOperator.DatasetGroup.removeSlot( laneIndex, len(self.topLevelOperator.DatasetGroup)-1 )
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
