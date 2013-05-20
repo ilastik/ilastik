@@ -970,7 +970,9 @@ class IlastikShell( QMainWindow ):
             # Use workflow_cmdline_args IF PRESENT
             # To ensure that the workflow is loaded in the same state it was created,
             #  we do not attempt to provide any extra kwargs from the current session.
-            workflow_cmdline_args = map(str, hdf5File["workflow_cmdline_args"][...])
+            workflow_cmdline_args = []
+            if len(hdf5File["workflow_cmdline_args"]) > 0:
+                workflow_cmdline_args = map(str, hdf5File["workflow_cmdline_args"][...])
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."

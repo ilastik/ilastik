@@ -63,7 +63,7 @@ class ProjectManager(object):
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         h5File.create_dataset("workflowName", data=workflow_class.__name__)
-        if workflow_cmdline_args:
+        if workflow_cmdline_args is not None:
             h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args)
         
         return h5File
@@ -129,7 +129,7 @@ class ProjectManager(object):
 
         # Instantiate the workflow.
         self._workflowClass = workflowClass
-        self._workflow_cmdline_args = workflow_cmdline_args
+        self._workflow_cmdline_args = workflow_cmdline_args or []
         self._headless = headless
         
         #the workflow class has to be specified at this point
