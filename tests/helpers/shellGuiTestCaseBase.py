@@ -99,7 +99,7 @@ class ShellGuiTestCaseBase(object):
             QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
         # Use the thread router to launch the shell in the app thread
-        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, cls.workflowClass(), initTest ) )
+        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, None, initTest ) )
         init_complete.wait()
 
     @classmethod

@@ -16,10 +16,6 @@ from ilastik.ilastik_logging import default_config
 default_config.init()
 
 # Ilastik
-from ilastik.utility.pathHelpers import PathComponents
-from ilastik.utility.gui.eventRecorder import EventPlayer
-from ilastik.shell.gui.startShellGui import startShellGui
-
 logger = logging.getLogger(__name__)
 
 def install_thread_excepthook():
@@ -54,7 +50,7 @@ parser.add_argument('--debug', help='Start ilastik in debug mode.', action='stor
 # Example:
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
-parsed_args = parser.parse_args()
+parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
 if parsed_args.start_recording:
@@ -66,6 +62,7 @@ if parsed_args.start_recording:
 
 if parsed_args.project is not None:    
     #convert path to convenient format
+    from ilastik.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.project).totalPath()
     
     def loadProject(shell):
@@ -79,6 +76,7 @@ if parsed_args.exit_on_success:
 if parsed_args.playback_script is not None:
     parsed_args.debug = True # Auto-enable debug mode
     def play_recording(shell):
+        from ilastik.utility.gui.eventRecorder import EventPlayer
         player = EventPlayer(parsed_args.playback_speed)
         player.play_script(parsed_args.playback_script, onfinish)
     init_funcs.append( partial(play_recording) )
@@ -109,6 +107,7 @@ elif not ilastik_config.getboolean('ilastik', 'debug'):
 if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
 
-sys.exit(startShellGui(None,*init_funcs))
+from ilastik.shell.gui.startShellGui import startShellGui
+sys.exit(startShellGui(workflow_cmdline_args,*init_funcs))
 
     

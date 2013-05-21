@@ -35,7 +35,7 @@ from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
-from ilastik.shell.projectManager import ProjectManager, load_dict
+from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
@@ -68,15 +68,6 @@ class ShellActions(object):
         self.importProjectAction = None
         self.QuitAction = None
         
-#===----------------------------------------------------------------------------------------------------------------===
-#=== SideSplitterSizePolicy                                                                                         ===
-#===----------------------------------------------------------------------------------------------------------------===
-
-class SideSplitterSizePolicy(object):
-    Manual            = 0
-    AutoCurrentDrawer = 1
-    AutoLargestDrawer = 2
-
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -188,15 +179,12 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__(self, workflowClass = None, workflow_kwargs=None,
-                 parent = None, flags = Qt.WindowFlags(0),
-                 sideSplitterSizePolicy=SideSplitterSizePolicy.Manual):
+    def __init__( self, parent = None, new_workflow_cmdline_args=None, flags = Qt.WindowFlags(0) ):
         QMainWindow.__init__(self, parent = parent, flags = flags)
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-        self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
-        self.setWorkflowClass(workflowClass, workflow_kwargs)
+        self._new_workflow_cmdline_args = new_workflow_cmdline_args
         
         self.projectManager = None
         self.projectDisplayManager = None
@@ -264,14 +252,8 @@ class IlastikShell( QMainWindow ):
         else:
             return self.projectManager.workflow.applets
     
-    def setWorkflowClass(self, w, kwargs=None):
-        self._workflowClass = w
-        if kwargs is None:
-            kwargs = {}
-        self._workflow_kwargs = kwargs
-    
-    def loadWorkflow(self,i):
-        self.onNewProjectActionTriggered(i)
+    def loadWorkflow(self, workflow_class):
+        self.onNewProjectActionTriggered(workflow_class)
     
     def getWorkflow(self,w = None):
         
@@ -355,7 +337,6 @@ class IlastikShell( QMainWindow ):
                 if not os.path.exists(path):
                     continue
                 b = QToolButton(self.startscreen)
-                #b.setDescription(workflow)
                 b.setAutoRaise(True)
                 b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
                 b.setIcon( QIcon(ilastikIcons.Open) )
@@ -503,12 +484,9 @@ class IlastikShell( QMainWindow ):
         self.enableWorkflow = (self.projectManager is not None)
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
-        if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
-            # Default to a 50-50 split
-            totalSplitterHeight = sum(self.sideSplitter.sizes())
-            self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
-        else:
-            self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
+        # Default to a 50-50 split
+        totalSplitterHeight = sum(self.sideSplitter.sizes())
+        self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
 
     def updateShellProjectDisplay(self):
         """
@@ -519,9 +497,7 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath
-            
-            if self._workflowClass is not None:
-                windowTitle+=" - "+self.projectManager.workflow.workflowName
+            windowTitle += " - " + self.projectManager.workflow.workflowName
             
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
@@ -641,7 +617,6 @@ class IlastikShell( QMainWindow ):
             self.showMenus(applet_index)
             self.refreshAppletDrawer( applet_index )
             
-            self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
             self._refreshDrawerRecursionGuard = False
             
             applet = self._applets[applet_index]
@@ -727,38 +702,6 @@ class IlastikShell( QMainWindow ):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
         return self.appletBar.indexFromItem(drawerTitleItem)
                 
-    def autoSizeSideSplitter(self, sizePolicy):
-        if sizePolicy == SideSplitterSizePolicy.Manual:
-            # In manual mode, don't resize the splitter at all.
-            return
-
-        if sizePolicy == SideSplitterSizePolicy.AutoCurrentDrawer:
-            # Get the height of the current applet drawer
-            rootItem = self.appletBar.invisibleRootItem()
-            appletDrawerItem = rootItem.child(self.currentAppletIndex).child(0)
-            appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-            appletDrawerHeight = appletDrawerWidget.frameSize().height()
-
-        if sizePolicy == SideSplitterSizePolicy.AutoLargestDrawer:
-            appletDrawerHeight = 0
-            # Get the height of the largest drawer in the bar
-            for applet_index in range( len(self._applets) ):
-                rootItem = self.appletBar.invisibleRootItem()
-                appletDrawerItem = rootItem.child(applet_index).child(0)
-                appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-                appletDrawerHeight = max( appletDrawerHeight, appletDrawerWidget.frameSize().height() )
-        
-        # Get total height of the titles in the applet bar (not the widgets)
-        firstItem = self.appletBar.invisibleRootItem().child(0)
-        titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
-        numDrawers = len(self._applets)
-        totalTitleHeight = numDrawers * titleHeight    
-    
-        # Auto-size the splitter height based on the height of the applet bar.
-        totalSplitterHeight = sum(self.sideSplitter.sizes())
-        appletBarHeight = totalTitleHeight + appletDrawerHeight + 10 # Add a small margin so the scroll bar doesn't appear
-        self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
-
     def handleAppletBarClick(self, modelIndex):
         #bug #193
         drawerTitleItem = self.appletBar.invisibleRootItem().child(modelIndex.row())
@@ -867,7 +810,7 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def onNewProjectActionTriggered(self, workflow=None, workflow_kwargs=None):
+    def onNewProjectActionTriggered(self, workflow_class=None):
         logger.debug("New Project action triggered")
         newProjectFilePath = self.getProjectPathToCreate()
         if newProjectFilePath is not None:
@@ -875,12 +818,11 @@ class IlastikShell( QMainWindow ):
             if not self.ensureNoCurrentProject():
                 return
             
-            self.createAndLoadNewProject(newProjectFilePath, workflow, workflow_kwargs)
+            self.createAndLoadNewProject(newProjectFilePath, workflow_class)
             
-    def createAndLoadNewProject(self, newProjectFilePath, workflow, workflow_kwargs=None):
-        self.setWorkflowClass(workflow, workflow_kwargs)
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-        self.loadProject(newProjectFile, newProjectFilePath, False)
+    def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._new_workflow_cmdline_args)
+        self._loadProject(newProjectFile, newProjectFilePath, False)
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -952,7 +894,7 @@ class IlastikShell( QMainWindow ):
 
     def importProject(self, originalPath, newProjectFilePath):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-        self.loadProject(newProjectFile, newProjectFilePath, readOnly=False, importFromPath=originalPath)
+        self._loadProject(newProjectFile, newProjectFilePath, readOnly=False, importFromPath=originalPath)
         
     def getProjectPathToOpen(self, defaultDirectory):
         """
@@ -1003,40 +945,39 @@ class IlastikShell( QMainWindow ):
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.statusBar.showMessage("Loading project %s ..." % projectFilePath)
-            self.loadProject(hdf5File, projectFilePath, readOnly)
+            self._loadProject(hdf5File, projectFilePath, readOnly)
             QApplication.restoreOverrideCursor()
             self.statusBar.clearMessage()
     
-    def loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
+    def _loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
-        workflow = self._workflowClass
 
-        #setup the workflow if none was selected yet
-        if self._workflowClass is None:
-            if "workflowName" in hdf5File.keys():
-                #if workflow is found in file, take it
-                workflowName = hdf5File["workflowName"].value
-                workflow = getWorkflowFromName(workflowName)
-            else:
-                #ask the user to name a workflow
-                workflow = self.getWorkflow()
-            if workflow is None:
-                return
-
-        if "workflow_kwargs" in hdf5File.keys():
-            workflow_kwargs = load_dict(hdf5File["workflow_kwargs"], str)
+        if "workflowName" in hdf5File.keys():
+            #if workflow is found in file, take it
+            workflowName = hdf5File["workflowName"].value
+            workflow_class = getWorkflowFromName(workflowName)
         else:
-            workflow_kwargs = None
+            #ask the user to name a workflow
+            workflow_class = self.getWorkflow()
+        if workflow_class is None:
+            return
 
-        self.setWorkflowClass(workflow, workflow_kwargs)
-        
+        workflow_cmdline_args = None
+        if "workflow_cmdline_args" in hdf5File.keys():
+            # Use workflow_cmdline_args IF PRESENT
+            # To ensure that the workflow is loaded in the same state it was created,
+            #  we do not attempt to provide any extra kwargs from the current session.
+            workflow_cmdline_args = []
+            if len(hdf5File["workflow_cmdline_args"]) > 0:
+                workflow_cmdline_args = map(str, hdf5File["workflow_cmdline_args"][...])
+
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self._workflowClass,
-                                                  workflow_kwargs=self._workflow_kwargs)
+            self.projectManager = ProjectManager( workflow_class,
+                                                  workflow_cmdline_args=workflow_cmdline_args)
             
         except Exception, e:
             traceback.print_exc()
@@ -1136,7 +1077,6 @@ class IlastikShell( QMainWindow ):
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
         
-        self._workflowClass = None
         self.enableWorkflow = False
         self._controlCmds = []
         self._disableCounts = []

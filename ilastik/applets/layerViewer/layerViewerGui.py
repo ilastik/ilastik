@@ -218,7 +218,7 @@ class LayerViewerGui(QWidget):
                                    If slot has 4 channels, this parameter has no effect.
         """
         def getRange(meta):
-            if 'drange' in meta:
+            if meta.drange is not None:
                 return meta.drange
             if meta.dtype == numpy.uint8:
                 return (0, 255)

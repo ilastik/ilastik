@@ -64,6 +64,12 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     def isEditable(self, row):
         return self._op.DatasetGroup[row][self._roleIndex].ready()
 
+    def getNumRoles(self):
+        # Return the number of possible roles in the workflow
+        if self._op.DatasetRoles.ready():
+            return len(self._op.DatasetRoles.value)
+        return 0
+
     def hasInternalPaths(self):
         for mslot in self._op.DatasetGroup:
             if self._roleIndex < len(mslot):

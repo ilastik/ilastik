@@ -6,7 +6,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.thresholdMasking import ThresholdMaskingApplet
 
 class ThresholdMaskingWorkflow(Workflow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, workflow_cmdline_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super(ThresholdMaskingWorkflow, self).__init__(graph=graph, *args, **kwargs)

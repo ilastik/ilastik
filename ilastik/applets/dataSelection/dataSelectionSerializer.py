@@ -67,7 +67,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 if  info.location == DatasetInfo.Location.ProjectInternal \
                 and info.datasetId not in localDataGroup.keys():
                     # Obtain the data from the corresponding output and store it to the project.
-                    dataSlot = self.topLevelOperator.ImageGroup[laneIndex][roleIndex]
+                    dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
                     try:    
                         opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
@@ -85,6 +85,10 @@ class DataSelectionSerializer( AppletSerializer ):
                     localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
                     if dataSlot.meta.drange is not None:
                         localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
+    
+                    # Make sure the dataSlot's axistags are updated with the dataset as we just wrote it
+                    # (The top-level operator may use an Op5ifyer, which changed the axisorder)
+                    info.axistags = dataSlot.meta.axistags
     
                     wroteInternalData = True
 

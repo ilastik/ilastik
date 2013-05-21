@@ -25,10 +25,10 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super( PixelClassificationWorkflow, self ).__init__( graph=graph, *args, **kwargs )
+        super( PixelClassificationWorkflow, self ).__init__( headless, graph=graph, *args, **kwargs )
         self._applets = []
 
         # Applets for training (interactive) workflow 

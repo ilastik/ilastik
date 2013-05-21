@@ -358,12 +358,11 @@ class OpThresholdTwoLevels(Operator):
             self._filSmallRegionsStacker.Images.disconnect()
             
             self._beforeFilterStacker.Images.connect(self.opThreshold1.BeforeSizeFilter)
-            
+
+            # Output may not actually be ready if there aren't any channels yet.
             # assert self.Output.ready()
             # assert self.BeforeSizeFilter.ready()
-            #FIXME: these asserts fail because there is no way to make an operator "partially ready"
-            #assert self.BigRegions.ready()==False
-            
+
         elif curIndex==1:
             self.Output.connect(self._opTimeStacker2.Output)
             self._opCache.Input.connect( self._opTimeStacker2.Output )

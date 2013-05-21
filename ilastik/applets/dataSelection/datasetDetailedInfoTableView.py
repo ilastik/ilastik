@@ -73,7 +73,11 @@ class DatasetDetailedInfoTableView(QTableView):
             editPropertiesAction = QAction( "Edit properties...", menu )
             replaceWithFileAction = QAction( "Replace with file...", menu )
             replaceWithStackAction = QAction( "Replace with stack...", menu )
-            resetSelectedAction = QAction( "Reset", menu )
+            
+            if self.model().getNumRoles() > 1:
+                resetSelectedAction = QAction( "Reset", menu )
+            else:
+                resetSelectedAction = QAction( "Remove", menu )
 
             if row in self.selectedLanes and len(self.selectedLanes) > 1:
                 editable = True

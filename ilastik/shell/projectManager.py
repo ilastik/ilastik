@@ -53,7 +53,7 @@ class ProjectManager(object):
     #########################    
     
     @classmethod
-    def createBlankProjectFile(cls, projectFilePath):
+    def createBlankProjectFile(cls, projectFilePath, workflow_class, workflow_cmdline_args):
         """
         Class method.
         Create a new ilp file at the given path and initialize it with a project version.
@@ -62,8 +62,15 @@ class ProjectManager(object):
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
+        h5File.create_dataset("workflowName", data=workflow_class.__name__)
+        if workflow_cmdline_args is not None:
+            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args)
         
         return h5File
+
+    @classmethod
+    def getWorkflowName(self, projectFile):
+        return str( projectFile['workflowName'][()] )
 
     @classmethod
     def openProjectFile(cls, projectFilePath):
@@ -102,18 +109,17 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, headless=False, workflow_kwargs=None):
+    def __init__(self, workflowClass, headless=False, workflow_cmdline_args=None):
         """
         Constructor.
         
         :param workflowClass: A subclass of ilastik.workflow.Workflow (the class, not an instance).
-        :param hdf5File: An already-open h5py.File, usually created via ``ProjectManager.createBlankProjectFile``
-        :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
-        :param readOnly: Set to True if the project file should NOT be modified.
-        :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
+        :param headless: A bool that is passed to the workflow constructor, 
+                         indicating whether or not the workflow should be opened in 'headless' mode.
+        :param workflow_cmdline_args: A list of strings from the command-line to configure the workflow.
         """
-        if workflow_kwargs is None:
-            workflow_kwargs = {}
+        if workflow_cmdline_args is None:
+            workflow_cmdline_args = []
 
         # Init
         self.workflow = None
@@ -123,12 +129,12 @@ class ProjectManager(object):
 
         # Instantiate the workflow.
         self._workflowClass = workflowClass
-        self._workflow_kwargs = workflow_kwargs
+        self._workflow_cmdline_args = workflow_cmdline_args or []
         self._headless = headless
         
         #the workflow class has to be specified at this point
         assert workflowClass is not None
-        self.workflow = workflowClass(headless=headless, **workflow_kwargs)
+        self.workflow = workflowClass(headless, workflow_cmdline_args)
     
     
     def cleanUp(self):
@@ -187,9 +193,9 @@ class ProjectManager(object):
                 del self.currentProjectFile["workflowName"]
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
 
-            if "workflow_kwargs" in self.currentProjectFile:
-                del self.currentProjectFile["workflow_kwargs"]
-            save_dict(self.currentProjectFile, 'workflow_kwargs', self._workflow_kwargs)
+            if "workflow_cmdline_args" in self.currentProjectFile:
+                del self.currentProjectFile["workflow_cmdline_args"]
+            self.currentProjectFile.create_dataset(name='workflow_cmdline_args', data=self._workflow_cmdline_args)
 
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
@@ -305,6 +311,10 @@ class ProjectManager(object):
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
+        
+        :param hdf5File: An already-open h5py.File, usually created via ``ProjectManager.createBlankProjectFile``
+        :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
+        :param readOnly: Set to True if the project file should NOT be modified.
         """
         assert self.currentProjectFile is None
 
@@ -382,7 +392,7 @@ class ProjectManager(object):
         self._closeCurrentProject()
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(headless=self._headless, **self._workflow_kwargs)
+        self.workflow = self._workflowClass(self._headless, self._workflow_cmdline_args)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)
@@ -396,26 +406,3 @@ class ProjectManager(object):
             self.currentProjectFile = None
             self.currentProjectPath = None
             self.currentProjectIsReadOnly = False
-
-
-
-# utility functions for saving/loading workflow kwargs
-# FIXME: code is similar to SerialDictSlot
-
-def save_dict(group, name, d):
-    sg = group.create_group(name)
-    for key, v in d.iteritems():
-        if isinstance(v, dict):
-            save_dict(sg, key, v)
-        else:
-            sg.create_dataset(str(key), data=v)
-
-def load_dict(group, transform=lambda x: x):
-    result = {}
-    for key in group.keys():
-        if isinstance(group[key], h5py.Group):
-            value = load_dict(group[key])
-        else:
-            value = group[key][()]
-        result[transform(key)] = value
-    return result

@@ -63,7 +63,7 @@ class Workflow( Operator ):
     # Public methods #
     ##################
 
-    def __init__(self, headless, *args, **kwargs):
+    def __init__(self, headless=False, *args, **kwargs):
         """
         Constructor.  Subclasses MUST call this in their own ``__init__`` functions.
         The args and kwargs parameters will be passed directly to the Operator base class.
