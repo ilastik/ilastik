@@ -41,17 +41,17 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
-        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
+#        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
+#        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
         
-        self._drawer.from_time.valueChanged.connect(self._setRanges)
-        self._drawer.from_x.valueChanged.connect(self._setRanges)
-        self._drawer.from_y.valueChanged.connect(self._setRanges)
-        self._drawer.from_z.valueChanged.connect(self._setRanges)
-        self._drawer.to_time.valueChanged.connect(self._setRanges)
-        self._drawer.to_x.valueChanged.connect(self._setRanges)
-        self._drawer.to_y.valueChanged.connect(self._setRanges)
-        self._drawer.to_z.valueChanged.connect(self._setRanges)
+#        self._drawer.from_time.valueChanged.connect(self._setRanges)
+#        self._drawer.from_x.valueChanged.connect(self._setRanges)
+#        self._drawer.from_y.valueChanged.connect(self._setRanges)
+#        self._drawer.from_z.valueChanged.connect(self._setRanges)
+#        self._drawer.to_time.valueChanged.connect(self._setRanges)
+#        self._drawer.to_x.valueChanged.connect(self._setRanges)
+#        self._drawer.to_y.valueChanged.connect(self._setRanges)
+#        self._drawer.to_z.valueChanged.connect(self._setRanges)
         
         
     ###########################################
@@ -84,10 +84,10 @@ class ManualTrackingGui(LayerViewerGui):
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
                 
-                maxt = slot.meta.shape[0] - 1
-                self._setRanges()
-                self._drawer.from_time.setValue(0)                
-                self._drawer.to_time.setValue(maxt)
+#                maxt = slot.meta.shape[0] - 1
+#                self._setRanges()
+#                self._drawer.from_time.setValue(0)                
+#                self._drawer.to_time.setValue(maxt)
             
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
@@ -151,20 +151,20 @@ class ManualTrackingGui(LayerViewerGui):
         if self.topLevelOperatorView.LabelImage.meta.shape:
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape    
             
-            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
-            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
-            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
-            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
-        
-            self._setRanges()
-            self._drawer.from_time.setValue(0)
-            self._drawer.to_time.setValue(maxt) 
-            self._drawer.from_x.setValue(0)
-            self._drawer.to_x.setValue(maxx)
-            self._drawer.from_y.setValue(0)
-            self._drawer.to_y.setValue(maxy)   
-            self._drawer.from_z.setValue(0)    
-            self._drawer.to_z.setValue(maxz)
+#            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+#            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+#            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+#            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
+#        
+#            self._setRanges()
+#            self._drawer.from_time.setValue(0)
+#            self._drawer.to_time.setValue(maxt) 
+#            self._drawer.from_x.setValue(0)
+#            self._drawer.to_x.setValue(maxx)
+#            self._drawer.from_y.setValue(0)
+#            self._drawer.to_y.setValue(maxy)   
+#            self._drawer.from_z.setValue(0)    
+#            self._drawer.to_z.setValue(maxz)
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
@@ -662,13 +662,17 @@ class ManualTrackingGui(LayerViewerGui):
         to_z.setRange(from_z.value(),maxz)
     
     def _getEvents(self):
-        time_range = [int(self._drawer.from_time.value()), int(self._drawer.to_time.value())+1]
-        x_range = [int(self._drawer.from_x.value()), int(self._drawer.to_x.value())+1]
-        y_range = [int(self._drawer.from_y.value()), int(self._drawer.to_y.value())+1]
-        z_range = [int(self._drawer.from_z.value()), int(self._drawer.to_z.value())+1]
-        size_range = [int(self._drawer.from_size.value()), int(self._drawer.to_size.value())+1]
-        
-        oid2tids, alltids = self.mainOperator._getObjects(time_range, x_range, y_range, z_range, size_range, self.misdetIdx)
+#        time_range = [int(self._drawer.from_time.value()), int(self._drawer.to_time.value())+1]
+#        x_range = [int(self._drawer.from_x.value()), int(self._drawer.to_x.value())+1]
+#        y_range = [int(self._drawer.from_y.value()), int(self._drawer.to_y.value())+1]
+#        z_range = [int(self._drawer.from_z.value()), int(self._drawer.to_z.value())+1]
+#        size_range = [int(self._drawer.from_size.value()), int(self._drawer.to_size.value())+1]
+#        
+#        oid2tids, alltids = self.mainOperator._getObjects(time_range, x_range, y_range, z_range, size_range, self.misdetIdx)
+
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        time_range = [0, maxt]
+        oid2tids, alltids = self.mainOperator._getObjects(time_range, self.misdetIdx)
         if self.misdetIdx in alltids:
             alltids.remove(self.misdetIdx)
         divisions = self.mainOperator.divisions
