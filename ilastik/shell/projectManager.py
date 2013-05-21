@@ -195,7 +195,8 @@ class ProjectManager(object):
 
             if "workflow_cmdline_args" in self.currentProjectFile:
                 del self.currentProjectFile["workflow_cmdline_args"]
-            self.currentProjectFile.create_dataset(name='workflow_cmdline_args', data=self._workflow_cmdline_args)
+            if self._workflow_cmdline_args is not None and len(self._workflow_cmdline_args) > 0:
+                self.currentProjectFile.create_dataset(name='workflow_cmdline_args', data=self._workflow_cmdline_args)
 
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
