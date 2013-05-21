@@ -140,7 +140,7 @@ class testOpRegionFeaturesAgainstNumpy(object):
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
         for t in range(nt):
-            npcounts = np.bincount(labelimage[t,...].flat)
+            npcounts = np.bincount(np.asarray(labelimage[t,...].flat, dtype=int))
             counts = feats[t][NAME]["Count"].astype(np.uint32)
             means = feats[t][NAME]["Mean"]
             sum_excl = feats[t][NAME]["Sum in neighborhood"] #sum, not mean, to avoid 0/0

@@ -221,7 +221,8 @@ class TestThresholdTwoLevels(object):
         cc_high = vigra.analysis.labelVolumeWithBackground(th_high.astype(numpy.uint8))
         cc_low = vigra.analysis.labelVolumeWithBackground(th_low.astype(numpy.uint8))
         
-        sizes = numpy.bincount(cc_high.flat)
+        # Must explicitly convert to int on 32-bit systems (mostly for VM testing)
+        sizes = numpy.bincount(numpy.asarray(cc_high.flat, dtype=int))
         new_labels = numpy.zeros((sizes.shape[0]+1,))
         for icomp, comp in enumerate(sizes):
             if comp<self.minSize or comp>self.maxSize:
