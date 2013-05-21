@@ -122,6 +122,7 @@ class OpManualTracking(Operator):
                         oid2tids[t][oid] = self.labels[t][oid]
                         for l in self.labels[t][oid]:
                             alltids.add(l)   
+                        count += 1
                          
             print "at timestep ", t, count, "traxels found"
             
