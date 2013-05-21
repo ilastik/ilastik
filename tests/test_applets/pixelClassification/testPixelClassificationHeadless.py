@@ -57,7 +57,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, PixelClassificationWorkflow, [])
         newProjectFile.close()
         shell.openProjectPath(newProjectFilePath)
         workflow = shell.workflow
