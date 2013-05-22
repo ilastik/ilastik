@@ -431,11 +431,12 @@ class ManualTrackingGui(LayerViewerGui):
             QtGui.QMessageBox.critical(self, "Error", "Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first.", QtGui.QMessageBox.Ok)
-            return
+            return False
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
+        return True
         
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
@@ -445,14 +446,19 @@ class ManualTrackingGui(LayerViewerGui):
         
         track2remove = self._getActiveTrack()
         idx2remove = activeTrackBox.currentIndex()
-        activeTrackBox.removeItem(idx2remove)     
 
         affectedT = []
+        success = True
         for t in self.mainOperator.labels.keys():
             for oid in self.mainOperator.labels[t].keys():
                 if track2remove in self.mainOperator.labels[t][oid]:
-                    self._delLabel(t,oid,track2remove)                    
-                    affectedT.append(t)
+                    if self._delLabel(t,oid,track2remove):                    
+                        affectedT.append(t)
+                    else:
+                        success = False
+        
+        if success:
+            activeTrackBox.removeItem(idx2remove)
         
 #        # delete the track from division events if present:
 #        for key in self.mainOperator.divisions.keys():
@@ -625,9 +631,10 @@ class ManualTrackingGui(LayerViewerGui):
             
             activeTrackBox.setCurrentIndex(row)
             self._currentActiveTrackChanged()
-        else:
-            activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
-            self._currentActiveTrackChanged()
+        else:            
+            if self.lastActiveTrackIdx is not None and self.lastActiveTrackIdx >= 0:
+                activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
+                self._currentActiveTrackChanged()
             
             self._drawer.divEvent.setEnabled(True)
             self._drawer.delTrack.setEnabled(True)
