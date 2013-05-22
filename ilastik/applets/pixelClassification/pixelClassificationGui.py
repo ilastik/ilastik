@@ -21,7 +21,6 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
-from lazyflow.operators.opTempDifference import OpTempDifference
 from lazyflow.operators.generic import OpSubRegion
 
 try:
@@ -264,30 +263,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Add the raw data last (on the bottom)
         inputDataSlot = self.topLevelOperatorView.InputImages        
-        if inputDataSlot.ready():            
-            # provisional: Add the raw data merged with the time feature
-            opTempDiff = OpTempDifference(graph=self)
-            opTempDiff.inputs["Input"].connect(self.topLevelOperatorView.InputImages)
-            tempDiffSlot = opTempDiff.outputs["Output"]     
-            assert tempDiffSlot.ready()       
-            opSubRegion = OpSubRegion(graph=self)
-            opSubRegion.Input.connect( tempDiffSlot )
-            start = [0] * len(tempDiffSlot.meta.shape)
-            channelAxis = inputDataSlot.meta.axistags.channelIndex
-            # TODO: softcoding!
-            inputChannel = 0
-            featureChannelsPerInputChannel = 2
-            start[channelAxis] = inputChannel * featureChannelsPerInputChannel
-            stop = list(tempDiffSlot.meta.shape)
-            stop[channelAxis] = (inputChannel+1) * featureChannelsPerInputChannel
-            opSubRegion.Start.setValue( tuple(start) )
-            opSubRegion.Stop.setValue( tuple(stop) )                        
-            rgbInputLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
-            rgbInputLayer.name = "Temporal Difference"
-            rgbInputLayer.visible = False
-            rgbInputLayer.opacity = 0.4
-            layers.append(rgbInputLayer)
-            
+        if inputDataSlot.ready():                        
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
             inputLayer.name = "Input Data"
             inputLayer.visible = True
