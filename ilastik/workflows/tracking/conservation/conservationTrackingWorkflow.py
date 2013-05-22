@@ -12,7 +12,7 @@ from ilastik.applets.objectExtraction import config
 class ConservationTrackingWorkflow( Workflow ):
     workflowName = "Tracking Workflow (Conservation Tracking)"
 
-    def __init__( self, headless, *args, **kwargs ):
+    def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         super(ConservationTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
