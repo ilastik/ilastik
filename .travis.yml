@@ -15,8 +15,8 @@ install:
    - ln -s /usr/lib/python2.7/dist-packages/sipdistutils.py $VIRTUAL_ENV/lib/python2.7/site-packages/
    - ln -s /usr/lib/python2.7/dist-packages/sipconfig.py $VIRTUAL_ENV/lib/python2.7/site-packages/
    - ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
-   - pip install -r requirements/development-stage1.txt --use-mirrors
-   - pip install -r requirements/development-stage2.txt --use-mirrors
+   - pip install -r .travis_scripts/requirements/development-stage1.txt --use-mirrors
+   - pip install -r .travis_scripts/requirements/development-stage2.txt --use-mirrors
    - sudo sh .travis_scripts/install_vigra.sh $VIRTUAL_ENV
    - git clone http://github.com/ilastik/volumina /tmp/volumina
    - git clone http://github.com/ilastik/lazyflow /tmp/lazyflow
