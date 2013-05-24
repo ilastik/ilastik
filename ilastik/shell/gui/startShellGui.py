@@ -85,15 +85,18 @@ def launchShell(workflow_cmdline_args, *testFuncs):
 
     assert QApplication.instance().thread() == shell.thread()
 
+    
+
     # Start the shell GUI.
     shell.show()
-    if not ilastik.config.cfg.getboolean("ilastik", "debug"):
+    
+    if "--fullscreen" in workflow_cmdline_args:
         shell.showMaximized()
     
     # Run a test (if given)
     for testFunc in testFuncs:
         QTimer.singleShot(0, functools.partial(testFunc, shell) )
-
+    
     # On Mac, the main window needs to be explicitly raised
     shell.raise_()
     QApplication.instance().processEvents()

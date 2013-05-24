@@ -190,6 +190,7 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
         
         self._loaduifile()
+        
         self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
         
@@ -244,7 +245,11 @@ class IlastikShell( QMainWindow ):
         self._recorderGui = EventRecorderGui()
         
         self.errorMessageFilter = ErrorMessageFilter(self)
-
+        
+        windowSize = PreferencesManager().get("shell","startscreenSize")
+        if windowSize is not None:
+            self.resize(*windowSize)
+        
     @property
     def _applets(self):
         if self.projectManager is None:
@@ -1208,6 +1213,8 @@ class IlastikShell( QMainWindow ):
         if self.projectManager is not None:
             self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
+        
+        PreferencesManager().set( 'shell', 'startscreenSize', (self.size().width(),self.size().height()))
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
