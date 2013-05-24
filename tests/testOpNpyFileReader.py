@@ -1,29 +1,31 @@
-from lazyflow.operators.ioOperators import OpNpyFileReader
-import numpy
 import os
+import tempfile
+import numpy
 import lazyflow.graph
+from lazyflow.operators.ioOperators import OpNpyFileReader
 
 class TestOpNpyFileReader(object):
 
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
-        self.testDataFileName = 'NptTestData.npy'
+        tmpDir = tempfile.gettempdir()
+        self.testDataFilePath = os.path.join(tmpDir, 'NpyTestData.npy')
 
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
         for x in range(0,10):
             for y in range(0,11):
                 self.testData[x,y] = x+y
-        numpy.save(self.testDataFileName, self.testData)
+        numpy.save(self.testDataFilePath, self.testData)
 
     def tearDown(self):
         # Clean up: Delete the test file.
-        os.remove(self.testDataFileName)
+        os.remove(self.testDataFilePath)
 
     def test_OpNpyFileReader(self):
         # Now read back our test data using an OpNpyFileReader operator
         npyReader = OpNpyFileReader(graph=self.graph)
-        npyReader.FileName.setValue(self.testDataFileName)
+        npyReader.FileName.setValue(self.testDataFilePath)
 
         # Read the entire file and verify the contents
         a = npyReader.Output[:].wait()
