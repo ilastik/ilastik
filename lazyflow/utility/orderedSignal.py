@@ -1,16 +1,18 @@
+from collections import OrderedDict
+
 class OrderedSignal(object):
     """
     A simple callback mechanism that ensures callbacks occur in the same order as subscription.
     """
     def __init__(self):
-        self.callbacks = []
+        self.callbacks = OrderedDict()
 
     def subscribe(self, fn, **kwargs):
         """
         Subscribe the given callable to be called when the signal is fired.
         If the callable is already subscribed to the signal, it is relocated to the end of the callback list.
         
-        :param fn: The callable to add to this signal's list of callbacks.
+        :param fn: The callable to add to this signal's list of callbacks. Must be hashable.
         :param kwargs: **DEPRECATED**.  Additional parameters to include when the signal calls the function. 
                        Instead of using this parameter, consider binding arguments to your callable 
                        with ``functools.partial`` or (better) ``ilastik.bind``.
@@ -18,7 +20,7 @@ class OrderedSignal(object):
         # Remove this function if we already have it
         self.unsubscribe(fn)
         # Add it to the end
-        self.callbacks.append((fn, kwargs))
+        self.callbacks[fn] = kwargs
 
     def unsubscribe(self, fn):
         """
@@ -36,14 +38,15 @@ class OrderedSignal(object):
                   An equivalent ``ilastik.bind`` object (same target and bound args) will suffice.
         """
         # Find this function and remove its entry
-        for i, (f, kw) in enumerate(self.callbacks):
-            if f == fn:
-                self.callbacks.pop(i)
-                break
+        try:
+            self.callbacks.remove(fn)
+        except AttributeError:
+            pass
+
 
     def __call__(self, *args):
         """
         Emit the signal.  Calls each callback in the subscription list, in order, with the specified arguments.
         """
-        for f, kw in self.callbacks:
+        for f, kw in self.callbacks.items():
             f(*args, **kw)
