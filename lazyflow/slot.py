@@ -1075,9 +1075,7 @@ class Slot(object):
             # have no subslots, then we are NOT ready). Operators that
             # can properly handle an empty multi-input slot should
             # mark the input as optional.
-            ready = len(self._subSlots) > 0
-            for p in self._subSlots:
-                ready &= p.ready()
+            ready = len(self._subSlots) > 0 and all(p.ready() for p in self._subSlots)
         return ready
 
     def _setReady(self):
