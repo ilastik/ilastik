@@ -99,8 +99,6 @@ def createKernel(B, dot, tags, epsilon, kernel, boxConstraints):
     print "boop"
     
     c = np.concatenate((dot, boxValues))  * (-expandedTags) + epsilon
-    import sitecustomize
-    sitecustomize.debug_trace()
     return Q,c
     
 
