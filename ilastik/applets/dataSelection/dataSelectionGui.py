@@ -32,6 +32,7 @@ from dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from dataDetailViewerWidget import DataDetailViewerWidget
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -425,6 +426,7 @@ class DataSelectionGui(QWidget):
             QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
             opTop.DatasetGroup.resize( originalSize )
             raise
+        self.updateInternalPathVisiblity()
 
     def handleDatasetConstraintError(self, filename, ex):
             msg = "Can't use dataset:\n\n" + \
@@ -535,3 +537,10 @@ class DataSelectionGui(QWidget):
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
         editorDlg.exec_()
+
+    def updateInternalPathVisiblity(self):
+        for widget in self._detailViewerWidgets:
+            view = widget.datasetDetailTableView
+            model = view.model()
+            view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
+                                 not model.hasInternalPaths())
