@@ -227,10 +227,11 @@ class EventRecorder( QObject ):
 """
 def playback_events(player):
     import PyQt4.QtCore
-    from PyQt4.QtCore import Qt, QEvent
+    from PyQt4.QtCore import Qt, QEvent, QPoint
     import PyQt4.QtGui
     from ilastik.utility.gui.eventRecorder.objectNameUtils import get_named_object
     from ilastik.utility.gui.eventRecorder.eventRecorder import EventPlayer
+    from ilastik.shell.gui.startShellGui import shell    
 
     player.display_comment("SCRIPT STARTING")
 

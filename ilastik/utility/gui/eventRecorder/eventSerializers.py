@@ -1,5 +1,6 @@
-from PyQt4.QtCore import QEvent 
-from PyQt4.QtGui import QMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, QResizeEvent, QContextMenuEvent, QCloseEvent
+from PyQt4.QtCore import QEvent, QPoint
+from PyQt4.QtGui import QMouseEvent, QWheelEvent, QKeyEvent, QMoveEvent, QWindowStateChangeEvent, \
+                        QResizeEvent, QContextMenuEvent, QCloseEvent, QApplication
 
 from eventTypeNames import get_event_type_name, get_mouse_button_string, get_key_modifiers_string
 
@@ -17,21 +18,32 @@ def event_to_string(e):
     """
     return event_serializers[type(e)](e)
 
-
+##
+## Note: Some events use 'global' coordinates, which are global to the screen (not the main window).
+##       We serialize the coordinates relative to the shell's corner window, 
+##        and then calculate the global coordinates from the relative ones during playback.
+##       This allows us to not worry about moving the main window around the screen while we're recording test cases.
+##
 
 @register_serializer(QMouseEvent)
 def QMouseEvent_to_string(mouseEvent):
+    from ilastik.shell.gui.startShellGui import shell   
     type_name = get_event_type_name( mouseEvent.type() )
     button_str = get_mouse_button_string(mouseEvent.button())
     buttons_str = get_mouse_button_string(mouseEvent.buttons())
     key_str = get_key_modifiers_string(mouseEvent.modifiers())
-    return "PyQt4.QtGui.QMouseEvent({}, {}, {}, {}, {}, {})".format( type_name, mouseEvent.pos(), mouseEvent.globalPos(), button_str, buttons_str, key_str )
+    topLeftCorner_global = shell.mapToGlobal( QPoint(0,0) )
+    relPos = mouseEvent.globalPos() - topLeftCorner_global
+    return "PyQt4.QtGui.QMouseEvent({}, {}, shell.mapToGlobal( QPoint(0,0) ) + {}, {}, {}, {})".format( type_name, mouseEvent.pos(), relPos, button_str, buttons_str, key_str )
 
 @register_serializer(QWheelEvent)
 def QWheelEvent_to_string(wheelEvent):
+    from ilastik.shell.gui.startShellGui import shell   
     buttons_str = get_mouse_button_string(wheelEvent.buttons())
     key_str = get_key_modifiers_string(wheelEvent.modifiers())
-    return "PyQt4.QtGui.QWheelEvent({}, {}, {}, {}, {}, {})".format( wheelEvent.pos(), wheelEvent.globalPos(), wheelEvent.delta(), buttons_str, key_str, wheelEvent.orientation() )
+    topLeftCorner_global = shell.mapToGlobal( QPoint(0,0) )
+    relPos = wheelEvent.globalPos() - topLeftCorner_global
+    return "PyQt4.QtGui.QWheelEvent({}, shell.mapToGlobal( QPoint(0,0) ) + {}, {}, {}, {}, {})".format( wheelEvent.pos(), relPos, wheelEvent.delta(), buttons_str, key_str, wheelEvent.orientation() )
 
 @register_serializer(QKeyEvent)
 def QKeyEvent_to_string(keyEvent):
@@ -50,8 +62,11 @@ def QMoveEvent_to_string(moveEvent):
 
 @register_serializer(QContextMenuEvent)
 def QContextMenuEvent_to_string(contextMenuEvent):
+    from ilastik.shell.gui.startShellGui import shell   
     key_str = get_key_modifiers_string(contextMenuEvent.modifiers())
-    return "PyQt4.QtGui.QContextMenuEvent({}, {}, {}, {})".format( int(contextMenuEvent.reason()), contextMenuEvent.pos(), contextMenuEvent.globalPos(), key_str )
+    topLeftCorner_global = shell.mapToGlobal( QPoint(0,0) )
+    relPos = contextMenuEvent.globalPos() - topLeftCorner_global
+    return "PyQt4.QtGui.QContextMenuEvent({}, {}, shell.mapToGlobal( QPoint(0,0) ) + {}, {})".format( int(contextMenuEvent.reason()), contextMenuEvent.pos(), relPos, key_str )
 
 @register_serializer(QResizeEvent)
 def QResizeEvent_to_string(resizeEvent):
