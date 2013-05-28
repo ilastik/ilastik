@@ -1,18 +1,20 @@
 #Python
 import copy
 import numpy
-import collections
+from collections import OrderedDict, defaultdict
 
-class MetaDict(dict):
+class MetaDict(defaultdict):
     """
     Helper class that manages the dirty state of the meta data of a slot.
     changing a meta dicts attributes sets it _dirty flag True.
     """
-    def __init__(self, other=False):
-        if(other):
-            dict.__init__(self, other)
+    def __init__(self, other=None, *args, **kwargs):
+        if other is None:
+            defaultdict.__init__(self, lambda: None, **kwargs)
         else:
-            dict.__init__(self)
+            defaultdict.__init__(self, lambda: None, other, **kwargs)
+
+        if not '_ready' in self:
             # flag that indicates whether all dependencies of the slot
             # are ready
             self._ready = False
@@ -26,15 +28,8 @@ class MetaDict(dict):
         . notation instead of [] access
 
         """
-        if self.has_key(name):
-            changed = True
-            try:
-                if self[name] == value:
-                    changed = False
-            except KeyError:
-                pass
-            if changed:
-                self["_dirty"] = True
+        if self[name] != value:
+            self["_dirty"] = True
         self[name] = value
         return value
 
@@ -45,20 +40,7 @@ class MetaDict(dict):
         """
         return self[name]
 
-    def __getitem__(self, name):
-        """
-        Does not throw KeyErrors.
-        Non-existant items always return None.
-        """
-        if name in self.keys():
-            return dict.__getitem__(self, name)
-        else:
-            return None
-
     def copy(self):
-        """
-        Construct a copy of the meta dict
-        """
         return MetaDict(dict.copy(self))
 
     def assignFrom(self, other):
@@ -86,7 +68,7 @@ class MetaDict(dict):
         assert self.axistags is not None
         assert self.shape is not None
         keys = self.getAxisKeys()
-        return collections.OrderedDict(zip(keys, self.shape))
+        return OrderedDict(zip(keys, self.shape))
 
     def getAxisKeys(self):
         assert self.axistags is not None
