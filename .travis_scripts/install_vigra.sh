@@ -1,9 +1,8 @@
 #!/bin/bash -v
 
 git clone http://github.com/ukoethe/vigra /tmp/vigra 2> /dev/null
-pushd /tmp/vigra
+cd /tmp/vigra
 git pull
-popd
 mkdir -p /tmp/vigra/build
 cd /tmp/vigra/build
 
