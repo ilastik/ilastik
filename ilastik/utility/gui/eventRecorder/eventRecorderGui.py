@@ -136,6 +136,7 @@ class EventRecorderGui(QWidget):
         self._recorder.insertComment( comment )
         self.commentsDisplayEdit.appendPlainText("--------------------------------------------------")
         self.commentsDisplayEdit.appendPlainText( comment )
+        self.commentsDisplayEdit.appendPlainText("--------------------------------------------------")
         self.newCommentEdit.clear()
 
     def eventFilter(self, watched, event):
