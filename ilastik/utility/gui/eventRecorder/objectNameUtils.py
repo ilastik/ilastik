@@ -96,6 +96,7 @@ def _locate_immediate_child(parent, childname):
         if child.objectName() == "":
             _assign_default_object_name(child)
         if not _has_unique_name(child):
+            assert parent is not None, "All top-level windows must have unique names!"
             _normalize_child_names(parent)
         if child.objectName() == childname:
             return child
