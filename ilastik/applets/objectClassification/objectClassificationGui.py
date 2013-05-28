@@ -38,6 +38,7 @@ from ilastik.applets.objectExtraction.objectExtractionGui import FeatureSelectio
 class FeatureSubSelectionDialog(FeatureSelectionDialog):
     def __init__(self, featureDict, selectedFeatures=None, parent=None, ndim=3):
         super(FeatureSubSelectionDialog, self).__init__(featureDict, selectedFeatures, parent, ndim)
+        self.setObjectName("FeatureSubSelectionDialog")
         self.ui.spinBox_X.setEnabled(False)
         self.ui.spinBox_Y.setEnabled(False)
         self.ui.spinBox_Z.setEnabled(False)

@@ -47,6 +47,7 @@ class FeatureSelectionDialog(QDialog):
             selectedFeatures = defaultdict(list)
         self.selectedFeatures = selectedFeatures
         self.setWindowTitle("Object Features")
+        self.setObjectName("FeatureSelectionDialog")
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/featureSelection.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
