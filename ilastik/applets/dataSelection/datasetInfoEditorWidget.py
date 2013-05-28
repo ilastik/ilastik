@@ -55,6 +55,7 @@ class DatasetInfoEditorWidget(QDialog):
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
+        self.setObjectName("DatasetInfoEditorWidget_Role_{}".format(self._roleIndex))
         self._error_fields = set()
 
         self.okButton.clicked.connect( self.accept )
