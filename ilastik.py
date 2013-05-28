@@ -109,6 +109,6 @@ if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
 
 from ilastik.shell.gui.startShellGui import startShellGui
-sys.exit(startShellGui(workflow_cmdline_args,*init_funcs))
+sys.exit(startShellGui(workflow_cmdline_args, parsed_args.start_recording, *init_funcs))
 
     

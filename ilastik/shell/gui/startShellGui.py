@@ -19,7 +19,21 @@ import functools
 
 shell = None
 
-def startShellGui(workflow_cmdline_args, *testFuncs):
+class EventRecordingApp(QApplication):
+    """
+    Special QApplication subclass that overrides the notify() function.
+    Using notify() instead of QApplication.instance().installEventFilter() is more general,
+    and necessary in 
+    """
+    def __init__(self, *args, **kwargs):
+        super(EventRecordingApp, self).__init__(*args, **kwargs)
+        self._notify = functools.partial( QApplication.notify, QApplication.instance() )
+    
+    def notify(self, receiver, event):
+        f = self._notify
+        return f( receiver, event )
+
+def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
@@ -38,7 +52,12 @@ def startShellGui(workflow_cmdline_args, *testFuncs):
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
-    app = QApplication([])
+    if recording_events:
+        # Only use a special QApplication subclass if we are recording.
+        # Otherwise, it's a performance penalty for every event processed by Qt.
+        app = EventRecordingApp([])
+    else:
+        app = QApplication([])
     _applyStyleSheet(app)
 
     showSplashScreen()
