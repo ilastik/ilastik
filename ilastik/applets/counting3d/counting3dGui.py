@@ -42,8 +42,27 @@ def _listReplace(old, new):
         return new
 
 
+
+
 from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
-from PyQt4.QtGui import QRubberBand
+from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
+        QStylePainter, QPen
+
+
+class RedRubberBand(QRubberBand):
+    def __init__(self,*args,**kwargs):
+        QRubberBand.__init__(self,*args,**kwargs)
+
+#         palette=QPalette()
+#         palette.setBrush(palette.ColorGroup(), palette.foreground(), QBrush( QColor("red") ) );
+#         self.setPalette(palette)
+        
+    def paintEvent(self,pe):
+        painter=QStylePainter(self)
+        pen=QPen(QColor("red"),50)
+        painter.setPen(pen)
+        painter.drawRect(pe.rect())
+        
 
 class ClickReportingInterpreter(QObject):
     rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
@@ -54,7 +73,7 @@ class ClickReportingInterpreter(QObject):
         QObject.__init__(self)
         self.baseInterpret = navigationInterpreter
         self.posModel      = positionModel
-        self.rubberBand = QRubberBand(QRubberBand.Rectangle, editor)
+        self.rubberBand =RedRubberBand(QRubberBand.Rectangle, editor)
         self.origin = QPoint()
         self.originpos = object()
 
@@ -68,7 +87,7 @@ class ClickReportingInterpreter(QObject):
         if event.type() == QEvent.MouseButtonPress:
             pos = [int(i) for i in self.posModel.cursorPos]
             pos = [self.posModel.time] + pos + [self.posModel.channel]
-
+            print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH%%%%%%%%%%%%%"
             if event.button() == Qt.LeftButton:
                 self.origin = QPoint(event.pos())
                 self.originpos = pos
@@ -105,7 +124,7 @@ class BoxInterpreter(QObject):
         QObject.__init__(self)
         self.baseInterpret = navigationInterpreter
         self.posModel      = positionModel
-        self.rubberBand = QRubberBand(QRubberBand.Rectangle, editor)
+        self.rubberBand = RedRubberBand(QRubberBand.Rectangle, editor)
         self.origin = QPoint()
         self.originpos = object()
 
@@ -116,10 +135,12 @@ class BoxInterpreter(QObject):
         self.baseInterpret.stop()
 
     def eventFilter( self, watched, event ):
+        
+        
         if event.type() == QEvent.MouseButtonPress:
             pos = [int(i) for i in self.posModel.cursorPos]
             pos = [self.posModel.time] + pos + [self.posModel.channel]
-
+            print "HHHHHHHHHHHHHHHHHHH"
             if event.button() == Qt.LeftButton:
                 self.origin = QPoint(event.pos())
                 self.originpos = pos
