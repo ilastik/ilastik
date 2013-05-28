@@ -31,7 +31,7 @@ def QMouseEvent_to_string(mouseEvent):
 def QWheelEvent_to_string(wheelEvent):
     buttons_str = get_mouse_button_string(wheelEvent.buttons())
     key_str = get_key_modifiers_string(wheelEvent.modifiers())
-    return "PyQt4.QtGui.QWheelEvent({}, {}, {}, {}, {}, {})".format( wheelEvent.pos(), wheelEvent.delta(), wheelEvent.globalPos(), buttons_str, key_str, wheelEvent.orientation() )
+    return "PyQt4.QtGui.QWheelEvent({}, {}, {}, {}, {}, {})".format( wheelEvent.pos(), wheelEvent.globalPos(), wheelEvent.delta(), buttons_str, key_str, wheelEvent.orientation() )
 
 @register_serializer(QKeyEvent)
 def QKeyEvent_to_string(keyEvent):
