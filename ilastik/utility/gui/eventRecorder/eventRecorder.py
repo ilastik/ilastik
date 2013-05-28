@@ -108,7 +108,7 @@ class EventPlayer(object):
     def _default_comment_display(self, comment):
         print "--------------------------------------------------"
         print comment
-
+        print "--------------------------------------------------"
 
 def has_ancestor(obj, object_type):
     parent = QObject.parent( obj )
