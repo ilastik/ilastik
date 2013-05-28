@@ -326,7 +326,7 @@ class SVR(object):
 
         if self.optimization == "rf":
             from sklearn.ensemble import RandomForestRegressor as RFR
-            svr = RFR(n_jobs = -1)
+            svr = RFR(n_jobs = 1)
             svr.fit(img, dot)
 
             #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
