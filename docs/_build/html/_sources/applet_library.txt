@@ -182,3 +182,39 @@ Object Extraction
 .. currentmodule:: ilastik.plugins
 .. autoclass:: ObjectFeaturesPlugin
    :members:
+
+Object Classification
+---------------------
+
+.. currentmodule:: ilastik.applets.objectClassification.objectClassificationApplet
+.. autoclass:: ObjectClassificationApplet
+   :members:
+
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpObjectClassification
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpObjectTrain
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpObjectPredict
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpRelabelSegmentation
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpMultiRelabelSegmentation
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpMaxLabel
+   :members:
+
+
+
+

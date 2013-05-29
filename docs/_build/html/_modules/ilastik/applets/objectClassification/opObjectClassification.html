@@ -1,0 +1,1121 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.objectClassification.opObjectClassification &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.objectClassification.opObjectClassification</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">vigra</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
+<span class="kn">from</span> <span class="nn">lazyflow.stype</span> <span class="kn">import</span> <span class="n">Opaque</span>
+<span class="kn">from</span> <span class="nn">lazyflow.rtype</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpValueCache</span>
+<span class="kn">from</span> <span class="nn">lazyflow.request</span> <span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">RequestPool</span><span class="p">,</span> <span class="n">RequestLock</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="kn">import</span> <span class="n">OperatorSubView</span><span class="p">,</span> <span class="n">MultiLaneOperatorABC</span><span class="p">,</span> <span class="n">OpMultiLaneWrapper</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.mode</span> <span class="kn">import</span> <span class="n">mode</span>
+<span class="kn">from</span> <span class="nn">ilastik.applets.objectExtraction.opObjectExtraction</span> <span class="kn">import</span> <span class="n">default_features_key</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="n">MISSING_VALUE</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="OpObjectClassification"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification">[docs]</a><span class="k">class</span> <span class="nc">OpObjectClassification</span><span class="p">(</span><span class="n">Operator</span><span class="p">,</span> <span class="n">MultiLaneOperatorABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The top-level operator for object classification.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpObjectClassification&quot;</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Top-level&quot;</span>
+
+    <span class="c">###############</span>
+    <span class="c"># Input slots #</span>
+    <span class="c">###############</span>
+    <span class="n">BinaryImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c"># for visualization</span>
+    <span class="n">RawImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c"># for visualization</span>
+    <span class="n">SegmentationImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#connected components</span>
+
+    <span class="c"># the actual feature arrays</span>
+    <span class="c"># same format as OpObjectExtraction.RegionFeatures</span>
+    <span class="n">ObjectFeatures</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c"># the names of the features computed in the object extraction operator</span>
+    <span class="c"># same format as OpObjectExtraction.ComputedFeatureNames</span>
+    <span class="n">ComputedFeatureNames</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="c"># the features selected in our own GUI</span>
+    <span class="c"># same format as ComputedFeatureNames</span>
+    <span class="n">SelectedFeatures</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="n">LabelsAllowedFlags</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">LabelInputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c"># for reading from disk</span>
+    <span class="n">InputProbabilities</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="c">################</span>
+    <span class="c"># Output slots #</span>
+    <span class="c">################</span>
+    <span class="n">NumLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">Classifier</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">LabelImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">Predictions</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">Probabilities</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+
+    <span class="c"># pulls whatever is in the cache, but does not try to compute more.</span>
+    <span class="n">CachedProbabilities</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+
+    <span class="n">PredictionImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#Labels, by the majority vote</span>
+    <span class="n">PredictionProbabilityChannels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="c"># Classification predictions, enumerated by channel</span>
+    <span class="n">SegmentationImagesOut</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#input connected components</span>
+    <span class="n">BadObjects</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">BadObjectImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">Warnings</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="c"># TODO: not actually used</span>
+    <span class="n">Eraser</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">DeleteLabel</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="c"># GUI-only (not part of the pipeline, but saved to the project)</span>
+    <span class="n">LabelNames</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">LabelColors</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">PmapColors</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpObjectClassification</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># internal operators</span>
+        <span class="n">opkwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span> <span class="o">=</span> <span class="n">OpObjectTrain</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span><span class="n">OpObjectPredict</span><span class="p">,</span> <span class="o">**</span><span class="n">opkwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelsToImage</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span><span class="n">OpRelabelSegmentation</span><span class="p">,</span> <span class="o">**</span><span class="n">opkwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredictionsToImage</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span><span class="n">OpRelabelSegmentation</span><span class="p">,</span> <span class="o">**</span><span class="n">opkwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opProbabilityChannelsToImage</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span><span class="n">OpMultiRelabelSegmentation</span><span class="p">,</span> <span class="o">**</span><span class="n">opkwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToImage</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span><span class="n">OpRelabelSegmentation</span><span class="p">,</span> <span class="o">**</span><span class="n">opkwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToWarningMessage</span> <span class="o">=</span> <span class="n">OpBadObjectsToWarningMessage</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">classifier_cache</span> <span class="o">=</span> <span class="n">OpValueCache</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># connect inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&#39;Labels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&#39;FixClassifier&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&#39;SelectedFeatures&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SelectedFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">classifier_cache</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Input&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&#39;Classifier&#39;</span><span class="p">])</span>
+
+        <span class="c"># Find the highest label in all the label images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span> <span class="o">=</span> <span class="n">OpMaxLabel</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span> <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classifier_cache</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&#39;Output&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;LabelsCount&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&#39;SelectedFeatures&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SelectedFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;ObjectMap&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredictionsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredictionsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;ObjectMap&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">Predictions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredictionsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opProbabilityChannelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opProbabilityChannelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;ObjectMaps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opProbabilityChannelsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Image&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;ObjectMap&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToImage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Features&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToWarningMessage</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;BadObjects&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opTrain</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">InputProbabilities</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputProbabilities</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">[]</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">[]</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PmapColors</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">[]</span> <span class="p">)</span>
+
+        <span class="c"># connect outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NumLabels</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelsToImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">Predictions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">Probabilities</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CachedProbabilities</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">CachedProbabilities</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PredictionImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredictionsToImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PredictionProbabilityChannels</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opProbabilityChannelsToImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opPredict</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjectImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Warnings</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opBadObjectsToWarningMessage</span><span class="o">.</span><span class="n">WarningMessage</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Classifier</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classifier_cache</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImagesOut</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Eraser</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DeleteLabel</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_needLabelTransfer</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">def</span> <span class="nf">handleNewInputImage</span><span class="p">(</span><span class="n">multislot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">def</span> <span class="nf">handleInputReady</span><span class="p">(</span><span class="n">slot</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setupCaches</span><span class="p">(</span><span class="n">multislot</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">slot</span><span class="p">))</span>
+            <span class="n">multislot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span><span class="n">handleInputReady</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span><span class="n">handleNewInputImage</span><span class="p">)</span>
+
+<div class="viewcode-block" id="OpObjectClassification.setupCaches"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.setupCaches">[docs]</a>    <span class="k">def</span> <span class="nf">setupCaches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup the label input to correct dimensions&quot;&quot;&quot;</span>
+        <span class="n">numImages</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resetLabelInputs</span><span class="p">(</span><span class="n">imageIndex</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_resetLabelInputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="c">#initialize, because volumina needs to reshape to use it as a datasink</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">imageIndex</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">imageIndex</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">imageIndex</span><span class="p">,</span> <span class="nb">dict</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">removeLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+        <span class="c">#remove this label from the inputs</span>
+        <span class="k">for</span> <span class="n">islot</span><span class="p">,</span> <span class="n">label_slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">):</span>
+            <span class="n">cur_labels</span> <span class="o">=</span> <span class="n">label_slot</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">nTimes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImages</span><span class="p">[</span><span class="n">islot</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">nLabels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nTimes</span><span class="p">):</span>
+                <span class="n">label_values</span> <span class="o">=</span> <span class="n">cur_labels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+                <span class="n">label_values</span><span class="p">[</span><span class="n">label_values</span><span class="o">==</span><span class="n">label</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="n">nextLabel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">nLabels</span><span class="p">):</span>
+                    <span class="n">label_values</span><span class="p">[</span><span class="n">label_values</span><span class="o">==</span><span class="n">nextLabel</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">nextLabel</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpObjectClassification</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">setupOutputs</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Warnings</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slot</span><span class="o">==</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="p">[</span><span class="n">subindex</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">subindex</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_needLabelTransfer</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+<div class="viewcode-block" id="OpObjectClassification.assignObjectLabel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.assignObjectLabel">[docs]</a>    <span class="k">def</span> <span class="nf">assignObjectLabel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">,</span> <span class="n">coordinate</span><span class="p">,</span> <span class="n">assignedLabel</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the assigned label of the object located at the given coordinate.</span>
+<span class="sd">        Does nothing if no object resides at the given coordinate.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">segmentationShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImagesOut</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">coordinate</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span> <span class="n">segmentationShape</span> <span class="p">),</span> <span class="s">&quot;Coordinate: {} is has the wrong length for this image, which is of shape: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">coordinate</span><span class="p">,</span> <span class="n">segmentationShape</span> <span class="p">)</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">coordinate</span><span class="p">)</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImagesOut</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">slicing</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="n">objIndex</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">objIndex</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># background; FIXME: do not hardcode</span>
+            <span class="k">return</span>
+        <span class="n">timeCoord</span> <span class="o">=</span> <span class="n">coordinate</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">labelslot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span>
+        <span class="n">labelsdict</span> <span class="o">=</span> <span class="n">labelslot</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labelsdict</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">]</span>
+
+        <span class="n">nobjects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">objIndex</span> <span class="o">&gt;=</span> <span class="n">nobjects</span><span class="p">:</span>
+            <span class="n">newLabels</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">objIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),)</span>
+            <span class="n">newLabels</span><span class="p">[:</span><span class="n">nobjects</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[:]</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">newLabels</span>
+        <span class="n">labels</span><span class="p">[</span><span class="n">objIndex</span><span class="p">]</span> <span class="o">=</span> <span class="n">assignedLabel</span>
+        <span class="n">labelsdict</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels</span>
+        <span class="n">labelslot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">labelsdict</span><span class="p">)</span>
+        <span class="n">labelslot</span><span class="o">.</span><span class="n">setDirty</span><span class="p">([(</span><span class="n">timeCoord</span><span class="p">,</span> <span class="n">objIndex</span><span class="p">)])</span>
+
+        <span class="c">#Fill the cache of label bounding boxes, if it was empty</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="c">#it&#39;s the first label for this image</span>
+            <span class="n">feats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]([</span><span class="n">timeCoord</span><span class="p">])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+            <span class="c">#the bboxes should be the same for all channels</span>
+            <span class="n">mins</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span>
+            <span class="n">maxs</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span>
+            <span class="n">bboxes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mins</span>
+            <span class="n">bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">maxs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">timeCoord</span><span class="p">]</span><span class="o">=</span><span class="n">bboxes</span>
+</div>
+    <span class="k">def</span> <span class="nf">triggerTransferLabels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_needLabelTransfer</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="c">#we either don&#39;t have any labels or we just read the project from file</span>
+            <span class="c">#nothing to transfer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_needLabelTransfer</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">timeCoord</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="c">#we have to get new object features to get bounding boxes</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Transferring labels to the new segmentation. This might take a while...&quot;</span><span class="p">)</span>
+            <span class="n">new_feats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectFeatures</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]([</span><span class="n">timeCoord</span><span class="p">])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">coords</span><span class="p">[</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_feats</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span>
+            <span class="n">coords</span><span class="p">[</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_feats</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span>
+            <span class="c">#FIXME: pass axistags</span>
+            <span class="n">new_labels</span><span class="p">,</span> <span class="n">old_labels_lost</span><span class="p">,</span> <span class="n">new_labels_lost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferLabels</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">timeCoord</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">timeCoord</span><span class="p">],</span>
+                <span class="n">coords</span>
+            <span class="p">)</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">timeCoord</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_labels</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">timeCoord</span><span class="p">]</span><span class="o">=</span><span class="n">coords</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">][</span><span class="n">timeCoord</span><span class="p">]</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,))</span> <span class="c">#initialize ambig. labels as normal labels</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_needLabelTransfer</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">return</span> <span class="n">new_labels</span><span class="p">,</span> <span class="n">old_labels_lost</span><span class="p">,</span> <span class="n">new_labels_lost</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">transferLabels</span><span class="p">(</span><span class="n">old_labels</span><span class="p">,</span> <span class="n">old_bboxes</span><span class="p">,</span> <span class="n">new_bboxes</span><span class="p">,</span> <span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+        <span class="c">#transfer labels from old segmentation to new segmentation</span>
+
+        <span class="n">mins_old</span> <span class="o">=</span> <span class="n">old_bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">maxs_old</span> <span class="o">=</span> <span class="n">old_bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">mins_new</span> <span class="o">=</span> <span class="n">new_bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">maxs_new</span> <span class="o">=</span> <span class="n">new_bboxes</span><span class="p">[</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">nobj_old</span> <span class="o">=</span> <span class="n">mins_old</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">nobj_new</span> <span class="o">=</span> <span class="n">mins_new</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">axistags</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">axistags</span> <span class="o">=</span> <span class="s">&quot;xyz&quot;</span>
+        <span class="k">class</span> <span class="nc">bbox</span><span class="p">():</span>
+            <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">minmaxs</span><span class="p">,</span> <span class="n">axistags</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">xmin</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ymin</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;y&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">zmin</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;z&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">xmax</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ymax</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;y&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">zmax</span> <span class="o">=</span> <span class="n">minmaxs</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;z&#39;</span><span class="p">)]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rad_x</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xmax</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">xmin</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cent_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xmin</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">rad_x</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rad_y</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ymax</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">ymin</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cent_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ymin</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">rad_y</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">rad_z</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zmax</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">zmin</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cent_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zmin</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">rad_z</span>
+
+            <span class="nd">@staticmethod</span>
+            <span class="k">def</span> <span class="nf">overlap</span><span class="p">(</span><span class="n">bbox_tuple</span><span class="p">):</span>
+                <span class="n">this</span> <span class="o">=</span> <span class="n">bbox_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">that</span> <span class="o">=</span> <span class="n">bbox_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">over_x</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">rad_x</span><span class="o">+</span><span class="n">that</span><span class="o">.</span><span class="n">rad_x</span> <span class="o">-</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">cent_x</span><span class="o">-</span><span class="n">that</span><span class="o">.</span><span class="n">cent_x</span><span class="p">))</span>
+                <span class="n">over_y</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">rad_y</span><span class="o">+</span><span class="n">that</span><span class="o">.</span><span class="n">rad_y</span> <span class="o">-</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">cent_y</span><span class="o">-</span><span class="n">that</span><span class="o">.</span><span class="n">cent_y</span><span class="p">))</span>
+                <span class="n">over_z</span> <span class="o">=</span> <span class="n">this</span><span class="o">.</span><span class="n">rad_z</span><span class="o">+</span><span class="n">that</span><span class="o">.</span><span class="n">rad_z</span> <span class="o">-</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">this</span><span class="o">.</span><span class="n">cent_z</span><span class="o">-</span><span class="n">that</span><span class="o">.</span><span class="n">cent_z</span><span class="p">))</span>
+
+                <span class="k">if</span> <span class="n">over_x</span><span class="o">&gt;</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">over_y</span><span class="o">&gt;</span><span class="mi">0</span> <span class="ow">and</span> <span class="n">over_z</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">over_x</span><span class="o">*</span><span class="n">over_y</span><span class="o">*</span><span class="n">over_z</span>
+                <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">nonzeros</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">old_labels</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">bboxes_old</span> <span class="o">=</span> <span class="p">[</span><span class="n">bbox</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axistags</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mins_old</span><span class="p">[</span><span class="n">nonzeros</span><span class="p">],</span> <span class="n">maxs_old</span><span class="p">[</span><span class="n">nonzeros</span><span class="p">])]</span>
+        <span class="n">bboxes_new</span> <span class="o">=</span> <span class="p">[</span><span class="n">bbox</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axistags</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mins_new</span><span class="p">,</span> <span class="n">maxs_new</span><span class="p">)]</span>
+
+        <span class="c">#remove background</span>
+        <span class="c">#FIXME: assuming background is 0 again</span>
+        <span class="n">bboxes_new</span> <span class="o">=</span> <span class="n">bboxes_new</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+        <span class="n">double_for_loop</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">bboxes_old</span><span class="p">,</span> <span class="n">bboxes_new</span><span class="p">)</span>
+        <span class="n">overlaps</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">bbox</span><span class="o">.</span><span class="n">overlap</span><span class="p">,</span> <span class="n">double_for_loop</span><span class="p">)</span>
+
+        <span class="n">overlaps</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">overlaps</span><span class="p">)</span>
+        <span class="n">overlaps</span> <span class="o">=</span> <span class="n">overlaps</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">bboxes_old</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">bboxes_new</span><span class="p">)))</span>
+        <span class="n">new_labels</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nobj_new</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span>
+        <span class="n">old_labels_lost</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">old_labels_lost</span><span class="p">[</span><span class="s">&quot;full&quot;</span><span class="p">]</span><span class="o">=</span><span class="p">[]</span>
+        <span class="n">old_labels_lost</span><span class="p">[</span><span class="s">&quot;partial&quot;</span><span class="p">]</span><span class="o">=</span><span class="p">[]</span>
+        <span class="n">new_labels_lost</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">new_labels_lost</span><span class="p">[</span><span class="s">&quot;conflict&quot;</span><span class="p">]</span><span class="o">=</span><span class="p">[]</span>
+        <span class="k">for</span> <span class="n">iobj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">overlaps</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="c">#take the object with maximum overlap</span>
+            <span class="n">overlapsum</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">overlaps</span><span class="p">[</span><span class="n">iobj</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="k">if</span> <span class="n">overlapsum</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">old_labels_lost</span><span class="p">[</span><span class="s">&quot;full&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_x</span><span class="p">,</span> <span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_y</span><span class="p">,</span> <span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_z</span><span class="p">))</span>
+                <span class="k">continue</span>
+            <span class="n">newindex</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">overlaps</span><span class="p">[</span><span class="n">iobj</span><span class="p">,</span> <span class="p">:])</span>
+            <span class="k">if</span> <span class="n">overlapsum</span><span class="o">-</span><span class="n">overlaps</span><span class="p">[</span><span class="n">iobj</span><span class="p">,</span><span class="n">newindex</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="c">#this object overlaps with more than one new object</span>
+                <span class="n">old_labels_lost</span><span class="p">[</span><span class="s">&quot;partial&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_x</span><span class="p">,</span> <span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_y</span><span class="p">,</span> <span class="n">bboxes_old</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_z</span><span class="p">))</span>
+
+            <span class="n">overlaps</span><span class="p">[</span><span class="n">iobj</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">overlaps</span><span class="p">[</span><span class="n">iobj</span><span class="p">,</span> <span class="n">newindex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="c">#doesn&#39;t matter what number&gt;0</span>
+
+        <span class="k">for</span> <span class="n">iobj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">overlaps</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">overlaps</span><span class="p">[:,</span> <span class="n">iobj</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">new_labels</span><span class="p">[</span><span class="n">iobj</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">old_labels</span><span class="p">[</span><span class="n">nonzeros</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]]]</span> <span class="c">#iobj+1 because of the background</span>
+            <span class="k">elif</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">new_labels_lost</span><span class="p">[</span><span class="s">&quot;conflict&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">bboxes_new</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_x</span><span class="p">,</span> <span class="n">bboxes_new</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_y</span><span class="p">,</span> <span class="n">bboxes_new</span><span class="p">[</span><span class="n">iobj</span><span class="p">]</span><span class="o">.</span><span class="n">cent_z</span><span class="p">))</span>
+
+        <span class="n">new_labels</span> <span class="o">=</span> <span class="n">new_labels</span>
+        <span class="n">new_labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span><span class="mi">0</span> <span class="c">#FIXME: hardcoded background value again</span>
+        <span class="k">return</span> <span class="n">new_labels</span><span class="p">,</span> <span class="n">old_labels_lost</span><span class="p">,</span> <span class="n">new_labels_lost</span>
+
+
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">SegmentationImages</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">numLanes</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="s">&quot;Image lanes must be appended.&quot;</span>
+        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">:</span>
+                <span class="n">slot</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numLanes</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        
+
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="o">==</span> <span class="n">finalLength</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">slot</span><span class="o">.</span><span class="n">removeSlot</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ambiguousLabels</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_labelBBoxes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_atleast_nd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Like numpy.atleast_1d and friends, but supports arbitrary ndim,</span>
+<span class="sd">    always puts extra dimensions last, and resizes.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ndim</span> <span class="o">&lt;</span> <span class="n">a</span><span class="o">.</span><span class="n">ndim</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">nnew</span> <span class="o">=</span> <span class="n">ndim</span> <span class="o">-</span> <span class="n">a</span><span class="o">.</span><span class="n">ndim</span>
+    <span class="n">newshape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">nnew</span><span class="p">)</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">newshape</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_concatenate</span><span class="p">(</span><span class="n">arrays</span><span class="p">,</span> <span class="n">axis</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;wrapper to numpy.concatenate that resizes arrays first.&quot;&quot;&quot;</span>
+    <span class="n">arrays</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arrays</span> <span class="k">if</span> <span class="mi">0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arrays</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="n">maxd</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">ndim</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arrays</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">arrays</span><span class="p">:</span>
+        <span class="n">_atleast_nd</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">maxd</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">arrays</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">make_feature_array</span><span class="p">(</span><span class="n">feats</span><span class="p">,</span> <span class="n">selected</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">featlist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">labellist</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">row_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">col_names</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">feats</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">featsMatrix_tmp</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">labellist_tmp</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">lab</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">lab</span><span class="p">)</span>
+            <span class="n">labellist_tmp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lab</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">plugin</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">plugin</span> <span class="o">==</span> <span class="n">default_features_key</span> <span class="ow">or</span> <span class="n">plugin</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">featname</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">plugin</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                <span class="k">if</span> <span class="n">featname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">[</span><span class="n">plugin</span><span class="p">]:</span>
+                    <span class="k">continue</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">plugin</span><span class="p">][</span><span class="n">featname</span><span class="p">]</span>
+                <span class="n">ft</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">squeeze</span><span class="p">())</span>
+                <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">ft</span> <span class="o">=</span> <span class="n">ft</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">featsMatrix_tmp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ft</span><span class="p">)</span>
+                <span class="n">col_names</span><span class="o">.</span><span class="n">extend</span><span class="p">([(</span><span class="n">plugin</span><span class="p">,</span> <span class="n">featname</span><span class="p">)]</span> <span class="o">*</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+
+        <span class="c">#FIXME: we can do it all with just arrays</span>
+        <span class="n">featsMatrix_tmp_combined</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">featsMatrix_tmp</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">featlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">featsMatrix_tmp_combined</span><span class="p">)</span>
+        <span class="n">row_names</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">((</span><span class="n">t</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">featsMatrix_tmp_combined</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+
+        <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">labellist_tmp_combined</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">labellist_tmp</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">labellist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">labellist_tmp_combined</span><span class="p">)</span>
+
+    <span class="n">featMatrix</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">featlist</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">labelsMatrix</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">labellist</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">labelsMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">featMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">featMatrix</span><span class="p">,</span> <span class="n">row_names</span><span class="p">,</span> <span class="n">col_names</span><span class="p">,</span> <span class="n">labelsMatrix</span>
+    <span class="k">return</span> <span class="n">featMatrix</span><span class="p">,</span> <span class="n">row_names</span><span class="p">,</span> <span class="n">col_names</span>
+
+
+<span class="k">def</span> <span class="nf">replace_missing</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">rows</span><span class="o">.</span><span class="n">flat</span><span class="p">))</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">cols</span><span class="o">.</span><span class="n">flat</span><span class="p">))</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">MISSING_VALUE</span>
+    <span class="k">return</span> <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span>
+
+
+<div class="viewcode-block" id="OpObjectTrain"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpObjectTrain">[docs]</a><span class="k">class</span> <span class="nc">OpObjectTrain</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Trains a random forest on all labeled objects.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;TrainRandomForestObjects&quot;</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s">&quot;Train a random forest on multiple images&quot;</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Learning&quot;</span>
+
+    <span class="n">Labels</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">SelectedFeatures</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">FixClassifier</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&quot;bool&quot;</span><span class="p">)</span>
+    <span class="n">ForestCount</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&quot;int&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">Classifier</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">BadObjects</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpObjectTrain</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tree_count</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">FixClassifier</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;FixClassifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ForestCount</span><span class="o">.</span><span class="n">value</span><span class="p">,)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="n">featList</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">all_col_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">labelsList</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c"># will be available at slot self.Warnings</span>
+        <span class="n">all_bad_objects</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">))</span>
+        <span class="n">all_bad_feats</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">selected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SelectedFeatures</span><span class="p">([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Labels</span><span class="p">)):</span>
+            <span class="n">feats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">[</span><span class="n">i</span><span class="p">]([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+            <span class="c"># TODO: we should be able to use self.Labels[i].value,</span>
+            <span class="c"># but the current implementation of Slot.value() does not</span>
+            <span class="c"># do the right thing.</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Labels</span><span class="p">[</span><span class="n">i</span><span class="p">]([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+            <span class="n">featstmp</span><span class="p">,</span> <span class="n">row_names</span><span class="p">,</span> <span class="n">col_names</span><span class="p">,</span> <span class="n">labelstmp</span> <span class="o">=</span> <span class="n">make_feature_array</span><span class="p">(</span><span class="n">feats</span><span class="p">,</span> <span class="n">selected</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">featstmp</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># nothing to do if there are no labels in this image.</span>
+                <span class="k">assert</span> <span class="n">labelstmp</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span>
+                <span class="k">continue</span>
+
+            <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">replace_missing</span><span class="p">(</span><span class="n">featstmp</span><span class="p">)</span>
+
+            <span class="n">featList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">featstmp</span><span class="p">)</span>
+            <span class="n">all_col_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">col_names</span><span class="p">))</span>
+            <span class="n">labelsList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">labelstmp</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+                <span class="n">t</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">row_names</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+                <span class="n">all_bad_objects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+                <span class="n">all_bad_feats</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">col_names</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warnBadObjects</span><span class="p">(</span><span class="n">all_bad_objects</span><span class="p">,</span> <span class="n">all_bad_feats</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_col_names</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;different time slices did not have same features.&#39;</span><span class="p">)</span>
+
+        <span class="n">featMatrix</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">featList</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">labelsMatrix</span> <span class="o">=</span> <span class="n">_concatenate</span><span class="p">(</span><span class="n">labelsList</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;training on matrix of shape {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">featMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">featMatrix</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">labelsMatrix</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">return</span>
+        <span class="n">oob</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ForestCount</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># train and store forests in parallel</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="n">RequestPool</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ForestCount</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+                <span class="k">def</span> <span class="nf">train_and_store</span><span class="p">(</span><span class="n">number</span><span class="p">):</span>
+                    <span class="n">result</span><span class="p">[</span><span class="n">number</span><span class="p">]</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">learning</span><span class="o">.</span><span class="n">RandomForest</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tree_count</span><span class="p">)</span>
+                    <span class="n">oob</span><span class="p">[</span><span class="n">number</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">number</span><span class="p">]</span><span class="o">.</span><span class="n">learnRF</span><span class="p">(</span><span class="n">featMatrix</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labelsMatrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">uint32</span><span class="p">))</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;intermediate oob: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">oob</span><span class="p">[</span><span class="n">number</span><span class="p">]))</span>
+                <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">train_and_store</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="p">)</span>
+                <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">req</span> <span class="p">)</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">clean</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;couldn&#39;t learn classifier&quot;</span><span class="p">)</span>
+            <span class="k">raise</span>
+        <span class="n">oob_total</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">oob</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;training finished, out of bag error: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">oob_total</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">FixClassifier</span> <span class="ow">and</span> \
+           <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;FixClassifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="n">slcs</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ForestCount</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">None</span><span class="p">),)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">slcs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_warnBadObjects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bad_objects</span><span class="p">,</span> <span class="n">bad_feats</span><span class="p">):</span>
+        <span class="n">messageTesting</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bad_feats</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">bad_objects</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">&gt;</span><span class="mi">0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bad_objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span> <span class="ow">or</span> <span class="n">messageTesting</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">{</span><span class="s">&#39;objects&#39;</span><span class="p">:</span> <span class="n">bad_objects</span><span class="p">,</span> <span class="s">&#39;feats&#39;</span><span class="p">:</span> <span class="n">bad_feats</span><span class="p">}</span> <span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="OpObjectPredict"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpObjectPredict">[docs]</a><span class="k">class</span> <span class="nc">OpObjectPredict</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Predicts object labels in a single image.&quot;&quot;&quot;</span>
+    <span class="c"># WARNING: right now we predict and cache a whole time slice. We</span>
+    <span class="c"># expect this to be fast because there are relatively few objects</span>
+    <span class="c"># compared to the number of pixels in pixel classification. If</span>
+    <span class="c"># this should be too slow, we should instead cache at the object</span>
+    <span class="c"># level, and only predict for objects visible in the roi.</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpObjectPredict&quot;</span>
+
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">SelectedFeatures</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">Classifier</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">LabelsCount</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;integer&#39;</span><span class="p">)</span>
+    <span class="n">InputProbabilities</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="n">Predictions</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">Probabilities</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">CachedProbabilities</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">ProbabilityChannels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">BadObjects</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+
+    <span class="c">#SegmentationThreshold = 0.5</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelsCount</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+            <span class="n">nlabels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelsCount</span><span class="p">[:]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">nlabels</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nlabels</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">nlabels</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">oslot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="p">:</span>
+                <span class="n">oslot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+                <span class="n">oslot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+                <span class="n">oslot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="n">oslot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">RequestLock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bad_objects</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">CachedProbabilities</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">]</span>
+
+        <span class="n">times</span> <span class="o">=</span> <span class="n">roi</span><span class="o">.</span><span class="n">_l</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c"># we assume that 0-length requests are requesting everything</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">CachedProbabilities</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span> <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">}</span>
+
+        <span class="n">forests</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;Classifier&quot;</span><span class="p">][:]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">forests</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">forests</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># this happens if there was no data to train with</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">t</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([]))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">)</span>
+
+        <span class="n">feats</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">prob_predictions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">selected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SelectedFeatures</span><span class="p">([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="c"># FIXME: self.prob_cache is shared, so we need to block.</span>
+        <span class="c"># However, this makes prediction single-threaded.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">tmpfeats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">([</span><span class="n">t</span><span class="p">])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                <span class="n">ftmatrix</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">col_names</span> <span class="o">=</span> <span class="n">make_feature_array</span><span class="p">(</span><span class="n">tmpfeats</span><span class="p">,</span> <span class="n">selected</span><span class="p">)</span>
+                <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">replace_missing</span><span class="p">(</span><span class="n">ftmatrix</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bad_objects</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">ftmatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">bad_objects</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">rows</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">ftmatrix</span>
+                <span class="n">prob_predictions</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">forests</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">predict_forest</span><span class="p">(</span><span class="n">_t</span><span class="p">,</span> <span class="n">forest_index</span><span class="p">):</span>
+                <span class="c"># Note: We can&#39;t use RandomForest.predictLabels() here because we&#39;re training in parallel,</span>
+                <span class="c">#        and we have to average the PROBABILITIES from all forests.</span>
+                <span class="c">#       Averaging the label predictions from each forest is NOT equivalent.</span>
+                <span class="c">#       For details please see wikipedia:</span>
+                <span class="c">#       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote</span>
+                <span class="c">#       (^-^)</span>
+                <span class="n">prob_predictions</span><span class="p">[</span><span class="n">_t</span><span class="p">][</span><span class="n">forest_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">forests</span><span class="p">[</span><span class="n">forest_index</span><span class="p">]</span><span class="o">.</span><span class="n">predictProbabilities</span><span class="p">(</span><span class="n">feats</span><span class="p">[</span><span class="n">_t</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+
+            <span class="c"># predict the data with all the forests in parallel</span>
+            <span class="n">pool</span> <span class="o">=</span> <span class="n">RequestPool</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">forests</span><span class="p">):</span>
+                    <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">predict_forest</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="p">)</span>
+                    <span class="n">pool</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
+
+            <span class="n">pool</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">clean</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">:</span>
+                    <span class="c"># prob_predictions is a dict-of-lists-of-arrays, indexed as follows:</span>
+                    <span class="c"># prob_predictions[t][forest_index][object_index, class_index]</span>
+
+                    <span class="c"># Stack the forests together and average them.</span>
+                    <span class="n">stacked_predictions</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">prob_predictions</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="p">)</span>
+                    <span class="n">averaged_predictions</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">average</span><span class="p">(</span> <span class="n">stacked_predictions</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span> <span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">averaged_predictions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">])</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">averaged_predictions</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c"># Background probability is always zero</span>
+
+
+            <span class="k">if</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span> <span class="n">t</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span> <span class="p">}</span>
+            <span class="k">elif</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="p">:</span>
+                <span class="c"># FIXME: Support SegmentationThreshold again...</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">:</span>
+                    <span class="n">prob_sum</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">labels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">labels</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c"># Background gets the zero label</span>
+                <span class="k">return</span> <span class="n">labels</span>
+
+            <span class="k">elif</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">prob_single_channel</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">][:,</span> <span class="n">subindex</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+                                           <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">}</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="c"># no probabilities available for this class; return zeros</span>
+                    <span class="n">prob_single_channel</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))</span>
+                                           <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span><span class="p">}</span>
+                <span class="k">return</span> <span class="n">prob_single_channel</span>
+
+            <span class="k">elif</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span> <span class="n">t</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bad_objects</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">times</span> <span class="p">}</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;Unknown input slot&quot;</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputProbabilities</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prob_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputProbabilities</span><span class="p">([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Predictions</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Probabilities</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ProbabilityChannels</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(())</span>
+
+</div>
+<div class="viewcode-block" id="OpRelabelSegmentation"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpRelabelSegmentation">[docs]</a><span class="k">class</span> <span class="nc">OpRelabelSegmentation</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Takes a segmentation image and a mapping and returns the</span>
+<span class="sd">    mapped image.</span>
+
+<span class="sd">    For instance, map prediction labels onto objects.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpToImage&quot;</span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">ObjectMap</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span> <span class="c">#this is needed to limit dirty propagation to the object bbox</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">assignFrom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectMap</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">mapping_dtype</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">map_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectMap</span><span class="p">([</span><span class="n">t</span><span class="p">])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">tmap</span> <span class="o">=</span> <span class="n">map_</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+            <span class="c"># FIXME: necessary because predictions are returned</span>
+            <span class="c"># enclosed in a list.</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tmap</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">tmap</span> <span class="o">=</span> <span class="n">tmap</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">tmap</span> <span class="o">=</span> <span class="n">tmap</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&quot;FIXME: This should be cached (and reset when the input becomes dirty)&quot;</span><span class="p">)</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tmap</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">idx</span><span class="p">:</span>
+                <span class="n">newTmap</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,))</span> <span class="c"># And maybe this should be cached, too?</span>
+                <span class="n">newTmap</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">tmap</span><span class="p">)]</span> <span class="o">=</span> <span class="n">tmap</span><span class="p">[:]</span>
+                <span class="n">tmap</span> <span class="o">=</span> <span class="n">newTmap</span>
+
+            <span class="n">result</span><span class="p">[</span><span class="n">t</span><span class="o">-</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">tmap</span><span class="p">[</span><span class="n">img</span><span class="p">[</span><span class="n">t</span><span class="o">-</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">]]]</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectMap</span> <span class="ow">or</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">:</span>
+            <span class="c"># this is hacky. the gui&#39;s onClick() function calls</span>
+            <span class="c"># setDirty with a (time, object) pair, while elsewhere we</span>
+            <span class="c"># call setDirty with ().</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">2</span>
+                <span class="c"># for each dirty object, only set its bounding box dirty</span>
+                <span class="n">ts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">))</span>
+                <span class="n">feats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">roi</span><span class="o">.</span><span class="n">_l</span><span class="p">:</span>
+                    <span class="n">min_coords</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&#39;Coord&lt;Minimum&gt;&#39;</span><span class="p">][</span><span class="n">obj</span><span class="p">]</span>
+                    <span class="n">max_coords</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&#39;Coord&lt;Maximum&gt;&#39;</span><span class="p">][</span><span class="n">obj</span><span class="p">]</span>
+                    <span class="n">slcs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">min_coords</span><span class="p">,</span> <span class="n">max_coords</span><span class="p">))</span>
+                    <span class="n">slcs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">t</span><span class="o">+</span><span class="mi">1</span><span class="p">),]</span> <span class="o">+</span> <span class="n">slcs</span> <span class="o">+</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">),]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">slcs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="OpMultiRelabelSegmentation"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpMultiRelabelSegmentation">[docs]</a><span class="k">class</span> <span class="nc">OpMultiRelabelSegmentation</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Takes a segmentation image and multiple mappings and returns the</span>
+<span class="sd">    mapped images.</span>
+
+<span class="sd">    For instance, map prediction probabilities for different classes</span>
+<span class="sd">    onto objects.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpToImageMulti&quot;</span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">ObjectMaps</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span> <span class="c">#this is needed to limit dirty propagation to the object bbox</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpMultiRelabelSegmentation</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_innerOperators</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nmaps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ObjectMaps</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">islot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ObjectMaps</span><span class="p">:</span>
+            <span class="n">op</span> <span class="o">=</span> <span class="n">OpRelabelSegmentation</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">ObjectMap</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">islot</span><span class="p">)</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_innerOperators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">nmaps</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">oslot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="p">):</span>
+            <span class="n">oslot</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_innerOperators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="OpMaxLabel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel">[docs]</a><span class="k">class</span> <span class="nc">OpMaxLabel</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Finds the maximum label value in the input labels.</span>
+
+<span class="sd">    More or less copied from opPixelClassification::OpMaxValue</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpMaxLabel&quot;</span>
+    <span class="n">Inputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpMaxLabel</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output</span> <span class="o">=</span> <span class="mi">0</span> <span class="c">#internal cache</span>
+
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateOutput</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputSlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateOutput</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">updateOutput</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Return the max value of all our inputs</span>
+        <span class="n">maxValue</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">inputSubSlot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Inputs</span><span class="p">):</span>
+            <span class="c"># Only use inputs that are actually configured</span>
+            <span class="k">if</span> <span class="n">inputSubSlot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+                <span class="n">subSlotMax</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">inputSubSlot</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                <span class="c">#subSlotMax = 0</span>
+                <span class="c">#print inputSubSlot.value</span>
+                <span class="c">#for label_array in inputSubSlot.value.items():</span>
+                <span class="c">#    localMax = numpy.max(label_array)</span>
+                <span class="c">#    subSlotMax = max(subSlotMax, localMax)</span>
+
+                <span class="k">if</span> <span class="n">maxValue</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">maxValue</span> <span class="o">=</span> <span class="n">subSlotMax</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">maxValue</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maxValue</span><span class="p">,</span> <span class="n">subSlotMax</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output</span> <span class="o">=</span> <span class="n">maxValue</span>
+
+</div>
+<span class="k">class</span> <span class="nc">OpBadObjectsToWarningMessage</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parses an input dictionary of bad objects and bad features, and</span>
+<span class="sd">    sets an informative warning message to its output slot.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpBadObjectsToWarningMessage&quot;</span>
+    <span class="n">_blockSep</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\n\n</span><span class="s">&quot;</span>
+    <span class="n">_itemSep</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+    <span class="n">_objectSep</span> <span class="o">=</span> <span class="s">&quot;, &quot;</span>
+    <span class="n">_itemIndent</span> <span class="o">=</span> <span class="s">&quot;    &quot;</span>
+
+    <span class="c"># the input slot</span>
+    <span class="c"># format: BadObjects.value = {      </span>
+    <span class="c">#                               &#39;objects&#39;: </span>
+    <span class="c">#                                   {img_key: {time_key: [obj_index, obj_index_2, ...]}}, </span>
+    <span class="c">#                               &#39;feats&#39;: </span>
+    <span class="c">#                                   set()</span>
+    <span class="c">#                            }</span>
+    <span class="n">BadObjects</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="c"># the output slot</span>
+    <span class="c"># format: WarningMessage.value = </span>
+    <span class="c">#           {&#39;title&#39;: a, &#39;text&#39;: b, &#39;info&#39;: c, &#39;details&#39;: d} if message available, the keys &#39;info&#39; and &#39;details&#39; might be omitted</span>
+    <span class="c">#           {} otherwise</span>
+    <span class="n">WarningMessage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpBadObjectsToWarningMessage</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">setupOutputs</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">BadObjects</span><span class="p">[:]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">E</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s">&quot;has no value&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">E</span><span class="p">):</span>
+                <span class="c"># since we are in propagateDirty, the input got reset or we got disconnected, either case</span>
+                <span class="c"># means we don&#39;t have to issue warnings any more</span>
+                <span class="k">return</span>
+            <span class="c"># don&#39;t know what this is about, raise again</span>
+            <span class="k">raise</span>
+            
+        <span class="n">warn</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">warn</span><span class="p">[</span><span class="s">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;Warning&#39;</span>
+        <span class="n">warn</span><span class="p">[</span><span class="s">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;Encountered bad objects/features while training.&#39;</span>
+        <span class="n">warn</span><span class="p">[</span><span class="s">&#39;details&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_formatMessage</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">warn</span><span class="p">[</span><span class="s">&#39;details&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">WarningMessage</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">warn</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_formatMessage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="c"># a) objects</span>
+            <span class="k">if</span> <span class="s">&#39;objects&#39;</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&#39;objects&#39;</span><span class="p">)</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_formatObjects</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s">&#39;objects&#39;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+
+            <span class="c"># b) features</span>
+            <span class="k">if</span> <span class="s">&#39;feats&#39;</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s">&#39;feats&#39;</span><span class="p">)</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_formatFeatures</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s">&#39;feats&#39;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                    
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Encountered unknown bad object keywords: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">keys</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Expected input to be a dictionary, got {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">d</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blockSep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_formatFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemSep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">f</span><span class="p">)))</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Expected bad features to be a set, got {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">f</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="s">&quot;The following features had bad values:&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemSep</span> <span class="o">+</span> <span class="n">a</span>
+        <span class="k">return</span> <span class="n">a</span>
+
+    <span class="k">def</span> <span class="nf">_formatObjects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="mi">1</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># loop image indices</span>
+            <span class="k">for</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">imtext</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemIndent</span><span class="o">*</span><span class="n">indent</span> <span class="o">+</span> <span class="s">&quot;at image index {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+                <span class="n">indent</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+                <span class="c"># just show time slice if more than 1 time slice exists (avoid confusion/obfuscation)</span>
+                <span class="n">needTime</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="n">img</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="o">&gt;</span><span class="mi">1</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="p">[]</span>
+
+                <span class="c"># loop time values</span>
+                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">[</span><span class="n">img</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="c"># object numbers</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objectSep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="n">obj</span><span class="p">[</span><span class="n">img</span><span class="p">][</span><span class="n">t</span><span class="p">]))</span>
+
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemIndent</span><span class="o">*</span><span class="n">indent</span> <span class="o">+</span> <span class="s">&quot;Objects &quot;</span> <span class="o">+</span> <span class="n">c</span>
+                        <span class="k">if</span> <span class="n">needTime</span><span class="p">:</span>
+                            <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemIndent</span><span class="o">*</span><span class="n">indent</span> <span class="o">+</span> <span class="s">&quot;at time {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemSep</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemIndent</span> <span class="o">+</span> <span class="n">c</span>
+                        <span class="n">b</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+
+                <span class="n">indent</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                    <span class="n">a</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_itemSep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">imtext</span><span class="p">]</span> <span class="o">+</span> <span class="n">b</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;bad objects dictionary has wrong format.&quot;</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_itemSep</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&quot;The following objects had bad features:&quot;</span><span class="p">]</span> <span class="o">+</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;&quot;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

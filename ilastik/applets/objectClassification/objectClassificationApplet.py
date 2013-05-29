@@ -5,6 +5,7 @@ from objectClassificationSerializer import ObjectClassificationSerializer
 
 
 class ObjectClassificationApplet(StandardApplet):
+    """An applet for labeling and classifying objects."""
     def __init__(self,
                  name="Object Classification",
                  workflow=None,
