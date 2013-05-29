@@ -582,45 +582,6 @@ performing the actual computation.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpObjectExtraction</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectExtraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction" title="Permalink to this definition">¶</a></dt>
-<dd><p>The top-level operator for the object extraction applet.</p>
-<p>Computes object features and object center images.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpRegionFeatures3d</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d" title="Permalink to this definition">¶</a></dt>
-<dd><p>Produces region features for a 3d image.</p>
-<p>The image MUST have xyzc axes, and is permitted to have t axis of dim 1.</p>
-<p>Inputs:</p>
-<ul class="simple">
-<li>RawVolume : the raw data on which to compute features</li>
-<li>LabelVolume : a volume of connected components for each object
-in the raw data.</li>
-<li>Features : a nested dictionary of features to compute.
-Features[plugin name][feature name][parameter name] = parameter value</li>
-</ul>
-<p>Outputs:</p>
-<ul class="simple">
-<li>Output : a nested dictionary of features.
-Output[plugin name][feature name] = numpy.ndarray</li>
-</ul>
-<dl class="method">
-<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent">
-<tt class="descname">compute_extent</tt><big>(</big><em>i</em>, <em>image</em>, <em>mincoords</em>, <em>maxcoords</em>, <em>axes</em>, <em>margin</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make a slicing to extract object i from the image.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox">
-<tt class="descname">compute_rawbbox</tt><big>(</big><em>image</em>, <em>extent</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_rawbbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox" title="Permalink to this definition">¶</a></dt>
-<dd><p>essentially returns image[extent], preserving all channels.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
 <dt id="ilastik.plugins.ObjectFeaturesPlugin">
 <em class="property">class </em><tt class="descclassname">ilastik.plugins.</tt><tt class="descname">ObjectFeaturesPlugin</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plugins of this class calculate object features.</p>
@@ -712,6 +673,73 @@ dict[feature_name] is a numpy.ndarray with ndim=1</p>
 
 </dd></dl>
 
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpObjectExtraction</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectExtraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the object extraction applet.</p>
+<p>Computes object features and object center images.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpAdaptTimeListRoi</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpAdaptTimeListRoi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapts the t array output from OpRegionFeatures to an Output
+slot that is called with a &#8216;List&#8217; rtype, where the roi is a list
+of time slices, and the output is a dictionary of (time,
+featuredict) pairs.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpCachedRegionFeatures</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpCachedRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Caches the region features computed by OpRegionFeatures.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpRegionFeatures</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes region features on a 5D volume.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpRegionFeatures3d</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces region features for a 3d image.</p>
+<p>The image MUST have xyzc axes, and is permitted to have t axis of dim 1.</p>
+<p>Inputs:</p>
+<ul class="simple">
+<li>RawVolume : the raw data on which to compute features</li>
+<li>LabelVolume : a volume of connected components for each object
+in the raw data.</li>
+<li>Features : a nested dictionary of features to compute.
+Features[plugin name][feature name][parameter name] = parameter value</li>
+</ul>
+<p>Outputs:</p>
+<ul class="simple">
+<li>Output : a nested dictionary of features.
+Output[plugin name][feature name] = numpy.ndarray</li>
+</ul>
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent">
+<tt class="descname">compute_extent</tt><big>(</big><em>i</em>, <em>image</em>, <em>mincoords</em>, <em>maxcoords</em>, <em>axes</em>, <em>margin</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a slicing to extract object i from the image.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox">
+<tt class="descname">compute_rawbbox</tt><big>(</big><em>image</em>, <em>extent</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_rawbbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>essentially returns image[extent], preserving all channels.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpObjectCenterImage</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectCenterImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produceds an image with a cross in the center of each connected
+component.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="object-classification">
 <h3>Object Classification<a class="headerlink" href="#object-classification" title="Permalink to this headline">¶</a></h3>
@@ -773,7 +801,7 @@ onto objects.</p>
 <dt id="ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpMaxLabel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpMaxLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds the maximum label value in the input labels.</p>
-<p>More or less copied from opPixelClassification::OpMaxValue</p>
+<p>More or less copied from opPixelClassification::OpMaxValue.</p>
 </dd></dl>
 
 </div>

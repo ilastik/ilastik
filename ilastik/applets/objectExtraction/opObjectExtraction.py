@@ -339,6 +339,7 @@ class OpRegionFeatures3d(Operator):
             self.Output.setDirty(dirtyStart.values(), dirtyStop.values())
 
 class OpRegionFeatures(Operator):
+    """Computes region features on a 5D volume."""
     RawImage = InputSlot()
     LabelImage = InputSlot()
     Features = InputSlot(rtype=List, stype=Opaque)
@@ -391,6 +392,7 @@ class OpRegionFeatures(Operator):
         pass # Nothing to do...
 
 class OpCachedRegionFeatures(Operator):
+    """Caches the region features computed by OpRegionFeatures."""
     RawImage = InputSlot()
     LabelImage = InputSlot()
     CacheInput = InputSlot(optional=True)
@@ -453,10 +455,11 @@ class OpCachedRegionFeatures(Operator):
         pass # Nothing to do...
 
 class OpAdaptTimeListRoi(Operator):
-    """
-    Adapts the t array output from OpRegionFeatures to an Output slot that is called with a
-    'List' rtype, where the roi is a list of time slices, and the output is a
-    dictionary of (time, featuredict) pairs.
+    """Adapts the t array output from OpRegionFeatures to an Output
+    slot that is called with a 'List' rtype, where the roi is a list
+    of time slices, and the output is a dictionary of (time,
+    featuredict) pairs.
+
     """
     Input = InputSlot()
     Output = OutputSlot(stype=Opaque, rtype=List)
@@ -497,7 +500,10 @@ class OpAdaptTimeListRoi(Operator):
         self.Output.setDirty(List(self.Output, range(roi.start[timeIndex], roi.stop[timeIndex])))
 
 class OpObjectCenterImage(Operator):
-    """A cross in the center of each connected component."""
+    """Produceds an image with a cross in the center of each connected
+    component.
+
+    """
     BinaryImage = InputSlot()
     RegionCenters = InputSlot(rtype=List, stype=Opaque)
     Output = OutputSlot()

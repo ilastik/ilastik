@@ -439,7 +439,7 @@
     <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
         <span class="k">pass</span> <span class="c"># Nothing to do...</span>
 </div>
-<span class="k">class</span> <span class="nc">OpCachedRegionFeatures</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+<div class="viewcode-block" id="OpCachedRegionFeatures"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures">[docs]</a><span class="k">class</span> <span class="nc">OpCachedRegionFeatures</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="n">RawImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
     <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
     <span class="n">CacheInput</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
@@ -500,8 +500,8 @@
 
     <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
         <span class="k">pass</span> <span class="c"># Nothing to do...</span>
-
-<span class="k">class</span> <span class="nc">OpAdaptTimeListRoi</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="OpAdaptTimeListRoi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi">[docs]</a><span class="k">class</span> <span class="nc">OpAdaptTimeListRoi</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Adapts the t array output from OpRegionFeatures to an Output slot that is called with a</span>
 <span class="sd">    &#39;List&#39; rtype, where the roi is a list of time slices, and the output is a</span>
@@ -544,8 +544,8 @@
         <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span>
         <span class="n">timeIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">List</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">],</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">])))</span>
-
-<span class="k">class</span> <span class="nc">OpObjectCenterImage</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="OpObjectCenterImage"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage">[docs]</a><span class="k">class</span> <span class="nc">OpObjectCenterImage</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;A cross in the center of each connected component.&quot;&quot;&quot;</span>
     <span class="n">BinaryImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
     <span class="n">RegionCenters</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
@@ -587,7 +587,7 @@
         <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">RegionCenters</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
 
-
+</div>
 <div class="viewcode-block" id="OpObjectExtraction"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">[docs]</a><span class="k">class</span> <span class="nc">OpObjectExtraction</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Object Extraction&quot;</span>
 

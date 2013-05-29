@@ -171,17 +171,29 @@ Object Extraction
 .. autoclass:: ObjectExtractionApplet
    :members:
 
+.. currentmodule:: ilastik.plugins
+.. autoclass:: ObjectFeaturesPlugin
+   :members:
+
 .. currentmodule:: ilastik.applets.objectExtraction.opObjectExtraction
 .. autoclass:: OpObjectExtraction
    :members:
 
-.. currentmodule:: ilastik.applets.objectExtraction.opObjectExtraction
+.. autoclass:: OpAdaptTimeListRoi
+   :members:
+
+.. autoclass:: OpCachedRegionFeatures
+   :members:
+
+.. autoclass:: OpRegionFeatures
+   :members:
+
 .. autoclass:: OpRegionFeatures3d
    :members:
 
-.. currentmodule:: ilastik.plugins
-.. autoclass:: ObjectFeaturesPlugin
+.. autoclass:: OpObjectCenterImage
    :members:
+
 
 Object Classification
 ---------------------
@@ -190,28 +202,22 @@ Object Classification
 .. autoclass:: ObjectClassificationApplet
    :members:
 
-
 .. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpObjectClassification
    :members:
 
-.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpObjectTrain
    :members:
 
-.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpObjectPredict
    :members:
 
-.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpRelabelSegmentation
    :members:
 
-.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpMultiRelabelSegmentation
    :members:
 
-.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
 .. autoclass:: OpMaxLabel
    :members:
 

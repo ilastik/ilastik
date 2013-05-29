@@ -860,7 +860,7 @@ class OpMultiRelabelSegmentation(Operator):
 class OpMaxLabel(Operator):
     """Finds the maximum label value in the input labels.
 
-    More or less copied from opPixelClassification::OpMaxValue
+    More or less copied from opPixelClassification::OpMaxValue.
 
     """
     name = "OpMaxLabel"
