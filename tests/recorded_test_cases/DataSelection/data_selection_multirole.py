@@ -1,6 +1,6 @@
 
 # Event Recording
-# Started at: 2013-05-28 23:24:04.887372
+# Started at: 2013-05-29 03:33:46.166947
 
 def playback_events(player):
     import PyQt4.QtCore
@@ -18,951 +18,778 @@ def playback_events(player):
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.startupPage.frame.CreateList.qt_scrollarea_viewport.scrollAreaWidgetContents.child_4_QToolButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(107, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(418, 215), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 2.377995 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(49, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(360, 214), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 3.484852 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.startupPage.frame.CreateList.qt_scrollarea_viewport.scrollAreaWidgetContents.child_4_QToolButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(107, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(418, 215), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 2.439313 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(49, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(360, 214), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 3.546279 )
 
     obj = get_named_object( 'MainWindow.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(51, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(691, 378), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 4.59387 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(34, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(674, 373), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 4.913581 )
 
     obj = get_named_object( 'MainWindow.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(51, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(691, 378), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 4.658614 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(674, 374), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 4.932002 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(268, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(586, 157), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 6.867422 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(268, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(586, 158), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 6.964729 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(268, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(586, 166), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 7.029442 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(266, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(584, 180), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 7.033271 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(266, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(584, 181), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 7.409816 )
+    obj = get_named_object( 'MainWindow.QFileDialog.buttonBox.child_1_QPushButton' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(34, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(674, 374), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 4.993418 )
 
     ########################
     player.display_comment("""Add raw""")
     ########################
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.appendButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(69, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(389, 157), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 9.01598 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(199, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(517, 157), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 7.902263 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(69, -11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(389, 165), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.110818 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(199, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(517, 158), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.017487 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(69, -5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(389, 171), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.120365 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(200, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(518, 158), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.065307 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(69, 0), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(389, 176), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.124688 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(200, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(518, 162), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.068423 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(67, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 184), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.127564 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 163), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.115302 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(67, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 186), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.142158 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 166), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.122907 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(67, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 188), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.1594 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 167), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.176191 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(67, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 190), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.178722 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 170), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.18268 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(386, 191), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 9.193026 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 171), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.232991 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(386, 191), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 9.816962 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 173), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.236525 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 11.542708 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 174), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.284259 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 11.623566 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 178), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.295526 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 11.685124 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 179), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.299373 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4d, Qt.NoModifier, """m""", False, 1), 11.734508 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 180), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.343564 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 11.765164 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 181), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.387544 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4d, Qt.NoModifier, """m""", False, 1), 11.797579 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 183), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.398067 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x50, Qt.NoModifier, """p""", False, 1), 11.846844 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 184), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.401856 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x50, Qt.NoModifier, """p""", False, 1), 11.910537 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 185), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.450699 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 12.279256 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(201, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(519, 187), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.454336 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 12.341755 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(200, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(518, 187), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 8.497929 )
 
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 12.56668 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 12.629378 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 12.662245 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 12.679244 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, Qt.NoModifier, """s""", False, 1), 12.758689 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 12.805506 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, Qt.NoModifier, """s""", False, 1), 12.85325 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 12.902535 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 12.918402 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 13.030486 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 13.061371 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2d, Qt.NoModifier, """-""", False, 1), 13.093428 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x44, Qt.NoModifier, """d""", False, 1), 13.108882 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x44, Qt.NoModifier, """d""", False, 1), 13.190444 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 13.222029 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 13.285869 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 13.301687 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 13.349598 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 13.413174 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 13.462336 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 13.462544 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 13.525479 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x43, Qt.NoModifier, """c""", False, 1), 15.462007 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x55, Qt.NoModifier, """u""", False, 1), 15.542479 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x43, Qt.NoModifier, """c""", False, 1), 15.556728 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x55, Qt.NoModifier, """u""", False, 1), 15.60666 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x42, Qt.NoModifier, """b""", False, 1), 15.702425 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x42, Qt.NoModifier, """b""", False, 1), 15.781486 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 15.814516 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 15.878187 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 16.053245 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 16.150853 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 16.2627 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 16.326409 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4f, Qt.NoModifier, """o""", False, 1), 16.406395 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4f, Qt.NoModifier, """o""", False, 1), 16.469828 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x42, Qt.NoModifier, """b""", False, 1), 16.534669 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x42, Qt.NoModifier, """b""", False, 1), 16.613624 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 16.67903 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4a, Qt.NoModifier, """j""", False, 1), 16.699564 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x43, Qt.NoModifier, """c""", False, 1), 16.740411 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 16.756878 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4a, Qt.NoModifier, """j""", False, 1), 16.790471 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x43, Qt.NoModifier, """c""", False, 1), 16.805126 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 16.885947 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 16.966546 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, Qt.NoModifier, """s""", False, 1), 16.998417 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, Qt.NoModifier, """s""", False, 1), 17.046175 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000003, Qt.NoModifier, """""", False, 1), 17.27047 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000003, Qt.NoModifier, """""", False, 1), 17.317008 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000003, Qt.NoModifier, """""", False, 1), 17.398841 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000003, Qt.NoModifier, """""", False, 1), 17.446135 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000003, Qt.NoModifier, """""", False, 1), 17.526413 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000003, Qt.NoModifier, """""", False, 1), 17.606458 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000003, Qt.NoModifier, """""", False, 1), 17.670366 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000003, Qt.NoModifier, """""", False, 1), 17.7179 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000003, Qt.NoModifier, """""", False, 1), 17.797883 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000003, Qt.NoModifier, """""", False, 1), 17.909971 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4a, Qt.NoModifier, """j""", False, 1), 17.974617 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4a, Qt.NoModifier, """j""", False, 1), 18.037993 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 18.053611 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x43, Qt.NoModifier, """c""", False, 1), 18.085258 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 18.13367 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x43, Qt.NoModifier, """c""", False, 1), 18.165552 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 18.246138 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 18.293923 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, Qt.NoModifier, """s""", False, 1), 18.854131 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, Qt.NoModifier, """s""", False, 1), 18.933161 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 19.254196 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 19.349705 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 19.446336 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 19.478226 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x52, Qt.NoModifier, """r""", False, 1), 19.830504 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 19.910579 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x52, Qt.NoModifier, """r""", False, 1), 19.94164 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x57, Qt.NoModifier, """w""", False, 1), 19.990001 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 20.02147 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x57, Qt.NoModifier, """w""", False, 1), 20.100865 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2e, Qt.NoModifier, """.""", False, 1), 20.325824 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2e, Qt.NoModifier, """.""", False, 1), 20.422359 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4e, Qt.NoModifier, """n""", False, 1), 20.613584 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4e, Qt.NoModifier, """n""", False, 1), 20.741414 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x50, Qt.NoModifier, """p""", False, 1), 20.822102 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x50, Qt.NoModifier, """p""", False, 1), 20.900664 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x59, Qt.NoModifier, """y""", False, 1), 20.998759 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x59, Qt.NoModifier, """y""", False, 1), 21.062036 )
-
-    obj = get_named_object( 'QListView' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000004, Qt.NoModifier, """""", False, 1), 21.573443 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.child_3_QSplitterHandle' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(200, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(518, 187), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 8.59077 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.appendButton' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000004, Qt.NoModifier, """""", False, 1), 21.760914 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(39, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 169), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 9.398815 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(39, -14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 169), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 9.473071 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(39, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 184), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 9.821534 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(39, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 184), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 9.826657 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(39, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 185), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 9.83714 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(39, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 187), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 9.856503 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(39, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 187), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 9.944122 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_0' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(39, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 187), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 10.131728 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 12.029059 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 12.103416 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 12.149936 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4d, Qt.NoModifier, """m""", False, 1), 12.205506 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 12.260795 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4d, Qt.NoModifier, """m""", False, 1), 12.268666 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x50, Qt.NoModifier, """p""", False, 1), 12.333915 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x50, Qt.NoModifier, """p""", False, 1), 12.388627 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 12.950312 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 13.045877 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 13.262163 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 13.326201 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 13.366153 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 13.389911 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, Qt.NoModifier, """s""", False, 1), 13.48594 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 13.54212 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, Qt.NoModifier, """s""", False, 1), 13.582308 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 13.621557 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 13.66205 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 13.79758 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 13.85284 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2d, Qt.NoModifier, """-""", False, 1), 13.86181 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x44, Qt.NoModifier, """d""", False, 1), 13.909328 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x44, Qt.NoModifier, """d""", False, 1), 13.982094 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 14.030094 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 14.061868 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 14.077455 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 14.150255 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 14.181012 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 14.230134 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, """/""", False, 1), 14.285928 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, """/""", False, 1), 14.373353 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x43, Qt.NoModifier, """c""", False, 1), 16.518218 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x55, Qt.NoModifier, """u""", False, 1), 16.605449 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x43, Qt.NoModifier, """c""", False, 1), 16.621307 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x55, Qt.NoModifier, """u""", False, 1), 16.654019 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x42, Qt.NoModifier, """b""", False, 1), 16.758187 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 16.838013 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x42, Qt.NoModifier, """b""", False, 1), 16.845205 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 16.89336 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 17.046561 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 17.134008 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 17.19001 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 17.300606 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4f, Qt.NoModifier, """o""", False, 1), 17.388637 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4f, Qt.NoModifier, """o""", False, 1), 17.470066 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x42, Qt.NoModifier, """b""", False, 1), 17.565267 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x42, Qt.NoModifier, """b""", False, 1), 17.621707 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4a, Qt.NoModifier, """j""", False, 1), 17.726644 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x45, Qt.NoModifier, """e""", False, 1), 17.748684 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4a, Qt.NoModifier, """j""", False, 1), 17.822026 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x43, Qt.NoModifier, """c""", False, 1), 17.885058 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x45, Qt.NoModifier, """e""", False, 1), 17.889478 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x43, Qt.NoModifier, """c""", False, 1), 17.958033 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x54, Qt.NoModifier, """t""", False, 1), 18.078489 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x54, Qt.NoModifier, """t""", False, 1), 18.173426 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, Qt.NoModifier, """s""", False, 1), 18.18949 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, Qt.NoModifier, """s""", False, 1), 18.26906 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000020, (Qt.ShiftModifier), """""", False, 1), 19.357822 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 19.438386 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5f, (Qt.ShiftModifier), """_""", False, 1), 19.534273 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000020, Qt.NoModifier, """""", False, 1), 19.669269 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x52, Qt.NoModifier, """r""", False, 1), 19.805499 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x41, Qt.NoModifier, """a""", False, 1), 19.885978 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x52, Qt.NoModifier, """r""", False, 1), 19.917843 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x57, Qt.NoModifier, """w""", False, 1), 19.973055 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x41, Qt.NoModifier, """a""", False, 1), 20.029443 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x57, Qt.NoModifier, """w""", False, 1), 20.069047 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2e, Qt.NoModifier, """.""", False, 1), 20.309636 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2e, Qt.NoModifier, """.""", False, 1), 20.404478 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x4e, Qt.NoModifier, """n""", False, 1), 20.661786 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x4e, Qt.NoModifier, """n""", False, 1), 20.725879 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x50, Qt.NoModifier, """p""", False, 1), 20.84632 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x50, Qt.NoModifier, """p""", False, 1), 20.941563 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x59, Qt.NoModifier, """y""", False, 1), 21.053566 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x59, Qt.NoModifier, """y""", False, 1), 21.125069 )
+
+    obj = get_named_object( 'QListView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000004, Qt.NoModifier, """""", False, 1), 21.22987 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.appendButton' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000004, Qt.NoModifier, """""", False, 1), 21.427638 )
 
     ########################
-    player.display_comment("""Add (wrong) \"other\" data""")
+    player.display_comment("""Add \"other\" (wrong file at first)""")
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(122, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(440, 55), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 25.15357 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(109, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(427, 53), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 26.002038 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(122, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(440, 55), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 25.21885 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(109, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(427, 53), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 26.071451 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.appendButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(78, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 166), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 26.547241 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(48, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(368, 164), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 27.50453 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(78, -8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 168), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.603515 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(48, -18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(368, 165), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.634227 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(78, -3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 173), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.620327 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(48, -15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(368, 168), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.655188 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(80, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(400, 179), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.639951 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(49, -11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(369, 172), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.667167 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(80, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(400, 179), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.644554 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(50, -5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(370, 178), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.685541 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(81, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(401, 183), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.653118 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, -1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 182), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.707671 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(82, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(402, 185), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.670077 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 184), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.718854 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(82, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(402, 185), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.706359 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 184), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 27.723697 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(82, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(402, 187), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 26.721267 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 185), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 28.019097 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(82, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(402, 187), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 26.90864 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 188), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 28.035404 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(51, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 189), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 28.051799 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.addFileButton_role_1' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(51, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(371, 189), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 28.223375 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(122, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 87), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 28.689738 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(132, 31), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(344, 94), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 30.738233 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(122, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 87), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 28.786652 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(122, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 73), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 29.660751 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(122, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 73), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 29.834622 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(120, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(332, 83), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 30.073312 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(120, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(332, 83), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 30.156666 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(132, 31), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(344, 94), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 30.802485 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(29, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(669, 379), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 30.769904 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(16, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(656, 382), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 31.783912 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(29, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(669, 379), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 30.834935 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(16, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(656, 383), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 31.815589 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.buttonBox.child_1_QPushButton' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(16, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(656, 383), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 31.838333 )
 
     ########################
     player.display_comment("""Replace \"other\" data""")
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(68, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 99), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 32.993623 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(64, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(403, 99), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 36.22812 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(68, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 99), Qt.NoModifier), 32.99873 )
+    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(64, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(403, 99), Qt.NoModifier), 36.23245 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 99), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 33.086012 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(403, 99), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 36.348523 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(20, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(408, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 33.47582 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(19, 26), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(403, 100), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.674788 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 29), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(410, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 33.485482 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(21, 28), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(405, 102), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.686111 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(413, 107), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 33.497971 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 30), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(406, 104), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.704825 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(28, 36), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(416, 110), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 33.513594 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 31), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(406, 105), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.724757 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(28, 37), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(416, 111), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 33.529078 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(23, 32), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 106), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.737445 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(28, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(416, 112), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 33.658572 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(23, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 107), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 36.774132 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(28, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(416, 112), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 33.753997 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(23, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 107), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 36.91774 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(23, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(407, 107), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 37.007998 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(122, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 75), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 36.138569 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(122, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 71), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 38.913894 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.splitter.frame.stackedWidget.page.listView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(122, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 75), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 36.207845 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(122, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(334, 71), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 38.989051 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(33, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(673, 378), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 37.123366 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(34, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(674, 386), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 39.739826 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.buttonBox.child_1_QPushButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(33, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(673, 378), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 37.187195 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(34, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(674, 386), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 39.814453 )
 
     ########################
-    player.display_comment("""Edit \"other\" --> swap axes""")
+    player.display_comment("""Edit \"other\" properties: axis order""")
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(91, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(430, 96), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 41.046185 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(164, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(503, 96), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 43.189934 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(91, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(430, 96), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 41.142781 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(91, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(430, 96), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 41.201984 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(91, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(430, 96), Qt.NoModifier), 41.207899 )
+    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(164, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(503, 96), Qt.NoModifier), 43.193777 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(430, 96), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 41.314213 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(503, 96), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 43.268455 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(20, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(431, 96), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.037472 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(19, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(503, 95), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 43.851377 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(21, 27), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(432, 98), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.051563 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(19, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(503, 93), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 43.860985 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(23, 31), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(434, 102), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.069254 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(20, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(504, 92), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 43.879287 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 104), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.087996 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(20, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(504, 91), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 43.895433 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 106), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.10195 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(21, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(505, 89), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 43.916535 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 106), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.270916 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(21, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(505, 89), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 44.144912 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 104), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.290679 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 28), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.302401 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 92), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.319612 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 89), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.33609 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 87), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.352747 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 86), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 42.370296 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(25, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 86), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 42.481376 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_9_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(25, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(436, 86), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 42.560939 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(21, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(505, 89), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 44.216065 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(40, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(280, 111), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 43.816398 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(38, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(278, 117), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 45.947208 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(39, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(279, 111), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.838157 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(37, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(277, 117), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 45.964065 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(36, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(276, 110), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.855407 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(274, 117), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 45.980244 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(32, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(272, 110), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.871416 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(265, 116), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 45.996536 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(262, 110), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.888788 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(9, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(249, 116), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 46.013392 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(9, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(249, 110), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.906731 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-8, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(232, 115), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 46.037734 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-8, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(232, 111), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.922316 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-23, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(217, 115), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 46.046815 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-17, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(223, 112), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.937571 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-37, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(203, 115), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 46.063946 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-27, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(213, 113), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.955032 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-45, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(195, 115), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 46.081649 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(-29, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(211, 114), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 43.972143 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(-45, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(195, 115), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 46.104957 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(-29, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(211, 114), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 44.000179 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5a, Qt.NoModifier, """z""", False, 1), 47.0672 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x5a, Qt.NoModifier, """z""", False, 1), 44.799015 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5a, Qt.NoModifier, """z""", False, 1), 47.130838 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x5a, Qt.NoModifier, """z""", False, 1), 44.894953 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x59, Qt.NoModifier, """y""", False, 1), 47.171635 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x59, Qt.NoModifier, """y""", False, 1), 45.121285 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x59, Qt.NoModifier, """y""", False, 1), 47.228094 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x58, Qt.NoModifier, """x""", False, 1), 45.150887 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x58, Qt.NoModifier, """x""", False, 1), 47.539863 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x59, Qt.NoModifier, """y""", False, 1), 45.182098 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.axesEdit' )
-    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x58, Qt.NoModifier, """x""", False, 1), 45.231396 )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x58, Qt.NoModifier, """x""", False, 1), 47.594842 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(64, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(661, 371), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 47.384329 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(43, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(640, 369), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 49.319628 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_1.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(64, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(661, 371), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 47.458473 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(43, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(640, 369), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 49.405193 )
 
     ########################
-    player.display_comment("""Edit \"other\" again --> Change to \"relative link\"""")
+    player.display_comment("""Edit \"other\" properties again: Choose \"relative link\"""")
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(157, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(496, 96), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 52.282474 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(95, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(434, 104), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 52.882971 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(157, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(496, 96), Qt.NoModifier), 52.288108 )
+    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(95, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(434, 104), Qt.NoModifier), 52.887778 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(496, 96), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 52.408371 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(434, 104), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 52.984592 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(19, 26), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(496, 97), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 52.76648 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(18, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(433, 102), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.824887 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 30), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(499, 101), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 52.788434 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(18, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(433, 101), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.838524 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(24, 34), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(501, 105), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 52.797177 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(18, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(433, 100), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.850863 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(27, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(504, 109), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 52.814735 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(17, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(432, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.949617 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 40), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 111), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 52.830413 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(12, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(427, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.958102 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 40), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 111), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.347942 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(6, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(421, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.977471 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 109), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.363532 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(-32, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(383, 98), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 54.323421 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 27), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 98), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.381345 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(405, 97), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 55.290217 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 87), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.398686 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(405, 97), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 55.391887 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 82), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.408964 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonDblClick, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(405, 97), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 55.437504 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 80), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.418886 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 78), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 53.454256 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(30, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 77), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 53.648132 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_10_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(30, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(507, 77), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 53.719374 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(66, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(405, 97), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 55.582955 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(148, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 197), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 55.823723 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(96, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(336, 200), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 58.150448 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(148, -12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 197), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 55.911984 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(96, -8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(336, 201), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 58.223535 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(96, -8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(336, 201), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 58.229485 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(146, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 215), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.224901 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(89, 0), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(331, 211), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.61833 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(146, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 218), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.242307 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(88, 2), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(330, 213), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.631144 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(146, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 222), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.484435 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(88, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(330, 216), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.648215 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(146, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 226), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.496631 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(87, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(329, 219), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.661844 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(146, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 230), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.508543 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(85, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(327, 222), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.68114 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(145, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 234), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.533193 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(84, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(326, 224), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.696087 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(144, 26), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(386, 237), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.541867 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(83, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(325, 225), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.712773 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(144, 28), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(386, 239), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.564002 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(82, 16), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(324, 227), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.729015 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(143, 32), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(385, 243), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.572875 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(81, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(323, 231), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.744915 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(142, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(384, 246), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.597211 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(80, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(322, 233), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.762035 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(142, 37), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(384, 248), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.607648 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(80, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(322, 235), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.792604 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(141, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(383, 249), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.636475 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(79, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(321, 236), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.805034 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(139, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(381, 249), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.71233 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(79, 26), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(321, 237), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.819701 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(139, 39), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(381, 250), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 56.728887 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(78, 27), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(320, 238), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.829684 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(139, 39), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(381, 250), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 56.866719 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(78, 28), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(320, 239), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.874602 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(139, 39), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(381, 250), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 56.936249 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(77, 29), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(319, 240), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.885301 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(76, 29), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(318, 240), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.896516 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(76, 30), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(318, 241), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.913226 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(76, 31), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(318, 242), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.946416 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(75, 32), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(317, 243), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.967835 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(74, 33), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(316, 244), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 58.978227 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(73, 34), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(315, 245), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 59.028441 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(73, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(315, 246), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 59.082833 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(73, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(315, 246), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 59.149642 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(73, 35), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(315, 246), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 59.254608 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(52, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(649, 366), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 57.799834 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(31, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(628, 379), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 61.875317 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.child_7_DatasetInfoEditorWidget.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(52, 5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(649, 366), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 58.009024 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(31, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(628, 379), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 62.868403 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_4_QHeaderView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(200, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(539, 67), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 65.697732 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_4_QHeaderView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(200, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(539, 67), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 65.814476 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_4_QHeaderView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonDblClick, PyQt4.QtCore.QPoint(200, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(539, 67), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 65.860727 )
+
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.DataDetailViewerWidget.datasetDetailTableView.child_4_QHeaderView.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(200, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(539, 67), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 65.982111 )
 
     ########################
-    player.display_comment("""Edit \"raw\" properties --> Copy to project""")
+    player.display_comment("""Edit \"raw\" properties: Copy to project""")
     ########################
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(38, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(356, 37), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 60.544473 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(50, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(368, 42), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 70.843233 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(37, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(355, 37), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 60.65201 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(37, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(355, 37), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 60.656314 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(50, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(368, 42), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 70.97322 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(46, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(385, 104), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 61.436572 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(35, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(374, 99), (Qt.RightButton), (Qt.RightButton), Qt.NoModifier), 76.360976 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(46, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(385, 104), Qt.NoModifier), 61.443978 )
+    player.post_event( obj,  PyQt4.QtGui.QContextMenuEvent(0, PyQt4.QtCore.QPoint(35, 17), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(374, 99), Qt.NoModifier), 76.3678 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(385, 104), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 61.507233 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(19, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(374, 99), (Qt.RightButton), Qt.NoButton, Qt.NoModifier), 76.453734 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(20, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(386, 104), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.605058 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.758054 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(21, 25), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 104), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.707367 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(28, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(383, 97), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.776334 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(22, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(388, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.733902 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(32, 22), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(387, 96), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.786868 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(23, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(389, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.741841 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(35, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(390, 95), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.806086 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(24, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(390, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.754975 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(36, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(391, 94), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.820813 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(391, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.771742 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(38, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(393, 93), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 76.858261 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(26, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(392, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.788836 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(38, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(393, 93), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 76.971227 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(27, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(393, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.805278 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(29, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(395, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.82646 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 24), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(396, 103), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.97675 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(30, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(396, 102), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 61.989676 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(31, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(397, 100), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 62.020875 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(31, 21), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(397, 100), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 62.032919 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(32, 20), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 99), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 62.0517 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(32, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 97), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 62.064483 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(32, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 97), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 62.193711 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView.child_8_QMenu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(32, 18), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(398, 97), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 62.259281 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(38, 19), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(393, 93), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 77.022015 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(139, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(379, 198), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 64.132586 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(119, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 199), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 78.557019 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(139, -11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(379, 198), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 64.195166 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(119, -10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(359, 199), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 78.663313 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(137, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(379, 215), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.563644 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(113, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(355, 212), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 79.059954 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(137, 4), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(379, 215), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.574077 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(113, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(355, 212), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 79.213087 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(136, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(378, 225), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.589635 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(135, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 224), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.68383 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(135, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 223), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.764088 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(135, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 222), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.780093 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(135, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 222), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.796372 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(135, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 221), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 64.814515 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(135, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 221), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 64.941101 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.storageComboBox.child_1_QFrame.child_1_QListView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(135, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(377, 221), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 65.02725 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(113, 1), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(355, 212), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 79.316726 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(41, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(638, 371), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 65.908414 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(57, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(654, 374), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 80.297908 )
 
     obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.DatasetInfoEditorWidget_Role_0.widget.okButton' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(41, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(638, 371), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 66.017584 )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(57, 13), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(654, 374), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 80.385512 )
 
     ########################
-    player.display_comment("""View Summary tab""")
+    player.display_comment("""Save Project""")
     ########################
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(199, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(517, 42), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 77.742992 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000021, (Qt.ControlModifier), """""", False, 1), 88.325033 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_tabbar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(199, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(517, 42), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 77.837696 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.mainSplitter.appletBar.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(267, 49), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(274, 76), Qt.NoButton, Qt.NoButton, (Qt.ControlModifier)), 88.409401 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(198, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(537, 67), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 79.837708 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.mainSplitter.appletBar.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(264, 52), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(271, 79), Qt.NoButton, Qt.NoButton, (Qt.ControlModifier)), 88.423303 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(199, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(538, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.912675 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.mainSplitter.appletBar.qt_scrollarea_viewport' )
+    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(264, 53), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(271, 80), Qt.NoButton, Qt.NoButton, (Qt.ControlModifier)), 88.443038 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(200, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(539, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.917859 )
+    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.child_3_DataDetailViewerWidget.datasetDetailTableView' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x53, (Qt.ControlModifier), """""", False, 1), 88.461715 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(205, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(544, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.928132 )
+    obj = get_named_object( 'MainWindow' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x53, (Qt.ControlModifier), """""", False, 1), 88.727751 )
 
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(218, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(557, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.940991 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(238, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(577, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.956041 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(258, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(597, 67), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.970601 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(285, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(624, 70), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 79.986508 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(303, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(642, 70), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 80.010005 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(315, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(654, 71), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 80.024848 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(322, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(661, 71), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 80.036877 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(325, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(664, 71), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 80.07092 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(325, 12), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(664, 71), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 80.419656 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(99, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(438, 65), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 81.308265 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(102, 6), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(441, 65), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.392606 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(105, 7), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(444, 66), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.408683 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(119, 9), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(458, 68), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.42447 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(134, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(473, 69), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.441432 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(161, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(500, 69), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.463125 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(178, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(517, 69), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.477983 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(183, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(522, 69), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier), 81.491502 )
-
-    obj = get_named_object( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.splitter.fileInfoTabWidget.qt_tabwidget_stackedwidget.fileInfoTabWidgetPage1.laneSummaryTableView.child_5_QHeaderView.qt_scrollarea_viewport' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(184, 10), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(523, 69), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 81.826702 )
-
-    ########################
-    player.display_comment("""Save project""")
-    ########################
-
-    obj = get_named_object( 'MainWindow.child_7_QMenuBar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(24, 11), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(24, 11), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 48.839549 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(24, -5), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(24, 11), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 48.892886 )
-
-    obj = get_named_object( 'MainWindow.child_7_QMenuBar' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(24, 15), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(25, 19), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.286497 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(25, 3), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(25, 19), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.295966 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(27, 8), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(27, 24), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.302607 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(28, 14), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(28, 30), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.317017 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(31, 23), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(31, 39), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.326071 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(32, 30), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(32, 46), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.347754 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 34), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 50), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.357907 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 38), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 54), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.386116 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 41), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 57), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.39559 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 43), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 59), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.409421 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 44), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 60), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.424628 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 45), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 61), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.448217 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 46), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 62), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.527814 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(34, 47), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 63), Qt.NoButton, Qt.NoButton, Qt.NoModifier), 49.542932 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(34, 47), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 63), (Qt.LeftButton), (Qt.LeftButton), Qt.NoModifier), 49.69123 )
-
-    obj = get_named_object( 'MainWindow.project_menu' )
-    player.post_event( obj,  PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(34, 47), shell.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(34, 63), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier), 49.738475 )
-
+    obj = get_named_object( 'MainWindow' )
+    player.post_event( obj,  PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x1000021, Qt.NoModifier, """""", False, 1), 88.805584 )
 
     player.display_comment("SCRIPT COMPLETE")
