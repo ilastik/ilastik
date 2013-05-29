@@ -1,0 +1,161 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Plugin System &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
+    <link rel="prev" title="Utility Classes" href="utilities.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="plugin-system">
+<span id="id1"></span><h1>Plugin System<a class="headerlink" href="#plugin-system" title="Permalink to this headline">¶</a></h1>
+<p>ilastik uses Yapsy (<a class="reference external" href="http://yapsy.sourceforge.net/">http://yapsy.sourceforge.net/</a>) to manage plugins.
+The functionality is implemented in <tt class="docutils literal"><span class="pre">ilastik/plugins.py</span></tt>.</p>
+<div class="section" id="using-plugins">
+<h2>Using plugins<a class="headerlink" href="#using-plugins" title="Permalink to this headline">¶</a></h2>
+<p>Simply import the ilastik plugin manager, which is an instance of
+<tt class="docutils literal"><span class="pre">yapsy.PluginManager</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">ilastik.plugins</span> <span class="kn">import</span> <span class="n">pluginManager</span>
+</pre></div>
+</div>
+<p>Now you can do things like list all plugins:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">pluginManager</span><span class="o">.</span><span class="n">getAllPlugins</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Or only get plugins of a particular category, such as object feature
+plugins:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">pluginManager</span><span class="o">.</span><span class="n">getPluginsOfCategory</span><span class="p">(</span><span class="s">&#39;ObjectFeatures&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For all the capabilities of the plugin manager class, see the Yapsy
+documentation: <a class="reference external" href="http://yapsy.sourceforge.net/PluginManager.HTML">PluginManager</a>.</p>
+<p>ilastik must be able to find available plugins. The <tt class="docutils literal"><span class="pre">.ilastikrc</span></tt>
+configuration file should contain a line listing all directories to be
+searched recursively:</p>
+<div class="highlight-python"><pre>plugin_directories: ~/.ilastik/plugins,</pre>
+</div>
+<p>In addition, the <tt class="docutils literal"><span class="pre">plugins_default</span></tt> directory, which contains the
+official plugins that are distributed with ilastik, is also searched.</p>
+</div>
+<div class="section" id="writing-a-plugin-category">
+<h2>Writing a plugin category<a class="headerlink" href="#writing-a-plugin-category" title="Permalink to this headline">¶</a></h2>
+<p>Any subclass of <tt class="docutils literal"><span class="pre">Yapsy.IPlugin</span></tt> may be a plugin category. Remember
+to add it to the plugin manager with
+<tt class="docutils literal"><span class="pre">pluginManager.setCategoriesFilter()</span></tt> in <tt class="docutils literal"><span class="pre">ilastik/plugins.py</span></tt>. For
+more information see the Yapsy documentation: <a class="reference external" href="http://yapsy.sourceforge.net/#make-it-your-own.">Make it your own</a>.</p>
+</div>
+<div class="section" id="writing-a-plugin">
+<h2>Writing a plugin<a class="headerlink" href="#writing-a-plugin" title="Permalink to this headline">¶</a></h2>
+<p>See the Yapsy documentation: <a class="reference external" href="http://yapsy.sourceforge.net/PluginManager.html#plugin-description-policy">Plugin description policy</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Plugin System</a><ul>
+<li><a class="reference internal" href="#using-plugins">Using plugins</a></li>
+<li><a class="reference internal" href="#writing-a-plugin-category">Writing a plugin category</a></li>
+<li><a class="reference internal" href="#writing-a-plugin">Writing a plugin</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="utilities.html"
+                        title="previous chapter">Utility Classes</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="dependencies.html"
+                        title="next chapter">Appendix: Development Dependencies</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/plugin_system.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
+             >previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
