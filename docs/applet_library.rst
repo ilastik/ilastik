@@ -164,3 +164,63 @@ Watershed Viewer
 .. autoclass:: VigraWatershedViewerApplet
    :members:
 
+Object Extraction
+-----------------
+
+.. currentmodule:: ilastik.applets.objectExtraction.objectExtractionApplet
+.. autoclass:: ObjectExtractionApplet
+   :members:
+
+.. currentmodule:: ilastik.plugins
+.. autoclass:: ObjectFeaturesPlugin
+   :members:
+
+.. currentmodule:: ilastik.applets.objectExtraction.opObjectExtraction
+.. autoclass:: OpObjectExtraction
+   :members:
+
+.. autoclass:: OpAdaptTimeListRoi
+   :members:
+
+.. autoclass:: OpCachedRegionFeatures
+   :members:
+
+.. autoclass:: OpRegionFeatures
+   :members:
+
+.. autoclass:: OpRegionFeatures3d
+   :members:
+
+.. autoclass:: OpObjectCenterImage
+   :members:
+
+
+Object Classification
+---------------------
+
+.. currentmodule:: ilastik.applets.objectClassification.objectClassificationApplet
+.. autoclass:: ObjectClassificationApplet
+   :members:
+
+.. currentmodule:: ilastik.applets.objectClassification.opObjectClassification
+.. autoclass:: OpObjectClassification
+   :members:
+
+.. autoclass:: OpObjectTrain
+   :members:
+
+.. autoclass:: OpObjectPredict
+   :members:
+
+.. autoclass:: OpRelabelSegmentation
+   :members:
+
+.. autoclass:: OpMultiRelabelSegmentation
+   :members:
+
+.. autoclass:: OpMaxLabel
+   :members:
+
+
+
+

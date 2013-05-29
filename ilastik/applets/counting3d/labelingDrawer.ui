@@ -36,6 +36,13 @@
     <widget class="LabelListView" name="labelListView"/>
    </item>
    <item>
+    <widget class="QPushButton" name="AddBoxButton">
+     <property name="text">
+      <string>Add Box</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QToolButton" name="arrowToolButton">
@@ -61,7 +68,7 @@
      <item>
       <widget class="QToolButton" name="boxToolButton">
        <property name="text">
-        <string>...</string>
+        <string>box</string>
        </property>
       </widget>
      </item>

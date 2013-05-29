@@ -8,7 +8,7 @@ import vigra
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent, QVariant, QString
-from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox
+from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import getPathVariants, PathComponents
@@ -55,6 +55,7 @@ class DatasetInfoEditorWidget(QDialog):
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
+        self.setObjectName("DatasetInfoEditorWidget_Role_{}".format(self._roleIndex))
         self._error_fields = set()
 
         self.okButton.clicked.connect( self.accept )
@@ -121,6 +122,11 @@ class DatasetInfoEditorWidget(QDialog):
         return False
     
     def accept(self):
+        # Un-focus the currently focused widget to ensure that it's data validators were checked.
+        focusWidget = QApplication.focusWidget()
+        if focusWidget is not None:
+            focusWidget.clearFocus()            
+        
         # Can't accept if there are errors.
         if len(self._error_fields) > 0:
             msg = "Error: Invalid data in the following fields:\n"

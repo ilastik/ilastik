@@ -134,6 +134,7 @@ class OpCounting3d( Operator ):
     InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
+    BoxLabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
 
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
@@ -150,6 +151,7 @@ class OpCounting3d( Operator ):
     
     MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
+    BoxLabelImages= OutputSlot(optional = True, level=1) # Input for providing label data from an external source
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
@@ -182,14 +184,17 @@ class OpCounting3d( Operator ):
         # SPECIAL connection: The LabelInputs slot doesn't get it's data  
         #  from the InputImages slot, but it's shape must match.
         self.LabelInputs.connect( self.InputImages )
+        self.BoxLabelInputs.connect( self.InputImages )
 
         # Hook up Labeling Pipeline
         self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self )
         self.opLabelPipeline.RawImage.connect( self.InputImages )
         self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
+        self.opLabelPipeline.BoxLabelInput.connect( self.BoxLabelInputs )
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
                 
+        self.BoxLabelImages.connect( self.opLabelPipeline.BoxOutput)
         # Find the highest label in all the label images
         self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
         self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
@@ -280,6 +285,7 @@ class OpCounting3d( Operator ):
 #        
 #        self.LabelImages.resize(numImages)
         self.LabelInputs.resize(numImages)
+        self.BoxLabelInputs.resize(numImages)
 
         # Special case: We have to set up the shape of our label *input* according to our image input shape
         shapeList = list(self.InputImages[imageIndex].meta.shape)
@@ -290,6 +296,8 @@ class OpCounting3d( Operator ):
             pass
         self.LabelInputs[imageIndex].meta.shape = tuple(shapeList)
         self.LabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
+        self.BoxLabelInputs[imageIndex].meta.shape = tuple(shapeList)
+        self.BoxLabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -315,10 +323,11 @@ class OpCounting3d( Operator ):
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()
-    
+    BoxLabelInput = InputSlot() 
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
     MaxLabel = OutputSlot()
+    BoxOutput = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( OpLabelPipeline, self ).__init__( *args, **kwargs )
@@ -330,6 +339,11 @@ class OpLabelPipeline( Operator ):
         self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.eraser.setValue(100)
 
+        self.opBoxArray = OpBlockedSparseLabelArray( parent = self)
+        self.opBoxArray.Input.connect(self.BoxLabelInput)
+        self.opBoxArray.shape.connect( self.opInputShapeReader.OutputShape )
+        self.opBoxArray.eraser.setValue(100)
+
         # Initialize the delete input to -1, which means "no label".
         # Now changing this input to a positive value will cause label deletions.
         # (The deleteLabel input is monitored for changes.)
@@ -339,6 +353,7 @@ class OpLabelPipeline( Operator ):
         self.Output.connect( self.opLabelArray.Output )
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
         self.MaxLabel.connect( self.opLabelArray.maxLabel )
+        self.BoxOutput.connect( self.opBoxArray.Output )
     
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
@@ -346,6 +361,7 @@ class OpLabelPipeline( Operator ):
         blockDims = dict( filter( lambda (k,v): k in taggedShape, blockDims.items() ) )
         taggedShape.update( blockDims )
         self.opLabelArray.blockShape.setValue( tuple( taggedShape.values() ) )
+        self.opBoxArray.blockShape.setValue( tuple( taggedShape.values() ) )
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__

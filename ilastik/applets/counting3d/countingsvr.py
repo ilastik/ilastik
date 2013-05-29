@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
 from scipy import ndimage
 import sklearn
@@ -288,7 +286,7 @@ class SVR(object):
         img = np.copy(oldImg.reshape((-1,oldImg.shape[-1])))
         if normalize:
             img = sklearn.preprocessing.normalize(img, axis=0)
-        pindices = np.where(dot > 0.1)[0]
+        pindices = np.where(dot > 0.0001)[0]
         #pindices = pindices[:250]
         lindices = None
         if self.DENSITYBOUND:
@@ -328,7 +326,7 @@ class SVR(object):
 
         if self.optimization == "rf":
             from sklearn.ensemble import RandomForestRegressor as RFR
-            svr = RFR(n_jobs = -1)
+            svr = RFR(n_jobs = 1)
             svr.fit(img, dot)
 
             #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
@@ -352,12 +350,12 @@ class SVR(object):
             #Q = kernelize(B, tags, kernel = self.kernel, boxConstraints)
             #Q,c = kernelize(B, dot, tags, epsilon, self.kernel, boxConstraints)
             if self.kernel == "linear":
-                c = dot * (-expandedTags) + epsilon
-                success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
+                #c = dot * (-expandedTags) + epsilon
+                #success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
 
-                #Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
+                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
             #version 1 
-                #success, alpha = optimize(tags, Q, c, self.upperBounds)
+                success, alpha = optimize(tags, Q, c, self.upperBounds)
             else:
                 Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
             #version 1 
@@ -391,7 +389,8 @@ class SVR(object):
         #    self.w, self.b,success = smo.mainLoop()
         elif self.optimization == "svr":
             from sklearn.svm import SVR as skSVR
-            svr = skSVR(C = 1, epsilon = epsilon, kernel = self.kernel, gamma = 0.05)
+            svr = skSVR(C = 1, epsilon = epsilon, kernel = self.kernel, gamma = 0.1)
+            #svr = skSVR(C = 1, kernel = self.kernel, gamma = 0.05)
             C = np.array([self.upperBounds[tag] for tag in expandedTags], dtype = np.float)
             bcValues = []
             bcFeatures = np.array([],dtype = np.float)
@@ -553,32 +552,32 @@ if __name__ == "__main__":
     #img = img[...,[2]]
     #img = img[..., None]
     
-    DENSITYBOUND=True
+    DENSITYBOUND=False
     pMult = 100 #This is the penalty-multiplier for underestimating the density
     lMult = 100 #This is the penalty-multiplier for overestimating the density
 
     #shortExample
-    limits = [120, 200]
+    limits = [50, 200]
     img = img[limits[0]:limits[1],limits[0]:limits[1],:]
     dot = dot[limits[0]:limits[1],limits[0]:limits[1]]
 
    #ToyExample
-    #img = np.ones((9,9,2),dtype=np.float32)
-    #dot = np.zeros((9,9))
-    #img = 1 * img
-    #img[:,:,1] = np.random.rand(*img.shape[:-1])
-    #img[0,0] = 3
-    #img[1,1] = 3
-    #img[3:6,3:6] = 50
-    #dot[4,4] = 1
-    #dot[5,5] = 1
-    #dot[0,0] = 2
-    #dot[1,1] = 2
+    img = np.ones((9,9,2),dtype=np.float32)
+    dot = np.zeros((9,9))
+    img = 1 * img
+    img[:,:,1] = np.random.rand(*img.shape[:-1])
+    img[0,0] = 3
+    img[1,1] = 3
+    img[3:6,3:6] = 50
+    dot[4,4] = 1
+    dot[5,5] = 1
+    dot[0,0] = 2
+    dot[1,1] = 2
 
     backup_image = np.copy(img)
     Counter = SVR(pMult, lMult, DENSITYBOUND, kernel = "linear", optimization =
                  "svr")
-    sigma = [2]
+    sigma = [0]
     testimg, testdot, testmapping, testtags = Counter.prepareData(img, dot,
                                                                   sigma,
                                                                   normalize =
@@ -614,15 +613,20 @@ if __name__ == "__main__":
     print "prediction"
     #print img
     #print newdot
-    print "sum", np.sum(newdot) / 255
-    
-    fig = plt.figure()
-    fig.add_subplot(1,3,1)
-    plt.imshow(testimg[...,0].astype('uint8').reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
-    fig.add_subplot(1,3,2)
-    plt.imshow(newdot.reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
-    fig.add_subplot(1,3,3)
-    plt.imshow(testdot.reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
+    print "sum", np.sum(newdot) / 1
+    try: 
+        import matplotlib.pyplot as plt
+        import matplotlib
+        fig = plt.figure()
+        fig.add_subplot(1,3,1)
+        plt.imshow(testimg[...,0].astype('uint8').reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
+        fig.add_subplot(1,3,2)
+        plt.imshow(newdot.reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
+        fig.add_subplot(1,3,3)
+        plt.imshow(testdot.reshape(backup_image.shape[:-1]), cmap=matplotlib.cm.gray)
+        plt.show()
+    except:
+        pass
     #print Counter.w, Counter.b
     #debug_trace()
     #
@@ -646,4 +650,3 @@ if __name__ == "__main__":
     #    m.addVar()
 
 
-    plt.show()

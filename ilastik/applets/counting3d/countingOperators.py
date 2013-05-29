@@ -27,7 +27,8 @@ class OpTrainCounter(Operator):
                   InputSlot("OverMult", value = 100, stype = "float"), 
                   InputSlot("SelectedOption", 
                             value = {"optimization" : "svr", "kernel" : "rbf"},
-                            stype = "object")
+                            stype = "object"),
+                  InputSlot("BoxConstraints", optional = True)
                  ]
     outputSlots = [OutputSlot("Classifier")]
     options = SVR.options
@@ -107,7 +108,7 @@ class OpTrainCounter(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
+            self.outputs["Classifier"].setDirty((slice(None),))
 
 
 

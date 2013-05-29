@@ -59,6 +59,7 @@ class FeatureSelectionDialog(QDialog):
         self.populate()
         self.ndim = ndim
         self.set_margin()
+        self.setObjectName("FeatureSelectionDialog")
 
     def populate(self):
         self.ui.treeWidget.setColumnCount(1)

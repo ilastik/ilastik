@@ -12,8 +12,12 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 
 # HCI
 from lazyflow.utility import traceLogged
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
 from volumina.utility import ShortcutManager
+from ilastik.widgets.labelListView import Label
+from ilastik.widgets.labelListModel import LabelListModel
+from lazyflow.rtype import SubRegion
+
 
 # ilastik
 from ilastik.utility import bind
@@ -137,10 +141,11 @@ class BoxInterpreter(QObject):
                 self.rubberBand.hide()
                 self.leftClickReleased.emit( self.originpos,pos )                
 
-    
-
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
+
+
+
 class Tool():
     
     Navigation = 0 # Arrow
@@ -259,6 +264,11 @@ class Counting3dGui(LabelingGui):
             self._labelControlUi.CountText.setText(strdensity)
 
         self.op.Density.notifyDirty(updateSum)
+        
+
+        self.boxes = dict()
+        self._labelControlUi.labelListModel[0].name = "Foreground"
+        self._labelControlUi.labelListModel[1].name = "Background"
 
     def _updateOverMult(self):
         self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
@@ -354,17 +364,24 @@ class Counting3dGui(LabelingGui):
         labels = self.labelListData
      
 
-        # Add the raw data last (on the bottom)
-
 
         slots = {'density' : self.op.Density}
 
         for name, slot in slots.items():
             if slot.ready():
-                self.imagesrc = LazyflowSource(slot)
-                layer = self.createStandardLayerFromSlot(slot)
+                from volumina import colortables
+                layer = ColortableLayer(LazyflowSource(slot), colorTable = colortables.jet(), normalize = 'auto')
                 layer.name = name
                 layers.append(layer)
+
+
+        boxlabelsrc = LazyflowSinkSource(self.op.BoxLabelImages,self.op.BoxLabelInputs )
+        boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
+        boxlabellayer.name = "boxLabels"
+        boxlabellayer.opacity = 0.3
+        layers.append(boxlabellayer)
+        self.boxlabelsrc = boxlabelsrc
+
 
         inputDataSlot = self.topLevelOperatorView.InputImages
         if inputDataSlot.ready():
@@ -667,19 +684,22 @@ class Counting3dGui(LabelingGui):
 
 
     def _gui_setNavigation(self):
-        super(Counting3dGui, self)._gui_setNavigation()
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+        self._labelControlUi.arrowToolButton.setChecked(True)
+        print "setNavigation"
         if not hasattr(self, "rubberbandClickReporter"):
             self.rubberbandClickReporter = ClickReportingInterpreter(
                 self.editor.navInterpret, self.editor.posModel, self.centralWidget() )
-            self.rubberbandClickReporter.leftClickReleased.connect( self.test )
+            self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _gui_setBox(self):
-        if not hasattr(self, "rubberbandClickReporter"):
-            self.rubberbandClickReporter2 = BoxInterpreter(
-                self.editor.navInterpret, self.editor.posModel, self.centralWidget() )
-            self.rubberbandClickReporter2.leftClickReleased.connect( self.test2 )
-        self.editor.setNavigationInterpreter(self.rubberbandClickReporter2)
+        print "setBox"
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.boxToolButton.setChecked(True)
         
 
     
@@ -759,26 +779,93 @@ class Counting3dGui(LabelingGui):
         self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
                                                                                                           Tool.Box) )
         self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
+        if hasattr(self._labelControlUi, "AddBoxButton"):
+
+            self._labelControlUi.AddBoxButton.setIcon( QIcon(ilastikIcons.AddSel) )
+            self._labelControlUi.AddBoxButton.clicked.connect( bind(self._addNewBox) )
+
+    def _addNewBox(self):
+
+        label = Label( "Box: ", self.getNextLabelColor(),
+                       pmapColor=self.getNextPmapColor(),
+                   )
+        label.nameChanged.connect(self._updateLabelShortcuts)
+        label.nameChanged.connect(self.onLabelNameChanged)
+        label.colorChanged.connect(self.onLabelColorChanged)
+
+        newRow = self._labelControlUi.labelListModel.rowCount()
+        self._labelControlUi.labelListModel.insertRow( newRow, label )
+        newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
+        self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+
+        # Call the 'changed' callbacks immediately to initialize any listeners
+        self.onLabelNameChanged()
+        self.onLabelColorChanged()
+        self.onPmapColorChanged()
+
+        # Make the new label selected
+        nlabels = self._labelControlUi.labelListModel.rowCount()
+        selectedRow = nlabels-1
+        self._labelControlUi.labelListModel.select(selectedRow)
+
+        self._updateLabelShortcuts()
+       
+        e = self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
+
+    def _onLabelSelected(self, row):
+        logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
+
+        # If the user is selecting a label, he probably wants to be in paint mode
+        self._changeInteractionMode(Tool.Paint)
+
+        #+1 because first is transparent
+        #FIXME: shouldn't be just row+1 here
+        if row >= 2:
+            self.toolButtons[Tool.Paint].setEnabled(False)
+            self.toolButtons[Tool.Box].setEnabled(True)
+            self.toolButtons[Tool.Box].click()
+            self.activeBox = row - 2
+        else:
+            self.toolButtons[Tool.Paint].setEnabled(True)
+            self.toolButtons[Tool.Box].setEnabled(False)
+            self.toolButtons[Tool.Paint].click()
+
+        self.editor.brushingModel.setDrawnNumber(row+1)
+        brushColor = self._labelControlUi.labelListModel[row].brushColor()
+        self.editor.brushingModel.setBrushColor( brushColor )
+
+
+    def handleBoxQuery(self, position5d_start, position5d_stop):
+        if self._labelControlUi.arrowToolButton.isChecked():
+            self.test(position5d_start, position5d_stop)
+        elif self._labelControlUi.boxToolButton.isChecked():
+            self.test2(position5d_start, position5d_stop)
 
 
     def test2(self, position5d_start, position5d_stop):
+        print "test2"
 
-        roi = SubRegion(self.op.Density, position5d_start,
+        roi = SubRegion(self.op.LabelInputs, position5d_start,
                                        position5d_stop)
         key = roi.toSlice()
-        key = tuple(k for k in key if k != slice(0,0, None))
+        #key = tuple(k for k in key if k != slice(0,0, None))
         newKey = []
         for k in key:
-            if k != slice(0,0,None):
-                if k.stop < k.start:
-                    k = slice(k.stop, k.start)
+            if k.stop < k.start:
+                k = slice(k.stop, k.start)
             newKey.append(k)
         newKey = tuple(newKey)
+        self.boxes[self.activeBox] = newKey
+        #self.op.BoxLabelImages[newKey] = self.activeBox + 2
+        #self.op.BoxLabelImages
+        labelShape = tuple([position5d_stop[i] + 1 - position5d_start[i] for i in range(5)])
+        labels = numpy.ones((labelShape), dtype = numpy.uint8) * (self.activeBox + 3)
+        self.boxlabelsrc.put(newKey, labels)
+
 
     def test(self, position5d_start, position5d_stop):
-        from lazyflow.rtype import SubRegion
-        import numpy
-
+        print "test"
         roi = SubRegion(self.op.Density, position5d_start,
                                        position5d_stop)
         key = roi.toSlice()

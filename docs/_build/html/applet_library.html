@@ -102,10 +102,16 @@ which is intended to be used as a base class for most other applet GUIs.</p>
 
 <dl class="class">
 <dt id="ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.layerViewer.opLayerViewer.</tt><tt class="descname">OpLayerViewer</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/opLayerViewer.html#OpLayerViewer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.applets.layerViewer.opLayerViewer.</tt><tt class="descname">OpLayerViewer</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/opLayerViewer.html#OpLayerViewer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is the default top-level operator for the layer-viewer class.
 Note that applets based on the LayerViewer applet (and the LayerViewerGui) do NOT need to use this operator.
 Any operator will work with the LayerViewerGui base class.</p>
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer.checkConstraints">
+<tt class="descname">checkConstraints</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer.checkConstraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example of how to check input data constraints.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
@@ -565,6 +571,240 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 </dd></dl>
 
 </div>
+<div class="section" id="object-extraction">
+<h3>Object Extraction<a class="headerlink" href="#object-extraction" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.objectExtractionApplet.ObjectExtractionApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.objectExtractionApplet.</tt><tt class="descname">ObjectExtractionApplet</tt><big>(</big><em>name='Object Extraction'</em>, <em>workflow=None</em>, <em>projectFileGroupName='ObjectExtraction'</em>, <em>interactive=True</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/objectExtractionApplet.html#ObjectExtractionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.objectExtractionApplet.ObjectExtractionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates object features for each object in an image.</p>
+<p>Features are provided by plugins, which are responsible for
+performing the actual computation.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin">
+<em class="property">class </em><tt class="descclassname">ilastik.plugins.</tt><tt class="descname">ObjectFeaturesPlugin</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugins of this class calculate object features.</p>
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.availableFeatures">
+<tt class="descname">availableFeatures</tt><big>(</big><em>image</em>, <em>labels</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.availableFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.availableFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reports which features this plugin can compute on a
+particular image and label image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; numpy.ndarray</li>
+<li><strong>labels</strong> &#8211; numpy.ndarray, dtype=int</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a nested dictionary, where dict[feature_name] is a
+dictionary of parameters.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_global">
+<tt class="descname">compute_global</tt><big>(</big><em>image</em>, <em>labels</em>, <em>features</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_global"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_global" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate the requested features.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray</li>
+<li><strong>labels</strong> &#8211; np.ndarray, dtype=int</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=2 and
+shape[0] == number of objects</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_local">
+<tt class="descname">compute_local</tt><big>(</big><em>image</em>, <em>binary_bbox</em>, <em>features</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_local"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate features on a single object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray - image[expanded bounding box]</li>
+<li><strong>binary_bbox</strong> &#8211; binarize(labels[expanded bounding box])</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=1</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.do_channels">
+<tt class="descname">do_channels</tt><big>(</big><em>fn</em>, <em>image</em>, <em>axes</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.do_channels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.do_channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for features that only take one channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; function that computes features</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpObjectExtraction</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectExtraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the object extraction applet.</p>
+<p>Computes object features and object center images.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpAdaptTimeListRoi</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpAdaptTimeListRoi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapts the t array output from OpRegionFeatures to an Output
+slot that is called with a &#8216;List&#8217; rtype, where the roi is a list
+of time slices, and the output is a dictionary of (time,
+featuredict) pairs.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpCachedRegionFeatures</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpCachedRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Caches the region features computed by OpRegionFeatures.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpRegionFeatures</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes region features on a 5D volume.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpRegionFeatures3d</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces region features for a 3d image.</p>
+<p>The image MUST have xyzc axes, and is permitted to have t axis of dim 1.</p>
+<p>Inputs:</p>
+<ul class="simple">
+<li>RawVolume : the raw data on which to compute features</li>
+<li>LabelVolume : a volume of connected components for each object
+in the raw data.</li>
+<li>Features : a nested dictionary of features to compute.
+Features[plugin name][feature name][parameter name] = parameter value</li>
+</ul>
+<p>Outputs:</p>
+<ul class="simple">
+<li>Output : a nested dictionary of features.
+Output[plugin name][feature name] = numpy.ndarray</li>
+</ul>
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent">
+<tt class="descname">compute_extent</tt><big>(</big><em>i</em>, <em>image</em>, <em>mincoords</em>, <em>maxcoords</em>, <em>axes</em>, <em>margin</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a slicing to extract object i from the image.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox">
+<tt class="descname">compute_rawbbox</tt><big>(</big><em>image</em>, <em>extent</em>, <em>axes</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures3d.compute_rawbbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>essentially returns image[extent], preserving all channels.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</tt><tt class="descname">OpObjectCenterImage</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectCenterImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produceds an image with a cross in the center of each connected
+component.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="object-classification">
+<h3>Object Classification<a class="headerlink" href="#object-classification" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.objectClassificationApplet.ObjectClassificationApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.objectClassificationApplet.</tt><tt class="descname">ObjectClassificationApplet</tt><big>(</big><em>name='Object Classification'</em>, <em>workflow=None</em>, <em>projectFileGroupName='ObjectClassification'</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationApplet.html#ObjectClassificationApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationApplet.ObjectClassificationApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>An applet for labeling and classifying objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpObjectClassification</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for object classification.</p>
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.setupCaches">
+<tt class="descname">setupCaches</tt><big>(</big><em>imageIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.setupCaches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.setupCaches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup the label input to correct dimensions</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.assignObjectLabel">
+<tt class="descname">assignObjectLabel</tt><big>(</big><em>imageIndex</em>, <em>coordinate</em>, <em>assignedLabel</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.assignObjectLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.assignObjectLabel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the assigned label of the object located at the given coordinate.
+Does nothing if no object resides at the given coordinate.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectTrain">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpObjectTrain</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectTrain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectTrain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trains a random forest on all labeled objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectPredict">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpObjectPredict</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectPredict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectPredict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predicts object labels in a single image.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpRelabelSegmentation">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpRelabelSegmentation</tt><big>(</big><em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpRelabelSegmentation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpRelabelSegmentation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a segmentation image and a mapping and returns the
+mapped image.</p>
+<p>For instance, map prediction labels onto objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpMultiRelabelSegmentation">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpMultiRelabelSegmentation</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpMultiRelabelSegmentation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpMultiRelabelSegmentation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a segmentation image and multiple mappings and returns the
+mapped images.</p>
+<p>For instance, map prediction probabilities for different classes
+onto objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</tt><tt class="descname">OpMaxLabel</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpMaxLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the maximum label value in the input labels.</p>
+<p>More or less copied from opPixelClassification::OpMaxValue.</p>
+</dd></dl>
+
+</div>
 </div>
 </div>
 
@@ -597,6 +837,8 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 <li><a class="reference internal" href="#feature-selection">Feature Selection</a></li>
 <li><a class="reference internal" href="#pixel-classification">Pixel Classification</a></li>
 <li><a class="reference internal" href="#watershed-viewer">Watershed Viewer</a></li>
+<li><a class="reference internal" href="#object-extraction">Object Extraction</a></li>
+<li><a class="reference internal" href="#object-classification">Object Classification</a></li>
 </ul>
 </li>
 </ul>

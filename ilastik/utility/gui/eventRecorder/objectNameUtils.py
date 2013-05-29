@@ -68,7 +68,9 @@ def _assign_default_object_name( obj ):
 def _has_unique_name(obj):
     parent = QObject.parent(obj)
     if parent is None:
-        return True # We assume that top-level widgets have unique names, which should usually be true.
+        return True # We assume that top-level widgets are uniquely named
+                    # Note that 'garbage' widgets may have parent=None as well.  
+                    # In that case, we don't care about their names, AS LONG AS THEY AREN"T TOP-LEVEL.
     obj_name = obj.objectName()
     for child in parent.children():
         if child is not obj and child.objectName() == obj_name:
@@ -95,7 +97,7 @@ def _locate_immediate_child(parent, childname):
     for child in siblings:
         if child.objectName() == "":
             _assign_default_object_name(child)
-        if not _has_unique_name(child):
+        if parent is not None and not _has_unique_name(child):
             _normalize_child_names(parent)
         if child.objectName() == childname:
             return child

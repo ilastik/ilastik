@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
-    <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
+    <link rel="next" title="Plugin System" href="plugin_system.html" />
     <link rel="prev" title="Project Manager" href="projectManager.html" /> 
   </head>
   <body>
@@ -37,7 +37,7 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="plugin_system.html" title="Plugin System"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"
@@ -55,20 +55,23 @@
 <h1>Utility Classes<a class="headerlink" href="#utility-classes" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ilastik.utility.bind">
-<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">bind</tt><big>(</big><em>f</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind" title="Permalink to this definition">¶</a></dt>
-<dd><p>Inspired by boost::bind (C++).
-Behaves like functools.partial, but discards any extra parameters it gets when called.
-Also, bind objects can be compared for equality.</p>
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">bind</tt><a class="headerlink" href="#ilastik.utility.bind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Behaves like functools.partial, but discards any extra
+parameters it gets when called. Also, bind objects can be compared
+for equality and hashed.</p>
+<p>bind objects are immutable.</p>
+<p>Inspired by boost::bind (C++).</p>
 <dl class="method">
 <dt id="ilastik.utility.bind.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>f</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a callable for the partial invocation of f using the specified args.</p>
+<tt class="descname">__init__</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.utility.bind.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>x.__init__(...) initializes x; see help(type(x)) for signature</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ilastik.utility.bind.__call__">
 <tt class="descname">__call__</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind.__call__" title="Permalink to this definition">¶</a></dt>
-<dd><p>When execute the callback.  If more args are provided than the callback accepts, silently discard the extra args.</p>
+<dd><p>Execute the callback. If more args are provided than
+the callback accepts, silently discard the extra args.</p>
 </dd></dl>
 
 </dd></dl>
@@ -385,8 +388,8 @@ This mechanism is slow, and should only be used for functions that MUST execute 
   <p class="topless"><a href="projectManager.html"
                         title="previous chapter">Project Manager</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="dependencies.html"
-                        title="next chapter">Appendix: Development Dependencies</a></p>
+  <p class="topless"><a href="plugin_system.html"
+                        title="next chapter">Plugin System</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/utilities.txt"
@@ -416,7 +419,7 @@ This mechanism is slow, and should only be used for functions that MUST execute 
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="plugin_system.html" title="Plugin System"
              >next</a> |</li>
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"

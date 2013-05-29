@@ -46,6 +46,7 @@ parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an un
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 parser.add_argument('--project', nargs='?', help='A project file to open on startup.')
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
+parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 
 # Example:
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
@@ -108,6 +109,6 @@ if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
 
 from ilastik.shell.gui.startShellGui import startShellGui
-sys.exit(startShellGui(workflow_cmdline_args,*init_funcs))
+sys.exit(startShellGui(workflow_cmdline_args, parsed_args.start_recording, *init_funcs))
 
     

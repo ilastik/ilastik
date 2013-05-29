@@ -33,15 +33,6 @@ class DatasetDetailedInfoTableView(QTableView):
         
         self.setAcceptDrops(True)
 
-    def setModel(self, model):
-        super( DatasetDetailedInfoTableView, self ).setModel(model)
-
-        def updateInternalPathVisibility():
-            self.setColumnHidden( DatasetDetailedInfoColumn.InternalID,
-                                  not self.model().hasInternalPaths() )
-        self.model().dataChanged.connect( updateInternalPathVisibility )
-        self.model().rowsRemoved.connect( updateInternalPathVisibility )
-
     def dataChanged(self, topLeft, bottomRight):
         self.dataLaneSelected.emit( self.selectedLanes )
 
