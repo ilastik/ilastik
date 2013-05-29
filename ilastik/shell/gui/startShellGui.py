@@ -104,9 +104,10 @@ def launchShell(workflow_cmdline_args, *testFuncs):
 
     assert QApplication.instance().thread() == shell.thread()
 
-    
-
-    # Start the shell GUI.
+    if ilastik.config.cfg.getboolean("ilastik", "debug"):
+        # In debug mode, we always start with the same size window.
+        # This is critical for recorded test cases.
+        shell.resize(1000, 750)
     shell.show()
     
     if "--fullscreen" in workflow_cmdline_args:

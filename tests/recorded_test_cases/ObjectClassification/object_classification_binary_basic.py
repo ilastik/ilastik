@@ -10,6 +10,9 @@ def playback_events(player):
     from ilastik.utility.gui.eventRecorder.eventRecorder import EventPlayer
     from ilastik.shell.gui.startShellGui import shell    
 
+    # This test was originally recorded with a small shell window size.
+    shell.resize(830, 650)
+
     player.display_comment("SCRIPT STARTING")
 
 

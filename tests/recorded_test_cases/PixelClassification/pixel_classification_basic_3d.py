@@ -8,9 +8,12 @@ def playback_events(player):
     import PyQt4.QtGui
     from ilastik.utility.gui.eventRecorder.objectNameUtils import get_named_object
     from ilastik.utility.gui.eventRecorder.eventRecorder import EventPlayer
+    from ilastik.shell.gui.startShellGui import shell
 
     player.display_comment("SCRIPT STARTING")
 
+    # This test was originally recorded with a small shell window size.
+    shell.resize(830, 650)
 
     ########################
     player.display_comment("""New Project (Pixel Classification)""")

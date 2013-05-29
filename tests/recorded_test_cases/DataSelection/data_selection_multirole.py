@@ -12,6 +12,8 @@ def playback_events(player):
 
     player.display_comment("SCRIPT STARTING")
 
+    # This test was originally recorded with a small shell window size.
+    shell.resize(830, 650)
 
     ########################
     player.display_comment("""New Project (Layer Viewer)""")
