@@ -96,9 +96,25 @@ def make_bboxes(binary_bbox, margin):
 
 
 class OpRegionFeatures3d(Operator):
-    """
-    Produces region features (i.e. a vigra.analysis.RegionFeatureAccumulator) for a 3d image.
+    """Produces region features for a 3d image.
+
     The image MUST have xyzc axes, and is permitted to have t axis of dim 1.
+
+    Inputs:
+
+    * RawVolume : the raw data on which to compute features
+
+    * LabelVolume : a volume of connected components for each object
+      in the raw data.
+
+    * Features : a nested dictionary of features to compute.
+      Features[plugin name][feature name][parameter name] = parameter value
+
+    Outputs:
+
+    * Output : a nested dictionary of features.
+      Output[plugin name][feature name] = numpy.ndarray
+      
     """
     RawVolume = InputSlot()
     LabelVolume = InputSlot()
@@ -524,6 +540,11 @@ class OpObjectCenterImage(Operator):
 
 
 class OpObjectExtraction(Operator):
+    """The top-level operator for the object extraction applet.
+
+    Computes object features and object center images.
+
+    """
     name = "Object Extraction"
 
     RawImage = InputSlot()

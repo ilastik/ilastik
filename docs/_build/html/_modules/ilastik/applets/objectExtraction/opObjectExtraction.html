@@ -1,0 +1,743 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.objectExtraction.opObjectExtraction &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.objectExtraction.opObjectExtraction</h1><div class="highlight"><pre>
+<span class="c">#have to do that so that plugin manager has a handler</span>
+<span class="kn">import</span> <span class="nn">ilastik.ilastik_logging</span>
+<span class="n">ilastik</span><span class="o">.</span><span class="n">ilastik_logging</span><span class="o">.</span><span class="n">default_config</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="c">#Python</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="c">#SciPy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">vigra.analysis</span>
+
+<span class="c">#lazyflow</span>
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
+<span class="kn">from</span> <span class="nn">lazyflow.stype</span> <span class="kn">import</span> <span class="n">Opaque</span>
+<span class="kn">from</span> <span class="nn">lazyflow.rtype</span> <span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">lazyflow.roi</span> <span class="kn">import</span> <span class="n">roiToSlice</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpCachedLabelImage</span><span class="p">,</span> <span class="n">OpMultiArraySlicer2</span><span class="p">,</span> <span class="n">OpMultiArrayStacker</span><span class="p">,</span> <span class="n">OpArrayCache</span><span class="p">,</span> <span class="n">OpCompressedCache</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="c">#ilastik</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">ilastik.plugins</span> <span class="kn">import</span> <span class="n">pluginManager</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&#39;could not import pluginManager&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">ilastik.applets.base.applet</span> <span class="kn">import</span> <span class="n">DatasetConstraintError</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="c"># These features are always calculated, but not used for prediction.</span>
+<span class="c"># They are needed by our gui, or by downstream applets.</span>
+<span class="n">default_features</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Coord&lt;Minimum&gt;&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Coord&lt;Maximum&gt;&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;RegionCenter&#39;</span><span class="p">,</span>
+                    <span class="s">&#39;Count&#39;</span><span class="p">,</span>
+                <span class="p">]</span>
+
+<span class="c"># to distinguish them, they go in their own category with this name</span>
+<span class="n">default_features_key</span> <span class="o">=</span> <span class="s">&#39;Default features&#39;</span>
+
+<span class="k">def</span> <span class="nf">max_margin</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;find any parameter named &#39;margin&#39; in the nested feature</span>
+<span class="sd">    dictionary &#39;d&#39; and return the max.</span>
+
+<span class="sd">    return &#39;default&#39; if none are found.</span>
+
+<span class="sd">    &gt;&gt;&gt; max_margin({&#39;plugin_one&#39; : {&#39;feature_one&#39; : {&#39;margin&#39; : 10}}})</span>
+<span class="sd">    [10, 10, 10]</span>
+
+<span class="sd">    &gt;&gt;&gt; max_margin({&quot;p1&quot;: {&quot;f1&quot;:{&quot;margin&quot;:(10, 5, 2)}}})</span>
+<span class="sd">    [10, 5, 2]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">margin</span> <span class="o">=</span> <span class="n">default</span>
+    <span class="k">for</span> <span class="n">features</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">features</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">pmargin</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&#39;margin&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pmargin</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">Iterable</span><span class="p">):</span>
+                    <span class="n">pmargin</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">default</span><span class="p">)</span><span class="o">*</span><span class="p">[</span><span class="n">pmargin</span><span class="p">]</span>
+                <span class="n">margin</span> <span class="o">=</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">margin</span><span class="p">,</span> <span class="n">pmargin</span><span class="p">)]</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="k">continue</span>
+    <span class="k">return</span> <span class="n">margin</span>
+
+<span class="k">def</span> <span class="nf">make_bboxes</span><span class="p">(</span><span class="n">binary_bbox</span><span class="p">,</span> <span class="n">margin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return binary label arrays for an object with margin.</span>
+
+<span class="sd">    Helper for feature plugins.</span>
+
+<span class="sd">    Returns (the object + context, context only)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># object and context</span>
+    <span class="n">max_margin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">margin</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">scaled_margin</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_margin</span> <span class="o">/</span> <span class="n">margin</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">margin</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">distanceTransform3D</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">binary_bbox</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                                               <span class="n">background</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                                               <span class="n">pixel_pitch</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scaled_margin</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">distanceTransform2D</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">binary_bbox</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                                               <span class="n">pixel_pitch</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scaled_margin</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+
+    <span class="k">assert</span> <span class="n">dt</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span>
+    <span class="n">passed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dt</span> <span class="o">&lt;</span> <span class="n">max_margin</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+
+    <span class="c"># context only</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="p">(</span><span class="n">passed</span> <span class="o">-</span> <span class="n">binary_bbox</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">passed</span><span class="p">,</span> <span class="n">context</span>
+
+
+<div class="viewcode-block" id="OpRegionFeatures3d"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d">[docs]</a><span class="k">class</span> <span class="nc">OpRegionFeatures3d</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Produces region features for a 3d image.</span>
+
+<span class="sd">    The image MUST have xyzc axes, and is permitted to have t axis of dim 1.</span>
+
+<span class="sd">    Inputs:</span>
+<span class="sd">    -------</span>
+<span class="sd">    * RawVolume : the raw data on which to compute features</span>
+
+<span class="sd">    * LabelVolume : a volume of connected components for each object</span>
+<span class="sd">      in the raw data.</span>
+
+<span class="sd">    * Features : a nested dictionary of features to compute.</span>
+<span class="sd">      Features[plugin name][feature name][parameter name] = parameter value</span>
+
+<span class="sd">    Outputs:</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    * Output : a nested dictionary of features.</span>
+<span class="sd">      Output[plugin name][feature name] = numpy.ndarray</span>
+<span class="sd">      </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">RawVolume</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">LabelVolume</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;raw and label axis tags do not match&#39;</span><span class="p">)</span>
+
+        <span class="n">taggedOutputShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+        <span class="n">taggedRawShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="n">taggedRawShape</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="s">&quot;txyz&quot;</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;shapes do not match. label volume shape: {}.&quot;</span>
+                            <span class="s">&quot; raw data shape: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                                                         <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;this operator cannot handle multiple time slices&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="s">&#39;xyzc&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Input volumes must have xyzc axes.&quot;</span><span class="p">)</span>
+
+        <span class="c"># Remove the spatial dims (keep t if present)</span>
+        <span class="k">del</span> <span class="n">taggedOutputShape</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">taggedOutputShape</span><span class="p">[</span><span class="s">&#39;y&#39;</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">taggedOutputShape</span><span class="p">[</span><span class="s">&#39;z&#39;</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">taggedOutputShape</span><span class="p">[</span><span class="s">&#39;c&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">defaultAxistags</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="c"># The features for the entire block (in xyz) are provided for the requested tc coordinates.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Output</span>
+
+        <span class="c"># Process ENTIRE volume</span>
+        <span class="n">rawVolume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="p">[:]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">labelVolume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="p">[:]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="c"># Convert to 4D (preserve axis order)</span>
+        <span class="n">axes4d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">axes4d</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">k</span> <span class="ow">in</span> <span class="s">&#39;xyzc&#39;</span><span class="p">,</span> <span class="n">axes4d</span><span class="p">)</span>
+
+        <span class="n">rawVolume</span> <span class="o">=</span> <span class="n">rawVolume</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">VigraArray</span><span class="p">)</span>
+        <span class="n">rawVolume</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+        <span class="n">rawVolume4d</span> <span class="o">=</span> <span class="n">rawVolume</span><span class="o">.</span><span class="n">withAxes</span><span class="p">(</span><span class="o">*</span><span class="n">axes4d</span><span class="p">)</span>
+
+        <span class="n">labelVolume</span> <span class="o">=</span> <span class="n">labelVolume</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">vigra</span><span class="o">.</span><span class="n">VigraArray</span><span class="p">)</span>
+        <span class="n">labelVolume</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+        <span class="n">labelVolume4d</span> <span class="o">=</span> <span class="n">labelVolume</span><span class="o">.</span><span class="n">withAxes</span><span class="p">(</span><span class="o">*</span><span class="n">axes4d</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">acc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract</span><span class="p">(</span><span class="n">rawVolume4d</span><span class="p">,</span> <span class="n">labelVolume4d</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">)]</span> <span class="o">=</span> <span class="n">acc</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+<div class="viewcode-block" id="OpRegionFeatures3d.compute_extent"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_extent">[docs]</a>    <span class="k">def</span> <span class="nf">compute_extent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">mincoords</span><span class="p">,</span> <span class="n">maxcoords</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">margin</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Make a slicing to extract object i from the image.&quot;&quot;&quot;</span>
+        <span class="c">#find the bounding box (margin is always &#39;xyz&#39; order)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span>
+        <span class="n">minx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">mincoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">]</span> <span class="o">-</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">miny</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">mincoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">]</span> <span class="o">-</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c"># Coord&lt;Minimum&gt; and Coord&lt;Maximum&gt; give us the [min,max]</span>
+        <span class="c"># coords of the object, but we want the bounding box: [min,max), so add 1</span>
+        <span class="n">maxx</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxcoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">])</span>
+        <span class="n">maxy</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxcoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">])</span>
+
+        <span class="n">result</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">x</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">minx</span><span class="p">,</span> <span class="n">maxx</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">miny</span><span class="p">,</span> <span class="n">maxy</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">minz</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">mincoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">]</span> <span class="o">-</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">maxz</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxcoords</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">margin</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">])</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">minz</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">maxz</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">result</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">z</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">minz</span><span class="p">,</span> <span class="n">maxz</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+</div>
+<div class="viewcode-block" id="OpRegionFeatures3d.compute_rawbbox"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures3d.compute_rawbbox">[docs]</a>    <span class="k">def</span> <span class="nf">compute_rawbbox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">extent</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;essentially returns image[extent], preserving all channels.&quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">extent</span><span class="p">)</span>
+        <span class="n">key</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">c</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">image</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span>
+</div>
+    <span class="k">def</span> <span class="nf">_extract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="n">labels</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">4</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;both images must be 4D. raw image shape: {}&quot;</span>
+                            <span class="s">&quot; label image shape: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+        <span class="c"># FIXME: maybe simplify?</span>
+        <span class="k">class</span> <span class="nc">Axes</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;y&#39;</span><span class="p">)</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;z&#39;</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">Axes</span><span class="p">()</span>
+
+        <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span>
+
+        <span class="n">slc3d</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">4</span> <span class="c"># FIXME: do not hardcode</span>
+        <span class="n">slc3d</span><span class="p">[</span><span class="n">axes</span><span class="o">.</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">slc3d</span><span class="p">]</span>
+
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Computing default features&quot;</span><span class="p">)</span>
+
+        <span class="c">#FIXME: clamp the global vigra features here</span>
+        <span class="n">extrafeats</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">extractRegionFeatures</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="n">slc3d</span><span class="p">],</span> <span class="n">labels</span><span class="p">,</span>
+                                                        <span class="n">default_features</span><span class="p">,</span>
+                                                        <span class="n">ignoreLabel</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;computed default features&quot;</span><span class="p">)</span>
+
+        <span class="n">extrafeats</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">),</span> <span class="n">v</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">extrafeats</span><span class="o">.</span><span class="n">iteritems</span><span class="p">())</span>
+
+        <span class="n">mincoords</span> <span class="o">=</span> <span class="n">extrafeats</span><span class="p">[</span><span class="s">&quot;Coord&lt;Minimum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">maxcoords</span> <span class="o">=</span> <span class="n">extrafeats</span><span class="p">[</span><span class="s">&quot;Coord&lt;Maximum&gt;&quot;</span><span class="p">]</span>
+        <span class="n">nobj</span> <span class="o">=</span> <span class="n">mincoords</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">feature_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">([])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+        <span class="c"># do global features</span>
+        <span class="n">global_features</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">plugin_name</span><span class="p">,</span> <span class="n">feature_list</span> <span class="ow">in</span> <span class="n">feature_names</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">plugin</span> <span class="o">=</span> <span class="n">pluginManager</span><span class="o">.</span><span class="n">getPluginByName</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">,</span> <span class="s">&quot;ObjectFeatures&quot;</span><span class="p">)</span>
+            <span class="n">global_features</span><span class="p">[</span><span class="n">plugin_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">plugin</span><span class="o">.</span><span class="n">plugin_object</span><span class="o">.</span><span class="n">compute_global</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;computing global features&quot;</span><span class="p">)</span>
+        <span class="c"># local features: loop over all objects</span>
+        <span class="k">def</span> <span class="nf">dictextend</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">b</span><span class="p">:</span>
+                <span class="n">a</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">a</span>
+
+        <span class="n">local_features</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">))</span>
+        <span class="n">margin</span> <span class="o">=</span> <span class="n">max_margin</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">margin</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nobj</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;processing object {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+                <span class="n">extent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_extent</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">mincoords</span><span class="p">,</span> <span class="n">maxcoords</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">margin</span><span class="p">)</span>
+                <span class="n">rawbbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_rawbbox</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">extent</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+                <span class="n">binary_bbox</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">labels</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">extent</span><span class="p">)]</span> <span class="o">==</span> <span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">plugin_name</span><span class="p">,</span> <span class="n">feature_list</span> <span class="ow">in</span> <span class="n">feature_names</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                    <span class="n">plugin</span> <span class="o">=</span> <span class="n">pluginManager</span><span class="o">.</span><span class="n">getPluginByName</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">,</span> <span class="s">&quot;ObjectFeatures&quot;</span><span class="p">)</span>
+                    <span class="n">feats</span> <span class="o">=</span> <span class="n">plugin</span><span class="o">.</span><span class="n">plugin_object</span><span class="o">.</span><span class="n">compute_local</span><span class="p">(</span><span class="n">rawbbox</span><span class="p">,</span> <span class="n">binary_bbox</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
+                    <span class="n">local_features</span><span class="p">[</span><span class="n">plugin_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dictextend</span><span class="p">(</span><span class="n">local_features</span><span class="p">[</span><span class="n">plugin_name</span><span class="p">],</span> <span class="n">feats</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;computing done, removing failures&quot;</span><span class="p">)</span>
+        <span class="c"># remove local features that failed</span>
+        <span class="k">for</span> <span class="n">pname</span><span class="p">,</span> <span class="n">pfeats</span> <span class="ow">in</span> <span class="n">local_features</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pfeats</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">pfeats</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">pfeats</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">))</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s">&#39;feature {} failed&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+                    <span class="k">del</span> <span class="n">pfeats</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+        <span class="c"># merge the global and local features</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;removed failed, merging&quot;</span><span class="p">)</span>
+        <span class="n">all_features</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">plugin_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">global_features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">local_features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">plugin_names</span><span class="p">:</span>
+            <span class="n">d1</span> <span class="o">=</span> <span class="n">global_features</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">d2</span> <span class="o">=</span> <span class="n">local_features</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">all_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">d1</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="o">+</span> <span class="n">d2</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+        <span class="c"># reshape all features</span>
+        <span class="k">for</span> <span class="n">pfeats</span> <span class="ow">in</span> <span class="n">all_features</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">pfeats</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">nobj</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&#39;feature {} does not have enough rows&#39;</span><span class="p">)</span>
+
+                <span class="c"># because object classification operator expects nobj to</span>
+                <span class="c"># include background. we should change that assumption.</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                   <span class="n">value</span><span class="p">))</span>
+
+                <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="c">#turn Nones into numpy.NaNs</span>
+
+                <span class="k">assert</span> <span class="n">value</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+                <span class="k">assert</span> <span class="n">value</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">nobj</span>
+                <span class="k">assert</span> <span class="n">value</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span>
+
+                <span class="n">pfeats</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;merged, returning&quot;</span><span class="p">)</span>
+        <span class="c"># add features needed by downstream applets. these should be</span>
+        <span class="c"># removed before classification.</span>
+        <span class="n">all_features</span><span class="p">[</span><span class="n">default_features_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">extrafeats</span>
+        <span class="k">return</span> <span class="n">all_features</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="n">dirtyStart</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">))</span>
+            <span class="n">dirtyStop</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">))</span>
+
+            <span class="c"># Remove the spatial and channel dims (keep t, if present)</span>
+            <span class="k">del</span> <span class="n">dirtyStart</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStart</span><span class="p">[</span><span class="s">&#39;y&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStart</span><span class="p">[</span><span class="s">&#39;z&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStart</span><span class="p">[</span><span class="s">&#39;c&#39;</span><span class="p">]</span>
+
+            <span class="k">del</span> <span class="n">dirtyStop</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStop</span><span class="p">[</span><span class="s">&#39;y&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStop</span><span class="p">[</span><span class="s">&#39;z&#39;</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">dirtyStop</span><span class="p">[</span><span class="s">&#39;c&#39;</span><span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">dirtyStart</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">dirtyStop</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="OpRegionFeatures"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures">[docs]</a><span class="k">class</span> <span class="nc">OpRegionFeatures</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="n">RawImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="c"># Schematic:</span>
+    <span class="c">#</span>
+    <span class="c"># RawImage ----&gt; opRawTimeSlicer ----</span>
+    <span class="c">#                                    \</span>
+    <span class="c"># LabelImage --&gt; opLabelTimeSlicer --&gt; opRegionFeatures3dBlocks --&gt; opTimeStacker -&gt; Output</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpRegionFeatures</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># Distribute the raw data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRawTimeSlicer</span> <span class="o">=</span> <span class="n">OpMultiArraySlicer2</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRawTimeSlicer</span><span class="o">.</span><span class="n">AxisFlag</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRawTimeSlicer</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opRawTimeSlicer</span><span class="o">.</span><span class="n">Slices</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c"># Distribute the labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelTimeSlicer</span> <span class="o">=</span> <span class="n">OpMultiArraySlicer2</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelTimeSlicer</span><span class="o">.</span><span class="n">AxisFlag</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelTimeSlicer</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelTimeSlicer</span><span class="o">.</span><span class="n">Slices</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span><span class="n">OpRegionFeatures3d</span><span class="p">,</span> <span class="n">operator_args</span><span class="o">=</span><span class="p">[],</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opRawTimeSlicer</span><span class="o">.</span><span class="n">Slices</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelTimeSlicer</span><span class="o">.</span><span class="n">Slices</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTimeStacker</span> <span class="o">=</span> <span class="n">OpMultiArrayStacker</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTimeStacker</span><span class="o">.</span><span class="n">AxisFlag</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opTimeStacker</span><span class="o">.</span><span class="n">Images</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opTimeStacker</span><span class="o">.</span><span class="n">Images</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opRegionFeatures3dBlocks</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="c"># Connect our outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opTimeStacker</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">destination</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;Shouldn&#39;t get here.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">pass</span> <span class="c"># Nothing to do...</span>
+</div>
+<span class="k">class</span> <span class="nc">OpCachedRegionFeatures</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="n">RawImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">CacheInput</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">CleanBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="c"># Schematic:</span>
+    <span class="c">#</span>
+    <span class="c"># RawImage -----   blockshape=(t,)=(1,)</span>
+    <span class="c">#               \                        \</span>
+    <span class="c"># LabelImage ----&gt; OpRegionFeatures ----&gt; OpArrayCache --&gt; Output</span>
+    <span class="c">#                                                     \</span>
+    <span class="c">#                                                      --&gt; CleanBlocks</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpCachedRegionFeatures</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># Hook up the labeler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span> <span class="o">=</span> <span class="n">OpRegionFeatures</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">)</span>
+
+        <span class="c"># Hook up the cache.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span> <span class="o">=</span> <span class="n">OpArrayCache</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="c"># Hook up our output slots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CleanBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span><span class="o">.</span><span class="n">CleanBlocks</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+
+        <span class="n">taggedOutputShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+        <span class="n">taggedRawShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">taggedOutputShape</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="n">taggedRawShape</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="s">&quot;txyz&quot;</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;shapes do not match. label volume shape: {}.&quot;</span>
+                            <span class="s">&quot; raw data shape: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                                                         <span class="bp">self</span><span class="o">.</span><span class="n">RawVolume</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+
+        <span class="c"># Every value in the regionfeatures output is cached seperately as it&#39;s own &quot;block&quot;</span>
+        <span class="n">blockshape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegionFeatures</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span><span class="o">.</span><span class="n">blockShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">blockshape</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">CacheInput</span>
+        <span class="n">slicing</span> <span class="o">=</span> <span class="n">roiToSlice</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCache</span><span class="o">.</span><span class="n">Input</span><span class="p">[</span> <span class="n">slicing</span> <span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">destination</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;Shouldn&#39;t get here.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">pass</span> <span class="c"># Nothing to do...</span>
+
+<span class="k">class</span> <span class="nc">OpAdaptTimeListRoi</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adapts the t array output from OpRegionFeatures to an Output slot that is called with a</span>
+<span class="sd">    &#39;List&#39; rtype, where the roi is a list of time slices, and the output is a</span>
+<span class="sd">    dictionary of (time, featuredict) pairs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Input</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Number of time steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()[</span><span class="s">&#39;t&#39;</span><span class="p">],)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">destination</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="p">,</span> <span class="s">&quot;Unknown output slot&quot;</span>
+        <span class="n">taggedShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+
+        <span class="c"># Special case: An empty roi list means &quot;request everything&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">roi</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">taggedShape</span><span class="p">[</span><span class="s">&#39;t&#39;</span><span class="p">])</span>
+
+        <span class="n">taggedShape</span><span class="p">[</span><span class="s">&#39;t&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">timeIndex</span> <span class="o">=</span> <span class="n">taggedShape</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">roi</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">taggedShape</span><span class="p">)</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="n">taggedShape</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="n">start</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
+            <span class="n">stop</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="c">#FIXME: why is it wrapped like this?</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="n">val</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span>
+        <span class="n">timeIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">List</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">],</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">timeIndex</span><span class="p">])))</span>
+
+<span class="k">class</span> <span class="nc">OpObjectCenterImage</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A cross in the center of each connected component.&quot;&quot;&quot;</span>
+    <span class="n">BinaryImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">RegionCenters</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">assignFrom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__contained_in_subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">coords</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)):</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">b</span> <span class="ow">and</span> <span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span> <span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">b</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__make_key</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">coords</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">))]</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="p">,</span> <span class="s">&quot;Unknown output slot&quot;</span>
+        <span class="n">result</span><span class="p">[:]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">obj_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RegionCenters</span><span class="p">([</span><span class="n">t</span><span class="p">])</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">roi</span><span class="o">.</span><span class="n">start</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">roi</span><span class="o">.</span><span class="n">stop</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="n">centers</span> <span class="o">=</span> <span class="n">obj_features</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">default_features_key</span><span class="p">][</span><span class="s">&#39;RegionCenter&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">centers</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                    <span class="n">centers</span> <span class="o">=</span> <span class="n">centers</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span>
+                <span class="k">for</span> <span class="n">center</span> <span class="ow">in</span> <span class="n">centers</span><span class="p">:</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">ch</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__contained_in_subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+                        <span class="n">result</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__make_key</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">c</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">RegionCenters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="OpObjectExtraction"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">[docs]</a><span class="k">class</span> <span class="nc">OpObjectExtraction</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Object Extraction&quot;</span>
+
+    <span class="n">RawImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">BinaryImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">BackgroundLabels</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+
+    <span class="c"># which features to compute.</span>
+    <span class="c"># nested dictionary with format:</span>
+    <span class="c"># dict[plugin_name][feature_name][parameter_name] = parameter_value</span>
+    <span class="n">Features</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="p">{})</span>
+
+    <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">ObjectCenterImage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="c"># the computed features.</span>
+    <span class="c"># nested dictionary with format:</span>
+    <span class="c"># dict[plugin_name][feature_name] = feature_value</span>
+    <span class="n">RegionFeatures</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">,</span> <span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">)</span>
+
+    <span class="c"># pass through the &#39;Features&#39; input slot</span>
+    <span class="n">ComputedFeatureNames</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">rtype</span><span class="o">=</span><span class="n">List</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="n">Opaque</span><span class="p">)</span>
+
+    <span class="n">BlockwiseRegionFeatures</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c"># For compatibility with tracking workflow, the RegionFeatures output</span>
+                                           <span class="c"># has rtype=List, indexed by t.</span>
+                                           <span class="c"># For other workflows, output has rtype=ArrayLike, indexed by (t)</span>
+
+    <span class="n">LabelInputHdf5</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">LabelOutputHdf5</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">CleanLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="n">RegionFeaturesCacheInput</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">RegionFeaturesCleanBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="c"># Schematic:</span>
+    <span class="c">#</span>
+    <span class="c"># BackgroundLabels              LabelImage</span>
+    <span class="c">#                 \            /</span>
+    <span class="c"># BinaryImage ---&gt; opLabelImage ---&gt; opRegFeats ---&gt; opRegFeatsAdaptOutput ---&gt; RegionFeatures</span>
+    <span class="c">#                                   /                                     \</span>
+    <span class="c"># RawImage--------------------------                      BinaryImage ---&gt; opObjectCenterImage --&gt; opCenterCache --&gt; ObjectCenterImage</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpObjectExtraction</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># internal operators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span> <span class="o">=</span> <span class="n">OpCachedLabelImage</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span> <span class="o">=</span> <span class="n">OpCachedRegionFeatures</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeatsAdaptOutput</span> <span class="o">=</span> <span class="n">OpAdaptTimeListRoi</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opObjectCenterImage</span> <span class="o">=</span> <span class="n">OpObjectCenterImage</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># connect internal operators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">InputHdf5</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelInputHdf5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">BackgroundLabels</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BackgroundLabels</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">Features</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RegionFeaturesCleanBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">CleanBlocks</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">CacheInput</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RegionFeaturesCacheInput</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeatsAdaptOutput</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opObjectCenterImage</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opObjectCenterImage</span><span class="o">.</span><span class="n">RegionCenters</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeatsAdaptOutput</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCenterCache</span> <span class="o">=</span> <span class="n">OpCompressedCache</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCenterCache</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opObjectCenterImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+
+        <span class="c"># connect outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ObjectCenterImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opCenterCache</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RegionFeatures</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeatsAdaptOutput</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BlockwiseRegionFeatures</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opRegFeats</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelOutputHdf5</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">OutputHdf5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">CleanLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opLabelImage</span><span class="o">.</span><span class="n">CleanBlocks</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ComputedFeatureNames</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Features</span><span class="p">)</span>
+
+        <span class="c"># As soon as input data is available, check its constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkConstraints</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkConstraints</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_checkConstraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DatasetConstraintError</span><span class="p">(</span> 
+                    <span class="s">&quot;Object Extraction&quot;</span><span class="p">,</span>
+                    <span class="s">&quot;Raw Image shape {} does not match Binary Image shape {}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">BinaryImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">taggedShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RawImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">taggedShape</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s">&#39;t&#39;</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s">&#39;c&#39;</span><span class="p">:</span>
+                <span class="n">taggedShape</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">taggedShape</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">256</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opCenterCache</span><span class="o">.</span><span class="n">BlockShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">taggedShape</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;Shouldn&#39;t get here.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputSlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputHdf5</span> <span class="ow">or</span> <span class="n">slot</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">RegionFeaturesCacheInput</span><span class="p">,</span> <span class="s">&quot;Invalid slot for setInSlot(): {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="c"># Nothing to do here.</span>
+        <span class="c"># Our Input slots are directly fed into the cache,</span>
+        <span class="c">#  so all calls to __setitem__ are forwarded automatically</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

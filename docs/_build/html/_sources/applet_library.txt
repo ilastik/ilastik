@@ -164,3 +164,21 @@ Watershed Viewer
 .. autoclass:: VigraWatershedViewerApplet
    :members:
 
+Object Extraction
+-----------------
+
+.. currentmodule:: ilastik.applets.objectExtraction.objectExtractionApplet
+.. autoclass:: ObjectExtractionApplet
+   :members:
+
+.. currentmodule:: ilastik.applets.objectExtraction.opObjectExtraction
+.. autoclass:: OpObjectExtraction
+   :members:
+
+.. currentmodule:: ilastik.applets.objectExtraction.opObjectExtraction
+.. autoclass:: OpRegionFeatures3d
+   :members:
+
+.. currentmodule:: ilastik.plugins
+.. autoclass:: ObjectFeaturesPlugin
+   :members:
