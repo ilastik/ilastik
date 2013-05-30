@@ -68,7 +68,9 @@ class CarvingWorkflow(Workflow):
         
         ## Connect operators
         opPreprocessing.RawData.connect(op5.output)
-        opCarvingTopLevel.RawData.connect(op5.output)
+        #opCarvingTopLevel.RawData.connect(op5.output)
+        opCarvingTopLevel.InputData.connect(op5.output)
+        opCarvingTopLevel.FilteredInputData.connect(opPreprocessing.FilteredImage)
         opCarvingTopLevel.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
         

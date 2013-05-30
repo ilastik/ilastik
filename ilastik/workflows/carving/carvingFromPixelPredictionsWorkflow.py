@@ -26,7 +26,10 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+        if workflow_cmdline_args:
+            assert False, "Not using workflow cmdline args yet."
+        
         if hintoverlayFile is not None:
             assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
         if pmapoverlayFile is not None:
@@ -34,7 +37,7 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
 
         graph = Graph()
         
-        super(CarvingFromPixelPredictionsWorkflow, self).__init__(graph=graph, *args, **kwargs)
+        super(CarvingFromPixelPredictionsWorkflow, self).__init__(headless, *args, graph=graph, **kwargs)
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -89,8 +92,11 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
         opSingleChannelSelector.Input.connect( opPixelClassification.PredictionProbabilities )
         opSingleChannelSelector.Index.setValue(0)
         
-        opPreprocessing.RawData.connect(opSingleChannelSelector.Output)
-        opCarvingTopLevel.RawData.connect(opSingleChannelSelector.Output)
+        opPreprocessing.RawData.connect( opSingleChannelSelector.Output )
+        opCarvingTopLevel.RawData.connect( op5.output )
+        opCarvingTopLevel.InputData.connect( opSingleChannelSelector.Output )
+        opCarvingTopLevel.FilteredInputData.connect( opPreprocessing.FilteredImage )
+
         opCarvingTopLevel.MST.connect(opPreprocessing.PreprocessedData)
         #opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
         opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")

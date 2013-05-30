@@ -349,8 +349,8 @@ class CarvingGui(LabelingGui):
             return
 
         op = self.topLevelOperatorView.opCarving
-        if not self._renderMgr.ready:
-            self._renderMgr.setup(op.RawData.value.shape[1:4])
+        if not self._renderMgr.ready():
+            self._renderMgr.setup(op.RawData.meta.shape[1:4])
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
@@ -510,12 +510,29 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         #raw data
-        #(here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons)
-        if self.topLevelOperatorView.RawData.ready():
-            raw5D = self.topLevelOperatorView.RawData.value
-            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+        rawSlot = self.topLevelOperatorView.RawData
+        if rawSlot.ready():
+            #raw5D = self.topLevelOperatorView.RawData.value
+            #layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+            layer = GrayscaleLayer( LazyflowSource(rawSlot) )
             layer.name = "raw"
             layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+
+        inputSlot = self.topLevelOperatorView.InputData
+        if inputSlot.ready():
+            layer = GrayscaleLayer( LazyflowSource(inputSlot) )
+            layer.name = "input"
+            layer.visible = not rawSlot.ready()
+            layer.opacity = 1.0
+            layers.append(layer)
+
+        filteredSlot = self.topLevelOperatorView.InputData
+        if filteredSlot.ready():
+            layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
+            layer.name = "filtered input"
+            layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
 

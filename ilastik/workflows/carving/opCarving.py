@@ -24,9 +24,12 @@ class OpCarving(Operator):
     
     #MST of preprocessed Graph
     MST = InputSlot()
-    
-    #raw data on which carving works
-    RawData      = InputSlot()
+
+    # These three slots are for display only.
+    # All computation is done with the MST.    
+    RawData = InputSlot(optional=True) # Can be used if the 'raw' data is different than the input data
+    InputData = InputSlot() # The data used by preprocessing (display only)
+    FilteredInputData = InputSlot() # The output of the preprocessing filter
     
     #write the seeds that the users draw into this slot
     WriteSeeds   = InputSlot()
