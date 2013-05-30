@@ -10,6 +10,8 @@ from lazyflow.roi import roiFromShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
+from ilastik.utility.timer import Timer
+
 #carving Cython module
 from cylemon.segmentation import MSTSegmentor
 
@@ -45,65 +47,73 @@ class OpFilter(Operator):
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
-        
+
         print "applying filter", fvol.shape
-        if fvol.shape[2] > 1:
-            # true 3D volume
-            if volume_filter == 0:
-                print "lowest eigenvalue of Hessian of Gaussian"
-                result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
-                result_view[:] = numpy.max(result_view) - result_view
-            
-            elif volume_filter == 1:
-                print "greatest eigenvalue of Hessian of Gaussian"
-                result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
-                 
-            elif volume_filter == 2:
-                print "Gaussian Gradient Magnitude"
-                result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+        with Timer() as filterTimer:        
+            if fvol.shape[2] > 1:
+                # true 3D volume
+                if volume_filter == 0:
+                    print "lowest eigenvalue of Hessian of Gaussian"
+                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
+                    result_view[:] = numpy.max(result_view) - result_view
                 
-            elif volume_filter == 3:
-                print "Gaussian Smoothing"
-                result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
-                
-            elif volume_filter == 4:
-                print "negative Gaussian Smoothing"
-                result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
+                elif volume_filter == 1:
+                    print "greatest eigenvalue of Hessian of Gaussian"
+                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
+                     
+                elif volume_filter == 2:
+                    print "Gaussian Gradient Magnitude"
+                    result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+                    
+                elif volume_filter == 3:
+                    print "Gaussian Smoothing"
+                    result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
+                    
+                elif volume_filter == 4:
+                    print "negative Gaussian Smoothing"
+                    result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
-            volume_ma = numpy.max(result_view[...])
-            volume_mi = numpy.min(result_view[...])
-            result_view[...] = (result_view - volume_mi) * 255.0 / (volume_ma-volume_mi)
+                print "Filter took {} seconds".format( filterTimer.seconds() )
 
-        else:
-            # 2D Image
-            fvol = fvol[:,:,0]
-            if volume_filter == 0:
-                print "lowest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
-                result_view[:] = numpy.max(result_view) - result_view
+                with Timer() as scalingTimer:
+                    volume_ma = numpy.max(result_view[...])
+                    volume_mi = numpy.min(result_view[...])
+                    result_view[...] = (result_view - volume_mi) * 255.0 / (volume_ma-volume_mi)
+                print "Scaling filter results took {} seconds".format( scalingTimer.seconds() )
+            else:
+                # 2D Image
+                fvol = fvol[:,:,0]
+                if volume_filter == 0:
+                    print "lowest eigenvalue of Hessian of Gaussian"
+                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
+                    result_view[:] = numpy.max(result_view) - result_view
+                
+                elif volume_filter == 1:
+                    print "greatest eigenvalue of Hessian of Gaussian"
+                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
+                     
+                elif volume_filter == 2:
+                    print "Gaussian Gradient Magnitude"
+                    volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+                    
+                elif volume_filter == 3:
+                    print "Gaussian Smoothing"
+                    volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
+                    
+                elif volume_filter == 4:
+                    print "negative Gaussian Smoothing"
+                    volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
             
-            elif volume_filter == 1:
-                print "greatest eigenvalue of Hessian of Gaussian"
-                volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
-                 
-            elif volume_filter == 2:
-                print "Gaussian Gradient Magnitude"
-                volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
-                
-            elif volume_filter == 3:
-                print "Gaussian Smoothing"
-                volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
-                
-            elif volume_filter == 4:
-                print "negative Gaussian Smoothing"
-                volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
-        
-            fvol = fvol[:,:,numpy.newaxis]
-            volume_feat = volume_feat[:,:,numpy.newaxis]
-            volume_ma = numpy.max(volume_feat)
-            volume_mi = numpy.min(volume_feat)
-            volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
-            result_view[...] = volume_feat
+                print "Filter took {} seconds".format( filterTimer.seconds() )
+
+                with Timer() as scalingTimer:
+                    fvol = fvol[:,:,numpy.newaxis]
+                    volume_feat = volume_feat[:,:,numpy.newaxis]
+                    volume_ma = numpy.max(volume_feat)
+                    volume_mi = numpy.min(volume_feat)
+                    volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
+                    result_view[...] = volume_feat
+                print "Scaling filter results took {} seconds".format( scalingTimer.seconds() )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -122,15 +132,19 @@ class OpSimpleWatershed(Operator):
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
-        if self.Input.meta.getTaggedShape()['z'] > 1:
-            sys.stdout.write("Watershed..."); sys.stdout.flush()
-            result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
-            print "done" ,numpy.max(result[...])
-        else:
-            sys.stdout.write("Watershed..."); sys.stdout.flush()
-            labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
-            result_view[...] = labelVolume[:,:,numpy.newaxis]
-            print "done" ,numpy.max(labelVolume)
+        with Timer() as watershedTimer:
+            if self.Input.meta.getTaggedShape()['z'] > 1:
+                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
+                result_view[...] = vigra.analysis.watersheds(volume_feat[:,:].astype(numpy.uint8))[0]
+                print "done" ,numpy.max(result[...])
+            else:
+                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
+                result_view[...] = labelVolume[:,:,numpy.newaxis]
+                print "done" ,numpy.max(labelVolume)
+
+        print "Watershed took {} seconds".format( watershedTimer.seconds() )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
