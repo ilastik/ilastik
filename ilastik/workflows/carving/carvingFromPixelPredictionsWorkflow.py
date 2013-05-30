@@ -92,7 +92,8 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
         opSingleChannelSelector.Input.connect( opPixelClassification.PredictionProbabilities )
         opSingleChannelSelector.Index.setValue(0)
         
-        opPreprocessing.RawData.connect( opSingleChannelSelector.Output )
+        opPreprocessing.InputData.connect( opSingleChannelSelector.Output )
+        opPreprocessing.RawData.connect( op5.output )
         opCarvingTopLevel.RawData.connect( op5.output )
         opCarvingTopLevel.InputData.connect( opSingleChannelSelector.Output )
         opCarvingTopLevel.FilteredInputData.connect( opPreprocessing.FilteredImage )

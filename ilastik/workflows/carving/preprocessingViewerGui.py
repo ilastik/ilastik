@@ -39,7 +39,14 @@ class PreprocessingViewerGui( LayerViewerGui ):
             filteredLayer.opacity = 1.0
             layers.append( filteredLayer )
 
-        # Raw data        
+        inputSlot = opLane.InputData
+        if inputSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputSlot )
+            inputLayer.name = "Input Data"
+            inputLayer.visible = True
+            inputLayer.opacity = 1.0
+            layers.append( inputLayer )
+
         rawSlot = opLane.RawData
         if rawSlot.ready():
             rawLayer = self.createStandardLayerFromSlot( rawSlot )

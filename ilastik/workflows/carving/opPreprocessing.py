@@ -198,7 +198,8 @@ class OpPreprocessing(Operator):
     name = "Preprocessing"
     
     #Image before preprocess
-    RawData = InputSlot()
+    RawData = InputSlot(optional=True)
+    InputData = InputSlot()
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
     
@@ -222,7 +223,7 @@ class OpPreprocessing(Operator):
         self.initialFilter = None # applied to gui by pressing reset
         
         self._opFilter = OpFilter(parent=self)
-        self._opFilter.Input.connect( self.RawData )
+        self._opFilter.Input.connect( self.InputData )
         self._opFilter.Sigma.connect( self.Sigma )
         self._opFilter.Filter.connect( self.Filter )
         
@@ -244,11 +245,11 @@ class OpPreprocessing(Operator):
         self.WatershedImage.connect( self._opWatershedCache.Output )
         
     def setupOutputs(self):
-        self._checkMeta(self.RawData)
+        self._checkMeta(self.InputData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
-        self._opFilterCache.blockShape.setValue( self.RawData.meta.shape )
+        self._opFilterCache.blockShape.setValue( self.InputData.meta.shape )
         self._opFilterCache.Input.connect( self._opFilter.Output )
 
         self._opWatershedCache.blockShape.setValue( self._opWatershed.Output.meta.shape )
@@ -319,7 +320,7 @@ class OpPreprocessing(Operator):
         return True
     
     def propagateDirty(self,slot,subindex,roi):
-        if slot == self.RawData:
+        if slot == self.InputData:
             #complete restart
             #No values will be reused any more
             self.initialSigma = None

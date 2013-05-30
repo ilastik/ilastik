@@ -59,5 +59,5 @@ class PreprocessingApplet(StandardApplet):
     
     @property
     def broadcastingSlots(self):
-        return ["Sigma", "RawData"]
+        return ["Sigma", "Filter"]
     
