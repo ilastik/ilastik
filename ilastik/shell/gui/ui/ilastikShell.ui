@@ -253,7 +253,7 @@
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>
-              <widget class="QTreeWidget" name="appletBar">
+              <widget class="QToolBox" name="appletBar">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
                  <horstretch>0</horstretch>
@@ -303,18 +303,6 @@
                <property name="midLineWidth">
                 <number>2</number>
                </property>
-               <property name="alternatingRowColors">
-                <bool>false</bool>
-               </property>
-               <property name="indentation">
-                <number>15</number>
-               </property>
-               <property name="rootIsDecorated">
-                <bool>true</bool>
-               </property>
-               <property name="headerHidden">
-                <bool>true</bool>
-               </property>
                <column>
                 <property name="text">
                  <string notr="true">Task</string>
@@ -360,7 +348,7 @@
                   <property name="minimumSize">
                    <size>
                     <width>300</width>
-                    <height>100</height>
+                    <height>200</height>
                    </size>
                   </property>
                   <property name="baseSize">
