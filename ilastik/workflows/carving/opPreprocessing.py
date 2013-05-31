@@ -52,6 +52,7 @@ class OpFilter(Operator):
             if volume_filter == 0:
                 print "lowest eigenvalue of Hessian of Gaussian"
                 result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
+                result_view[:] = numpy.max(result_view) - result_view
             
             elif volume_filter == 1:
                 print "greatest eigenvalue of Hessian of Gaussian"
@@ -79,6 +80,7 @@ class OpFilter(Operator):
             if volume_filter == 0:
                 print "lowest eigenvalue of Hessian of Gaussian"
                 volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
+                result_view[:] = numpy.max(result_view) - result_view
             
             elif volume_filter == 1:
                 print "greatest eigenvalue of Hessian of Gaussian"
