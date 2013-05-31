@@ -237,8 +237,8 @@ class SVR(object):
     ]
 
 
-    def __init__(self, underMult, overMult, limitDensity = False, kernel =
-                 "linear", optimization = "quadratic" ):
+    def __init__(self, underMult, overMult, limitDensity = False, optimization = "quadratic", kernel =
+                 "linear"):
         """Parameters
         ----------
         X : {array-like, sparse matrix}, shape = [n_samples, n_features]
@@ -313,7 +313,7 @@ class SVR(object):
         self.prepareData(img, dot, sigma, smooth, normalize)
         self.fitPrepared(newImg[mapping,:], newDot[mapping], tags, epsilon)
 
-    def fitPrepared(self, img, dot, tags, epsilon, boxConstraints = []):
+    def fitPrepared(self, img, dot, tags, epsilon = 0.01, boxConstraints = []):
         
 
         numFeatures = img.shape[-1]
@@ -326,7 +326,7 @@ class SVR(object):
 
         if self.optimization == "rf":
             from sklearn.ensemble import RandomForestRegressor as RFR
-            svr = RFR(n_jobs = 1)
+            svr = RFR()
             svr.fit(img, dot)
 
             #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
@@ -409,6 +409,14 @@ class SVR(object):
             #print svr.dual_coef_
             self.svr = svr
             success = True
+        elif self.optimization == "linearReg":
+            from sklearn.linear_model  import LinearRegression
+            svr = LinearRegression()
+            svr.fit(img, dot)
+            self.svr = svr
+            success = True
+
+
         if success:
             self.trained = True
         return success
@@ -425,6 +433,8 @@ class SVR(object):
             res = self.svr.predict(image)
             #print res
         elif self.optimization == "rf":
+            res = self.svr.predict(image)
+        elif self.optimization == "linearReg":
             res = self.svr.predict(image)
 
         elif self.optimization == "quadratic":
@@ -465,8 +475,7 @@ class SVR(object):
         #res = np.zeros(oldShape[:-1])
         res = res.view(np.ndarray)
         res[np.where(res < 0)] = 0
-        res.reshape(oldShape[:-1])
-        return res
+        return res.reshape(oldShape[:-1])
 
     def findB(self, alpha, residual, tags, limits, epsilon):
 
