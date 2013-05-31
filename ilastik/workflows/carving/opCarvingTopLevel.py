@@ -33,13 +33,13 @@ class OpCarvingTopLevel(Operator):
         # Just add to our input slot, which will propagate to the rest of the internal connections
         assert len(self.RawData) == laneIndex
         #self.MST.resize(laneIndex+1)
-        self.RawData.resize(laneIndex+1)
+        self.InputData.resize(laneIndex+1)
 
     def removeLane(self, index, final_length):
         # Just remove from our input slot, which will propagate to the rest of the internal connections
-        assert len(self.RawData) == final_length + 1
+        assert len(self.InputData) == final_length + 1
         #self.MST.removeSlot( index, final_length )
-        self.RawData.removeSlot(index, final_length)
+        self.InputData.removeSlot(index, final_length)
     
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
@@ -66,8 +66,8 @@ class OpCarvingTopLevel(Operator):
 
         self.opCarving.MST.connect( self.MST )
         
-        # Special connection: WriteSeeds metadata must mirror the raw data
-        self.opCarving.WriteSeeds.connect( self.opCarving.RawData )
+        # Special connection: WriteSeeds metadata must mirror the input data
+        self.opCarving.WriteSeeds.connect( self.opCarving.InputData )
         
         # The GUI monitors all top-level slots to decide when to refresh.
         # Hook up these top-level slots so the GUI can find them

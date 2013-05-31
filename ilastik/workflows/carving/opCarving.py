@@ -27,7 +27,7 @@ class OpCarving(Operator):
 
     # These three slots are for display only.
     # All computation is done with the MST.    
-    RawData = InputSlot(optional=True) # Can be used if the 'raw' data is different than the input data
+    RawData = InputSlot(optional=True) # Display-only: Available to the GUI in case the input data was preprocessed in some way but you still want to see the 'raw' data.
     InputData = InputSlot() # The data used by preprocessing (display only)
     FilteredInputData = InputSlot() # The output of the preprocessing filter
     
@@ -82,8 +82,8 @@ class OpCarving(Operator):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
         self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
-        self.opLabeling.LabelInput.connect( self.RawData )
-        self.opLabeling.InputImage.connect( self.RawData )
+        self.opLabeling.LabelInput.connect( self.InputData )
+        self.opLabeling.InputImage.connect( self.InputData )
         self.opLabeling.LabelDelete.setValue(-1)
         self.opLabeling.LabelsAllowedFlag.setValue( True )
         
@@ -169,19 +169,19 @@ class OpCarving(Operator):
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
-        self._checkMeta(self.RawData)
+        self._checkMeta(self.InputData)
         
-        self.Segmentation.meta.assignFrom(self.RawData.meta)
+        self.Segmentation.meta.assignFrom(self.InputData.meta)
         self.Segmentation.meta.dtype = numpy.int32
         
         self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
         self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
         self.DoneSegmentation.meta.assignFrom(self.Segmentation.meta)
 
-        self.HintOverlay.meta.assignFrom(self.RawData.meta)
-        self.PmapOverlay.meta.assignFrom(self.RawData.meta)
+        self.HintOverlay.meta.assignFrom(self.InputData.meta)
+        self.PmapOverlay.meta.assignFrom(self.InputData.meta)
 
-        self.Uncertainty.meta.assignFrom(self.RawData.meta)
+        self.Uncertainty.meta.assignFrom(self.InputData.meta)
         self.Uncertainty.meta.dtype = numpy.uint8
 
         self.Trigger.meta.shape = (1,)
