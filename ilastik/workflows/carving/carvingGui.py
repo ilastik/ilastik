@@ -512,9 +512,9 @@ class CarvingGui(LabelingGui):
         #raw data
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
-            #raw5D = self.topLevelOperatorView.RawData.value
-            #layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
-            layer = GrayscaleLayer( LazyflowSource(rawSlot) )
+            raw5D = self.topLevelOperatorView.RawData.value
+            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+            #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
             layer.name = "raw"
             layer.visible = True
             layer.opacity = 1.0
