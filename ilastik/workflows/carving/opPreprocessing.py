@@ -74,19 +74,13 @@ class OpFilter(Operator):
                     result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
                 print "Filter took {} seconds".format( filterTimer.seconds() )
-
-                with Timer() as scalingTimer:
-                    volume_ma = numpy.max(result_view[...])
-                    volume_mi = numpy.min(result_view[...])
-                    result_view[...] = (result_view - volume_mi) * 255.0 / (volume_ma-volume_mi)
-                print "Scaling filter results took {} seconds".format( scalingTimer.seconds() )
             else:
                 # 2D Image
                 fvol = fvol[:,:,0]
                 if volume_filter == 0:
                     print "lowest eigenvalue of Hessian of Gaussian"
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
-                    result_view[:] = numpy.max(result_view) - result_view
+                    volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
                 elif volume_filter == 1:
                     print "greatest eigenvalue of Hessian of Gaussian"
@@ -104,20 +98,35 @@ class OpFilter(Operator):
                     print "negative Gaussian Smoothing"
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
             
+                result_view[...] = volume_feat
                 print "Filter took {} seconds".format( filterTimer.seconds() )
-
-                with Timer() as scalingTimer:
-                    fvol = fvol[:,:,numpy.newaxis]
-                    volume_feat = volume_feat[:,:,numpy.newaxis]
-                    volume_ma = numpy.max(volume_feat)
-                    volume_mi = numpy.min(volume_feat)
-                    volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
-                    result_view[...] = volume_feat
-                print "Scaling filter results took {} seconds".format( scalingTimer.seconds() )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
+
+class OpNormalize255(Operator):
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom( self.Input.meta )
+    
+    def execute(self, slot, subindex, roi, result):
+        # Save memory: use result as a temporary
+        result = self.Input( roi.start, roi.stop ).wait()
+        volume_max = numpy.max(result)
+        volume_min = numpy.min(result)
+
+        # Avoid temporaries...
+        # result[...] = (result - volume_min) * 255.0 / (volume_max-volume_min)
+        result -= volume_min
+        result *= 255.0
+        result /= (volume_max - volume_min)
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(roi.start, roi.stop)
 
 class OpSimpleWatershed(Operator):
     Input = InputSlot()
@@ -202,6 +211,7 @@ class OpPreprocessing(Operator):
     InputData = InputSlot()
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
+    WatershedSource = InputSlot(value="filtered") # Choices: "raw", "input", "filtered"
     
     #Image after preprocess as cylemon.MST
     PreprocessedData = OutputSlot()
@@ -209,6 +219,14 @@ class OpPreprocessing(Operator):
     # Display outputs
     FilteredImage = OutputSlot()
     WatershedImage = OutputSlot()
+
+    # RawData -----------------> opRawNormalize ------------------------                                                                  --> WatershedImage
+    #                                                                   \                                                                /
+    # InputData --> -----------> opInputNormalize ---------------------> (SELECT by WatershedSource) --> opWatershed --> opWatershedCache --> opMstProvider --> [via execute()] --> PreprocessedData
+    #              \                                                    /                                                                    /
+    # Sigma ------> opFilter --> opFilterNormalize --> opFilterCache --> --------------------------------------------------------------------
+    #              /                                                \
+    # Filter ------                                                  --> FilteredImage
     
     def __init__(self, *args, **kwargs):
         super(OpPreprocessing, self).__init__(*args, **kwargs)
@@ -226,13 +244,21 @@ class OpPreprocessing(Operator):
         self._opFilter.Input.connect( self.InputData )
         self._opFilter.Sigma.connect( self.Sigma )
         self._opFilter.Filter.connect( self.Filter )
+
+        self._opFilterNormalize = OpNormalize255( parent=self )
+        self._opFilterNormalize.Input.connect( self._opFilter.Output )
         
         self._opFilterCache = OpArrayCache( parent=self )
         
         self._opWatershed = OpSimpleWatershed( parent=self )
-        self._opWatershed.Input.connect( self._opFilterCache.Output )
         
         self._opWatershedCache = OpArrayCache( parent=self )
+        
+        self._opRawNormalize = OpNormalize255( parent=self )
+        self._opRawNormalize.Input.connect( self.RawData )
+        
+        self._opInputNormalize = OpNormalize255( parent=self )
+        self._opInputNormalize.Input.connect( self.InputData )
 
         self._opMstProvider = OpMstSegmentorProvider( self.applet, parent=self )
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
@@ -252,8 +278,22 @@ class OpPreprocessing(Operator):
         self._opFilterCache.blockShape.setValue( self.InputData.meta.shape )
         self._opFilterCache.Input.connect( self._opFilter.Output )
 
+        ws_source = self.WatershedSource.value
+        if ws_source == 'raw':
+            if self.RawData.ready():
+                self._opWatershed.Input.connect( self._opRawNormalize.Output )
+            else:
+                self._opWatershed.Input.connect( self._opInputNormalize.Output )
+        elif ws_source == 'input':
+            self._opWatershed.Input.connect( self._opInputNormalize.Output )
+        elif ws_source == 'filtered':
+            self._opWatershed.Input.connect( self._opFilterCache.Output )
+        else:
+            assert False, "Unknown Watershed source option: {}".format( ws_source )
+
         self._opWatershedCache.blockShape.setValue( self._opWatershed.Output.meta.shape )
         self._opWatershedCache.Input.connect( self._opWatershed.Output )
+
 
     def execute(self,slot,subindex,roi,result):
         assert slot == self.PreprocessedData, "Invalid output slot"

@@ -24,10 +24,12 @@ class PreprocessingSerializer( AppletSerializer ):
                 
                 deleteIfPresent(preproc, "sigma")
                 deleteIfPresent(preproc, "filter")
+                deleteIfPresent(preproc, "watershed_source")
                 deleteIfPresent(preproc, "graph")
                 
                 preproc.create_dataset("sigma",data= opPre.initialSigma)
                 preproc.create_dataset("filter",data= opPre.initialFilter)
+                preproc.create_dataset("watershed_source", data=opPre.WatershedSource.value)
                  
                 preprocgraph = getOrCreateGroup(preproc, "graph")
                 mst.saveH5G(preprocgraph)
@@ -41,6 +43,10 @@ class PreprocessingSerializer( AppletSerializer ):
         
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
+        try:
+            watershed_source = str(topGroup["watershed_source"].value)
+        except KeyError:
+            watershed_source = None
         
         if "graph" in topGroup.keys():
             graphgroup = topGroup["graph"]
@@ -58,6 +64,8 @@ class PreprocessingSerializer( AppletSerializer ):
             
             opPre.initialSigma = sigma
             opPre.Sigma.setValue(sigma)
+            if watershed_source:
+                opPre.WatershedSource.setValue( watershed_source )
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
             

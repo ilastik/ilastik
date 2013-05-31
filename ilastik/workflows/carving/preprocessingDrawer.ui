@@ -119,6 +119,20 @@
       </layout>
      </item>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Watershed Source:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="watershedSourceCombo"/>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="QPushButton" name="runButton">
        <property name="toolTip">
         <string>Start Preprocessing for selected Data</string>
