@@ -22,6 +22,12 @@ class OpFilter(Operator):
     
     Output = OutputSlot()
 
+    HESSIAN_BRIGHT = 0
+    HESSIAN_DARK = 1
+    STEP_EDGES = 2
+    RAW = 3
+    RAW_INVERTED = 4
+
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
@@ -52,24 +58,24 @@ class OpFilter(Operator):
         with Timer() as filterTimer:        
             if fvol.shape[2] > 1:
                 # true 3D volume
-                if volume_filter == 0:
+                if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     print "lowest eigenvalue of Hessian of Gaussian"
                     result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
                     result_view[:] = numpy.max(result_view) - result_view
                 
-                elif volume_filter == 1:
+                elif volume_filter == OpFilter.HESSIAN_DARK:
                     print "greatest eigenvalue of Hessian of Gaussian"
                     result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
                      
-                elif volume_filter == 2:
+                elif volume_filter == OpFilter.STEP_EDGES:
                     print "Gaussian Gradient Magnitude"
                     result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
-                elif volume_filter == 3:
+                elif volume_filter == OpFilter.RAW:
                     print "Gaussian Smoothing"
                     result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
-                elif volume_filter == 4:
+                elif volume_filter == OpFilter.RAW_INVERTED:
                     print "negative Gaussian Smoothing"
                     result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
@@ -77,24 +83,24 @@ class OpFilter(Operator):
             else:
                 # 2D Image
                 fvol = fvol[:,:,0]
-                if volume_filter == 0:
+                if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     print "lowest eigenvalue of Hessian of Gaussian"
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
                     volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
-                elif volume_filter == 1:
+                elif volume_filter == OpFilter.HESSIAN_DARK:
                     print "greatest eigenvalue of Hessian of Gaussian"
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
                      
-                elif volume_filter == 2:
+                elif volume_filter == OpFilter.STEP_EDGES:
                     print "Gaussian Gradient Magnitude"
                     volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
-                elif volume_filter == 3:
+                elif volume_filter == OpFilter.RAW:
                     print "Gaussian Smoothing"
                     volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
-                elif volume_filter == 4:
+                elif volume_filter == OpFilter.RAW_INVERTED:
                     print "negative Gaussian Smoothing"
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
             
@@ -220,13 +226,15 @@ class OpPreprocessing(Operator):
     FilteredImage = OutputSlot()
     WatershedImage = OutputSlot()
 
-    # RawData -----------------> opRawNormalize ------------------------                                                                  --> WatershedImage
+    # RawData -------- opRawFilter* ---------> opRawNormalize ----------                                                                  --> WatershedImage
     #                                                                   \                                                                /
-    # InputData --> -----------> opInputNormalize ---------------------> (SELECT by WatershedSource) --> opWatershed --> opWatershedCache --> opMstProvider --> [via execute()] --> PreprocessedData
+    # InputData --> -- opInputFilter*--------> opInputNormalize -------> (SELECT by WatershedSource) --> opWatershed --> opWatershedCache --> opMstProvider --> [via execute()] --> PreprocessedData
     #              \                                                    /                                                                    /
     # Sigma ------> opFilter --> opFilterNormalize --> opFilterCache --> --------------------------------------------------------------------
     #              /                                                \
     # Filter ------                                                  --> FilteredImage
+
+    # *note: Raw/Input filters used for inversion and smoothing only.
     
     def __init__(self, *args, **kwargs):
         super(OpPreprocessing, self).__init__(*args, **kwargs)
@@ -254,12 +262,20 @@ class OpPreprocessing(Operator):
         
         self._opWatershedCache = OpArrayCache( parent=self )
         
-        self._opRawNormalize = OpNormalize255( parent=self )
-        self._opRawNormalize.Input.connect( self.RawData )
+        self._opRawFilter = OpFilter( parent=self )
+        self._opRawFilter.Input.connect( self.RawData )
+        self._opRawFilter.Sigma.connect( self.Sigma )
         
-        self._opInputNormalize = OpNormalize255( parent=self )
-        self._opInputNormalize.Input.connect( self.InputData )
+        self._opRawNormalize = OpNormalize255( parent=self )
+        self._opRawNormalize.Input.connect( self._opRawFilter.Output )
+        
+        self._opInputFilter = OpFilter( parent=self )
+        self._opInputFilter.Input.connect( self.InputData )
+        self._opInputFilter.Sigma.connect( self.Sigma )
 
+        self._opInputNormalize = OpNormalize255( parent=self )
+        self._opInputNormalize.Input.connect( self._opInputFilter.Output )
+        
         self._opMstProvider = OpMstSegmentorProvider( self.applet, parent=self )
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
         self._opMstProvider.LabelImage.connect( self._opWatershedCache.Output )
@@ -276,7 +292,13 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.dtype = object
 
         self._opFilterCache.blockShape.setValue( self.InputData.meta.shape )
-        self._opFilterCache.Input.connect( self._opFilter.Output )
+        self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
+
+        # If the user's boundaries are dark, then invert the special watershed sources
+        if self.Filter.value == OpFilter.HESSIAN_DARK or self.Filter.value == OpFilter.RAW_INVERTED:
+            self._opRawFilter.Filter.setValue( OpFilter.RAW_INVERTED )
+        else:
+            self._opRawFilter.Filter.setValue( OpFilter.RAW )
 
         ws_source = self.WatershedSource.value
         if ws_source == 'raw':
@@ -366,6 +388,9 @@ class OpPreprocessing(Operator):
             self.initialSigma = None
             self.initialFilter = None
             self._prepData = [None]
+        
+        if slot == self.WatershedSource or (slot == self.Filter and self.WatershedSource.value == 'filtered'):
+            self._opWatershed.Input.setDirty(slice(None))
         
         if self.AreSettingsInitial():
             #if settings are the same as with last preprocess
