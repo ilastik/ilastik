@@ -16,17 +16,17 @@ from ilastik.utility.timer import Timer
 from cylemon.segmentation import MSTSegmentor
 
 class OpFilter(Operator):
-    Input = InputSlot()
-    Filter = InputSlot(value=0)
-    Sigma = InputSlot(value=1.6)
-    
-    Output = OutputSlot()
-
     HESSIAN_BRIGHT = 0
     HESSIAN_DARK = 1
     STEP_EDGES = 2
     RAW = 3
     RAW_INVERTED = 4
+
+    Input = InputSlot()
+    Filter = InputSlot(value=HESSIAN_BRIGHT)
+    Sigma = InputSlot(value=1.6)
+    
+    Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.Input.meta )
@@ -225,6 +225,7 @@ class OpPreprocessing(Operator):
     # Display outputs
     FilteredImage = OutputSlot()
     WatershedImage = OutputSlot()
+    WatershedSourceImage = OutputSlot()
 
     # RawData -------- opRawFilter* ---------> opRawNormalize ----------                                                                  --> WatershedImage
     #                                                                   \                                                                /
@@ -280,6 +281,8 @@ class OpPreprocessing(Operator):
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
         self._opMstProvider.LabelImage.connect( self._opWatershedCache.Output )
 
+        self._opWatershedSourceCache = OpArrayCache( parent=self )
+
         #self.PreprocessedData.connect( self._opMstProvider.MST )
         
         # Display slots
@@ -297,8 +300,10 @@ class OpPreprocessing(Operator):
         # If the user's boundaries are dark, then invert the special watershed sources
         if self.Filter.value == OpFilter.HESSIAN_DARK or self.Filter.value == OpFilter.RAW_INVERTED:
             self._opRawFilter.Filter.setValue( OpFilter.RAW_INVERTED )
+            self._opInputFilter.Filter.setValue( OpFilter.RAW_INVERTED )
         else:
             self._opRawFilter.Filter.setValue( OpFilter.RAW )
+            self._opInputFilter.Filter.setValue( OpFilter.RAW )
 
         ws_source = self.WatershedSource.value
         if ws_source == 'raw':
@@ -312,6 +317,11 @@ class OpPreprocessing(Operator):
             self._opWatershed.Input.connect( self._opFilterCache.Output )
         else:
             assert False, "Unknown Watershed source option: {}".format( ws_source )
+
+        self._opWatershedSourceCache.blockShape.setValue( self.InputData.meta.shape )
+        self._opWatershedSourceCache.Input.connect( self._opWatershed.Input )
+
+        self.WatershedSourceImage.connect( self._opWatershedSourceCache.Output )
 
         self._opWatershedCache.blockShape.setValue( self._opWatershed.Output.meta.shape )
         self._opWatershedCache.Input.connect( self._opWatershed.Output )
