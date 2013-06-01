@@ -120,15 +120,15 @@ class OpNormalize255(Operator):
     
     def execute(self, slot, subindex, roi, result):
         # Save memory: use result as a temporary
-        result = self.Input( roi.start, roi.stop ).wait()
+        self.Input( roi.start, roi.stop ).writeInto(result).wait()
         volume_max = numpy.max(result)
         volume_min = numpy.min(result)
 
-        # Avoid temporaries...
         # result[...] = (result - volume_min) * 255.0 / (volume_max-volume_min)
-        result -= volume_min
-        result *= 255.0
-        result /= (volume_max - volume_min)
+        # Avoid temporaries...
+        result[:] -= volume_min
+        result[:] *= 255.0
+        result[:] /= (volume_max - volume_min)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -389,10 +389,12 @@ class OpPreprocessing(Operator):
             self.initialFilter = None
             self._prepData = [None]
         
+        ws_source_changed = False
         if slot == self.WatershedSource or (slot == self.Filter and self.WatershedSource.value == 'filtered'):
             self._opWatershed.Input.setDirty(slice(None))
+            ws_source_changed = True
         
-        if self.AreSettingsInitial():
+        if not ws_source_changed and self.AreSettingsInitial():
             #if settings are the same as with last preprocess
             #enable carving, as the graph is still stored
             self._dirty = False
