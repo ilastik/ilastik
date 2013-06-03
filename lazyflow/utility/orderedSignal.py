@@ -39,8 +39,8 @@ class OrderedSignal(object):
         """
         # Find this function and remove its entry
         try:
-            self.callbacks.remove(fn)
-        except AttributeError:
+            self.callbacks.pop(fn)
+        except KeyError:
             pass
 
 
