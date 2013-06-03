@@ -14,9 +14,10 @@ class CarvingApplet(LabelingApplet):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow,  hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
-        self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
-        self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
+        if not hasattr(self, '_topLevelOperator'):
+            self._topLevelOperator = OpCarvingTopLevel( parent=workflow,  hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
+            self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
+            self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
 
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
 
@@ -37,19 +38,8 @@ class CarvingApplet(LabelingApplet):
         """
         # Get a single-lane view of the top-level operator
         topLevelOperatorView = self.topLevelOperator.getLane(laneIndex)
-
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = topLevelOperatorView.opCarving.WriteSeeds
-        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabeling.LabelImage
-        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabeling.LabelDelete
-        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabeling.MaxLabelValue
-        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.opLabeling.LabelsAllowedFlag
         
-        gui = CarvingGui( labelingSlots,
-                          topLevelOperatorView,
-                          rawInputSlot=topLevelOperatorView.opCarving.RawData )
-
+        gui = CarvingGui( topLevelOperatorView )
         gui.minLabelNumber = 2
         gui.maxLabelNumber = 2
 

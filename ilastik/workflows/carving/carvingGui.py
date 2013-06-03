@@ -25,17 +25,26 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 #===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
-    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None ):
+    def __init__(self, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
+
+        labelingSlots = LabelingGui.LabelingSlots()
+        labelingSlots.labelInput = topLevelOperatorView.opCarving.WriteSeeds
+        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabeling.LabelImage
+        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabeling.LabelEraserValue
+        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabeling.LabelDelete
+        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabeling.MaxLabelValue
+        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.opLabeling.LabelsAllowedFlag
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
-        carvingDrawerUiPath = os.path.join(directory, 'carvingDrawer.ui')
+        if drawerUiPath is None:
+            drawerUiPath = os.path.join(directory, 'carvingDrawer.ui')
         self.dialogdirCOM = os.path.join(directory, 'carvingObjectManagement.ui')
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
-        
-        super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, carvingDrawerUiPath, rawInputSlot)
+        rawInputSlot = topLevelOperatorView.opCarving.RawData        
+        super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
         
         mgr = ShortcutManager()
         
