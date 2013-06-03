@@ -103,8 +103,7 @@ class OperatorMetaClass(ABCMeta):
 
 
 class Operator(object):
-    """
-    The base class for all Operators.
+    """The base class for all Operators.
 
     Operators consist of a class inheriting from this class
     and need to specify their inputs and outputs via
@@ -125,6 +124,13 @@ class Operator(object):
     Different examples for simple operators are provided
     in an example directory. plese read through the
     examples to learn how to implement your own operators...
+
+    Each operator instance is associated with a lazyflow.graph.Graph object to track
+    dependencies between operators. An operator instance either
+    inherits the graph from its parent or---if it has no parent---is
+    assigned to a graph instance directly. The dependency tracking is
+    mainly used for debugging purposes and to diagnose a network of operators.
+
     """
 
     loggerName = __name__ + '.Operator'
@@ -152,9 +158,20 @@ class Operator(object):
         return obj
 
     def __init__(self, parent=None, graph=None):
+        '''
+        Either parent or graph have to be given. If both are given
+        parent.graph has to be identical with graph.
+
+        :param parent: the parent operator; if None the instance is a
+        root operator
+        :param graph: a Graph instance
+
+        '''
         if not(parent is None or isinstance(parent, Operator)):
             raise Exception("parent of operator name='{}' must be an operator,"
                             " not {} of type {}".format(self.name, parent, type(parent)))
+        if (parent and graph and parent.graph is not graph):
+            raise Exception("graph of parent and graph of operator name='%s' have to be the same" % self.name)
         if graph is None:
             if parent is None:
                 raise Exception("Operator.__init__() [self.name='{}']:"
