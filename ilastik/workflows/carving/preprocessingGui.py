@@ -86,7 +86,7 @@ class PreprocessingGui(QMainWindow):
 
     def handleWatershedSourceChange(self, index):
         data = self.drawer.watershedSourceCombo.itemData(index).toString()
-        self.topLevelOperatorView.WatershedSource.setValue( data )
+        self.topLevelOperatorView.WatershedSource.setValue( str(data) )
 
     def handleInvertWatershedSourceChange(self, checked):
         self.topLevelOperatorView.InvertWatershedSource.setValue( checked )
