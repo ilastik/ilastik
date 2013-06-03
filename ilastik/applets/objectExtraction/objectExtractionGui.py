@@ -47,7 +47,6 @@ class FeatureSelectionDialog(QDialog):
             selectedFeatures = defaultdict(list)
         self.selectedFeatures = selectedFeatures
         self.setWindowTitle("Object Features")
-        self.setObjectName("FeatureSelectionDialog")
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/featureSelection.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
@@ -60,6 +59,7 @@ class FeatureSelectionDialog(QDialog):
         self.populate()
         self.ndim = ndim
         self.set_margin()
+        self.setObjectName("FeatureSelectionDialog")
 
     def populate(self):
         self.ui.treeWidget.setColumnCount(1)

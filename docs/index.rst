@@ -17,7 +17,7 @@ Contents:
    applet_library
    projectManager
    utilities
-   pluginSystem
+   plugin_system
    dependencies
    testing
 

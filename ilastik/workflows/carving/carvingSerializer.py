@@ -50,9 +50,26 @@ class CarvingSerializer( AppletSerializer ):
                 
             opCarving._dirtyObjects = set()
         
+            # save current seeds
+            deleteIfPresent(topGroup, "fg_voxels")
+            deleteIfPresent(topGroup, "bg_voxels")
+
+            fg_voxels, bg_voxels = opCarving.get_label_voxels()
+
+            if fg_voxels[0].shape[0] > 0:
+                v = [fg_voxels[i][:,numpy.newaxis] for i in range(3)]
+                v = numpy.concatenate(v, axis=1)
+                topGroup.create_dataset("fg_voxels", data = v)
+
+            if bg_voxels[0].shape[0] > 0:
+                v = [bg_voxels[i][:,numpy.newaxis] for i in range(3)]
+                v = numpy.concatenate(v, axis=1)
+                topGroup.create_dataset("bg_voxels", data = v)
+
+            print "saved seeds"
+        
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         obj = topGroup["objects"]
-        
         for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
             mst = opCarving._mst 
             
@@ -82,6 +99,23 @@ class CarvingSerializer( AppletSerializer ):
                     print "  no bias below = %d" % mst.no_bias_below[name]
                 except Exception as e:
                     print 'object %s could not be loaded due to exception: %s'% (name,e)
+
+            shape = opCarving.opLabeling.LabelImage.meta.shape
+            dtype = opCarving.opLabeling.LabelImage.meta.dtype
+            z = numpy.zeros(shape, dtype=dtype)
+
+            if "fg_voxels" in topGroup.keys():
+                fg_voxels = topGroup["fg_voxels"]
+                fg_voxels = [fg_voxels[:,k] for k in range(3)]
+                z[0][fg_voxels] = 2
+
+            if "bg_voxels" in topGroup.keys():
+                bg_voxels = topGroup["bg_voxels"]
+                bg_voxels = [bg_voxels[:,k] for k in range(3)]
+                z[0][bg_voxels] = 1
+
+            opCarving.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
+            print "restored seeds"
                 
             opCarving._buildDone()
            
@@ -89,7 +123,7 @@ class CarvingSerializer( AppletSerializer ):
         for index, innerOp in enumerate(self._o.opCarving.innerOperators):
             if len(innerOp._dirtyObjects) > 0:
                 return True
-        return False
+        return True #FIXME: only return True if labels have changed and need to be saved
     
     #this is present only for the serializer AppletInterface
     def unload(self):

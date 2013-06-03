@@ -60,7 +60,7 @@ class EventRecorderGui(QWidget):
         self._recorder = EventRecorder( parent=self )
         self.startButton.setEnabled(False)
         self.pauseButton.setEnabled(True)
-        if self.newCommentEdit.toPlainText() != "":
+        if str(self.newCommentEdit.toPlainText()) != "":
             self._onInsertComment()
         self._onPause()
         self.saveButton.setEnabled(True)
@@ -69,7 +69,7 @@ class EventRecorderGui(QWidget):
         self._autopaused = autopaused
         if self._recorder.paused:
             # Auto-add the comment (if any)
-            if self.newCommentEdit.toPlainText() != "":
+            if str(self.newCommentEdit.toPlainText()) != "":
                 self._onInsertComment()
             # Unpause the recorder
             self._recorder.unpause()
@@ -133,9 +133,12 @@ class EventRecorderGui(QWidget):
             
     def _onInsertComment(self):
         comment = self.newCommentEdit.toPlainText()
+        if str(comment) == "":
+            return
         self._recorder.insertComment( comment )
         self.commentsDisplayEdit.appendPlainText("--------------------------------------------------")
         self.commentsDisplayEdit.appendPlainText( comment )
+        self.commentsDisplayEdit.appendPlainText("--------------------------------------------------")
         self.newCommentEdit.clear()
 
     def eventFilter(self, watched, event):

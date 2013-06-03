@@ -37,9 +37,9 @@ class OpLayerViewer(Operator):
             otherTaggedShape = self.OtherInput.meta.getTaggedShape()
             rawTaggedShape['c'] = None
             otherTaggedShape['c'] = None
-            if rawTaggedShape != otherTaggedShape:
-                raise DatasetConstraintError(
-                     "Layer Viewer",
-                     "Raw data and other data must have equal dimensions (different channels are okay).")
+            if dict(rawTaggedShape) != dict(otherTaggedShape):
+                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawInput.meta.shape, self.OtherInput.meta.shape )
+                raise DatasetConstraintError( "Layer Viewer", msg )
         
         

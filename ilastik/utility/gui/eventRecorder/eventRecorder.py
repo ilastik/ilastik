@@ -1,6 +1,6 @@
 from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtCore import Qt, QObject, QEvent, QChildEvent, QTimerEvent
-from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent, QCursor, QComboBox, QMenu
+from PyQt4.QtGui import QApplication, QMouseEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent, QMoveEvent, QCursor, QComboBox, QMenu
 
 from objectNameUtils import get_fully_qualified_name
 from eventSerializers import event_to_string
@@ -8,9 +8,13 @@ from eventTypeNames import EventTypes
 
 from ilastik.utility.timer import Timer
 
+import functools
+
 import threading
 import logging
 logger = logging.getLogger(__name__)
+
+_orig_QApp_notify = functools.partial( QApplication.notify, QApplication.instance() )
 
 class EventFlusher(QObject):
     SetEvent = QEvent.Type(QEvent.registerEventType())
@@ -104,7 +108,7 @@ class EventPlayer(object):
     def _default_comment_display(self, comment):
         print "--------------------------------------------------"
         print comment
-
+        print "--------------------------------------------------"
 
 def has_ancestor(obj, object_type):
     parent = QObject.parent( obj )
@@ -146,9 +150,9 @@ class EventRecorder( QObject ):
                               EventTypes.NonClientAreaMouseButtonRelease,
                               EventTypes.NonClientAreaMouseButtonDblClick
                                ] )
-    IgnoredEventClasses = (QChildEvent, QTimerEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent)
+    IgnoredEventClasses = (QChildEvent, QTimerEvent, QGraphicsSceneMouseEvent, QWindowStateChangeEvent, QMoveEvent)
 
-    def eventFilter(self, watched, event):
+    def captureEvent(self, watched, event):
         if self._shouldSaveEvent(event):
             try:
                 eventstr = event_to_string(event)
@@ -182,6 +186,7 @@ class EventRecorder( QObject ):
                 return False
             else:
                 return True
+        
         # Ignore non-spontaneous events
         if not event.spontaneous():
             return False
@@ -192,12 +197,22 @@ class EventRecorder( QObject ):
         return True
 
     def unpause(self):
+        # Here, we use a special override of QApplication.notify() instead of using QApplication.instance().installEventFilter().
+        # That's because (contrary to the documentation), the QApplication eventFilter does NOT get to see every event in the application.
+        # Testing shows that events that were "filtered out" by a different event filter may not be seen by the QApplication event filter.
         self._timer.unpause()
-        QApplication.instance().installEventFilter( self )
+
+        def _notify(receiver, event):
+            self.captureEvent(receiver, event)
+            return _orig_QApp_notify(receiver, event)
+
+        from ilastik.shell.gui.startShellGui import EventRecordingApp
+        assert isinstance( QApplication.instance(), EventRecordingApp )
+        QApplication.instance()._notify =_notify
 
     def pause(self):
         self._timer.pause()
-        QApplication.instance().removeEventFilter( self )
+        QApplication.instance()._notify = _orig_QApp_notify
     
     def writeScript(self, fileobj):
         # Write header comments
@@ -212,10 +227,11 @@ class EventRecorder( QObject ):
 """
 def playback_events(player):
     import PyQt4.QtCore
-    from PyQt4.QtCore import Qt, QEvent
+    from PyQt4.QtCore import Qt, QEvent, QPoint
     import PyQt4.QtGui
     from ilastik.utility.gui.eventRecorder.objectNameUtils import get_named_object
     from ilastik.utility.gui.eventRecorder.eventRecorder import EventPlayer
+    from ilastik.shell.gui.startShellGui import shell    
 
     player.display_comment("SCRIPT STARTING")
 

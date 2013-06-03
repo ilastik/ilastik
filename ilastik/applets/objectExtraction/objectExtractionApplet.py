@@ -3,6 +3,13 @@ from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtracti
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
 
 class ObjectExtractionApplet(StandardApplet):
+    """Calculates object features for each object in an image.
+
+    Features are provided by plugins, which are responsible for
+    performing the actual computation.
+
+    """
+
     def __init__(self, name="Object Extraction", workflow=None,
                  projectFileGroupName="ObjectExtraction",
                  interactive=True):

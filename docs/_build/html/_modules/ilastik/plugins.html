@@ -66,7 +66,7 @@
 <span class="c"># different plugin types #</span>
 <span class="c">##########################</span>
 
-<div class="viewcode-block" id="ObjectFeaturesPlugin"><a class="viewcode-back" href="../../pluginSystem.html#ilastik.plugins.ObjectFeaturesPlugin">[docs]</a><span class="k">class</span> <span class="nc">ObjectFeaturesPlugin</span><span class="p">(</span><span class="n">IPlugin</span><span class="p">):</span>
+<div class="viewcode-block" id="ObjectFeaturesPlugin"><a class="viewcode-back" href="../../applet_library.html#ilastik.plugins.ObjectFeaturesPlugin">[docs]</a><span class="k">class</span> <span class="nc">ObjectFeaturesPlugin</span><span class="p">(</span><span class="n">IPlugin</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Plugins of this class calculate object features&quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Base object features plugin&quot;</span>
 
@@ -78,14 +78,14 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">ObjectFeaturesPlugin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_selectedFeatures</span> <span class="o">=</span> <span class="p">[]</span>
 
-<div class="viewcode-block" id="ObjectFeaturesPlugin.availableFeatures"><a class="viewcode-back" href="../../pluginSystem.html#ilastik.plugins.ObjectFeaturesPlugin.availableFeatures">[docs]</a>    <span class="k">def</span> <span class="nf">availableFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<div class="viewcode-block" id="ObjectFeaturesPlugin.availableFeatures"><a class="viewcode-back" href="../../applet_library.html#ilastik.plugins.ObjectFeaturesPlugin.availableFeatures">[docs]</a>    <span class="k">def</span> <span class="nf">availableFeatures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;returns a nested dictionary, where. dict[feature_name] is a</span>
 <span class="sd">        dictionary of parameters.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[]</span>
 </div>
-<div class="viewcode-block" id="ObjectFeaturesPlugin.compute_global"><a class="viewcode-back" href="../../pluginSystem.html#ilastik.plugins.ObjectFeaturesPlugin.compute_global">[docs]</a>    <span class="k">def</span> <span class="nf">compute_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+<div class="viewcode-block" id="ObjectFeaturesPlugin.compute_global"><a class="viewcode-back" href="../../applet_library.html#ilastik.plugins.ObjectFeaturesPlugin.compute_global">[docs]</a>    <span class="k">def</span> <span class="nf">compute_global</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;calculate the requested features.</span>
 
 <span class="sd">        :param image: np.ndarray</span>
@@ -99,7 +99,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
 </div>
-<div class="viewcode-block" id="ObjectFeaturesPlugin.compute_local"><a class="viewcode-back" href="../../pluginSystem.html#ilastik.plugins.ObjectFeaturesPlugin.compute_local">[docs]</a>    <span class="k">def</span> <span class="nf">compute_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">binary_bbox</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+<div class="viewcode-block" id="ObjectFeaturesPlugin.compute_local"><a class="viewcode-back" href="../../applet_library.html#ilastik.plugins.ObjectFeaturesPlugin.compute_local">[docs]</a>    <span class="k">def</span> <span class="nf">compute_local</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">binary_bbox</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;calculate requested features on a single object.</span>
 
 <span class="sd">        :param image: np.ndarray - image[expanded bounding box]</span>
@@ -136,7 +136,7 @@
             <span class="n">suffix</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">k</span> <span class="o">+</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
 
-<div class="viewcode-block" id="ObjectFeaturesPlugin.do_channels"><a class="viewcode-back" href="../../pluginSystem.html#ilastik.plugins.ObjectFeaturesPlugin.do_channels">[docs]</a>    <span class="k">def</span> <span class="nf">do_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="ObjectFeaturesPlugin.do_channels"><a class="viewcode-back" href="../../applet_library.html#ilastik.plugins.ObjectFeaturesPlugin.do_channels">[docs]</a>    <span class="k">def</span> <span class="nf">do_channels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;helper for features that only take one channel.&quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">slc</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">)]</span> <span class="o">*</span> <span class="mi">4</span>

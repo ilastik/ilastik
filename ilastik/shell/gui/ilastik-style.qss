@@ -1,9 +1,9 @@
 /* Slicing view background */
 ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                       stop: 0 #000000, stop: 1 #ffffff); }
-
-/* Applet-bar background */
-QTreeWidget#appletBar {background-color:#f2f2f2;}
+/* Applet bar */
+QToolBox { border: 1px inset gray }
+QToolBox::tab { border:2px outset lightgray }
 
 /* Feature Selection Pop-up dialog table */
 FeatureTableWidget {background-color:#f2f2f2;}
@@ -24,3 +24,5 @@ QTableWidget#batchOutputTableWidget {background-color:#f2f2f2;}
 LabelListView {background-color:#f2f2f2;}
 
 QWidget#startupPage { background-color:qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:2, fx:0.5, fy:0.5, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255))}
+
+/* QSplitter::handle { border: 1px outset gray } */

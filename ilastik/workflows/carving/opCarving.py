@@ -447,6 +447,35 @@ class OpCarving(Operator):
 
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
+
+
+    def get_label_voxels(self):
+        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[:].wait()[0]
+        
+        #the voxel coordinates of fg and bg labels
+        coors1 = [[], [], []]
+        coors2 = [[], [], []]
+        for sl in nonzeroSlicings:
+            a = self.opLabeling.LabelImage[sl].wait()
+            w1 = numpy.where(a == 1)
+            w2 = numpy.where(a == 2)
+            w1 = [w1[i] + sl[i].start for i in range(1,4)]
+            w2 = [w2[i] + sl[i].start for i in range(1,4)]
+            for i in range(3):
+                coors1[i].append( w1[i] )
+                coors2[i].append( w2[i] )
+        
+        for i in range(3):
+            if len(coors1[i]) > 0:
+                coors1[i] = numpy.concatenate(coors1[i],0)
+            else:
+                coors1[i] = numpy.ndarray((0,), numpy.int32)
+            if len(coors2[i]) > 0:
+                coors2[i] = numpy.concatenate(coors2[i],0)
+            else:
+                coors2[i] = numpy.ndarray((0,), numpy.int32)
+        return (coors2, coors1)
+
     
     def saveObjectAs(self, name):
         """
@@ -458,27 +487,7 @@ class OpCarving(Operator):
         self.saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
         
-        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[:].wait()[0]
-        
-        #the voxel coordinates of fg and bg labels
-        def coordinateList(): 
-            coors1 = [[], [], []]
-            coors2 = [[], [], []]
-            for sl in nonzeroSlicings:
-                a = self.opLabeling.LabelImage[sl].wait()
-                w1 = numpy.where(a == 1)
-                w2 = numpy.where(a == 2)
-                w1 = [w1[i] + sl[i].start for i in range(1,4)]
-                w2 = [w2[i] + sl[i].start for i in range(1,4)]
-                for i in range(3):
-                    coors1[i].append( w1[i] )
-                    coors2[i].append( w2[i] )
-            
-            for i in range(3):
-                coors1[i] = numpy.concatenate(coors1[i])
-                coors2[i] = numpy.concatenate(coors2[i])
-            return (coors2, coors1)
-        fgVoxels, bgVoxels = coordinateList()
+        fgVoxels, bgVoxels = self.get_label_voxels()
         
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
        

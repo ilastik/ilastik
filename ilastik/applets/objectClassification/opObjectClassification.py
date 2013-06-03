@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
+    """The top-level operator for object classification."""
+
     name = "OpObjectClassification"
     category = "Top-level"
 
@@ -476,6 +478,8 @@ def replace_missing(a):
 
 
 class OpObjectTrain(Operator):
+    """Trains a random forest on all labeled objects."""
+
     name = "TrainRandomForestObjects"
     description = "Train a random forest on multiple images"
     category = "Learning"
@@ -588,6 +592,7 @@ class OpObjectTrain(Operator):
 
 
 class OpObjectPredict(Operator):
+    """Predicts object labels in a single image."""
     # WARNING: right now we predict and cache a whole time slice. We
     # expect this to be fast because there are relatively few objects
     # compared to the number of pixels in pixel classification. If
@@ -823,7 +828,8 @@ class OpMultiRelabelSegmentation(Operator):
     """Takes a segmentation image and multiple mappings and returns the
     mapped images.
 
-    For instance, map prediction probabilities for different classes onto objects.
+    For instance, map prediction probabilities for different classes
+    onto objects.
 
     """
     name = "OpToImageMulti"
@@ -852,8 +858,10 @@ class OpMultiRelabelSegmentation(Operator):
         pass
 
 class OpMaxLabel(Operator):
-    """ Finds the maximum label value in the input labels
-        More or less copied from opPixelClassification::OpMaxValue
+    """Finds the maximum label value in the input labels.
+
+    More or less copied from opPixelClassification::OpMaxValue.
+
     """
     name = "OpMaxLabel"
     Inputs = InputSlot(level=1, stype=Opaque)
@@ -900,10 +908,10 @@ class OpMaxLabel(Operator):
 
 
 class OpBadObjectsToWarningMessage(Operator):
-    '''
-    parses an input dictionary of bad objects and bad features, and sets
-    an informative warning message to its output slot
-    '''
+    """Parses an input dictionary of bad objects and bad features, and
+    sets an informative warning message to its output slot.
+
+    """
 
     name = "OpBadObjectsToWarningMessage"
     _blockSep = "\n\n"
