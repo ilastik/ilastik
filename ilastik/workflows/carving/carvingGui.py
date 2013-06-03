@@ -30,11 +30,11 @@ class CarvingGui(LabelingGui):
 
         labelingSlots = LabelingGui.LabelingSlots()
         labelingSlots.labelInput = topLevelOperatorView.opCarving.WriteSeeds
-        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabeling.LabelImage
-        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabeling.LabelDelete
-        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabeling.MaxLabelValue
-        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.opLabeling.LabelsAllowedFlag
+        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabelArray.Output
+        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabelArray.EraserLabelValue
+        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabelArray.DeleteLabel
+        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabelArray.MaxLabelValue
+        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.LabelsAllowed
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
@@ -400,7 +400,7 @@ class CarvingGui(LabelingGui):
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.opCarving.CurrentObjectName.value
             hasSeg  = self.topLevelOperatorView.opCarving.HasSegmentation.value
-            nzLB    = self.topLevelOperatorView.opCarving.opLabeling.NonzeroLabelBlocks[:].wait()[0]
+            #nzLB    = self.topLevelOperatorView.opCarving.opLabeling.NonzeroLabelBlocks[:].wait()[0]
             
             self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
             self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
@@ -410,7 +410,7 @@ class CarvingGui(LabelingGui):
             #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
         self.topLevelOperatorView.opCarving.CurrentObjectName.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opCarving.HasSegmentation.notifyDirty(onButtonsEnabled)
-        self.topLevelOperatorView.opCarving.opLabeling.NonzeroLabelBlocks.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.opCarving.opLabelArray.NonzeroBlocks.notifyDirty(onButtonsEnabled)
         
         # Labels
         labellayer, labelsrc = self.createLabelLayer(direct=True)

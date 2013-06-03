@@ -11,10 +11,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
-#ilastik
-from ilastik.applets.labeling import OpLabelingSingleLane
-
 from cylemon.segmentation import MSTSegmentor
+
+from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
+
 
 class OpCarving(Operator):
     name = "Carving"
@@ -49,6 +49,8 @@ class OpCarving(Operator):
     # uncertainty type
     UncertaintyType = InputSlot()
 
+    LabelsAllowed = InputSlot(value=True)
+
     # O u t p u t s #
 
     #current object + background
@@ -80,12 +82,9 @@ class OpCarving(Operator):
 
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
-        blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
-        self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
-        self.opLabeling.LabelInput.connect( self.InputData )
-        self.opLabeling.InputImage.connect( self.InputData )
-        self.opLabeling.LabelDelete.setValue(-1)
-        self.opLabeling.LabelsAllowedFlag.setValue( True )
+        self.opLabelArray = OpDenseLabelArray( parent=self )
+        self.opLabelArray.EraserLabelValue.setValue( 100 )
+        self.opLabelArray.MetaInput.connect( self.InputData )
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
@@ -119,9 +118,9 @@ class OpCarving(Operator):
         
     def _clear(self):
         #clear the labels 
-        self.opLabeling.LabelDelete.setValue(2)
-        self.opLabeling.LabelDelete.setValue(1)
-        self.opLabeling.LabelDelete.setValue(-1)
+        self.opLabelArray.DeleteLabel.setValue(2)
+        self.opLabelArray.DeleteLabel.setValue(1)
+        self.opLabelArray.DeleteLabel.setValue(-1)
         
     def _setCurrObjectName(self, n):
         """
@@ -292,11 +291,6 @@ class OpCarving(Operator):
         return (fgVoxels, bgVoxels)
     
     def loadObject(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """
         print "want to load object with name = %s" % name
         if not self.hasObjectWithName(name):
             print "  --> no such object '%s'" % name 
@@ -308,12 +302,9 @@ class OpCarving(Operator):
         
         fgVoxels, bgVoxels = self.loadObject_impl(name)
         
-        #if we want to supervoxelize the seeds, do this:
-        #self.opLabeling.LabelInput[:] = self._mst.seeds[:]
-        
-        #else:
-        shape = self.opLabeling.LabelImage.meta.shape
-        dtype = self.opLabeling.LabelImage.meta.dtype
+        shape = self.opLabelArray.Output.meta.shape
+        dtype = self.opLabelArray.Output.meta.dtype
+
         z = numpy.zeros(shape, dtype=dtype)
         z[0][fgVoxels] = 2
         z[0][bgVoxels] = 1
@@ -453,13 +444,13 @@ class OpCarving(Operator):
 
 
     def get_label_voxels(self):
-        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[:].wait()[0]
+        nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
         
         #the voxel coordinates of fg and bg labels
         coors1 = [[], [], []]
         coors2 = [[], [], []]
         for sl in nonzeroSlicings:
-            a = self.opLabeling.LabelImage[sl].wait()
+            a = self.opLabelArray.Output[sl].wait()
             w1 = numpy.where(a == 1)
             w2 = numpy.where(a == 2)
             w1 = [w1[i] + sl[i].start for i in range(1,4)]
@@ -570,7 +561,7 @@ class OpCarving(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
         if slot == self.WriteSeeds: 
-            self.opLabeling.LabelInput[roi.toSlice()] = value
+            self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
             
             assert self._mst is not None
 

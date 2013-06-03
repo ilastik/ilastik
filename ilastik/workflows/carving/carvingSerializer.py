@@ -100,8 +100,8 @@ class CarvingSerializer( AppletSerializer ):
                 except Exception as e:
                     print 'object %s could not be loaded due to exception: %s'% (name,e)
 
-            shape = opCarving.opLabeling.LabelImage.meta.shape
-            dtype = opCarving.opLabeling.LabelImage.meta.dtype
+            shape = opCarving.opLabelArray.Output.meta.shape
+            dtype = opCarving.opLabelArray.Output.meta.dtype
             z = numpy.zeros(shape, dtype=dtype)
 
             if "fg_voxels" in topGroup.keys():
