@@ -123,12 +123,19 @@
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Watershed Source:</string>
+          <string>WS Input</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QComboBox" name="watershedSourceCombo"/>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="invertWatershedSourceCheckbox">
+         <property name="text">
+          <string>Invert</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

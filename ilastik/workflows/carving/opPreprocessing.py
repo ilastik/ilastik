@@ -218,6 +218,7 @@ class OpPreprocessing(Operator):
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
     WatershedSource = InputSlot(value="filtered") # Choices: "raw", "input", "filtered"
+    InvertWatershedSource = InputSlot(value=False)
     
     #Image after preprocess as cylemon.MST
     PreprocessedData = OutputSlot()
@@ -298,7 +299,7 @@ class OpPreprocessing(Operator):
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
 
         # If the user's boundaries are dark, then invert the special watershed sources
-        if self.Filter.value == OpFilter.HESSIAN_DARK or self.Filter.value == OpFilter.RAW_INVERTED:
+        if self.InvertWatershedSource.value:
             self._opRawFilter.Filter.setValue( OpFilter.RAW_INVERTED )
             self._opInputFilter.Filter.setValue( OpFilter.RAW_INVERTED )
         else:
@@ -400,7 +401,9 @@ class OpPreprocessing(Operator):
             self._prepData = [None]
         
         ws_source_changed = False
-        if slot == self.WatershedSource or (slot == self.Filter and self.WatershedSource.value == 'filtered'):
+        if slot == self.WatershedSource or \
+          (slot == self.Filter and self.WatershedSource.value == 'filtered') or \
+           slot == self.InvertWatershedSource:
             self._opWatershed.Input.setDirty(slice(None))
             ws_source_changed = True
         
