@@ -649,9 +649,12 @@ class Slot(object):
             # --> just relay the request
             return self.partner.get(roi)
         else:
-            assert self.ready(), ("Can't get data from slot {}.{} yet."
-                                  " It isn't ready.".format(
-                                      self.getRealOperator().__class__, self.name))
+            if not self.ready():
+                msg = "Can't get data from slot {}.{} yet."\
+                      " It isn't ready."\
+                      "First upstream problem slot is: {}"
+                msg = msg.format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
+                assert self.ready(), msg
 
             # If someone is asking for data from an inputslot that has
             #  no value and no partner, then something is wrong.
@@ -665,6 +668,15 @@ class Slot(object):
             # request is cancelled
             request.notify_cancelled(execWrapper.handleCancel)
             return request
+
+    @staticmethod
+    def _findUpstreamProblemSlot(slot):
+        if slot.partner is not None:
+            return Slot._findUpstreamProblemSlot( slot.partner )
+        for inputSlot in slot.getRealOperator().inputs.values():
+            if not inputSlot._optional and not inputSlot.ready():
+                return inputSlot
+        assert False, "Couldn't find an upstream problem slot."
 
     class RequestExecutionWrapper(object):
         def __init__(self, slot, roi):
