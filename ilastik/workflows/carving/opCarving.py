@@ -29,7 +29,7 @@ class OpCarving(Operator):
     # All computation is done with the MST.    
     RawData = InputSlot(optional=True) # Display-only: Available to the GUI in case the input data was preprocessed in some way but you still want to see the 'raw' data.
     InputData = InputSlot() # The data used by preprocessing (display only)
-    FilteredInputData = InputSlot() # The output of the preprocessing filter
+    FilteredInputData = InputSlot() # The output of the preprocessing filter (DEBUG only: Use CachedFilterData slot, which is cached from the mst)
     
     #write the seeds that the users draw into this slot
     WriteSeeds   = InputSlot()
@@ -57,6 +57,7 @@ class OpCarving(Operator):
     Segmentation = OutputSlot()
 
     Supervoxels  = OutputSlot()
+    CachedFilterData = OutputSlot()
 
     Uncertainty = OutputSlot()
 
@@ -520,6 +521,10 @@ class OpCarving(Operator):
         elif slot == self.Supervoxels:
             #avoid data being copied
             temp = self._mst.regionVol[sl[1:4]]
+            temp.shape = (1,) + temp.shape + (1,)
+        elif slot == self.CachedFilterData:
+            #avoid data being copied
+            temp = self._mst.raw[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneObjects:
             #avoid data being copied

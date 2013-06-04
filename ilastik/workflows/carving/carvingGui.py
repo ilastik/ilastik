@@ -358,7 +358,7 @@ class CarvingGui(LabelingGui):
             return
 
         op = self.topLevelOperatorView.opCarving
-        if not self._renderMgr.ready():
+        if not self._renderMgr.ready:
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
@@ -537,7 +537,15 @@ class CarvingGui(LabelingGui):
             layer.opacity = 1.0
             layers.append(layer)
 
-        filteredSlot = self.topLevelOperatorView.InputData
+        cachedFilteredSlot = self.topLevelOperatorView.opCarving.CachedFilterData
+        if cachedFilteredSlot.ready():
+            layer = GrayscaleLayer( LazyflowSource(cachedFilteredSlot) )
+            layer.name = "cached filtered input"
+            layer.visible = False
+            layer.opacity = 1.0
+            layers.append(layer)
+
+        filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
             layer.name = "filtered input"
