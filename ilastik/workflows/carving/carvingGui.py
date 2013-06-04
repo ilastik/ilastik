@@ -1,5 +1,6 @@
 #Python
 import os
+from functools import partial
 import numpy
 import random
 
@@ -20,6 +21,7 @@ except:
     pass
 
 #ilastik
+from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -55,7 +57,8 @@ class CarvingGui(LabelingGui):
         
 
         self._doneSegmentationLayer = None
-
+        self._showSegmentationIn3D = False
+        
         #volume rendering
         try:
             self.render = True
@@ -69,6 +72,8 @@ class CarvingGui(LabelingGui):
         
         self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
+
+        self.topLevelOperatorView.opCarving.Segmentation.notifyDirty( bind( self._update_rendering ) )
 
         def onUncertaintyFGButton():
             print "uncertFG button clicked"
@@ -180,6 +185,7 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
             self._doneSegmentationColortable[1:17] = colortables.default16
+            self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
         self._doneSegmentationLayer = None
         def onRandomizeColors():
@@ -298,61 +304,73 @@ class CarvingGui(LabelingGui):
     def labelingContextMenu(self,names,op,position5d):
         menu = QMenu(self)
         menu.setObjectName("carving_context_menu")
-        menu.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
+        posItem = menu.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
+        posItem.setEnabled(False)
         menu.addSeparator()
         for name in names:
             submenu = QMenu(name,menu)
-            submenu.addAction("Load %s" % name)
-            submenu.addAction("Delete %s" % name)
+            
+            # Load
+            loadAction = submenu.addAction("Load %s" % name)
+            loadAction.triggered.connect( partial(op.loadObject, name) )
+            
+            # Delete
+            def onDelAction(_name):
+                self.confirmAndDelete([_name])
+                if self.render and self._renderMgr.ready:
+                    self._update_rendering()
+            delAction = submenu.addAction("Delete %s" % name)
+            delAction.triggered.connect( partial(onDelAction, name) )
+
             if self.render:
                 if name in self._shownObjects3D:
-                    submenu.addAction("Remove %s from 3D view" % name)
+                    # Remove
+                    def onRemove3D(_name):
+                        label = self._shownObjects3D.pop(_name)
+                        self._renderMgr.removeObject(label)
+                        self._update_rendering()
+                    removeAction = submenu.addAction("Remove %s from 3D view" % name)
+                    removeAction.triggered.connect( partial(onRemove3D, name) )
                 else:
-                    submenu.addAction("Show 3D %s" % name)
+                    # Show
+                    def onShow3D(_name):
+                        label = self._renderMgr.addObject()
+                        self._shownObjects3D[_name] = label
+                        self._update_rendering()
+                    showAction = submenu.addAction("Show 3D %s" % name)
+                    showAction.triggered.connect( partial(onShow3D, name ) )
+                        
             menu.addMenu(submenu)
-        if names:menu.addSeparator()
+
+        if names:
+            menu.addSeparator()
+
+        menu.addSeparator()
+        showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
+        showSeg3DAction.setCheckable(True)
+        showSeg3DAction.setChecked( self._showSegmentationIn3D )
+        showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
         
         if op.dataIsStorable():
-            menu.addAction("Save objects")
-        menu.addAction("Browse objects")
-        menu.addAction("Segment")
-        menu.addAction("Clear")
+            menu.addAction("Save objects").triggered.connect( self.onSegmentButton )
+        menu.addAction("Browse objects").triggered.connect( self.onClearButton )
+        menu.addAction("Segment").triggered.connect( self.onShowObjectNames )
+        menu.addAction("Clear").triggered.connect( self.onSaveAsButton )
         return menu
     
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.opCarving.doneObjectNamesForPosition(position5d[1:4])
         op = self.topLevelOperatorView.opCarving
-        
-        act = self.labelingContextMenu(names,op,position5d).exec_(globalWindowCoordinate)
-        if act is None:
-            return
-        
-        text = act.text()
-        if text =="Segment":
-            self.onSegmentButton()
-        elif text =="Clear":
-            self.onClearButton()
-        elif text =="Browse objects":
-            self.onShowObjectNames()
-        elif text == "Save objects":
-            self.onSaveButton()
+        self.labelingContextMenu(names,op,position5d).exec_(globalWindowCoordinate)
+
+    def _toggleSegmentation3D(self):
+        self._showSegmentationIn3D = not self._showSegmentationIn3D
+        if self._showSegmentationIn3D:
+            self._segmentation_3d_label = self._renderMgr.addObject()
         else:
-            for name in names:
-                if text == "Load %s" %name:
-                    op.loadObject(name)
-                elif text == "Delete %s" % name:
-                    self.confirmAndDelete([name])
-                    if self.render and self._renderMgr.ready:
-                        self._update_rendering()
-                elif text == "Show 3D %s" % name:
-                    label = self._renderMgr.addObject()
-                    self._shownObjects3D[name] = label
-                    self._update_rendering()
-                elif text == "Remove %s from 3D view" % name:
-                    label = self._shownObjects3D.pop(name)
-                    self._renderMgr.removeObject(label)
-                    self._update_rendering()
-        
+            self._renderMgr.removeObject(self._segmentation_3d_label)
+        self._update_rendering()
+    
     def _update_rendering(self):
         if not self.render:
             return
@@ -370,6 +388,10 @@ class CarvingGui(LabelingGui):
             objectSupervoxels = op.MST.value.object_lut[name]
             lut[objectSupervoxels] = label
 
+        if self._showSegmentationIn3D:
+            # Add segmentation as label 255, which is green (see colortable defininition)
+            lut[:] = numpy.where( op.MST.value.segmentation.lut == 2, self._segmentation_3d_label, lut )
+                    
         self._renderMgr.volume = lut[op.MST.value.regionVol]
         self._update_colors()
         self._renderMgr.update()
@@ -382,6 +404,9 @@ class CarvingGui(LabelingGui):
             color = QColor(ctable[op.MST.value.object_names[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
+
+        if self._showSegmentationIn3D:
+            self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
 
     def getNextLabelName(self):
