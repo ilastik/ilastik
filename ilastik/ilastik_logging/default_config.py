@@ -93,6 +93,7 @@ def get_default_config(prefix=""):
             "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
             "ilastik.applets.objectExtraction":                         { "level":"INFO" },
             "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
+            "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
             "ilastik.shell":                                            { "level":"INFO" },
             "ilastik.widgets":                                          { "level":"INFO" },
             "workflows":                                                { "level":"INFO" },
