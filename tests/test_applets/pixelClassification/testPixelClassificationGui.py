@@ -116,7 +116,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         """
         def impl():
             assert self.shell.projectManager is None
-            assert self.shell.appletBar.invisibleRootItem().childCount() == 0
+            assert self.shell.appletBar.count() == 0
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
