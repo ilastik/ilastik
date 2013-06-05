@@ -2,7 +2,7 @@ from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 from ilastik.utility import OpMultiLaneWrapper
-from opCarvingTopLevel import OpCarving
+from opCarving import OpCarving
 from carvingSerializer import CarvingSerializer
 from carvingGui import CarvingGui
 
