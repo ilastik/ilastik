@@ -14,9 +14,9 @@ class StandardApplet( Applet ):
     
     StandardApplet subclasses may expose their GUI in one of three ways:
     
-    1) (Advanced) Override :py:meth:`Applet.getMultiLaneGui()<ilastik.applets.base.applet.Applet.getMultiLaneGui>` directly.
-    2) (Simpler) Override :py:meth:`createSingleLaneGui`, in which case a default implementation of :py:meth:`getMultiLaneGui` is provided for you.
-    3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`getMultiLaneGui` are provided for you.  
+    1) (Advanced) Override :py:meth:`createMultiLaneGui`.
+    2) (Simpler) Override :py:meth:`createSingleLaneGui`, in which case a default implementation of :py:meth:`createMultiLaneGui` is provided for you.
+    3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  
     """
 
     def __init__(self, name, workflow=None):
@@ -77,9 +77,9 @@ class StandardApplet( Applet ):
     # GUI
     #
     # Subclasses have 3 choices:
-    # - Override getMultiLaneGui (advanced)
-    # - Override createSingleLaneGui (easier: uses default getMultiLaneGui implementation)
-    # - Override singleLaneGuiClass (easiest: uses default createSingleLaneGui and getMultiLaneGui implementations)
+    # - Override createMultiLaneGui (advanced)
+    # - Override createSingleLaneGui (easier: uses default createMultiLaneGui implementation)
+    # - Override singleLaneGuiClass (easiest: uses default createSingleLaneGui and createMultiLaneGui implementations)
 
     @property
     def singleLaneGuiClass(self):
@@ -95,6 +95,24 @@ class StandardApplet( Applet ):
         If your applet's single-lane GUI requires special constructor arguments, then override this method.
         Otherwise, this default implementation generates instances of your ``singleLaneGuiClass``.
         """
+        return self.__createSingleLaneGui(imageLaneIndex)
+    
+    def getMultiLaneGui(self):
+        """
+        Override from Applet base class.
+        """
+        if self._gui is None:
+            self._gui = self.__createMultiLaneGui()
+        return self._gui
+    
+    #
+    # Private
+    #
+
+    def __createSingleLaneGui(self, imageLaneIndex):
+        """
+        Default implementation of createSingleLaneGui
+        """
         if self.singleLaneGuiClass is NotImplemented:
             message  = "Cannot create GUI.\n"
             message += "StandardApplet subclasses must implement ONE of the following:\n" 
@@ -103,20 +121,21 @@ class StandardApplet( Applet ):
         singleLaneOperator = self.topLevelOperator.getLane( imageLaneIndex )
         return self.singleLaneGuiClass( singleLaneOperator )
 
-    def getMultiLaneGui(self):
+    def __createMultiLaneGui(self):
         """
-        Overridden from ``Applet.getMultiLaneGui``.  This default implementation adapts 
-        multiple GUIs instantiated with ``createSingleLaneGui`` into one mult-image gui, 
+        This function serves as the default implementation of createMultiLaneGui().
+        It bundles multiple GUIs instantiated with ``createSingleLaneGui`` into one multi-image gui, 
         which is what the Applet interface expects.
         """
-        if self._gui is None:
-            assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement getMultiLaneGui yourself."
-            self._gui = SingleToMultiGuiAdapter( self.createSingleLaneGui, self.topLevelOperator )
-        return self._gui
-
-    #
-    # Private
-    #
+        for cls in self.__class__.__mro__:
+            if 'createMultiLaneGui' in cls.__dict__:
+                return self.createMultiLaneGui()
+            if 'createSingleLaneGui' in cls.__dict__:
+                return SingleToMultiGuiAdapter( self.createSingleLaneGui, self.topLevelOperator )
+            if 'singleLaneGuiClass' in cls.__dict__:
+                assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement createMultiLaneGui yourself."
+                return SingleToMultiGuiAdapter( self.__createSingleLaneGui, self.topLevelOperator )
+        raise Exception("Your applet must override one of the GUI creation methods.  See StandardApplet docs for details.")
 
     def __createTopLevelOperator(self):
         """
