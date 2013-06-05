@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>338</width>
-    <height>736</height>
+    <height>773</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -376,6 +376,13 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QPushButton" name="annotationWindowButton">
+         <property name="text">
+          <string>Annotations...</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

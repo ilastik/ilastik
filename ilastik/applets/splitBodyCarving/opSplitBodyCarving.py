@@ -105,12 +105,9 @@ class OpSplitBodyCarving( OpCarving ):
         
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
-        
-        # Find the saved objects that were split from this raveler object
-        # Names should match <raveler label>.<object id>
-        pattern = "{}.".format( ravelerLabel )
-        names = filter( lambda s: s.startswith(pattern), self._mst.object_names.keys() )
 
+        names = self._getSavedObjectNamesForRavelerLabel(ravelerLabel)
+        
         # Accumulate the objects objects from this raveler object that we've already split off
         lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
         for name in names:
@@ -134,6 +131,13 @@ class OpSplitBodyCarving( OpCarving ):
             self.MaskedSegmentation.setDirty( slice(None) )
         else:
             return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
+
+    def _getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
+        # Find the saved objects that were split from this raveler object
+        # Names should match <raveler label>.<object id>
+        pattern = "{}.".format( ravelerLabel )
+        return filter( lambda s: s.startswith(pattern), self._mst.object_names.keys() )
+
 
 class OpSelectLabel(Operator):
     Input = InputSlot()

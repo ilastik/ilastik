@@ -5,7 +5,6 @@ import numpy
 from PyQt4.QtGui import QColor
 
 from lazyflow.roi import TinyVector
-from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval
 
 from volumina.layer import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -14,20 +13,15 @@ from ilastik.workflows.carving.carvingGui import CarvingGui
 
 from opSplitBodyCarving import OpSplitBodyCarving
 
-SplitPointListSchema = {
-    "_schema_name" : "split-point-list-schema",
-    "_schema_version" : 1.0,
-    
-    "raveler-label" : int,
-    "coordinates" : AutoEval(numpy.array) # xyz
-}
-SplitPointParser = JsonConfigParser( SplitPointListSchema )
+from bodySplitInfoWidget import BodySplitInfoWidget
 
 class SplitBodyCarvingGui(CarvingGui):
     
     def __init__(self, topLevelOperatorView):
         drawerUiPath = os.path.join( os.path.split(__file__)[0], 'splitBodyCarvingDrawer.ui' )
         super( SplitBodyCarvingGui, self ).__init__(topLevelOperatorView, drawerUiPath=drawerUiPath)
+        self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)        
+        self._labelControlUi.annotationWindowButton.pressed.connect( self._splitInfoWidget.show )
         
     def labelingContextMenu(self, names, op, position5d):                
         pos = TinyVector(position5d)
