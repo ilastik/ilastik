@@ -8,7 +8,7 @@ class CarvingSerializer( AppletSerializer ):
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
-        for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
+        for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
             for name in opCarving._dirtyObjects:
                 print "[CarvingSerializer] serializing %s" % name
@@ -70,7 +70,7 @@ class CarvingSerializer( AppletSerializer ):
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         obj = topGroup["objects"]
-        for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
+        for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
             
             for i, name in enumerate(obj):
@@ -120,7 +120,7 @@ class CarvingSerializer( AppletSerializer ):
             opCarving._buildDone()
            
     def isDirty(self):
-        for index, innerOp in enumerate(self._o.opCarving.innerOperators):
+        for index, innerOp in enumerate(self._o.innerOperators):
             if len(innerOp._dirtyObjects) > 0:
                 return True
         return True #FIXME: only return True if labels have changed and need to be saved

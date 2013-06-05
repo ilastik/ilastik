@@ -40,11 +40,11 @@ class OpCarving(Operator):
     #number between 0.0 and 1.0
     #bias of the background
     #FIXME: correct name?
-    BackgroundPriority = InputSlot()
+    BackgroundPriority = InputSlot(value=0.95)
 
     #a number between 0 and 256
     #below the number, no background bias will be applied to the edge weights
-    NoBiasBelow        = InputSlot()
+    NoBiasBelow        = InputSlot(value=64)
 
     # uncertainty type
     UncertaintyType = InputSlot()
