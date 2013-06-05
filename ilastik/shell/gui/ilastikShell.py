@@ -753,7 +753,10 @@ class IlastikShell( QMainWindow ):
         
         self._clearStackedWidget(self.appletStack)
         self._clearStackedWidget(self.viewerControlStack)
-        self.appletBar.clear()
+        
+        # Remove all drawers
+        for i in reversed(range(self.appletBar.count())):
+            self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
         for i in reversed( range( stackedWidget.count() ) ):
