@@ -5,6 +5,7 @@ import numpy
 from PyQt4.QtGui import QColor
 
 from lazyflow.roi import TinyVector
+from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval
 
 from volumina.layer import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -12,6 +13,15 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from ilastik.workflows.carving.carvingGui import CarvingGui
 
 from opSplitBodyCarving import OpSplitBodyCarving
+
+SplitPointListSchema = {
+    "_schema_name" : "split-point-list-schema",
+    "_schema_version" : 1.0,
+    
+    "raveler-label" : int,
+    "coordinates" : AutoEval(numpy.array) # xyz
+}
+SplitPointParser = JsonConfigParser( SplitPointListSchema )
 
 class SplitBodyCarvingGui(CarvingGui):
     
@@ -36,6 +46,14 @@ class SplitBodyCarvingGui(CarvingGui):
         autoSeedAction.triggered.connect( partial(self.topLevelOperatorView.CurrentRavelerLabel.setValue, ravelerLabel ) )
 
         return menu
+
+    # Show list, sorted by raveler label (or possibly by z-plane?)
+    # When user pressed "next":
+    # - Highlight raveler object
+    # - Show split-point annotation
+    # - Show "Save As r1-A" or something
+    # - Repeat, but now show raveler object excluding pieces that have been cut off, and show next split point (possibly in that same raveler object)
+    # - Deleting an object means that it's pixels will automatically go back to the raveler object's pixels
     
     def setupLayers(self):
         def findLayer(f, layerlist):
@@ -43,12 +61,11 @@ class SplitBodyCarvingGui(CarvingGui):
                 if f(l):
                     return l
             return None
-                
-        
+
         layers = []
         carvingLayers = super(SplitBodyCarvingGui, self).setupLayers()        
         
-        highlightedObjectSlot = self.topLevelOperatorView.HighlightedRavelerObject
+        highlightedObjectSlot = self.topLevelOperatorView.CurrentRavelerObject
         if highlightedObjectSlot.ready():
             # 0=Transparent, 1=blue
             colortable = [QColor(0, 0, 0, 0).rgba(), QColor(0, 0, 255).rgba()]
@@ -57,6 +74,16 @@ class SplitBodyCarvingGui(CarvingGui):
             highlightedObjectLayer.visible = True
             highlightedObjectLayer.opacity = 0.25
             layers.append(highlightedObjectLayer)
+
+        remainingRavelerObjectSlot = self.topLevelOperatorView.CurrentRavelerObjectRemainder
+        if remainingRavelerObjectSlot.ready():
+            # 0=Transparent, 1=blue
+            colortable = [QColor(0, 0, 0, 0).rgba(), QColor(255, 0, 0).rgba()]
+            remainingObjectLayer = ColortableLayer(LazyflowSource(remainingRavelerObjectSlot), colortable, direct=True)
+            remainingObjectLayer.name = "Remaining Raveler Object"
+            remainingObjectLayer.visible = True
+            remainingObjectLayer.opacity = 0.25
+            layers.append(remainingObjectLayer)
 
         ravelerLabelsSlot = self.topLevelOperatorView.RavelerLabels
         if ravelerLabelsSlot.ready():
@@ -88,5 +115,4 @@ class SplitBodyCarvingGui(CarvingGui):
         layers += carvingLayers
 
         return layers
-    
 

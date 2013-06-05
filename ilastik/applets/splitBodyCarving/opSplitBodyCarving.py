@@ -14,7 +14,8 @@ class OpSplitBodyCarving( OpCarving ):
     RavelerLabels = InputSlot()
     CurrentRavelerLabel = InputSlot(value=0)
     
-    HighlightedRavelerObject = OutputSlot()
+    CurrentRavelerObject = OutputSlot()
+    CurrentRavelerObjectRemainder = OutputSlot()
     MaskedSegmentation = OutputSlot()
 
     BLOCK_SIZE = 520
@@ -22,10 +23,10 @@ class OpSplitBodyCarving( OpCarving ):
 
     def __init__(self, *args, **kwargs):
         super( OpSplitBodyCarving, self ).__init__( *args, **kwargs )
-        self._opHighlighter = OpHighlightLabel( parent=self )
-        self._opHighlighter.HighlightLabel.connect( self.CurrentRavelerLabel )
-        self._opHighlighter.Input.connect( self.RavelerLabels )
-        self.HighlightedRavelerObject.connect( self._opHighlighter.Output )
+        self._opSelectRavelerObject = OpSelectLabel( parent=self )
+        self._opSelectRavelerObject.SelectedLabel.connect( self.CurrentRavelerLabel )
+        self._opSelectRavelerObject.Input.connect( self.RavelerLabels )
+        self.CurrentRavelerObject.connect( self._opSelectRavelerObject.Output )
 
     @classmethod
     def autoSeedBackground(cls, laneView, foreground_label):
@@ -79,21 +80,51 @@ class OpSplitBodyCarving( OpCarving ):
         def handleDirtySegmentation(slot, roi):
             self.MaskedSegmentation.setDirty( roi )
         self.Segmentation.notifyDirty( handleDirtySegmentation )
-    
+        self.CurrentRavelerObjectRemainder.meta.assignFrom( self.RavelerLabels.meta )
+            
     def execute(self, slot, subindex, roi, result):
         if slot == self.MaskedSegmentation:
-            ravelerLabels = self.RavelerLabels(roi.start, roi.stop).wait()
-            result = self.Segmentation(roi.start, roi.stop).writeInto(result).wait()
-            result[:] = numpy.where(ravelerLabels == self.CurrentRavelerLabel.value, result, 0)
-            return result
+            return self._executeMaskedSegmentation(roi, result)
+        elif slot == self.CurrentRavelerObjectRemainder:
+            return self._executeCurrentRavelerObjectRemainder(roi, result)
         else:
             return super( OpSplitBodyCarving, self ).execute( slot, subindex, roi, result )
     
-        if self.HighlightLabel.value == 0:
+    def _executeMaskedSegmentation(self, roi, result):
+        result = self.Segmentation(roi.start, roi.stop).writeInto(result).wait()
+        currentRemainder = self.CurrentRavelerObjectRemainder(roi.start, roi.stop).wait()
+        numpy.logical_and( result, currentRemainder, out=result )
+        result[:] *= 2 # In carving, background is always 1 and segmentation pixels are always 2
+        return result
+
+    def _executeCurrentRavelerObjectRemainder(self, roi, result):
+        ravelerLabel = self.CurrentRavelerLabel.value
+        if ravelerLabel == 0:
             result[:] = 0
-        else:
-            self.Input(roi.start, roi.stop).writeInto(result).wait()
-            result[:] = numpy.where( result == self.HighlightLabel.value, 1, 0 )
+            return result
+        
+        # Start with the original raveler object
+        self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
+        
+        # Find the saved objects that were split from this raveler object
+        # Names should match <raveler label>.<object id>
+        pattern = "{}.".format( ravelerLabel )
+        names = filter( lambda s: s.startswith(pattern), self._mst.object_names.keys() )
+
+        # Accumulate the objects objects from this raveler object that we've already split off
+        lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+        for name in names:
+            objectSupervoxels = self._mst.object_lut[name]
+            lut[objectSupervoxels] = 1
+
+        # Save memory: Implement (A - B) == (A & ~B) == ~(~A | B), and do it with three in-place operations
+        slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
+        a = result[0,...,0]
+        b = lut[self._mst.regionVol][slicing]
+        numpy.logical_not( a, out=a ) # ~A
+        numpy.logical_or(a, b, out=a) # ~A | B
+        numpy.logical_not( a, out=a ) # ~(~A | B)
+        
         return result
     
     def propagateDirty(self, slot, subindex, roi):
@@ -104,30 +135,30 @@ class OpSplitBodyCarving( OpCarving ):
         else:
             return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
 
-class OpHighlightLabel(Operator):
+class OpSelectLabel(Operator):
     Input = InputSlot()
-    HighlightLabel = InputSlot()
+    SelectedLabel = InputSlot()
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super( OpHighlightLabel, self ).__init__( *args, **kwargs )
+        super( OpSelectLabel, self ).__init__( *args, **kwargs )
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
-        if self.HighlightLabel.value == 0:
+        if self.SelectedLabel.value == 0:
             result[:] = 0
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
-            result[:] = numpy.where( result == self.HighlightLabel.value, 1, 0 )
+            result[:] = numpy.where( result == self.SelectedLabel.value, 1, 0 )
         return result
     
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
             self.Output.setDirty( roi.start, roi.stop )
-        elif slot == self.HighlightLabel:
+        elif slot == self.SelectedLabel:
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Dirty slot is unknown: {}".format( slot.name )
