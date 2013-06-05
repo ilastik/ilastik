@@ -186,7 +186,9 @@ class OpCarving(Operator):
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
-       
+
+        self.CachedFilterData.meta.assignFrom( self.FilteredInputData.meta )
+               
         if self._mst is not None:
             objects = self._mst.object_names.keys()
             self.AllObjectNames.meta.shape = len(objects)
