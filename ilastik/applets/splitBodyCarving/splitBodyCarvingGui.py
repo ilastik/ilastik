@@ -38,7 +38,15 @@ class SplitBodyCarvingGui(CarvingGui):
         return menu
     
     def setupLayers(self):
+        def findLayer(f, layerlist):
+            for l in layerlist:
+                if f(l):
+                    return l
+            return None
+                
+        
         layers = []
+        carvingLayers = super(SplitBodyCarvingGui, self).setupLayers()        
         
         highlightedObjectSlot = self.topLevelOperatorView.HighlightedRavelerObject
         if highlightedObjectSlot.ready():
@@ -62,7 +70,22 @@ class SplitBodyCarvingGui(CarvingGui):
             ravelerLabelLayer.opacity = 0.4
             layers.append(ravelerLabelLayer)
 
-        layers += super(SplitBodyCarvingGui, self).setupLayers()
+        maskedSegSlot = self.topLevelOperatorView.MaskedSegmentation
+        if maskedSegSlot.ready():
+            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), QColor(0,255,0).rgba()]
+            maskedSegLayer = ColortableLayer(LazyflowSource(maskedSegSlot), colortable, direct=True)
+            maskedSegLayer.name = "Masked Segmentation"
+            maskedSegLayer.visible = True
+            maskedSegLayer.opacity = 0.3
+            layers.append(maskedSegLayer)
+            
+            # Hide the original carving segmentation.
+            # TODO: Remove it from the list altogether?
+            carvingSeg = findLayer( lambda l: l.name == "segmentation", carvingLayers )
+            if carvingSeg is not None:
+                carvingSeg.visible = False
+        
+        layers += carvingLayers
 
         return layers
     
