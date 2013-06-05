@@ -1,5 +1,6 @@
 from ilastik.workflows.carving.carvingApplet import CarvingApplet
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.utility import OpMultiLaneWrapper
+
 from opSplitBodyCarving import OpSplitBodyCarving
 from splitBodyCarvingGui import SplitBodyCarvingGui
 
@@ -8,11 +9,8 @@ class SplitBodyCarvingApplet(CarvingApplet):
     workflowName = "Split-body Carving"
     
     def __init__(self, workflow, *args, **kwargs):
+        self._topLevelOperator = OpMultiLaneWrapper( OpSplitBodyCarving, parent=workflow )
         super(SplitBodyCarvingApplet, self).__init__(workflow, *args, **kwargs)
-
-        self._topLevelOperator = OpSplitBodyCarving( parent=workflow )
-        self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
-        self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
     
     def createSingleLaneGui(self, laneIndex):
         """

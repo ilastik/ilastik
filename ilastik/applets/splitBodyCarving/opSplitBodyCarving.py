@@ -4,26 +4,25 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape, roiToSlice, getIntersectingBlocks, getBlockBounds
 
-from ilastik.utility import OpMultiLaneWrapper
-from ilastik.workflows.carving.opCarvingTopLevel import OpCarvingTopLevel
+from ilastik.workflows.carving.opCarving import OpCarving
 
 import logging
 logger = logging.getLogger(__name__)
 
-class OpSplitBodyCarving( OpCarvingTopLevel ):
+class OpSplitBodyCarving( OpCarving ):
     
-    RavelerLabels = InputSlot(level=1)
-    CurrentRavelerLabel = InputSlot(value=0, level=1)
+    RavelerLabels = InputSlot()
+    CurrentRavelerLabel = InputSlot(value=0)
     
-    HighlightedRavelerObject = OutputSlot(level=1)
-    MaskedSegmentation = OutputSlot(level=1)
+    HighlightedRavelerObject = OutputSlot()
+    MaskedSegmentation = OutputSlot()
 
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
 
     def __init__(self, *args, **kwargs):
         super( OpSplitBodyCarving, self ).__init__( *args, **kwargs )
-        self._opHighlighter = OpMultiLaneWrapper( OpHighlightLabel, parent=self )
+        self._opHighlighter = OpHighlightLabel( parent=self )
         self._opHighlighter.HighlightLabel.connect( self.CurrentRavelerLabel )
         self._opHighlighter.Input.connect( self.RavelerLabels )
         self.HighlightedRavelerObject.connect( self._opHighlighter.Output )
@@ -70,26 +69,25 @@ class OpSplitBodyCarving( OpCarvingTopLevel ):
                 axisorder = laneView.RavelerLabels.meta.getTaggedShape().keys()
                 
                 logger.debug("Writing backgound seeds: {}/{}".format( block_index, len(block_starts) ))
-                laneView.opCarving.WriteSeeds[ roiToSlice( *block_roi ) ] = background_seed_block.withAxes(*axisorder)
+                laneView.WriteSeeds[ roiToSlice( *block_roi ) ] = background_seed_block.withAxes(*axisorder)
             else:
                 logger.debug("Skipping all-background block: {}/{}".format( block_index, len(block_starts) ))
 
     def setupOutputs(self):
         super( OpSplitBodyCarving, self ).setupOutputs()
-        for masked_slot, seg_slot in zip(self.MaskedSegmentation, self.Segmentation):
-            masked_slot.meta.assignFrom(seg_slot.meta)
-            def handleDirtySegmentation(slot, roi):
-                masked_slot.setDirty( roi )
-            seg_slot.notifyDirty( handleDirtySegmentation )
+        self.MaskedSegmentation.meta.assignFrom(self.Segmentation.meta)
+        def handleDirtySegmentation(slot, roi):
+            self.MaskedSegmentation.setDirty( roi )
+        self.Segmentation.notifyDirty( handleDirtySegmentation )
     
     def execute(self, slot, subindex, roi, result):
         if slot == self.MaskedSegmentation:
-            ravelerLabels = self.RavelerLabels[subindex](roi.start, roi.stop).wait()
-            result = self.Segmentation[subindex](roi.start, roi.stop).writeInto(result).wait()
-            result[:] = numpy.where(ravelerLabels == self.CurrentRavelerLabel[subindex].value, result, 0)
+            ravelerLabels = self.RavelerLabels(roi.start, roi.stop).wait()
+            result = self.Segmentation(roi.start, roi.stop).writeInto(result).wait()
+            result[:] = numpy.where(ravelerLabels == self.CurrentRavelerLabel.value, result, 0)
             return result
         else:
-            return super( OpSplitBodyCarving, self ).execute( self, slot, subindex, roi, result )
+            return super( OpSplitBodyCarving, self ).execute( slot, subindex, roi, result )
     
         if self.HighlightLabel.value == 0:
             result[:] = 0
@@ -100,21 +98,11 @@ class OpSplitBodyCarving( OpCarvingTopLevel ):
     
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.RavelerLabels:
-            self.MaskedSegmentation[subindex].setDirty( roi.start, roi.stop )
+            self.MaskedSegmentation.setDirty( roi.start, roi.stop )
         elif slot == self.CurrentRavelerLabel:
-            self.MaskedSegmentation[subindex].setDirty( slice(None) )
+            self.MaskedSegmentation.setDirty( slice(None) )
         else:
             return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
-
-    def addLane(self, laneIndex):
-        self.MaskedSegmentation.resize( laneIndex+1 )
-        self.RavelerLabels.resize(laneIndex+1)
-        super( OpSplitBodyCarving, self ).addLane( laneIndex )
-
-    def removeLane(self, index, final_length):
-        self.RavelerLabels.removeSlot(index, final_length)
-        self.MaskedSegmentation.removeSlot(index, final_length)
-        super( OpSplitBodyCarving, self ).removeLane( index, final_length )
 
 class OpHighlightLabel(Operator):
     Input = InputSlot()

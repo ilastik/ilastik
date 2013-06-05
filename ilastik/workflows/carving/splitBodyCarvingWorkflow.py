@@ -89,8 +89,10 @@ class SplitBodyCarvingWorkflow(Workflow):
         opSplitBodyCarving.RavelerLabels.connect( op5RavelerLabels.output )
         opSplitBodyCarving.FilteredInputData.connect( opPreprocessing.FilteredImage )
 
+        # Special input-input connection: WriteSeeds metadata must mirror the input data
+        opSplitBodyCarving.WriteSeeds.connect( opSplitBodyCarving.InputData )
+
         opSplitBodyCarving.MST.connect(opPreprocessing.PreprocessedData)
-        #opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
-        opSplitBodyCarving.opCarving.UncertaintyType.setValue("none")
+        opSplitBodyCarving.UncertaintyType.setValue("none")
         
         self.preprocessingApplet.enableDownstream(False)
