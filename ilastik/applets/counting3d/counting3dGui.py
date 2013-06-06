@@ -211,6 +211,8 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
         self.changedSigma = False
         
+        self._labelControlUi.CountText.setReadOnly(True)
+        
         def updateSum(*args, **kw):
             print "updatingSum"
             density = self.op.OutputSum.value / 255
