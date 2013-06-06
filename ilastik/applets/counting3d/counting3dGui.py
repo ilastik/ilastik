@@ -216,6 +216,7 @@ class Counting3dGui(LabelingGui):
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
+        self._updateSVROptions()
         self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
         self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
         self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
