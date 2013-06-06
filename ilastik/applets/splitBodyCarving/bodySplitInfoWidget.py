@@ -6,9 +6,11 @@ import numpy
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSignal
-from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, QPushButton, QTableView
+from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, QPushButton, QTableView, QHeaderView, QIcon, QProgressBar
 
 from lazyflow.roi import TinyVector
+
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 # Example json file:
 """
@@ -21,10 +23,26 @@ from lazyflow.roi import TinyVector
 }
 """
 
+class BodyProgressBar(QProgressBar):
+    
+    def __init__(self, *args, **kwargs):
+        super( BodyProgressBar, self ).__init__(*args, **kwargs)
+        self._text = ""
+    
+    def setText(self, text):
+        self._text = text
+    
+    def text(self):
+        return self._text
+
 class BodyTreeColumns():
     ID = 0
     Button1 = 1
     Button2 = 2
+
+class AnnotationTableColumns():
+    Body = 0
+    Coordinates = 1
 
 class BodySplitInfoWidget( QWidget ):
     
@@ -49,12 +67,13 @@ class BodySplitInfoWidget( QWidget ):
         
         self.setWindowTitle("Body Split Info")
         
-        self.bodyTreeWidget.setHeaderLabels( ['Body ID', '', ''] )
+        self.bodyTreeWidget.setHeaderLabels( ['Body ID', 'Progress', ''] )
+        
         self.annotationTableWidget.setColumnCount(2)
-        self.annotationTableWidget.setHorizontalHeaderLabels( ['Coordinates', 'Original Body'] )
+        self._initAnnotationTableHeader()
         self.annotationTableWidget.itemDoubleClicked.connect( self._handleAnnotationDoubleClick )
         self.annotationTableWidget.setSelectionBehavior( QTableView.SelectRows )
-
+        self.annotationTableWidget.horizontalHeader().setResizeMode( QHeaderView.Stretch )
         
         self.loadSplitAnnoationFileButton.pressed.connect( self._loadAnnotationFile )
         self.refreshButton.pressed.connect( self._reloadInfoWidgets )
@@ -126,20 +145,38 @@ class BodySplitInfoWidget( QWidget ):
         currentEditingFragmentName = self.opSplitBodyCarving.currentObjectName()
         
         for ravelerLabel in sorted( self._ravelerLabels ):
-            # Parent row for the raveler body
-            bodyItem = QTreeWidgetItem( ["{}".format(ravelerLabel), "", ""] )
+            fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
+            
+            # For this raveler label, how many fragments do we have and how many do we expect?
+            num_splits = reduce( lambda count, v: count + (v == ravelerLabel),
+                                 self._annotationCoordinates.values(),
+                                 0 )
+            num_expected = num_splits + 1
+            num_fragments = len(fragmentNames)
+            
+            # Parent row for the raveler body            
+            progressText = "({}/{})".format( num_fragments, num_expected )
+            bodyItem = QTreeWidgetItem( ["{}".format(ravelerLabel),
+                                         progressText,
+                                         ""] )
             self.bodyTreeWidget.invisibleRootItem().addChild(bodyItem)
+
+            progressBar = BodyProgressBar(self)
+            progressBar.setMaximum( num_expected )
+            progressBar.setValue( min( num_fragments, num_expected ) )
+            progressBar.setText( progressText )
+            self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button1, progressBar )
 
             selectButton = QPushButton( "New Fragment" )
             selectButton.pressed.connect( partial( self._startNewFragment, ravelerLabel ) )
             selectButton.setEnabled( currentEditingFragmentName == "" )
-            self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button1, selectButton )
+            selectButton.setIcon( QIcon(ilastikIcons.AddSel) )
+            self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button2, selectButton )
             bodyItem.setExpanded(True)
             
             # Child rows for each fragment
-            fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
             fragmentItem = None
-            for fragmentName in fragmentNames:
+            for fragmentName in sorted(fragmentNames):
                 fragmentItem = QTreeWidgetItem( [fragmentName, "", ""] )
                 bodyItem.addChild( fragmentItem )
 
@@ -160,26 +197,31 @@ class BodySplitInfoWidget( QWidget ):
                 deleteButton.pressed.connect( partial( self._deleteFragment, fragmentName ) )
                 deleteButton.setEnabled( currentEditingFragmentName == "" or currentEditingFragmentName == fragmentName )
                 self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button2, deleteButton )
+
+    def _initAnnotationTableHeader(self):
+        self.annotationTableWidget.setHorizontalHeaderLabels( ['Original Body', 'Coordinates'] )
             
     def _reloadAnnotationTable(self):
         self.annotationTableWidget.clear()
         self.annotationTableWidget.setRowCount( len(self._annotationCoordinates) )
-        self.annotationTableWidget.setHorizontalHeaderLabels( ['Coordinates', 'Original Body'] )
+        self._initAnnotationTableHeader()
         
-        # TODO: Sort by label
-        for row, (coord3d, ravelerLabel) in enumerate(self._annotationCoordinates.items()):
+        # Flip the key/value of the annotation list so we can sort them by label
+        annotations = self._annotationCoordinates.items()
+        annotations = map( lambda x: (x[1], x[0]), annotations )
+        
+        for row, (ravelerLabel, coord3d) in enumerate( sorted( annotations ) ):
             coordItem = QTableWidgetItem( "{}".format( coord3d ) )
             labelItem = QTableWidgetItem( "{}".format( ravelerLabel ) )
             
             coordItem.setData( Qt.UserRole, ( coord3d, ravelerLabel ) )
             labelItem.setData( Qt.UserRole, ( coord3d, ravelerLabel ) )
             
-            self.annotationTableWidget.setItem( row, 0, coordItem )
-            self.annotationTableWidget.setItem( row, 1, labelItem )
+            self.annotationTableWidget.setItem( row, AnnotationTableColumns.Coordinates, coordItem )
+            self.annotationTableWidget.setItem( row, AnnotationTableColumns.Body, labelItem )
         
     def _startNewFragment(self, ravelerLabel):
         # TODO: This save/load sequence involves two recomputes in a row.  It could be only 1. 
-
         self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
 
         # Clear all seeds
