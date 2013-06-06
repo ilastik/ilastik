@@ -37,38 +37,19 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="QLabel" name="label">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
+        <widget class="QPushButton" name="annotationWindowButton">
          <property name="text">
-          <string>&lt;b&gt;Problem specific labels:&lt;/b&gt;</string>
+          <string>Annotations...</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="LabelListView" name="labelListView">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="currentObjectLabel">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>current object:</string>
          </property>
         </widget>
        </item>
@@ -136,6 +117,19 @@
         </layout>
        </item>
        <item>
+        <widget class="QLabel" name="currentObjectLabel">
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>current fragment:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
           <widget class="QToolButton" name="segment">
@@ -146,7 +140,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Segment</string>
+            <string>Update Split</string>
            </property>
            <property name="icon">
             <iconset>
@@ -180,7 +174,27 @@
         </layout>
        </item>
        <item>
-        <widget class="QLabel" name="label_9">
+        <widget class="QPushButton" name="namesButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Browse Saved Fragments</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../../shell/gui/icons/16x16/actions/document-open.png</normaloff>../../shell/gui/icons/16x16/actions/document-open.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="uncertaintyLabel">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
          <property name="font">
           <font>
            <weight>75</weight>
@@ -293,7 +307,7 @@
         </layout>
        </item>
        <item>
-        <widget class="QLabel" name="label_8">
+        <widget class="QLabel" name="saveControlLabel">
          <property name="text">
           <string>Segmented Object:</string>
          </property>
@@ -344,45 +358,7 @@
         </layout>
        </item>
        <item>
-        <widget class="QLabel" name="label_5">
-         <property name="font">
-          <font>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>all objects:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <item>
-          <widget class="QPushButton" name="namesButton">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Browse objects</string>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>../../shell/gui/icons/16x16/actions/document-open.png</normaloff>../../shell/gui/icons/16x16/actions/document-open.png</iconset>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="annotationWindowButton">
-         <property name="text">
-          <string>Annotations...</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_5"/>
        </item>
       </layout>
      </item>

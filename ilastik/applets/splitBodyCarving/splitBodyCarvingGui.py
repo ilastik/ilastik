@@ -23,6 +23,17 @@ class SplitBodyCarvingGui(CarvingGui):
         self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)
         self._splitInfoWidget.navigationRequested.connect( self._handleNavigationRequest )
         self._labelControlUi.annotationWindowButton.pressed.connect( self._splitInfoWidget.show )
+        
+        # Hide all controls related to uncertainty; they aren't used in this applet
+        self._labelControlUi.uncertaintyLabel.hide()
+        self._labelControlUi.uncertaintyCombo.hide()
+        self._labelControlUi.pushButtonUncertaintyFG.hide()
+        self._labelControlUi.pushButtonUncertaintyBG.hide()
+        
+        # Hide manual save buttons; user must use the annotation window to save/load objects
+        self._labelControlUi.saveControlLabel.hide()
+        self._labelControlUi.save.hide()
+        self._labelControlUi.saveAs.hide()
 
     def _handleNavigationRequest(self, coord3d):
         self.editor.posModel.cursorPos = list(coord3d)
@@ -110,6 +121,10 @@ class SplitBodyCarvingGui(CarvingGui):
             carvingSeg = findLayer( lambda l: l.name == "segmentation", carvingLayers )
             if carvingSeg is not None:
                 carvingSeg.visible = False
+
+        # Don't show uncertainty.
+        uncertaintyLayer = findLayer(lambda l: l.name == "uncertainty", carvingLayers)
+        carvingLayers.remove(uncertaintyLayer)
         
         layers += carvingLayers
 
