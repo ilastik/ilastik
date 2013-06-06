@@ -225,13 +225,13 @@ def optimize(tags, Q, c, upperBounds):
 class SVR(object):
 
     options = [
+    {"optimization" : "rf"},
     {"optimization" : "svr", "kernel" : "rbf"},
     {"optimization" : "svr", "kernel" : "linear"},
     {"optimization" : "svr", "kernel" : "poly"},
     {"optimization" : "svr", "kernel" : "sigmoid"},
     {"optimization" : "quadratic", "kernel" : "linear"},
-    {"optimization" : "quadratic", "kernel" : "rbf"},
-    {"optimization" : "rf"}
+    {"optimization" : "quadratic", "kernel" : "rbf"}
     #{"optimization" : "smo", "kernel" : "linear"},
     #{"optimization" : "smo", "kernel" : "gaussian"}
     ]

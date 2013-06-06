@@ -26,7 +26,7 @@ class OpTrainCounter(Operator):
                   InputSlot("UnderMult", value = 100, stype = "float"),
                   InputSlot("OverMult", value = 100, stype = "float"), 
                   InputSlot("SelectedOption", 
-                            value = {"optimization" : "svr", "kernel" : "rbf"},
+                            value = SVR.options[0],
                             stype = "object"),
                   InputSlot("BoxConstraints", optional = True)
                  ]
