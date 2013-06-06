@@ -1,5 +1,5 @@
 from abc import abstractproperty, abstractmethod
-from lazyflow.graph import Operator, OperatorMetaClass
+from lazyflow.graph import Operator, OperatorMetaClass, Graph
 from ilastik.utility.subclassRegistry import SubclassRegistryMeta
 from string import ascii_uppercase
 
@@ -63,16 +63,24 @@ class Workflow( Operator ):
     # Public methods #
     ##################
 
-    def __init__(self, headless=False, *args, **kwargs):
+    def __init__(self, headless=False, workflow_cmdline_args=(), parent=None, graph=None):
         """
         Constructor.  Subclasses MUST call this in their own ``__init__`` functions.
-        The args and kwargs parameters will be passed directly to the Operator base class.
-        The graph argument should be included.
+        The parent and graph parameters will be passed directly to the Operator base class. If both are None,
+        a new Graph is instantiated internally. 
         
         :param headless: Set to True if this workflow is being instantiated by a "headless" script, 
                          in which case the workflow should not attempt to access applet GUIs.
+        :param workflow_cmdline_args: a (possibly empty) sequence of arguments to control
+                                      the workflow from the command line
+        :param parent: The parent operator of the workflow or None (see also: Operator)
+        :param graph: The graph instance the workflow is assigned to (see also: Operator)
+
         """
-        super(Workflow, self).__init__(*args, **kwargs)
+        
+        if not(parent or graph):
+            graph = Graph()
+        super(Workflow, self).__init__(parent=parent, graph=graph)
         self._headless = headless
 
     def cleanUp(self):
