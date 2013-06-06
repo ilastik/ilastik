@@ -27,6 +27,14 @@ from lazyflow.graph import Operator, OutputSlot, Graph
 from lazyflow.operators.generic import OpSubRegion
 
 
+class Tool():
+    
+    Navigation = 0 # Arrow
+    Paint      = 1
+    Erase      = 2
+    Box        = 3
+
+
 class MyGraphicsView(QtGui.QGraphicsView):
     #useful class for debug
     def __init__ (self,parent=None):
@@ -40,6 +48,7 @@ class MyGraphicsView(QtGui.QGraphicsView):
 
         
 def create_qt_default_env():
+    #useful for debug
     from PyQt4.QtGui import QGraphicsScene,QGraphicsView,QApplication
     # 1 make the application
     app=QApplication([])
@@ -416,7 +425,7 @@ class CoupledRectangleElement(object):
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
         
-        self.rectItem.updateText(str( np.max(subarray)))
+        self.rectItem.updateText(str( np.sum(subarray)/255.0))
         
     
        

@@ -25,6 +25,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
+from lazyflow.operators.adaptors import Op5ifyer
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -48,20 +49,8 @@ from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
 from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
         QStylePainter, QPen
 
+from countingGuiElements import *
 
-class RedRubberBand(QRubberBand):
-    def __init__(self,*args,**kwargs):
-        QRubberBand.__init__(self,*args,**kwargs)
-
-#         palette=QPalette()
-#         palette.setBrush(palette.ColorGroup(), palette.foreground(), QBrush( QColor("red") ) );
-#         self.setPalette(palette)
-        
-    def paintEvent(self,pe):
-        painter=QStylePainter(self)
-        pen=QPen(QColor("red"),50)
-        painter.setPen(pen)
-        painter.drawRect(pe.rect())
         
 
 class ClickReportingInterpreter(QObject):
@@ -115,64 +104,8 @@ class ClickReportingInterpreter(QObject):
         return self.baseInterpret.eventFilter(watched, event)
 
 
-class BoxInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)  # ditto
-    leftClickReleased = pyqtSignal(object, object)
-    
-    def __init__(self, navigationInterpreter, positionModel, editor):
-        QObject.__init__(self)
-        self.baseInterpret = navigationInterpreter
-        self.posModel      = positionModel
-        self.rubberBand = RedRubberBand(QRubberBand.Rectangle, editor)
-        self.origin = QPoint()
-        self.originpos = object()
-
-    def start( self ):
-        self.baseInterpret.start()
-
-    def stop( self ):
-        self.baseInterpret.stop()
-
-    def eventFilter( self, watched, event ):
-        
-        
-        if event.type() == QEvent.MouseButtonPress:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            print "HHHHHHHHHHHHHHHHHHH"
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-                self.rubberBand.show()
-                gPos = watched.mapToGlobal( event.pos() )
-                self.leftClickReceived.emit( pos, gPos )
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal( event.pos() )
-                self.rightClickReceived.emit( pos, gPos )                
-        if event.type() == QEvent.MouseMove:
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin,
-                                                  event.pos()).normalized())
-        if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )                
-
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
 
 
-
-class Tool():
-    
-    Navigation = 0 # Arrow
-    Paint      = 1
-    Erase      = 2
-    Box        = 3
 
 class Counting3dGui(LabelingGui):
 
@@ -285,6 +218,24 @@ class Counting3dGui(LabelingGui):
             self._labelControlUi.CountText.setText(strdensity)
 
         self.op.Density.notifyDirty(updateSum)
+        
+    
+        self.density5d=Op5ifyer(graph=object())
+        self.density5d.input.connect(self.op.Density)
+        
+        
+        
+        ############
+        mainwin=self
+        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output)
+        self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
+        
+        if not hasattr(self, "rubberbandClickReporter"):
+            self.rubberbandClickReporter = self.boxIntepreter
+            self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+        self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+        
+        
         
 
         self.boxes = dict()
@@ -710,11 +661,11 @@ class Counting3dGui(LabelingGui):
         self._labelControlUi.arrowToolButton.setChecked(True)
         self._labelControlUi.arrowToolButton.setChecked(True)
         print "setNavigation"
-        if not hasattr(self, "rubberbandClickReporter"):
-            self.rubberbandClickReporter = ClickReportingInterpreter(
-                self.editor.navInterpret, self.editor.posModel, self.centralWidget() )
-            self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-        self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+#         if not hasattr(self, "rubberbandClickReporter"):
+#             
+#             self.rubberbandClickReporter = self.boxIntepreter
+#             self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+#         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _gui_setBox(self):
         print "setBox"
