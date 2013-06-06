@@ -49,8 +49,14 @@ class OpTrainCounter(Operator):
         featMatrix=[]
         labelsMatrix=[]
         tagList = []
-
-        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **self.SelectedOption.value)
+        
+        
+        algorithm_options={}
+        for k,v in self.SelectedOption.value.items():
+            if k!="gui":
+                algorithm_options[k]=v
+        
+        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **algorithm_options)
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
                 labels=labels[:].wait()
