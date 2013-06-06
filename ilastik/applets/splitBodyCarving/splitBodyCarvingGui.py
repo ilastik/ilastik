@@ -20,8 +20,13 @@ class SplitBodyCarvingGui(CarvingGui):
     def __init__(self, topLevelOperatorView):
         drawerUiPath = os.path.join( os.path.split(__file__)[0], 'splitBodyCarvingDrawer.ui' )
         super( SplitBodyCarvingGui, self ).__init__(topLevelOperatorView, drawerUiPath=drawerUiPath)
-        self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)        
+        self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)
+        self._splitInfoWidget.navigationRequested.connect( self._handleNavigationRequest )
         self._labelControlUi.annotationWindowButton.pressed.connect( self._splitInfoWidget.show )
+
+    def _handleNavigationRequest(self, coord3d):
+        self.editor.posModel.cursorPos = list(coord3d)
+        self.editor.posModel.slicingPos = list(coord3d)
         
     def labelingContextMenu(self, names, op, position5d):                
         pos = TinyVector(position5d)
@@ -65,7 +70,7 @@ class SplitBodyCarvingGui(CarvingGui):
             colortable = [QColor(0, 0, 0, 0).rgba(), QColor(0, 0, 255).rgba()]
             highlightedObjectLayer = ColortableLayer(LazyflowSource(highlightedObjectSlot), colortable, direct=True)
             highlightedObjectLayer.name = "Current Raveler Object"
-            highlightedObjectLayer.visible = True
+            highlightedObjectLayer.visible = False
             highlightedObjectLayer.opacity = 0.25
             layers.append(highlightedObjectLayer)
 

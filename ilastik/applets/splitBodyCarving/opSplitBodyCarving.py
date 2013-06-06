@@ -92,6 +92,7 @@ class OpSplitBodyCarving( OpCarving ):
     
     def _executeMaskedSegmentation(self, roi, result):
         result = self.Segmentation(roi.start, roi.stop).writeInto(result).wait()
+        result[:] = numpy.array([0,0,1])[result] # Keep only the pixels whose value is '2' (the foreground)
         currentRemainder = self.CurrentRavelerObjectRemainder(roi.start, roi.stop).wait()
         numpy.logical_and( result, currentRemainder, out=result )
         result[:] *= 2 # In carving, background is always 1 and segmentation pixels are always 2
@@ -106,7 +107,7 @@ class OpSplitBodyCarving( OpCarving ):
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
 
-        names = self._getSavedObjectNamesForRavelerLabel(ravelerLabel)
+        names = self.getSavedObjectNamesForRavelerLabel(ravelerLabel)
         
         # Accumulate the objects objects from this raveler object that we've already split off
         lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
@@ -132,7 +133,7 @@ class OpSplitBodyCarving( OpCarving ):
         else:
             return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
 
-    def _getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
+    def getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
         # Find the saved objects that were split from this raveler object
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )

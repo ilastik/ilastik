@@ -5,8 +5,8 @@ from functools import partial
 import numpy
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, QPushButton
+from PyQt4.QtCore import Qt, pyqtSignal
+from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, QPushButton, QTableView
 
 from lazyflow.roi import TinyVector
 
@@ -28,6 +28,8 @@ class BodyTreeColumns():
 
 class BodySplitInfoWidget( QWidget ):
     
+    navigationRequested = pyqtSignal(object) # (3d coordinate tuple)
+    
     def __init__(self, parent, opSplitBodyCarving):
         # We don't pass parent to the QWidget because we want the window to be top-level
         super( BodySplitInfoWidget, self ).__init__() 
@@ -45,9 +47,14 @@ class BodySplitInfoWidget( QWidget ):
         uiFilePath = os.path.join( localDir, 'bodySplitInfoWidget.ui' )
         uic.loadUi(uiFilePath, self)
         
+        self.setWindowTitle("Body Split Info")
+        
         self.bodyTreeWidget.setHeaderLabels( ['Body ID', '', ''] )
         self.annotationTableWidget.setColumnCount(2)
         self.annotationTableWidget.setHorizontalHeaderLabels( ['Coordinates', 'Original Body'] )
+        self.annotationTableWidget.itemDoubleClicked.connect( self._handleAnnotationDoubleClick )
+        self.annotationTableWidget.setSelectionBehavior( QTableView.SelectRows )
+
         
         self.loadSplitAnnoationFileButton.pressed.connect( self._loadAnnotationFile )
         self.refreshButton.pressed.connect( self._reloadInfoWidgets )
@@ -103,6 +110,11 @@ class BodySplitInfoWidget( QWidget ):
             self._ravelerLabels.add( ravelerLabel )
         
         self._reloadInfoWidgets()
+
+
+    def _handleAnnotationDoubleClick(self, item):
+        coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
+        self.navigationRequested.emit( coord3d )
         
     def _reloadInfoWidgets(self):
         self._reloadBodyTree()
@@ -110,51 +122,108 @@ class BodySplitInfoWidget( QWidget ):
     
     def _reloadBodyTree(self):
         self.bodyTreeWidget.clear()
+        
+        currentEditingFragmentName = self.opSplitBodyCarving.currentObjectName()
+        
         for ravelerLabel in sorted( self._ravelerLabels ):
             # Parent row for the raveler body
             bodyItem = QTreeWidgetItem( ["{}".format(ravelerLabel), "", ""] )
             self.bodyTreeWidget.invisibleRootItem().addChild(bodyItem)
 
             selectButton = QPushButton( "New Fragment" )
-            selectButton.pressed.connect( partial( self._selectRavelerLabel, ravelerLabel ) )
+            selectButton.pressed.connect( partial( self._startNewFragment, ravelerLabel ) )
+            selectButton.setEnabled( currentEditingFragmentName == "" )
             self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button1, selectButton )
+            bodyItem.setExpanded(True)
             
             # Child rows for each fragment
-            fragmentNames = self.opSplitBodyCarving._getSavedObjectNamesForRavelerLabel(ravelerLabel)
+            fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
             fragmentItem = None
             for fragmentName in fragmentNames:
-                fragmentItem = QTreeWidgetItem(fragmentName, "", "")
+                fragmentItem = QTreeWidgetItem( [fragmentName, "", ""] )
                 bodyItem.addChild( fragmentItem )
 
             # Add 'edit' and 'delete' buttons to the LAST fragment item
             if fragmentItem is not None:
-                editButton = QPushButton( "Edit" )
-                editButton.pressed.connect( partial( self._editFragment, fragmentName ) )
-                self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, editButton )
-
+                assert fragmentName is not None
+                if fragmentName == currentEditingFragmentName:
+                    saveButton = QPushButton( "Save" )
+                    saveButton.pressed.connect( partial( self._saveFragment, fragmentName ) )
+                    self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, saveButton )
+                else:
+                    editButton = QPushButton( "Edit" )
+                    editButton.pressed.connect( partial( self._editFragment, fragmentName ) )
+                    editButton.setEnabled( currentEditingFragmentName == "" )
+                    self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, editButton )
+    
                 deleteButton = QPushButton( "Delete" )
                 deleteButton.pressed.connect( partial( self._deleteFragment, fragmentName ) )
+                deleteButton.setEnabled( currentEditingFragmentName == "" or currentEditingFragmentName == fragmentName )
                 self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button2, deleteButton )
             
     def _reloadAnnotationTable(self):
         self.annotationTableWidget.clear()
         self.annotationTableWidget.setRowCount( len(self._annotationCoordinates) )
+        self.annotationTableWidget.setHorizontalHeaderLabels( ['Coordinates', 'Original Body'] )
         
+        # TODO: Sort by label
         for row, (coord3d, ravelerLabel) in enumerate(self._annotationCoordinates.items()):
             coordItem = QTableWidgetItem( "{}".format( coord3d ) )
             labelItem = QTableWidgetItem( "{}".format( ravelerLabel ) )
             
+            coordItem.setData( Qt.UserRole, ( coord3d, ravelerLabel ) )
+            labelItem.setData( Qt.UserRole, ( coord3d, ravelerLabel ) )
+            
             self.annotationTableWidget.setItem( row, 0, coordItem )
-            self.annotationTableWidget.setItem( row, 1, labelItem )            
+            self.annotationTableWidget.setItem( row, 1, labelItem )
         
-    def _selectRavelerLabel(self, ravelerLabel):
-        pass
+    def _startNewFragment(self, ravelerLabel):
+        # TODO: This save/load sequence involves two recomputes in a row.  It could be only 1. 
+
+        self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
+
+        # Clear all seeds
+        self.opSplitBodyCarving.clearCurrentLabeling( trigger_recompute=False )
+
+        # "Save As" (with no seeds) with the appropriate name
+        fragmentName = self._getNextAvailableFragmentName( ravelerLabel )
+        self.opSplitBodyCarving.saveObjectAs( fragmentName )
+        
+        # "Load" the saved (empty) object
+        self.opSplitBodyCarving.loadObject( fragmentName )
+        
+        # Refresh the entire table.
+        self._reloadBodyTree()
+
+
+    def _getNextAvailableFragmentName(self, ravelerLabel):
+        fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
+        if len(fragmentNames) == 0:
+            return "{}.A".format( ravelerLabel )
+
+        # Find the last name and increment the fragment letter
+        # e.g. 4321.B --> 4321.C
+        fragmentNames = sorted(fragmentNames)
+        assert len(fragmentNames) < 25, "Need to refine fragment naming scheme.  The current scheme only supports up to 26 fragments."
+        letter = fragmentNames[-1][-1]
+        nextLetter = chr( ord(letter)+1 )
+        return "{}.{}".format( ravelerLabel, nextLetter )
 
     def _editFragment(self, fragmentName):
-        pass
+        self.opSplitBodyCarving.loadObject( fragmentName )
+        self._reloadBodyTree()
     
     def _deleteFragment(self, fragmentName):
-        pass
+        # This might be the "current object" that we're deleting.
+        # That's okay.
+        self.opSplitBodyCarving.deleteObject( fragmentName )
+        self._reloadBodyTree()
+
+    def _saveFragment(self, fragmentName):
+        self.opSplitBodyCarving.saveObjectAs( fragmentName )
+
+        # After save, there is no longer a "current object"
+        self._reloadBodyTree()
         
 
 
