@@ -184,10 +184,18 @@ class Counting3dGui(LabelingGui):
 
         self.initCounting()
 
-
+    
     def initCounting(self):
+        #=======================================================================
+        # Init Label Uic Custom  setup
+        #=======================================================================
         self._addNewLabel()
         self._addNewLabel()
+        self._labelControlUi.labelListModel[0].name = "Foreground"
+        self._labelControlUi.labelListModel[1].name = "Background"
+
+
+
         self.labelingDrawerUi.SigmaLine.setText("1")
         self.labelingDrawerUi.UnderBox.setRange(0,1000000)
         self.labelingDrawerUi.UnderBox.setValue(1)
@@ -197,9 +205,13 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.OverBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+
         for option in self.op.options:
-            print "option", option
-            self.labelingDrawerUi.SVROptions.addItem('+'.join(option.values()), (option,))
+            values=[v for k,v in option.items() if k!="gui"]
+            self.labelingDrawerUi.SVROptions.addItem('+'.join(values), (option,))
+        
+        self._updateSVROptions()
+        
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
@@ -211,7 +223,11 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
         self.changedSigma = False
         
-        self._labelControlUi.CountText.setReadOnly(True)
+        self.labelingDrawerUi.CountText.setReadOnly(True)
+        
+        
+        
+        
         
         def updateSum(*args, **kw):
             print "updatingSum"
@@ -222,10 +238,13 @@ class Counting3dGui(LabelingGui):
         self.op.Density.notifyDirty(updateSum)
         
     
+        #=======================================================================
+        # Density boxes elements
+        #=======================================================================
+    
         self.density5d=Op5ifyer(graph=object())
         self.density5d.input.connect(self.op.Density)
-        
-        
+    
         
         ############
         mainwin=self
@@ -238,12 +257,6 @@ class Counting3dGui(LabelingGui):
         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
         
         
-        
-
-        self.boxes = dict()
-        self._labelControlUi.labelListModel[0].name = "Foreground"
-        self._labelControlUi.labelListModel[1].name = "Background"
-
     def _updateOverMult(self):
         self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
     def _updateUnderMult(self):
@@ -264,8 +277,14 @@ class Counting3dGui(LabelingGui):
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
+        
+        
         self.op.opTrain.SelectedOption.setValue(option)
-
+        
+        if "svr" not  in option["gui"]:
+            self.labelingDrawerUi.gridLayout_2.setVisible(False)
+        else:
+            self.labelingDrawerUi.gridLayout_2.setVisible(True)
 
     def _debug(self):
         import sitecustomize
