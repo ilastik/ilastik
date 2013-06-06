@@ -716,6 +716,7 @@ class Counting3dGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI 
+                self.editor.brushingModel.setBrushSize(0)
                 self._gui_setNavigation()
                 
             elif toolId == Tool.Paint:

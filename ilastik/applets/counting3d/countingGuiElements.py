@@ -72,6 +72,7 @@ class QResizableRect(QObject):
     """
     signalHasMoved = pyqtSignal(QPointF) #The resizable rectangle has moved the new position
     signalSelected =  pyqtSignal(object)
+    signalHasResized = pyqtSignal()
     #signalIsMoving = pyqtSignal()
     def __init__(self,x,y,w,h,parent=None):
         QObject.__init__(self,parent)
@@ -235,6 +236,8 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         for el in self.resizeHandles:
             el.resetOffset(el._constrainAxis,newshape=self.shape)        
          
+        self.resizableRectObject.signalHasResized.emit()
+        
         
     def hoverEnterEvent(self, event):
         event.setAccepted(True)
@@ -374,6 +377,7 @@ class CoupledRectangleElement(object):
         self._inputSlot.notifyDirty(self.updateTextWhenChanges)
         
         self.rectItem.resizableRectObject.signalHasMoved.connect(self.updateTextWhenChanges)
+        self.rectItem.resizableRectObject.signalHasResized.connect(self.updateTextWhenChanges)
         
         self.updateTextWhenChanges()
         
