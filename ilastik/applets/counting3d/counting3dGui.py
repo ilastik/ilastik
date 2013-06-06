@@ -286,10 +286,10 @@ class Counting3dGui(LabelingGui):
         else:
             self.labelingDrawerUi.gridLayout_2.setVisible(True)
 
-        if "rf" not in option["gui"]:
-            self.labelingDrawerUi.rf_panel.setVisible(False)
-        else:
-            self.labelingDrawerUi.rf_panel.setVisible(True)
+#         if "rf" not in option["gui"]:
+#             self.labelingDrawerUi.rf_panel.setVisible(False)
+#         else:
+#             self.labelingDrawerUi.rf_panel.setVisible(True)
             
     def _debug(self):
         import sitecustomize
