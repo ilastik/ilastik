@@ -23,10 +23,14 @@ class CarvingApplet(LabelingApplet):
                                                          operator_kwargs=op_kwargs )
 
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
+        self._projectFileGroupName = projectFileGroupName
+        self._serializers = None
 
     @property
     def dataSerializers(self):
-        return [ CarvingSerializer(self.topLevelOperator, "carving") ]
+        if self._serializers is None:
+            self._serializers = [ CarvingSerializer(self.topLevelOperator, self._projectFileGroupName) ]
+        return self._serializers
     
     @property
     def topLevelOperator(self):

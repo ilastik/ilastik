@@ -50,7 +50,7 @@ class CarvingWorkflow(Workflow):
         
         self.preprocessingApplet = PreprocessingApplet(workflow=self,
                                            title = "Preprocessing",
-                                           projectFileGroupName="carving")
+                                           projectFileGroupName="preprocessing")
         
         #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
         

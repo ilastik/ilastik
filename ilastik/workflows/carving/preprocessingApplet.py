@@ -11,7 +11,7 @@ class PreprocessingApplet(StandardApplet):
     def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False):
         super(PreprocessingApplet, self).__init__( title, workflow)
         
-        self._serializableItems = [ PreprocessingSerializer(self.topLevelOperator, "preprocessing") ]
+        self._serializableItems = [ PreprocessingSerializer(self.topLevelOperator, projectFileGroupName) ]
         
         self._gui = None
         self._title = title

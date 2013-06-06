@@ -10,9 +10,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpSplitBodyCarving( OpCarving ):
-    
+
     RavelerLabels = InputSlot()
     CurrentRavelerLabel = InputSlot(value=0)
+
+    AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
     
     CurrentRavelerObject = OutputSlot()
     CurrentRavelerObjectRemainder = OutputSlot()
@@ -130,6 +132,8 @@ class OpSplitBodyCarving( OpCarving ):
             self.MaskedSegmentation.setDirty( roi.start, roi.stop )
         elif slot == self.CurrentRavelerLabel:
             self.MaskedSegmentation.setDirty( slice(None) )
+        elif slot == self.AnnotationFilepath:
+            return
         else:
             return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
 
