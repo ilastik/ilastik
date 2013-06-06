@@ -560,14 +560,6 @@ class CarvingGui(LabelingGui):
             layer.opacity = 1.0
             layers.append(layer)
 
-        cachedFilteredSlot = self.topLevelOperatorView.CachedFilterData
-        if cachedFilteredSlot.ready():
-            layer = GrayscaleLayer( LazyflowSource(cachedFilteredSlot) )
-            layer.name = "cached filtered input"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
