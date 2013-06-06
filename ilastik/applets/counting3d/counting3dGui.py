@@ -230,9 +230,9 @@ class Counting3dGui(LabelingGui):
         self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output)
         self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
         
-        if not hasattr(self, "rubberbandClickReporter"):
-            self.rubberbandClickReporter = self.boxIntepreter
-            self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+        
+        self.rubberbandClickReporter = self.boxIntepreter
+        self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
         
         
@@ -810,6 +810,8 @@ class Counting3dGui(LabelingGui):
 
 
     def handleBoxQuery(self, position5d_start, position5d_stop):
+        print "HANDLING BOX QUERY"
+        
         if self._labelControlUi.arrowToolButton.isChecked():
             self.test(position5d_start, position5d_stop)
         elif self._labelControlUi.boxToolButton.isChecked():

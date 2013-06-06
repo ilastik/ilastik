@@ -307,7 +307,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     #         dataPos = self.scene().scene2data.map(self.scenePos())
     #         pos = [dataPos.x(), dataPos.y()]
         
-            self.updateText("("+string+")"+" "+str(pos))
+            #self.updateText("("+string+")"+" "+str(pos))
             
     def mouseDoubleClickEvent(self, event):
         print "DOUBLE CLICK ON NODE"
@@ -414,8 +414,8 @@ class CoupledRectangleElement(object):
         start=[]
         stop=[]
         for s1,s2 in zip(oldstart,oldstop):
-            start.append(np.minimum(s1,s2))
-            stop.append(np.maximum(s1,s2))
+            start.append(int(np.minimum(s1,s2)))
+            stop.append(int(np.maximum(s1,s2)))
         
         self.opsub.Stop.disconnect()
         self.opsub.Start.disconnect()
