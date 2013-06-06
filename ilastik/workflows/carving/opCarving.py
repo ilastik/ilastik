@@ -117,7 +117,7 @@ class OpCarving(Operator):
         # the last serialization of this object to disk
         self._dirtyObjects = set()
         
-    def _clear(self):
+    def _clearLabels(self):
         #clear the labels 
         self.opLabelArray.DeleteLabel.setValue(2)
         self.opLabelArray.DeleteLabel.setValue(1)
@@ -207,8 +207,9 @@ class OpCarving(Operator):
 
     def currentObjectName(self):
         """
-        Returns current object name. None if it is not set.
+        Returns current object name. Return "" if no current object
         """
+        assert self._currObjectName is not None, "FIXME: This function should either return '' or None.  Why does it sometimes return one and then the other?"
         return self._currObjectName
 
     def hasObjectWithName(self, name):
@@ -242,16 +243,20 @@ class OpCarving(Operator):
         self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
     @Operator.forbidParallelExecute
-    def clearCurrentLabeling(self):
+    def clearCurrentLabeling(self, trigger_recompute=True):
         """
         Clears the current labeling.
         """
+        self._clearLabels()
+
         self._mst.seeds[:] = 0
         lut_segmentation = self._mst.segmentation.lut[:]
         lut_segmentation[:] = 0
         lut_seeds = self._mst.seeds.lut[:]
         lut_seeds[:] = 0
         self.HasSegmentation.setValue(False)
+
+        self.Trigger.setDirty(slice(None))
                 
     def loadObject_impl(self, name):
         """
@@ -301,7 +306,7 @@ class OpCarving(Operator):
         
         if self.hasCurrentObject():
             self.saveCurrentObject()
-        self._clear()
+        self._clearLabels()
         
         fgVoxels, bgVoxels = self.loadObject_impl(name)
         
@@ -357,11 +362,6 @@ class OpCarving(Operator):
         self._buildDone()
     
     def deleteObject(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """
         print "want to delete object with name = %s" % name
         if not self.hasObjectWithName(name):
             print "  --> no such object '%s'" % name 
@@ -369,7 +369,7 @@ class OpCarving(Operator):
         
         self.deleteObject_impl(name)
         #clear the user labels 
-        self._clear()
+        self._clearLabels()
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))
         self._dirtyObjects.add(name)
@@ -488,7 +488,7 @@ class OpCarving(Operator):
         
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
        
-        self._clear()
+        self._clearLabels()
          
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))

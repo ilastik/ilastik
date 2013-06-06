@@ -135,7 +135,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
         self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
 
-        self.labelingDrawerUi.clear.clicked.connect(self.onClearButton)
+        self.labelingDrawerUi.clear.clicked.connect(self.topLevelOperatorView.clearCurrentLabeling)
         self.labelingDrawerUi.clear.setEnabled(True)
         
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
@@ -200,13 +200,7 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
         #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
-    
-    def onClearButton(self):
-            self.topLevelOperatorView._clear()
-            self.topLevelOperatorView.clearCurrentLabeling()
-            # trigger a re-computation
-            self.topLevelOperatorView.Trigger.setDirty(slice(None))
-    
+        
     def onSegmentButton(self):
         print "segment button clicked"
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
@@ -357,7 +351,7 @@ class CarvingGui(LabelingGui):
         
         if op.dataIsStorable():
             menu.addAction("Save objects").triggered.connect( self.onSegmentButton )
-        menu.addAction("Browse objects").triggered.connect( self.onClearButton )
+        menu.addAction("Browse objects").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
         menu.addAction("Segment").triggered.connect( self.onShowObjectNames )
         menu.addAction("Clear").triggered.connect( self.onSaveAsButton )
         return menu
