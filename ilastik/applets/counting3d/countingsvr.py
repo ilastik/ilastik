@@ -225,7 +225,7 @@ def optimize(tags, Q, c, upperBounds):
 class SVR(object):
 
     options = [
-    {"optimization" : "rf" ,"gui":["default"]},
+    {"optimization" : "rf" ,"gui":["default","rf"]},
     {"optimization" : "svr", "kernel" : "rbf","gui":["default","svr"]},
     {"optimization" : "svr", "kernel" : "linear","gui":["default","svr"]},
     {"optimization" : "svr", "kernel" : "poly","gui":["default","svr"]},
