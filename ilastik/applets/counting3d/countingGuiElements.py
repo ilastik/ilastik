@@ -429,7 +429,7 @@ class CoupledRectangleElement(object):
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
         
-        self.rectItem.updateText(str( np.sum(subarray)/255.0))
+        self.rectItem.updateText("%.1f"%(np.sum(subarray)/255.0))
         
     
        
