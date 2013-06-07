@@ -54,10 +54,16 @@ class BodySplitInfoWidget( QWidget ):
         self.opSplitBodyCarving = opSplitBodyCarving
         
         self._annotationFilepath = None
+        if self.opSplitBodyCarving.AnnotationFilepath.ready():
+            self._annotationFilepath = self.opSplitBodyCarving.AnnotationFilepath.value
         self._annotationCoordinates = {} # label : 3d coordinates
         self._ravelerLabels = set()
         
         self._initUi()
+        
+        if self._annotationFilepath is not None:
+            self._loadAnnotationFile()
+        self.refreshButton.setEnabled(self._annotationFilepath is not None)
 
     def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
@@ -75,10 +81,16 @@ class BodySplitInfoWidget( QWidget ):
         self.annotationTableWidget.setSelectionBehavior( QTableView.SelectRows )
         self.annotationTableWidget.horizontalHeader().setResizeMode( QHeaderView.Stretch )
         
-        self.loadSplitAnnoationFileButton.pressed.connect( self._loadAnnotationFile )
-        self.refreshButton.pressed.connect( self._reloadInfoWidgets )
+        self.loadSplitAnnoationFileButton.pressed.connect( self._loadNewAnnotationFile )
+        self.loadSplitAnnoationFileButton.setIcon( QIcon(ilastikIcons.Open) )
 
-    def _loadAnnotationFile(self):
+        self.refreshButton.pressed.connect( self._loadAnnotationFile )
+        self.refreshButton.setIcon( QIcon(ilastikIcons.Refresh) )
+
+    def _loadNewAnnotationFile(self):
+        """
+        Ask the user for a new annotation filepath, and then load it.
+        """
         navDir = ""
         if self._annotationFilepath is not None:
             navDir = os.path.split( self._annotationFilepath )[0]
@@ -92,6 +104,13 @@ class BodySplitInfoWidget( QWidget ):
             return
 
         self._annotationFilepath = str( selected_file )
+        self.refreshButton.setEnabled(self._annotationFilepath is not None)
+        self._loadAnnotationFile()
+    
+    def _loadAnnotationFile(self):
+        """
+        Load the annotation file using the path stored in our member variable.
+        """        
         self.annotationFilepathEdit.setText( self._annotationFilepath )
 
         try:
@@ -129,6 +148,8 @@ class BodySplitInfoWidget( QWidget ):
             self._ravelerLabels.add( ravelerLabel )
         
         self._reloadInfoWidgets()
+        
+        self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
 
 
     def _handleAnnotationDoubleClick(self, item):
@@ -186,16 +207,19 @@ class BodySplitInfoWidget( QWidget ):
                 if fragmentName == currentEditingFragmentName:
                     saveButton = QPushButton( "Save" )
                     saveButton.pressed.connect( partial( self._saveFragment, fragmentName ) )
+                    saveButton.setIcon( QIcon(ilastikIcons.Save) )
                     self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, saveButton )
                 else:
                     editButton = QPushButton( "Edit" )
                     editButton.pressed.connect( partial( self._editFragment, fragmentName ) )
                     editButton.setEnabled( currentEditingFragmentName == "" )
+                    editButton.setIcon( QIcon(ilastikIcons.Edit) )
                     self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, editButton )
     
                 deleteButton = QPushButton( "Delete" )
                 deleteButton.pressed.connect( partial( self._deleteFragment, fragmentName ) )
                 deleteButton.setEnabled( currentEditingFragmentName == "" or currentEditingFragmentName == fragmentName )
+                deleteButton.setIcon( QIcon(ilastikIcons.RemSel) )
                 self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button2, deleteButton )
 
     def _initAnnotationTableHeader(self):
