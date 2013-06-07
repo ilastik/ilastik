@@ -64,7 +64,11 @@ class DatasetInfoEditorWidget(QDialog):
         self._setUpEventFilters()
 
         self.axesEdit.setEnabled( self._shouldEnableAxesEdit() )
-
+        
+        self._initNormalizeDisplayCombo()
+        self.normalizeDisplayComboBox.currentIndexChanged.connect( self._applyNormalizeDisplayToTempOps )
+        self._updateNormalizeDisplay()
+        
         self._initInternalDatasetNameCombo()
         self.internalDatasetNameComboBox.currentIndexChanged.connect( self._applyInternalPathToTempOps )
         self._updateInternalDatasetSelection()
@@ -76,7 +80,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._initChannelDisplayCombo()
         self.channelDisplayComboBox.currentIndexChanged.connect( self._applyChannelDescriptionToTempOps )
         self._updateChannelDisplayCombo()
-
+        
         self.rangeMinSpinBox.setSpecialValueText( "--" )
         self.rangeMaxSpinBox.setSpecialValueText( "--" )
         self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
@@ -85,6 +89,7 @@ class DatasetInfoEditorWidget(QDialog):
         
         self._updateShape()
         self._updateDtype()
+        self._updateNormalizeDisplay()
         self._updateRange()
         self._updateAxes()
         
@@ -147,7 +152,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._tearDownEventFilters()
         self._cleanUpTempOperators()
         super( DatasetInfoEditorWidget, self ).reject()
-
+    
     def _applyTempOpSettingsRealOp(self):
         """
         Apply the settings from our temporary operators to the real operators.
@@ -277,7 +282,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.shapeLabel.setText( "" )
         else:
             self.shapeLabel.setText( str(shape) )
-
+    
     def _updateDtype(self):
         dtype = self._getCommonMetadataValue("dtype")
         if dtype is None:
@@ -291,8 +296,17 @@ class DatasetInfoEditorWidget(QDialog):
         drange = self._getCommonMetadataValue("drange")
         if drange is not None:
             self.rangeMinSpinBox.setValue( drange[0] )
-            self.rangeMaxSpinBox.setValue( drange[1] )            
-
+            self.rangeMaxSpinBox.setValue( drange[1] )
+    
+    def _updateNormalizeDisplay(self):
+        norm = self._getCommonMetadataValue("normalizeDisplay")
+        if norm is True:
+            self.normalizeDisplayComboBox.setCurrentIndex(1)
+        elif norm is False:
+            self.normalizeDisplayComboBox.setCurrentIndex(2)
+        else:
+            self.normalizeDisplayComboBox.setCurrentIndex(0)
+            
     def _updateAxes(self):
         # If all images have the same axis keys,
         # then display it.  Otherwise, display default text.
@@ -406,7 +420,39 @@ class DatasetInfoEditorWidget(QDialog):
         self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
         self.rangeMaxSpinBox.setValue( self.rangeMaxSpinBox.minimum() )
         self._applyRangeToTempOps()
+    
+    def _applyNormalizeDisplayToTempOps(self):
+         # Save a copy of our settings
+        oldInfos = {}
+        new_norm = {"True":True,"False":False,"Default":None}[str(self.normalizeDisplayComboBox.currentText())]
+        
+        for laneIndex, op in self.tempOps.items():
+            oldInfos[laneIndex] = copy.copy( op.Dataset.value )
 
+        currentLane = self.tempOps.keys()[0]
+        try:
+            for laneIndex, op in self.tempOps.items():
+                info = copy.copy( op.Dataset.value )
+                info.normalizeDisplay = new_norm
+                op.Dataset.setValue( info )
+            self._error_fields.discard('Normalize Display')
+            return True
+        except Exception as e:
+            # Revert everything back to the previous state
+            for laneIndex, op in self.tempOps.items():
+                op.Dataset.setValue( oldInfos[laneIndex] )
+                if laneIndex == currentLane:
+                    # Only need to revert the lanes we actually changed.
+                    # Everything else wasn't touched
+                    break
+            
+            traceback.print_exc()
+            msg = "Could not apply normalization settings due to an exception:\n"
+            msg += "{}".format( e )
+            QMessageBox.warning(self, "Error", msg)
+            self._error_fields.add('Normalize Display')
+            return False
+    
     def _applyRangeToTempOps(self):
         new_drange = ( self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value() )
 
@@ -745,7 +791,12 @@ class DatasetInfoEditorWidget(QDialog):
         self.channelDisplayComboBox.addItem("Default", userData="default")
         self.channelDisplayComboBox.addItem("Grayscale", userData="grayscale")
         self.channelDisplayComboBox.addItem("RGBA", userData="rgba")
-
+    
+    def _initNormalizeDisplayCombo(self):
+        self.normalizeDisplayComboBox.addItem("Default", userData="default")
+        self.normalizeDisplayComboBox.addItem("True", userData="True")
+        self.normalizeDisplayComboBox.addItem("False", userData="False")
+    
     def _updateChannelDisplayCombo(self):
         channel_description = None
         for laneIndex, op in self.tempOps.items():

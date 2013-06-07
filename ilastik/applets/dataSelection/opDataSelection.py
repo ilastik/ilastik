@@ -23,6 +23,7 @@ class DatasetInfo(object):
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
         self.drange = None
+        self.normalizeDisplay = False
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
@@ -135,11 +136,12 @@ class OpDataSelection(Operator):
             opReader.FilePath.setValue(datasetInfo.filePath)
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
-
+        
         # Inject metadata if the dataset info specified any.
-        if datasetInfo.drange or datasetInfo.axistags is not None:
+        if datasetInfo.normalizeDisplay is not None or datasetInfo.drange or datasetInfo.axistags is not None:
             metadata = {}
             metadata['drange'] = datasetInfo.drange
+            metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 metadata['axistags'] = datasetInfo.axistags
             opMetadataInjector = OpMetadataInjector( parent=self )
@@ -164,7 +166,7 @@ class OpDataSelection(Operator):
             op5.Input.connect( providerSlot )
             providerSlot = op5.Output
             self._opReaders.append( op5 )
-
+        
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)
         
