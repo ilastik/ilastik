@@ -12,7 +12,11 @@ class FeatureSelectionApplet( StandardApplet ):
         super(FeatureSelectionApplet, self).__init__(guiName, workflow)
         self._serializableItems = [ FeatureSelectionSerializer(self.topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self.topLevelOperator) ]
-
+        self.workflow = workflow
+        
+    def reportReady(self,en):
+        self.workflow.updateEnable("features",en)
+    
     @property
     def singleLaneOperatorClass(self):
         return OpFeatureSelection

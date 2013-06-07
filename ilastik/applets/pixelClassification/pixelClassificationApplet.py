@@ -1,6 +1,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from opPixelClassification import OpPixelClassification
 from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
+from ilastik.applets.base.applet import ControlCommand
 
 class PixelClassificationApplet( StandardApplet ):
     """
@@ -26,6 +27,8 @@ class PixelClassificationApplet( StandardApplet ):
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         #  we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal.emit)
+        self.enabled = False
+        self.guiexists = False
     
     @property
     def topLevelOperator(self):
@@ -34,8 +37,19 @@ class PixelClassificationApplet( StandardApplet ):
     @property
     def dataSerializers(self):
         return self._serializableItems
+    
+    def updateEnable(self,en):
+        if self.enabled != en:
+            self.enabled = en
+            if self.guiexists:
+                if en:
+                    self.guiControlSignal.emit(ControlCommand.Pop)
+                else:
+                    self.guiControlSignal.emit(ControlCommand.DisableSelf)
 
     def createSingleLaneGui(self, imageLaneIndex):
         from pixelClassificationGui import PixelClassificationGui
         singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
-        return PixelClassificationGui( singleImageOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        
+        pix = PixelClassificationGui( singleImageOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )
+        self.guiexists = True
+        return pix
