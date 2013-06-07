@@ -237,17 +237,11 @@ class SVR(object):
     ]
 
 
-    def __init__(self, underMult, overMult, limitDensity = False, optimization = "quadratic", kernel =
-                 "linear"):
-        """Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape = [n_samples, n_features]
-            Training vectors, where n_samples is the number of samples
-            and n_features is the number of features.
-
-        y : array-like, shape = [n_samples]
-            Target values (class labels in classification, real numbers in
-            regression)
+    def __init__(self, underMult, overMult, limitDensity = False, optimization = "quadratic", kernel ="linear" ,\
+                  ntrees=10, maxdepth=None #RF parameters, maxdepth=None means grows untill purity
+                 
+                 ):
+        """
         underMult : penalty-multiplier for underestimating density
         overMult : penalty-multiplier for overestimating the density
         """
@@ -257,6 +251,10 @@ class SVR(object):
         self.trained = False
         self.kernel = kernel
         self.optimization = optimization
+        
+        #RF parameters:
+        self._ntrees=ntrees
+        self._maxdepth=maxdepth
         
     @classmethod
     def load(self, cachePath, targetname):
@@ -326,7 +324,9 @@ class SVR(object):
 
         if self.optimization == "rf":
             from sklearn.ensemble import RandomForestRegressor as RFR
-            svr = RFR()
+            
+            svr = RFR(n_estimators=self._ntrees,max_depth=self._maxdepth)
+            print "Trining the random forest ", svr
             svr.fit(img, dot)
 
             #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)

@@ -221,6 +221,12 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
         self.labelingDrawerUi.SigmaLine.textChanged.connect(self._changedSigma)
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
+        self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
+        self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
+        self._updateNtrees()
+        self._updateMaxDepth()
+        
+        
         self.changedSigma = False
         
         self.labelingDrawerUi.CountText.setReadOnly(True)
@@ -242,7 +248,7 @@ class Counting3dGui(LabelingGui):
         # Density boxes elements
         #=======================================================================
     
-        self.density5d=Op5ifyer(graph=object())
+        self.density5d=Op5ifyer(graph=object()) #FIXME: Hack , get the proper reference to the graph
         self.density5d.input.connect(self.op.Density)
     
         
@@ -255,7 +261,14 @@ class Counting3dGui(LabelingGui):
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
-        
+    
+    def _updateMaxDepth(self):
+        self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
+    
+    
+    
+    def _updateNtrees(self):
+        self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
         
     def _updateOverMult(self):
         self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
@@ -274,6 +287,8 @@ class Counting3dGui(LabelingGui):
     def _updateEpsilon(self):
         self.op.opTrain.Epsilon.setValue(self.labelingDrawerUi.EpsilonBox.value())
 
+
+
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
@@ -286,11 +301,11 @@ class Counting3dGui(LabelingGui):
         else:
             self.labelingDrawerUi.gridLayout_2.setVisible(True)
             
-        #FIXME: re-enable this
+ 
         if "rf" not in option["gui"]:
             self.labelingDrawerUi.rf_panel.setVisible(False)
         else:
-            self.labelingDrawerUi.rf_panel.setVisible(False)
+            self.labelingDrawerUi.rf_panel.setVisible(True)
             
     def _debug(self):
         import sitecustomize

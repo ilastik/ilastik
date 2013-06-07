@@ -28,6 +28,8 @@ class OpTrainCounter(Operator):
                   InputSlot("SelectedOption", 
                             value = SVR.options[0],
                             stype = "object"),
+                  InputSlot("Ntrees", value = 10, stype = "int"), #RF parameter
+                  InputSlot("MaxDepth", value =None, stype = "object"), #RF parameter, None means grow until purity
                   InputSlot("BoxConstraints", optional = True)
                  ]
     outputSlots = [OutputSlot("Classifier")]
@@ -56,12 +58,15 @@ class OpTrainCounter(Operator):
             if k!="gui":
                 algorithm_options[k]=v
         
-        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **algorithm_options)
+        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, \
+                        ntrees=self.Ntrees.value,maxdepth=self.MaxDepth.value, \
+                        **algorithm_options)
+        
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
                 labels=labels[:].wait()
 
-                #Maybe later request only part of the region?
+                #Fixme: Maybe later request only part of the region?
 
                 image=self.inputs["Images"][i][:].wait()
 
@@ -124,6 +129,7 @@ class OpTrainCounterBlocked(Operator):
     description = "Train a random forest on multiple images"
     category = "Learning"
 
+    #FIXME: make the input slot for the RF parameters
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
                   InputSlot("Sigma", stype = "object"), 
