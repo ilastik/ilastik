@@ -31,8 +31,12 @@ class SplitBodyCarvingSerializer(CarvingSerializer):
             for laneIndex, grp_name in enumerate( sorted(split_settings_grp.keys()) ):
                 opLaneView = self._topLevelOperator.getLane(laneIndex)
                 lane_grp = split_settings_grp[grp_name]
-                annotation_filepath = str(lane_grp["annotation_filepath"].value)
-                opLaneView.AnnotationFilepath.setValue( annotation_filepath )
+                try:
+                    annotation_filepath = str(lane_grp["annotation_filepath"].value)
+                except KeyError:
+                    pass
+                else:
+                    opLaneView.AnnotationFilepath.setValue( annotation_filepath )
         
         # Now load the regular carving data.
         super( SplitBodyCarvingSerializer, self )._deserializeFromHdf5( topGroup, groupVersion, hdf5File, projectFilePath )

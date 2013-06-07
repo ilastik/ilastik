@@ -124,7 +124,8 @@ class SplitBodyCarvingGui(CarvingGui):
 
         # Don't show uncertainty.
         uncertaintyLayer = findLayer(lambda l: l.name == "uncertainty", carvingLayers)
-        carvingLayers.remove(uncertaintyLayer)
+        if uncertaintyLayer:
+            carvingLayers.remove(uncertaintyLayer)
         
         layers += carvingLayers
 
