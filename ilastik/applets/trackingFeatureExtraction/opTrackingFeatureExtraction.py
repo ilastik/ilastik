@@ -424,7 +424,11 @@ class OpCellFeatures(Operator):
         return math.sqrt(self.dotproduct(v, v))
     
     def angle(self, v1, v2):
-        radians = math.acos(self.dotproduct(v1, v2) / (self.length(v1) * self.length(v2)))
+        try:
+            radians = math.acos(self.dotproduct(v1, v2) / (self.length(v1) * self.length(v2)))
+        except Exception as e:
+            print str(e), ': math.acos(', self.dotproduct(v1, v2) / (self.length(v1) * self.length(v2)), '), v1 =', v1, ', v2 =', v2
+            radians = 0
         return (radians*180)/math.pi
   
   
