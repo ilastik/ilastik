@@ -146,6 +146,7 @@ class LabelListView(QStackedWidget):
     def sizeHint(self):
         return self.minimumSizeHint()
 
+
 if __name__ == '__main__':
     import numpy
     import sys
@@ -164,17 +165,20 @@ if __name__ == '__main__':
     l = QVBoxLayout()
     w = QWidget(None)
     w.setLayout(l)
-    addButton = QPushButton("Add random label")
+    addButton = QPushButton("Add random label\n note: \n the first added is permanent")
     l.addWidget(addButton)
-
+    
     def addRandomLabel():
         model.insertRow(model.rowCount(),
                         Label("Label {}".format(model.rowCount() + 1),
                               QColor(numpy.random.randint(0, 255),
                                      numpy.random.randint(0, 255),
                                      numpy.random.randint(0, 255))))
+    
     addButton.clicked.connect(addRandomLabel)
-
+    
+    model.makeRowPermanent(0)
+    
     w.show()
     w.raise_()
 
@@ -186,5 +190,6 @@ if __name__ == '__main__':
     tableView2.setModel(model)
     tableView2._table.setShowGrid(True)
     l.addWidget(tableView2)
+    
 
     sys.exit(app.exec_())

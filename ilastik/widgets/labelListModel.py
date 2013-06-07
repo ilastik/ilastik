@@ -85,6 +85,22 @@ class LabelListModel(QAbstractTableModel):
 
         self._allowRemove = True
         self._toolTipSuffixes = {}
+        
+        self.unremovable_rows=[] #rows in this list cannot be removed from the gui, 
+                                 # to add to this list call self.makeRowPermanent(int)
+                                 # to remove make the self.makeRowRemovable(int)
+                                  
+    
+    def makeRowPermanent(self,rowindex):
+        """
+        The rowindex cannot be removed from gui
+        to remove this index use self.makeRowRemovable
+        """
+        
+        self.unremovable_rows.append(rowindex)
+    
+    def makeRowRemovable(self,rowindex):
+        self.unremovable_rows.pop(rowindex)
 
     def __len__(self):
         return len(self._labels)
@@ -185,6 +201,8 @@ class LabelListModel(QAbstractTableModel):
             return icon
 
         if role == Qt.DecorationRole and index.column() == ColumnID.Delete:
+            if index.row() in self.unremovable_rows: return
+            
             row = index.row()
             pixmap = QPixmap(_NPIXELS, _NPIXELS)
             pixmap.fill(Qt.transparent)
@@ -257,6 +275,9 @@ class LabelListModel(QAbstractTableModel):
         return True
 
     def removeRow(self, position, parent=QModelIndex()):
+        if position in self.unremovable_rows:
+            return False
+
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
         logger.debug("removing row: " + str(value))
