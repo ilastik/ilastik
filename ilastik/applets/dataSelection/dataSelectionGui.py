@@ -280,10 +280,11 @@ class DataSelectionGui(QWidget):
 
         # Show the right one
         viewer = self.volumeEditors[imageSlot]
-        if roleIndex is not None:
-            viewer.moveToTop(roleIndex)
+        displayedRole = self.fileInfoTabWidget.currentIndex()
+        viewer.moveToTop(displayedRole)
         self.viewerStack.setCurrentWidget( viewer )
         self._viewerControlWidgetStack.setCurrentWidget( viewer.viewerControlWidget() )
+
 
     def handleAddFiles(self, roleIndex):
         self.addFiles(roleIndex)
