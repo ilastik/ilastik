@@ -154,7 +154,10 @@ class OpPixelClassification( Operator ):
                     def removeSlot( a, b, position, finalsize ):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved( partial(removeSlot, s2 ) )
-
+    
+    def setupOutputs(self):
+        self.parent.updateEnable("training")
+    
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
         inputSlot = self.InputImages[imageIndex]
