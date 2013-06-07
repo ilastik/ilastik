@@ -53,55 +53,55 @@ from countingGuiElements import *
 
         
 
-class ClickReportingInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)  # ditto
-    leftClickReleased = pyqtSignal(object, object)
-    
-    def __init__(self, navigationInterpreter, positionModel, editor):
-        QObject.__init__(self)
-        self.baseInterpret = navigationInterpreter
-        self.posModel      = positionModel
-        self.rubberBand =RedRubberBand(QRubberBand.Rectangle, editor)
-        self.origin = QPoint()
-        self.originpos = object()
-
-    def start( self ):
-        self.baseInterpret.start()
-
-    def stop( self ):
-        self.baseInterpret.stop()
-
-    def eventFilter( self, watched, event ):
-        if event.type() == QEvent.MouseButtonPress:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH%%%%%%%%%%%%%"
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-                self.rubberBand.show()
-                gPos = watched.mapToGlobal( event.pos() )
-                self.leftClickReceived.emit( pos, gPos )
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal( event.pos() )
-                self.rightClickReceived.emit( pos, gPos )                
-        if event.type() == QEvent.MouseMove:
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin,
-                                                  event.pos()).normalized())
-        if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )                
-
-    
-
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
+# class ClickReportingInterpreter(QObject):
+#     rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
+#     leftClickReceived = pyqtSignal(object, QPoint)  # ditto
+#     leftClickReleased = pyqtSignal(object, object)
+#     
+#     def __init__(self, navigationInterpreter, positionModel, editor):
+#         QObject.__init__(self)
+#         self.baseInterpret = navigationInterpreter
+#         self.posModel      = positionModel
+#         self.rubberBand =RedRubberBand(QRubberBand.Rectangle, editor)
+#         self.origin = QPoint()
+#         self.originpos = object()
+# 
+#     def start( self ):
+#         self.baseInterpret.start()
+# 
+#     def stop( self ):
+#         self.baseInterpret.stop()
+# 
+#     def eventFilter( self, watched, event ):
+#         if event.type() == QEvent.MouseButtonPress:
+#             pos = [int(i) for i in self.posModel.cursorPos]
+#             pos = [self.posModel.time] + pos + [self.posModel.channel]
+#             print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH%%%%%%%%%%%%%"
+#             if event.button() == Qt.LeftButton:
+#                 self.origin = QPoint(event.pos())
+#                 self.originpos = pos
+#                 self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+#                 self.rubberBand.show()
+#                 gPos = watched.mapToGlobal( event.pos() )
+#                 self.leftClickReceived.emit( pos, gPos )
+#             if event.button() == Qt.RightButton:
+#                 gPos = watched.mapToGlobal( event.pos() )
+#                 self.rightClickReceived.emit( pos, gPos )                
+#         if event.type() == QEvent.MouseMove:
+#             if not self.origin.isNull():
+#                 self.rubberBand.setGeometry(QRect(self.origin,
+#                                                   event.pos()).normalized())
+#         if event.type() == QEvent.MouseButtonRelease:
+#             pos = [int(i) for i in self.posModel.cursorPos]
+#             pos = [self.posModel.time] + pos + [self.posModel.channel]
+#             if event.button() == Qt.LeftButton:
+#                 self.rubberBand.hide()
+#                 self.leftClickReleased.emit( self.originpos,pos )                
+# 
+#     
+# 
+#         # Event is always forwarded to the navigation interpreter.
+#         return self.baseInterpret.eventFilter(watched, event)
 
 
 
@@ -191,10 +191,14 @@ class Counting3dGui(LabelingGui):
         #=======================================================================
         self._addNewLabel()
         self._addNewLabel()
+        self._labelControlUi.labelListModel.makeRowPermanent(0)
+        self._labelControlUi.labelListModel.makeRowPermanent(1)
+        
         self._labelControlUi.labelListModel[0].name = "Foreground"
         self._labelControlUi.labelListModel[1].name = "Background"
-
-
+        
+        print "HHHHHHHHHHHHHHHHJASHJASHJJJJJJJJJJJJJJJJJJJJJJJJ"
+        self._labelControlUi.labelListView.shrinkToMinimum()
 
         self.labelingDrawerUi.SigmaLine.setText("1")
         self.labelingDrawerUi.UnderBox.setRange(0,1000000)
@@ -713,7 +717,7 @@ class Counting3dGui(LabelingGui):
         print "setBox"
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
-        self._labelControlUi.boxToolButton.setChecked(True)
+        #self._labelControlUi.boxToolButton.setChecked(True)
         
 
     
@@ -790,16 +794,20 @@ class Counting3dGui(LabelingGui):
 
     def _initLabelUic(self, drawerUiPath):
         super(Counting3dGui, self)._initLabelUic(drawerUiPath)
-        self._labelControlUi.boxToolButton.setCheckable(True)
-        self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
-                                                                                                          Tool.Box) )
-        self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
+        #self._labelControlUi.boxToolButton.setCheckable(True)
+        #self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
+        #                                                                                                  Tool.Box) )
+        #self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
         if hasattr(self._labelControlUi, "AddBoxButton"):
 
             self._labelControlUi.AddBoxButton.setIcon( QIcon(ilastikIcons.AddSel) )
             self._labelControlUi.AddBoxButton.clicked.connect( bind(self._addNewBox) )
 
     def _addNewBox(self):
+        
+        
+        
+        
 
         label = Label( "Box: ", self.getNextLabelColor(),
                        pmapColor=self.getNextPmapColor(),
@@ -822,13 +830,14 @@ class Counting3dGui(LabelingGui):
         nlabels = self._labelControlUi.labelListModel.rowCount()
         selectedRow = nlabels-1
         self._labelControlUi.labelListModel.select(selectedRow)
-
+ 
         self._updateLabelShortcuts()
-       
+        
         e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
 
     def _onLabelSelected(self, row):
+        print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
@@ -843,7 +852,7 @@ class Counting3dGui(LabelingGui):
             self.activeBox = row - 2
         else:
             self.toolButtons[Tool.Paint].setEnabled(True)
-            self.toolButtons[Tool.Box].setEnabled(False)
+            #elf.toolButtons[Tool.Box].setEnabled(False)
             self.toolButtons[Tool.Paint].click()
 
         self.editor.brushingModel.setDrawnNumber(row+1)
@@ -856,8 +865,8 @@ class Counting3dGui(LabelingGui):
         
         if self._labelControlUi.arrowToolButton.isChecked():
             self.test(position5d_start, position5d_stop)
-        elif self._labelControlUi.boxToolButton.isChecked():
-            self.test2(position5d_start, position5d_stop)
+        #elif self._labelControlUi.boxToolButton.isChecked():
+        #    self.test2(position5d_start, position5d_stop)
 
 
     def test2(self, position5d_start, position5d_stop):
