@@ -145,7 +145,23 @@ class LabelListView(QStackedWidget):
 
     def sizeHint(self):
         return self.minimumSizeHint()
-
+    
+    def shrinkToMinimum(self):
+        """
+        shrink the view to the minimum around the 
+        labels which are currently there
+        """
+        t = self._table
+        hHeader = t.horizontalHeader()
+        doubleFrame = 2 * t.frameWidth()     
+        contentH = 0
+        if self._table.model(): 
+            for i in range(self._table.model().rowCount()):
+                contentH += self._table.rowHeight(i)
+        h =  contentH+2
+        self.setFixedHeight(h)
+        
+        
 
 if __name__ == '__main__':
     import numpy
