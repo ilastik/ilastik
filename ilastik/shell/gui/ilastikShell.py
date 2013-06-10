@@ -951,13 +951,19 @@ class IlastikShell( QMainWindow ):
         Populate the shell with widgets from all the applets in the new workflow.
         """
 
+        workflow_class = None
+        # Does the project file say which workflow to use?
         if "workflowName" in hdf5File.keys():
             #if workflow is found in file, take it
             workflowName = hdf5File["workflowName"].value
             workflow_class = getWorkflowFromName(workflowName)
-        else:
+        
+        # If the workflow wasn't specified or we don't understand it.
+        if workflow_class is None:
             #ask the user to name a workflow
             workflow_class = self.getWorkflow()
+
+        # If the user cancelled, give up.        
         if workflow_class is None:
             return
 
