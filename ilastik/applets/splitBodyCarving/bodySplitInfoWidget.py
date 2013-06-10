@@ -244,6 +244,7 @@ class BodySplitInfoWidget( QWidget ):
         for bookmark in bookmarks:
             if 'text' in bookmark and str(bookmark['text']).lower().find( 'split' ) != -1:
                 coord3d = bookmark['location']
+                coord3d[1] = 520 - coord3d[1] # Raveler y-axis is inverted (Raveler substacks are 520 cubes)
                 coord3d[2] -= z_offset # See comments above re: substack coordinates
                 coord3d = tuple(coord3d)
                 coord5d = (0,) + coord3d + (0,)
