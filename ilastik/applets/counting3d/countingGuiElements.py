@@ -367,12 +367,15 @@ class CoupledRectangleElement(object):
         self._inputSlot=inputSlot #input slot which connect to the sub array
         
         
+        self.boxLabel=None
         self._initConnect()
         
         self.color=qcolor
         self.setNormalColor(qcolor)
         
         self.isActive=False
+        
+        #FIXME: Test
         
     def _initConnect(self):
         print "initializing ...", self.getStart(),self.getStop()
@@ -387,6 +390,7 @@ class CoupledRectangleElement(object):
         self.rectItem.resizableRectObject.signalHasResized.connect(self.updateTextWhenChanges)
         
         self.updateTextWhenChanges()
+        
         
 #     def get_opsum(self):
 #         return self.opsum
@@ -435,8 +439,15 @@ class CoupledRectangleElement(object):
         subarray=self.getSubRegion()
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
+        value=np.sum(subarray)/255.0
         
-        self.rectItem.updateText("%.1f"%(np.sum(subarray)/255.0))
+        print "Resetting to a new value ",value,self.boxLabel
+        
+        self.rectItem.updateText("%.1f"%(value))
+        
+        if self.boxLabel!=None:
+            from PyQt4.QtCore import QString
+            self.boxLabel.density=QString("%.1f"%value)
         
     def setNormalColor(self,qcolor):
         self.rectItem.normalColor=qcolor
@@ -699,7 +710,20 @@ class BoxController(object):
         rect.setNormalColor(self.currentColor)
         #self.counter-=1
         self._currentBoxesList.append(rect)
-    
+        
+        ##add tot hte pos model
+        from ilastik.widgets.boxListModel import *
+        
+        newRow=self.boxListModel.rowCount()
+        box = BoxLabel( "Box%d"%newRow, self.currentColor,
+                       pmapColor=None,
+                   )
+        
+        self.boxListModel.insertRow( newRow, box )
+        rect.boxLabel=box
+        rect.updateTextWhenChanges()
+        
+        
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))

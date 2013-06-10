@@ -844,18 +844,11 @@ class Counting3dGui(LabelingGui):
         
     
     def _addNewBox(self):
+#         pass
         
+        #Fixme: The functionality should maybe removed from here
         
-        newRow = self.labelingDrawerUi.boxListModel.rowCount()
-        box = BoxLabel( "Box%d"%newRow, self.boxController.currentColor,
-                       pmapColor=None,
-                   )
-        #label.nameChanged.connect(self._updateLabelShortcuts)
-        #label.nameChanged.connect(self.onLabelNameChanged)
-        #label.colorChanged.connect(self.onLabelColorChanged)
-
-        self._labelControlUi.boxListModel.insertRow( newRow, box )
-        
+        newRow = self.labelingDrawerUi.boxListModel.rowCount()-1
         newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
         qcolor=self._getNextBoxColor()
         self.boxController.currentColor=qcolor
