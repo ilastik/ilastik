@@ -21,8 +21,8 @@ class OpSplitBodyCarving( OpCarving ):
     
     CurrentRavelerObject = OutputSlot()
     CurrentRavelerObjectRemainder = OutputSlot()
+    CurrentFragmentSegmentation = OutputSlot()
     MaskedSegmentation = OutputSlot()
-    CurrentFragmentSetLut = OutputSlot()
 
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
@@ -99,12 +99,15 @@ class OpSplitBodyCarving( OpCarving ):
             self.MaskedSegmentation.setDirty( roi )
         self.Segmentation.notifyDirty( handleDirtySegmentation )
         self.CurrentRavelerObjectRemainder.meta.assignFrom( self.RavelerLabels.meta )
+        self.CurrentFragmentSegmentation.meta.assignFrom( self.RavelerLabels.meta )
         
     def execute(self, slot, subindex, roi, result):
         if slot == self.MaskedSegmentation:
             return self._executeMaskedSegmentation(roi, result)
         elif slot == self.CurrentRavelerObjectRemainder:
             return self._executeCurrentRavelerObjectRemainder(roi, result)
+        elif slot == self.CurrentFragmentSegmentation:
+            return self._executeCurrentFragmentSegmentation(roi, result)
         else:
             return super( OpSplitBodyCarving, self ).execute( slot, subindex, roi, result )
     
@@ -129,6 +132,21 @@ class OpSplitBodyCarving( OpCarving ):
         numpy.logical_not( b, out=b ) # ~B
         numpy.logical_and(a, b, out=a) # A & ~B
         
+        return result
+
+    def _executeCurrentFragmentSegmentation(self, roi, result):
+        # Start with the original raveler object
+        self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
+
+        lut = self._opFragmentSetLutCache.Output[:].wait()
+
+        # Save memory: Implement (A - B) == (A & ~B), and do it with in-place operations
+        slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
+        a = result[0,...,0]
+        b = lut[self._mst.regionVol[slicing]] # (Advanced indexing)
+
+        # TODO: Use bitwise_and to avoid the temporary caused by a == 0
+        a[:] = numpy.where( a == 0, 0, b )
         return result
     
     def propagateDirty(self, slot, subindex, roi):
@@ -193,10 +211,11 @@ class OpFragmentSetLut(Operator):
         
         # Accumulate the objects objects from this raveler object that we've already split off
         result[:] = 0
-        for name in names:
+        for i, name in enumerate(reversed(names)):
             if name != self.CurrentEditingFragment.value:
                 objectSupervoxels = mst.object_lut[name]
-                result[objectSupervoxels] = 1
+                # Give each fragment it's own label, in case we want to show them in different colors
+                result[objectSupervoxels] = i+1
         
         return result
     

@@ -109,6 +109,20 @@ class SplitBodyCarvingGui(CarvingGui):
             remainingObjectLayer.opacity = 0.25
             layers.append(remainingObjectLayer)
 
+        fragmentSegSlot = self.topLevelOperatorView.CurrentFragmentSegmentation
+        if fragmentSegSlot.ready():
+            colortable = [QColor(0, 0, 0, 0).rgba(),
+                          QColor(255, 255, 0).rgba(),
+                          QColor(0, 255, 255).rgba(),
+                          QColor(255, 0, 255).rgba(),
+                          QColor(255, 255, 255).rgba(),
+                          ]
+            fragSegLayer = ColortableLayer(LazyflowSource(fragmentSegSlot), colortable, direct=True)
+            fragSegLayer.name = "Saved Fragments"
+            fragSegLayer.visible = True
+            fragSegLayer.opacity = 0.25
+            layers.append(fragSegLayer)
+
         ravelerLabelsSlot = self.topLevelOperatorView.RavelerLabels
         if ravelerLabelsSlot.ready():
             colortable = []
