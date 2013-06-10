@@ -3,7 +3,7 @@ from PyQt4.QtGui import QTableView, QColorDialog, \
     QAbstractItemView, QVBoxLayout, QPushButton, \
     QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
     QLabel, QSizePolicy
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QString
 from PyQt4 import uic
 from labelListModel import LabelListModel, Label, ColumnID
 
@@ -59,7 +59,11 @@ class LabelListView(QStackedWidget):
         self._table.verticalHeader().sectionMoved.connect(self.rowMovedTest)
         self._table.setShowGrid(False)
         self._colorDialog = ColorDialog()
-
+    
+    def resetEmptyMessage(self,pystring):
+        self.emptyMessage.setText(QString(pystring))
+        
+    
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == ColumnID.Color:
             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
@@ -148,7 +152,7 @@ class LabelListView(QStackedWidget):
     
     def shrinkToMinimum(self):
         """
-        shrink the view to the minimum around the 
+        shrink the view around the 
         labels which are currently there
         """
         t = self._table
