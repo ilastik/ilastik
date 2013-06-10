@@ -115,7 +115,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="LabelListView" name="labelListView_2"/>
+    <widget class="LabelListView" name="boxListView"/>
    </item>
    <item>
     <widget class="QPushButton" name="AddBoxButton">

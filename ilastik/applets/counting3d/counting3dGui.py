@@ -15,6 +15,7 @@ from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
 from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListView import Label
+from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
 from lazyflow.rtype import SubRegion
 
@@ -189,16 +190,17 @@ class Counting3dGui(LabelingGui):
         #=======================================================================
         # Init Label Uic Custom  setup
         #=======================================================================
+        self._setUpRandomColors()
+        
         self._addNewLabel()
         self._addNewLabel()
-        self._labelControlUi.labelListModel.makeRowPermanent(0)
-        self._labelControlUi.labelListModel.makeRowPermanent(1)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
         
-        self._labelControlUi.labelListModel[0].name = "Foreground"
-        self._labelControlUi.labelListModel[1].name = "Background"
+        self.labelingDrawerUi.labelListModel[0].name = "Foreground"
+        self.labelingDrawerUi.labelListModel[1].name = "Background"
         
-        print "HHHHHHHHHHHHHHHHJASHJASHJJJJJJJJJJJJJJJJJJJJJJJJ"
-        self._labelControlUi.labelListView.shrinkToMinimum()
+        self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         self.labelingDrawerUi.SigmaLine.setText("1")
         self.labelingDrawerUi.UnderBox.setRange(0,1000000)
@@ -217,6 +219,7 @@ class Counting3dGui(LabelingGui):
         self._updateSVROptions()
         
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
+        self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
@@ -805,37 +808,67 @@ class Counting3dGui(LabelingGui):
 
     def _addNewBox(self):
         
+        if not hasattr(self._labelControlUi, "boxListModel"):
+            self.labelingDrawerUi.boxListModel=BoxListModel()
+            self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
         
         
         
-
-        label = Label( "Box: ", self.getNextLabelColor(),
-                       pmapColor=self.getNextPmapColor(),
+        newRow = self.labelingDrawerUi.boxListModel.rowCount()
+        box = BoxLabel( "Box: %d"%newRow, self._getNextBoxColor(),
+                       pmapColor=None,
                    )
-        label.nameChanged.connect(self._updateLabelShortcuts)
-        label.nameChanged.connect(self.onLabelNameChanged)
-        label.colorChanged.connect(self.onLabelColorChanged)
+        #label.nameChanged.connect(self._updateLabelShortcuts)
+        #label.nameChanged.connect(self.onLabelNameChanged)
+        #label.colorChanged.connect(self.onLabelColorChanged)
 
-        newRow = self._labelControlUi.labelListModel.rowCount()
-        self._labelControlUi.labelListModel.insertRow( newRow, label )
-        newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
-        self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+        self._labelControlUi.boxListModel.insertRow( newRow, box )
+        
+        newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
+        
+        self.onBoxListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
+        
         # Call the 'changed' callbacks immediately to initialize any listeners
-        self.onLabelNameChanged()
-        self.onLabelColorChanged()
-        self.onPmapColorChanged()
+        #self.onLabelNameChanged()
+        #self.onLabelColorChanged()
+        #self.onPmapColorChanged()
 
         # Make the new label selected
         nlabels = self._labelControlUi.labelListModel.rowCount()
         selectedRow = nlabels-1
         self._labelControlUi.labelListModel.select(selectedRow)
  
-        self._updateLabelShortcuts()
+        #self._updateLabelShortcuts()
         
         e = self._labelControlUi.labelListModel.rowCount() > 0
-        self._gui_enableLabeling(e)
+        #self._gui_enableLabeling(e)
 
+        
+    @traceLogged(traceLogger)
+    def onBoxListDataChanged(self, topLeft, bottomRight):
+        pass
+#         """Handle changes to the label list selections."""
+#         firstRow = topLeft.row()
+#         lastRow  = bottomRight.row()
+#  
+#         firstCol = topLeft.column()
+#         lastCol  = bottomRight.column()
+#  
+#         # We only care about the color column
+#         if firstCol <= 0 <= lastCol:
+#             assert(firstRow == lastRow) # Only one data item changes at a time
+#  
+#             #in this case, the actual data (for example color) has changed
+#             color = self._labelControlUi.boxListModel[firstRow].brushColor()
+#             self._colorTable16[firstRow+1] = color.rgba()
+#             self.editor.brushingModel.setBrushColor(color)
+#  
+#             # Update the label layer colortable to match the list entry
+#             labellayer = self._getLabelLayer()
+#             if labellayer is not None:
+#                 labellayer.colorTable = self._colorTable16
+    
     def _onLabelSelected(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
@@ -909,3 +942,89 @@ class Counting3dGui(LabelingGui):
             self._labelControlUi.CountText.setText(strdensity)
         except:
             pass
+        
+    
+    def _setUpRandomColors(self):
+        seed=42
+        self._RandomColorGenerator=RandomColorGenerator(seed)
+
+        self._RandomColorGenerator.next() #discard black red and gree
+        self._RandomColorGenerator.next()
+        self._RandomColorGenerator.next()
+    
+    def _getNextBoxColor(self):
+        color=self._RandomColorGenerator.next()
+        print "BLALALLAL ",color
+        return color
+
+
+
+
+
+
+
+
+
+
+
+
+import numpy as np
+import colorsys
+
+def _get_colors(num_colors,seed=42):
+    golden_ratio_conjugate = 0.618033988749895
+    np.random.seed(seed)
+    colors=[]
+    hue=np.random.rand()*360
+    for i in np.arange(0., 360., 360. / num_colors):
+        hue += golden_ratio_conjugate
+        lightness = (50 + 1 * 10)/100.
+        saturation = (90 + 1 * 10)/100.
+        
+        colors.append(colorsys.hsv_to_rgb(hue, 0.99,0.99))
+    return colors
+
+
+def _createDefault16ColorColorTable():
+    from PyQt4.QtGui import QColor
+    from PyQt4.QtCore import Qt
+    colors = []
+    # Transparent for the zero label
+    colors.append(QColor(0,0,0,0))
+    # ilastik v0.5 colors
+    colors.append( QColor( Qt.red ) )
+    colors.append( QColor( Qt.green ) )
+    colors.append( QColor( Qt.yellow ) )
+    colors.append( QColor( Qt.blue ) )
+    colors.append( QColor( Qt.magenta ) )
+    colors.append( QColor( Qt.darkYellow ) )
+    colors.append( QColor( Qt.lightGray ) )
+    # Additional colors
+    colors.append( QColor(255, 105, 180) ) #hot pink
+    colors.append( QColor(102, 205, 170) ) #dark aquamarine
+    colors.append( QColor(165,  42,  42) ) #brown
+    colors.append( QColor(0, 0, 128) )     #navy
+    colors.append( QColor(255, 165, 0) )   #orange
+    colors.append( QColor(173, 255,  47) ) #green-yellow
+    colors.append( QColor(128,0, 128) )    #purple
+    colors.append( QColor(240, 230, 140) ) #khaki
+    return colors
+
+def RandomColorGenerator(seed=42):
+    np.random.seed(seed)    
+    default=_createDefault16ColorColorTable()
+    print default
+    i=-1
+    while i<len(default):
+        i+=1
+        yield default[i]
+        
+        
+    while 1:
+        hue=np.random.rand()*360
+        lightness = (50 + 1 * 10)/100.
+        saturation = (90 + 1 * 10)/100.
+        
+        color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
+        color=[c*255.0 for c in color]
+        yield QColor(*color)        
