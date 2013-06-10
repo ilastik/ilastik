@@ -14,6 +14,7 @@ from lazyflow.rtype import List
 from cylemon.segmentation import MSTSegmentor
 
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
+from lazyflow.operators.valueProviders import OpValueCache
 
 
 class OpCarving(Operator):
@@ -115,6 +116,8 @@ class OpCarving(Operator):
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
         self._dirtyObjects = set()
+        
+        self._opMstCache = OpValueCache( parent=self )
         
     def _clearLabels(self):
         #clear the labels 
@@ -602,4 +605,8 @@ class OpCarving(Operator):
             self.Segmentation.setDirty(slice(None))
             self.HasSegmentation.setValue(True)
         elif slot == self.MST:
+            self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
+            self._opMstCache.Input.setValue( self._mst )
+        else:
+            assert False, "Unknown input slot: {}".format( slot.name )
