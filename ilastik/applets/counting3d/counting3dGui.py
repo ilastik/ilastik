@@ -192,6 +192,12 @@ class Counting3dGui(LabelingGui):
         #=======================================================================
         # Init Label Uic Custom  setup
         #=======================================================================
+        
+        self._viewerControlUi.label.setVisible(False)
+        self._viewerControlUi.checkShowPredictions.setVisible(False)
+        self._viewerControlUi.checkShowSegmentation.setVisible(False)
+        
+        
         self._setUpRandomColors()
         
         self._addNewLabel()
