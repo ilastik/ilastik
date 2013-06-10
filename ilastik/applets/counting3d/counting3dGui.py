@@ -263,14 +263,30 @@ class Counting3dGui(LabelingGui):
         
         ############
         mainwin=self
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output)
+        
+        
+        
+        
+        if not hasattr(self._labelControlUi, "boxListModel"):
+            self.labelingDrawerUi.boxListModel=BoxListModel()
+            self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
+            self.labelingDrawerUi.boxListModel.labelSelected.connect(self._onBoxSelected)
+            self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
+        
+        
+        
+        
+        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
         
         
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+        self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
         self.navigationIntepreterDefault=self.editor.navInterpret
         #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+    
+    
     
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
@@ -816,18 +832,22 @@ class Counting3dGui(LabelingGui):
         if hasattr(self._labelControlUi, "AddBoxButton"):
 
             self._labelControlUi.AddBoxButton.setIcon( QIcon(ilastikIcons.AddSel) )
-            self._labelControlUi.AddBoxButton.clicked.connect( bind(self._addNewBox) )
+            self._labelControlUi.AddBoxButton.clicked.connect( bind(self.onAddNewBoxButtonClicked) )
+        
+        
+    
+    def onAddNewBoxButtonClicked(self):
 
+        self._changeInteractionMode(Tool.Box)
+        qcolor=self._getNextBoxColor()
+        self.boxController.currentColor=qcolor
+        
+    
     def _addNewBox(self):
-        
-        if not hasattr(self._labelControlUi, "boxListModel"):
-            self.labelingDrawerUi.boxListModel=BoxListModel()
-            self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
-        
         
         
         newRow = self.labelingDrawerUi.boxListModel.rowCount()
-        box = BoxLabel( "Box: %d"%newRow, self._getNextBoxColor(),
+        box = BoxLabel( "Box%d"%newRow, self.boxController.currentColor,
                        pmapColor=None,
                    )
         #label.nameChanged.connect(self._updateLabelShortcuts)
@@ -837,28 +857,31 @@ class Counting3dGui(LabelingGui):
         self._labelControlUi.boxListModel.insertRow( newRow, box )
         
         newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
-        
-        self.onBoxListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+        qcolor=self._getNextBoxColor()
+        self.boxController.currentColor=qcolor
 
-        
+
         # Call the 'changed' callbacks immediately to initialize any listeners
         #self.onLabelNameChanged()
         #self.onLabelColorChanged()
         #self.onPmapColorChanged()
 
-        # Make the new label selected
-        nlabels = self._labelControlUi.labelListModel.rowCount()
-        selectedRow = nlabels-1
-        self._labelControlUi.labelListModel.select(selectedRow)
- 
-        #self._updateLabelShortcuts()
+    
+    def _removeBox(self,index):
+        self.boxController.deleteItem(index)
         
-        e = self._labelControlUi.labelListModel.rowCount() > 0
-        #self._gui_enableLabeling(e)
-        
+         
+    def _onBoxSelected(self, row):
+        print "switching to box=%r" % (self._labelControlUi.boxListModel[row])
+        print "row = ",row
+        logger.debug("switching to label=%r" % (self._labelControlUi.boxListModel[row]))
+
+        # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Box)
 
-        
+        print len(self.boxController._currentBoxesList)
+        self.boxController.selectBoxItem(row)
+    
     @traceLogged(traceLogger)
     def onBoxListDataChanged(self, topLeft, bottomRight):
         pass

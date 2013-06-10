@@ -25,6 +25,7 @@ import vigra
 from lazyflow.operator import InputSlot
 from lazyflow.graph import Operator, OutputSlot, Graph
 from lazyflow.operators.generic import OpSubRegion
+from ilastik.widgets.labelListModel import LabelListModel
 
 
 class Tool():
@@ -71,7 +72,7 @@ class QResizableRect(QObject):
      
     """
     signalHasMoved = pyqtSignal(QPointF) #The resizable rectangle has moved the new position
-    signalSelected =  pyqtSignal(object)
+    signalSelected =  pyqtSignal()
     signalHasResized = pyqtSignal()
     #signalIsMoving = pyqtSignal()
     def __init__(self,x,y,w,h,parent=None):
@@ -156,14 +157,14 @@ class ResizeHandle(QGraphicsRectItem):
 
 class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor    = QColor(255, 0, 0) #hovering and selection color
-    normalColor   = QColor(0, 0, 255)
     
     
     
     def __init__(self,x,y,h,w,scene=None,parent=None):
         
         self.resizableRectObject=QResizableRect(x,y,w,h)
-        
+        self.normalColor   = QColor(0, 0, 255)
+    
         
         ##Note: need to do like this because the x,y of the graphics item fix the position 
         # of the zero relative to the scene
@@ -276,13 +277,14 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     
     def setSelected(self, selected):
         QGraphicsRectItem.setSelected(self, selected) 
+        if self.isSelected(): self.resizableRectObject.signalSelected.emit()
         if not self.isSelected(): self.hovering=False
         self.updateColor()
         self.resetHandles()
               
     def updateColor(self):
         color = self.hoverColor if (self.hovering or self.isSelected())  else self.normalColor 
-        self.setPen(QtGui.QPen(color,3))
+        self.setPen(QtGui.QPen(color,2))
         self.setBrush(QtGui.QBrush(color, QtCore.Qt.NoBrush))
     
     def dataPos(self):
@@ -353,7 +355,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
 
 class CoupledRectangleElement(object):
-    def __init__(self,x,y,h,w,inputSlot,scene=None,parent=None):
+    def __init__(self,x,y,h,w,inputSlot,scene=None,parent=None,qcolor=QColor(0,0,255)):
         #couple the functionality of the array and the functionality of the
         #resizable rectangel
         #input slot should be a output slot array of another operator
@@ -366,7 +368,12 @@ class CoupledRectangleElement(object):
         
         
         self._initConnect()
-    
+        
+        self.color=qcolor
+        self.setNormalColor(qcolor)
+        
+        self.isActive=False
+        
     def _initConnect(self):
         print "initializing ...", self.getStart(),self.getStop()
         
@@ -431,7 +438,9 @@ class CoupledRectangleElement(object):
         
         self.rectItem.updateText("%.1f"%(np.sum(subarray)/255.0))
         
-    
+    def setNormalColor(self,qcolor):
+        self.rectItem.normalColor=qcolor
+        self.rectItem.updateColor()
        
         
 
@@ -537,7 +546,7 @@ class BoxInterpreter(QObject):
     rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
     leftClickReceived = pyqtSignal(object, QPoint)  # ditto
     leftClickReleased = pyqtSignal(object, object)
-    boxAdded= pyqtSignal(object, object)
+    #boxAdded= pyqtSignal(object, object)
     focusObjectChages= pyqtSignal(object, QPoint)
     cursorPositionChanged  = pyqtSignal(object)
     deleteItemsSignal= pyqtSignal() #send the signal that we want to delete the currently selected item
@@ -639,12 +648,16 @@ class BoxInterpreter(QObject):
 
 
 class BoxController(object):
-    def __init__(self,scene,connectionInput):
+    def __init__(self,scene,connectionInput,boxListModel):
         self.scene=scene
         self.connectionInput=connectionInput
         self._currentBoxesList=[]
-        self._currentActiveItem=[]
+        #self._currentActiveItem=[]
         #self.counter=1000
+        self.currentColor=QColor(0,0,255)    
+        self.boxListModel=boxListModel
+        self.scene.selectionChanged.connect(self.handleSelectionChange)
+        
     def getCurrentActiveBox(self):
         pass
         
@@ -683,6 +696,7 @@ class BoxController(object):
         
         rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,scene=self.scene)
         rect.rectItem.setZValue(len(self._currentBoxesList))
+        rect.setNormalColor(self.currentColor)
         #self.counter-=1
         self._currentBoxesList.append(rect)
     
@@ -703,15 +717,34 @@ class BoxController(object):
     
     def deleteSelectItems(self):
         tmp=[]
-        for el in self._currentBoxesList:
+        for k,el in enumerate(self._currentBoxesList):
             if el.rectItem.isSelected():
                 el.disconnectInput()
                 el.rectItem.scene().removeItem( el.rectItem)
                 del el
+                super(type(self.boxListModel),self.boxListModel).removeRow(k)
             else:
                 tmp.append(el)
         self._currentBoxesList=tmp
     
+    def deleteItem(self,index):
+        el=self._currentBoxesList.pop(index)
+        el.disconnectInput()
+        el.rectItem.scene().removeItem(el.rectItem)
+        del el
+        
+        
+    def selectBoxItem(self,index):
+        [el.rectItem.setSelected(False) for el in self._currentBoxesList] #deselct the others
+        self._currentBoxesList[index].rectItem.setSelected(True)
+        
+    def handleSelectionChange(self):
+        for row,el in enumerate(self._currentBoxesList):
+            if el.rectItem.isSelected():
+                self.boxListModel.blockSignals(True)
+                self.boxListModel.select(row)
+                self.boxListModel.blockSignals(False)
+                break
     
 import sys
 if __name__=="__main__":

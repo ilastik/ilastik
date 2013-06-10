@@ -281,7 +281,6 @@ class LabelListModel(QAbstractTableModel):
         if position in self.unremovable_rows:
             return False
         
-        print parent.column(),"There"
 
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
