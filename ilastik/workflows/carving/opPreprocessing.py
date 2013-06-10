@@ -49,7 +49,7 @@ class OpFilter(Operator):
         
         print "input volume shape: ", volume.shape
         print "input volume size: ", volume.nbytes / 1024**2, "MB"
-        fvol = volume.astype(numpy.float32)
+        fvol = numpy.asarray(volume, numpy.float32)
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
@@ -155,7 +155,8 @@ class OpSimpleWatershed(Operator):
                 print "done" ,numpy.max(result[...])
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
-                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
+                assert (volume_feat.dtype == numpy.uint32 or volume_feat.dtype == numpy.int32)
+                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 print "done" ,numpy.max(labelVolume)
 
@@ -194,7 +195,10 @@ class OpMstSegmentorProvider(Operator):
                 self.applet.progressSignal.emit(x)
                 self.applet.progress = x
         
-        mst= MSTSegmentor(labelVolume[0,...,0], volume_feat[0,...,0].astype(numpy.float32), edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+        mst= MSTSegmentor(labelVolume[0,...,0], 
+                          numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+                          edgeWeightFunctor = "minimum",
+                          progressCallback = updateProgressBar)
         #mst.raw is not set here in order to avoid redundant data storage 
         mst.raw = None
         
