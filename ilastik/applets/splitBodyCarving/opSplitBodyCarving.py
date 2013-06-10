@@ -3,8 +3,11 @@ import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape, roiToSlice, getIntersectingBlocks, getBlockBounds
+from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
+
+from ilastik.utility import bind
 
 import logging
 logger = logging.getLogger(__name__)
@@ -13,7 +16,7 @@ class OpSplitBodyCarving( OpCarving ):
 
     RavelerLabels = InputSlot()
     CurrentRavelerLabel = InputSlot(value=0)
-
+    CurrentEditingFragment = InputSlot(value="", stype='string')
     AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
     
     CurrentRavelerObject = OutputSlot()
@@ -31,10 +34,15 @@ class OpSplitBodyCarving( OpCarving ):
         self._opSelectRavelerObject.Input.connect( self.RavelerLabels )
         self.CurrentRavelerObject.connect( self._opSelectRavelerObject.Output )
         
+        # LUTs of all fragments of the current Raveler body are combined into a single LUT
         self._opFragmentSetLut = OpFragmentSetLut( parent=self )
-        self._opFragmentSetLut.MST.connect( self.MST )
+        self._opFragmentSetLut.MST.connect( self._opMstCache.Output )
         self._opFragmentSetLut.RavelerLabel.connect( self.CurrentRavelerLabel )
-        
+        self._opFragmentSetLut.CurrentEditingFragment.connect( self.CurrentEditingFragment )
+
+        # The combined LUT is cached to avoid recomputing it for every orthoview.
+        self._opFragmentSetLutCache = OpArrayCache( parent=self )
+        self._opFragmentSetLutCache.blockShape.setValue( (1e10,) ) # Something big (always get the whole thing)
 
     @classmethod
     def autoSeedBackground(cls, laneView, foreground_label):
@@ -83,13 +91,15 @@ class OpSplitBodyCarving( OpCarving ):
                 logger.debug("Skipping all-background block: {}/{}".format( block_index, len(block_starts) ))
 
     def setupOutputs(self):
+        self._opFragmentSetLutCache.Input.connect( self._opFragmentSetLut.Lut )
+            
         super( OpSplitBodyCarving, self ).setupOutputs()
         self.MaskedSegmentation.meta.assignFrom(self.Segmentation.meta)
         def handleDirtySegmentation(slot, roi):
             self.MaskedSegmentation.setDirty( roi )
         self.Segmentation.notifyDirty( handleDirtySegmentation )
         self.CurrentRavelerObjectRemainder.meta.assignFrom( self.RavelerLabels.meta )
-            
+        
     def execute(self, slot, subindex, roi, result):
         if slot == self.MaskedSegmentation:
             return self._executeMaskedSegmentation(roi, result)
@@ -110,12 +120,12 @@ class OpSplitBodyCarving( OpCarving ):
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
 
-        lut = self._opFragmentSetLut.Lut[:].wait()
+        lut = self._opFragmentSetLutCache.Output[:].wait()
 
         # Save memory: Implement (A - B) == (A & ~B), and do it with in-place operations
         slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
         a = result[0,...,0]
-        b = lut[self._mst.regionVol[slicing]]
+        b = lut[self._mst.regionVol[slicing]] # (Advanced indexing)
         numpy.logical_not( b, out=b ) # ~B
         numpy.logical_and(a, b, out=a) # A & ~B
         
@@ -128,8 +138,10 @@ class OpSplitBodyCarving( OpCarving ):
             self.MaskedSegmentation.setDirty( slice(None) )
         elif slot == self.AnnotationFilepath:
             return
+        elif slot == self.CurrentEditingFragment:
+            return
         else:
-            super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
+            super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
     
     def getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
         return OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(self._mst, ravelerLabel)
@@ -139,14 +151,29 @@ class OpSplitBodyCarving( OpCarving ):
         # Find the saved objects that were split from this raveler object
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )
-        return filter( lambda s: s.startswith(pattern), mst.object_names.keys() )
+        if mst is not None:
+            return filter( lambda s: s.startswith(pattern), mst.object_names.keys() )
+        return []    
 
+    def _setCurrObjectName(self, name):
+        """
+        Overridden from OpCarving._setCurrObjectName
+        """
+        super( OpSplitBodyCarving, self )._setCurrObjectName( name )
+        self.CurrentEditingFragment.setValue( name )
 
 class OpFragmentSetLut(Operator):
     MST = InputSlot()
     RavelerLabel = InputSlot()
+    CurrentEditingFragment = InputSlot()
     
     Lut = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpFragmentSetLut, self ).__init__(*args, **kwargs)
+        
+        # HACK: See setupOutputs
+        self.MST.notifyDirty( bind(self._setupOutputs) )
 
     def setupOutputs(self):
         self.Lut.meta.shape = ( len(self.MST.value.objects.lut), )
@@ -167,8 +194,9 @@ class OpFragmentSetLut(Operator):
         # Accumulate the objects objects from this raveler object that we've already split off
         result[:] = 0
         for name in names:
-            objectSupervoxels = mst.object_lut[name]
-            result[objectSupervoxels] = 1
+            if name != self.CurrentEditingFragment.value:
+                objectSupervoxels = mst.object_lut[name]
+                result[objectSupervoxels] = 1
         
         return result
     
