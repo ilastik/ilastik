@@ -59,15 +59,17 @@ class Label(QObject):
             self.name, self._brushColor)
 
 
-class ColumnID():
-    Color  = 0
-    Name   = 1
-    Delete = 2
 
 
 class LabelListModel(QAbstractTableModel):
     orderChanged = pyqtSignal()
     labelSelected = pyqtSignal(int)
+    
+    
+    class ColumnID():
+        Color  = 0
+        Name   = 1
+        Delete = 2
 
     def __init__(self, labels=None, parent=None):
         QAbstractTableModel.__init__(self, parent)
@@ -161,26 +163,26 @@ class LabelListModel(QAbstractTableModel):
             self._table._setToolTipSuffix(self._row, text)
 
     def data(self, index, role):
-        if role == Qt.EditRole and index.column() == ColumnID.Color:
+        if role == Qt.EditRole and index.column() == self.ColumnID.Color:
             return (self._labels[index.row()].brushColor(),
                     self._labels[index.row()].pmapColor())
 
-        if role == Qt.EditRole and index.column() == ColumnID.Name:
+        if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             return self._labels[index.row()].name
 
-        if role == Qt.ToolTipRole and index.column() == ColumnID.Color:
+        if role == Qt.ToolTipRole and index.column() == self.ColumnID.Color:
             return ("Hex code : {}\nDouble click to change".format(
                 self._labels[index.row()].brushColor().name()))
 
-        if role == Qt.ToolTipRole and index.column() == ColumnID.Name:
+        if role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
             return "{}\nDouble click to rename {}".format(
                 self._labels[index.row()].name, suffix)
 
-        if role == Qt.ToolTipRole and index.column() == ColumnID.Delete:
+        if role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
             return "Delete {}".format(self._labels[index.row()].name)
 
-        if role == Qt.DecorationRole and index.column() == ColumnID.Color:
+        if role == Qt.DecorationRole and index.column() == self.ColumnID.Color:
             row = index.row()
             value = self._labels[row]
             if value.brushColor == value.pmapColor():
@@ -200,7 +202,7 @@ class LabelListModel(QAbstractTableModel):
             icon = QIcon(pixmap)
             return icon
 
-        if role == Qt.DecorationRole and index.column() == ColumnID.Delete:
+        if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
             
             row = index.row()
@@ -224,24 +226,24 @@ class LabelListModel(QAbstractTableModel):
             icon = QIcon(pixmap)
             return icon
 
-        if role == Qt.DisplayRole and index.column() == ColumnID.Name:
+        if role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
             row = index.row()
             value = self._labels[row]
             return value.name
 
     def flags(self, index):
-        if  index.column() == ColumnID.Color:
+        if  index.column() == self.ColumnID.Color:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        elif  index.column() == ColumnID.Name:
+        elif  index.column() == self.ColumnID.Name:
             return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        elif  index.column() == ColumnID.Delete:
+        elif  index.column() == self.ColumnID.Delete:
             if self._allowRemove:
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
             else:
                 return Qt.NoItemFlags
 
     def setData(self, index, value, role=Qt.EditRole):
-        if role == Qt.EditRole  and index.column() == ColumnID.Color:
+        if role == Qt.EditRole  and index.column() == self.ColumnID.Color:
             row = index.row()
             brushColor = QColor(value[0])
             pmapColor = QColor(value[1])
@@ -259,12 +261,13 @@ class LabelListModel(QAbstractTableModel):
                 self.dataChanged.emit(index, index)
                 return True
 
-        if role == Qt.EditRole  and index.column() == ColumnID.Name:
+        if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
             row = index.row()
             name = value
             self._labels[row].name = str(name.toString())
             self.dataChanged.emit(index, index)
             return True
+
 
         return False
 
@@ -277,6 +280,8 @@ class LabelListModel(QAbstractTableModel):
     def removeRow(self, position, parent=QModelIndex()):
         if position in self.unremovable_rows:
             return False
+        
+        print parent.column(),"There"
 
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
@@ -289,12 +294,15 @@ class LabelListModel(QAbstractTableModel):
         #Allow removing of rows. Needed to be able to disallow it
         #in interactive mode
         self._allowRemove = check
-        self.dataChanged.emit(self.createIndex(0, ColumnID.Delete),
-                              self.createIndex(self.rowCount(), ColumnID.Delete))
+        self.dataChanged.emit(self.createIndex(0, self.ColumnID.Delete),
+                              self.createIndex(self.rowCount(), self.ColumnID.Delete))
 
     def select(self, row):
         self._selectionModel.clear()
-        self._selectionModel.select(self.index(row, ColumnID.Color),
+        self._selectionModel.select(self.index(row, self.ColumnID.Color),
                                     QItemSelectionModel.Select)
-        self._selectionModel.select(self.index(row, ColumnID.Name),
+        self._selectionModel.select(self.index(row, self.ColumnID.Name),
                                     QItemSelectionModel.Select)
+
+
+ColumnID=LabelListModel.ColumnID

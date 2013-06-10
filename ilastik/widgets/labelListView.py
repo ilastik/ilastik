@@ -5,7 +5,7 @@ from PyQt4.QtGui import QTableView, QColorDialog, \
     QLabel, QSizePolicy
 from PyQt4.QtCore import Qt, QString
 from PyQt4 import uic
-from labelListModel import LabelListModel, Label, ColumnID
+from labelListModel import LabelListModel, Label
 
 
 class ColorDialog(QDialog):
@@ -65,7 +65,7 @@ class LabelListView(QStackedWidget):
         
     
     def tableViewCellDoubleClicked(self, modelIndex):
-        if modelIndex.column() == ColumnID.Color:
+        if modelIndex.column() == self.model.ColumnID.Color:
             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
             self._colorDialog.setPmapColor (self._table.model()[modelIndex.row()].pmapColor())
             self._colorDialog.exec_()
@@ -85,9 +85,9 @@ class LabelListView(QStackedWidget):
         table.setShowGrid(False)
         table.horizontalHeader().hide()
         table.verticalHeader().hide()
-        table.resizeColumnToContents(ColumnID.Color)
+        table.resizeColumnToContents(self.model.ColumnID.Color)
         table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
-        table.resizeColumnToContents(ColumnID.Delete)
+        table.resizeColumnToContents(self.model.ColumnID.Delete)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
      
@@ -113,21 +113,22 @@ class LabelListView(QStackedWidget):
             
         model.rowsInserted.connect(self._onRowsChanged)
         model.rowsRemoved.connect(self._onRowsChanged)
+        self.model=model
         
         self._setListViewLook()
         
     def tableViewCellClicked(self, modelIndex):
-        if (modelIndex.column() == ColumnID.Delete and
+        if (modelIndex.column() == self.model.ColumnID.Delete and
             not self._table.model().flags(modelIndex) == Qt.NoItemFlags):
             self._table.model().removeRow(modelIndex.row())
 
     @property
     def allowDelete(self):
-        return not self._table.isColumnHidden(ColumnID.Delete)
+        return not self._table.isColumnHidden(self.model.ColumnID.Delete)
 
     @allowDelete.setter
     def allowDelete(self, allow):
-        self._table.setColumnHidden(ColumnID.Delete, not allow)
+        self._table.setColumnHidden(self.model.ColumnID.Delete, not allow)
 
     def minimumSizeHint(self):
         #http://www.qtcentre.org/threads/14764-QTableView-sizeHint%28%29-issues
