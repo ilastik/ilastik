@@ -18,7 +18,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
 from lazyflow.rtype import SubRegion
-
+from volumina.navigationControler import NavigationInterpreter
 
 # ilastik
 from ilastik.utility import bind
@@ -27,6 +27,8 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
+
+
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -267,7 +269,8 @@ class Counting3dGui(LabelingGui):
         
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-        self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+        self.navigationIntepreterDefault=self.editor.navInterpret
+        #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
@@ -708,8 +711,6 @@ class Counting3dGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-        self._labelControlUi.arrowToolButton.setChecked(True)
-        print "setNavigation"
 #         if not hasattr(self, "rubberbandClickReporter"):
 #             
 #             self.rubberbandClickReporter = self.boxIntepreter
@@ -717,12 +718,18 @@ class Counting3dGui(LabelingGui):
 #         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _gui_setBox(self):
-        print "setBox"
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.arrowToolButton.setChecked(False)
+        
         #self._labelControlUi.boxToolButton.setChecked(True)
         
-
+    
+    def _onBoxChanged(self,parentFun, mapf):
+        
+        parentFun()
+        new = map(mapf, self.labelListData)
+    
     
     def _changeInteractionMode( self, toolId ):
         """
@@ -766,6 +773,7 @@ class Counting3dGui(LabelingGui):
             if toolId == Tool.Navigation:
                 # update GUI 
                 self.editor.brushingModel.setBrushSize(0)
+                self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
                 
             elif toolId == Tool.Paint:
@@ -787,7 +795,11 @@ class Counting3dGui(LabelingGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI 
                 self._gui_setErasing()
+            
             elif toolId == Tool.Box:
+                print "Interaction mode box"
+                self.editor.brushingModel.setBrushSize(0)
+                self.editor.setNavigationInterpreter(self.boxIntepreter)
                 self._gui_setBox()
 
         self.editor.setInteractionMode( modeNames[toolId] )
@@ -843,6 +855,8 @@ class Counting3dGui(LabelingGui):
         
         e = self._labelControlUi.labelListModel.rowCount() > 0
         #self._gui_enableLabeling(e)
+        
+        self._changeInteractionMode(Tool.Box)
 
         
     @traceLogged(traceLogger)
@@ -1015,16 +1029,15 @@ def RandomColorGenerator(seed=42):
     default=_createDefault16ColorColorTable()
     print default
     i=-1
-    while i<len(default):
-        i+=1
-        yield default[i]
-        
-        
     while 1:
-        hue=np.random.rand()*360
-        lightness = (50 + 1 * 10)/100.
-        saturation = (90 + 1 * 10)/100.
-        
-        color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
-        color=[c*255.0 for c in color]
-        yield QColor(*color)        
+        i+=1
+        if i<16:
+            yield default[i]
+        else:        
+            hue=np.random.rand()*360
+            lightness = (50 + 1 * 10)/100.
+            saturation = (90 + 1 * 10)/100.
+            
+            color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
+            color=[c*255.0 for c in color]
+            yield QColor(*color)        

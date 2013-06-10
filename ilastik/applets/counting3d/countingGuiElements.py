@@ -610,7 +610,7 @@ class BoxInterpreter(QObject):
 #                     self.rubberBand.show()              
 
                 modifiers=QApplication.keyboardModifiers() 
-                if modifiers != Qt.ControlModifier and len(itemsall)==0: #show rubber band if Ctrl is not pressed
+                if modifiers != Qt.ControlModifier and modifiers != Qt.ShiftModifier and len(itemsall)==0: #show rubber band if Ctrl is not pressed
                     self.rubberBand.show()
             
 

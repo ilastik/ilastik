@@ -305,4 +305,3 @@ class LabelListModel(QAbstractTableModel):
                                     QItemSelectionModel.Select)
 
 
-ColumnID=LabelListModel.ColumnID

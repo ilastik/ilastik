@@ -407,6 +407,8 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.eraserToolButton.setEnabled(enable)
         self._labelControlUi.brushSizeCaption.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
+    
+
 
     @traceLogged(traceLogger)
     def _onBrushSizeChange(self, index):
