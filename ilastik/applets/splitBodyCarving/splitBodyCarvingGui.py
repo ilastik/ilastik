@@ -15,6 +15,8 @@ from opSplitBodyCarving import OpSplitBodyCarving
 
 from bodySplitInfoWidget import BodySplitInfoWidget
 
+from ilastik.applets.labeling.labelingGui import Tool
+
 class SplitBodyCarvingGui(CarvingGui):
     
     def __init__(self, topLevelOperatorView):
@@ -35,9 +37,21 @@ class SplitBodyCarvingGui(CarvingGui):
         self._labelControlUi.save.hide()
         self._labelControlUi.saveAs.hide()
 
+        # In this workflow, you aren't allowed to make brushstrokes unless there is a "current fragment"
+        def handleEditingFragmentChange(slot, *args):
+            if slot.value == "":
+                self._changeInteractionMode(Tool.Navigation)
+            else:
+                self._changeInteractionMode(Tool.Paint)
+            self._labelControlUi.paintToolButton.setEnabled( slot.value != "" )
+            self._labelControlUi.eraserToolButton.setEnabled( slot.value != "" )
+        topLevelOperatorView.CurrentEditingFragment.notifyDirty( handleEditingFragmentChange )
+        handleEditingFragmentChange(topLevelOperatorView.CurrentEditingFragment)
+
     def _handleNavigationRequest(self, coord3d):
         self.editor.posModel.cursorPos = list(coord3d)
         self.editor.posModel.slicingPos = list(coord3d)
+        self.editor.navCtrl.panSlicingViews( list(coord3d), [0,1,2] )
         
     def labelingContextMenu(self, names, op, position5d):                
         pos = TinyVector(position5d)
