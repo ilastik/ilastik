@@ -19,6 +19,7 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentRavelerObject = OutputSlot()
     CurrentRavelerObjectRemainder = OutputSlot()
     MaskedSegmentation = OutputSlot()
+    CurrentFragmentSetLut = OutputSlot()
 
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
@@ -29,6 +30,11 @@ class OpSplitBodyCarving( OpCarving ):
         self._opSelectRavelerObject.SelectedLabel.connect( self.CurrentRavelerLabel )
         self._opSelectRavelerObject.Input.connect( self.RavelerLabels )
         self.CurrentRavelerObject.connect( self._opSelectRavelerObject.Output )
+        
+        self._opFragmentSetLut = OpFragmentSetLut( parent=self )
+        self._opFragmentSetLut.MST.connect( self.MST )
+        self._opFragmentSetLut.RavelerLabel.connect( self.CurrentRavelerLabel )
+        
 
     @classmethod
     def autoSeedBackground(cls, laneView, foreground_label):
@@ -100,30 +106,18 @@ class OpSplitBodyCarving( OpCarving ):
         result[:] *= 2 # In carving, background is always 1 and segmentation pixels are always 2
         return result
 
-    def _executeCurrentRavelerObjectRemainder(self, roi, result):
-        ravelerLabel = self.CurrentRavelerLabel.value
-        if ravelerLabel == 0:
-            result[:] = 0
-            return result
-        
+    def _executeCurrentRavelerObjectRemainder(self, roi, result):        
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
 
-        names = self.getSavedObjectNamesForRavelerLabel(ravelerLabel)
-        
-        # Accumulate the objects objects from this raveler object that we've already split off
-        lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-        for name in names:
-            objectSupervoxels = self._mst.object_lut[name]
-            lut[objectSupervoxels] = 1
+        lut = self._opFragmentSetLut.Lut[:].wait()
 
-        # Save memory: Implement (A - B) == (A & ~B) == ~(~A | B), and do it with three in-place operations
+        # Save memory: Implement (A - B) == (A & ~B), and do it with in-place operations
         slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
         a = result[0,...,0]
-        b = lut[self._mst.regionVol][slicing]
-        numpy.logical_not( a, out=a ) # ~A
-        numpy.logical_or(a, b, out=a) # ~A | B
-        numpy.logical_not( a, out=a ) # ~(~A | B)
+        b = lut[self._mst.regionVol[slicing]]
+        numpy.logical_not( b, out=b ) # ~B
+        numpy.logical_and(a, b, out=a) # A & ~B
         
         return result
     
@@ -135,14 +129,51 @@ class OpSplitBodyCarving( OpCarving ):
         elif slot == self.AnnotationFilepath:
             return
         else:
-            return super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
-
+            super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )        
+    
     def getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
+        return OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(self._mst, ravelerLabel)
+
+    @classmethod
+    def getSavedObjectNamesForMstAndRavelerLabel(self, mst, ravelerLabel):
         # Find the saved objects that were split from this raveler object
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )
-        return filter( lambda s: s.startswith(pattern), self._mst.object_names.keys() )
+        return filter( lambda s: s.startswith(pattern), mst.object_names.keys() )
 
+
+class OpFragmentSetLut(Operator):
+    MST = InputSlot()
+    RavelerLabel = InputSlot()
+    
+    Lut = OutputSlot()
+
+    def setupOutputs(self):
+        self.Lut.meta.shape = ( len(self.MST.value.objects.lut), )
+        self.Lut.meta.dtype = numpy.int32
+        
+    def execute(self, slot, subindex, roi, result):
+        assert slot == self.Lut
+        assert roi.stop - roi.start == self.Lut.meta.shape
+        
+        ravelerLabel = self.RavelerLabel.value
+        if ravelerLabel == 0:
+            result[:] = 0
+            return result
+
+        mst = self.MST.value
+        names = sorted(OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel))
+        
+        # Accumulate the objects objects from this raveler object that we've already split off
+        result[:] = 0
+        for name in names:
+            objectSupervoxels = mst.object_lut[name]
+            result[objectSupervoxels] = 1
+        
+        return result
+    
+    def propagateDirty(self, slot, subindex, roi):
+        self.Lut.setDirty( slice(None) )
 
 class OpSelectLabel(Operator):
     Input = InputSlot()
