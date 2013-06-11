@@ -47,13 +47,13 @@ class SplitBodyCarvingGui(CarvingGui):
                            QColor(255, 0, 255),   # magenta
                            QColor(0, 0, 128),     # navy
                            QColor(165,  42,  42), # brown        
-                           QColor(192, 192, 192), # silver
+                           QColor(255, 105, 180), # hot pink
                            QColor(255, 165, 0),   # orange
                            QColor(173, 255,  47), # green-yellow
-                           QColor(255, 105, 180), # hot pink
                            QColor(102, 205, 170), # dark aquamarine
                            QColor(128,0, 128),    # purple
                            QColor(240, 230, 140), # khaki
+                           QColor(192, 192, 192), # silver
                            QColor(69, 69, 69) ]   # dark grey
 
         self._fragmentColors = fragmentColors
@@ -66,6 +66,7 @@ class SplitBodyCarvingGui(CarvingGui):
                 self._changeInteractionMode(Tool.Paint)
             self._labelControlUi.paintToolButton.setEnabled( slot.value != "" )
             self._labelControlUi.eraserToolButton.setEnabled( slot.value != "" )
+            self._labelControlUi.labelListView.setEnabled( slot.value != "" )
         topLevelOperatorView.CurrentEditingFragment.notifyDirty( handleEditingFragmentChange )
         handleEditingFragmentChange(topLevelOperatorView.CurrentEditingFragment)
 

@@ -270,7 +270,6 @@ class BodySplitInfoWidget( QWidget ):
 
         # Switch raveler labels if necessary.
         if self.opSplitBodyCarving.CurrentRavelerLabel.value != ravelerLabel:
-            # TODO: This save/load sequence involves two recomputes in a row.  It could be only 1. 
             self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
     
             # Clear all seeds
@@ -372,13 +371,8 @@ class BodySplitInfoWidget( QWidget ):
             self.annotationTableWidget.setItem( row, AnnotationTableColumns.Comment, commentItem )
         
     def _startNewFragment(self, ravelerLabel):
-        # TODO: This save/load sequence involves two recomputes in a row.  It could be only 1. 
         self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
 
-        # Clear all seeds
-        self.opSplitBodyCarving.clearCurrentLabeling( trigger_recompute=False )
-
-        # "Save As" (with no seeds) with the appropriate name
         fragmentName = self._getNextAvailableFragmentName( ravelerLabel )
         self.opSplitBodyCarving.CurrentEditingFragment.setValue( fragmentName )
 
