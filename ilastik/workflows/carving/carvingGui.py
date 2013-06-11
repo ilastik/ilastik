@@ -359,7 +359,11 @@ class CarvingGui(LabelingGui):
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.doneObjectNamesForPosition(position5d[1:4])
         op = self.topLevelOperatorView
-        self.labelingContextMenu(names,op,position5d).exec_(globalWindowCoordinate)
+
+        # (Subclasses may override menu)
+        menu = self.labelingContextMenu(names,op,position5d)
+        if menu is not None:
+            menu.exec_(globalWindowCoordinate)
 
     def _toggleSegmentation3D(self):
         self._showSegmentationIn3D = not self._showSegmentationIn3D

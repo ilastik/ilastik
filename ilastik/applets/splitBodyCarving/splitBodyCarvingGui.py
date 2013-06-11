@@ -40,6 +40,7 @@ class SplitBodyCarvingGui(CarvingGui):
         self._labelControlUi.saveControlLabel.hide()
         self._labelControlUi.save.hide()
         self._labelControlUi.saveAs.hide()
+        self._labelControlUi.namesButton.hide()
 
         fragmentColors = [ QColor(0,0,0,0), # transparent (background)
                            QColor(0, 255, 255),   # cyan
@@ -73,32 +74,24 @@ class SplitBodyCarvingGui(CarvingGui):
         self.editor.posModel.slicingPos = list(coord3d)
         self.editor.navCtrl.panSlicingViews( list(coord3d), [0,1,2] )
         
-    def labelingContextMenu(self, names, op, position5d):                
-        pos = TinyVector(position5d)
-        sample_roi = (pos, pos+1)
-        ravelerLabelSample = self.topLevelOperatorView.RavelerLabels(*sample_roi).wait()
-        ravelerLabel = ravelerLabelSample[0,0,0,0,0]
-        
-        menu = super( SplitBodyCarvingGui, self ).labelingContextMenu(names, op, position5d)
-        menu.addSeparator()
-        highlightAction = menu.addAction( "Highlight Raveler Object {}".format( ravelerLabel ) )
-        highlightAction.triggered.connect( partial(self.topLevelOperatorView.CurrentRavelerLabel.setValue, ravelerLabel ) )
+    def labelingContextMenu(self, names, op, position5d):
+        return None
+#        pos = TinyVector(position5d)
+#        sample_roi = (pos, pos+1)
+#        ravelerLabelSample = self.topLevelOperatorView.RavelerLabels(*sample_roi).wait()
+#        ravelerLabel = ravelerLabelSample[0,0,0,0,0]
+#        
+#        menu = super( SplitBodyCarvingGui, self ).labelingContextMenu(names, op, position5d)
+#        menu.addSeparator()
+#        highlightAction = menu.addAction( "Highlight Raveler Object {}".format( ravelerLabel ) )
+#        highlightAction.triggered.connect( partial(self.topLevelOperatorView.CurrentRavelerLabel.setValue, ravelerLabel ) )
+#
+#        # Auto-seed also auto-highlights
+#        autoSeedAction = menu.addAction( "Auto-seed background for Raveler Object {}".format( ravelerLabel ) )
+#        autoSeedAction.triggered.connect( partial(OpSplitBodyCarving.autoSeedBackground, self.topLevelOperatorView, ravelerLabel ) )
+#        autoSeedAction.triggered.connect( partial(self.topLevelOperatorView.CurrentRavelerLabel.setValue, ravelerLabel ) )
+#        return menu
 
-        # Auto-seed also auto-highlights
-        autoSeedAction = menu.addAction( "Auto-seed background for Raveler Object {}".format( ravelerLabel ) )
-        autoSeedAction.triggered.connect( partial(OpSplitBodyCarving.autoSeedBackground, self.topLevelOperatorView, ravelerLabel ) )
-        autoSeedAction.triggered.connect( partial(self.topLevelOperatorView.CurrentRavelerLabel.setValue, ravelerLabel ) )
-
-        return menu
-
-    # Show list, sorted by raveler label (or possibly by z-plane?)
-    # When user pressed "next":
-    # - Highlight raveler object
-    # - Show split-point annotation
-    # - Show "Save As r1-A" or something
-    # - Repeat, but now show raveler object excluding pieces that have been cut off, and show next split point (possibly in that same raveler object)
-    # - Deleting an object means that it's pixels will automatically go back to the raveler object's pixels
-    
     def _update_rendering(self):
         """
         Override from the base class.
@@ -161,6 +154,9 @@ class SplitBodyCarvingGui(CarvingGui):
 
     @threadRouted    
     def _refreshRenderMgr(self):
+        """
+        The render mgr can segfault if this isn't called from the main thread.
+        """
         self._renderMgr.update()    
 
     
