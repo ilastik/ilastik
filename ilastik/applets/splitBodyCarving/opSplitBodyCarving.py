@@ -171,7 +171,7 @@ class OpSplitBodyCarving( OpCarving ):
             #  (even if it isn't saved yet)
             if ( currentFragment != ""
                  and currentFragment.startswith( pattern ) 
-                 and currentFragment != names[-1] ):
+                 and (len(names) == 0 or currentFragment != names[-1] )):
                 names.append(currentFragment)
         return names
 
