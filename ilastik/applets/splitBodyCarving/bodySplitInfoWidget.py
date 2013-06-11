@@ -284,11 +284,11 @@ class BodySplitInfoWidget( QWidget ):
     def _reloadBodyTree(self):
         self.bodyTreeWidget.clear()
         
-        currentEditingFragmentName = self.opSplitBodyCarving.currentObjectName()
+        currentEditingFragmentName = self.opSplitBodyCarving.CurrentEditingFragment.value
         
         for ravelerLabel in sorted( self._ravelerLabels ):
-            fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
-            
+            fragmentNames = self.opSplitBodyCarving.getFragmentNames(ravelerLabel)
+
             # For this raveler label, how many fragments do we have and how many do we expect?
             # Count the number of annotations with this label.
             num_splits = reduce( lambda count, ann: count + (ann.ravelerLabel == ravelerLabel),
@@ -319,7 +319,7 @@ class BodySplitInfoWidget( QWidget ):
             
             # Child rows for each fragment
             fragmentItem = None
-            for fragmentName in sorted(fragmentNames):
+            for fragmentName in fragmentNames:
                 fragmentItem = QTreeWidgetItem( [fragmentName, "", ""] )
                 bodyItem.addChild( fragmentItem )
 
@@ -380,17 +380,14 @@ class BodySplitInfoWidget( QWidget ):
 
         # "Save As" (with no seeds) with the appropriate name
         fragmentName = self._getNextAvailableFragmentName( ravelerLabel )
-        self.opSplitBodyCarving.saveObjectAs( fragmentName )
-        
-        # "Load" the saved (empty) object
-        self.opSplitBodyCarving.loadObject( fragmentName )
-        
+        self.opSplitBodyCarving.CurrentEditingFragment.setValue( fragmentName )
+
         # Refresh the entire table.
         self._reloadBodyTree()
 
 
     def _getNextAvailableFragmentName(self, ravelerLabel):
-        fragmentNames = self.opSplitBodyCarving.getSavedObjectNamesForRavelerLabel(ravelerLabel)
+        fragmentNames = self.opSplitBodyCarving.getFragmentNames(ravelerLabel)
         if len(fragmentNames) == 0:
             return "{}.A".format( ravelerLabel )
 
@@ -403,16 +400,21 @@ class BodySplitInfoWidget( QWidget ):
         return "{}.{}".format( ravelerLabel, nextLetter )
 
     def _editFragment(self, fragmentName):
+        self.opSplitBodyCarving.CurrentEditingFragment.setValue( fragmentName )
         self.opSplitBodyCarving.loadObject( fragmentName )
         self._reloadBodyTree()
     
     def _deleteFragment(self, fragmentName):
         # This might be the "current object" that we're deleting.
         # That's okay.
+        if self.opSplitBodyCarving.CurrentEditingFragment.value == fragmentName:
+            self.opSplitBodyCarving.CurrentEditingFragment.setValue( "" )
         self.opSplitBodyCarving.deleteObject( fragmentName )
+
         self._reloadBodyTree()
 
     def _saveFragment(self, fragmentName):
+        self.opSplitBodyCarving.CurrentEditingFragment.setValue( "" )
         self.opSplitBodyCarving.saveObjectAs( fragmentName )
 
         # After save, there is no longer a "current object"

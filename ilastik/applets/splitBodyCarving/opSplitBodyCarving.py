@@ -39,6 +39,7 @@ class OpSplitBodyCarving( OpCarving ):
         self._opFragmentSetLut.MST.connect( self._opMstCache.Output )
         self._opFragmentSetLut.RavelerLabel.connect( self.CurrentRavelerLabel )
         self._opFragmentSetLut.CurrentEditingFragment.connect( self.CurrentEditingFragment )
+        self._opFragmentSetLut.Trigger.connect( self.Trigger )
 
         # The combined LUT is cached to avoid recomputing it for every orthoview.
         self._opFragmentSetLutCache = OpArrayCache( parent=self )
@@ -161,8 +162,18 @@ class OpSplitBodyCarving( OpCarving ):
         else:
             super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
     
-    def getSavedObjectNamesForRavelerLabel(self, ravelerLabel):
-        return OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(self._mst, ravelerLabel)
+    def getFragmentNames(self, ravelerLabel):
+        names = OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(self._mst, ravelerLabel)
+        if self.CurrentEditingFragment.ready():
+            pattern = "{}.".format( ravelerLabel )
+            currentFragment = self.CurrentEditingFragment.value
+            # If the "current fragment" belongs to this label, make sure it is in the list
+            #  (even if it isn't saved yet)
+            if ( currentFragment != ""
+                 and currentFragment.startswith( pattern ) 
+                 and currentFragment != names[-1] ):
+                names.append(currentFragment)
+        return names
 
     @classmethod
     def getSavedObjectNamesForMstAndRavelerLabel(self, mst, ravelerLabel):
@@ -170,20 +181,15 @@ class OpSplitBodyCarving( OpCarving ):
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )
         if mst is not None:
-            return sorted(filter( lambda s: s.startswith(pattern), mst.object_names.keys() ))
-        return []    
-
-    def _setCurrObjectName(self, name):
-        """
-        Overridden from OpCarving._setCurrObjectName
-        """
-        super( OpSplitBodyCarving, self )._setCurrObjectName( name )
-        self.CurrentEditingFragment.setValue( name )
+            names = sorted(filter( lambda s: s.startswith(pattern), mst.object_names.keys() ))
+            return names            
+        return []
 
 class OpFragmentSetLut(Operator):
     MST = InputSlot()
     RavelerLabel = InputSlot()
     CurrentEditingFragment = InputSlot()
+    Trigger = InputSlot(optional=True) # For dirty notifications only
     
     Lut = OutputSlot()
 
