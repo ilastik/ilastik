@@ -133,6 +133,7 @@ class BodySplitInfoWidget( QWidget ):
         # We don't pass parent to the QWidget because we want the window to be top-level
         super( BodySplitInfoWidget, self ).__init__() 
         self.opSplitBodyCarving = opSplitBodyCarving
+        self._bodyTreeParentItems = {} # This is easier to maintain than using setData/find
         
         self._annotationFilepath = None
         if self.opSplitBodyCarving.AnnotationFilepath.ready():
@@ -157,6 +158,8 @@ class BodySplitInfoWidget( QWidget ):
         self.bodyTreeWidget.setHeaderLabels( ['Body ID', 'Progress', ''] )
         self.bodyTreeWidget.header().setResizeMode( QHeaderView.ResizeToContents )
         self.bodyTreeWidget.header().setStretchLastSection(False)
+        self.bodyTreeWidget.itemDoubleClicked.connect( self._handleBodyTreeDoubleClick )
+        
         
         self.annotationTableWidget.setColumnCount(3)
         self._initAnnotationTableHeader()
@@ -266,6 +269,28 @@ class BodySplitInfoWidget( QWidget ):
 
     def _handleAnnotationDoubleClick(self, item):
         coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
+        self._selectAnnotation(coord3d, ravelerLabel)
+
+        # Highlight the appropriate row in the body list as a convenience
+        bodyItem = self._bodyTreeParentItems[ravelerLabel]
+        self.bodyTreeWidget.setCurrentItem( bodyItem )
+
+    def _handleBodyTreeDoubleClick(self, item, column):
+        if item in self._bodyTreeParentItems.values():
+            selectedLabel = item.data(0, Qt.UserRole).toPyObject()
+            
+            # Find the first split point for this body
+            for coord3d, annotation in self._annotations.items():
+                if selectedLabel == annotation.ravelerLabel:
+                    # Find a row to auto-select in the annotation table
+                    for row in range( self.annotationTableWidget.rowCount() ):
+                        if selectedLabel == self.annotationTableWidget.itemAt(row, 0).data(Qt.UserRole).toPyObject()[1]:
+                            self.annotationTableWidget.selectRow( row )
+                            break
+                    self._selectAnnotation(coord3d, selectedLabel)
+                    return
+        
+    def _selectAnnotation(self, coord3d, ravelerLabel):
         self.navigationRequested.emit( coord3d )
 
         # Switch raveler labels if necessary.
@@ -274,14 +299,14 @@ class BodySplitInfoWidget( QWidget ):
     
             # Clear all seeds
             self.opSplitBodyCarving.clearCurrentLabeling( trigger_recompute=False )
-
-        
+            
     def _reloadInfoWidgets(self):
         self._reloadBodyTree()
         self._reloadAnnotationTable()
     
     def _reloadBodyTree(self):
         self.bodyTreeWidget.clear()
+        self._bodyTreeParentItems = {}
         
         currentEditingFragmentName = self.opSplitBodyCarving.CurrentEditingFragment.value
         
@@ -301,6 +326,8 @@ class BodySplitInfoWidget( QWidget ):
             bodyItem = QTreeWidgetItem( ["{}".format(ravelerLabel),
                                          progressText,
                                          ""] )
+            bodyItem.setData( 0, Qt.UserRole, ravelerLabel )
+            self._bodyTreeParentItems[ravelerLabel] = bodyItem
             self.bodyTreeWidget.invisibleRootItem().addChild(bodyItem)
 
             progressBar = BodyProgressBar(self)
