@@ -267,6 +267,15 @@ class BodySplitInfoWidget( QWidget ):
     def _handleAnnotationDoubleClick(self, item):
         coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
         self.navigationRequested.emit( coord3d )
+
+        # Switch raveler labels if necessary.
+        if self.opSplitBodyCarving.CurrentRavelerLabel.value != ravelerLabel:
+            # TODO: This save/load sequence involves two recomputes in a row.  It could be only 1. 
+            self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
+    
+            # Clear all seeds
+            self.opSplitBodyCarving.clearCurrentLabeling( trigger_recompute=False )
+
         
     def _reloadInfoWidgets(self):
         self._reloadBodyTree()
