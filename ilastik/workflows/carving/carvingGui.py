@@ -387,10 +387,10 @@ class CarvingGui(LabelingGui):
             lut[objectSupervoxels] = label
 
         if self._showSegmentationIn3D:
-            # Add segmentation as label 255, which is green (see colortable defininition)
+            # Add segmentation as label, which is green
             lut[:] = numpy.where( op.MST.value.segmentation.lut == 2, self._segmentation_3d_label, lut )
                     
-        self._renderMgr.volume = lut[op.MST.value.regionVol]
+        self._renderMgr.volume = lut[op.MST.value.regionVol] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
