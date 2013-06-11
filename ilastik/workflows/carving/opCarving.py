@@ -354,7 +354,8 @@ class OpCarving(Operator):
         
         #delete it from object_names, as it indicates
         #whether the object exists
-        del self._mst.object_names[name]
+        if name in self._mst.object_names:
+            del self._mst.object_names[name]
 
         self._setCurrObjectName("")
 
