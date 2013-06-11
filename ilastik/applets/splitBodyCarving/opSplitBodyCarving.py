@@ -170,7 +170,7 @@ class OpSplitBodyCarving( OpCarving ):
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )
         if mst is not None:
-            return filter( lambda s: s.startswith(pattern), mst.object_names.keys() )
+            return sorted(filter( lambda s: s.startswith(pattern), mst.object_names.keys() ))
         return []    
 
     def _setCurrObjectName(self, name):
@@ -207,14 +207,14 @@ class OpFragmentSetLut(Operator):
             return result
 
         mst = self.MST.value
-        names = sorted(OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel))
+        names = OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel)
         
         # Accumulate the objects objects from this raveler object that we've already split off
         result[:] = 0
-        for i, name in enumerate(reversed(names)):
+        for i, name in reversed(list(enumerate(names))):
             if name != self.CurrentEditingFragment.value:
                 objectSupervoxels = mst.object_lut[name]
-                # Give each fragment it's own label, in case we want to show them in different colors
+                # Give each fragment it's own label to support different colors for each
                 result[objectSupervoxels] = i+1
         
         return result
