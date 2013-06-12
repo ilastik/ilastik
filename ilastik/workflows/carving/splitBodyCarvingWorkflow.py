@@ -14,7 +14,7 @@ from preprocessingApplet import PreprocessingApplet
 class SplitBodyCarvingWorkflow(Workflow):
     
     workflowName = "Split Body Tool Workflow"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 3 # show DataSelection by default
 
     DATA_ROLE_RAW = 0
     DATA_ROLE_PIXEL_PROB = 1
