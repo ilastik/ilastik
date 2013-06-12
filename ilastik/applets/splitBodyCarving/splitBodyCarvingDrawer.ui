@@ -174,6 +174,13 @@
         </layout>
        </item>
        <item>
+        <widget class="QCheckBox" name="activate3DViewCheckbox">
+         <property name="text">
+          <string>Activate 3D View</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="namesButton">
          <property name="sizePolicy">
           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">

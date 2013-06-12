@@ -19,7 +19,7 @@ from bodySplitInfoWidget import BodySplitInfoWidget
 
 from ilastik.applets.labeling.labelingGui import Tool
 
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted, ThunkEventHandler, ThunkEvent
 
 class SplitBodyCarvingGui(CarvingGui):
     
@@ -41,6 +41,8 @@ class SplitBodyCarvingGui(CarvingGui):
         self._labelControlUi.save.hide()
         self._labelControlUi.saveAs.hide()
         self._labelControlUi.namesButton.hide()
+
+        self.thunkEventHandler = ThunkEventHandler(self)
 
         fragmentColors = [ QColor(0,0,0,0), # transparent (background)
                            QColor(0, 255, 255),   # cyan
@@ -111,18 +113,43 @@ class SplitBodyCarvingGui(CarvingGui):
         if not self.render:
             return
 
+        if not self._labelControlUi.activate3DViewCheckbox.isChecked():
+            return 
+
+        rendered_volume_shape = (250, 250, 250)
+
+        print "Starting to update 3D volume data"
+
         fragmentColors = self._fragmentColors
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
-            self._renderMgr.setup(op.InputData.meta.shape[1:4])
-
+            self._renderMgr.setup(rendered_volume_shape)
         self._renderMgr.clear()
+        
         # Create a 5D view of the render mgr's memory
         renderVol5d = self._renderMgr.volume[numpy.newaxis, ..., numpy.newaxis]
+        assert renderVol5d.shape[1:4] == rendered_volume_shape
+
+        # Block must not exceed total bounds.
+        # Shift start up if necessary
+        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2.0
+        rendering_start_3d = numpy.maximum( (0,0,0), rendering_start_3d )
+
+        # Compute stop and shift down if necessary
+        rendering_stop_3d = rendering_start_3d + TinyVector(rendered_volume_shape)
+        rendering_stop_3d = numpy.minimum( op.InputData.meta.shape[1:4], rendering_stop_3d )
+        
+        # Recompute start now that stop has been computed
+        rendering_start_3d = rendering_stop_3d - TinyVector(rendered_volume_shape)
+
+        rendering_roi_5d = ( (0,) + tuple(rendering_start_3d) + (0,),
+                             (1,) + tuple(rendering_stop_3d) + (1,) )
 
         ravelerLabel = op.CurrentRavelerLabel.value
         if ravelerLabel != 0:
-            op.CurrentFragmentSegmentation[:].writeInto(renderVol5d).wait()
+            print " Asking for fragment segmentation"
+            op.CurrentFragmentSegmentation(*rendering_roi_5d).writeInto(renderVol5d).wait()
+            print " Obtained Fragment Segmentation"
 
             fragmentNames = op.getFragmentNames(ravelerLabel)
             numFragments = len(fragmentNames)
@@ -138,9 +165,14 @@ class SplitBodyCarvingGui(CarvingGui):
                     renderLabels.append( renderLabel )
 
             if op.CurrentEditingFragment.value != "":
-                maskedSegmentation = op.MaskedSegmentation[:].wait()
+                print " Asking for masked editing segmentation"
+                maskedSegmentation = op.MaskedSegmentation(*rendering_roi_5d).wait()
+                print " Obtained for masked editing segmentation"
                 segLabel = numFragments
+
+                print " Start updating volume data with masked segmentation"
                 renderVol5d[:] = numpy.where(maskedSegmentation != 0, segLabel, renderVol5d)
+                print " Finished updating volume data with masked segmentation"
 
                 segmentationColor = (0.0, 1.0, 0.0)
                 renderLabel = self._renderMgr.addObject( color=segmentationColor )
@@ -151,14 +183,17 @@ class SplitBodyCarvingGui(CarvingGui):
             if renderLabels != list(range(len(renderLabels))):
                 renderVol5d[:] = numpy.array([0] + renderLabels)[renderVol5d]
 
-        self._refreshRenderMgr()
+        print "Finished updating 3D volume data"
+        self.thunkEventHandler.post(self._refreshRenderMgr)
 
-    @threadRouted    
+    @threadRouted
     def _refreshRenderMgr(self):
         """
         The render mgr can segfault if this isn't called from the main thread.
         """
-        self._renderMgr.update()    
+        print "Begin render update"
+        self._renderMgr.update()
+        print "End render update"
 
     
     def setupLayers(self):
