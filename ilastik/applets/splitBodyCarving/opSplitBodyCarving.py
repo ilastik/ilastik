@@ -142,17 +142,17 @@ class OpSplitBodyCarving( OpCarving ):
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
 
-        print "Asking for fragment set lut"
         lut = self._opFragmentSetLutCache.Output[:].wait()
-        print "Got fragment set lut"
 
-        # Save memory: Implement (A - B) == (A & ~B), and do it with in-place operations
         slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
         a = result[0,...,0]
         b = lut[self._mst.regionVol[slicing]] # (Advanced indexing)
 
-        # TODO: Use bitwise_and to avoid the temporary caused by a == 0
-        a[:] = numpy.where( a == 0, 0, b )
+        # Use bitwise_and instead of numpy.where to avoid the temporary caused by a == 0
+        #a[:] = numpy.where( a == 0, 0, b )
+        assert self.CurrentFragmentSegmentation.meta.dtype == numpy.uint8, "This code assumes uint8 as the dtype!"
+        a[:] *= 0xFF
+        numpy.bitwise_and( a, b, out=a )
         return result
     
     def propagateDirty(self, slot, subindex, roi):
@@ -253,9 +253,16 @@ class OpSelectLabel(Operator):
         if self.SelectedLabel.value == 0:
             result[:] = 0
         else:
-            # Can't use writeInto() here because dtypes differ.
+            # Can't use writeInto() here because dtypes don't match.
             inputLabels = self.Input(roi.start, roi.stop).wait()
-            result[:] = numpy.where( inputLabels == self.SelectedLabel.value, 1, 0 )
+            
+            # Use two in-place bitwise operations instead of numpy.where
+            # This avoids the temporary variable created by (inputLabels == x)
+            #result[:] = numpy.where( inputLabels == self.SelectedLabel.value, 1, 0 )
+            numpy.bitwise_xor(inputLabels, self.SelectedLabel.value, out=inputLabels) # All 
+            numpy.logical_not(inputLabels, out=inputLabels)
+            result[:] = inputLabels # Copy from uint32 to uint8
+            
         return result
     
     def propagateDirty(self, slot, subindex, roi):
