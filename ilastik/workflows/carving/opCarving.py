@@ -569,7 +569,7 @@ class OpCarving(Operator):
             
             assert self._mst is not None
 
-            value = numpy.where(value == 100, 255, value[:])
+            value[:] = numpy.where(value == 100, 255, value[:])
 
             if hasattr(key, '__len__'):
                 self._mst.seeds[key[1:4]] = value
