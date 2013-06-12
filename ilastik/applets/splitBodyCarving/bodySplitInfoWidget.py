@@ -159,6 +159,7 @@ class BodySplitInfoWidget( QWidget ):
         self.bodyTreeWidget.header().setResizeMode( QHeaderView.ResizeToContents )
         self.bodyTreeWidget.header().setStretchLastSection(False)
         self.bodyTreeWidget.itemDoubleClicked.connect( self._handleBodyTreeDoubleClick )
+        self.bodyTreeWidget.setExpandsOnDoubleClick(False) # We want to use double-click for auto-navigation
         
         
         self.annotationTableWidget.setColumnCount(3)
@@ -277,6 +278,7 @@ class BodySplitInfoWidget( QWidget ):
 
     def _handleBodyTreeDoubleClick(self, item, column):
         if item in self._bodyTreeParentItems.values():
+            
             selectedLabel = item.data(0, Qt.UserRole).toPyObject()
             
             # Find the first split point for this body
@@ -288,17 +290,23 @@ class BodySplitInfoWidget( QWidget ):
                             self.annotationTableWidget.selectRow( row )
                             break
                     self._selectAnnotation(coord3d, selectedLabel)
-                    return
+                    break
         
     def _selectAnnotation(self, coord3d, ravelerLabel):
-        self.navigationRequested.emit( coord3d )
-
         # Switch raveler labels if necessary.
         if self.opSplitBodyCarving.CurrentRavelerLabel.value != ravelerLabel:
-            self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
-    
-            # Clear all seeds
-            self.opSplitBodyCarving.clearCurrentLabeling( trigger_recompute=False )
+            # Don't switch bodies if the user hasn't saved the current fragment
+            currentFragmentName = self.opSplitBodyCarving.CurrentEditingFragment.value
+            if currentFragmentName != "":
+                QMessageBox.warning(self,
+                                    "Unsaved Fragment",
+                                    "Please save or delete the fragment you are editing ({}) "\
+                                    "before moving on to a different raveler body.".format( currentFragmentName ) )
+                return
+            else:
+                self.opSplitBodyCarving.CurrentRavelerLabel.setValue( ravelerLabel )
+        self.navigationRequested.emit( coord3d )
+        self._reloadBodyTree()
             
     def _reloadInfoWidgets(self):
         self._reloadBodyTree()
@@ -308,6 +316,7 @@ class BodySplitInfoWidget( QWidget ):
         self.bodyTreeWidget.clear()
         self._bodyTreeParentItems = {}
         
+        currentEditingRavelerLabel = self.opSplitBodyCarving.CurrentRavelerLabel.value
         currentEditingFragmentName = self.opSplitBodyCarving.CurrentEditingFragment.value
         
         for ravelerLabel in sorted( self._ravelerLabels ):
@@ -336,11 +345,11 @@ class BodySplitInfoWidget( QWidget ):
             progressBar.setText( progressText )
             self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button1, progressBar )
 
-            selectButton = QPushButton( "New Fragment" )
-            selectButton.pressed.connect( partial( self._startNewFragment, ravelerLabel ) )
-            selectButton.setEnabled( currentEditingFragmentName == "" )
-            selectButton.setIcon( QIcon(ilastikIcons.AddSel) )
-            self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button2, selectButton )
+            if currentEditingFragmentName == "" and currentEditingRavelerLabel == ravelerLabel:
+                selectButton = QPushButton( "New Fragment" )
+                selectButton.pressed.connect( partial( self._startNewFragment, ravelerLabel ) )
+                selectButton.setIcon( QIcon(ilastikIcons.AddSel) )
+                self.bodyTreeWidget.setItemWidget( bodyItem, BodyTreeColumns.Button2, selectButton )
             bodyItem.setExpanded(True)
             
             # Child rows for each fragment
@@ -350,25 +359,24 @@ class BodySplitInfoWidget( QWidget ):
                 bodyItem.addChild( fragmentItem )
 
             # Add 'edit' and 'delete' buttons to the LAST fragment item
-            if fragmentItem is not None:
+            if fragmentItem is not None and ravelerLabel == currentEditingRavelerLabel:
                 assert fragmentName is not None
-                if fragmentName == currentEditingFragmentName:
+                if currentEditingFragmentName == fragmentName:
                     saveButton = QPushButton( "Save" )
                     saveButton.pressed.connect( partial( self._saveFragment, fragmentName ) )
                     saveButton.setIcon( QIcon(ilastikIcons.Save) )
                     self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, saveButton )
-                else:
+                elif currentEditingFragmentName == "":
                     editButton = QPushButton( "Edit" )
                     editButton.pressed.connect( partial( self._editFragment, fragmentName ) )
-                    editButton.setEnabled( currentEditingFragmentName == "" )
                     editButton.setIcon( QIcon(ilastikIcons.Edit) )
                     self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button1, editButton )
-    
-                deleteButton = QPushButton( "Delete" )
-                deleteButton.pressed.connect( partial( self._deleteFragment, fragmentName ) )
-                deleteButton.setEnabled( currentEditingFragmentName == "" or currentEditingFragmentName == fragmentName )
-                deleteButton.setIcon( QIcon(ilastikIcons.RemSel) )
-                self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button2, deleteButton )
+
+                if currentEditingFragmentName == "" or currentEditingFragmentName == fragmentName:
+                    deleteButton = QPushButton( "Delete" )
+                    deleteButton.pressed.connect( partial( self._deleteFragment, fragmentName ) )
+                    deleteButton.setIcon( QIcon(ilastikIcons.RemSel) )
+                    self.bodyTreeWidget.setItemWidget( fragmentItem, BodyTreeColumns.Button2, deleteButton )
 
     def _initAnnotationTableHeader(self):
         self.annotationTableWidget.setHorizontalHeaderLabels( ['Original Body', 'Coordinates', 'Comment'] )
