@@ -694,6 +694,11 @@ class Slot(object):
 
             if destination is None:
                 destination = self.slot.stype.allocateDestination(self.roi)
+            else:
+                if self.slot.meta.dtype is not None and hasattr(destination, 'dtype'):
+                    assert self.slot.meta.dtype == destination.dtype, \
+                        "Can't provide a destination array of the wrong dtype.  "\
+                        "Slot generates {}, but you gave {}".format( self.slot.meta.dtype, destination.dtype )
 
             # We are executing the operator. Incremement the execution
             # count to protect against simultaneous setupOutputs()
