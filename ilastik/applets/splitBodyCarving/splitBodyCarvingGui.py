@@ -12,6 +12,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 
 from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
+from lazyflow.roi import roiToSlice
 
 from opSplitBodyCarving import OpSplitBodyCarving
 
@@ -123,12 +124,11 @@ class SplitBodyCarvingGui(CarvingGui):
         fragmentColors = self._fragmentColors
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
-            self._renderMgr.setup(rendered_volume_shape)
+            self._renderMgr.setup(op.InputData.meta.shape[1:4])
         self._renderMgr.clear()
         
         # Create a 5D view of the render mgr's memory
-        renderVol5d = self._renderMgr.volume[numpy.newaxis, ..., numpy.newaxis]
-        assert renderVol5d.shape[1:4] == rendered_volume_shape
+        totalRenderVol5d = self._renderMgr.volume[numpy.newaxis, ..., numpy.newaxis]
 
         # Block must not exceed total bounds.
         # Shift start up if necessary
@@ -144,6 +144,9 @@ class SplitBodyCarvingGui(CarvingGui):
 
         rendering_roi_5d = ( (0,) + tuple(rendering_start_3d) + (0,),
                              (1,) + tuple(rendering_stop_3d) + (1,) )
+
+        # View only the data we want to update.
+        renderVol5d = totalRenderVol5d[roiToSlice( *rendering_roi_5d )]
 
         ravelerLabel = op.CurrentRavelerLabel.value
         if ravelerLabel != 0:
