@@ -580,7 +580,10 @@ class OpCarving(Operator):
             raise RuntimeError("unknown slots")
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow or slot == self.UncertaintyType:
+        if slot == self.Trigger or \
+           slot == self.BackgroundPriority or \
+           slot == self.NoBiasBelow or \
+           slot == self.UncertaintyType:
             if self._mst is None:
                 return
             if not self.BackgroundPriority.ready():
@@ -609,5 +612,11 @@ class OpCarving(Operator):
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
             self._opMstCache.Input.setValue( self._mst )
+        elif slot == self.RawData or \
+             slot == self.InputData or \
+             slot == self.FilteredInputData or \
+             slot == self.WriteSeeds or \
+             slot == self.LabelsAllowed:
+            pass
         else:
             assert False, "Unknown input slot: {}".format( slot.name )
