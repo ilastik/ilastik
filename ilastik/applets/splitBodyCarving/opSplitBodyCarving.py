@@ -99,8 +99,11 @@ class OpSplitBodyCarving( OpCarving ):
         def handleDirtySegmentation(slot, roi):
             self.MaskedSegmentation.setDirty( roi )
         self.Segmentation.notifyDirty( handleDirtySegmentation )
+        
         self.CurrentRavelerObjectRemainder.meta.assignFrom( self.RavelerLabels.meta )
+        self.CurrentRavelerObjectRemainder.meta.dtype = numpy.uint8
         self.CurrentFragmentSegmentation.meta.assignFrom( self.RavelerLabels.meta )
+        self.CurrentFragmentSegmentation.meta.dtype = numpy.uint8
         
     def execute(self, slot, subindex, roi, result):
         if slot == self.MaskedSegmentation:
@@ -139,7 +142,9 @@ class OpSplitBodyCarving( OpCarving ):
         # Start with the original raveler object
         self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
 
+        print "Asking for fragment set lut"
         lut = self._opFragmentSetLutCache.Output[:].wait()
+        print "Got fragment set lut"
 
         # Save memory: Implement (A - B) == (A & ~B), and do it with in-place operations
         slicing = roiToSlice( roi.start[1:4], roi.stop[1:4] )
@@ -201,7 +206,7 @@ class OpFragmentSetLut(Operator):
 
     def setupOutputs(self):
         self.Lut.meta.shape = ( len(self.MST.value.objects.lut), )
-        self.Lut.meta.dtype = numpy.int32
+        self.Lut.meta.dtype = numpy.uint8
         
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Lut
@@ -212,17 +217,20 @@ class OpFragmentSetLut(Operator):
             result[:] = 0
             return result
 
+        print "Requesting fragment names"
         mst = self.MST.value
         names = OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel)
+        print "Got fragment names: {}".format( names )
         
-        # Accumulate the objects objects from this raveler object that we've already split off
+        # Accumulate the supervoxels from each fragment that came from the current raveler object
         result[:] = 0
         for i, name in reversed(list(enumerate(names))):
             if name != self.CurrentEditingFragment.value:
                 objectSupervoxels = mst.object_lut[name]
                 # Give each fragment it's own label to support different colors for each
                 result[objectSupervoxels] = i+1
-        
+
+        print "Finished accumulating fragments into lut"
         return result
     
     def propagateDirty(self, slot, subindex, roi):
@@ -238,14 +246,16 @@ class OpSelectLabel(Operator):
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.uint8
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
         if self.SelectedLabel.value == 0:
             result[:] = 0
         else:
-            self.Input(roi.start, roi.stop).writeInto(result).wait()
-            result[:] = numpy.where( result == self.SelectedLabel.value, 1, 0 )
+            # Can't use writeInto() here because dtypes differ.
+            inputLabels = self.Input(roi.start, roi.stop).wait()
+            result[:] = numpy.where( inputLabels == self.SelectedLabel.value, 1, 0 )
         return result
     
     def propagateDirty(self, slot, subindex, roi):
