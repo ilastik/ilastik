@@ -8,7 +8,7 @@ from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThres
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
-from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
+from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache, setDetectionMethod
 from ilastik.applets.blockwiseObjectClassification \
     import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 
@@ -32,7 +32,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument('--fillmissing', help="use 'fill missing' applet", action='store_true', default=False)
+        parser.add_argument('--fillmissing', help="use 'fill missing' applet with chosen detection method", choices=['classic', 'svm', 'none'], default='none')
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
         parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
         
@@ -51,9 +51,10 @@ class ObjectClassificationWorkflow(Workflow):
 
         self.setupInputs()
 
-        if self.fillMissing:
+        if self.fillMissing != 'none':
             self.fillMissingSlicesApplet = FillMissingSlicesApplet(
                 self, "Fill Missing Slices", "Fill Missing Slices")
+            setDetectionMethod(self.fillMissing)
             self._applets.append(self.fillMissingSlicesApplet)
 
         # our main applets
@@ -283,7 +284,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
 
     def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        if self.fillMissing:
+        if self.fillMissing != 'none':
             opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
             opFillMissingSlices.Input.connect(opData.ImageGroup[0])
             rawslot = opFillMissingSlices.Output
@@ -317,7 +318,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         op5raw = Op5ifyer(parent=self)
         op5predictions = Op5ifyer(parent=self)
 
-        if self.fillMissing:
+        if self.fillMissing != 'none':
             opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
             opFillMissingSlices.Input.connect(opData.ImageGroup[0])
             rawslot = opFillMissingSlices.Output
@@ -335,3 +336,8 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         op5Binary.input.connect(opTwoLevelThreshold.CachedOutput)
 
         return op5raw.output, op5Binary.output
+
+if __name__ == "__main__":
+    from sys import argv
+    w = ObjectClassificationWorkflow(True, argv)
+    
