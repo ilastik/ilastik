@@ -178,6 +178,9 @@
          <property name="text">
           <string>Activate 3D View</string>
          </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
