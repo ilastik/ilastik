@@ -438,7 +438,11 @@ class BodySplitInfoWidget( QWidget ):
         # That's okay.
         if self.opSplitBodyCarving.CurrentEditingFragment.value == fragmentName:
             self.opSplitBodyCarving.CurrentEditingFragment.setValue( "" )
-        self.opSplitBodyCarving.deleteObject( fragmentName )
+
+        # Attempt to delete the object.
+        if not self.opSplitBodyCarving.deleteObject( fragmentName ):
+            # If it wasn't there, then we still need to delete the seeds
+            self.opSplitBodyCarving.clearCurrentLabeling()
 
         self._reloadBodyTree()
 
