@@ -15,6 +15,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 from volumina import colortables
+from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
 except:
@@ -148,9 +149,11 @@ class CarvingGui(LabelingGui):
         self._labelControlUi.labelListModel.allowRemove(False)
 
         bg = QShortcut(QKeySequence("1"), self, member=labelBackground, ambiguousMember=labelBackground)
-        mgr.register("Carving", "Select background label", bg)
+        bgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 0)
+        mgr.register("Carving", "Select background label", bg, bgToolTipObject)
         fg = QShortcut(QKeySequence("2"), self, member=labelObject, ambiguousMember=labelObject)
-        mgr.register("Carving", "Select object label", fg)
+        fgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 1)
+        mgr.register("Carving", "Select object label", fg, fgToolTipObject)
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
