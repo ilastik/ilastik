@@ -3,7 +3,7 @@ import os
 from functools import partial
 import numpy
 
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QShortcut, QKeySequence
 
 from lazyflow.roi import TinyVector
 
@@ -269,8 +269,26 @@ class SplitBodyCarvingGui(CarvingGui):
         uncertaintyLayer = findLayer(lambda l: l.name == "uncertainty", carvingLayers)
         if uncertaintyLayer:
             carvingLayers.remove(uncertaintyLayer)
-        
-        layers += carvingLayers
 
+        # Attach a shortcut to the raw data layer
+        if self.topLevelOperatorView.RawData.ready():
+            rawLayer = findLayer(lambda l: l.name == "raw", carvingLayers)
+            assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
+            rawLayer.shortcutRegistration = ( "Carving",
+                                              "Raw Data to Top",
+                                              QShortcut( QKeySequence("f"),
+                                                         self.viewerControlWidget(),
+                                                         partial(self._toggleRawDataPosition, rawLayer) ),
+                                             rawLayer )
+        layers += carvingLayers
         return layers
 
+    def _toggleRawDataPosition(self, rawLayer):
+        index = self.layerstack.layerIndex(rawLayer)
+        self.layerstack.selectRow( index )
+        if index <= 1:
+            self.layerstack.moveSelectedToBottom()
+        else:
+            # Move it almost to the top (under the labels)
+            self.layerstack.moveSelectedToRow(1)
+            
