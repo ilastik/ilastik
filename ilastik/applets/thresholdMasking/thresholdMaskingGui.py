@@ -49,6 +49,7 @@ class ThresholdMaskingGui(LayerViewerGui):
             thresholdWidget = ThresholdingWidget(self)
             thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
             self._drawer.layout().addWidget( thresholdWidget )
+            self._drawer.layout().addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
             
             def updateDrawerFromOperator():
                 minValue, maxValue = (0,255)

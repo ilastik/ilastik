@@ -110,7 +110,7 @@ def launchShell(workflow_cmdline_args, *testFuncs):
         shell.resize(1000, 750)
     shell.show()
     
-    if "--fullscreen" in workflow_cmdline_args:
+    if workflow_cmdline_args and "--fullscreen" in workflow_cmdline_args:
         shell.showMaximized()
     
     # Run a test (if given)

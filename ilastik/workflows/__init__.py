@@ -33,3 +33,4 @@ import ilastik.config
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.layerViewer
     import examples.thresholdMasking
+    import examples.deviationFromMean

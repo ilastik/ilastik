@@ -1,9 +1,14 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 
+_detectionMethod = 'classic'
+def setDetectionMethod(s):
+    _detectionMethod = s
+
 class OpFillMissingSlicesNoCache(Operator):
     Input = InputSlot()
     Output = OutputSlot()
+    Missing = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( OpFillMissingSlicesNoCache, self ).__init__(*args, **kwargs)
@@ -12,8 +17,10 @@ class OpFillMissingSlicesNoCache(Operator):
         self._opInterp = OpInterpMissingData( parent=self )
         self._opInterp.InputVolume.connect( self.Input )
         self._opInterp.InputSearchDepth.setValue(100)
+        self._opInterp.DetectionMethod.setValue(_detectionMethod)
 
         self.Output.connect( self._opInterp.Output )
+        self.Missing.connect( self._opInterp.Missing )
         
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"

@@ -191,8 +191,8 @@ class IlastikShell( QMainWindow ):
         
         self._loaduifile()
         
-        self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
-        self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
+        #self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
+        #self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
         
         self._memDlg = None #this will hold the memory usage dialog once created
         
@@ -221,9 +221,9 @@ class IlastikShell( QMainWindow ):
         assert self._projectMenu.thread() == self.thread()
         assert self._settingsMenu.thread() == self.thread()
         
-        self.appletBar.expanded.connect(self.handleAppletBarItemExpanded)
-        self.appletBar.clicked.connect(self.handleAppletBarClick)
-        self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
+        self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
+        #self.appletBar.clicked.connect(self.handleAppletBarClick)
+        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
         
         self.currentAppletIndex = 0
 
@@ -590,17 +590,15 @@ class IlastikShell( QMainWindow ):
                 # Update all other applet drawer titles
                 for applet_index, app in enumerate(self._applets):
                     updatedDrawerTitle = app.name
-            
-                    rootItem = self.appletBar.invisibleRootItem()
-                    appletTitleItem = rootItem.child(applet_index)
-                    appletTitleItem.setText( 0, updatedDrawerTitle )
+                    self.appletBar.setItemText( applet_index, updatedDrawerTitle )
 
     def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
         """
-        drawerIndex = modelIndex.row()
-        self.setSelectedAppletDrawer(drawerIndex)
+        drawerIndex = modelIndex
+        if drawerIndex != -1:
+            self.setSelectedAppletDrawer(drawerIndex)
     
     def setSelectedAppletDrawer(self, applet_index):
         """
@@ -611,10 +609,10 @@ class IlastikShell( QMainWindow ):
             self._refreshDrawerRecursionGuard = True
             self.currentAppletIndex = applet_index
             # Collapse all drawers in the applet bar...
-            self.appletBar.collapseAll()
             # ...except for the newly selected item.
             drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)
-            self.appletBar.expand( drawerModelIndex )
+            #self.appletBar.expand( drawerModelIndex )
+            self.appletBar.setCurrentIndex( drawerModelIndex )
             
             # Select the appropriate central widget, menu widget, and viewer control widget for this applet
             self.showCentralWidget(applet_index)
@@ -653,23 +651,19 @@ class IlastikShell( QMainWindow ):
                 viewerControlWidget.setObjectName( "viewerControls_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
 
     def refreshAppletDrawer(self, applet_index):
-        if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
+        if applet_index < len(self._applets) and applet_index < self.appletBar.count():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
             if updatedDrawerWidget.layout() is not None:
                 sizeHint = updatedDrawerWidget.layout().geometry().size()
             else:
                 sizeHint = QSize(0,0)
-    
-            rootItem = self.appletBar.invisibleRootItem()
-            appletTitleItem = rootItem.child(applet_index)
-            appletTitleItem.setText( 0, updatedDrawerTitle )
             
-            appletDrawerItem = appletTitleItem.child(0)
-            appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+            self.appletBar.setItemText( applet_index , updatedDrawerTitle ) 
+            appletDrawerStackedWidget = self.appletBar.widget(applet_index)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
-                appletDrawerItem.setSizeHint( 0, sizeHint )
+                #updatedDrawerWidget.setFixedSize( sizeHint )
                 # For test recording purposes, every gui we add MUST have a unique name
                 appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
@@ -704,12 +698,12 @@ class IlastikShell( QMainWindow ):
         self.menuBar().addMenu(self._helpMenu)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
-        drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
-        return self.appletBar.indexFromItem(drawerTitleItem)
+        drawerTitleItem = self.appletBar.widget(drawerIndex)
+        return self.appletBar.indexOf(drawerTitleItem)
                 
     def handleAppletBarClick(self, modelIndex):
         #bug #193
-        drawerTitleItem = self.appletBar.invisibleRootItem().child(modelIndex.row())
+        drawerTitleItem = self.appletBar.widget(modelIndex)
         if drawerTitleItem.isDisabled():
             return
         
@@ -732,21 +726,15 @@ class IlastikShell( QMainWindow ):
         self.viewerControlStack.addWidget( QWidget(parent=self) )
 
         # Add rows to the applet bar model
-        rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
         
-        appletNameItem = QTreeWidgetItem( self.appletBar, QStringList( controlName ) )
-        drawerItem = QTreeWidgetItem(appletNameItem)
-        drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
-#            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
-#            drawerItem.setForeground( 0, QBrush( QColor(0,0,0) ) )
-
         stackedWidget = QStackedWidget()
         stackedWidget.addWidget( controlGuiWidget )
-        self.appletBar.setItemWidget( drawerItem, 0, stackedWidget )
+        
+        self.appletBar.addItem( stackedWidget, controlName )
 
         # Set up handling of GUI commands from this applet
         app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
@@ -766,7 +754,10 @@ class IlastikShell( QMainWindow ):
         
         self._clearStackedWidget(self.appletStack)
         self._clearStackedWidget(self.viewerControlStack)
-        self.appletBar.clear()
+        
+        # Remove all drawers
+        for i in reversed(range(self.appletBar.count())):
+            self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
         for i in reversed( range( stackedWidget.count() ) ):
@@ -960,13 +951,19 @@ class IlastikShell( QMainWindow ):
         Populate the shell with widgets from all the applets in the new workflow.
         """
 
+        workflow_class = None
+        # Does the project file say which workflow to use?
         if "workflowName" in hdf5File.keys():
             #if workflow is found in file, take it
             workflowName = hdf5File["workflowName"].value
             workflow_class = getWorkflowFromName(workflowName)
-        else:
+        
+        # If the workflow wasn't specified or we don't understand it.
+        if workflow_class is None:
             #ask the user to name a workflow
             workflow_class = self.getWorkflow()
+
+        # If the user cancelled, give up.        
         if workflow_class is None:
             return
 
@@ -1210,12 +1207,12 @@ class IlastikShell( QMainWindow ):
         return self._recorderGui.confirmQuit()
 
     def closeAndQuit(self, quitApp=True):
+        PreferencesManager().set( 'shell', 'startscreenSize', (self.size().width(),self.size().height()))
+        
         if self.projectManager is not None:
             self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
         
-        PreferencesManager().set( 'shell', 'startscreenSize', (self.size().width(),self.size().height()))
-
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
 
@@ -1242,9 +1239,11 @@ class IlastikShell( QMainWindow ):
             appletGui.setEnabled( enabled and self.enableWorkflow )
         
             # Apply to the applet bar drawer headings, too
-            if applet_index < self.appletBar.invisibleRootItem().childCount():
-                drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
+            
+            if applet_index < self.appletBar.count():
+                self.appletBar.setItemEnabled(applet_index,(enabled and self.enableWorkflow))
+                '''drawerTitleItem = self.appletBar.widget(applet_index)
                 if enabled and self.enableWorkflow:
                     drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
-                    drawerTitleItem.setFlags( Qt.NoItemFlags )
+                    drawerTitleItem.setFlags( Qt.NoItemFlags )'''
