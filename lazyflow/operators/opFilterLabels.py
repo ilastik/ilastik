@@ -62,7 +62,7 @@ class OpFilterLabels(Operator):
             component_sizes = numpy.bincount( numpy.asarray(a.ravel(), dtype=int) )
         bad_sizes = component_sizes < min_size
         if max_size is not None:
-            bad_sizes = numpy.logical_or( bad_sizes, component_sizes > max_size )
+            numpy.logical_or( bad_sizes, component_sizes > max_size, out=bad_sizes )
         
         bad_locations = bad_sizes[a]
         a[bad_locations] = 0
