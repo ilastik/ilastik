@@ -126,6 +126,20 @@ class TestDetection(unittest.TestCase):
         assert_array_equal(self.op.Output[:].wait().view(type=np.ndarray),\
                                 m.view(type=np.ndarray),\
                                 err_msg="input with single black layer")
+    def testSVMDetection(self):
+        try:
+            import sklearn
+        except ImportError:
+            return
+        self.op.DetectionMethod.setValue('svm')
+        self.op.PatchSize.setValue(1)
+        self.op.HaloSize.setValue(0)
+        (v,m,_) = _singleMissingLayer(layer=15, nx=1,ny=1,nz=50,method='linear')
+        self.op.InputVolume.setValue(v)
+        
+        assert_array_equal(self.op.Output[:].wait().view(type=np.ndarray),\
+                                m.view(type=np.ndarray),\
+                                err_msg="input with single black layer")
     
     def testSingleMissingLayer(self):
         (v,m,_) = _singleMissingLayer(layer=15, nx=64,ny=64,nz=50,method='linear')

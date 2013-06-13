@@ -428,12 +428,9 @@ finally:
             
 
 def _histogramIntersectionKernel(X,Y):
-    res = np.zeros((X.shape[0], Y.shape[0]))
-    for i in range(X.shape[0]):
-        for j in range(Y.shape[0]):
-            res[i,j] = np.sum(X[i]+Y[j]-np.abs(X[i]-Y[j]))
-    return res
-
+    A = X.reshape( (X.shape[0],1,X.shape[1]) )
+    B = Y.reshape( (1,) + Y.shape )
+    return np.sum(A+B-np.abs(A-B), axis=2)
 
 def _defaultTrainingSet(defectSize=128):
     vol = vigra.VigraArray(((np.random.rand(200,200,50)-.5)*125+125).astype(np.uint8), axistags=vigra.defaultAxistags('xyz'))
@@ -609,31 +606,34 @@ class OpDetectMissing(Operator):
         vol = vigra.taggedView(self.TrainingVolume[:].wait(),axistags=self.TrainingVolume.meta.axistags).withAxes(*'zyx')
         labels = vigra.taggedView(self.TrainingLabels[:].wait(),axistags=self.TrainingLabels.meta.axistags).withAxes(*'zyx')
         
-        def _extractHistograms(vol, labels,  n, borderCases='discard', nPatches=10):
+        #BEGIN subroutine
+        def _extractHistograms(vol, cond, nPatches=10):
             
             filt = np.ones((patchSize, patchSize))
             out = []
-            cond = labels==n 
             
             ind_z, ind_y, ind_x = np.where(cond.view(np.ndarray))
             
             choice = np.random.permutation(len(ind_x))
             
             for z,y,x in zip(ind_z[choice], ind_y[choice],ind_x[choice]):
+                if len(out)>=nPatches:
+                    break
                 ymin = y - patchSize//2
                 ymax = ymin + patchSize
                 xmin = x - patchSize//2
                 xmax = xmin + patchSize
                 
-                if xmin < 0 or ymin < 0 or xmax > vol.shape[2] or ymax > vol.shape[1]:
-                    continue
-
-                out.append(self._toHistogram(vol[z,ymin:ymax,xmin:xmax]))
+                if not (xmin < 0 or ymin < 0 or xmax > vol.shape[2] or ymax > vol.shape[1]):
+                    # valid patch, add it to the output
+                    out.append(self._toHistogram(vol[z,ymin:ymax,xmin:xmax]))
+                
 
             return out
+        #END subroutine
         
-        inliers = _extractHistograms(vol, labels, 1, borderCases='keep', nPatches = self.NTrainingSamples.value)
-        outliers = _extractHistograms(vol, labels, 2, borderCases='discard', nPatches = self.NTrainingSamples.value)
+        inliers = _extractHistograms(vol, labels == 1, nPatches = self.NTrainingSamples.value)
+        outliers = _extractHistograms(vol, labels == 2, nPatches = self.NTrainingSamples.value)
         
         
         if len(inliers)== 0 or len(outliers) == 0:
