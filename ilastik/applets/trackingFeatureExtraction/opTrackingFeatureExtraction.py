@@ -347,7 +347,14 @@ class OpCellFeatures(Operator):
     def extractDivisionFeatures(self, feats_div_cur, feats_vigra_cur, feats_vigra_next, img_at_next, divFeatures, 
                                 numNeighbors = 3, size_filter_from = 4, 
                                 suffix=''):
-        ''' adds division features to feats_at_cur '''        
+        ''' adds division features to feats_at_cur '''
+        #calculate cell division features according to the voxel scale   
+        try:
+            scale = config.image_scale
+        except:
+            scale = [1.0,1.0,1.0]
+            print 'no scale given, using the default one'
+            
         for label_cur, com_cur in enumerate(feats_vigra_cur['RegionCenter' + suffix]):
             if label_cur == 0:
                 continue
@@ -376,7 +383,7 @@ class OpCellFeatures(Operator):
                         sizes_next_all[l] = feats_vigra_next['Count'][l]            
                 
                         
-            sqDist = self.getSquaredDistances(com_cur, coms_next, sizes_next_all, numNeighbors, size_filter_from)
+            sqDist = self.getSquaredDistances(com_cur, coms_next, sizes_next_all, numNeighbors, size_filter_from, scale)
             coms_next_reduced = {}
             labels_next_reduced = []
             for idx,row in enumerate(sqDist):
@@ -389,7 +396,7 @@ class OpCellFeatures(Operator):
                 labels_next_reduced.append(l)
             
             if 'AngleDaughters' in divFeatures:
-                feats_div_cur['AngleDaughters'+suffix][label_cur][0] = self.getMaxAngle(com_cur, coms_next_reduced)     
+                feats_div_cur['AngleDaughters'+suffix][label_cur][0] = self.getMaxAngle(com_cur, coms_next_reduced, scale)     
             
             if 'ChildrenSizeRatio' in divFeatures:
                 sizes_next = []
@@ -428,19 +435,19 @@ class OpCellFeatures(Operator):
             radians = math.acos(self.dotproduct(v1, v2) / (self.length(v1) * self.length(v2)))
         except Exception as e:
             print str(e), ': math.acos(', self.dotproduct(v1, v2) / (self.length(v1) * self.length(v2)), '), v1 =', v1, ', v2 =', v2
-            radians = 0
+             radians = 0
         return (radians*180)/math.pi
   
   
-    def getMaxAngle(self, com_cur, coms_next, default_value=[0]):
+    def getMaxAngle(self, com_cur, coms_next, scale = [1.0,1.0,1.0], default_value=[0]):
         ''' returns the maximum angle between two potential children '''        
         angles = []
         for idx, key1 in enumerate(sorted(coms_next.keys())):
             com1 = coms_next[key1]
-            v1 = com1 - com_cur
+            v1 = (com1 - com_cur) * scale
             for key2 in sorted(coms_next.keys())[idx+1:]:
                 com2 = coms_next[key2]                
-                v2 = com2 - com_cur                
+                v2 = (com2 - com_cur) * scale               
                 ang = self.angle(v1,v2)
                 if ang > 180:
                     assert ang<=360.01, "the angle must be smaller than 360 degrees"
@@ -455,13 +462,13 @@ class OpCellFeatures(Operator):
 
     
     def getSquaredDistances(self, com_cur, coms_next, sizes_next = None, 
-                            num_best = 3, size_filter_from = 4, default_value = []):
+                            num_best = 3, size_filter_from = 4, scale = [1.0,1.0,1.0], default_value = []):
         ''' returns the squared distances to the objects in the neighborhood of com_curr '''  
         squaredDistances = []
         
         for label_next in coms_next.keys():
             if sizes_next is not None and sizes_next[label_next] >= size_filter_from:
-                dist = numpy.linalg.norm(coms_next[label_next] - com_cur)
+                dist = numpy.linalg.norm((coms_next[label_next] - com_cur) * scale)
                 squaredDistances.append([label_next,dist])
         
         squaredDistances = numpy.array(squaredDistances)

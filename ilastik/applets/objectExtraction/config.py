@@ -32,3 +32,5 @@ selected_features_cell_classification[features_cell_classification_name] = [ ]
 
 
 num_max_objects = 2
+
+image_scale = [1.0, 1.0, 1.0]
