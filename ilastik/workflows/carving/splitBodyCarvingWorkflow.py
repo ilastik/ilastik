@@ -6,6 +6,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.splitBodyCarving.splitBodyCarvingApplet import SplitBodyCarvingApplet
+from ilastik.applets.splitBodyPostprocessing.splitBodyPostprocessingApplet import SplitBodyPostprocessingApplet
 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
@@ -43,14 +44,14 @@ class SplitBodyCarvingWorkflow(Workflow):
 
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Pixel Probabilities', 'Raveler Labels'] )
 
-        self.splitBodyCarvingApplet = SplitBodyCarvingApplet(workflow=self,
-                                           projectFileGroupName="carving")
-        
         self.preprocessingApplet = PreprocessingApplet(workflow=self,
-                                           title = "Preprocessing",
-                                           projectFileGroupName="preprocessing")
+                                                       title = "Preprocessing",
+                                                       projectFileGroupName="preprocessing")
         
-        #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
+        self.splitBodyCarvingApplet = SplitBodyCarvingApplet(workflow=self,
+                                                             projectFileGroupName="carving")
+        
+        self.splitBodyPostprocessingApplet = SplitBodyPostprocessingApplet(workflow=self)
         
         # Expose to shell
         self._applets = []
@@ -58,12 +59,14 @@ class SplitBodyCarvingWorkflow(Workflow):
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.preprocessingApplet)
         self._applets.append(self.splitBodyCarvingApplet)
+        self._applets.append(self.splitBodyPostprocessingApplet)
         
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opSplitBodyCarving = self.splitBodyCarvingApplet.topLevelOperator.getLane(laneIndex)
+        opPostprocessing = self.splitBodyPostprocessingApplet.topLevelOperator.getLane(laneIndex)
 
         op5Raw = Op5ifyer(parent=self)
         op5Raw.order.setValue("txyzc")
@@ -95,4 +98,12 @@ class SplitBodyCarvingWorkflow(Workflow):
         opSplitBodyCarving.MST.connect(opPreprocessing.PreprocessedData)
         opSplitBodyCarving.UncertaintyType.setValue("none")
         
+        opPostprocessing.RawData.connect( opSplitBodyCarving.RawData )
+        opPostprocessing.InputData.connect( opSplitBodyCarving.InputData )
+        opPostprocessing.RavelerLabels.connect( opSplitBodyCarving.RavelerLabels )
+        opPostprocessing.MST.connect(opSplitBodyCarving.MstOut)
+
+        # Split-body carving -> Postprocessing
+        opPostprocessing.EditedRavelerBodyList.connect(opSplitBodyCarving.EditedRavelerBodyList)
+
         self.preprocessingApplet.enableDownstream(False)
