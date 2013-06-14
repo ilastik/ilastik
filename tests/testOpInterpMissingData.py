@@ -271,6 +271,46 @@ class TestInterpolation(unittest.TestCase):
         
         
         assert_array_equal( self.op.Output[:].wait(), vol.view(np.ndarray), err_msg="interpolation where nothing had to be interpolated")
+        
+        
+    def testIntegerRange(self):
+        '''
+        test if the output is in the right integer range
+        in particular, too large values should be set to max and too small 
+        values to min
+        '''
+        v = np.zeros((1,1,5), dtype=np.uint8)
+        v[0,0,:] = [220,255,0,255,220]
+        v =  vigra.VigraArray(v, axistags=vigra.defaultAxistags('xyz'), dtype=np.uint8)
+        m = vigra.VigraArray(v, axistags=vigra.defaultAxistags('xyz'), dtype=np.uint8)
+        m[:] = 0
+        m[0,0,2] = 1
+        
+        for interpolationMethod in ['cubic']:
+            self.op.InputVolume.setValue(v)
+            self.op.Missing.setValue(m)
+            self.op.InterpolationMethod.setValue(interpolationMethod)
+            self.op.InputVolume.setValue( v )
+            out = self.op.Output[:].wait().view(np.ndarray)
+            # natural comparison
+            self.assertEqual(out[0,0,2], 255)
+        
+        v = np.zeros((1,1,5), dtype=np.uint8)
+        v[0,0,:] = [220,255,0,255,220]
+        v = 255 - vigra.VigraArray(v, axistags=vigra.defaultAxistags('xyz'), dtype=np.uint8)
+        m = vigra.VigraArray(v, axistags=vigra.defaultAxistags('xyz'), dtype=np.uint8)
+        m[:] = 0
+        m[0,0,2] = 1
+        
+        for interpolationMethod in ['cubic']:
+            self.op.InputVolume.setValue(v)
+            self.op.Missing.setValue(m)
+            self.op.InterpolationMethod.setValue(interpolationMethod)
+            self.op.InputVolume.setValue( v )
+            out = self.op.Output[:].wait().view(np.ndarray)
+            # natural comparison
+            self.assertEqual(out[0,0,2], 0)
+            
     
 
 
