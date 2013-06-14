@@ -80,6 +80,8 @@ class OpCarving(Operator):
     
     #Pmap Overlay
     PmapOverlay = OutputSlot()
+    
+    MstOut = OutputSlot()
 
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
@@ -118,6 +120,7 @@ class OpCarving(Operator):
         self._dirtyObjects = set()
         
         self._opMstCache = OpValueCache( parent=self )
+        self.MstOut.connect( self._opMstCache.Output )
         
     def _clearLabels(self):
         #clear the labels 
@@ -476,11 +479,6 @@ class OpCarving(Operator):
 
     
     def saveObjectAs(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """        
         # first, save the object under "name"
         self.saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
