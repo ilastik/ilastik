@@ -254,6 +254,12 @@ class OpInterpolate(Operator):
     def setupOutputs(self):
         # Output has the same shape/axes/dtype/drange as input
         self.Output.meta.assignFrom( self.InputVolume.meta )
+        
+        try:
+            self._iinfo = np.iinfo(self.InputVolume.meta.dtype)
+        except ValueError:
+            # not integer type, no casting needed
+            self._iinfo = None
 
         assert self.InputVolume.meta.getTaggedShape() == self.Missing.meta.getTaggedShape(), \
                 "InputVolume and Missing must have the same shape ({} vs {})".format(\
@@ -279,6 +285,16 @@ class OpInterpolate(Operator):
         
         
         return result
+    
+    def _cast(self, x):
+        '''
+        casts the array to expected range (i.e. 0..255 for uint8 types, ...)
+        '''
+        if not self._iinfo is None:
+            x = np.where(x>self._iinfo.max, self._iinfo.max, x)
+            x = np.where(x<self._iinfo.min, self._iinfo.min, x)
+        return x
+        
         
     def _interpolate(self,volume, missing, method = None):
         '''
@@ -336,7 +352,7 @@ class OpInterpolate(Operator):
 
             for i in range(n):
                 # interpolate every slice
-                volume[minZ+i+1,minY:maxY+1,minX:maxX+1] =  (1-xs[i+1])*left + xs[i+1]*right
+                volume[minZ+i+1,minY:maxY+1,minX:maxX+1] =  self._cast((1-xs[i+1])*left + xs[i+1]*right)
                 
         elif method == 'cubic': 
             # interpolation coefficients
@@ -348,7 +364,7 @@ class OpInterpolate(Operator):
             for i in range(n):
                 # interpolate every slice
                 x = xs[i+1]
-                volume[minZ+i+2,minY:maxY+1,minX:maxX+1] = F[...,0] + F[...,1]*x + F[...,2]*x**2 + F[...,3]*x**3 
+                volume[minZ+i+2,minY:maxY+1,minX:maxX+1] = self._cast(F[...,0] + F[...,1]*x + F[...,2]*x**2 + F[...,3]*x**3 )
                 
         else: #constant
             if minZ > 0:
