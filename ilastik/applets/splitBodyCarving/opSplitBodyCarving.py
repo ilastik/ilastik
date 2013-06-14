@@ -24,6 +24,8 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentFragmentSegmentation = OutputSlot()
     MaskedSegmentation = OutputSlot()
 
+    EditedRavelerBodyList = OutputSlot() # A single object: a list of strings
+    
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
 
@@ -104,9 +106,14 @@ class OpSplitBodyCarving( OpCarving ):
         self.CurrentRavelerObjectRemainder.meta.dtype = numpy.uint8
         self.CurrentFragmentSegmentation.meta.assignFrom( self.RavelerLabels.meta )
         self.CurrentFragmentSegmentation.meta.dtype = numpy.uint8
+
+        self.EditedRavelerBodyList.meta.dtype = object
+        self.EditedRavelerBodyList.meta.shape = (1,)
         
     def execute(self, slot, subindex, roi, result):
-        if slot == self.MaskedSegmentation:
+        if slot == self.EditedRavelerBodyList:
+            return self._executeEditedRavelerBodyList(roi, result)
+        elif slot == self.MaskedSegmentation:
             return self._executeMaskedSegmentation(roi, result)
         elif slot == self.CurrentRavelerObjectRemainder:
             return self._executeCurrentRavelerObjectRemainder(roi, result)
@@ -114,6 +121,15 @@ class OpSplitBodyCarving( OpCarving ):
             return self._executeCurrentFragmentSegmentation(roi, result)
         else:
             return super( OpSplitBodyCarving, self ).execute( slot, subindex, roi, result )
+
+    def _executeEditedRavelerBodyList(self, roi, result):
+        savedLabels = set()
+        for fragmentName in self._mst.object_names.keys():
+            bodyName = fragmentName[0:fragmentName.find('.')]
+            savedLabels.add( int(bodyName) )
+
+        result[0] = sorted( savedLabels )
+        return result
     
     def _executeMaskedSegmentation(self, roi, result):
         result = self.Segmentation(roi.start, roi.stop).writeInto(result).wait()
@@ -151,7 +167,7 @@ class OpSplitBodyCarving( OpCarving ):
         # Use bitwise_and instead of numpy.where to avoid the temporary caused by a == 0
         #a[:] = numpy.where( a == 0, 0, b )
         assert self.CurrentFragmentSegmentation.meta.dtype == numpy.uint8, "This code assumes uint8 as the dtype!"
-        a[:] *= 0xFF
+        a[:] *= 0xFF # Assumes uint8
         numpy.bitwise_and( a, b, out=a )
         return result
     
@@ -189,6 +205,24 @@ class OpSplitBodyCarving( OpCarving ):
             names = sorted(filter( lambda s: s.startswith(pattern), mst.object_names.keys() ))
             return names            
         return []
+    
+    def saveObjectAs(self, name):
+        """
+        Overridden from base class.
+        """
+        is_new = ( name in self._mst.object_names.keys() )
+        super( OpSplitBodyCarving, self ).saveObjectAs(name)
+        if is_new:
+            self.EditedRavelerBodyList.setDirty()
+
+    def deleteObject(self, name):
+        """
+        Overridden from base class.
+        """
+        deleted = super( OpSplitBodyCarving, self ).deleteObject(name)
+        if deleted:
+            self.EditedRavelerBodyList.setDirty()
+        return deleted
 
 class OpFragmentSetLut(Operator):
     MST = InputSlot()
@@ -247,6 +281,8 @@ class OpSelectLabel(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint8
+        # As a convenience, store the selected label in the metadata.
+        self.Output.meta.selected_label = self.SelectedLabel.value
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
