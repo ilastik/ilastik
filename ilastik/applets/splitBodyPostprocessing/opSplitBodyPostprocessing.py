@@ -115,11 +115,15 @@ class OpSplitBodyPostprocessing(Operator):
         self._opMaskedWatershedCaches.Input.connect( self._opMaskedWatersheds.Output )
         self.WatershedFilledBodies.connect( self._opMaskedWatershedCaches.Output )
 
+        self._opAccumulateFinalImage = OpAccumulateFragmentSegmentations( parent=self )
+        self._opAccumulateFinalImage.RavelerLabels.connect( self.RavelerLabels )
+        self._opAccumulateFinalImage.FragmentSegmentations.connect( self.WatershedFilledBodies )
+        
+        self._opFinalCache = OpCompressedCache( parent=self )
+        self._opFinalCache.Input.connect( self._opAccumulateFinalImage.Output )
+        self.FinalSegmentation.connect( self._opFinalCache.Output )
+
     def setupOutputs(self):
-        self.FinalSegmentation.meta.assignFrom( self.RavelerLabels.meta )
-        
-        #self.cleanInternalOperators()
-        
         raveler_bodies = self.EditedRavelerBodyList.value
         num_bodies = len(raveler_bodies)
 
@@ -132,13 +136,11 @@ class OpSplitBodyPostprocessing(Operator):
             pass
 
     def execute(self, slot, subindex, roi, result):
-        if slot == self.FinalSegmentation:
-            self._executeFinalSegmentation( roi, result )
-        else:
-            assert False, "Unknown output slot: {}".format( slot.name )
+        # All outputs are provided by internal operators, so this function should never be called
+        assert False, "Unknown output slot: {}".format( slot.name )
 
     def _executeFinalSegmentation(self, roi, result):
-        pass
+        self.RavelerLabels(  )
 
     def propagateDirty(self, slot, subindex, roi):
         # If anything is dirty, the entire output is dirty
@@ -223,9 +225,35 @@ class OpMaskedWatershed(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty()
 
+class OpAccumulateFragmentSegmentations( Operator ):
+    RavelerLabels = InputSlot()
+    FragmentSegmentations = InputSlot(level=1)
+    
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom( self.RavelerLabels.meta )
+    
+    def execute(self, slot, subindex, roi, result):
+        assert (roi.start == 0).all() and (roi.stop == self.Output.meta.shape).all(), "Must request entire image."
+        self.RavelerLabels(roi.start, roi.stop).writeInto( result ).wait()
 
+        # Allocate a temporary for our fragment images
+        fragment_image = numpy.zeros( result.shape, dtype=numpy.int32 )
 
+        for slot in self.FragmentSegmentations:
+            max_label = result.max()
+            slot(roi.start, roi.stop).writeInto(fragment_image.view(numpy.uint32)).wait()
+            # This next line shows what we want to do, but it creates a big temporary array (e.g. fragment_image + max_label)
+            # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
+            # Instead, we bend over backwards here to do this 'in place'
+            fragment_image = numpy.where( fragment_image, fragment_image, -max_label )
+            numpy.add( fragment_image, max_label, out=fragment_image )
+            result[:] = numpy.where( fragment_image, fragment_image, result )
+        return result
 
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty()
 
 
 

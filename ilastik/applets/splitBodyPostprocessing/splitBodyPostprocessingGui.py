@@ -7,9 +7,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 
 from ilastik.applets.layerViewer import LayerViewerGui
 
-from ilastik.utility import bind
-
-
 class SplitBodyPostprocessingGui(LayerViewerGui):
     
     firstFragmentColors = [ QColor(0,0,0,0), # transparent (background)
@@ -40,7 +37,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
         ravelerLabelsSlot = op.RavelerLabels
         if ravelerLabelsSlot.ready():
             colortable = []
-            for i in range(256):
+            for _ in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             ravelerLabelLayer = ColortableLayer(LazyflowSource(ravelerLabelsSlot), colortable, direct=True)
@@ -77,6 +74,18 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
                 bodyMaskLayer.visible = True
                 bodyMaskLayer.opacity = 1.0
                 layers.append(bodyMaskLayer)
+
+        finalSegSlot = op.FinalSegmentation
+        if finalSegSlot.ready():
+            colortable = []
+            for _ in range(256):
+                r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                colortable.append(QColor(r,g,b).rgba())
+            finalLayer = ColortableLayer(LazyflowSource(finalSegSlot), colortable)
+            finalLayer.name = "Final Segmentation"
+            finalLayer.visible = False
+            finalLayer.opacity = 0.4
+            layers.append(finalLayer)
 
         inputSlot = op.InputData
         if inputSlot.ready():
