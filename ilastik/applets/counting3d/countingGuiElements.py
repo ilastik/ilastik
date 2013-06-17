@@ -88,7 +88,7 @@ class QResizableRect(QObject):
 class ResizeHandle(QGraphicsRectItem):
     
     def __init__(self, shape, constrainAxis):
-        size = 4
+        size = 3
         super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size)
         self.shape=shape
         #self._offset = offset
@@ -359,6 +359,12 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.normalColor.setAlpha(float*255)
         
         self.updateColor()
+    
+    def setColor(self,qcolor):
+        self.normalColor=qcolor
+        
+        self.updateColor()
+    
 
 
 class CoupledRectangleElement(object):
@@ -466,6 +472,8 @@ class CoupledRectangleElement(object):
     
     def setOpacity(self,float):
         return self.rectItem.setOpacity(float)
+
+    
 
 # class OpSumAll(Operator):
 #     name = "SumRegion"
@@ -731,6 +739,8 @@ class BoxController(object):
                        pmapColor=None,
                    )
         
+        box.pmapColorChanged.connect(rect.setNormalColor)
+        
         self.boxListModel.insertRow( newRow, box )
         rect.boxLabel=box
         rect.updateTextWhenChanges()
@@ -789,6 +799,8 @@ class BoxController(object):
     def changeBoxesOpacity(self,float):
         for item in self._currentBoxesList:
             item.setOpacity(float)
+    
+        
     
 import sys
 if __name__=="__main__":
