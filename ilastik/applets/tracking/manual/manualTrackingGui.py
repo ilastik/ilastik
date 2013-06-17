@@ -41,6 +41,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
+                
 #        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
 #        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
         
@@ -74,6 +75,12 @@ class ManualTrackingGui(LayerViewerGui):
         self.labelsWithDivisions = {}
         self.misdetLock = False
         self.misdetIdx = -1
+        
+        if self.mainOperator.LabelImage.meta.shape:
+            # FIXME: assumes t,x,y,z,c
+            if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
+                self._drawer.windowZBox.setValue(1)
+                self._drawer.windowZBox.setEnabled(False)
             
 
     def _onMetaChanged( self, slot ):
@@ -491,7 +498,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _runSubtracking(self, position5d, oid):
-        window = 40
+        window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
         
         t_start = position5d[0]
         activeTrack = self._getActiveTrack()
@@ -505,7 +512,9 @@ class ManualTrackingGui(LayerViewerGui):
                 
         sroi = [slice(0,1),]
         for idx,p in enumerate(position5d[1:-1]):
-            sroi += [ slice(max(0,p-window/2),min(p+window/2, self.mainOperator.LabelImage.meta.shape[idx+1])), ]
+            begin = max(0,p-window[idx]/2)
+            end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
+            sroi += [ slice(begin,end), ]
         
         key_start = [t_start,0,0,0,0]
         key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
@@ -525,7 +534,7 @@ class ManualTrackingGui(LayerViewerGui):
             if 0 in uniqueLabels:
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
-                self._log('tracking candidates at t = ' + str(t) + ':' + str(uniqueLabels))
+                self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
                 roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
                 li = self.mainOperator.LabelImage.get(roi).wait()
                 coords = numpy.where(li == oid_prev)
