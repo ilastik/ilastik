@@ -530,20 +530,21 @@ class ManualTrackingGui(LayerViewerGui):
             li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
             
             li_prev_oid = (li_prev == oid_prev)
-            uniqueLabels = list(numpy.unique(li_prev_oid * li_cur))
+            li_product = li_prev_oid * li_cur
+            uniqueLabels = list(numpy.unique(li_product))
             if 0 in uniqueLabels:
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
                 self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
-                li = self.mainOperator.LabelImage.get(roi).wait()
-                coords = numpy.where(li == oid_prev)
-                mid = len(coords[1]) / 2
-                cur_slicing_pos = self.editor.posModel.slicingPos 
-                self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], cur_slicing_pos[2]]
+                self._gotoObject(oid_prev, t-1)
+                t_end = t-1
+                break            
+            if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
+                self._log('too little overlap at t = ' + str(t))
+                self._gotoObject(oid_prev, t-1)
                 t_end = t-1
                 break
-            
+             
             res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
             if res == -1:
                 return
@@ -551,6 +552,9 @@ class ManualTrackingGui(LayerViewerGui):
             oid_prev = uniqueLabels[0]
             li_prev = li_cur
     
+        if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
+            self._log('tracking reached last time step.')
+            
         self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
         self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
         self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
@@ -884,7 +888,17 @@ class ManualTrackingGui(LayerViewerGui):
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         
             self._log("-> tracking successfully exported")
-              
+
+    
+    def _gotoObject(self, oid, t):
+        roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+        li = self.mainOperator.LabelImage.get(roi).wait()
+        coords = numpy.where(li == oid)
+        mid = len(coords[1]) / 2
+        cur_slicing_pos = self.editor.posModel.slicingPos 
+        self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], cur_slicing_pos[2]]
+        self.editor.posModel.time = t      
+
 
     def _onGotoLabel(self):
         t = self._drawer.timeBox.value()
@@ -907,9 +921,10 @@ class ManualTrackingGui(LayerViewerGui):
             QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find track id " + str(tid) + " at time " + str(t) + ".", QtGui.QMessageBox.Ok)
             return
         
-        coords = numpy.where(li == oid)
-        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
-        self.editor.posModel.time = t     
+#        coords = numpy.where(li == oid)
+#        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
+#        self.editor.posModel.time = t     
+        self._gotoObject(oid, t)
     
     def _onPrintMultipleLabelsInTimestep(self):
         maxt = self.mainOperator.LabelImage.meta.shape[0]
