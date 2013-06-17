@@ -266,6 +266,7 @@ class BodySplitInfoWidget( QWidget ):
         self._reloadInfoWidgets()
         
         self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
+        self.opSplitBodyCarving.AnnotationLocations.setValue( self._annotations.keys() )
 
 
     def _handleAnnotationDoubleClick(self, item):

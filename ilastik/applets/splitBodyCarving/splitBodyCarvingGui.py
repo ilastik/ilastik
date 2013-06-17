@@ -209,6 +209,17 @@ class SplitBodyCarvingGui(CarvingGui):
         layers = []
         carvingLayers = super(SplitBodyCarvingGui, self).setupLayers()        
         
+        crosshairSlot = self.topLevelOperatorView.AnnotationCrosshairs
+        if crosshairSlot.ready():
+            # 0=Transparent, 1=red
+            colortable = [QColor(0, 0, 0, 0).rgba(), QColor(255, 0, 0).rgba()]
+            crosshairLayer = ColortableLayer(LazyflowSource(crosshairSlot), colortable, direct=True)
+            crosshairLayer.name = "Annotation Points"
+            crosshairLayer.visible = True
+            crosshairLayer.opacity = 1.0
+            layers.append(crosshairLayer)
+        
+        
         highlightedObjectSlot = self.topLevelOperatorView.CurrentRavelerObject
         if highlightedObjectSlot.ready():
             # 0=Transparent, 1=blue

@@ -3,6 +3,7 @@ import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape, roiToSlice, getIntersectingBlocks, getBlockBounds
+from lazyflow.operators import OpCrosshairMarkers
 from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
@@ -18,6 +19,7 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentRavelerLabel = InputSlot(value=0)
     CurrentEditingFragment = InputSlot(value="", stype='string')
     AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
+    AnnotationLocations = InputSlot(optional=True) # Display-only
     
     CurrentRavelerObject = OutputSlot()
     CurrentRavelerObjectRemainder = OutputSlot()
@@ -25,6 +27,8 @@ class OpSplitBodyCarving( OpCarving ):
     MaskedSegmentation = OutputSlot()
 
     EditedRavelerBodyList = OutputSlot() # A single object: a list of strings
+    
+    AnnotationCrosshairs = OutputSlot()
     
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
@@ -46,6 +50,13 @@ class OpSplitBodyCarving( OpCarving ):
         # The combined LUT is cached to avoid recomputing it for every orthoview.
         self._opFragmentSetLutCache = OpArrayCache( parent=self )
         self._opFragmentSetLutCache.blockShape.setValue( (1e10,) ) # Something big (always get the whole thing)
+        
+        # Display-only: Show the annotations as crosshairs
+        self._opCrosshairs = OpCrosshairMarkers( parent=self )
+        self._opCrosshairs.CrosshairRadius.setValue( 5 )
+        self._opCrosshairs.Input.connect( self.RavelerLabels )
+        self._opCrosshairs.PointList.connect( self.AnnotationLocations )
+        self.AnnotationCrosshairs.connect( self._opCrosshairs.Output )
 
     @classmethod
     def autoSeedBackground(cls, laneView, foreground_label):
@@ -176,9 +187,9 @@ class OpSplitBodyCarving( OpCarving ):
             self.MaskedSegmentation.setDirty( roi.start, roi.stop )
         elif slot == self.CurrentRavelerLabel:
             self.MaskedSegmentation.setDirty( slice(None) )
-        elif slot == self.AnnotationFilepath:
-            return
-        elif slot == self.CurrentEditingFragment:
+        elif slot == self.AnnotationFilepath or \
+             slot == self.CurrentEditingFragment or \
+             slot == self.AnnotationLocations:
             return
         else:
             super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
@@ -308,6 +319,14 @@ class OpSelectLabel(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Dirty slot is unknown: {}".format( slot.name )
+
+
+
+
+
+
+
+
 
 
 
