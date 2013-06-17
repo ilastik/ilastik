@@ -118,6 +118,10 @@ class OpSplitBodyCarving( OpCarving ):
         self.CurrentFragmentSegmentation.meta.assignFrom( self.RavelerLabels.meta )
         self.CurrentFragmentSegmentation.meta.dtype = numpy.uint8
 
+        if not self._opFragmentSetLutCache.Output.ready():
+            self.MaskedSegmentation.meta.NOTREADY = True
+            self.CurrentRavelerObjectRemainder.meta.NOTREADY = True
+
         self.EditedRavelerBodyList.meta.dtype = object
         self.EditedRavelerBodyList.meta.shape = (1,)
         
@@ -152,7 +156,7 @@ class OpSplitBodyCarving( OpCarving ):
 
     def _executeCurrentRavelerObjectRemainder(self, roi, result):        
         # Start with the original raveler object
-        self.CurrentRavelerObject(roi.start, roi.stop).writeInto(result).wait()
+        self._opSelectRavelerObject.Output(roi.start, roi.stop).writeInto(result).wait()
 
         lut = self._opFragmentSetLutCache.Output[:].wait()
 
