@@ -273,6 +273,7 @@ class LabelListModel(QAbstractTableModel):
 
     def insertRow(self, position, object, parent=QModelIndex()):
         self.beginInsertRows(parent, position, position)
+        object.changed.connect(self.modelReset)
         self._labels.insert(position, object)
         self.endInsertRows()
         return True
