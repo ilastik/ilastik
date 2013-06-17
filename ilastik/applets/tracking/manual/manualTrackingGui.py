@@ -58,9 +58,6 @@ class ManualTrackingGui(LayerViewerGui):
     ###########################################
     
     def __init__(self, topLevelOperatorView):
-        """
-        """    
-        
         self.topLevelOperatorView = topLevelOperatorView
         super(ManualTrackingGui, self).__init__(topLevelOperatorView)
         
@@ -107,7 +104,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def setupLayers( self ):        
         layers = []
-                
+                        
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
         self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
         self.ct[-1] = QColor(0,0,0,255).rgba()
@@ -202,7 +199,7 @@ class ManualTrackingGui(LayerViewerGui):
             for oid in self.mainOperator.labels[t].keys():
                 for tr in list(self.mainOperator.labels[t][oid]):
                     allTracks.add(tr)        
-        print 'allTracks = ', allTracks
+        #print 'allTracks = ', allTracks
         
         items = set()
         for idx in range(activeTrackBox.count()):
@@ -241,7 +238,7 @@ class ManualTrackingGui(LayerViewerGui):
                 self.editor.posModel.time = self.editor.posModel.time + 1                
             elif len(self.divs) > 0:
                 if position5d[0] != self.divs[0][0] + 1:
-                    print 'the daughter cells must be in timestep', self.divs[0][0] + 1
+                    QtGui.QMessageBox.critical(self, "Error", "Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1), QtGui.QMessageBox.Ok)
                     return
                 if item not in self.divs:
                     self.divs.append(item)
@@ -249,12 +246,12 @@ class ManualTrackingGui(LayerViewerGui):
             if len(self.divs) == 3:                
                 activeTrack = self._getActiveTrack()
                 if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
-                    QtGui.QMessageBox.critical(self, "Error", "Error: The mother cell must have the active track as a label.", QtGui.QMessageBox.Ok)
+                    QtGui.QMessageBox.critical(self, "Error", "Error: The label of the parent cell must match the active track label.", QtGui.QMessageBox.Ok)
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
                     return
-#                self._addObjectToTrack(activeTrack, self.divs[0][1], self.divs[0][0])
+
                 div = [activeTrack,]
                 
                 for i in range(1,3):
@@ -265,7 +262,8 @@ class ManualTrackingGui(LayerViewerGui):
                 self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)                
                 
                 self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
-                print 'divisions = ', self.mainOperator.divisions
+                #print 'divisions = ', self.mainOperator.divisions
+                self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
                 
                 self._setDirty(self.mainOperator.Divisions, [])
                 self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
@@ -288,7 +286,7 @@ class ManualTrackingGui(LayerViewerGui):
                     
             activeTrack = self.mainOperator.ActiveTrack
             if not activeTrack.ready() or activeTrack.value == 0:
-                QtGui.QMessageBox.critical(self, "Error", "Error: There is no active track.", QtGui.QMessageBox.Ok)            
+                QtGui.QMessageBox.critical(self, "Error", "Error: Please start a new track first.", QtGui.QMessageBox.Ok)            
                 return        
             activeTrack = activeTrack.value
             
@@ -297,7 +295,6 @@ class ManualTrackingGui(LayerViewerGui):
             res = self._addObjectToTrack(activeTrack,oid,t)
             if res == -1:
                 return
-#            print 'manualTrackingGui::handleEditorLeftClick: Labels = ', self.mainOperator.labels
             
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
@@ -440,8 +437,7 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onDelTrackPressed(self):        
         activeTrackBox = self._drawer.activeTrackBox
-        if activeTrackBox.count() == 0:
-            print 'there is no active track to delete'
+        if activeTrackBox.count() == 0:            
             return 
         
         track2remove = self._getActiveTrack()
@@ -482,7 +478,7 @@ class ManualTrackingGui(LayerViewerGui):
         else:
             for tracklist in self.mainOperator.labels[t].values():
                 if activeTrack in tracklist:                
-                    QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this timeslice", QtGui.QMessageBox.Ok)            
+                    QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this time step", QtGui.QMessageBox.Ok)            
                     return -1
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
@@ -491,7 +487,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         self.mainOperator.labels[t][oid].add(activeTrack)  
         self._setDirty(self.mainOperator.Labels, [t])
-        print 'added (t,oid,activeTrack) =', (t,oid, activeTrack)
+        self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
         
         
     def _runSubtracking(self, position5d, oid):
@@ -524,15 +520,12 @@ class ManualTrackingGui(LayerViewerGui):
             roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
             li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
             
-#            li_prev_oid = (li_prev == oid_prev)
-#            li_cur_pos = (li_cur > 0)
-#            uniqueLabels = list(numpy.unique(numpy.where(li_prev_oid == li_cur_pos, li_cur, 0)))
             li_prev_oid = (li_prev == oid_prev)
             uniqueLabels = list(numpy.unique(li_prev_oid * li_cur))
             if 0 in uniqueLabels:
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
-                print 'the tracking is ambiguous, abort at t =', t, ', label candidates = ', uniqueLabels
+                self._log('tracking candidates at t = ' + str(t) + ':' + str(uniqueLabels))
                 roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
                 li = self.mainOperator.LabelImage.get(roi).wait()
                 coords = numpy.where(li == oid_prev)
@@ -558,7 +551,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot add a division event for misdetections. Disable misdetection.", QtGui.QMessageBox.Ok)
+            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot add a division event for misdetections. Release misdetection button first.", QtGui.QMessageBox.Ok)
             return
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
@@ -800,7 +793,6 @@ class ManualTrackingGui(LayerViewerGui):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
         
         if directory is None or str(directory) == '':
-            print "cancelled."
             return
         directory = str(directory)
         
@@ -808,7 +800,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         for t in sorted(oid2tids.keys()):
             fn =  directory + "/" + str(t).zfill(5)  + ".h5"
-            print 'Writing file', fn
+            self._log('Writing file ' + str(fn))
             
             roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
             labelImage = self.mainOperator.LabelImage.get(roi).wait()
@@ -882,7 +874,7 @@ class ManualTrackingGui(LayerViewerGui):
                     ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         
-            print "-> results successfully written"
+            self._log("-> tracking successfully exported")
               
 
     def _onGotoLabel(self):
@@ -970,3 +962,6 @@ class ManualTrackingGui(LayerViewerGui):
         print
     
     
+    def _log(self, prompt):
+        self._drawer.logOutput.append(prompt)
+        print prompt
