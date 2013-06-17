@@ -446,6 +446,7 @@ class CoupledRectangleElement(object):
         self.rectItem.updateText("%.1f"%(value))
         
         if self.boxLabel!=None:
+            print "SHould redraw"
             from PyQt4.QtCore import QString
             self.boxLabel.density=QString("%.1f"%value)
         

@@ -71,7 +71,7 @@ class BoxLabel(QObject):
                 self._density, n))
             self._density = n
             self.densityChanged.emit(n)
-
+            self.changed.emit()
 
     def __repr__(self):
         return "<BoxLabel name={}, color={}>".format(
@@ -142,6 +142,7 @@ class BoxListModel(LabelListModel):
         return LabelListModel.setData(self, index, value, role=role)    
 #     def selectedRow(self):
 #         return LabelListModel.selectedRow(self)
+
     
     
     

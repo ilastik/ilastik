@@ -847,6 +847,7 @@ class Counting3dGui(LabelingGui):
         self._changeInteractionMode(Tool.Box)
         qcolor=self._getNextBoxColor()
         self.boxController.currentColor=qcolor
+        self.labelingDrawerUi.boxListView.resetEmptyMessage("Draw the box on the image")
         
     
     def _addNewBox(self):
