@@ -424,7 +424,12 @@ class Counting3dGui(LabelingGui):
         boxlabelsrc = LazyflowSinkSource(self.op.BoxLabelImages,self.op.BoxLabelInputs )
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
         boxlabellayer.name = "boxLabels"
-        boxlabellayer.opacity = 0.3
+        boxlabellayer.opacity = 1.0
+        boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
+        boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
+        
+        
+        
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
 

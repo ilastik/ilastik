@@ -351,7 +351,14 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         
         
         return QGraphicsRectItem.itemChange(self, change,value)
-
+    
+    
+    def setOpacity(self,float):
+        print "Resetting Opacity",float
+        
+        self.normalColor.setAlpha(float*255)
+        
+        self.updateColor()
 
 
 class CoupledRectangleElement(object):
@@ -454,7 +461,11 @@ class CoupledRectangleElement(object):
         self.rectItem.normalColor=qcolor
         self.rectItem.updateColor()
        
-        
+    def setVisible(self,bool):
+        return self.rectItem.setVisible(bool)
+    
+    def setOpacity(self,float):
+        return self.rectItem.setOpacity(float)
 
 # class OpSumAll(Operator):
 #     name = "SumRegion"
@@ -533,7 +544,7 @@ class OpArrayPiper2(Operator):
         assert slot == self.Input
         key = roi.toSlice()
         self.outputs["Output"][key] = value
-
+    
 
 
 
@@ -770,6 +781,14 @@ class BoxController(object):
                 self.boxListModel.select(row)
                 self.boxListModel.blockSignals(False)
                 break
+    
+    def changeBoxesVisibility(self,bool):
+        for item in self._currentBoxesList:
+            item.setVisible(bool)
+    
+    def changeBoxesOpacity(self,float):
+        for item in self._currentBoxesList:
+            item.setOpacity(float)
     
 import sys
 if __name__=="__main__":
