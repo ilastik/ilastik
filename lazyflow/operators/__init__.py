@@ -40,6 +40,7 @@ except:
     from opLabelImage import OpLabelImage
     from opCachedLabelImage import OpCachedLabelImage
     from opInterpMissingData import OpInterpMissingData
+    from opCrosshairMarkers import OpCrosshairMarkers
 
     ops = list(itersubclasses(Operator))
     '''
