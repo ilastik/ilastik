@@ -59,6 +59,14 @@ class OpPixelClassification( Operator ):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+    
+    def setupOutputs(self):
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
+        self.PmapColors.meta.dtype = object
+        self.PmapColors.meta.shape = (1,)
 
     def __init__( self, *args, **kwargs ):
         """
