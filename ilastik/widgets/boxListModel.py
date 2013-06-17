@@ -1,8 +1,10 @@
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
+from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString
 from labelListModel import *
 import logging
 from PyQt4.uic.Compiler.qtproxies import QtGui
+from PyQt4 import uic
+import os
 logger = logging.getLogger(__name__)
 
 #===============================================================================
@@ -179,10 +181,10 @@ class BoxListModel(LabelListModel):
     
     def setData(self, index, value, role=Qt.EditRole):
         
-        if index.column()==self.ColumnID.Text:
-            row=index.row()
-            self._labels[row].density=QString("%.1f"%value)
-            self.dataChanged.emit(index,index)
+#         if index.colum()==self.CoulmunID.Text:
+#             row=index.row()
+#             self._labels[row].density=QString("%.1f"%value)
+#             self.dataChanged.emit(index,index)
         
         if index.column()==self.ColumnID.Fix:
             print "fixing"
@@ -200,8 +202,40 @@ class BoxListModel(LabelListModel):
 #         return LabelListModel.selectedRow(self)
 
     
+
+class BoxDialog(QDialog):
+    #FIXME:
+    #This is an hack to the functionality of the old ColorDialog
     
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        self._brushColor = None
+        self._pmapColor  = None
+        self.ui = uic.loadUi(os.path.join(os.path.split(__file__)[0],
+                                          'box_dialog.ui'),
+                             self)
+        self.ui.brushColorButton.clicked.connect(self.onBrushColor)
+
+    def setBrushColor(self, c):
+        self._brushColor = c
+        self.ui.brushColorButton.setStyleSheet("background-color: {}".format(c.name()))
+
+    def onBrushColor(self):
+        color=QColorDialog().getColor()
+        self.setBrushColor(color)
+        self.setPmapColor(color)
+        
+    def brushColor(self):
+        return self._brushColor
+
+    def setPmapColor(self, c):
+        self._pmapColor = c
+        #self.ui.pmapColorButton.setStyleSheet("background-color: {}".format(c.name()))
+
+    def pmapColor(self):
+        return self._pmapColor
     
+
 if __name__=="__main__":
     from labelListView import *
     import numpy
@@ -250,10 +284,12 @@ if __name__=="__main__":
     w.raise_()
 
     tableView = LabelListView()
+    tableView._colorDialog=BoxDialog()
     l.addWidget(tableView)
     tableView.setModel(model)
     
     tableView2 = LabelListView()
+
     tableView2.setModel(model)
     tableView2._table.setShowGrid(True)
     l.addWidget(tableView2)
