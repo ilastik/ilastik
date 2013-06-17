@@ -31,6 +31,9 @@ class OpSimple(Operator):
 
 class OpExplicitMulti(Operator):
     Output = OutputSlot(level=1)
+    
+    def setupOutputs(self):
+        pass
 
 class OpCopyInput(Operator):
     Input = InputSlot()
