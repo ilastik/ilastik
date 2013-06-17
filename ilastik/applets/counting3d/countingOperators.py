@@ -23,8 +23,9 @@ class OpTrainCounter(Operator):
                   InputSlot("nonzeroLabelBlocks", level=1),
                   InputSlot("Sigma", stype = "object"), 
                   InputSlot("Epsilon", value = 1E-3, stype = "float"), 
-                  InputSlot("UnderMult", value = 100, stype = "float"),
-                  InputSlot("OverMult", value = 100, stype = "float"), 
+                  #InputSlot("UnderMult", value = 100, stype = "float"),
+                  #InputSlot("OverMult", value = 100, stype = "float"), 
+                  InputSlot("C", value = 1, stype = "float"), 
                   InputSlot("SelectedOption", 
                             value = SVR.options[0],
                             stype = "object"),
@@ -58,7 +59,7 @@ class OpTrainCounter(Operator):
             if k!="gui":
                 algorithm_options[k]=v
         
-        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, \
+        result[0] = SVR(self.C.value,epsilon = self.Epsilon.value, limitDensity = True, \
                         ntrees=self.Ntrees.value,maxdepth=self.MaxDepth.value, \
                         **algorithm_options)
         
@@ -110,7 +111,7 @@ class OpTrainCounter(Operator):
         fullTags = [np.sum(posTags), np.sum(negTags)]
         #pool = RequestPool()
 
-        result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, fullTags, self.Epsilon.value)
+        result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, tags = fullTags)
         #req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
         #pool.wait()
         #pool.clean()

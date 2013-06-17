@@ -211,17 +211,27 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         self.labelingDrawerUi.SigmaLine.setText("1")
-        self.labelingDrawerUi.UnderBox.setRange(0,1000000)
-        self.labelingDrawerUi.UnderBox.setValue(1)
-        self.labelingDrawerUi.OverBox.setRange(0,1000000)
-        self.labelingDrawerUi.OverBox.setValue(1)
-        self.labelingDrawerUi.UnderBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.OverBox.setKeyboardTracking(False)
+        #self.labelingDrawerUi.UnderBox.setRange(0,1000000)
+        #self.labelingDrawerUi.UnderBox.setValue(1)
+        #self.labelingDrawerUi.OverBox.setRange(0,1000000)
+        #self.labelingDrawerUi.OverBox.setValue(1)
+        #self.labelingDrawerUi.UnderBox.setKeyboardTracking(False)
+        #self.labelingDrawerUi.OverBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.CBox.setRange(0,1000)
+        self.labelingDrawerUi.CBox.setValue(1)
+        self.labelingDrawerUi.CBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
 
         for option in self.op.options:
-            values=[v for k,v in option.items() if k!="gui"]
+            if "req" in option.keys():
+                try:
+                    import imp
+                    for req in option["req"]:
+                        imp.find_module(req)
+                except:
+                    continue
+            values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem('+'.join(values), (option,))
         
         self._updateSVROptions()
@@ -232,8 +242,9 @@ class Counting3dGui(LabelingGui):
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
-        self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
-        self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
+        #self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
+        #self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
+        self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
         self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
         self.labelingDrawerUi.SigmaLine.textChanged.connect(self._changedSigma)
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
@@ -303,10 +314,12 @@ class Counting3dGui(LabelingGui):
     def _updateNtrees(self):
         self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
         
-    def _updateOverMult(self):
-        self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
-    def _updateUnderMult(self):
-        self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+    #def _updateOverMult(self):
+    #    self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
+    #def _updateUnderMult(self):
+    #    self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+    def _updateC(self):
+        self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
         if self.changedSigma:
             sigma = [float(n) for n in

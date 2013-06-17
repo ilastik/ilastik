@@ -4,6 +4,10 @@ import sklearn
 from sklearn import preprocessing
 from sklearn.metrics import pairwise
 import itertools
+try:
+    import gurobipy as gu
+except:
+    pass
 
 import h5py, cPickle
 
@@ -23,234 +27,221 @@ import h5py, cPickle
 # already have your data in this format.
 
 import sys
-import gurobipy
 from scipy import spatial
 
 
-def kernelize(B, dot, tags,epsilon, kernel, boxConstraints):
-    coeff = tags[:,None] * tags[None,:]
-    if kernel == "linear":
-        Q = np.multiply(coeff,(B * B.transpose()))
-        #debug_trace()
-        c = dot * (-tags) + epsilon
-        return Q, c
-    elif kernel == "gaussian":
-        gamma = 10000
-        #debug_trace()
-        Q = spatial.distance.pdist(B, metric="sqeuclidean")
-        Q = -gamma * Q
-        Q = np.exp(spatial.distance.squareform(Q))
-        Q = np.multiply(coeff,Q)
-        return Q
+class RegressorGurobi(object):
+    
 
-def createKernel(B, dot, tags, epsilon, kernel, boxConstraints):
-    n_jobs = 1
-    num_features = B.shape[1]
-    #coeffUpperLeft = tags[:,None] * tags[None,:]
-    #if kernel == "linear":
-    numTrainingExamples = B.shape[0]
-    QUpperRight = np.ndarray((numTrainingExamples, len(boxConstraints)))
-    QLowerRight = np.ndarray((len(boxConstraints), len(boxConstraints)))
-    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
-    print "beep"
-    if kernel == "linear":
-        def _evaluate(x,y):
-            return np.matrix(x) * np.matrix(y).transpose()
+    def __init__(self, C=1, epsilon=0.1, penalty="l2",regularization="l2",pos_constr=False):
+        """
+            penalty : "l1" or "l2" penalty
+            
+        """
+        
+        self.penalty=penalty
+        self._C = C
+        self._epsilon = epsilon
+        self.regularization=regularization
+        
+        self.pos_constr=pos_constr
+    
+    def get_Xhat(self,X):
+        return np.hstack( [X,np.ones((X.shape[0],1))])
+    
+    def predictUnfiltered(self,X):
+        
+        oldShape = X.shape
+        result = np.dot(self.get_Xhat(X.reshape((-1, X.shape[-1]))),self.w).reshape(X.shape[:-1])
+        return result
 
-    elif kernel == "rbf":
-        def _evaluate(x,y):
-            metric = "euclidean"
-            tmp = pairwise.pairwise_distances(x, y, metric = metric, n_jobs = n_jobs)
-            tmp = np.exp(-(tmp**2) / (num_features * 1000))
-            return tmp
+    def fit(self,X,Yl,tags = None, boxConstraints = None):
 
-    boxValues = []
-    for i, constraint in enumerate(boxConstraints):
-        val,features = constraint
-        boxValues.append(val)
-        features = features.reshape(-1, features.shape[-1])
-        tmp = _evaluate(B, features)
-        QUpperRight[:,i] = np.sum(tmp, axis = 1).flatten()
+        
+        #format for box constraints: [(boxvalue, features)]
+        
+        
+        self.Nf = X.shape[1]
+        X_hat=self.get_Xhat(X)
 
-        #boxMatrix[i] = np.sum(features, axis = 0)
-    #boxMatrix = np.matrix(boxMatrix)
-    for i, j in zip(range(len(boxConstraints)), range(len(boxConstraints))):
-        val1, features1 = boxConstraints[i]
-        val2, features2 = boxConstraints[j]
-        features1 = features1.reshape(-1, features1.shape[-1])
-        features2 = features2.reshape(-1, features2.shape[-1])
-        tmp = _evaluate(features1, features2)
-        QLowerRight[i,j] = np.sum(tmp).flatten()
-
+        
+        model=gu.Model()
+        
+        model.setParam("Threads",2 )
+        #print "creating vars ... ",
+        #create the variables
+        u_vars1=[model.addVar(name="u^+_%d"%i,lb=0,vtype=gu.GRB.CONTINUOUS) for i in range(X.shape[0])]
+        u_vars2=[model.addVar(name="u^-_%d"%i,lb=0,vtype=gu.GRB.CONTINUOUS) for i in range(X.shape[0])]
+        w_vars=[model.addVar(name="w_%d"%i,lb=-gu.GRB.INFINITY,vtype=gu.GRB.CONTINUOUS) for i in range(self.Nf+1)]
+        
          
-    QLowerLeft = QUpperRight.transpose()
-    QUpperLeft = _evaluate(B,B) 
-    QUpper     = np.concatenate((QUpperLeft, QUpperRight), axis = 1)
-    QLower     = np.concatenate((QLowerLeft, QLowerRight), axis = 1)
-    Q          = np.concatenate((QUpper, QLower), axis = 0)
+        model.update()
+        print "done "
+        
+        #print "setting penalty objective %s ..."%self.penalty,
+        obj=None
+        if self.penalty=="l1":
+            obj=self._C * (gu.quicksum([u for u in u_vars1 ])+gu.quicksum([u for u in u_vars2 ]))
+        elif self.penalty=="l2":
+            obj=self._C * (gu.quicksum([u*u for u in u_vars1 ])+gu.quicksum([u*u for u in u_vars2 ]))
+        else:
+            print  "penalty term not know !"
+            raise RuntimeError
+        
+        
+            
+        obj += 0.5 * gu.quicksum(w * w for w in w_vars[:-1] )
 
-    coeff      = expandedTags[:,None] * expandedTags[None, :]
-    Q          = np.multiply(coeff, Q)
-
-    #QUpperLeft = np.multiply(coeff,(B * B.transpose()))
-    #QLowerLeft = B * boxConstraints.transpose()
-    #QLowerRight= boxConstraints * B.transpose()
-    #QUpperRight= -boxConstraints*boxConstraints.transpose()
-    print "boop"
-    
-    c = np.concatenate((dot, boxValues))  * (-expandedTags) + epsilon
-    return Q,c
-    
-
-
-
-def optimizepossdef(tags, B, c, upperBounds, boxConstraints = None):
-    model = gurobipy.Model()
-    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
-    B = np.multiply(expandedTags[:,None], B) 
-
-    for j in range(tags[0]):
-        model.addVar(lb=0., ub=float(upperBounds[1]), vtype=gurobipy.GRB.CONTINUOUS)
-    
-    for j in range(sum(tags[1:])):
-        model.addVar(lb=0., ub=float(upperBounds[-1]), vtype=gurobipy.GRB.CONTINUOUS)
-
-    model.update()
-    vars = model.getVars()
-
-    expr = gurobipy.LinExpr()
-    for j in range(sum(tags)):
-        expr += expandedTags[j]*vars[j]
-
-    model.addConstr(expr, gurobipy.GRB.EQUAL, 0)
-    print "ping"
-    # Populate objective
-    y = [None for i in range(B.shape[1])]
-    for i in range(B.shape[1]):
-        y[i] = model.addVar(name = 'y_%s' % (i))
-    model.update()
-
-    for i in range(B.shape[1]):
-        expr = gurobipy.LinExpr()
-        #for j in range(B.shape[0]):
-        #    expr += B[j,i] * vars[j]
-        expr.addTerms(B[:,i], vars)
-        model.addConstr(expr, gurobipy.GRB.EQUAL, y[i])
+        model.setObjective(obj)
 
 
-    obj = gurobipy.QuadExpr()
-    #vararray = zip(*itertools.product(vars,vars))
-    #obj.addTerms(0.5 * Q.view(np.ndarray).flatten(),vararray[0], vararray[1])
-    #debug_trace()
-    obj.addTerms(0.5 * np.ones(len(y)), y, y)
-    obj.addTerms(c, vars)
-    model.setObjective(obj,gurobipy.GRB.MINIMIZE)
-    print "pong"
-  # Write model to a file
-    model.update()
-    model.write('dense.lp')
-    print "blub"
-  # Solve
-    model.optimize()
-    print "blob"
-    solution = np.ndarray((expandedTags.shape[0]))
-    if model.status == gurobipy.GRB.OPTIMAL:
-        for i in range(solution.shape[0]):
-            solution[i] = vars[i].x
-        return True, solution
-    else:
-        return False
+        print "done"
+        #print "objective = ", model.getObjective()
+        
+        ### add constraint for the variables
+        print "adding constraint penalty"
+        if tags:
+            for i in range(sum(tags)):
+                #logme("%.2f"%(i/float(X_hat.shape[0])*100.0))
+                constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
+                model.addConstr(constr )
+            for i in range(tags[0]):
+                constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
+                model.addConstr(constr)        
+        else:
+            for i in range(X.shape[0]):
+		    constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
+		    model.addConstr(constr )
+		    constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
+		    model.addConstr(constr)        
 
-def optimize(tags, Q, c, upperBounds):
+        model.update()
+        model.setParam('OutputFlag', False) 
+        #model.write("test.lp")
+        model.optimize()
+        
+        #self.w=np.array([w.x for w in w_vars]).reshape(-1,1)
+        ##print model.status==gu.GRB.status.OPTIMAL
+        ##print "Obj: ",model.getObjective().getValue()
 
-    model = gurobipy.Model()
-
-    expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:]))))
-    # Add variables to model
-    for j in range(tags[0]):
-        model.addVar(lb=0., ub=float(upperBounds[1]), vtype=gurobipy.GRB.CONTINUOUS)
-
-    for j in range(sum(tags[1:])):
-        model.addVar(lb=0., ub=float(upperBounds[-1]), vtype=gurobipy.GRB.CONTINUOUS)
-
-    model.update()
-    vars = model.getVars()
-
-    expr = gurobipy.LinExpr()
-    for j in range(sum(tags)):
-        expr += expandedTags[j]*vars[j]
-
-    model.addConstr(expr, gurobipy.GRB.EQUAL, 0)
-    print "ping"
-    # Populate objective
-    #y_vars = {}
-    #for i in range(B.shape[1]):
-    #    y[i] = model.addVar(name = 'y_%s' % (i))
-
-    
-    obj = gurobipy.QuadExpr()
-    vararray = zip(*itertools.product(vars,vars))
-    obj.addTerms(0.5 * Q.view(np.ndarray).flatten(),vararray[0], vararray[1])
-    #for i in range(Q.shape[0]):
-    #    for j in range(Q.shape[1]):
-    #        if Q[i,j] != 0:
-    #            obj += Q[i,j]*vars[i]*vars[j]
-    
+        self.w=np.array([w.x for w in w_vars]).reshape(-1,1)
 
 
-    print "ping"
-    obj.addTerms(c, vars)
-    model.setObjective(obj,gurobipy.GRB.MINIMIZE)
-    print "pong"
-  # Write model to a file
-    model.update()
-    model.write('dense.lp')
-    #print Q
-    print np.linalg.eigvalsh(Q)
-    #print "blub"
-  # Solve
-    model.setParam("PSDTol", float("inf"))
-    model.optimize()
-    print "blob"
-    solution = np.ndarray((len(expandedTags)))
-    if model.status == gurobipy.GRB.OPTIMAL:
-        for i in range(solution.shape[0]):
-            solution[i] = vars[i].x
-        return True, solution
-    else:
-        return False
+        if boxConstraints is not None:
+            numConstraintVariables = [features.shape[0] for (value, features) in boxConstraints]
+            diffopminus = [model.addVar(name="diff-_%d"%i,lb=0,vtype=gu.GRB.CONTINUOUS) for i in
+                            range(len(boxConstraints))]
+            diffopplus = [model.addVar(name="diff+_%d"%i,lb=0,vtype=gu.GRB.CONTINUOUS) for i in
+                            range(len(boxConstraints))]
+            z_vars = []
+            b_vars = []
+            isForegroundIndicators = []
+
+            for i in range(len(boxConstraints)):
+                value, features = boxConstraints[i]
+                assert features.shape[1] == self.Nf
+                res = self.predict(features)
+                res[np.where(res >0)] = 1
+                isForegroundIndicators.append(res)
+
+                z_vars.append([model.addVar(name = "z_{}_{}".format(i, j), vtype = gu.GRB.CONTINUOUS) for j in
+                      range(sum(numConstraintVariables)) ])
+                b_vars.append([model.addVar(name = "b_{}_{}".format(i, j), lb = 0, vtype = gu.GRB.CONTINUOUS) for j in
+                      range(sum(numConstraintVariables)) ])
+
+            model.update()
+
+            for i, b_i,fore_i, z_i, boxConstraint in zip(range(len(boxConstraints)), b_vars, isForegroundIndicators, z_vars, boxConstraints):
+                value, features = boxConstraint
+                for b, fore, z, feature in zip(b_i, fore_i, z_i, features):
+
+                    multconstr = gu.quicksum([float(feature[j]) * w_vars[j] for j in range(self.Nf)]) + w_vars[-1] <= z
+                    model.addConstr(multconstr)
+                    multconstr = -gu.quicksum([float(feature[j]) * w_vars[j] for j in range(self.Nf)]) - w_vars[-1] <= z
+                    model.addConstr(multconstr)
+                
+                    active = float(1 - fore)
+
+                    activeconstr1 = active >=  b
+                    model.addConstr(activeconstr1)
+                    activeconstr3 = 1 - active >=  gu.quicksum([float(feature[j])*w_vars[j] for j in range(self.Nf)])+\
+                        w_vars[-1] + b
+                    model.addConstr(activeconstr3)
+
+                
+                condensedFeatures = np.sum(features, axis = 0)
+                boxconstrmax = diffopminus[i] >= 0.5 * (gu.quicksum([float(condensedFeatures[j])*w_vars[j] for j in
+                                                                     range(self.Nf)])+float(features.shape[0]) \
+                * w_vars[-1]) + 0.5 * gu.quicksum([z for z in z_i])  - float(value) 
+                
+                model.addConstr(boxconstrmax)
+
+
+                boxconstrmin = diffopplus[i] >= float(value) - gu.quicksum([float(condensedFeatures[j])*w_vars[j] for
+                            j in range(self.Nf)] ) - float(features.shape[0]) * w_vars[-1] - gu.quicksum([b for b in b_i]) 
+                
+
+                model.addConstr(boxconstrmin)
+
+                obj += self._C * float(1./features.shape[0]) * diffopplus[i] * diffopplus[i]
+                obj += self._C * float(1./features.shape[0]) * diffopminus[i] * diffopminus[i]
+
+            model.setObjective(obj)
+        
+            model.update()    
+            model.optimize()
+            #import sitecustomize
+            #sitecustomize.debug_trace()
+
+            self.w=np.array([w.x for w in w_vars]).reshape(-1,1)
+
+        return self  
+
+    def predict(self, X):
+        
+        oldShape = X.shape
+        result = np.dot(self.get_Xhat(X.reshape((-1, X.shape[-1]))),self.w).reshape(X.shape[:-1])
+        return result
+
+        
 
 
 
 class SVR(object):
 
+
     options = [
-    {"optimization" : "rf" ,"gui":["default","rf"]},
-    {"optimization" : "svr", "kernel" : "rbf","gui":["default","svr"]},
-    {"optimization" : "svr", "kernel" : "linear","gui":["default","svr"]},
-    {"optimization" : "svr", "kernel" : "poly","gui":["default","svr"]},
-    {"optimization" : "svr", "kernel" : "sigmoid","gui":["default","svr"]},
-    {"optimization" : "quadratic", "kernel" : "linear","gui":["default","svr"]},
-    {"optimization" : "quadratic", "kernel" : "rbf","gui":["default","svr"]}
+        {"optimization" : "rf-sklearn" ,"gui":["default","rf"], "req":["sklearn"]},
+        {"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
+        {"optimization" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
+        {"optimization" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
+        #{"optimization" : "svr-gurobi", "gui":["default", "svr"], "req":["dummy"]}
+    #{"optimization" : "svr", "kernel" : "linear","gui":["default","svr"]},
+    #{"optimization" : "svr", "kernel" : "poly","gui":["default","svr"]},
+    #{"optimization" : "svr", "kernel" : "sigmoid","gui":["default","svr"]},
+    #{"optimization" : "quadratic", "kernel" : "linear","gui":["default","svr"]},
+    #{"optimization" : "quadratic", "kernel" : "rbf","gui":["default","svr"]}
     #{"optimization" : "smo", "kernel" : "linear"},
     #{"optimization" : "smo", "kernel" : "gaussian"}
     ]
 
 
-    def __init__(self, underMult, overMult, limitDensity = False, optimization = "quadratic", kernel ="linear" ,\
-                  ntrees=10, maxdepth=None #RF parameters, maxdepth=None means grows untill purity
-                 
+    def __init__(self, C = 1, epsilon = 0.001, limitDensity = True, optimization = "quadratic", kernel ="linear" ,\
+                  ntrees=10, maxdepth=None, #RF parameters, maxdepth=None means grows untill purity
+                 **kwargs
                  ):
         """
         underMult : penalty-multiplier for underestimating density
         overMult : penalty-multiplier for overestimating the density
         """
         self.DENSITYBOUND=limitDensity
-        self.upperBounds = [None, underMult, overMult]
+        #self.upperBounds = [None, underMult, overMult]
+        self._epsilon = epsilon
+        self._C = C
 
-        self.trained = False
-        self.kernel = kernel
-        self.optimization = optimization
+        self._trained = False
+        self._kernel = kernel
+        self._optimization = optimization
         
         #RF parameters:
         self._ntrees=ntrees
@@ -304,118 +295,56 @@ class SVR(object):
 
         return img, dot, mapping, tags
    
-    def fit(self, img, dot, sigma, smooth = True, normalize = False, epsilon =
-            0.01):
+    def fit(self, img, dot, sigma, smooth = True, normalize = False):
 
         newImg, newDot, mapping, tags = \
         self.prepareData(img, dot, sigma, smooth, normalize)
-        self.fitPrepared(newImg[mapping,:], newDot[mapping], tags, epsilon)
+        self.fitPrepared(newImg[mapping,:], newDot[mapping], tags)
 
-    def fitPrepared(self, img, dot, tags, epsilon = 0.01, boxConstraints = []):
+    def fitPrepared(self, img, dot, tags, boxConstraints = []):
         
 
         numFeatures = img.shape[-1]
         numVariables = sum(img.shape[:-1])
-        expandedTags = np.concatenate((np.ones(tags[0]), -1 * np.ones(np.sum(tags[1:])))).astype(np.int)
         if numVariables == 0:
             return False
         success = False
-        tags.append(len(boxConstraints))
+        #tags.append(len(boxConstraints))
 
-        if self.optimization == "rf":
+        if self._optimization == "rf-sklearn":
             from sklearn.ensemble import RandomForestRegressor as RFR
             
-            svr = RFR(n_estimators=self._ntrees,max_depth=self._maxdepth)
-            print "Trining the random forest ", svr
-            svr.fit(img, dot)
+            regressor = RFR(n_estimators=self._ntrees,max_depth=self._maxdepth)
+            print "Trining the random forest ", regressor
+            regressor.fit(img, dot)
 
             #C = np.array([self.upperBounds[tag] for tag in tags], dtype = np.float)
             #svr.fit(img, dot, tags, sample_weight = C) 
             #svr.fit(img, dot) 
             #print svr.predict(img)
             #print svr.dual_coef_
-            self.svr = svr
+            self._regressor = regressor
             success = True
 
-        if self.optimization == "quadratic":
-            B = img.view(np.matrix).reshape((numVariables, numFeatures))
-            
-            #Q = B * B.transpose()
-
-            #debug_trace()
-            #if self.kernel == "rbf":
-            #    from sklearn.kernel_approximation import RBFSampler
-            #    rbf_feature = RBFSampler(random_state = 1)
-            #    B = rbf_feature.fit_transform(B)
-            #Q = kernelize(B, tags, kernel = self.kernel, boxConstraints)
-            #Q,c = kernelize(B, dot, tags, epsilon, self.kernel, boxConstraints)
-            if self.kernel == "linear":
-                #c = dot * (-expandedTags) + epsilon
-                #success, alpha = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
-
-                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
-            #version 1 
-                success, alpha = optimize(tags, Q, c, self.upperBounds)
-            else:
-                Q,c = createKernel(B, dot, tags, epsilon, self.kernel, boxConstraints)
-            #version 1 
-                success, alpha = optimize(tags, Q, c, self.upperBounds)
-            #version 2
-            #success, solution = optimizepossdef(tags, B, c, self.upperBounds, boxConstraints)
-            
-            
-            alpha[np.where(alpha < 1E-5)] = 0
-            #debug_trace()
-
-            indices = np.nonzero(alpha)
-            self.factors = alpha[indices] * expandedTags[indices]
-            self.supportVectors = B[indices[0],:]
-
-            #import sitecustomize
-            #sitecustomize.debug_trace()
-            if self.kernel == "linear":
-                self.w = self.factors * self.supportVectors 
-                residual = dot - np.matrix(img) * self.w.transpose()
-            else:
-                residual = dot - expandedTags * (np.matrix(alpha) * np.matrix(Q[:,:len(expandedTags)])).view(np.ndarray)
-                residual = residual.flatten()
-            self.b = self.findB(alpha[:sum(tags[:-1])], residual, expandedTags[:sum(tags[:-1])], self.upperBounds, epsilon)
-                
-            #self.w, self.b = self.convertAlphaToSol(alpha, tags,
-            #                                   self.upperBounds, dot,
-            #                                   epsilon)
-        #elif self.optimization == "smo":
-        #    smo = SMO(tags, img, dot, self.upperBounds, mapping)
-        #    self.w, self.b,success = smo.mainLoop()
-        elif self.optimization == "svr":
-            from sklearn.svm import SVR as skSVR
-            svr = skSVR(C = 1, epsilon = epsilon, kernel = self.kernel, gamma = 0.1)
-            #svr = skSVR(C = 1, kernel = self.kernel, gamma = 0.05)
-            C = np.array([self.upperBounds[tag] for tag in expandedTags], dtype = np.float)
-            bcValues = []
-            bcFeatures = np.array([],dtype = np.float)
-            bcIndices = []
-            for value, features in boxConstraints:
-                bcValues.append(value)
-                bcFeatures = np.concatenate((bcFeatures, features))
-                bcIndices.append(np.sum(bcIndices) + features.shape[0])
-            bcValues = np.array(bcValues, dtype = np.float)
-            bcIndices = np.array(bcIndices, dtype = np.int)
-            #svr.fit(img, dot, tags, sample_weight = C, bcValues = bcValues, bcFeatures = bcFeatures, bcIndices =
-            #        bcIndices) 
-            svr.fit(img, dot, expandedTags.astype(np.int8), sample_weight = C)
-            #svr.fit(img, dot) 
-            #print svr.predict(img)
-            #print svr.dual_coef_
-            self.svr = svr
-            success = True
-        elif self.optimization == "linearReg":
-            from sklearn.linear_model  import LinearRegression
-            svr = LinearRegression()
-            svr.fit(img, dot)
-            self.svr = svr
+        elif self._optimization == "svr-sklearn":
+            from sklearn.svm import SVR
+            regressor = SVR(kernel = self._kernel, C = self._C)
+            regressor.fit(img, dot)
+            self._regressor = regressor
             success = True
 
+        elif self._optimization == "svrBoxed-gurobi":
+            regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
+            regressor.fit(img, dot, tags, boxConstraints)
+            self._regressor = regressor
+            success = True
+        
+        elif self._optimization == "svr-gurobi":
+            regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
+            regressor.fit(img, dot, boxConstraints)
+            self._regressor = regressor
+            success = True
+            
 
         if success:
             self.trained = True
@@ -424,122 +353,21 @@ class SVR(object):
     def predict(self, oldImage, normalize = False):
         if not self.trained:
             return np.zeros(oldImage.shape[:-1])
-            #raise Exception("No training yet")
         oldShape = oldImage.shape
         image = np.copy(oldImage.reshape((-1, oldImage.shape[-1])))
         if normalize:
             image = sklearn.preprocessing.normalize(image, axis=0)
-        if self.optimization == "svr":
-            res = self.svr.predict(image)
-            #print res
-        elif self.optimization == "rf":
-            res = self.svr.predict(image)
-        elif self.optimization == "linearReg":
-            res = self.svr.predict(image)
-
-        elif self.optimization == "quadratic":
-            if self.kernel == "linear":
-                w,b = self.w, self.b
-                res = np.squeeze(image *
-                             w.transpose() + b)
-                
-
-        #elif self.optimization == "smo":
-        #    w,b = self.w, self.b
-
-            elif self.kernel == "rbf":
-
-                #import sitecustomize
-                #sitecustomize.debug_trace()
-                #from sklearn.kernel_approximation import RBFSampler
-                #rbf_feature = RBFSampler(gamma = 1, random_state = 1)
-                #image = rbf_feature.fit_transform(image)
-                num_features = image.shape[1]
-                metric = "euclidean"
-                transform = lambda x: np.exp(-(x**2) / (num_features * 1000))
-
-                tmp = pairwise.pairwise_distances(image, self.supportVectors, metric = metric, n_jobs = -1)
-                tmp = transform(tmp)
-
-                res = np.matrix(tmp) * np.matrix(self.factors).transpose() + self.b
-
-            elif self.kernel == "gaussian":
-                gamma = 10000
-                #debug_trace()
-                res = spatial.distance.cdist(image, self.supportVectors, metric = "sqeuclidean") 
-                res = -gamma * res
-                res = np.matrix(np.exp(res)) * self.factors[:,None]
-                res = res + b
-
+        if self._optimization == "rf-sklearn":
+            res = self._regressor.predict(image)
+        elif self._optimization == "svr-sklearn":
+            res = self._regressor.predict(image)
+        elif self._optimization == "svrBoxed-gurobi":
+            res = self._regressor.predict(image)
 
         #res = np.zeros(oldShape[:-1])
         res = res.view(np.ndarray)
         res[np.where(res < 0)] = 0
         return res.reshape(oldShape[:-1])
-
-    def findB(self, alpha, residual, tags, limits, epsilon):
-
-        pIndices = np.where(tags == 1)
-        lIndices = np.where(tags == -1)
-
-        lowPBound = np.where(alpha[pIndices] < limits[1])[0]
-        lowP = residual[pIndices][lowPBound] - epsilon
-
-        lowLBound = np.where(alpha[lIndices] > 0)[0]
-        lowL = residual[lIndices][lowLBound] + epsilon
-
-        highPBound = np.where(alpha[pIndices] > 0)[0]
-        highP = residual[pIndices][highPBound] - epsilon
-        
-        highLBound = np.where(alpha[lIndices] < limits[-1])[0]
-        highL = residual[lIndices][highLBound] + epsilon
-
-        low = np.concatenate((lowL, lowP))
-        high = np.concatenate((highL, highP))
-        #print np.max(lowL), np.max(lowP), np.min(highL), np.min(highP)
-        b = (np.min(high) + np.max(low)) / 2
-        
-        return b
-
-    def convertAlphaToSol(self, alpha, x, tags, limits, y, epsilon):
-        x_rel = x
-        y_rel = y
-
-        w = np.matrix(tags * alpha) * x_rel
-
-        pIndices = np.where(tags == 1)
-        lIndices = np.where(tags == -1)
-        #debug_trace()
-        #lowerBound = np.concatenate((np.where(alpha[pIndices] < limits[1])[0],
-        #np.where(alpha[lIndices] > 0)[0]))
-        #upperBound = np.concatenate((
-        #np.where(alpha[pIndices] > 0)[0],
-        #np.where(alpha[lIndices] < limits[-1])[0]))
-        #low = -epsilon*tags[lowerBound] + y_rel[lowerBound] - (x_rel[lowerBound] *
-        #w.transpose()).view(np.ndarray).flatten()
-        residual = y_rel - (x_rel * w.transpose()).view(np.ndarray).flatten()
-
-
-        lowPBound = np.where(alpha[pIndices] < limits[1])[0]
-        lowP = residual[pIndices][lowPBound] - epsilon
-
-        lowLBound = np.where(alpha[lIndices] > 0)[0]
-        lowL = residual[lIndices][lowLBound] + epsilon
-
-        highPBound = np.where(alpha[pIndices] > 0)[0]
-        highP = residual[pIndices][highPBound] - epsilon
-        
-        highLBound = np.where(alpha[lIndices] < limits[-1])[0]
-        highL = residual[lIndices][highLBound] + epsilon
-
-        low = np.concatenate((lowL, lowP))
-        high = np.concatenate((highL, highP))
-        print np.max(lowL), np.max(lowP), np.min(highL), np.min(highP)
-        b = 0 #TODO
-        b = (np.min(high) + np.max(low)) / 2
-        
-        return w, b
-
 
     def writeHDF5(self, cachePath, targetname):
         f = h5py.File(cachePath, 'w')
