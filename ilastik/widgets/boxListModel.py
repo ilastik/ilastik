@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
+from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString
 from labelListModel import *
 import logging
 from PyQt4.uic.Compiler.qtproxies import QtGui
@@ -17,6 +17,7 @@ class BoxLabel(QObject):
     pmapColorChanged = pyqtSignal(QColor)
     nameChanged  = pyqtSignal(object)
     densityChanged = pyqtSignal(object)
+    isFixedChanged = pyqtSignal(bool)
     
     def __init__(self, name, color, density=0.0, parent = None, pmapColor=None):
         QObject.__init__(self, parent)
@@ -27,7 +28,18 @@ class BoxLabel(QObject):
             self._pmapColor = color
         else:
             self._pmapColor = pmapColor
-
+            
+        self._fixvalue=self._density # a fixed box should have this set to a particular value
+        self._isFixed=False
+        
+        self.densityChanged.connect(self._update_fixvalue_display)
+    
+    def _update_fixvalue_display(self):
+        print "IS CFIXED",self._isFixed
+        if not self._isFixed:
+            self.fixvalue=self.density
+            self.changed.emit()
+    
     def brushColor(self):
         return self._brushColor
 
@@ -52,9 +64,6 @@ class BoxLabel(QObject):
     def name(self):
         return self._name
     
-    @property
-    def density(self):
-        return self._density
 
     @name.setter
     def name(self, n):
@@ -64,6 +73,9 @@ class BoxLabel(QObject):
             self._name = n
             self.nameChanged.emit(n)
 
+    @property
+    def density(self):
+        return self._density
     @density.setter
     def density(self, n):
         if self._density != n:
@@ -72,7 +84,29 @@ class BoxLabel(QObject):
             self._density = n
             self.densityChanged.emit(n)
             self.changed.emit()
-
+   
+    @property
+    def fixvalue(self):
+        return self._fixvalue
+    @fixvalue.setter
+    def fixvalue(self, n):
+#         if self._density != n:
+#             logger.debug("BoxLabel '{}' has new density '{}'".format(
+#                 self._density, n))
+            self._fixvalue = n
+            self.changed.emit()
+            
+    @property
+    def isFixed(self):
+        return self._isFixed
+    @isFixed.setter
+    def isFixed(self, bool):
+#         if self._density != n:
+#             logger.debug("BoxLabel '{}' has new density '{}'".format(
+#                 self._density, n))
+            self._isFixed = bool
+            self.isFixedChanged.emit(self._isFixed)
+            self.changed.emit()
     def __repr__(self):
         return "<BoxLabel name={}, color={}>".format(
             self.name, self._brushColor)
@@ -91,8 +125,11 @@ class BoxListModel(LabelListModel):
         Color  = 0
         Name   = 1
         Text   = 2
-        #Fix    = 3
-        Delete = 3
+        Fix    = 3
+        Delete = 4
+        
+        ncols=5
+        
     
     def __init__(self, labels=None, parent=None):
         LabelListModel.__init__(self,labels,parent)
@@ -107,6 +144,9 @@ class BoxListModel(LabelListModel):
         elif index.column() == self.ColumnID.Text:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
         
+        elif  index.column() == self.ColumnID.Fix:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+#           
         elif  index.column() == self.ColumnID.Delete:
             if self._allowRemove:
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -117,7 +157,7 @@ class BoxListModel(LabelListModel):
         LabelListModel.select(self, row)
     
     def columnCount(self,parent):
-        return 4
+        return self.ColumnID.ncols
     
     def removeRow(self, position, parent=QModelIndex()):
         self.boxRemoved.emit(position)
@@ -129,14 +169,30 @@ class BoxListModel(LabelListModel):
             value = self._labels[row]
             return value.density
         
+        if role == Qt.DisplayRole and index.column() == self.ColumnID.Fix:
+            row = index.row()
+            value = self._labels[row]
+            return value.fixvalue
+        
+        
         return LabelListModel.data(self, index, role)
     
     def setData(self, index, value, role=Qt.EditRole):
         
-        if index.colum()==self.CoulmunID.Text:
+        if index.column()==self.ColumnID.Text:
             row=index.row()
             self._labels[row].density=QString("%.1f"%value)
             self.dataChanged.emit(index,index)
+        
+        if index.column()==self.ColumnID.Fix:
+            print "fixing"
+            self._labels[index.row()].isFixed=True
+            value=float(value.toString())
+            row=index.row()
+            self._labels[row].fixvalue=QString("%.1f"%value)
+            self.dataChanged.emit(index,index)
+        
+        
             
         
         return LabelListModel.setData(self, index, value, role=role)    
