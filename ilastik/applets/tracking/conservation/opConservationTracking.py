@@ -102,10 +102,22 @@ class OpConservationTracking(OpTrackingBase):
             median_obj_size = avgSize
         
         print 'median_obj_size = ', median_obj_size
-        print 'fixed appearance and disappearance cost to 500'
+        #print 'fixed appearance and disappearance cost to 500'
         ep_gap = 0.05
         transition_parameter = 5
-            
+        appearance_cost = 500.0
+        disappearance_cost = 500.0
+        border_width = 0.3
+
+        fov = pgmlink.FieldOfView(time_range[0] * 1.0,
+                                      x_range[0] * x_scale,
+                                      y_range[0] * y_scale,
+                                      z_range[0] * z_scale,
+                                      time_range[-1] * 1.0,
+                                      (x_range[1]-1) * x_scale,
+                                      (y_range[1]-1) * y_scale,
+                                      (z_range[1]-1) * z_scale,)
+
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
@@ -118,11 +130,13 @@ class OpConservationTracking(OpTrackingBase):
                                          divWeight,
                                          transWeight,
                                          withDivisions,
-                                         500.0, # disappearance cost
-                                         500.0, # appearance cost
+                                         disappearance_cost, # disappearance cost
+                                         appearance_cost, # appearance cost
                                          withMergerResolution,
                                          ndim,
-                                         transition_parameter)
+                                         transition_parameter,
+                                         border_width,
+                                         fov)
         
         try:
             self.events = tracker(ts)
