@@ -1,5 +1,6 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic, QtGui
+from PyQt4.QtCore import QPoint, QPointF
 
 import h5py
 import os
@@ -8,6 +9,7 @@ import numpy
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
+from volumina.navigationControler import posView2D
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -41,6 +43,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
+        self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
                 
 #        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
 #        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
@@ -536,12 +539,12 @@ class ManualTrackingGui(LayerViewerGui):
                 uniqueLabels.remove(0)
             if len(uniqueLabels) != 1:                
                 self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                self._gotoObject(oid_prev, t-1)
+                self._gotoObject(oid_prev, t-1, True)
                 t_end = t-1
                 break            
             if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
                 self._log('too little overlap at t = ' + str(t))
-                self._gotoObject(oid_prev, t-1)
+                self._gotoObject(oid_prev, t-1, True)
                 t_end = t-1
                 break
              
@@ -607,9 +610,7 @@ class ManualTrackingGui(LayerViewerGui):
             QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find the division label.", QtGui.QMessageBox.Ok)
             return
         
-        coords = numpy.where(li == oid)
-        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
-        self.editor.posModel.time = t
+        self._gotoObject(oid, t)
     
 
     def _onMarkMisdetectionPressed(self):
@@ -890,15 +891,20 @@ class ManualTrackingGui(LayerViewerGui):
             self._log("-> tracking successfully exported")
 
     
-    def _gotoObject(self, oid, t):
-        roi = SubRegion(self.mainOperator.LabelImage, start=[t-1,0,0,0,0], stop=[t,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+    def _gotoObject(self, oid, t, keepZ=False):
+        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         coords = numpy.where(li == oid)
         mid = len(coords[1]) / 2
-        cur_slicing_pos = self.editor.posModel.slicingPos 
-        self.editor.posModel.slicingPos = [coords[1][mid], coords[2][mid], cur_slicing_pos[2]]
+        cur_slicing_pos = self.editor.posModel.slicingPos
+        new_slicing_pos = [coords[1][mid], coords[2][mid], coords[3][mid]]
+         
+        if keepZ:
+            new_slicing_pos[2] = cur_slicing_pos[2]
+        self.editor.posModel.slicingPos = new_slicing_pos
+        self.editor.posModel.cursorPos = new_slicing_pos
         self.editor.posModel.time = t      
-
+        self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
 
     def _onGotoLabel(self):
         t = self._drawer.timeBox.value()
@@ -920,10 +926,7 @@ class ManualTrackingGui(LayerViewerGui):
         if not found:
             QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find track id " + str(tid) + " at time " + str(t) + ".", QtGui.QMessageBox.Ok)
             return
-        
-#        coords = numpy.where(li == oid)
-#        self.editor.posModel.slicingPos = [coords[1][0], coords[2][0], coords[3][0]]        
-#        self.editor.posModel.time = t     
+          
         self._gotoObject(oid, t)
     
     def _onPrintMultipleLabelsInTimestep(self):
@@ -989,3 +992,27 @@ class ManualTrackingGui(LayerViewerGui):
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         print prompt
+
+
+    def _onNextUnlabeledPressed(self):
+        nextCoords = None
+        for t in range(self.mainOperator.UntrackedImage.meta.shape[0]):            
+            roi = SubRegion(self.mainOperator.UntrackedImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.UntrackedImage.meta.shape[1:]))
+            untrackedImage = self.mainOperator.UntrackedImage.get(roi).wait()
+            untrackedCoords = numpy.nonzero(untrackedImage)
+            # FIXME: assumes t,x,y,z,c                        
+            if len(untrackedCoords[1]) > 0:
+                nextCoords = [untrackedCoords[1][0], untrackedCoords[2][0], untrackedCoords[3][0]]
+                nextLabelT = t 
+                break
+        
+        if nextCoords is not None:
+            self.editor.posModel.slicingPos = nextCoords  
+            self.editor.posModel.time = nextLabelT
+            self.editor.posModel.cursorPos = nextCoords
+            self.editor.navCtrl.panSlicingViews(nextCoords, [0,1,2])
+        else:
+            self._log('There are no more untracked objects! :-)')   
+        
+        
+        

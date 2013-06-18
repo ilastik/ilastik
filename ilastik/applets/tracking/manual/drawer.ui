@@ -101,6 +101,13 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="nextUnlabeledButton">
+       <property name="text">
+        <string>Go to Next Unlabeled Object</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
