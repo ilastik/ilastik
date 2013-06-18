@@ -1,3 +1,7 @@
+
+/* Startup screen */
+QWidget#startupPage { background-color:qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:2, fx:0.5, fy:0.5, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255))}
+
 /* Slicing view background */
 ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                       stop: 0 #000000, stop: 1 #ffffff); }
@@ -5,24 +9,34 @@ ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
 QToolBox { border: 1px inset gray }
 QToolBox::tab { border:2px outset lightgray }
 
+/********************************************
+The entries below are now commented out because it is better 
+to defer to the user's system color settings than to hard-code 
+specific colors.  If you want to change a widget's background color,
+try something like this:
+
+MyWidget#myInstanceName {background-color: palette(base)}
+
+See stylesheet PalleteRole documentation for details:
+http://qt-project.org/doc/qt-4.7/stylesheet-reference.html#id-65eeaf35-59de-4644-957f-5a7dafc10439
+*********************************************/
+
 /* Feature Selection Pop-up dialog table */
-FeatureTableWidget {background-color:#f2f2f2;}
+/* FeatureTableWidget {background-color:#f2f2f2;} */
 
 /* Feature Selection Viewer Controls */
-QListWidget#featureListWidget {background-color:#f2f2f2;}
+/* QListWidget#featureListWidget {background-color:#f2f2f2;} */
 
 /* Layer Viewer Controls */
-LayerWidget {background-color:#f2f2f2;}
+/* LayerWidget {background-color:#f2f2f2;} */
 
 /* Data Selection Table */
-QTableWidget#fileInfoTableWidget {background-color:#f2f2f2;}
+/* QTableWidget#fileInfoTableWidget {background-color:#f2f2f2;} */
 
 /* Batch Output table */
-QTableWidget#batchOutputTableWidget {background-color:#f2f2f2;}
+/* QTableWidget#batchOutputTableWidget {background-color:#f2f2f2;} */
 
 /* Label list widget (in the pixel classification drawer) */
-LabelListView {background-color:#f2f2f2;}
-
-QWidget#startupPage { background-color:qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:2, fx:0.5, fy:0.5, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255))}
+/* LabelListView {background-color:#f2f2f2;} */
 
 /* QSplitter::handle { border: 1px outset gray } */
