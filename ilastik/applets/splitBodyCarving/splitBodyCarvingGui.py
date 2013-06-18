@@ -211,8 +211,8 @@ class SplitBodyCarvingGui(CarvingGui):
         
         crosshairSlot = self.topLevelOperatorView.AnnotationCrosshairs
         if crosshairSlot.ready():
-            # 0=Transparent, 1=red
-            colortable = [QColor(0, 0, 0, 0).rgba(), QColor(255, 0, 0).rgba()]
+            # 0=Transparent, 1=pink
+            colortable = [QColor(0, 0, 0, 0).rgba(), QColor(236, 184, 201).rgba()]
             crosshairLayer = ColortableLayer(LazyflowSource(crosshairSlot), colortable, direct=True)
             crosshairLayer.name = "Annotation Points"
             crosshairLayer.visible = True
