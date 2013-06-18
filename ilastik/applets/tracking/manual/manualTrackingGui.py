@@ -341,7 +341,8 @@ class ManualTrackingGui(LayerViewerGui):
         activeTrack = self._getActiveTrack()
         menu = QMenu(self)        
         delLabel = {}
-        delSubtrack = {}
+        delSubtrackToEnd = {}
+        delSubtrackToStart = {}
         trackids = []
         if oid in self.mainOperator.labels[t].keys():
             for l in self.mainOperator.labels[t][oid]:
@@ -351,8 +352,12 @@ class ManualTrackingGui(LayerViewerGui):
                 menu.addAction(text)
                 
                 if activeTrack != self.misdetIdx:
-                    text = "remove label " + str(l) + " from here"
-                    delSubtrack[text] = l
+                    text = "remove label " + str(l) + " from here to end"
+                    delSubtrackToEnd[text] = l
+                    menu.addAction(text)
+                
+                    text = "remove label " + str(l) + " from here to start"
+                    delSubtrackToStart[text] = l
                     menu.addAction(text)
         
         if activeTrack != self.misdetIdx:
@@ -379,17 +384,28 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
             
-        elif selection in delSubtrack.keys():
-            track2remove = delSubtrack[selection]
+        elif selection in delSubtrackToEnd.keys():
+            track2remove = delSubtrackToEnd[selection]
             maxt = self.mainOperator.LabelImage.meta.shape[0]
-            for t in range(t,maxt):
-                for oid in self.mainOperator.labels[t].keys():
-                    if track2remove in self.mainOperator.labels[t][oid]:
-                        self._delLabel(t, oid, track2remove)
+            for time in range(t,maxt):
+                for oid in self.mainOperator.labels[time].keys():
+                    if track2remove in self.mainOperator.labels[time][oid]:
+                        self._delLabel(time, oid, track2remove)
             
             self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
             self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
             self._setDirty(self.mainOperator.Labels, range(t,maxt))
+        
+        elif selection in delSubtrackToStart.keys():
+            track2remove = delSubtrackToStart[selection]
+            for time in range(0,t+1):
+                for oid in self.mainOperator.labels[time].keys():
+                    if track2remove in self.mainOperator.labels[time][oid]:
+                        self._delLabel(time, oid, track2remove)
+            
+            self._setDirty(self.mainOperator.TrackImage, range(0,t+1))
+            self._setDirty(self.mainOperator.UntrackedImage, range(0,t+1))
+            self._setDirty(self.mainOperator.Labels, range(0,t+1))
             
         elif selection == runTracking:
             self.genericThread = GenericThread(self._runSubtracking, position5d, oid)
@@ -451,7 +467,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _delLabel(self, t, oid, track2remove):        
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
-            self._criticalMessage("Error", "Error: Cannot remove label " + str(track2remove) +
+            self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first.")
             return False
@@ -585,7 +601,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
-            self._criticalMessage("Error", "Error: Cannot add a division event for misdetections. Release misdetection button first.")
+            self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
             return
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
