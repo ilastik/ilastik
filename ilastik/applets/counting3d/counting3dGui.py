@@ -52,63 +52,9 @@ from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
 from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
         QStylePainter, QPen
 
-from countingGuiElements import *
+from countingGuiElements import BoxController,BoxInterpreter
 
         
-
-# class ClickReportingInterpreter(QObject):
-#     rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
-#     leftClickReceived = pyqtSignal(object, QPoint)  # ditto
-#     leftClickReleased = pyqtSignal(object, object)
-#     
-#     def __init__(self, navigationInterpreter, positionModel, editor):
-#         QObject.__init__(self)
-#         self.baseInterpret = navigationInterpreter
-#         self.posModel      = positionModel
-#         self.rubberBand =RedRubberBand(QRubberBand.Rectangle, editor)
-#         self.origin = QPoint()
-#         self.originpos = object()
-# 
-#     def start( self ):
-#         self.baseInterpret.start()
-# 
-#     def stop( self ):
-#         self.baseInterpret.stop()
-# 
-#     def eventFilter( self, watched, event ):
-#         if event.type() == QEvent.MouseButtonPress:
-#             pos = [int(i) for i in self.posModel.cursorPos]
-#             pos = [self.posModel.time] + pos + [self.posModel.channel]
-#             print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH%%%%%%%%%%%%%"
-#             if event.button() == Qt.LeftButton:
-#                 self.origin = QPoint(event.pos())
-#                 self.originpos = pos
-#                 self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-#                 self.rubberBand.show()
-#                 gPos = watched.mapToGlobal( event.pos() )
-#                 self.leftClickReceived.emit( pos, gPos )
-#             if event.button() == Qt.RightButton:
-#                 gPos = watched.mapToGlobal( event.pos() )
-#                 self.rightClickReceived.emit( pos, gPos )                
-#         if event.type() == QEvent.MouseMove:
-#             if not self.origin.isNull():
-#                 self.rubberBand.setGeometry(QRect(self.origin,
-#                                                   event.pos()).normalized())
-#         if event.type() == QEvent.MouseButtonRelease:
-#             pos = [int(i) for i in self.posModel.cursorPos]
-#             pos = [self.posModel.time] + pos + [self.posModel.channel]
-#             if event.button() == Qt.LeftButton:
-#                 self.rubberBand.hide()
-#                 self.leftClickReleased.emit( self.originpos,pos )                
-# 
-#     
-# 
-#         # Event is always forwarded to the navigation interpreter.
-#         return self.baseInterpret.eventFilter(watched, event)
-
-
-
-
 
 class Counting3dGui(LabelingGui):
 
@@ -198,7 +144,6 @@ class Counting3dGui(LabelingGui):
         self._viewerControlUi.checkShowSegmentation.setVisible(False)
         
         
-        self._setUpRandomColors()
         
         self._addNewLabel()
         self._addNewLabel()
@@ -851,8 +796,8 @@ class Counting3dGui(LabelingGui):
     def onAddNewBoxButtonClicked(self):
 
         self._changeInteractionMode(Tool.Box)
-        qcolor=self._getNextBoxColor()
-        self.boxController.currentColor=qcolor
+#         qcolor=self._getNextBoxColor()
+#         self.boxController.currentColor=qcolor
         self.labelingDrawerUi.boxListView.resetEmptyMessage("Draw the box on the image")
         
     
@@ -863,8 +808,8 @@ class Counting3dGui(LabelingGui):
         
         newRow = self.labelingDrawerUi.boxListModel.rowCount()-1
         newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
-        qcolor=self._getNextBoxColor()
-        self.boxController.currentColor=qcolor
+#         qcolor=self._getNextBoxColor()
+#         self.boxController.currentColor=qcolor
 
 
         # Call the 'changed' callbacks immediately to initialize any listeners
@@ -987,19 +932,17 @@ class Counting3dGui(LabelingGui):
             pass
         
     
-    def _setUpRandomColors(self):
-        seed=42
-        self._RandomColorGenerator=RandomColorGenerator(seed)
-
-        self._RandomColorGenerator.next() #discard black red and gree
-        self._RandomColorGenerator.next()
-        self._RandomColorGenerator.next()
-    
-    def _getNextBoxColor(self):
-        color=self._RandomColorGenerator.next()
-        print "BLALALLAL ",color
-        return color
-
+#     def _setUpRandomColors(self):
+#         seed=42
+#         self._RandomColorGenerator=RandomColorGenerator(seed)
+# 
+#         self._RandomColorGenerator.next() #discard black red and gree
+#         self._RandomColorGenerator.next()
+#         self._RandomColorGenerator.next()
+#     
+#     def _getNextBoxColor(self):
+#         color=self._RandomColorGenerator.next()
+#         return color
 
 
 
@@ -1011,62 +954,63 @@ class Counting3dGui(LabelingGui):
 
 
 
-import numpy as np
-import colorsys
-
-def _get_colors(num_colors,seed=42):
-    golden_ratio_conjugate = 0.618033988749895
-    np.random.seed(seed)
-    colors=[]
-    hue=np.random.rand()*360
-    for i in np.arange(0., 360., 360. / num_colors):
-        hue += golden_ratio_conjugate
-        lightness = (50 + 1 * 10)/100.
-        saturation = (90 + 1 * 10)/100.
-        
-        colors.append(colorsys.hsv_to_rgb(hue, 0.99,0.99))
-    return colors
-
-
-def _createDefault16ColorColorTable():
-    from PyQt4.QtGui import QColor
-    from PyQt4.QtCore import Qt
-    colors = []
-    # Transparent for the zero label
-    colors.append(QColor(0,0,0,0))
-    # ilastik v0.5 colors
-    colors.append( QColor( Qt.red ) )
-    colors.append( QColor( Qt.green ) )
-    colors.append( QColor( Qt.yellow ) )
-    colors.append( QColor( Qt.blue ) )
-    colors.append( QColor( Qt.magenta ) )
-    colors.append( QColor( Qt.darkYellow ) )
-    colors.append( QColor( Qt.lightGray ) )
-    # Additional colors
-    colors.append( QColor(255, 105, 180) ) #hot pink
-    colors.append( QColor(102, 205, 170) ) #dark aquamarine
-    colors.append( QColor(165,  42,  42) ) #brown
-    colors.append( QColor(0, 0, 128) )     #navy
-    colors.append( QColor(255, 165, 0) )   #orange
-    colors.append( QColor(173, 255,  47) ) #green-yellow
-    colors.append( QColor(128,0, 128) )    #purple
-    colors.append( QColor(240, 230, 140) ) #khaki
-    return colors
-
-def RandomColorGenerator(seed=42):
-    np.random.seed(seed)    
-    default=_createDefault16ColorColorTable()
-    print default
-    i=-1
-    while 1:
-        i+=1
-        if i<16:
-            yield default[i]
-        else:        
-            hue=np.random.rand()*360
-            lightness = (50 + 1 * 10)/100.
-            saturation = (90 + 1 * 10)/100.
-            
-            color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
-            color=[c*255.0 for c in color]
-            yield QColor(*color)        
+# 
+# import numpy as np
+# import colorsys
+# 
+# def _get_colors(num_colors,seed=42):
+#     golden_ratio_conjugate = 0.618033988749895
+#     np.random.seed(seed)
+#     colors=[]
+#     hue=np.random.rand()*360
+#     for i in np.arange(0., 360., 360. / num_colors):
+#         hue += golden_ratio_conjugate
+#         lightness = (50 + 1 * 10)/100.
+#         saturation = (90 + 1 * 10)/100.
+#         
+#         colors.append(colorsys.hsv_to_rgb(hue, 0.99,0.99))
+#     return colors
+# 
+# 
+# def _createDefault16ColorColorTable():
+#     from PyQt4.QtGui import QColor
+#     from PyQt4.QtCore import Qt
+#     colors = []
+#     # Transparent for the zero label
+#     colors.append(QColor(0,0,0,0))
+#     # ilastik v0.5 colors
+#     colors.append( QColor( Qt.red ) )
+#     colors.append( QColor( Qt.green ) )
+#     colors.append( QColor( Qt.yellow ) )
+#     colors.append( QColor( Qt.blue ) )
+#     colors.append( QColor( Qt.magenta ) )
+#     colors.append( QColor( Qt.darkYellow ) )
+#     colors.append( QColor( Qt.lightGray ) )
+#     # Additional colors
+#     colors.append( QColor(255, 105, 180) ) #hot pink
+#     colors.append( QColor(102, 205, 170) ) #dark aquamarine
+#     colors.append( QColor(165,  42,  42) ) #brown
+#     colors.append( QColor(0, 0, 128) )     #navy
+#     colors.append( QColor(255, 165, 0) )   #orange
+#     colors.append( QColor(173, 255,  47) ) #green-yellow
+#     colors.append( QColor(128,0, 128) )    #purple
+#     colors.append( QColor(240, 230, 140) ) #khaki
+#     return colors
+# 
+# def RandomColorGenerator(seed=42):
+#     np.random.seed(seed)    
+#     default=_createDefault16ColorColorTable()
+#     print default
+#     i=-1
+#     while 1:
+#         i+=1
+#         if i<16:
+#             yield default[i]
+#         else:        
+#             hue=np.random.rand()*360
+#             lightness = (50 + 1 * 10)/100.
+#             saturation = (90 + 1 * 10)/100.
+#             
+#             color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
+#             color=[c*255.0 for c in color]
+#             yield QColor(*color)        
