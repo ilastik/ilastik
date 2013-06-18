@@ -207,7 +207,7 @@ class SplitBodyCarvingGui(CarvingGui):
             return None
 
         layers = []
-        carvingLayers = super(SplitBodyCarvingGui, self).setupLayers()        
+        baseCarvingLayers = super(SplitBodyCarvingGui, self).setupLayers()        
         
         crosshairSlot = self.topLevelOperatorView.AnnotationCrosshairs
         if crosshairSlot.ready():
@@ -272,18 +272,26 @@ class SplitBodyCarvingGui(CarvingGui):
             
             # Hide the original carving segmentation.
             # TODO: Remove it from the list altogether?
-            carvingSeg = findLayer( lambda l: l.name == "segmentation", carvingLayers )
+            carvingSeg = findLayer( lambda l: l.name == "segmentation", baseCarvingLayers )
             if carvingSeg is not None:
                 carvingSeg.visible = False
 
-        # Don't show uncertainty.
-        uncertaintyLayer = findLayer(lambda l: l.name == "uncertainty", carvingLayers)
-        if uncertaintyLayer:
-            carvingLayers.remove(uncertaintyLayer)
+        def removeBaseLayer(layerName):
+            layer = findLayer(lambda l: l.name == layerName, baseCarvingLayers)
+            if layer:
+                baseCarvingLayers.remove(layer)
 
+        # Don't show carving layers that aren't relevant to the split-body workflow
+        removeBaseLayer( "uncertainty" )
+        removeBaseLayer( "done seg" )
+        removeBaseLayer( "pmap" )
+        removeBaseLayer( "hints" )
+        removeBaseLayer( "done" )
+        removeBaseLayer( "done" )
+        
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():
-            rawLayer = findLayer(lambda l: l.name == "raw", carvingLayers)
+            rawLayer = findLayer(lambda l: l.name == "raw", baseCarvingLayers)
             assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
             rawLayer.shortcutRegistration = ( "Carving",
                                               "Raw Data to Top",
@@ -291,15 +299,15 @@ class SplitBodyCarvingGui(CarvingGui):
                                                          self.viewerControlWidget(),
                                                          partial(self._toggleRawDataPosition, rawLayer) ),
                                              rawLayer )
-        layers += carvingLayers
+        layers += baseCarvingLayers
         return layers
 
     def _toggleRawDataPosition(self, rawLayer):
         index = self.layerstack.layerIndex(rawLayer)
         self.layerstack.selectRow( index )
-        if index <= 1:
+        if index <= 2:
             self.layerstack.moveSelectedToBottom()
         else:
-            # Move it almost to the top (under the labels)
-            self.layerstack.moveSelectedToRow(1)
+            # Move it almost to the top (under the seeds and the annotation crosshairs)
+            self.layerstack.moveSelectedToRow(2)
             
