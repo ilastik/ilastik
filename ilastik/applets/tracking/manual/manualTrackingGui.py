@@ -1,6 +1,6 @@
 from PyQt4.QtGui import *
-from PyQt4 import uic, QtGui
-from PyQt4.QtCore import QPoint, QPointF
+from PyQt4 import uic, QtGui, QtCore
+from PyQt4.QtCore import QThread
 
 import h5py
 import os
@@ -9,7 +9,6 @@ import numpy
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
-from volumina.navigationControler import posView2D
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -18,6 +17,20 @@ from ilastik.applets.layerViewer import LayerViewerGui
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 
+class GenericThread(QThread):
+    def __init__(self, function, *args, **kwargs):
+        QThread.__init__(self)
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        
+    def __del__(self):
+        self.wait()
+    
+    def run(self):
+        self.function(*self.args, **self.kwargs)
+        return
+    
 
 class ManualTrackingGui(LayerViewerGui):
 
@@ -84,7 +97,9 @@ class ManualTrackingGui(LayerViewerGui):
             if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
                 self._drawer.windowZBox.setValue(1)
                 self._drawer.windowZBox.setEnabled(False)
-            
+        
+        self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
+        
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -248,7 +263,7 @@ class ManualTrackingGui(LayerViewerGui):
                 self.editor.posModel.time = self.editor.posModel.time + 1                
             elif len(self.divs) > 0:
                 if position5d[0] != self.divs[0][0] + 1:
-                    QtGui.QMessageBox.critical(self, "Error", "Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1), QtGui.QMessageBox.Ok)
+                    self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
                     return
                 if item not in self.divs:
                     self.divs.append(item)
@@ -256,7 +271,7 @@ class ManualTrackingGui(LayerViewerGui):
             if len(self.divs) == 3:                
                 activeTrack = self._getActiveTrack()
                 if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
-                    QtGui.QMessageBox.critical(self, "Error", "Error: The label of the parent cell must match the active track label.", QtGui.QMessageBox.Ok)
+                    self._criticalMessage("Error", "Error: The label of the parent cell must match the active track label.")
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
@@ -296,7 +311,7 @@ class ManualTrackingGui(LayerViewerGui):
                     
             activeTrack = self.mainOperator.ActiveTrack
             if not activeTrack.ready() or activeTrack.value == 0:
-                QtGui.QMessageBox.critical(self, "Error", "Error: Please start a new track first.", QtGui.QMessageBox.Ok)            
+                self._criticalMessage("Error: Please start a new track first.")            
                 return        
             activeTrack = activeTrack.value
             
@@ -377,7 +392,8 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, range(t,maxt))
             
         elif selection == runTracking:
-            self._runSubtracking(position5d, oid)
+            self.genericThread = GenericThread(self._runSubtracking, position5d, oid)
+            self.genericThread.start()
         
         elif selection in delDivision.keys():
             self._delDivisionEvent(delDivision[selection])
@@ -435,9 +451,9 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _delLabel(self, t, oid, track2remove):        
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot remove label " + str(track2remove) +
+            self._criticalMessage("Error", "Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
-                                       " Remove division event first.", QtGui.QMessageBox.Ok)
+                                       " Remove division event first.")
             return False
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
@@ -483,16 +499,16 @@ class ManualTrackingGui(LayerViewerGui):
             self.mainOperator.labels[t][oid] = set()
         if activeTrack == self.misdetIdx:
             if len(self.mainOperator.labels[t][oid]) > 0:
-                QtGui.QMessageBox.critical(self, "Error", "Error: This object is already marked as part of a track, cannot mark it as a misdetection.", QtGui.QMessageBox.Ok)            
+                self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")            
                 return -1
         else:
             for tracklist in self.mainOperator.labels[t].values():
-                if activeTrack in tracklist:                
-                    QtGui.QMessageBox.critical(self, "Error", "Error: There is already an object with this track id in this time step", QtGui.QMessageBox.Ok)            
+                if activeTrack in tracklist:                    
+                    self._criticalMessage("Error: There is already an object with this track id in this time step")            
                     return -1
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
-            QtGui.QMessageBox.critical(self, "Error", "Error: This object is already marked as a misdetection. Cannot mark it as part of a track.", QtGui.QMessageBox.Ok)            
+            self._criticalMessage("Error: This object is already marked as a misdetection. Cannot mark it as part of a track.")            
             return -1
         
         self.mainOperator.labels[t][oid].add(activeTrack)  
@@ -506,7 +522,7 @@ class ManualTrackingGui(LayerViewerGui):
         t_start = position5d[0]
         activeTrack = self._getActiveTrack()
         if activeTrack == 0:
-            QtGui.QMessageBox.critical(self, "Error", "Error: There is no active track.", QtGui.QMessageBox.Ok)
+            self._criticalMessage("Error: There is no active track.")
             return 
         
         res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
@@ -550,11 +566,13 @@ class ManualTrackingGui(LayerViewerGui):
              
             res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
             if res == -1:
+                self._gotoObject(uniqueLabels[0], t, False)
                 return
             
             oid_prev = uniqueLabels[0]
             li_prev = li_cur
     
+        
         if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
             self._log('tracking reached last time step.')
             
@@ -567,7 +585,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot add a division event for misdetections. Release misdetection button first.", QtGui.QMessageBox.Ok)
+            self._criticalMessage("Error", "Error: Cannot add a division event for misdetections. Release misdetection button first.")
             return
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
@@ -607,7 +625,7 @@ class ManualTrackingGui(LayerViewerGui):
                 break
         
         if not found:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find the division label.", QtGui.QMessageBox.Ok)
+            self._criticalMessage("Error: Cannot find the division label.")
             return
         
         self._gotoObject(oid, t)
@@ -911,7 +929,7 @@ class ManualTrackingGui(LayerViewerGui):
         tid = self._drawer.tidBox.value()
         
         if t < 0 or t >= self.mainOperator.LabelImage.meta.shape[0]:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot access time step "  + str(t) + ".", QtGui.QMessageBox.Ok)
+            self._criticalMessage("Error: Cannot access time step "  + str(t) + ".")
             return
         
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
@@ -924,7 +942,7 @@ class ManualTrackingGui(LayerViewerGui):
                 break
         
         if not found:
-            QtGui.QMessageBox.critical(self, "Error", "Error: Cannot find track id " + str(tid) + " at time " + str(t) + ".", QtGui.QMessageBox.Ok)
+            self._criticalMessage("Error: Cannot find track id " + str(tid) + " at time " + str(t) + ".")
             return
           
         self._gotoObject(oid, t)
@@ -991,6 +1009,7 @@ class ManualTrackingGui(LayerViewerGui):
     
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
+        self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
         print prompt
 
 
@@ -1015,4 +1034,9 @@ class ManualTrackingGui(LayerViewerGui):
             self._log('There are no more untracked objects! :-)')   
         
         
-        
+    def _criticalMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
+
+
+    def postCriticalMessage(self, prompt):
+        QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
