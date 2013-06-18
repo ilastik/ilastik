@@ -37,7 +37,6 @@ class BoxLabel(QObject):
         self.densityChanged.connect(self._update_fixvalue_display)
     
     def _update_fixvalue_display(self):
-        print "IS CFIXED",self._isFixed
         if not self._isFixed:
             self.fixvalue=self.density
             self.changed.emit()
@@ -187,16 +186,11 @@ class BoxListModel(LabelListModel):
 #             self.dataChanged.emit(index,index)
         
         if index.column()==self.ColumnID.Fix:
-            print "fixing"
             self._labels[index.row()].isFixed=True
             value=float(value.toString())
             row=index.row()
             self._labels[row].fixvalue=QString("%.1f"%value)
-            self.dataChanged.emit(index,index)
-        
-        
-            
-        
+            self.dataChanged.emit(index,index)        
         return LabelListModel.setData(self, index, value, role=role)    
 #     def selectedRow(self):
 #         return LabelListModel.selectedRow(self)
