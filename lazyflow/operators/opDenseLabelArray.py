@@ -54,9 +54,12 @@ class OpDenseLabelArray(Operator):
             # This is efficient if the labels are very close to eachother,
             #  but slow if the labels are far apart.
             nonzero_coords = numpy.nonzero(self._cache)
-            bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
-            bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
-            destination[0] = [roiToSlice( bounding_box_start, bounding_box_stop )]
+            if len(nonzero_coords) > 0 and len(nonzero_coords[0]) > 0:
+                bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
+                bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
+                destination[0] = [roiToSlice( bounding_box_start, bounding_box_stop )]
+            else:
+                destination[0] = []
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
         return destination
