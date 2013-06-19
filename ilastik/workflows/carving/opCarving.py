@@ -142,6 +142,8 @@ class OpCarving(Operator):
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
         """
+        if self._mst is None:
+            return
         with Timer() as timer:
             self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
             self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
