@@ -59,6 +59,13 @@ class Workflow( Operator ):
         """
         raise NotImplementedError
     
+    def onProjectLoaded(self):
+        """
+        Called by the project manager after the project is loaded (deserialized).
+        Extra workflow initialization be done here.
+        """
+        pass
+    
     ##################
     # Public methods #
     ##################

@@ -350,6 +350,9 @@ class ProjectManager(object):
 
                     item.ignoreDirty = False
             
+            # Call the workflow's custom post-load initialization (if any)
+            self.workflow.onProjectLoaded()
+
         except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()
