@@ -255,7 +255,6 @@ class OpCarving(Operator):
         """
         self._clearLabels()
 
-        self._mst.seeds[:] = 0
         lut_segmentation = self._mst.segmentation.lut[:]
         lut_segmentation[:] = 0
         lut_seeds = self._mst.seeds.lut[:]
@@ -289,7 +288,6 @@ class OpCarving(Operator):
         bgVoxels = self._mst.object_seeds_bg_voxels[name]
 
         #user-drawn seeds:
-        self._mst.seeds[:] = 0
         self._mst.seeds[fgVoxels] = 2
         self._mst.seeds[bgVoxels] = 1
 
@@ -374,7 +372,6 @@ class OpCarving(Operator):
         lut_seeds = self._mst.seeds.lut[:]
         # clean seeds
         lut_seeds[:] = 0
-        self._mst.seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -460,7 +457,9 @@ class OpCarving(Operator):
         self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
 
         # reset seeds
-        self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+        #self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+        # More efficient to set the lut directly:
+        self._mst.seeds.lut[:] = 0
 
         #numpy.asarray([BackgroundPriority.value()], dtype=numpy.float32)
         #numpy.asarray([NoBiasBelow.value()], dtype=numpy.int32)
