@@ -9,8 +9,8 @@ class BlockwiseObjectClassificationWorkflow(ObjectClassificationWorkflowBinary):
     """
     This workflow adds an extra applet to the non-blockwise object classification workflow.
     """
-    def __init__( self, *args, **kwargs ):
-        super( self.__class__, self ).__init__( *args, **kwargs )
+    def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
+        super( BlockwiseObjectClassificationWorkflow, self ).__init__( headless, workflow_cmdline_args, *args, **kwargs )
 
         ### INTERACTIVE ###
 
