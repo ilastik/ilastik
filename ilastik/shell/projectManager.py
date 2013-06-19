@@ -8,6 +8,7 @@ import traceback
 
 import ilastik
 from ilastik import isVersionCompatible
+from ilastik.workflow import getWorkflowFromName
 
 class ProjectManager(object):
     """
@@ -53,7 +54,7 @@ class ProjectManager(object):
     #########################    
     
     @classmethod
-    def createBlankProjectFile(cls, projectFilePath, workflow_class, workflow_cmdline_args):
+    def createBlankProjectFile(cls, projectFilePath, workflow_class=None, workflow_cmdline_args=None):
         """
         Class method.
         Create a new ilp file at the given path and initialize it with a project version.
@@ -62,7 +63,8 @@ class ProjectManager(object):
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
-        h5File.create_dataset("workflowName", data=workflow_class.__name__)
+        if workflow_class is not None:
+            h5File.create_dataset("workflowName", data=workflow_class.__name__)
         if workflow_cmdline_args is not None and len(workflow_cmdline_args) > 0:
             h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args)
         
@@ -103,7 +105,13 @@ class ProjectManager(object):
             # Must use _importProject() for old project files.
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
-        return (hdf5File, readOnly)
+        workflow_class = None
+        if "workflowName" in hdf5File.keys():
+            #if workflow is found in file, take it
+            workflowName = hdf5File["workflowName"].value
+            workflow_class = getWorkflowFromName(workflowName)
+        
+        return (hdf5File, workflow_class, readOnly)
 
     #########################
     ## Public methods
@@ -278,7 +286,7 @@ class ProjectManager(object):
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
             msg += 'One common cause for this is that the new location is on a different disk.\n'
-            msg += 'Please try "Take Snapshot" instead.'
+            msg += 'Please try "Save Copy As" instead.'
             msg += '(Error was: ' + str(err) + ')'
             logger.error(msg)
             raise ProjectManager.SaveError(msg)
@@ -341,6 +349,7 @@ class ProjectManager(object):
                         item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
 
                     item.ignoreDirty = False
+            
         except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()

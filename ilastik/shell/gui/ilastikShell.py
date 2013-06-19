@@ -42,6 +42,7 @@ from iconMgr import ilastikIcons
 from ilastik.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
+from ilastik.shell.shellAbc import ShellABC
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -256,6 +257,10 @@ class IlastikShell( QMainWindow ):
             return []
         else:
             return self.projectManager.workflow.applets
+    
+    @property
+    def workflow(self):
+        return self.projectManager and self.projectManager.workflow
     
     def loadWorkflow(self, workflow_class):
         self.onNewProjectActionTriggered(workflow_class)
@@ -814,7 +819,7 @@ class IlastikShell( QMainWindow ):
             
     def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._new_workflow_cmdline_args)
-        self._loadProject(newProjectFile, newProjectFilePath, False)
+        self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -886,7 +891,7 @@ class IlastikShell( QMainWindow ):
 
     def importProject(self, originalPath, newProjectFilePath):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-        self._loadProject(newProjectFile, newProjectFilePath, readOnly=False, importFromPath=originalPath)
+        self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=originalPath)
         
     def getProjectPathToOpen(self, defaultDirectory):
         """
@@ -925,7 +930,7 @@ class IlastikShell( QMainWindow ):
     
     def openProjectFile(self, projectFilePath):
         try:
-            hdf5File, readOnly = ProjectManager.openProjectFile(projectFilePath)
+            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath)
         except ProjectManager.ProjectVersionError,e:
             QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -937,21 +942,17 @@ class IlastikShell( QMainWindow ):
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
             self.statusBar.showMessage("Loading project %s ..." % projectFilePath)
-            self._loadProject(hdf5File, projectFilePath, readOnly)
+            self._loadProject(hdf5File, projectFilePath, workflow_class, readOnly)
             QApplication.restoreOverrideCursor()
             self.statusBar.clearMessage()
     
-    def _loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
+    def _loadProject(self, hdf5File, projectFilePath, workflow_class, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
         Populate the shell with widgets from all the applets in the new workflow.
         """
 
-        if "workflowName" in hdf5File.keys():
-            #if workflow is found in file, take it
-            workflowName = hdf5File["workflowName"].value
-            workflow_class = getWorkflowFromName(workflowName)
-        else:
+        if workflow_class is None:
             #ask the user to name a workflow
             workflow_class = self.getWorkflow()
         if workflow_class is None:
@@ -1237,3 +1238,5 @@ class IlastikShell( QMainWindow ):
                     drawerTitleItem.setFlags( Qt.ItemIsEnabled )
                 else:
                     drawerTitleItem.setFlags( Qt.NoItemFlags )'''
+
+assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"
