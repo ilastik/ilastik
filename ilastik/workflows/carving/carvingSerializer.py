@@ -1,6 +1,8 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
 import numpy
 
+from lazyflow.roi import roiFromShape, roiToSlice
+
 class CarvingSerializer( AppletSerializer ):
     def __init__(self, carvingTopLevelOperator, *args, **kwargs):
         super(CarvingSerializer, self).__init__(*args, **kwargs)
@@ -102,20 +104,41 @@ class CarvingSerializer( AppletSerializer ):
 
             shape = opCarving.opLabelArray.Output.meta.shape
             dtype = opCarving.opLabelArray.Output.meta.dtype
-            z = numpy.zeros(shape, dtype=dtype)
 
+            fg_voxels = None
             if "fg_voxels" in topGroup.keys():
                 fg_voxels = topGroup["fg_voxels"]
                 fg_voxels = [fg_voxels[:,k] for k in range(3)]
-                z[0][fg_voxels] = 2
 
+            bg_voxels = None
             if "bg_voxels" in topGroup.keys():
                 bg_voxels = topGroup["bg_voxels"]
                 bg_voxels = [bg_voxels[:,k] for k in range(3)]
-                z[0][bg_voxels] = 1
 
-            opCarving.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
-            print "restored seeds"
+
+            # Start with inverse roi
+            total_roi = roiFromShape(opCarving.opLabelArray.Output.meta.shape)
+            bounding_box_roi = [ total_roi[1], total_roi[0] ]
+            if fg_voxels is not None and len(fg_voxels[0]) > 0:
+                fg_bounding_box_start = numpy.array( map( numpy.min, fg_voxels ) )
+                fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fg_voxels ) )
+                bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], fg_bounding_box_start )
+                bounding_box_roi[1] = numpy.maximum( bounding_box_roi[0], fg_bounding_box_stop )
+
+            if bg_voxels is not None and len(bg_voxels[0]) > 0:
+                bg_bounding_box_start = numpy.array( map( numpy.min, bg_voxels ) )
+                bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bg_voxels ) )
+                bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], bg_bounding_box_start )
+                bounding_box_roi[1] = numpy.maximum( bounding_box_roi[0], bg_bounding_box_stop )
+            
+            if (bounding_box_roi[1] > bounding_box_roi[0]).all():
+                z = numpy.zeros(bounding_box_roi[1] - bounding_box_roi[0], dtype=dtype)
+                z[fg_voxels] = 2
+                z[bg_voxels] = 1
+
+                bounding_box_slicing = roiToSlice( bounding_box_roi[0], bounding_box_roi[1] )
+                self.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
+                print "restored seeds"
                 
             opCarving._buildDone()
            

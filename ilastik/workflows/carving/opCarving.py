@@ -10,12 +10,14 @@ from cylemon.segmentation import MSTSegmentor
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
+from lazyflow.roi import roiToSlice
 
 from cylemon.segmentation import MSTSegmentor
 
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
 
+from ilastik.utility.timer import Timer
 
 class OpCarving(Operator):
     name = "Carving"
@@ -86,7 +88,7 @@ class OpCarving(Operator):
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         self.opLabelArray = OpDenseLabelArray( parent=self )
-        self.opLabelArray.EraserLabelValue.setValue( 100 )
+        #self.opLabelArray.EraserLabelValue.setValue( 100 )
         self.opLabelArray.MetaInput.connect( self.InputData )
         
         self._hintOverlayFile = hintOverlayFile
@@ -140,16 +142,17 @@ class OpCarving(Operator):
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
         """
-        self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-        self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-        print "building done"
-        for name, objectSupervoxels in self._mst.object_lut.iteritems():
-            if name == self._currObjectName:
-                continue
-            self._done_lut[objectSupervoxels] += 1
-            assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
-            self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        print ""
+        with Timer() as timer:
+            self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+            self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+            print "building 'done' luts"
+            for name, objectSupervoxels in self._mst.object_lut.iteritems():
+                if name == self._currObjectName:
+                    continue
+                self._done_lut[objectSupervoxels] += 1
+                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
+                self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
+        print "building the 'done' luts took {} seconds".format( timer.seconds() )
     
     def dataIsStorable(self):
         lut_seeds = self._mst.seeds.lut[:]
@@ -312,14 +315,38 @@ class OpCarving(Operator):
         self._clearLabels()
         
         fgVoxels, bgVoxels = self.loadObject_impl(name)
+
+        fg_bounding_box_start = numpy.array( map( numpy.min, fgVoxels ) )
+        fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fgVoxels ) )
+
+        bg_bounding_box_start = numpy.array( map( numpy.min, bgVoxels ) )
+        bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bgVoxels ) )
+
+        bounding_box_start = numpy.minimum( fg_bounding_box_start, bg_bounding_box_start )
+        bounding_box_stop = numpy.maximum( fg_bounding_box_stop, bg_bounding_box_stop )
         
-        shape = self.opLabelArray.Output.meta.shape
+        bounding_box_slicing = roiToSlice( bounding_box_start, bounding_box_stop )
+        
+        bounding_box_shape = tuple(bounding_box_stop - bounding_box_start)
         dtype = self.opLabelArray.Output.meta.dtype
 
-        z = numpy.zeros(shape, dtype=dtype)
-        z[0][fgVoxels] = 2
-        z[0][bgVoxels] = 1
-        self.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
+        # Convert coordinates to be relative to bounding box
+        fgVoxels = numpy.array(fgVoxels)
+        fgVoxels = fgVoxels - numpy.array( [bounding_box_start] ).transpose()
+        fgVoxels = list(fgVoxels)
+
+        bgVoxels = numpy.array(bgVoxels)
+        bgVoxels = bgVoxels - numpy.array( [bounding_box_start] ).transpose()
+        bgVoxels = list(bgVoxels)
+
+        with Timer() as timer:
+            print "Loading seeds...."
+            z = numpy.zeros(bounding_box_shape, dtype=dtype)
+            print "Allocating seed array took {} seconds".format( timer.seconds() )
+            z[fgVoxels] = 2
+            z[bgVoxels] = 1
+            self.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
+        print "Loading seeds took a total of {} seconds".format( timer.seconds() )
         
         #restore the correct parameter values 
         mst = self._mst
@@ -562,17 +589,24 @@ class OpCarving(Operator):
 
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
-        if slot == self.WriteSeeds: 
-            self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+        if slot == self.WriteSeeds:
+            with Timer() as timer:
+                print "Writing seeds to label array"
+                self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+                print "Writing seeds to label array took {} seconds".format( timer.seconds() )
             
             assert self._mst is not None
 
-            value[:] = numpy.where(value == 100, 255, value[:])
+            # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
+            value[:] = numpy.where(value == 100, 255, value)
 
-            if hasattr(key, '__len__'):
-                self._mst.seeds[key[1:4]] = value
-            else:
-                self._mst.seeds[key] = value
+            with Timer() as timer:
+                print "Writing seeds to MST"
+                if hasattr(key, '__len__'):
+                    self._mst.seeds[key[1:4]] = value
+                else:
+                    self._mst.seeds[key] = value
+            print "Writing seeds to MST took {} seconds".format( timer.seconds() )
 
         else:
             raise RuntimeError("unknown slots")
