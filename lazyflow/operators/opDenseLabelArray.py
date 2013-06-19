@@ -50,9 +50,13 @@ class OpDenseLabelArray(Operator):
             # FIXME: Don't hard-code this
             destination[0] = 2
         elif slot == self.NonzeroBlocks:
-            # Only one block.  Return the roi for the entire array.
-            volume_roi = roiFromShape(self.Output.meta.shape)
-            destination[0] = [roiToSlice(*volume_roi)]
+            # Only one block, the bounding box for all non-zero values.
+            # This is efficient if the labels are very close to eachother,
+            #  but slow if the labels are far apart.
+            nonzero_coords = numpy.nonzero(self._cache)
+            bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
+            bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
+            destination[0] = [roiToSlice( bounding_box_start, bounding_box_stop )]
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
         return destination
