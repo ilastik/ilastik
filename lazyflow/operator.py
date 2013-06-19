@@ -485,6 +485,11 @@ class Operator(object):
 
         """
         for slot in self.outputs.values():
+            # This assert is here to force subclasses to override this method if the situation requires it.
+            # If you have any output slots that aren't directly connected to an internal operator,
+            #  you probably need to override this method.
+            # If your subclass provides an implementation of this method, there 
+            #  is no need for it to call super().setupOutputs()
             assert slot.partner is not None, \
                 "Output slot '{}' of operator '{}' has no upstream partner, " \
                 "so you must override setupOutputs()".format( slot.name, self.name )
