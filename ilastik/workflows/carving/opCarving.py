@@ -477,9 +477,12 @@ class OpCarving(Operator):
 
 
     def get_label_voxels(self):
+        #the voxel coordinates of fg and bg labels
+        if not self.opLabelArray.NonzeroBlocks.ready():
+            return (None,None)
+
         nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
         
-        #the voxel coordinates of fg and bg labels
         coors1 = [[], [], []]
         coors2 = [[], [], []]
         for sl in nonzeroSlicings:

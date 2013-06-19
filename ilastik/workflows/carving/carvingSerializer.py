@@ -57,6 +57,8 @@ class CarvingSerializer( AppletSerializer ):
             deleteIfPresent(topGroup, "bg_voxels")
 
             fg_voxels, bg_voxels = opCarving.get_label_voxels()
+            if fg_voxels is None:
+                return
 
             if fg_voxels[0].shape[0] > 0:
                 v = [fg_voxels[i][:,numpy.newaxis] for i in range(3)]
