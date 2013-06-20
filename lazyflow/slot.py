@@ -676,7 +676,7 @@ class Slot(object):
         for inputSlot in slot.getRealOperator().inputs.values():
             if not inputSlot._optional and not inputSlot.ready():
                 return inputSlot
-        assert False, "Couldn't find an upstream problem slot."
+        return "Couldn't find an upstream problem slot."
 
     class RequestExecutionWrapper(object):
         def __init__(self, slot, roi):
