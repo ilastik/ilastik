@@ -1,11 +1,12 @@
+import uuid
+import vigra
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators import OpMetadataInjector
 
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.operators import Op5ifyer
-
-import uuid
 
 class DatasetInfo(object):
     """
@@ -15,7 +16,7 @@ class DatasetInfo(object):
         FileSystem = 0
         ProjectInternal = 1
         
-    def __init__(self):
+    def __init__(self, jsonNamespace=None):
         Location = DatasetInfo.Location
         self.location = Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
@@ -25,6 +26,9 @@ class DatasetInfo(object):
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
+
+        if jsonNamespace is not None:
+            self.updateFromJson( jsonNamespace )
 
     @property
     def filePath(self):
@@ -39,6 +43,28 @@ class DatasetInfo(object):
     @property
     def datasetId(self):
         return self._datasetId
+    
+    DatasetInfoSchema = \
+    {
+        "_schema_name" : "dataset-info",
+        "_schema_version" : 0.1,
+        
+        "filepath" : str,
+        "drange" : str,
+        "nickname" : str,
+        "axistags" : str
+    }
+
+    def updateFromJson(self, namespace):
+        """
+        Given a namespace object returned by a JsonConfigParser,
+        update the corresponding non-None fields of this DatasetInfo.
+        """
+        self.filePath = namespace.filepath or self.filePath        
+        self.drange = namespace.drange or self.drange
+        self.nickname = namespace.nickname or self.nickname
+        if namespace.axistags is not None:
+            self.axistags = vigra.defaultAxistags(namespace.axistags)
 
 class OpDataSelection(Operator):
     """
