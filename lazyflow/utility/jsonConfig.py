@@ -57,6 +57,9 @@ class Namespace(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __str__(self):
+        return "jsonConfig.Namespace: " + str( self._items.items() )
+
 class AutoEval(object):
     """
     Callable that serves as a pseudo-type.
