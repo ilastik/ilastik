@@ -95,6 +95,7 @@ def get_default_config(prefix=""):
             "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
             "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
             "ilastik.shell":                                            { "level":"INFO" },
+            "ilastik.workflows":                                        { "level":"INFO" },
             "ilastik.widgets":                                          { "level":"INFO" },
             "workflows":                                                { "level":"INFO" },
             "volumina":                                                 { "level":"INFO" },
