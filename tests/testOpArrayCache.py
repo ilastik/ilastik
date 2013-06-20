@@ -124,7 +124,6 @@ class TestOpArrayCache(object):
 
         expectedAccessCount = 0
         assert opProvider.accessCount == expectedAccessCount
-
         # Request (no access to provider because fixAtCurrent)
         slicing = make_key[:, 0:50, 15:45, 0:1, :]
         data = opCache.Output( slicing ).wait()
@@ -133,6 +132,7 @@ class TestOpArrayCache(object):
         # We haven't accessed this data yet,
         # but fixAtCurrent is True so the cache gives us zeros
         assert (data == 0).all()
+
 
         opCache.fixAtCurrent.setValue(False)
 
@@ -207,6 +207,31 @@ class TestOpArrayCache(object):
         expectedAccessCount += 1
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount
+
+    def testUncachedBehaviour(self):
+        opCache = self.opCache
+        opProvider = self.opProvider        
+
+        opCache.fixAtCurrent.setValue(True)
+        
+        # Track dirty notifications
+        gotDirtyKeys = []
+        def handleDirty(slot, roi):
+            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
+        opCache.Output.notifyDirty(handleDirty)
+        
+        dirtykey = make_key[0:1, 15:25, 20:30, 0:3, 0:1]
+        self.data[dirtykey] = 0.12345
+        opProvider.Input.setDirty(dirtykey)
+
+        # Dirtiness not propagated due to fixAtCurrent
+        assert len(gotDirtyKeys) == 0
+
+        # Unfreeze
+        opCache.fixAtCurrent.setValue(False)
+
+        # Output should be dirty from previous change
+        assert len(gotDirtyKeys) == 1
 
 class TestOpArrayCacheWithObjectDtype(object):
     """
