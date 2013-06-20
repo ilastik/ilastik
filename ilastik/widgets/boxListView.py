@@ -13,7 +13,7 @@ from listView import ListView
 class BoxDialog(QDialog):
     #FIXME:
     #This is an hack to the functionality of the old ColorDialog
-    
+
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
         self._color = None
@@ -30,6 +30,7 @@ class BoxDialog(QDialog):
         self.ui.spinBoxWidth.valueChanged.connect(self.setLineWidth)
         self.ui.spinFontSize.valueChanged.connect(self.setFontSize)
         
+        self._modelIndex=None
         
     def setColor(self, c):
         self._color = c
@@ -69,6 +70,13 @@ class BoxDialog(QDialog):
     def getFontColor(self):
         return self._fontcolor
     
+    def getModelIndex(self):
+        return self._modelIndex
+    
+    def setModelIndex(self,index):
+        self._modelIndex=index
+    
+
     
 
 class BoxListView(ListView):
@@ -78,7 +86,8 @@ class BoxListView(ListView):
         
         self.emptyMessage = QLabel("no boxes defined yet")
         self._colorDialog = BoxDialog()
-    
+        self._colorDialog.accepted.connect(self.onDialogAccept)
+        
     def resetEmptyMessage(self,pystring):
         self.emptyMessage.setText(QString(pystring))
         
@@ -92,17 +101,19 @@ class BoxListView(ListView):
             self._colorDialog.setFontColor(self._table.model()[modelIndex.row()].fontcolor)
             self._colorDialog.setLineWidth(self._table.model()[modelIndex.row()].linewidth)
             self._colorDialog.setFontSize(self._table.model()[modelIndex.row()].fontsize)
-            
+            self._colorDialog.setModelIndex(modelIndex)
             
             self._colorDialog.exec_()
-            
-            prop=(self._colorDialog.getColor(),self._colorDialog.getFontSize(),
+    
+    def onDialogAccept(self):
+        prop=(self._colorDialog.getColor(),self._colorDialog.getFontSize(),
                                                      self._colorDialog.getLineWidth(),
                                                      self._colorDialog.getFontColor())
-            names=["color","fontsize","linewidth",'fontcolor']
-            d=dict(zip(names,prop))
+        names=["color","fontsize","linewidth",'fontcolor']
+        d=dict(zip(names,prop))
             
-            self._table.model().setData(modelIndex,d)
+        modelIndex=self._colorDialog.getModelIndex()
+        self._table.model().setData(modelIndex,d)
             
             
     def tableViewCellClicked(self, modelIndex):
