@@ -304,6 +304,7 @@ class ManualTrackingGui(LayerViewerGui):
                 self._drawer.delTrack.setEnabled(True)
                 self._drawer.newTrack.setEnabled(True)
                 self._drawer.markMisdetection.setEnabled(True)
+                self._drawer.nextUnlabeledButton.setEnabled(True)
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
@@ -470,6 +471,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first.")
+            self._gotoObject(oid, t)
             return False
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
@@ -612,11 +614,13 @@ class ManualTrackingGui(LayerViewerGui):
             self._drawer.delTrack.setEnabled(False)
             self._drawer.newTrack.setEnabled(False)
             self._drawer.markMisdetection.setEnabled(False)
+            self._drawer.nextUnlabeledButton.setEnabled(False)
         else:
             self._drawer.activeTrackBox.setEnabled(True)
             self._drawer.delTrack.setEnabled(True)
             self._drawer.newTrack.setEnabled(True)
             self._drawer.markMisdetection.setEnabled(True)
+            self._drawer.nextUnlabeledButton.setEnabled(True)
 
 
     def _setStyleSheet(self, widget, qcolor):                         
@@ -659,6 +663,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._drawer.delTrack.setEnabled(False)
             self._drawer.newTrack.setEnabled(False)
             self._drawer.activeTrackBox.setEnabled(False)
+            self._drawer.nextUnlabeledButton.setEnabled(False)
             
             # add -1 to the tracks if not already present
             row = -1
@@ -681,6 +686,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._drawer.delTrack.setEnabled(True)
             self._drawer.newTrack.setEnabled(True)
             self._drawer.activeTrackBox.setEnabled(True)
+            self._drawer.nextUnlabeledButton.setEnabled(True)
         
     def _setRanges(self):
         maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
@@ -948,8 +954,8 @@ class ManualTrackingGui(LayerViewerGui):
             self._criticalMessage("Error: Cannot access time step "  + str(t) + ".")
             return
         
-        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
-        li = self.mainOperator.LabelImage.get(roi).wait()
+#        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
+#        li = self.mainOperator.LabelImage.get(roi).wait()
         
         found = False
         for oid in self.mainOperator.labels[t].keys():
