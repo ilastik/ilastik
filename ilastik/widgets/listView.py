@@ -17,7 +17,7 @@ class ListView(QStackedWidget):
         
         super(ListView, self).__init__(parent=parent)
         
-        self.emptyMessage = QLabel("no labels defined yet")
+        self.emptyMessage = QLabel("no elements defined yet")
         self.emptyMessage.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter )
         self.emptyMessage.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.addWidget(self.emptyMessage)
@@ -80,7 +80,7 @@ class ListView(QStackedWidget):
             self.setCurrentIndex(self.PAGE_LISTVIEW)
         else:
             self.setCurrentIndex(self.PAGE_EMPTY)
-        self.parent().updateGeometry()
+        if self.parent()!=None: self.parent().updateGeometry()
 
     def setModel(self, model):
         QTableView.setModel(self._table, model)

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 _NPIXELS = 26
 _XSTART = 8
 
-class Element(QObject):
+class ListElement(QObject):
     nameChanged  = pyqtSignal(object)
      
     def __init__(self,name, parent = None):
@@ -151,10 +151,8 @@ class ListModel(QAbstractTableModel):
         if position in self.unremovable_rows:
             return False
         
-        print "HHHEEEE ",position,self._elements
         self.beginRemoveRows(parent, position, position)
         value = self._elements[position]
-        print "TTTTTTEEEE ",position,self._elements
         logger.debug("removing row: " + str(value))
         self._elements.remove(value)
         self.endRemoveRows()
