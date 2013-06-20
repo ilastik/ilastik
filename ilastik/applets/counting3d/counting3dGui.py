@@ -15,7 +15,7 @@ from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
 from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListView import Label
-from ilastik.widgets.boxListModel import BoxListModel,BoxLabel, BoxDialog
+from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
 from lazyflow.rtype import SubRegion
 from volumina.navigationControler import NavigationInterpreter
@@ -173,7 +173,7 @@ class Counting3dGui(LabelingGui):
         
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
-        self.labelingDrawerUi.boxListView._colorDialog=BoxDialog()
+        #self.labelingDrawerUi.boxListView._colorDialog=BoxDialog()
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)

@@ -15,7 +15,7 @@ from ilastik.applets.counting3d import Counting3dApplet
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
-from lazyflow.operators import OpAttributeSelector, OpSegmentation, Op5ifyer
+from lazyflow.operators import Op5ifyer
 
 
 class CountingWorkflow(Workflow):

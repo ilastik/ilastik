@@ -379,7 +379,7 @@ class CoupledRectangleElement(object):
         self._inputSlot=inputSlot #input slot which connect to the sub array
         
         
-        self.boxLabel=None
+        self.boxLabel=None #a reference to the label in the labellist model
         self._initConnect()
         
         self.color=qcolor
@@ -412,12 +412,11 @@ class CoupledRectangleElement(object):
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
         value=np.sum(subarray)/255.0
         
-        print "Resetting to a new value ",value,self.boxLabel
+        #print "Resetting to a new value ",value,self.boxLabel
         
         self._rectItem.updateText("%.1f"%(value))
         
         if self.boxLabel!=None:
-            print "SHould redraw"
             from PyQt4.QtCore import QString
             self.boxLabel.density=QString("%.1f"%value)
         
@@ -486,9 +485,10 @@ class CoupledRectangleElement(object):
     def setZValue(self,val):
         return self._rectItem.setZValue(val)
     
-    def __del__(self):
+    def release(self):
         self.disconnectInput()
         self._rectItem.scene().removeItem(self._rectItem)
+        del self
         
 
 # class OpSumAll(Operator):
@@ -542,9 +542,19 @@ class BoxInterpreter(QObject):
     #boxAdded= pyqtSignal(object, object)
     #focusObjectChages= pyqtSignal(object, QPoint)
     cursorPositionChanged  = pyqtSignal(object)
-    deleteItemsSignal= pyqtSignal() #send the signal that we want to delete the currently selected item
+    deleteSelectedItemsSignal= pyqtSignal() #send the signal that we want to delete the currently selected item
     
     def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
+        '''
+        Class which interacts directly with the image scene
+        
+        :param navigationInterpreter:
+        :param positionModel:
+        :param BoxContr:
+        :param widget: The main widget
+        
+        '''
+        
         
         QObject.__init__(self)
         
@@ -557,7 +567,7 @@ class BoxInterpreter(QObject):
         
         self.leftClickReleased.connect(BoxContr.addNewBox)
         self.rightClickReceived.connect(BoxContr.onChangedPos)
-        self.deleteItemsSignal.connect(BoxContr.deleteSelectItems)
+        self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
         
         
         self.origin = QPoint()
@@ -579,9 +589,8 @@ class BoxInterpreter(QObject):
         
         
         #Keyboard interaction
-        if event.type()==QEvent.KeyPress:
-            print event.key()==Qt.Key_N 
-            
+        if event.type()==QEvent.KeyPress:      
+            #Switch selection
             if event.key()==Qt.Key_N :
                 #assert items[0]._hovering
                 #items[0].setZValue(1)
@@ -593,8 +602,10 @@ class BoxInterpreter(QObject):
                     items[0].setSelected(False)
                     items[-1].setSelected(True)
                     #items[0].setZero()
+            
+            #Delete element
             if event.key()==Qt.Key_Delete:
-                self.deleteItemsSignal.emit()
+                self.deleteSelectedItemsSignal.emit()
             
         
             
@@ -709,9 +720,9 @@ class BoxController(object):
 
         
         newRow=self.boxListModel.rowCount()
-        box = BoxLabel( "Box%d"%newRow, self.currentColor, pmapColor=None)
+        box = BoxLabel( "Box%d"%newRow, self.currentColor)
         
-        box.pmapColorChanged.connect(rect.setColor)
+        box.colorChanged.connect(rect.setColor)
         
         self.boxListModel.insertRow( newRow, box )
         rect.boxLabel=box
@@ -734,13 +745,11 @@ class BoxController(object):
         
         self.itemsAtpos=items
     
-    def deleteSelectItems(self):
+    def deleteSelectedItems(self):
         tmp=[]
         for k,el in enumerate(self._currentBoxesList):
             if el._rectItem.isSelected():
-                #el.disconnectInput()
-                #self.scene().removeItem( el._rectItem)
-                del el
+                el.release()
                 super(type(self.boxListModel),self.boxListModel).removeRow(k)
             else:
                 tmp.append(el)
@@ -748,9 +757,8 @@ class BoxController(object):
     
     def deleteItem(self,index):
         el=self._currentBoxesList.pop(index)
-        #el.disconnectInput()
-        #el._rectItem.scene().removeItem(el._rectItem)
-        del el
+        super(type(self.boxListModel),self.boxListModel).removeRow(index)
+        el.release()
         
         
     def selectBoxItem(self,index):

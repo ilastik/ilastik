@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>254</width>
+    <width>365</width>
     <height>831</height>
    </rect>
   </property>
@@ -115,7 +115,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="LabelListView" name="boxListView"/>
+    <widget class="BoxListView" name="boxListView"/>
    </item>
    <item>
     <widget class="QPushButton" name="AddBoxButton">
@@ -339,6 +339,11 @@
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>BoxListView</class>
+   <extends>QStackedWidget</extends>
+   <header>ilastik.widgets.boxListView</header>
+  </customwidget>
   <customwidget>
    <class>LabelListView</class>
    <extends>QStackedWidget</extends>
