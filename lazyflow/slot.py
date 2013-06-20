@@ -832,10 +832,10 @@ class Slot(object):
                     msg = "This slot ({}.{}) isn't ready yet, which means " \
                           "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
                     self.logger.error(msg)
-                    slotInfoMsg = ""
-                    for slot in self.getRealOperator().inputs.values():
-                        if not slot.ready() and not slot._optional:
-                            slotInfoMsg += "Slot '{}' isn't ready\n".format( slot.name )
+                    slotInfoMsg = "Can't get data from slot {}.{} yet."\
+                                  " It isn't ready."\
+                                  "First upstream problem slot is: {}"\
+                                  "".format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
                     self.logger.error(slotInfoMsg)
                     assert False, "Slot isn't ready.  See error log."
                 assert self.meta.shape is not None, \
