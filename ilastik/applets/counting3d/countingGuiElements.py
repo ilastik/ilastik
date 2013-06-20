@@ -9,7 +9,7 @@ from PyQt4 import QtCore,QtGui
 from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
 from PyQt4.QtGui import QRubberBand,QBrush,QColor
 from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
-from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen
+from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen,QFont
 from PyQt4.QtGui import QApplication
 
 
@@ -133,6 +133,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
     
     
+        self._fontColor=QColor(255, 255, 255)
+        self._fontSize=12
+        self._lineWidth=2
         
         
         
@@ -165,13 +168,63 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._setupTextItem() 
         
         self.resetHandles()
+        
+        
+        
+        
+    @property
+    def fontColor(self):
+        return self._fontColor
+    
+    @fontColor.setter
+    def fontColor(self,color):
+        self._fontColor=color
+        self.textItem.setDefaultTextColor(color)
+        self.updateText(self.textItem.toPlainText())
+        
+    @property
+    def fontSize(self):
+        return self._fontSize
+    
+    @fontSize.setter
+    def fontSize(self,s):
+        self._fontSize=s
+        font=QFont()
+        font.setPointSize(self._fontSize)
+        self.textItem.setFont(font)
+        self.updateText(self.textItem.toPlainText())
+        
+    @property
+    def linewWidth(self):
+        return self._lineWidth
+    
+    @linewWidth.setter
+    def linewWidth(self,s):
+        self._lineWidth=s
+        self.updateColor()
+
+    @property
+    def color(self):
+        return self._normalColor
+    
+    @color.setter
+    def color(self,qcolor):
+        self._normalColor=qcolor
+        self.updateColor()
+    
+    
     
     def _setupTextItem(self):
         #Set up the text         
         self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
         textItem=self.textItem
+        print self._fontSize,"LLL"
+        font=QFont()
+        font.setPointSize(self._fontSize)
+        textItem.setFont(font)
         textItem.setPos(QtCore.QPointF(0,0)) #upper left corner relative to the father        
-        textItem.setDefaultTextColor(QColor(255, 255, 255))
+        
+        textItem.setDefaultTextColor(self._fontColor)
         
         if self._dbg:
             #another text item only for debug
@@ -255,7 +308,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
               
     def updateColor(self):
         color = self.hoverColor if (self._hovering or self.isSelected())  else self._normalColor 
-        self.setPen(QPen(color,2))
+        self.setPen(QPen(color,self._lineWidth))
         self.setBrush(QBrush(color, QtCore.Qt.NoBrush))
     
     def dataPos(self):
@@ -287,6 +340,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         event.accept()
     
     def updateText(self,string):
+        
         self.textItem.setPlainText(QtCore.QString(string))
     
     
@@ -328,12 +382,8 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         
         self.updateColor()
     
-    def setColor(self,qcolor):
-        self._normalColor=qcolor
-        self.updateColor()
+
     
-    def getColor(self):
-        return self._normalColor
         
 class RedRubberBand(QRubberBand):
     def __init__(self,*args,**kwargs):
@@ -382,8 +432,7 @@ class CoupledRectangleElement(object):
         self.boxLabel=None #a reference to the label in the labellist model
         self._initConnect()
         
-        self.color=qcolor
-        self.setColor(qcolor)
+        #self.rectItem.color=qcolor
                 
     def _initConnect(self):
         #print "initializing ...", self.getStart(),self.getStop()
@@ -471,10 +520,34 @@ class CoupledRectangleElement(object):
         self._opsub.Stop.setValue(tuple(stop))
         
         return self._opsub.outputs["Output"][:].wait()
-        
-        
+    
+    @property
+    def color(self):
+        return self._rectItem.color
+         
     def setColor(self,qcolor):
-        self._rectItem.setColor(qcolor)
+        self._rectItem.color=qcolor
+    
+    @property
+    def fontSize(self):
+        return self._rectItem.fontSize
+         
+    def setFontSize(self,size):
+        self._rectItem.fontSize=size
+    
+    @property
+    def fontColor(self):
+        return self._rectItem.fontSize
+         
+    def setFontColor(self,color):
+        self._rectItem.fontColor=color
+    
+    @property
+    def lineWidth(self):
+        return self._rectItem.linewWidth
+    
+    def setLineWidth(self,w):
+        self._rectItem.linewWidth=w    
                
     def setVisible(self,bool):
         return self._rectItem.setVisible(bool)
@@ -726,6 +799,13 @@ class BoxController(object):
         box = BoxLabel( "Box%d"%newRow, self.currentColor)
         
         box.colorChanged.connect(rect.setColor)
+        box.lineWidthChanged.connect(rect.setLineWidth)
+        box.fontColorChanged.connect(rect.setFontColor)
+        box.fontSizeChanged.connect(rect.setFontSize)
+        
+        
+        
+        
         
         self.boxListModel.insertRow( newRow, box )
         rect.boxLabel=box

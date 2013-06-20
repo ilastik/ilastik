@@ -670,7 +670,7 @@ class Counting3dGui(LabelingGui):
                 continue
             color = layer.tintColor
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
-            self._renderMgr.setColor(label, color)
+            self._renderMgr.color(label, color)
 
 
 

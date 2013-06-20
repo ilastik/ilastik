@@ -9,6 +9,7 @@ from labelListModel import LabelListModel, Label
 from listView import ListView
 
 
+
 class BoxDialog(QDialog):
     #FIXME:
     #This is an hack to the functionality of the old ColorDialog
@@ -16,22 +17,58 @@ class BoxDialog(QDialog):
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
         self._color = None
+        self._linewidth=None
+        
+        self._fontcolor=None
+        self._fontsize=None
+        
         self.ui = uic.loadUi(os.path.join(os.path.split(__file__)[0],
                                           'box_dialog.ui'),
                              self)
         self.ui.colorButton.clicked.connect(self.onColor)
-
+        self.ui.fontColorButton.clicked.connect(self.onFontColor)
+        self.ui.spinBoxWidth.valueChanged.connect(self.setLineWidth)
+        self.ui.spinFontSize.valueChanged.connect(self.setFontSize)
+        
+        
     def setColor(self, c):
         self._color = c
         self.ui.colorButton.setStyleSheet("background-color: {}".format(c.name()))
 
+    def setFontColor(self,c):
+        self._fontcolor = c
+        self.ui.fontColorButton.setStyleSheet("background-color: {}".format(c.name()))
+
+    def setLineWidth(self,w):
+        self._linewidth = w
+        self.ui.spinBoxWidth.setValue(w)
+        
+    def setFontSize(self,s):
+        self._fontsize = s
+        self.ui.spinFontSize.setValue(s)
+    
+    
+    def onFontColor(self):
+        color=QColorDialog().getColor()
+        self.setFontColor(color)
+    
     def onColor(self):
         color=QColorDialog().getColor()
         self.setColor(color)
-        
+    
+    
     def getColor(self):
         return self._color
-
+    
+    def getFontSize(self):
+        return self._fontsize
+    
+    def getLineWidth(self):
+        return self._linewidth
+    
+    def getFontColor(self):
+        return self._fontcolor
+    
     
 
 class BoxListView(ListView):
@@ -39,7 +76,7 @@ class BoxListView(ListView):
     def __init__(self, parent = None):
         super(BoxListView, self).__init__(parent=parent)
         
-        self.emptyMessage = QLabel("no elements defined yet")
+        self.emptyMessage = QLabel("no boxes defined yet")
         self._colorDialog = BoxDialog()
     
     def resetEmptyMessage(self,pystring):
@@ -48,9 +85,25 @@ class BoxListView(ListView):
     
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
-            self._colorDialog.setColor(self._table.model()[modelIndex.row()].color())
+            
+            print "RESETTING", modelIndex.row(), self._table.model()[modelIndex.row()].linewidth
+            
+            self._colorDialog.setColor(self._table.model()[modelIndex.row()].color)
+            self._colorDialog.setFontColor(self._table.model()[modelIndex.row()].fontcolor)
+            self._colorDialog.setLineWidth(self._table.model()[modelIndex.row()].linewidth)
+            self._colorDialog.setFontSize(self._table.model()[modelIndex.row()].fontsize)
+            
+            
             self._colorDialog.exec_()
-            self._table.model().setData(modelIndex, (self._colorDialog.getColor(),))
+            
+            prop=(self._colorDialog.getColor(),self._colorDialog.getFontSize(),
+                                                     self._colorDialog.getLineWidth(),
+                                                     self._colorDialog.getFontColor())
+            names=["color","fontsize","linewidth",'fontcolor']
+            d=dict(zip(names,prop))
+            
+            self._table.model().setData(modelIndex,d)
+            
             
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == self.model.ColumnID.Delete and
