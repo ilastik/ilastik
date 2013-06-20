@@ -673,6 +673,9 @@ class BoxController(object):
         self.boxListModel=boxListModel
         self.scene.selectionChanged.connect(self.handleSelectionChange)
         
+        
+        boxListModel.boxRemoved.connect(self.deleteItem)
+        
     def getCurrentActiveBox(self):
         pass
         
@@ -757,7 +760,7 @@ class BoxController(object):
     
     def deleteItem(self,index):
         el=self._currentBoxesList.pop(index)
-        super(type(self.boxListModel),self.boxListModel).removeRow(index)
+        #super(type(self.boxListModel),self.boxListModel).removeRow(index)
         el.release()
         
         
@@ -945,12 +948,21 @@ if __name__=="__main__":
     # when the dot happen to be in the centre of the movable squere in the
     # image then we show a one on the top left corner
     #===========================================================================
+    from ilastik.widgets.boxListView import BoxListView
+    from PyQt4.QtGui import QWidget
+    app = QApplication([])
     
     boxListModel=BoxListModel()
-        
+    
+    
+    
+    
+    
+    LV=BoxListView()
+    LV.setModel(boxListModel)
+    
     g = Graph()
         
-    app = QApplication([])
     cron = QTimer()
     cron.start(500)
     
@@ -978,6 +990,7 @@ if __name__=="__main__":
     layer = ColortableLayer(ds,jet())
      
     mainwin=Viewer()
+    
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,500,500,1,1)
     print mainwin.centralWidget()    
@@ -988,7 +1001,8 @@ if __name__=="__main__":
     
 
     mainwin.editor.setNavigationInterpreter(BoxInt)
-    
+#     boxListModel.boxRemoved.connect(BoxContr.deleteItem)
+    LV.show()
     mainwin.show()
      
     app.exec_()

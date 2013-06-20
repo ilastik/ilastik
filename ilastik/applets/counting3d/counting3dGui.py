@@ -214,7 +214,7 @@ class Counting3dGui(LabelingGui):
         if not hasattr(self._labelControlUi, "boxListModel"):
             self.labelingDrawerUi.boxListModel=BoxListModel()
             self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
-            self.labelingDrawerUi.boxListModel.labelSelected.connect(self._onBoxSelected)
+            self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
             self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
         
         
@@ -813,7 +813,10 @@ class Counting3dGui(LabelingGui):
 
     
     def _removeBox(self,index):
-        self.boxController.deleteItem(index)
+        #handled by the boxController
+        pass 
+        
+        #self.boxController.deleteItem(index)
         
          
     def _onBoxSelected(self, row):

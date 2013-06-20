@@ -29,11 +29,9 @@ class BoxDialog(QDialog):
         color=QColorDialog().getColor()
         self.setColor(color)
         
-    def brushColor(self):
+    def getColor(self):
         return self._color
-    
-    def pmapColor(self):
-        return self._color
+
     
 
 class BoxListView(ListView):
@@ -41,7 +39,7 @@ class BoxListView(ListView):
     def __init__(self, parent = None):
         super(BoxListView, self).__init__(parent=parent)
         
-        self.emptyMessage = QLabel("no labels defined yet")
+        self.emptyMessage = QLabel("no elements defined yet")
         self._colorDialog = BoxDialog()
     
     def resetEmptyMessage(self,pystring):
@@ -52,8 +50,7 @@ class BoxListView(ListView):
         if modelIndex.column() == self.model.ColumnID.Color:
             self._colorDialog.setColor(self._table.model()[modelIndex.row()].color())
             self._colorDialog.exec_()
-            self._table.model().setData(modelIndex, (self._colorDialog.brushColor(),
-                                              self._colorDialog.pmapColor ()))
+            self._table.model().setData(modelIndex, (self._colorDialog.getColor(),))
             
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == self.model.ColumnID.Delete and
@@ -73,6 +70,14 @@ class BoxListView(ListView):
     @allowDelete.setter
     def allowDelete(self, allow):
         self._table.setColumnHidden(self.model.ColumnID.Delete, not allow)
+    
+    @property
+    def allowFixValues(self):
+        return not self._table.isColumnHidden(self.model.ColumnID.Fix)
+
+    @allowFixValues.setter
+    def allowFixValues(self, allow):
+        self._table.setColumnHidden(self.model.ColumnID.Fix, not allow)
 
         
 if __name__=="__main__":

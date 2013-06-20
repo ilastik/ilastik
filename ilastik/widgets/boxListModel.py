@@ -1,6 +1,7 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString
-from labelListModel import *
+from listModel import ListModel,ListElement,_NPIXELS
+#from labelListModel import LabelListModel
 import logging
 from PyQt4.uic.Compiler.qtproxies import QtGui
 from PyQt4 import uic
@@ -12,22 +13,20 @@ logger = logging.getLogger(__name__)
 # This model is fully compatible with the labelListView
 #===============================================================================
 
-class BoxLabel(QObject):
+
+class BoxLabel(ListElement):
     changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
-    nameChanged  = pyqtSignal(object)
     densityChanged = pyqtSignal(object)
     isFixedChanged = pyqtSignal(bool)
     
     def __init__(self, name, color, density=0.0, parent = None):
-        QObject.__init__(self, parent)
-        self._name       = name
+        ListElement.__init__(self, name, parent)
         self._density    = density
         self._color = color
             
         self._fixvalue=self._density # a fixed box should have this set to a particular value
-        self._isFixed=False
-        
+        self._isFixed=False        
         self._register_signals()
     
     def _register_signals(self):
@@ -39,7 +38,6 @@ class BoxLabel(QObject):
         self.densityChanged.connect(self._update_fixvalue_display)
     
         
-    
     def _update_fixvalue_display(self):
         if not self._isFixed:
             self.fixvalue=self.density
@@ -61,19 +59,6 @@ class BoxLabel(QObject):
                 self._color, c))
             self._color = c
             self.colorChanged.emit(c)
-
-    @property
-    def name(self):
-        return self._name
-    
-
-    @name.setter
-    def name(self, n):
-        if self._name != n:
-            logger.debug("BoxLabel '{}' has new name '{}'".format(
-                self._name, n))
-            self._name = n
-            self.nameChanged.emit(n)
 
     @property
     def density(self):
@@ -108,8 +93,7 @@ class BoxLabel(QObject):
 #                 self._density, n))
             self._isFixed = bool
             self.isFixedChanged.emit(self._isFixed)
-            self.changed.emit()
-   
+            self.changed.emit()   
     def __repr__(self):
         return "<BoxLabel name={}, color={}>".format(
             self.name, self._color)
@@ -117,11 +101,10 @@ class BoxLabel(QObject):
 
 
 
-_NPIXELS = 26
-_XSTART = 8
 
 
-class BoxListModel(LabelListModel):
+
+class BoxListModel(ListModel):
     boxRemoved = pyqtSignal(int)
     
     class ColumnID():
@@ -134,8 +117,8 @@ class BoxListModel(LabelListModel):
         ncols=5
         
     
-    def __init__(self, labels=None, parent=None):
-        LabelListModel.__init__(self,labels,parent)
+    def __init__(self, elements=None, parent=None):
+        super(BoxListModel,self).__init__(elements,parent)
         
     def flags(self, index):
         if  index.column() == self.ColumnID.Color:
@@ -156,37 +139,33 @@ class BoxListModel(LabelListModel):
             else:
                 return Qt.NoItemFlags
     
-    def select(self, row):
-        LabelListModel.select(self, row)
-    
-    def columnCount(self,parent):
-        return self.ColumnID.ncols
-    
     def removeRow(self, position, parent=QModelIndex()):
+        
+        print position,self._elements
         self.boxRemoved.emit(position)
-        return LabelListModel.removeRow(self, position, parent=parent)
+        return super(BoxListModel,self).removeRow(position, parent=parent)
     
     def data(self, index, role):
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Text:
             row = index.row()
-            value = self._labels[row]
+            value = self._elements[row]
             return value.density
         
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Fix:
             row = index.row()
-            value = self._labels[row]
+            value = self._elements[row]
             return value.fixvalue
         
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Color:
             row = index.row()
-            value = self._labels[row]
+            value = self._elements[row]
             pixmap = QPixmap(_NPIXELS, _NPIXELS)
             pixmap.fill(value.color())
             icon = QIcon(pixmap)
             return icon
         
         
-        return LabelListModel.data(self, index, role)
+        return super(BoxListModel,self).data(index, role)
     
     def setData(self, index, value, role=Qt.EditRole):
         
@@ -194,13 +173,24 @@ class BoxListModel(LabelListModel):
             row = index.row()
             color = QColor(value[0])
             if color.isValid():
-                self._labels[row].setColor(color)
+                self._elements[row].setColor(color)
                 self.dataChanged.emit(index, index)
                 return True
             
         if index.column()==self.ColumnID.Fix:
-            self._labels[index.row()].isFixed=True
+            self._elements[index.row()].isFixed=True
             value=float(value.toString())
             row=index.row()
-            self._labels[row].fixvalue=QString("%.1f"%value)
-            self.dataChanged.emit(index,index)        
+            self._elements[row].fixvalue=QString("%.1f"%value)
+            self.dataChanged.emit(index,index)
+            return True
+            
+    def select(self, row):
+        self._selectionModel.clear()
+        self._selectionModel.select(self.index(row, self.ColumnID.Color),
+                                    QItemSelectionModel.Select)        
+        self._selectionModel.select(self.index(row, self.ColumnID.Name),
+                                    QItemSelectionModel.Select)
+        
+        
+        
