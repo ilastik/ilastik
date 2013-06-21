@@ -140,6 +140,8 @@ class OpSimpleWatershed(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        
+        # Use a SIGNED int32 becacuse that's what cylemon.segmentation expects. (Unfortunately.)
         self.Output.meta.dtype = numpy.int32
 
     def execute(self, slot, subindex, roi, result):
