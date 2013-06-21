@@ -10,7 +10,6 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
-from ilastik.applets.base.applet import ControlCommand
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -40,6 +39,7 @@ class PixelClassificationWorkflow(Workflow):
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
@@ -57,18 +57,13 @@ class PixelClassificationWorkflow(Workflow):
     
             # Connect batch workflow (NOT lane-based)
             self._initBatchWorkflow()
-    
+
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
-        if not self.pcApplet.enabled:
-            self.pcApplet.guiControlSignal.emit(ControlCommand.DisableSelf)
-        '''try:
-            self.batchResultsApplet.guiControlSignal.emit(ControlCommand.DisableSelf)
-        except NameError:
-            pass'''
+        
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
@@ -81,15 +76,7 @@ class PixelClassificationWorkflow(Workflow):
         # Training flags -> Classification Op (for GUI restrictions)
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
         
-        
-    def updateEnable(self,applet,en = True):
-        if applet == "training":
-            self.pcApplet.updateEnable(en)
-        elif applet == "features":
-            self.pcApplet.updateEnable(en)
-        elif applet == "batch":
-            self.batchResultsApplet.updateEnable(en)
-        
+
     def _initBatchWorkflow(self):
         """
         Connect the batch-mode top-level operators to the training workflow and to eachother.

@@ -339,7 +339,6 @@ class FeatureSelectionGui(LayerViewerGui):
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
-                self.applet.reportReady(False)
                 opFeatureSelection.SelectionMatrix.disconnect()
     
     def onFeaturesSelectionsChanged(self):
@@ -347,6 +346,7 @@ class FeatureSelectionGui(LayerViewerGui):
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
+        
         fff = ( self.topLevelOperatorView.FeatureListFilename.ready() and \
                 len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
         
