@@ -533,7 +533,7 @@ class SerialCountingSlot(SerialSlot):
         for name, forestGroup in sorted(classifierGroup.items()):
             targetname = '{0}/{1}'.format(self.name, name)
             #forests.append(vigra.learning.RandomForest(cachePath, targetname))
-            from ilastik.applets.counting3d.countingsvr import SVR
+            from ilastik.applets.counting.countingsvr import SVR
             forests.append(SVR.load(cachePath, targetname))
             
 
