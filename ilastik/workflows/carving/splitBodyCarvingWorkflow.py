@@ -10,6 +10,7 @@ from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.workflows.carving.opPreprocessing import OpFilter
 from ilastik.applets.splitBodyCarving.splitBodyCarvingApplet import SplitBodyCarvingApplet
 from ilastik.applets.splitBodyPostprocessing.splitBodyPostprocessingApplet import SplitBodyPostprocessingApplet
+from ilastik.applets.splitBodySupervoxelExport.splitBodySupervoxelExportApplet import SplitBodySupervoxelExportApplet
 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
@@ -71,6 +72,7 @@ class SplitBodyCarvingWorkflow(Workflow):
                                                              projectFileGroupName="carving")
         
         self.splitBodyPostprocessingApplet = SplitBodyPostprocessingApplet(workflow=self)
+        self.splitBodySupervoxelExportApplet = SplitBodySupervoxelExportApplet(workflow=self)
         
         # Expose to shell
         self._applets = []
@@ -79,6 +81,7 @@ class SplitBodyCarvingWorkflow(Workflow):
         self._applets.append(self.preprocessingApplet)
         self._applets.append(self.splitBodyCarvingApplet)
         self._applets.append(self.splitBodyPostprocessingApplet)
+        self._applets.append(self.splitBodySupervoxelExportApplet)
 
         self._split_tool_params = None
         if workflow_cmdline_args:
@@ -204,3 +207,14 @@ class SplitBodyCarvingWorkflow(Workflow):
         opPostprocessing.NavigationCoordinates.connect(opSplitBodyCarving.NavigationCoordinates)
 
         self.preprocessingApplet.enableDownstream(False)
+
+        # Supervoxel export
+        opSupervoxelExport = self.splitBodySupervoxelExportApplet.topLevelOperator.getLane(laneIndex)
+        opSupervoxelExport.DatasetInfos.connect( opData.DatasetGroup )
+        opSupervoxelExport.WorkingDirectory.connect( opData.WorkingDirectory )
+        opSupervoxelExport.RawData.connect( opPreprocessing.RawData )
+        opSupervoxelExport.InputData.connect( opPreprocessing.InputData )
+        opSupervoxelExport.Supervoxels.connect( opPreprocessing.WatershedImage )
+        opSupervoxelExport.RavelerLabels.connect( opSplitBodyCarving.RavelerLabels )
+        opSupervoxelExport.AnnotationBodyIds.connect( opSplitBodyCarving.AnnotationBodyIds )
+        
