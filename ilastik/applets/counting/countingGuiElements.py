@@ -7,7 +7,7 @@
 
 from PyQt4 import QtCore,QtGui
 from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
-from PyQt4.QtGui import QRubberBand,QBrush,QColor
+from PyQt4.QtGui import QRubberBand,QBrush,QColor,QMouseEvent
 from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
 from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen,QFont
 from PyQt4.QtGui import QApplication
@@ -17,6 +17,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.api import Viewer
 from volumina.layer import ColortableLayer
 from volumina.colortables import jet
+from volumina.brushingcontroler import BrushingControler,BrushingInterpreter
 
 import numpy as np
 import vigra
@@ -26,6 +27,141 @@ from lazyflow.graph import Operator, OutputSlot, Graph
 from lazyflow.operators.generic import OpSubRegion
 ##add tot hte pos model
 from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
+
+
+
+#===============================================================================
+# 
+#===============================================================================
+class DotCrosshairControler(QObject):
+    def __init__(self, brushingModel, imageViews):
+        QObject.__init__(self, parent=None)
+        self._brushingModel = brushingModel
+        self._imageViews = imageViews
+        self._brushingModel.brushSizeChanged.connect(self._setBrushSize)
+        self._brushingModel.brushColorChanged.connect(self._setBrushColor)
+        self._brushingModel.drawnNumberChanged.connect(self._setBrushSize)
+        self._sigma=2.5
+    
+    def setSigma(self,s):
+        self._sigma=s
+    
+    def _setBrushSize(self, size):
+        if self._brushingModel.drawnNumber==1:
+            size=self._sigma*4
+        else:
+            size=self._brushingModel.brushSize
+                        
+        for v in self._imageViews:
+            v._crossHairCursor.setBrushSize(size)
+
+    def _setBrushColor(self, color):
+        for v in self._imageViews:
+            v._crossHairCursor.setColor(color)
+        
+        
+        
+class DottingInterpreter(BrushingInterpreter):
+    
+    def __init__( self, navigationControler, brushingControler ):
+        super(DottingInterpreter,self).__init__(navigationControler,brushingControler)
+        self._brushingModel=self._brushingCtrl._brushingModel
+    
+    
+    
+    def getColor(self):
+        return self._brushingModel.drawnNumber
+    
+
+    
+    def eventFilter( self, watched, event ):
+        etype = event.type()
+        
+        if self._current_state == self.DEFAULT_MODE:
+            if etype == QEvent.MouseButtonPress \
+                and event.button() == Qt.LeftButton \
+                and event.modifiers() == Qt.NoModifier \
+                and self._navIntr.mousePositionValid(watched, event):
+                
+                ### default mode -> maybe draw mode
+                self._current_state = self.MAYBE_DRAW_MODE
+                # event will not be valid to use after this function exits,
+                # so we must make a copy of it instead of just saving the pointer
+                self._lastEvent = QMouseEvent( event.type(), event.pos(), event.globalPos(), event.button(), event.buttons(), event.modifiers() )
+                
+                if self.getColor()==1:
+                    self._current_state = self.DRAW_MODE
+                    self.onEntry_draw( watched, self._lastEvent )
+                    #self.onMouseMove_draw( watched, event )
+                    
+                    self.onExit_draw( watched, event )
+                
+                    self._current_state = self.DEFAULT_MODE
+                    self.onEntry_default( watched, event )
+
+                    return True
+                    
+                
+        return super(DottingInterpreter,self).eventFilter(watched,event)
+
+
+        
+                
+                
+                
+#         elif self._current_state == self.MAYBE_DRAW_MODE:
+#             if etype == QEvent.MouseMove:
+#                 # navigation interpreter also has to be in
+#                 # default mode to avoid inconsistencies
+#                 if self._navIntr.state == self._navIntr.DEFAULT_MODE:
+#                     ### maybe draw mode -> maybe draw mode
+#                     self._current_state = self.DRAW_MODE
+#                     self.onEntry_draw( watched, self._lastEvent )
+#                     self.onMouseMove_draw( watched, event )
+#                     return True
+#                 else:
+#                     self._navIntr.eventFilter( watched, self._lastEvent )
+#                     return self._navIntr.eventFilter( watched, event )
+#             elif etype == QEvent.MouseButtonDblClick:
+#                 ### maybe draw mode -> default mode
+#                 self._current_state = self.DEFAULT_MODE
+#                 return self._navIntr.eventFilter( watched, event )
+#             elif etype == QEvent.MouseButtonRelease:
+#                 self._current_state = self.DRAW_MODE
+#                 self.onEntry_draw( watched, self._lastEvent )
+#                 self.onExit_draw( watched, event )
+#                 self._current_state = self.DEFAULT_MODE
+#                 self.onEntry_default( watched, event )
+#                 return True
+# 
+#         elif self._current_state == self.DRAW_MODE:
+#             if etype == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+#                 self.onExit_draw( watched, event )
+#                 ### draw mode -> default mode
+#                 self._current_state = self.DEFAULT_MODE
+#                 self.onEntry_default( watched, event )
+#                 return True
+#             
+#             elif etype == QEvent.MouseMove and event.buttons() & Qt.LeftButton:
+#                 if self._navIntr.mousePositionValid(watched, event):
+#                     self.onMouseMove_draw( watched, event )
+#                     return True
+#                 else:
+#                     self.onExit_draw( watched, event )
+#                     ### draw mode -> default mode
+#                     self._current_state = self.DEFAULT_MODE
+#                     self.onEntry_default( watched, event )
+# 
+#         # let the navigation interpreter handle common events
+#         return self._navIntr.eventFilter( watched, event )
+# 
+#     def onExit_draw( self, imageview, event ):
+#         self._brushingCtrl.endDrawing(imageview.mousePos)
+#         if self._temp_erasing:
+#             self._brushingCtrl._brushingModel.disableErasing()
+#             self._temp_erasing = False
+    
+
 
 class Tool():
     

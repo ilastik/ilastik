@@ -27,6 +27,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
+from ilastik.applets.counting.countingGuiElements import DottingInterpreter,DotCrosshairControler
 
 
 
@@ -130,10 +131,15 @@ class CountingGui(LabelingGui):
         except:
             self.render = False
 
-
+        
+        self.editor.brushingInterpreter = DottingInterpreter(self.editor.navCtrl,self.editor.brushingControler)
+        self.editor.crosshairControler=DotCrosshairControler(self.editor.brushingModel,self.editor.imageViews)
+        
         self.initCounting()
 
-    
+        
+        
+        
     def initCounting(self):
         #=======================================================================
         # Init Label Uic Custom  setup
@@ -263,6 +269,7 @@ class CountingGui(LabelingGui):
                 :param opslot:
                 :param setfun:
                 :param defaultval:
+                
                 '''
                 
                 self.val=None
@@ -370,6 +377,8 @@ class CountingGui(LabelingGui):
         if self.changedSigma:
             sigma = [float(n) for n in
                            self._labelControlUi.SigmaLine.text().split(" ")]
+            
+            self.editor.crosshairControler.setSigma(sigma[0])
             self.op.opTrain.Sigma.setValue(sigma)
             self.changedSigma = False
 
@@ -811,14 +820,14 @@ class CountingGui(LabelingGui):
 #         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _gui_setBrushing(self):
-        self._labelControlUi.brushSizeComboBox.setEnabled(False)
-        self._labelControlUi.brushSizeCaption.setEnabled(False)
+#         self._labelControlUi.brushSizeComboBox.setEnabled(False)
+#         self._labelControlUi.brushSizeCaption.setEnabled(False)
         # Make sure the paint button is pressed
         self._labelControlUi.paintToolButton.setChecked(True)
         # Show the brush size control and set its caption
         self._labelControlUi.brushSizeCaption.setText("Size:")
         # Make sure the GUI reflects the correct size
-        self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+        #self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
 
     def _gui_setBox(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
@@ -994,27 +1003,35 @@ class CountingGui(LabelingGui):
     def _onLabelSelected(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
-
+        
+        
+        
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
-        if row >= 2:
-            self.toolButtons[Tool.Paint].setEnabled(False)
-            self.toolButtons[Tool.Box].setEnabled(True)
-            self.toolButtons[Tool.Box].click()
-            self.activeBox = row - 2
-        else:
-            self.toolButtons[Tool.Paint].setEnabled(True)
-            #elf.toolButtons[Tool.Box].setEnabled(False)
-            self.toolButtons[Tool.Paint].click()
+  
+        self.toolButtons[Tool.Paint].setEnabled(True)
+        #elf.toolButtons[Tool.Box].setEnabled(False)
+        self.toolButtons[Tool.Paint].click()
 
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
-
-
+        
+        if row==0: #foreground
+            self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._labelControlUi.brushSizeComboBox.setEnabled(False)
+            self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+        else:
+            if not hasattr(self, "_cachedBrushSizeIndex"):
+                self._cachedBrushSizeIndex=1
+                
+            self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
+            
+        
+        
     def handleBoxQuery(self, position5d_start, position5d_stop):
         print "HANDLING BOX QUERY"
         
