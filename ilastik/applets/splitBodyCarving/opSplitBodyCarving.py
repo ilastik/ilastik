@@ -20,6 +20,8 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentEditingFragment = InputSlot(value="", stype='string')
     AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
     AnnotationLocations = InputSlot(optional=True) # Display-only
+
+    NavigationCoordinates = InputSlot(optional=True) # Display-only: For passing navigation request coordinates downstream
     
     CurrentRavelerObject = OutputSlot()
     CurrentRavelerObjectRemainder = OutputSlot()
@@ -196,6 +198,8 @@ class OpSplitBodyCarving( OpCarving ):
              slot == self.AnnotationLocations:
             self.EditedRavelerBodyList.setDirty()
             return
+        elif slot == self.NavigationCoordinates:
+            pass
         else:
             super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
     

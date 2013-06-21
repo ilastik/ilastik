@@ -201,5 +201,6 @@ class SplitBodyCarvingWorkflow(Workflow):
 
         # Split-body carving -> Postprocessing
         opPostprocessing.EditedRavelerBodyList.connect(opSplitBodyCarving.EditedRavelerBodyList)
+        opPostprocessing.NavigationCoordinates.connect(opSplitBodyCarving.NavigationCoordinates)
 
         self.preprocessingApplet.enableDownstream(False)

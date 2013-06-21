@@ -9,6 +9,7 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 
 from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.splitBodyCarving.bodySplitInfoWidget import BodySplitInfoWidget
 
 class SplitBodyPostprocessingGui(LayerViewerGui):
     
@@ -39,9 +40,17 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
         self._drawer.exportButton.clicked.connect( self.exportFinalSegmentation )
 
+        # This comes from the upstream applet gui
+        self.topLevelOperatorView.NavigationCoordinates.notifyDirty( bind(self._handleNavigationRequest) )
+    
+    def _handleNavigationRequest(self):
+        coord3d = self.topLevelOperatorView.NavigationCoordinates.value
+        self.editor.posModel.cursorPos = list(coord3d)
+        self.editor.posModel.slicingPos = list(coord3d)
+        self.editor.navCtrl.panSlicingViews( list(coord3d), [0,1,2] )
+        
     def exportFinalSegmentation(self):
         # Ask for the export path
         exportPath = QFileDialog.getSaveFileName( self,

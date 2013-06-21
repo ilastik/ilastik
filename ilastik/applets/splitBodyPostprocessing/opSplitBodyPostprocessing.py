@@ -27,6 +27,8 @@ class OpSplitBodyPostprocessing(Operator):
     EditedRavelerBodyList = InputSlot() # The list of bodies actually edited
                                         # (Must be connected to ensure that setupOutputs will be 
                                         #   called resize the multi-slots when necessary)
+
+    NavigationCoordinates = InputSlot(optional=True)
     
     # For these multislots, N = number of raveler bodies that were edited
     EditedRavelerBodies = OutputSlot(level=1)
@@ -158,8 +160,11 @@ class OpSplitBodyPostprocessing(Operator):
         assert False, "Unknown output slot: {}".format( slot.name )
 
     def propagateDirty(self, slot, subindex, roi):
-        # If anything is dirty, the entire output is dirty
-        self.FinalSegmentation.setDirty()
+        if slot == self.NavigationCoordinates:
+            pass
+        else:
+            # If anything is dirty, the entire output is dirty
+            self.FinalSegmentation.setDirty()
     
     def exportFinalSegmentation(self, outputPath, axisorder, progressCallback=None):
         assert self.FinalSegmentation.ready(), "Can't export yet: The final segmentation isn't ready!"

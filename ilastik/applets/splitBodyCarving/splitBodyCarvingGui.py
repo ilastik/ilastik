@@ -78,6 +78,9 @@ class SplitBodyCarvingGui(CarvingGui):
         self.editor.posModel.slicingPos = list(coord3d)
         self.editor.navCtrl.panSlicingViews( list(coord3d), [0,1,2] )
         
+        # Navigation change is passed to downstream applets via this special slot
+        self.topLevelOperatorView.NavigationCoordinates.setValue( coord3d, check_changed=False )
+        
     def labelingContextMenu(self, names, op, position5d):
         return None
 #        pos = TinyVector(position5d)
