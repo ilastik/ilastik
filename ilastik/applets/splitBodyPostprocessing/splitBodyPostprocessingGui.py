@@ -1,8 +1,9 @@
 import os
 import numpy
+from functools import partial
 
 from PyQt4 import uic
-from PyQt4.QtGui import QColor, QFileDialog
+from PyQt4.QtGui import QColor, QFileDialog, QShortcut, QKeySequence
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
@@ -131,7 +132,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
             for _ in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
-            finalLayer = ColortableLayer(LazyflowSource(finalSegSlot), colortable)
+            finalLayer = ColortableLayer(LazyflowSource(finalSegSlot), colortable, direct=True)
             finalLayer.name = "Final Segmentation"
             finalLayer.visible = False
             finalLayer.opacity = 0.4
@@ -147,18 +148,33 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
 
         #raw data
         rawSlot = self.topLevelOperatorView.RawData
+        rawLayer = None
         if rawSlot.ready():
             raw5D = self.topLevelOperatorView.RawData.value
-            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
-            #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
-            layer.name = "raw"
-            layer.visible = True
-            layer.opacity = 1.0
-            layers.append(layer)
+            rawLayer = GrayscaleLayer(ArraySource(raw5D), direct=True)
+            #rawLayer = GrayscaleLayer( LazyflowSource(rawSlot) )
+            rawLayer.name = "raw"
+            rawLayer.visible = True
+            rawLayer.opacity = 1.0
+            rawLayer.shortcutRegistration = ( "Postprocessing",
+                                              "Raw Data to Top",
+                                              QShortcut( QKeySequence("g"),
+                                                         self.viewerControlWidget(),
+                                                         partial(self._toggleRawDataPosition, rawLayer) ),
+                                             rawLayer )
+            layers.append(rawLayer)
 
         return layers
 
-
+    def _toggleRawDataPosition(self, rawLayer):
+        index = self.layerstack.layerIndex(rawLayer)
+        self.layerstack.selectRow( index )
+        if index == 0:
+            self.layerstack.moveSelectedToBottom()
+        else:
+            # Move it to the top
+            self.layerstack.moveSelectedToRow(0)
+            
 
 
 
