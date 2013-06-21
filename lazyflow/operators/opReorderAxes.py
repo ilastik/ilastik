@@ -1,3 +1,4 @@
+import copy
 from functools import partial
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -31,6 +32,10 @@ class OpReorderAxes(Operator):
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.axistags = output_tags
         self.Output.meta.shape = tuple(output_shape)
+        if self.Output.meta.original_axistags is None:
+            self.Output.meta.original_axistags = copy.copy(input_tags)
+            self.Output.meta.original_shape = self.Input.meta.shape
+            assert len(input_tags) == len(self.Input.meta.shape)
 
         # These map between input axis indexes and output axis indexes
         self._in_out_map = map( partial(_index, output_order), input_order ) # For "abcd" and "bcde" in_out = [-1, 0, 1, 2]
