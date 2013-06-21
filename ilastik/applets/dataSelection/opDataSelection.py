@@ -6,7 +6,7 @@ from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataRea
 from lazyflow.operators import OpMetadataInjector
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.operators import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class DatasetInfo(object):
     """
@@ -151,18 +151,18 @@ class OpDataSelection(Operator):
         self._NonTransposedImage.connect(providerSlot)
         
         if self.force5d:
-            op5 = Op5ifyer(parent=self)
-            op5.input.connect(providerSlot)
-            providerSlot = op5.output
+            op5 = OpReorderAxes(parent=self)
+            op5.Input.connect(providerSlot)
+            providerSlot = op5.Output
             self._opReaders.append(op5)
         
-        # If there is no channel axis, use an Op5ifyer to append one.
+        # If there is no channel axis, use an OpReorderAxes to append one.
         if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
-            op5 = Op5ifyer( parent=self )
+            op5 = OpReorderAxes( parent=self )
             providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
-            op5.order.setValue(providerKeys + 'c')
-            op5.input.connect( providerSlot )
-            providerSlot = op5.output
+            op5.AxisOrder.setValue(providerKeys + 'c')
+            op5.Input.connect( providerSlot )
+            providerSlot = op5.Output
             self._opReaders.append( op5 )
 
         # Connect our external outputs to the internal operators we chose

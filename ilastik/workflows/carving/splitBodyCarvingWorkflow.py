@@ -1,6 +1,6 @@
 import argparse
 from lazyflow.graph import Graph
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.workflow import Workflow
 
@@ -167,28 +167,28 @@ class SplitBodyCarvingWorkflow(Workflow):
         opSplitBodyCarving = self.splitBodyCarvingApplet.topLevelOperator.getLane(laneIndex)
         opPostprocessing = self.splitBodyPostprocessingApplet.topLevelOperator.getLane(laneIndex)
 
-        op5Raw = Op5ifyer(parent=self)
-        op5Raw.order.setValue("txyzc")
-        op5Raw.input.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
+        op5Raw = OpReorderAxes(parent=self)
+        op5Raw.AxisOrder.setValue("txyzc")
+        op5Raw.Input.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         
-        op5PixelProb = Op5ifyer(parent=self)
-        op5PixelProb.order.setValue("txyzc")
-        op5PixelProb.input.connect(opData.ImageGroup[self.DATA_ROLE_PIXEL_PROB])
+        op5PixelProb = OpReorderAxes(parent=self)
+        op5PixelProb.AxisOrder.setValue("txyzc")
+        op5PixelProb.Input.connect(opData.ImageGroup[self.DATA_ROLE_PIXEL_PROB])
 
-        op5RavelerLabels = Op5ifyer(parent=self)
-        op5RavelerLabels.order.setValue("txyzc")
-        op5RavelerLabels.input.connect(opData.ImageGroup[self.DATA_ROLE_RAVELER_LABELS])
+        op5RavelerLabels = OpReorderAxes(parent=self)
+        op5RavelerLabels.AxisOrder.setValue("txyzc")
+        op5RavelerLabels.Input.connect(opData.ImageGroup[self.DATA_ROLE_RAVELER_LABELS])
 
         # We assume the membrane boundaries are found in the first prediction class (channel 0)
         opSingleChannelSelector = OpSingleChannelSelector(parent=self)
-        opSingleChannelSelector.Input.connect( op5PixelProb.output )
+        opSingleChannelSelector.Input.connect( op5PixelProb.Output )
         opSingleChannelSelector.Index.setValue(0)
         
         opPreprocessing.InputData.connect( opSingleChannelSelector.Output )
-        opPreprocessing.RawData.connect( op5Raw.output )
-        opSplitBodyCarving.RawData.connect( op5Raw.output )
+        opPreprocessing.RawData.connect( op5Raw.Output )
+        opSplitBodyCarving.RawData.connect( op5Raw.Output )
         opSplitBodyCarving.InputData.connect( opSingleChannelSelector.Output )
-        opSplitBodyCarving.RavelerLabels.connect( op5RavelerLabels.output )
+        opSplitBodyCarving.RavelerLabels.connect( op5RavelerLabels.Output )
         opSplitBodyCarving.FilteredInputData.connect( opPreprocessing.FilteredImage )
 
         # Special input-input connection: WriteSeeds metadata must mirror the input data

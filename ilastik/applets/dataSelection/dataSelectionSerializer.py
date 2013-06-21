@@ -87,7 +87,7 @@ class DataSelectionSerializer( AppletSerializer ):
                         localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
     
                     # Make sure the dataSlot's axistags are updated with the dataset as we just wrote it
-                    # (The top-level operator may use an Op5ifyer, which changed the axisorder)
+                    # (The top-level operator may use an OpReorderAxes, which changed the axisorder)
                     info.axistags = dataSlot.meta.axistags
     
                     wroteInternalData = True
