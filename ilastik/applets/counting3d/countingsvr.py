@@ -116,8 +116,7 @@ class RegressorGurobi(object):
 		    model.addConstr(constr)        
 
         model.update()
-        model.setParam('OutputFlag', False) 
-        #model.write("test.lp")
+        #model.setParam('OutputFlag', False) 
         model.optimize()
         
         #self.w=np.array([w.x for w in w_vars]).reshape(-1,1)
@@ -138,16 +137,20 @@ class RegressorGurobi(object):
             isForegroundIndicators = []
 
             for i in range(len(boxConstraints)):
+                #import sitecustomize
+                #sitecustomize.debug_trace()
                 value, features = boxConstraints[i]
                 assert features.shape[1] == self.Nf
                 res = self.predict(features)
                 res[np.where(res >0)] = 1
+                res[np.where(res <0)] = 0
                 isForegroundIndicators.append(res)
 
                 z_vars.append([model.addVar(name = "z_{}_{}".format(i, j), vtype = gu.GRB.CONTINUOUS) for j in
-                      range(sum(numConstraintVariables)) ])
+                      range(features.shape[0]) ])
                 b_vars.append([model.addVar(name = "b_{}_{}".format(i, j), lb = 0, vtype = gu.GRB.CONTINUOUS) for j in
-                      range(sum(numConstraintVariables)) ])
+                      range(features.shape[0]) ])
+
 
             model.update()
 
@@ -183,18 +186,17 @@ class RegressorGurobi(object):
 
                 model.addConstr(boxconstrmin)
 
-                obj += self._C * float(1./features.shape[0]) * diffopplus[i] * diffopplus[i]
-                obj += self._C * float(1./features.shape[0]) * diffopminus[i] * diffopminus[i]
+                obj += self._C * (1./features.shape[0])**0.5 * diffopplus[i] * diffopplus[i]
+                obj += self._C * (1./features.shape[0])**0.5 * diffopminus[i] * diffopminus[i]
 
             model.setObjective(obj)
         
             model.update()    
             model.optimize()
-            #import sitecustomize
-            #sitecustomize.debug_trace()
 
             self.w=np.array([w.x for w in w_vars]).reshape(-1,1)
 
+        #model.write("test.lp")
         return self  
 
     def predict(self, X):
@@ -211,10 +213,10 @@ class SVR(object):
 
 
     options = [
-        {"optimization" : "rf-sklearn" ,"gui":["default","rf"], "req":["sklearn"]},
-        {"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
-        {"optimization" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
-        {"optimization" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
+        {"method" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
+        {"method" : "rf-sklearn" ,"gui":["default","rf"], "req":["sklearn"]},
+        #{"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
+        {"method" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
         #{"optimization" : "svr-gurobi", "gui":["default", "svr"], "req":["dummy"]}
     #{"optimization" : "svr", "kernel" : "linear","gui":["default","svr"]},
     #{"optimization" : "svr", "kernel" : "poly","gui":["default","svr"]},
@@ -226,7 +228,7 @@ class SVR(object):
     ]
 
 
-    def __init__(self, C = 1, epsilon = 0.001, limitDensity = True, optimization = "quadratic", kernel ="linear" ,\
+    def __init__(self, method = options[0]["method"], Sigma = [2.5], C = 1, epsilon = 0.001, \
                   ntrees=10, maxdepth=None, #RF parameters, maxdepth=None means grows untill purity
                  **kwargs
                  ):
@@ -234,14 +236,16 @@ class SVR(object):
         underMult : penalty-multiplier for underestimating density
         overMult : penalty-multiplier for overestimating the density
         """
-        self.DENSITYBOUND=limitDensity
-        #self.upperBounds = [None, underMult, overMult]
-        self._epsilon = epsilon
-        self._C = C
-
+        self.DENSITYBOUND=True
+        
         self._trained = False
-        self._kernel = kernel
-        self._optimization = optimization
+        #self.upperBounds = [None, underMult, overMult]
+        self._Sigma = Sigma
+        self._C = C
+        self._epsilon = epsilon
+
+        #self._kernel = kernel
+        self._method = method 
         
         #RF parameters:
         self._ntrees=ntrees
@@ -255,13 +259,14 @@ class SVR(object):
         f.close()
         return obj
 
-    def prepareData(self, oldImg, oldDot, sigma, smooth, normalize):
+    def prepareData(self, oldImg, oldDot, smooth, normalize):
 
         dot = np.copy(oldDot.reshape(oldImg.shape[:-1]))
         backupindices = np.where(dot == 2)
         dot[backupindices] = 0
-        dot[np.where(dot == 1)] = 255
+        dot[np.where(dot == 1)] = 1
 
+        sigma = self._Sigma
         
         if len(sigma) == 1 or len(sigma) < len(dot.shape):
             sigma = sigma[0]
@@ -290,15 +295,13 @@ class SVR(object):
 
         tags = [len(pindices), len(lindices)]
         #print dot
-        self.dot = dot
-        self.img = img
 
         return img, dot, mapping, tags
    
-    def fit(self, img, dot, sigma, smooth = True, normalize = False):
+    def fit(self, img, dot, smooth = True, normalize = False):
 
         newImg, newDot, mapping, tags = \
-        self.prepareData(img, dot, sigma, smooth, normalize)
+        self.prepareData(img, dot, smooth, normalize)
         self.fitPrepared(newImg[mapping,:], newDot[mapping], tags)
 
     def fitPrepared(self, img, dot, tags, boxConstraints = []):
@@ -311,7 +314,7 @@ class SVR(object):
         success = False
         #tags.append(len(boxConstraints))
 
-        if self._optimization == "rf-sklearn":
+        if self._method == "rf-sklearn":
             from sklearn.ensemble import RandomForestRegressor as RFR
             
             regressor = RFR(n_estimators=self._ntrees,max_depth=self._maxdepth)
@@ -326,42 +329,44 @@ class SVR(object):
             self._regressor = regressor
             success = True
 
-        elif self._optimization == "svr-sklearn":
+        elif self._method == "svr-sklearn":
             from sklearn.svm import SVR
             regressor = SVR(kernel = self._kernel, C = self._C)
             regressor.fit(img, dot)
             self._regressor = regressor
             success = True
 
-        elif self._optimization == "svrBoxed-gurobi":
+        elif self._method == "svrBoxed-gurobi":
             regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
             regressor.fit(img, dot, tags, boxConstraints)
             self._regressor = regressor
             success = True
         
-        elif self._optimization == "svr-gurobi":
+        elif self._method == "svr-gurobi":
             regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
-            regressor.fit(img, dot, boxConstraints)
+            regressor.fit(img, dot)
             self._regressor = regressor
             success = True
             
 
         if success:
-            self.trained = True
+            self._trained = True
         return success
     
     def predict(self, oldImage, normalize = False):
-        if not self.trained:
+        if not self._trained:
             return np.zeros(oldImage.shape[:-1])
         oldShape = oldImage.shape
         image = np.copy(oldImage.reshape((-1, oldImage.shape[-1])))
         if normalize:
             image = sklearn.preprocessing.normalize(image, axis=0)
-        if self._optimization == "rf-sklearn":
+        if self._method == "rf-sklearn":
             res = self._regressor.predict(image)
-        elif self._optimization == "svr-sklearn":
+        elif self._method == "svr-sklearn":
             res = self._regressor.predict(image)
-        elif self._optimization == "svrBoxed-gurobi":
+        elif self._method == "svrBoxed-gurobi":
+            res = self._regressor.predict(image)
+        elif self._method == "svr-gurobi":
             res = self._regressor.predict(image)
 
         #res = np.zeros(oldShape[:-1])
@@ -375,6 +380,21 @@ class SVR(object):
         dataset = f.create_dataset(targetname, shape = (1,), dtype = str_type)
         dataset[0] = cPickle.dumps(self)
         f.close()
+
+    def get_params(self):
+        return {
+            'method' : self._method,
+            'Sigma' : self._Sigma,
+            'C' : self._C,
+            'epsilon' : self._epsilon,
+            'ntrees' : self._ntrees,
+            'maxdepth' : self._maxdepth
+            }
+    
+    def set_params(self, **params):
+        for key in params:
+            setattr(self, "_" + key, params[key])
+        return self
 
 
 

@@ -107,8 +107,8 @@ class BoxLabel(QObject):
 #             logger.debug("BoxLabel '{}' has new density '{}'".format(
 #                 self._density, n))
             self._isFixed = bool
-            self.isFixedChanged.emit(self._isFixed)
             self.changed.emit()
+            self.isFixedChanged.emit(self._isFixed)
     def __repr__(self):
         return "<BoxLabel name={}, color={}>".format(
             self.name, self._brushColor)
@@ -188,11 +188,11 @@ class BoxListModel(LabelListModel):
         
         if index.column()==self.ColumnID.Fix:
             print "fixing"
-            self._labels[index.row()].isFixed=True
             value=float(value.toString())
             row=index.row()
             self._labels[row].fixvalue=QString("%.1f"%value)
             self.dataChanged.emit(index,index)
+            self._labels[index.row()].isFixed=True
         
         
             

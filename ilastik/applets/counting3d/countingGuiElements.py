@@ -452,7 +452,7 @@ class CoupledRectangleElement(object):
         subarray=self.getSubRegion()
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-        value=np.sum(subarray)/255.0
+        value=np.sum(subarray)
         
         print "Resetting to a new value ",value,self.boxLabel
         
@@ -678,8 +678,12 @@ class BoxInterpreter(QObject):
         return self.baseInterpret.eventFilter(watched, event)
 
 
-class BoxController(object):
+class BoxController(QObject):
+    
+    fixedBoxesChanged = pyqtSignal(list)
+
     def __init__(self,scene,connectionInput,boxListModel):
+        QObject.__init__(self)
         self.scene=scene
         self.connectionInput=connectionInput
         self._currentBoxesList=[]
@@ -688,6 +692,7 @@ class BoxController(object):
         self.currentColor=QColor(0,0,255)    
         self.boxListModel=boxListModel
         self.scene.selectionChanged.connect(self.handleSelectionChange)
+        
         
     def getCurrentActiveBox(self):
         pass
@@ -740,12 +745,23 @@ class BoxController(object):
                    )
         
         box.pmapColorChanged.connect(rect.setNormalColor)
+        box.isFixedChanged.connect(self._fixedBoxesChanged)
         
         self.boxListModel.insertRow( newRow, box )
         rect.boxLabel=box
         rect.updateTextWhenChanges()
+                
         
-        
+    def _fixedBoxesChanged(self, *args):
+        boxes = []
+        for box, rect in zip(self.boxListModel._labels, self._currentBoxesList):
+            if box.isFixed:
+                boxes.append([rect.getStart(), rect.getStop(), box._fixvalue])
+
+        self.fixedBoxesChanged.emit(boxes)
+         
+
+
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))
@@ -833,7 +849,7 @@ if __name__=="__main__":
         jj=np.random.randint(0,500,1)
         a[ii,jj]=1
         a=vigra.filters.discDilation(a,radius=20)
-        array[:]=a.reshape(shape).view(np.ndarray)*255
+        array[:]=a.reshape(shape).view(np.ndarray)
         op.Input.setDirty()
     
     do()
