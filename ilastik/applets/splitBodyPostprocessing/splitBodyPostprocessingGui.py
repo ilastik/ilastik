@@ -1,10 +1,13 @@
+import os
 import numpy
 
-from PyQt4.QtGui import QColor
+from PyQt4 import uic
+from PyQt4.QtGui import QColor, QFileDialog
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 
+from ilastik.utility import bind
 from ilastik.applets.layerViewer import LayerViewerGui
 
 class SplitBodyPostprocessingGui(LayerViewerGui):
@@ -28,6 +31,44 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
         r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
         _fragmentColors.append(QColor(r,g,b))
     _fragmentColors[0:len(firstFragmentColors)] = firstFragmentColors
+
+    def __init__(self, topLevelOperatorView):
+        super( SplitBodyPostprocessingGui, self ).__init__( topLevelOperatorView )
+        
+    def initAppletDrawerUi(self):
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        
+        self._drawer.exportButton.clicked.connect( self.exportFinalSegmentation )
+
+    def exportFinalSegmentation(self):
+        # Ask for the export path
+        exportPath = QFileDialog.getSaveFileName( self,
+                                                  "Save final segmentation",
+                                                  "",
+                                                  "Hdf5 Files (*.h5 *.hdf5)",
+                                                  options=QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
+        if exportPath.isNull():
+            return
+
+        def handleProgress(progress):
+            # TODO: Hook this up to the progress bar
+            print "Export progress: {}%".format( progress )
+
+        op = self.topLevelOperatorView
+        req = op.exportFinalSegmentation( str(exportPath), 
+                                          "zyx",
+                                          handleProgress )
+        self._drawer.exportButton.setEnabled(False)
+        def handleFinish(*args):
+            self._drawer.exportButton.setEnabled(True)
+        req.notify_finished( handleFinish )
+        req.notify_failed( handleFinish )
+
+        # TODO: Allow cancellation?
+        # req.notify_cancelled( bind( self._drawer.exportButton.setEnabled, True ) )
+        # self.cancelButton.clicked.connect( req.cancel )
 
     def setupLayers(self):
         layers = []
@@ -71,7 +112,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
                 colortable = [QColor(0, 0, 0).rgba(), QColor(0, 0, 0, 0).rgba()]
                 bodyMaskLayer = ColortableLayer(LazyflowSource(slot), colortable, direct=True)
                 bodyMaskLayer.name = "Raveler Body Mask #{} ({})".format( index, raveler_label )
-                bodyMaskLayer.visible = True
+                bodyMaskLayer.visible = False
                 bodyMaskLayer.opacity = 1.0
                 layers.append(bodyMaskLayer)
 

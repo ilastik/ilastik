@@ -1,13 +1,21 @@
+from functools import partial
 import numpy
 import vigra
+import h5py
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.roi import roiToSlice
 
+from lazyflow.request import Request
 from lazyflow.operators import OpFilterLabels, OpCompressedCache, OpVigraLabelVolume
+from lazyflow.operators.ioOperators import OpH5WriterBigDataset
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.applets.splitBodyCarving.opSplitBodyCarving import OpSelectLabel, OpFragmentSetLut
 
 from ilastik.utility import bind
+
+import logging
+logger = logging.getLogger(__name__)
 
 class OpSplitBodyPostprocessing(Operator):
     
@@ -28,6 +36,11 @@ class OpSplitBodyPostprocessing(Operator):
     WatershedFilledBodies = OutputSlot(level=1) # (Fragmented, but with holes filled)
     
     FinalSegmentation = OutputSlot()
+
+    # For serialization
+    FinalSegmentationHdf5CacheInput = InputSlot(optional=True)
+    FinalSegmentationHdf5CacheOutput = OutputSlot(optional=True)
+    FinalSegmentationCleanBlocks = OutputSlot()
     
     # Parse list of saved objects to determine list of raveler labels
     
@@ -47,10 +60,10 @@ class OpSplitBodyPostprocessing(Operator):
     #  - relabel each fragment image (i.e. add a constant) to ensure no duplicate labels (including original raveler IDs!)
 
     #
-    # RavelerLabels ------------------------> opSelectLabel ----->---------------------------------------------------------------------------------------------------------------------------------                                                
-    #                                        /                    \                                                                                                                                \                                                
-    # (each item in EditedRavelerBodyList) --                      \             --> FragmentedBodies                                                                                -------------> opMaskedWatersheds --> opMaskedWatershedCaches
-    #                                        \                      \           /                                                                                                   /              /                                                
+    # RavelerLabels ------------------------> opSelectLabel ----->-------------------------------------------------------------------------------------------------------------------------------->---------------------------------------------------                                                
+    #                                        /                    \                                                                                                                                \                                                  \
+    # (each item in EditedRavelerBodyList) --                      \                                  --> FragmentedBodies                                                           -------------> opMaskedWatersheds --> opMaskedWatershedCaches --> opAccumulateFinalImage --> opFinalCache --> FinalSegmentation
+    #                                        \                      \                                /                                                                              /              /                                                
     #                                         opFragmentSetLuts ---> opFragments --> opFragmentCaches --> opRelabelFragments --> opRelabeledFragmentCaches --> opSmallFragmentFilter   InputData --                                                
     #                                        /                      /                                                                                     \                         \                                                            
     # MST ---------------------------------->-----------------------                                                                                       \                         --> opFilteredFragmentCaches --> FilteredFragmentedBodies
@@ -80,11 +93,11 @@ class OpSplitBodyPostprocessing(Operator):
         self._opFragments.BodyMask.connect( self._opSelectLabel.Output )
         self._opFragments.FragmentLut.connect( self._opFragmentSetLuts.Lut )
         self._opFragments.MST.connect( self.MST )
-        self.FragmentedBodies.connect( self._opFragments.Output )
         
         # Cache the fragment segmentations for each body
         self._opFragmentCaches = OperatorWrapper( OpCompressedCache, parent=self )
         self._opFragmentCaches.Input.connect( self._opFragments.Output )
+        self.FragmentedBodies.connect( self._opFragmentCaches.Output )
         
         # CC is performed on the cached output, in part to ensure that the entire block is used.
         self._opRelabelFragments = OperatorWrapper( OpVigraLabelVolume, parent=self )
@@ -123,6 +136,11 @@ class OpSplitBodyPostprocessing(Operator):
         self._opFinalCache.Input.connect( self._opAccumulateFinalImage.Output )
         self.FinalSegmentation.connect( self._opFinalCache.Output )
 
+        # Cache serialization slots
+        self._opFinalCache.InputHdf5.connect( self.FinalSegmentationHdf5CacheInput )
+        self.FinalSegmentationCleanBlocks.connect( self._opFinalCache.CleanBlocks )
+        self.FinalSegmentationHdf5CacheOutput.connect( self._opFinalCache.OutputHdf5 )
+        
     def setupOutputs(self):
         raveler_bodies = self.EditedRavelerBodyList.value
         num_bodies = len(raveler_bodies)
@@ -139,13 +157,72 @@ class OpSplitBodyPostprocessing(Operator):
         # All outputs are provided by internal operators, so this function should never be called
         assert False, "Unknown output slot: {}".format( slot.name )
 
-    def _executeFinalSegmentation(self, roi, result):
-        self.RavelerLabels(  )
-
     def propagateDirty(self, slot, subindex, roi):
         # If anything is dirty, the entire output is dirty
         self.FinalSegmentation.setDirty()
+    
+    def exportFinalSegmentation(self, outputPath, axisorder, progressCallback=None):
+        assert self.FinalSegmentation.ready(), "Can't export yet: The final segmentation isn't ready!"
+
+        logger.info("Starting Final Segmentation Export...")
         
+        opTranspose = OpReorderAxes( parent=self )
+        opTranspose.AxisOrder.setValue( axisorder )
+        opTranspose.Input.connect( self.FinalSegmentation )
+        
+        f = h5py.File(outputPath, 'w')
+        opExporter = OpH5WriterBigDataset(parent=self)
+        opExporter.hdf5File.setValue( f )
+        opExporter.hdf5Path.setValue( 'split_result' )
+        opExporter.Image.connect( opTranspose.Output )
+        if progressCallback is not None:
+            opExporter.progressSignal.subscribe( progressCallback )
+        
+        req = Request( partial(self._runExporter, opExporter) )
+
+        def cleanOps():
+            opExporter.cleanUp()
+            opTranspose.cleanUp()
+        
+        def handleFailed( exc, exc_info ):
+            cleanOps()        
+            f.close()
+            import traceback
+            traceback.print_tb(exc_info[2])
+            msg = "Final Segmentation export FAILED due to the following error:\n{}".format( exc )
+            logger.error( msg )
+
+        def handleFinished( result ):
+            try:
+                cleanOps()
+                logger.info("FINISHED Final Segmentation Export")
+            finally:
+                f.close()
+
+        def handleCancelled():
+            cleanOps()
+            f.close()
+            logger.info( "Final Segmentation export was cancelled!" )
+
+        req.notify_failed( handleFailed )
+        req.notify_finished( handleFinished )
+        req.notify_cancelled( handleCancelled )
+        
+        req.submit()
+        return req # Returned in case the user wants to cancel it.
+
+    def _runExporter(self, opExporter):
+        # Trigger the export
+        success = opExporter.WriteImage.value
+        assert success
+        return success
+    
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.FinalSegmentationHdf5CacheInput, "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache, 
+        #  so all calls to __setitem__ are forwarded automatically 
+    
 class OpFragment(Operator):
     BodyMask = InputSlot()
     FragmentLut = InputSlot()
