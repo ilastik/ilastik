@@ -146,8 +146,8 @@ class BoxLabel(ListElement):
 #             logger.debug("BoxLabel '{}' has new density '{}'".format(
 #                 self._density, n))
             self._isFixed = bool
+            self.changed.emit()
             self.isFixedChanged.emit(self._isFixed)
-            self.changed.emit()   
     def __repr__(self):
         return "<BoxLabel name={}, color={}>".format(
             self.name, self._color)

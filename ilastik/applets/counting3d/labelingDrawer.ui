@@ -240,28 +240,18 @@
        <item>
         <widget class="QWidget" name="gridLayout_2" native="true">
          <layout class="QGridLayout" name="gridLayout">
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>P Overestimation</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="2">
-           <widget class="QDoubleSpinBox" name="OverBox"/>
-          </item>
           <item row="2" column="2">
            <widget class="QDoubleSpinBox" name="EpsilonBox"/>
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="label">
             <property name="text">
-             <string>P Underestimation</string>
+             <string>C</string>
             </property>
            </widget>
           </item>
           <item row="3" column="2">
-           <widget class="QDoubleSpinBox" name="UnderBox"/>
+           <widget class="QDoubleSpinBox" name="CBox"/>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_4">
@@ -358,6 +348,7 @@
    <class>LabelListView</class>
    <extends>QStackedWidget</extends>
    <header>ilastik.widgets.labelListView</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

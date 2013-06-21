@@ -147,6 +147,10 @@ class Counting3dGui(LabelingGui):
         
         self._addNewLabel()
         self._addNewLabel()
+        self._labelControlUi.brushSizeComboBox.setEnabled(False) 
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self.selectLabel(0)
+
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
         
@@ -155,20 +159,26 @@ class Counting3dGui(LabelingGui):
         
         self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
-        self.labelingDrawerUi.SigmaLine.setText("1")
-        self.labelingDrawerUi.UnderBox.setRange(0,1000000)
-        self.labelingDrawerUi.UnderBox.setValue(1)
-        self.labelingDrawerUi.OverBox.setRange(0,1000000)
-        self.labelingDrawerUi.OverBox.setValue(1)
-        self.labelingDrawerUi.UnderBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.OverBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+        self.labelingDrawerUi.CBox.setRange(0,1000)
+        self.labelingDrawerUi.CBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+        self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
 
         for option in self.op.options:
-            values=[v for k,v in option.items() if k!="gui"]
-            self.labelingDrawerUi.SVROptions.addItem('+'.join(values), (option,))
+            if "req" in option.keys():
+                try:
+                    import imp
+                    for req in option["req"]:
+                        imp.find_module(req)
+                except:
+                    continue
+            #values=[v for k,v in option.items() if k not in ["gui", "req"]]
+            self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
         
+        self._setUIParameters()
         
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
         #elf._updateSVROptions()
@@ -177,8 +187,9 @@ class Counting3dGui(LabelingGui):
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
         #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
-        self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
-        self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
+        #self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
+        #self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
+        self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
         self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
         self.labelingDrawerUi.SigmaLine.textChanged.connect(self._changedSigma)
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
@@ -207,7 +218,7 @@ class Counting3dGui(LabelingGui):
             
         def updateSum(*args, **kw):
             print "updatingSum"
-            density = self.op.OutputSum.value / 255
+            density = self.op.OutputSum.value 
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
 
@@ -234,11 +245,12 @@ class Counting3dGui(LabelingGui):
 #         ###FIXME: Only for debug
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-#         self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
-#         self.navigationIntepreterDefault=self.editor.navInterpret
-#         #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+        self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
+        self.navigationIntepreterDefault=self.editor.navInterpret
+        #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+
+        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
     
-#     def _setup_parameters_connections(self):
         
     
     def _registerOperatorsToGuiCallbacks(self):
@@ -298,16 +310,63 @@ class Counting3dGui(LabelingGui):
         
         
     
-    
+    def _setUIParameters(self):
+        if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
+            #use parameters from cached classifier
+            params = self.op.classifier_cache.Output.value.get_params() 
+            Sigma = params["Sigma"]
+            Epsilon = params["epsilon"]
+            C = params["C"]
+            Ntrees = params["ntrees"]
+            MaxDepth = params["maxdepth"]
+            _ind = self.labelingDrawerUi.SVROptions.findText(params["method"])
+            self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
+        
+        else:
+            #read parameters from opTrain Operator
+
+            Sigma = self.op.opTrain.Sigma.value
+            Epsilon = self.op.opTrain.Epsilon.value
+            C = self.op.opTrain.C.value
+            Ntrees = self.op.opTrain.Ntrees.value
+            MaxDepth = self.op.opTrain.MaxDepth.value
+            _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value["method"])
+            self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
+
+
+        self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
+        self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
+        self.labelingDrawerUi.CBox.setValue(C)
+        self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
+        self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
+        self._hideParameters()
+
+        
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
     def _updateNtrees(self):
         self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
-        
-    def _updateOverMult(self):
-        self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
-    def _updateUnderMult(self):
-        self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+    
+    def _hideParameters(self):
+        _ind = self.labelingDrawerUi.SVROptions.currentIndex()
+        option = self.labelingDrawerUi.SVROptions.itemData(_ind).toPyObject()[0]
+        if "svr" not in option["gui"]:
+            self.labelingDrawerUi.gridLayout_2.setVisible(False)
+        else:
+            self.labelingDrawerUi.gridLayout_2.setVisible(True)
+            
+ 
+        if "rf" not in option["gui"]:
+            self.labelingDrawerUi.rf_panel.setVisible(False)
+        else:
+            self.labelingDrawerUi.rf_panel.setVisible(True)
+    #def _updateOverMult(self):
+    #    self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
+    #def _updateUnderMult(self):
+    #    self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+    def _updateC(self):
+        self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
+        print "blub"
     def _updateSigma(self):
         if self.changedSigma:
             sigma = [float(n) for n in
@@ -324,20 +383,16 @@ class Counting3dGui(LabelingGui):
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
-                
         self.op.opTrain.SelectedOption.setValue(option)
-        
-        if "svr" not  in option["gui"]:
-            self.labelingDrawerUi.gridLayout_2.setVisible(False)
-        else:
-            self.labelingDrawerUi.gridLayout_2.setVisible(True)
-            
- 
-        if "rf" not in option["gui"]:
-            self.labelingDrawerUi.rf_panel.setVisible(False)
-        else:
-            self.labelingDrawerUi.rf_panel.setVisible(True)
-            
+
+        self._hideParameters()        
+
+    def _handleBoxConstraints(self, constr):
+        self.op.opTrain.BoxConstraints.setValue(constr)
+
+        #boxes = self.boxController._currentBoxesList
+
+
     def _debug(self):
         import sitecustomize
         sitecustomize.debug_trace()
@@ -347,7 +402,7 @@ class Counting3dGui(LabelingGui):
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
-
+        
         # Connect checkboxes
         def nextCheckState(checkbox):
             checkbox.setChecked( not checkbox.isChecked() )
@@ -410,13 +465,15 @@ class Counting3dGui(LabelingGui):
      
 
 
-        slots = {'density' : self.op.Density}
+        slots = {'Prediction' : self.op.Density}
 
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = colortables.jet(), normalize = 'auto')
                 layer.name = name
+                layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                #layer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 layers.append(layer)
 
 
@@ -728,8 +785,8 @@ class Counting3dGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
-            self._renderMgr.color(label, color)
+            color = (color.red(), color.green() , color.blue() )
+            self._renderMgr.setColor(label, color)
 
 
 
@@ -743,6 +800,16 @@ class Counting3dGui(LabelingGui):
 #             self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
 #         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
+    def _gui_setBrushing(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        # Make sure the paint button is pressed
+        self._labelControlUi.paintToolButton.setChecked(True)
+        # Show the brush size control and set its caption
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        # Make sure the GUI reflects the correct size
+        self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+
     def _gui_setBox(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
@@ -807,10 +874,11 @@ class Counting3dGui(LabelingGui):
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-                brushSize = self.brushSizes[self.paintBrushSizeIndex]
+                brushSize = 1
                 self.editor.brushingModel.setBrushSize(brushSize)
                 # update GUI 
                 self._gui_setBrushing()
+
 
             elif toolId == Tool.Erase:
                 # If necessary, tell the brushing model to start erasing
@@ -981,92 +1049,9 @@ class Counting3dGui(LabelingGui):
             newKey.append(k)
         newKey = tuple(newKey)
         try:
-            density = numpy.sum(self.op.Density[newKey].wait()) / 255
+            density = numpy.sum(self.op.Density[newKey].wait())  
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
         except:
             pass
         
-    
-#     def _setUpRandomColors(self):
-#         seed=42
-#         self._RandomColorGenerator=RandomColorGenerator(seed)
-# 
-#         self._RandomColorGenerator.next() #discard black red and gree
-#         self._RandomColorGenerator.next()
-#         self._RandomColorGenerator.next()
-#     
-#     def _getNextBoxColor(self):
-#         color=self._RandomColorGenerator.next()
-#         return color
-
-
-
-
-
-
-
-
-
-
-
-# 
-# import numpy as np
-# import colorsys
-# 
-# def _get_colors(num_colors,seed=42):
-#     golden_ratio_conjugate = 0.618033988749895
-#     np.random.seed(seed)
-#     colors=[]
-#     hue=np.random.rand()*360
-#     for i in np.arange(0., 360., 360. / num_colors):
-#         hue += golden_ratio_conjugate
-#         lightness = (50 + 1 * 10)/100.
-#         saturation = (90 + 1 * 10)/100.
-#         
-#         colors.append(colorsys.hsv_to_rgb(hue, 0.99,0.99))
-#     return colors
-# 
-# 
-# def _createDefault16ColorColorTable():
-#     from PyQt4.QtGui import QColor
-#     from PyQt4.QtCore import Qt
-#     colors = []
-#     # Transparent for the zero label
-#     colors.append(QColor(0,0,0,0))
-#     # ilastik v0.5 colors
-#     colors.append( QColor( Qt.red ) )
-#     colors.append( QColor( Qt.green ) )
-#     colors.append( QColor( Qt.yellow ) )
-#     colors.append( QColor( Qt.blue ) )
-#     colors.append( QColor( Qt.magenta ) )
-#     colors.append( QColor( Qt.darkYellow ) )
-#     colors.append( QColor( Qt.lightGray ) )
-#     # Additional colors
-#     colors.append( QColor(255, 105, 180) ) #hot pink
-#     colors.append( QColor(102, 205, 170) ) #dark aquamarine
-#     colors.append( QColor(165,  42,  42) ) #brown
-#     colors.append( QColor(0, 0, 128) )     #navy
-#     colors.append( QColor(255, 165, 0) )   #orange
-#     colors.append( QColor(173, 255,  47) ) #green-yellow
-#     colors.append( QColor(128,0, 128) )    #purple
-#     colors.append( QColor(240, 230, 140) ) #khaki
-#     return colors
-# 
-# def RandomColorGenerator(seed=42):
-#     np.random.seed(seed)    
-#     default=_createDefault16ColorColorTable()
-#     print default
-#     i=-1
-#     while 1:
-#         i+=1
-#         if i<16:
-#             yield default[i]
-#         else:        
-#             hue=np.random.rand()*360
-#             lightness = (50 + 1 * 10)/100.
-#             saturation = (90 + 1 * 10)/100.
-#             
-#             color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
-#             color=[c*255.0 for c in color]
-#             yield QColor(*color)        

@@ -724,7 +724,10 @@ class BoxInterpreter(QObject):
         return self.baseInterpret.eventFilter(watched, event)
 
 
-class BoxController(object):
+class BoxController(QObject):
+    
+    fixedBoxesChanged = pyqtSignal(list)
+
     def __init__(self,scene,connectionInput,boxListModel):
         '''
         Class which controls all boxes on the scene
@@ -734,8 +737,8 @@ class BoxController(object):
         :param boxListModel:
  
         '''
+        QObject.__init__(self)
         self._setUpRandomColors()
-        
         self.scene=scene
         self.connectionInput=connectionInput
         self._currentBoxesList=[]
@@ -812,7 +815,16 @@ class BoxController(object):
         
         self.currentColor=self._getNextBoxColor()
         
-        
+    def _fixedBoxesChanged(self, *args):
+        boxes = []
+        for box, rect in zip(self.boxListModel._labels, self._currentBoxesList):
+            if box.isFixed:
+                boxes.append([rect.getStart(), rect.getStop(), box._fixvalue])
+
+        self.fixedBoxesChanged.emit(boxes)
+         
+
+
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))
@@ -1059,7 +1071,7 @@ if __name__=="__main__":
         jj=np.random.randint(0,500,1)
         a[ii,jj]=1
         a=vigra.filters.discDilation(a,radius=20)
-        array[:]=a.reshape(shape).view(np.ndarray)*255
+        array[:]=a.reshape(shape).view(np.ndarray)
         op.Input.setDirty()
     
     do()

@@ -1,5 +1,5 @@
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, deleteIfPresent, SerialSlot, SerialSVMClassifierSlot, \
+    AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
@@ -178,10 +178,10 @@ class Counting3dSerializer(AppletSerializer):
                                  name='LabelSets',
                                  subname='labels{:03d}',
                                  selfdepends=False),
-                 SerialSVMClassifierSlot(operator.Classifier,
+                 SerialCountingSlot(operator.Classifier,
                                       operator.classifier_cache,
-                                      name="ClassifierForests",
-                                      subname="Forest{:04d}"),
+                                      name="CountingWrappers",
+                                      subname="wrapper{:04d}"),
                  self.predictionSlot]
 
 
