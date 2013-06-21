@@ -284,8 +284,7 @@ class Counting3dGui(LabelingGui):
         CallToGui(op.Ntrees,gui.NtreesBox.setValue)
         CallToGui(op.MaxDepth,gui.MaxDepthBox.setValue)
 
-        CallToGui(op.OverMult,gui.OverBox.setValue)
-        CallToGui(op.UnderMult,gui.UnderBox.setValue)
+        CallToGui(op.C,gui.CBox.setValue)
         
         def _setsigma(floatList):
             ss=""
@@ -298,8 +297,7 @@ class Counting3dGui(LabelingGui):
         CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
         
         def _setoption(option):
-            values=[v for k,v in option.items() if k!="gui"]
-            ss="+".join(values)
+            ss = option["method"]
             index=gui.SVROptions.findText(ss)
             gui.SVROptions.setCurrentIndex(index)
             
@@ -320,7 +318,6 @@ class Counting3dGui(LabelingGui):
             Ntrees = params["ntrees"]
             MaxDepth = params["maxdepth"]
             _ind = self.labelingDrawerUi.SVROptions.findText(params["method"])
-            self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
         
         else:
             #read parameters from opTrain Operator
@@ -331,7 +328,6 @@ class Counting3dGui(LabelingGui):
             Ntrees = self.op.opTrain.Ntrees.value
             MaxDepth = self.op.opTrain.MaxDepth.value
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value["method"])
-            self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
 
 
         self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
@@ -339,6 +335,7 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.CBox.setValue(C)
         self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
         self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
+        self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
         self._hideParameters()
 
         

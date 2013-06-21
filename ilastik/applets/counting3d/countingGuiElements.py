@@ -458,7 +458,7 @@ class CoupledRectangleElement(object):
         subarray=self.getSubRegion()
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-        value=np.sum(subarray)/255.0
+        value=np.sum(subarray)
         
         #print "Resetting to a new value ",value,self.boxLabel
         
