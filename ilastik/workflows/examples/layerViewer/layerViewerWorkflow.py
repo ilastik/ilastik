@@ -25,7 +25,7 @@ class LayerViewerWorkflow(Workflow):
 
         self._workflow_cmdline_args = workflow_cmdline_args
 
-    def onProjectLoaded(self):
+    def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
         """
