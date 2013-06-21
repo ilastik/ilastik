@@ -48,7 +48,7 @@ def _listReplace(old, new):
 
 
 
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
+from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QString,QVariant
 from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
         QStylePainter, QPen
 
@@ -169,9 +169,9 @@ class Counting3dGui(LabelingGui):
             values=[v for k,v in option.items() if k!="gui"]
             self.labelingDrawerUi.SVROptions.addItem('+'.join(values), (option,))
         
-        self._updateSVROptions()
         
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
+        #elf._updateSVROptions()
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
         #self.labelingDrawerUi.boxListView._colorDialog=BoxDialog()
         #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
@@ -184,6 +184,12 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
         self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
         self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
+        
+
+        self._registerOperatorsToGuiCallbacks() 
+
+        
+        
         self._updateNtrees()
         self._updateMaxDepth()
         
@@ -232,13 +238,69 @@ class Counting3dGui(LabelingGui):
 #         self.navigationIntepreterDefault=self.editor.navInterpret
 #         #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
+#     def _setup_parameters_connections(self):
+        
+    
+    def _registerOperatorsToGuiCallbacks(self):
+        
+        class CallToGui:
+            def __init__(self,opslot,setfun):
+                '''
+                Helper class which defines a simple callback between an operator and a gui 
+                element so that gui elements can be kept in sync across different images
+                :param opslot:
+                :param setfun:
+                :param defaultval:
+                '''
+                
+                self.val=None
+                self.opslot=opslot
+                self.setfun=setfun
+                self._exec()
+                self.opslot.notifyDirty(bind(self._exec))
+            
+            def _exec(self):
+                if self.opslot.ready():
+                    self.val=self.opslot.value
+                    
+                if self.val!=None:
+                    self.setfun(self.val)
+        
+        op=self.op.opTrain
+        gui=self.labelingDrawerUi
+        
+        CallToGui(op.Ntrees,gui.NtreesBox.setValue)
+        CallToGui(op.MaxDepth,gui.MaxDepthBox.setValue)
+
+        CallToGui(op.OverMult,gui.OverBox.setValue)
+        CallToGui(op.UnderMult,gui.UnderBox.setValue)
+        
+        def _setsigma(floatList):
+            ss=""
+            for el in floatList:
+                ss+="%.1f "%el
+            ss=ss[:-1]
+            gui.SigmaLine.setText(QString(ss))
+        
+        CallToGui(op.Sigma,_setsigma)
+        CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
+        
+        def _setoption(option):
+            values=[v for k,v in option.items() if k!="gui"]
+            ss="+".join(values)
+            index=gui.SVROptions.findText(ss)
+            gui.SVROptions.setCurrentIndex(index)
+            
+        CallToGui(op.SelectedOption,_setoption)
+        
+        
+        
+        
+        
     
     
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
-    
-    
-    
     def _updateNtrees(self):
         self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
         
@@ -259,13 +321,10 @@ class Counting3dGui(LabelingGui):
     def _updateEpsilon(self):
         self.op.opTrain.Epsilon.setValue(self.labelingDrawerUi.EpsilonBox.value())
 
-
-
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
-        
-        
+                
         self.op.opTrain.SelectedOption.setValue(option)
         
         if "svr" not  in option["gui"]:
