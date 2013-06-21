@@ -238,16 +238,14 @@ class BoxListModel(ListModel):
             row = index.row()
             value = self._elements[row]
                 
-            pixmap = QPixmap(26,26)
+            pixmap = QPixmap(_NPIXELS,_NPIXELS)
             
             if value.isFixed:
                 iconpath=os.path.join(os.path.split(__file__)[0],
                                       'icons/lock-edit-icon-32.png')
             else:
                 iconpath=os.path.join(os.path.split(__file__)[0],
-                                      'icons/lock_open-32.png')
-                
-            
+                                      'icons/lock_open-32.png')       
             pixmap.load(iconpath)
             icon = QIcon(pixmap)
             

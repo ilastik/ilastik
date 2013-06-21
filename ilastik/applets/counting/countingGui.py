@@ -337,7 +337,8 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
         self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
         self._hideParameters()
-
+        
+        
         
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
@@ -357,13 +358,14 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.rf_panel.setVisible(False)
         else:
             self.labelingDrawerUi.rf_panel.setVisible(True)
+            
+        
     #def _updateOverMult(self):
     #    self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
     #def _updateUnderMult(self):
     #    self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
     def _updateC(self):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
-        print "blub"
     def _updateSigma(self):
         if self.changedSigma:
             sigma = [float(n) for n in
@@ -381,9 +383,20 @@ class CountingGui(LabelingGui):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
         self.op.opTrain.SelectedOption.setValue(option)
-
+        
+        self._hideFixable(option)
+        
         self._hideParameters()        
-
+    
+    def _hideFixable(self,option):
+        if 'method' in option and option['method']=='rf-sklearn':
+            self.labelingDrawerUi.boxListView.allowFixIcon=False
+            self.labelingDrawerUi.boxListView.allowFixValues=False
+        elif 'method' in option and option['method']=='svrBoxed-gurobi':
+            self.labelingDrawerUi.boxListView.allowFixIcon=True
+            
+        
+    
     def _handleBoxConstraints(self, constr):
         self.op.opTrain.BoxConstraints.setValue(constr)
 

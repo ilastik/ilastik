@@ -129,12 +129,12 @@ class BoxListView(ListView):
         elif (modelIndex.column() == self.model.ColumnID.FixIcon):
             state=self._table.isColumnHidden(self.model.ColumnID.Fix)
             
-            self._table.setColumnHidden(self.model.ColumnID.Fix, not state)
-            #self._table.setColumnHidden(self.model.ColumnID.FixIcon, True)
-            if state:
-                index=self.model.index(modelIndex.row(),self.model.ColumnID.Fix)
-                self._table.edit(index)
-                #self._table.selectionModel().select(index,QItemSelectionModel.ClearAndSelect)
+            #self._table.setColumnHidden(self.model.ColumnID.Fix, not state)
+            self._table.setColumnHidden(self.model.ColumnID.Fix, False)
+            #if state:
+            index=self.model.index(modelIndex.row(),self.model.ColumnID.Fix)
+            self._table.edit(index)
+            #self._table.selectionModel().select(index,QItemSelectionModel.ClearAndSelect)
             
             
             
@@ -161,7 +161,15 @@ class BoxListView(ListView):
     def allowFixValues(self, allow):
         self._table.setColumnHidden(self.model.ColumnID.Fix, not allow)
 
-        
+    @property
+    def allowFixIcon(self):
+        return not self._table.isColumnHidden(self.model.ColumnID.FixIcon)
+
+    @allowFixIcon.setter
+    def allowFixIcon(self, allow):
+        self._table.setColumnHidden(self.model.ColumnID.FixIcon, not allow)
+
+    
 if __name__=="__main__":
     from boxListModel import BoxListModel,BoxLabel
     import numpy
