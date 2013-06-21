@@ -1,3 +1,4 @@
+import collections
 from functools import partial
 import numpy
 import vigra
@@ -153,7 +154,6 @@ class OpSplitBodyPostprocessing(Operator):
         for index, raveler_body_id in enumerate(raveler_bodies):
             self._opSelectLabel.SelectedLabel[index].setValue( raveler_body_id )
             self._opFragmentSetLuts.RavelerLabel[index].setValue( raveler_body_id )
-            pass
 
     def execute(self, slot, subindex, roi, result):
         # All outputs are provided by internal operators, so this function should never be called
@@ -312,27 +312,50 @@ class OpAccumulateFragmentSegmentations( Operator ):
     FragmentSegmentations = InputSlot(level=1)
     
     Output = OutputSlot()
+    Mapping = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpAccumulateFragmentSegmentations, self ).__init__( *args, **kwargs )
+        self._mapping = None
     
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.RavelerLabels.meta )
-    
+        self.Mapping.meta.dtype = object
+        self.Mapping.meta.shape = (1,)
+
     def execute(self, slot, subindex, roi, result):
-        assert (roi.start == 0).all() and (roi.stop == self.Output.meta.shape).all(), "Must request entire image."
-        self.RavelerLabels(roi.start, roi.stop).writeInto( result ).wait()
-
-        # Allocate a temporary for our fragment images
-        fragment_image = numpy.zeros( result.shape, dtype=numpy.int32 )
-
-        for slot in self.FragmentSegmentations:
+        if slot == self.Mapping:
+            result[0] = self._mapping
+            return result
+        elif slot == self.Output:
+            assert (roi.start == 0).all() and (roi.stop == self.Output.meta.shape).all(), "Must request entire image."
+            self.RavelerLabels(roi.start, roi.stop).writeInto( result ).wait()
+    
+            # Allocate a temporary for our fragment images
+            fragment_image = numpy.zeros( result.shape, dtype=numpy.int32 )
             max_label = result.max()
-            slot(roi.start, roi.stop).writeInto(fragment_image.view(numpy.uint32)).wait()
-            # This next line shows what we want to do, but it creates a big temporary array (e.g. fragment_image + max_label)
-            # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
-            # Instead, we bend over backwards here to do this 'in place'
-            fragment_image = numpy.where( fragment_image, fragment_image, -max_label )
-            numpy.add( fragment_image, max_label, out=fragment_image )
-            result[:] = numpy.where( fragment_image, fragment_image, result )
-        return result
+            self._mapping = collections.OrderedDict()
+            self._mapping[(0,max_label+1)] = -1 # Special body-id: -1 means "identity"
+    
+            for slot in self.FragmentSegmentations:
+                slot(roi.start, roi.stop).writeInto(fragment_image.view(numpy.uint32)).wait()
+                # This next line shows what we want to do, but it creates a big temporary array (e.g. fragment_image + max_label)
+                # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
+                # Instead, we bend over backwards here to do this 'in place'
+                fragment_image = numpy.where( fragment_image, fragment_image, -max_label )
+                numpy.add( fragment_image, max_label, out=fragment_image )
+                result[:] = numpy.where( fragment_image, fragment_image, result )
+                
+                # New max
+                max_label = result.max()
+                
+                # Update mapping
+                old_max = self._mapping.keys()[-1][1]
+                body_id = slot.meta.selected_label
+                self._mapping[(old_max,max_label+1)] = body_id
+            return result
+        else:
+            assert False, "Unknown output slot: {}".format( slot.name )
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty()
