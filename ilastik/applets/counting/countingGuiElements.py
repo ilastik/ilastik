@@ -31,7 +31,7 @@ from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 
 
 #===============================================================================
-# 
+# Dotting brush interface
 #===============================================================================
 class DotCrosshairControler(QObject):
     def __init__(self, brushingModel, imageViews):
@@ -696,6 +696,10 @@ class CoupledRectangleElement(object):
     def release(self):
         self.disconnectInput()
         self._rectItem.scene().removeItem(self._rectItem)
+        
+        self.boxLabel.isFixed=False
+        self.boxLabel.isFixedChanged.emit(True)
+        
         del self
         
 
@@ -940,7 +944,7 @@ class BoxController(QObject):
         box.lineWidthChanged.connect(rect.setLineWidth)
         box.fontColorChanged.connect(rect.setFontColor)
         box.fontSizeChanged.connect(rect.setFontSize)
-        
+        box.isFixedChanged.connect(self._fixedBoxesChanged)
         
         
         
@@ -953,7 +957,7 @@ class BoxController(QObject):
         
     def _fixedBoxesChanged(self, *args):
         boxes = []
-        for box, rect in zip(self.boxListModel._labels, self._currentBoxesList):
+        for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if box.isFixed:
                 boxes.append([rect.getStart(), rect.getStop(), box._fixvalue])
 
@@ -980,6 +984,7 @@ class BoxController(QObject):
         for k,el in enumerate(self._currentBoxesList):
             if el._rectItem.isSelected():
                 el.release()
+                
                 super(type(self.boxListModel),self.boxListModel).removeRow(k)
             else:
                 tmp.append(el)

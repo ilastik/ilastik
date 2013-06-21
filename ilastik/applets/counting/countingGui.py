@@ -1026,7 +1026,7 @@ class CountingGui(LabelingGui):
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
         else:
             if not hasattr(self, "_cachedBrushSizeIndex"):
-                self._cachedBrushSizeIndex=1
+                self._cachedBrushSizeIndex=0
                 
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
             
