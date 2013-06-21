@@ -267,7 +267,8 @@ class BodySplitInfoWidget( QWidget ):
         
         self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
         self.opSplitBodyCarving.AnnotationLocations.setValue( self._annotations.keys() )
-
+        bodies = set( map( lambda (label, comment): label, self._annotations.values() ) )
+        self.opSplitBodyCarving.AnnotationBodyIds.setValue( sorted(bodies) )
 
     def _handleAnnotationDoubleClick(self, item):
         coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()

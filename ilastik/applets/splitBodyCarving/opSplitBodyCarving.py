@@ -20,6 +20,7 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentEditingFragment = InputSlot(value="", stype='string')
     AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
     AnnotationLocations = InputSlot(optional=True) # Display-only
+    AnnotationBodyIds = InputSlot(optional=True)
 
     NavigationCoordinates = InputSlot(optional=True) # Display-only: For passing navigation request coordinates downstream
     
@@ -141,11 +142,14 @@ class OpSplitBodyCarving( OpCarving ):
 
     def _executeEditedRavelerBodyList(self, roi, result):
         savedLabels = set()
-        for fragmentName in self._mst.object_names.keys():
-            bodyName = fragmentName[0:fragmentName.find('.')]
-            savedLabels.add( int(bodyName) )
-
-        result[0] = sorted( savedLabels )
+        if self._mst is None:
+            result[0] = []
+        else:
+            for fragmentName in self._mst.object_names.keys():
+                bodyName = fragmentName[0:fragmentName.find('.')]
+                savedLabels.add( int(bodyName) )
+    
+            result[0] = sorted( savedLabels )
         return result
     
     def _executeMaskedSegmentation(self, roi, result):
@@ -198,7 +202,8 @@ class OpSplitBodyCarving( OpCarving ):
              slot == self.AnnotationLocations:
             self.EditedRavelerBodyList.setDirty()
             return
-        elif slot == self.NavigationCoordinates:
+        elif slot == self.NavigationCoordinates or \
+             slot == self.AnnotationBodyIds:
             pass
         else:
             super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
