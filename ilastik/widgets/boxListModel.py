@@ -1,5 +1,5 @@
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString
+from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog,QGraphicsTextItem
+from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString,QVariant
 from listModel import ListModel,ListElement,_NPIXELS
 #from labelListModel import LabelListModel
 import logging
@@ -40,6 +40,7 @@ class BoxLabel(ListElement):
         self._fixvalue=self._density # a fixed box should have this set to a particular value
         self._isFixed=False        
         self._register_signals()
+        
         
         
         
@@ -161,13 +162,15 @@ class BoxListModel(ListModel):
     boxRemoved = pyqtSignal(int)
     
     class ColumnID():
-        Color  = 0
-        Name   = 1
-        Text   = 2
-        Fix    = 3
-        Delete = 4
+        Color   = 0
+        Name    = 1
+        Text    = 2
+        FixIcon = 3
+        Fix     = 4
         
-        ncols=5
+        Delete = 5
+        
+        ncols=6
         
     
     def __init__(self, elements=None, parent=None):
@@ -185,7 +188,9 @@ class BoxListModel(ListModel):
         
         elif  index.column() == self.ColumnID.Fix:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
-#           
+#
+        elif  index.column() == self.ColumnID.FixIcon:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
         elif  index.column() == self.ColumnID.Delete:
             if self._allowRemove:
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -199,6 +204,17 @@ class BoxListModel(ListModel):
         return super(BoxListModel,self).removeRow(position, parent=parent)
     
     def data(self, index, role):
+            
+#         
+        if role == Qt.BackgroundColorRole and (index.column() == self.ColumnID.Fix or index.column() == self.ColumnID.FixIcon):
+            row = index.row()
+            value = self._elements[row]
+            if value.isFixed:
+                color=QColor(Qt.red)
+                
+                color.setAlphaF(0.5)
+                return QVariant(color)
+        
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Text:
             row = index.row()
             value = self._elements[row]
@@ -207,8 +223,9 @@ class BoxListModel(ListModel):
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Fix:
             row = index.row()
             value = self._elements[row]
+            
             return value.fixvalue
-        
+                
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Color:
             row = index.row()
             value = self._elements[row]
@@ -216,6 +233,26 @@ class BoxListModel(ListModel):
             pixmap.fill(value.color)
             icon = QIcon(pixmap)
             return icon
+        
+        if role == Qt.DecorationRole and index.column() == self.ColumnID.FixIcon:
+            row = index.row()
+            value = self._elements[row]
+                
+            pixmap = QPixmap(26,26)
+            
+            if value.isFixed:
+                iconpath=os.path.join(os.path.split(__file__)[0],
+                                      'icons/lock-edit-icon-32.png')
+            else:
+                iconpath=os.path.join(os.path.split(__file__)[0],
+                                      'icons/lock_open-32.png')
+                
+            
+            pixmap.load(iconpath)
+            icon = QIcon(pixmap)
+            
+            return icon
+        
         
         
         return super(BoxListModel,self).data(index, role)
@@ -228,9 +265,6 @@ class BoxListModel(ListModel):
             fontsize = value["fontsize"]
             linewidth = value["linewidth"]
             fontcolor = QColor(value["fontcolor"])
-            print "((((((((((((((((((((((("
-            print "HERE = ",value
-            print "((((((((((((((((((((((("
             if color.isValid() and fontcolor.isValid():
                 self._elements[row].color=color
                 self._elements[row].fontsize=fontsize
@@ -247,6 +281,8 @@ class BoxListModel(ListModel):
             self._elements[row].fixvalue=QString("%.1f"%value)
             self.dataChanged.emit(index,index)
             return True
+
+        
             
     def select(self, row):
         self._selectionModel.clear()

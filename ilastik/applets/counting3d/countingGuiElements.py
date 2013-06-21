@@ -218,7 +218,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         #Set up the text         
         self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
         textItem=self.textItem
-        print self._fontSize,"LLL"
         font=QFont()
         font.setPointSize(self._fontSize)
         textItem.setFont(font)
@@ -1040,11 +1039,11 @@ if __name__=="__main__":
     
     LV=BoxListView()
     LV.setModel(boxListModel)
-    
+    LV._table.setShowGrid(True)
     g = Graph()
         
     cron = QTimer()
-    cron.start(500)
+    cron.start(500*3)
     
     op = OpArrayPiper2(graph=g) #Generate random noise
     shape=(1,500,500,1,1)

@@ -61,13 +61,16 @@ class ListView(QStackedWidget):
 
     def _setListViewLook(self):
         table = self._table
-        table.setDragEnabled(True)
+        #table.setDragEnabled(True)
         table.setAcceptDrops(True)
         table.setFocusPolicy(Qt.NoFocus)
         table.setShowGrid(False)
         table.horizontalHeader().hide()
         table.verticalHeader().hide()
-        table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
+        #table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
+        table.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
+        
+        
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
      

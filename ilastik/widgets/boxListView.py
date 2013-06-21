@@ -2,8 +2,8 @@ import os
 from PyQt4.QtGui import QTableView, QColorDialog, \
     QAbstractItemView, QVBoxLayout, QPushButton, \
     QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
-    QLabel, QSizePolicy
-from PyQt4.QtCore import Qt, QString
+    QLabel, QSizePolicy,QItemSelectionModel
+from PyQt4.QtCore import Qt, QString,QModelIndex
 from PyQt4 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
@@ -88,6 +88,7 @@ class BoxListView(ListView):
         self._colorDialog = BoxDialog()
         self._colorDialog.accepted.connect(self.onDialogAccept)
         
+        
     def resetEmptyMessage(self,pystring):
         self.emptyMessage.setText(QString(pystring))
         
@@ -105,6 +106,10 @@ class BoxListView(ListView):
             
             self._colorDialog.exec_()
     
+    def setModel(self, model):
+        ListView.setModel(self, model)
+        self._table.setColumnHidden(self.model.ColumnID.Fix,True)
+    
     def onDialogAccept(self):
         prop=(self._colorDialog.getColor(),self._colorDialog.getFontSize(),
                                                      self._colorDialog.getLineWidth(),
@@ -120,7 +125,20 @@ class BoxListView(ListView):
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self._table.model().flags(modelIndex) == Qt.NoItemFlags):
             self._table.model().removeRow(modelIndex.row())
-
+        
+        elif (modelIndex.column() == self.model.ColumnID.FixIcon):
+            state=self._table.isColumnHidden(self.model.ColumnID.Fix)
+            
+            self._table.setColumnHidden(self.model.ColumnID.Fix, not state)
+            #self._table.setColumnHidden(self.model.ColumnID.FixIcon, True)
+            if state:
+                index=self.model.index(modelIndex.row(),self.model.ColumnID.Fix)
+                self._table.edit(index)
+                #self._table.selectionModel().select(index,QItemSelectionModel.ClearAndSelect)
+            
+            
+            
+        
     def _setListViewLook(self):
         ListView._setListViewLook(self)
         
