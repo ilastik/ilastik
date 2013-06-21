@@ -194,6 +194,7 @@ class OpSplitBodyCarving( OpCarving ):
         elif slot == self.AnnotationFilepath or \
              slot == self.CurrentEditingFragment or \
              slot == self.AnnotationLocations:
+            self.EditedRavelerBodyList.setDirty()
             return
         else:
             super( OpSplitBodyCarving, self ).propagateDirty( slot, subindex, roi )
