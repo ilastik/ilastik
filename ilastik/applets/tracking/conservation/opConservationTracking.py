@@ -54,7 +54,8 @@ class OpConservationTracking(OpTrackingBase):
             withClassifierPrior=False,
             ndim=3,
             cplex_timeout=None,
-            withMergerResolution=True
+            withMergerResolution=True,
+            borderAwareWidth = 0.0
             ):
         
         if not self.Parameters.ready():
@@ -73,6 +74,7 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withOpticalCorrection'] = withOpticalCorrection
         parameters['withClassifierPrior'] = withClassifierPrior
         parameters['withMergerResolution'] = withMergerResolution
+        parameters['borderAwareWidth'] = borderAwareWidth
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -102,12 +104,12 @@ class OpConservationTracking(OpTrackingBase):
             median_obj_size = avgSize
         
         print 'median_obj_size = ', median_obj_size
-        #print 'fixed appearance and disappearance cost to 500'
+        
+        print 'appearance and disappearance cost set to 500'
         ep_gap = 0.05
         transition_parameter = 5
-        appearance_cost = 500.0
         disappearance_cost = 500.0
-        border_width = 0.3
+        appearance_cost = 500.0
 
         fov = pgmlink.FieldOfView(time_range[0] * 1.0,
                                       x_range[0] * x_scale,
@@ -135,7 +137,7 @@ class OpConservationTracking(OpTrackingBase):
                                          withMergerResolution,
                                          ndim,
                                          transition_parameter,
-                                         border_width,
+                                         borderAwareWidth,
                                          fov)
         
         try:

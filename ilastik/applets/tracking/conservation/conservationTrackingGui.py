@@ -49,6 +49,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])
         if 'withMergerResolution' in parameters.keys():
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
+        if 'borderAwareWidth' in parameters.keys():
+            self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
 #        if 'cplex_timeout' in parameters.keys():
 #            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
         
@@ -101,6 +103,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         withDivisions = self._drawer.divisionsBox.isChecked()        
         withOpticalCorrection = self._drawer.opticalBox.isChecked()
         withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+        borderAwareWidth = self._drawer.bordWidthBox.value()
 
         ndim=3
         if (to_z - from_z == 0):
@@ -128,7 +131,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                 withOpticalCorrection=withOpticalCorrection,
                 withClassifierPrior=classifierPrior,
                 ndim=ndim,
-                withMergerResolution=withMergerResolution
+                withMergerResolution=withMergerResolution,
+                borderAwareWidth = borderAwareWidth
                 )
         except Exception:            
             ex_type, ex, tb = sys.exc_info()

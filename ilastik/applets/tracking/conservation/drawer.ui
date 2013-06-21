@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>941</height>
+    <height>1028</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -324,10 +324,33 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_6">
+       <item row="2" column="1">
+        <widget class="QDoubleSpinBox" name="divThreshBox">
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_25">
          <property name="text">
-          <string>Division Weight</string>
+          <string>Avg. Object Size</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QDoubleSpinBox" name="divWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -335,6 +358,60 @@
         <widget class="QLabel" name="label_5">
          <property name="text">
           <string>Division Threshold</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Division Weight</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="transWeightBox">
+         <property name="maximum">
+          <double>300.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>10.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Transition Weight</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="maxObjectsBox">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>7</number>
+         </property>
+         <property name="value">
+          <number>2</number>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QDoubleSpinBox" name="avgSizeBox">
+         <property name="maximum">
+          <double>100000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Max. Object per Merger</string>
          </property>
         </widget>
        </item>
@@ -355,80 +432,20 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="divThreshBox">
+       <item row="7" column="1">
+        <widget class="QDoubleSpinBox" name="bordWidthBox">
          <property name="maximum">
           <double>1.000000000000000</double>
          </property>
          <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.100000000000000</double>
+          <double>0.010000000000000</double>
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_3">
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_20">
          <property name="text">
-          <string>Max. Object per Merger</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QSpinBox" name="maxObjectsBox">
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>7</number>
-         </property>
-         <property name="value">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_25">
-         <property name="text">
-          <string>Avg. Object Size</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QDoubleSpinBox" name="avgSizeBox">
-         <property name="maximum">
-          <double>100000.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QDoubleSpinBox" name="divWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QDoubleSpinBox" name="transWeightBox">
-         <property name="maximum">
-          <double>300.000000000000000</double>
-         </property>
-         <property name="value">
-          <double>10.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Transition Weight</string>
+          <string>Border Width (%)</string>
          </property>
         </widget>
        </item>
@@ -766,6 +783,11 @@
   <tabstop>avgSizeBox</tabstop>
   <tabstop>divWeightBox</tabstop>
   <tabstop>transWeightBox</tabstop>
+  <tabstop>bordWidthBox</tabstop>
+  <tabstop>hardPriorBox</tabstop>
+  <tabstop>sizeDepBox</tabstop>
+  <tabstop>classifierPriorBox</tabstop>
+  <tabstop>trackletsBox</tabstop>
   <tabstop>divisionsBox</tabstop>
   <tabstop>opticalBox</tabstop>
   <tabstop>mergerResolutionBox</tabstop>
