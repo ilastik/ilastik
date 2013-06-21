@@ -337,15 +337,17 @@ class OpAccumulateFragmentSegmentations( Operator ):
             self._mapping = collections.OrderedDict()
             self._mapping[(0,max_label+1)] = -1 # Special body-id: -1 means "identity"
     
-            for slot in self.FragmentSegmentations:
+            for body_index, slot in enumerate(self.FragmentSegmentations):
                 slot(roi.start, roi.stop).writeInto(fragment_image.view(numpy.uint32)).wait()
                 # This next line shows what we want to do, but it creates a big temporary array (e.g. fragment_image + max_label)
                 # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
                 # Instead, we bend over backwards here to do this 'in place'
+                print "Adding body {} to final image.".format( body_index )
                 fragment_image = numpy.where( fragment_image, fragment_image, -max_label )
                 numpy.add( fragment_image, max_label, out=fragment_image )
                 result[:] = numpy.where( fragment_image, fragment_image, result )
                 
+                print "Finding new max label..."
                 # New max
                 max_label = result.max()
                 
@@ -353,6 +355,8 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 old_max = self._mapping.keys()[-1][1]
                 body_id = slot.meta.selected_label
                 self._mapping[(old_max,max_label+1)] = body_id
+
+            print "Finished assembling final segmentation."
             return result
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
