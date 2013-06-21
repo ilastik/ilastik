@@ -19,7 +19,7 @@ from ilastik.applets.counting3d.countingOperators import OpTrainCounter, OpTrain
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 import threading
-
+from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpVolumeOperator(Operator):
     name = "OpVolumeOperator"
@@ -122,6 +122,9 @@ class OpTrainCounter3(Operator):
 
                 self.cache = None
                 self.Output.setDirty((slice(0,1,None),))
+
+
+
 class OpCounting3d( Operator ):
     """
     Top-level operator for pixel classification
@@ -253,6 +256,7 @@ class OpCounting3d( Operator ):
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
+                self._checkConstraints(index)
                 self.setupCaches( multislot.index(slot) )
             multislot[index].notifyReady(handleInputReady)
                 
@@ -319,6 +323,21 @@ class OpCounting3d( Operator ):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
+    
+    def _checkConstraints(self, laneIndex):
+        """
+        Ensure that all input images must be 2D
+        """
+        
+        
+        thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+        if thisLaneTaggedShape.has_key('z'):
+            raise DatasetConstraintError(
+                "Object Counting Workflow",
+                "All input images must be 2D (they cannot contain the z dimension).  "\
+                "Your new image has {} has z dimension"\
+                .format( thisLaneTaggedShape['z']))
+            
 
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
