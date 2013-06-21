@@ -10,9 +10,9 @@ from ilastik.applets.featureSelection import FeatureSelectionApplet
 #from ilastik.applets.objectExtraction import ObjectExtractionApplet
 #from ilastik.applets.objectClassification import ObjectClassificationApplet
 #from ilastik.applets.objectViewer import ObjectViewerApplet
-from ilastik.applets.counting3d import Counting3dApplet, CountingBatchResultsApplet
+from ilastik.applets.counting import CountingApplet, CountingBatchResultsApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from ilastik.applets.counting3d.opCounting3d import OpPredictionPipeline
+from ilastik.applets.counting.opCounting import OpPredictionPipeline
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -48,13 +48,13 @@ class CountingWorkflow(Workflow):
                                                              "FeatureSelections")
 
         #self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
-        self.counting3dApplet = Counting3dApplet(workflow=self)
+        self.countingApplet = CountingApplet(workflow=self)
 
         self._applets = []
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
-        self._applets.append(self.counting3dApplet)
+        self._applets.append(self.countingApplet)
 
 
         if appendBatchOperators:
@@ -81,17 +81,17 @@ class CountingWorkflow(Workflow):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opCounting3d = self.counting3dApplet.topLevelOperator.getLane(laneIndex)
+        opCounting = self.countingApplet.topLevelOperator.getLane(laneIndex)
 
         #### connect input image
         opTrainingFeatures.InputImage.connect(opData.Image)
 
-        opCounting3d.InputImages.connect(opData.Image)
-        opCounting3d.FeatureImages.connect(opTrainingFeatures.OutputImage)
-        opCounting3d.LabelsAllowedFlags.connect(opData.AllowLabels)
-        opCounting3d.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
-        #opCounting3d.UserLabels.connect(opClassify.LabelImages)
-        #opCounting3d.ForegroundLabels.connect(opObjExtraction.LabelImage)
+        opCounting.InputImages.connect(opData.Image)
+        opCounting.FeatureImages.connect(opTrainingFeatures.OutputImage)
+        opCounting.LabelsAllowedFlags.connect(opData.AllowLabels)
+        opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
+        #opCounting.UserLabels.connect(opClassify.LabelImages)
+        #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)
 
     def _initBatchWorkflow(self):
         """
@@ -100,7 +100,7 @@ class CountingWorkflow(Workflow):
         # Access applet operators from the training workflow
         opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
-        opClassify = self.counting3dApplet.topLevelOperator
+        opClassify = self.countingApplet.topLevelOperator
         
         # Access the batch operators
         opBatchInputs = self.batchInputApplet.topLevelOperator
@@ -155,9 +155,9 @@ class CountingWorkflow(Workflow):
     def getHeadlessOutputSlot(self, slotId):
         # "Regular" (i.e. with the images that the user selected as input data)
         if slotId == "Predictions":
-            return self.counting3dApplet.topLevelOperator.HeadlessPredictionProbabilities
+            return self.countingApplet.topLevelOperator.HeadlessPredictionProbabilities
         elif slotId == "PredictionsUint8":
-            return self.counting3dApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
+            return self.countingApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
         # "Batch" (i.e. with the images that the user selected as batch inputs).
         elif slotId == "BatchPredictions":
             return self.opBatchPredictionPipeline.HeadlessPredictionProbabilities

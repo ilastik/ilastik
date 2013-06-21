@@ -12,7 +12,7 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
                                
-from ilastik.applets.counting3d.countingOperators import OpTrainCounter, OpPredictCounter
+from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter
 
 #ilastik
 
@@ -56,7 +56,7 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
-class OpCounting3d( Operator ):
+class OpCounting( Operator ):
     """
     Top-level operator for pixel classification
     """
@@ -107,7 +107,7 @@ class OpCounting3d( Operator ):
         """
         Instantiate all internal operators and connect them together.
         """
-        super(OpCounting3d, self).__init__(*args, **kwargs)
+        super(OpCounting, self).__init__(*args, **kwargs)
         
         # Default values for some input slots
         self.FreezePredictions.setValue(True)

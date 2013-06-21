@@ -31,7 +31,7 @@ from lazyflow.operators.adaptors import Op5ifyer
 
 
 try:
-    from volumina.view3d.volumeRendering import RenderingManager
+    from volumina.view.volumeRendering import RenderingManager
 except:
     pass
 
@@ -56,7 +56,7 @@ from countingGuiElements import BoxController,BoxInterpreter,Tool
 
         
 
-class Counting3dGui(LabelingGui):
+class CountingGui(LabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -66,7 +66,7 @@ class Counting3dGui(LabelingGui):
 
     def reset(self):
         # Base class first
-        super(Counting3dGui, self).reset()
+        super(CountingGui, self).reset()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.liveUpdateButton.setChecked(False)
@@ -96,7 +96,7 @@ class Counting3dGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(Counting3dGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(CountingGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
         self.op = topLevelOperatorView
         #self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
@@ -125,8 +125,8 @@ class Counting3dGui(LabelingGui):
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
             self._renderMgr = RenderingManager(
-                renderer=self.editor.view3d.qvtk.renderer,
-                qvtk=self.editor.view3d.qvtk)
+                renderer=self.editor.view.qvtk.renderer,
+                qvtk=self.editor.view.qvtk)
         except:
             self.render = False
 
@@ -455,7 +455,7 @@ class Counting3dGui(LabelingGui):
         This function creates a layer for each slot we want displayed in the volume editor.
         """
         # Base class provides the label layer.
-        layers = super(Counting3dGui, self).setupLayers()
+        layers = super(CountingGui, self).setupLayers()
 
         # Add each of the predictions
         labels = self.labelListData
@@ -703,7 +703,7 @@ class Counting3dGui(LabelingGui):
         slot.setValue(_listReplace(old, new))
 
     def _onLabelRemoved(self, parent, start, end):
-        super(Counting3dGui, self)._onLabelRemoved(parent, start, end)
+        super(CountingGui, self)._onLabelRemoved(parent, start, end)
         op = self.topLevelOperatorView
         for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
             value = slot.value
@@ -712,29 +712,29 @@ class Counting3dGui(LabelingGui):
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
-                             super(Counting3dGui, self).getNextLabelName)
+                             super(CountingGui, self).getNextLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
             self.topLevelOperatorView.LabelColors,
-            super(Counting3dGui, self).getNextLabelColor,
+            super(CountingGui, self).getNextLabelColor,
             lambda x: QColor(*x)
         )
 
     def getNextPmapColor(self):
         return self._getNext(
             self.topLevelOperatorView.PmapColors,
-            super(Counting3dGui, self).getNextPmapColor,
+            super(CountingGui, self).getNextPmapColor,
             lambda x: QColor(*x)
         )
 
     def onLabelNameChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onLabelNameChanged,
+        self._onLabelChanged(super(CountingGui, self).onLabelNameChanged,
                              lambda l: l.name,
                              self.topLevelOperatorView.LabelNames)
 
     def onLabelColorChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onLabelColorChanged,
+        self._onLabelChanged(super(CountingGui, self).onLabelColorChanged,
                              lambda l: (l.brushColor().red(),
                                         l.brushColor().green(),
                                         l.brushColor().blue()),
@@ -742,7 +742,7 @@ class Counting3dGui(LabelingGui):
 
 
     def onPmapColorChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onPmapColorChanged,
+        self._onLabelChanged(super(CountingGui, self).onPmapColorChanged,
                              lambda l: (l.pmapColor().red(),
                                         l.pmapColor().green(),
                                         l.pmapColor().blue()),
@@ -899,7 +899,7 @@ class Counting3dGui(LabelingGui):
 
 
     def _initLabelUic(self, drawerUiPath):
-        super(Counting3dGui, self)._initLabelUic(drawerUiPath)
+        super(CountingGui, self)._initLabelUic(drawerUiPath)
         #self._labelControlUi.boxToolButton.setCheckable(True)
         #self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
         #                                                                                                  Tool.Box) )

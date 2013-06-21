@@ -11,7 +11,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.request import Request, RequestPool
 from lazyflow.utility import traceLogged
 
-from ilastik.applets.counting3d.countingsvr import SVR
+from ilastik.applets.counting.countingsvr import SVR
 
 class OpTrainCounter(Operator):
     name = "TrainCounter"
@@ -147,7 +147,6 @@ class OpTrainCounter(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateDirty Training"
         if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(None),))
 
@@ -188,7 +187,6 @@ class OpPredictCounter(Operator):
         newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
 
         res = self.inputs["Image"][newKey].wait()
-        print newKey
 
         shape=res.shape
         prod = np.prod(shape[:-1])
@@ -246,7 +244,6 @@ class OpPredictCounter(Operator):
 
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateDirty Prediction"
         key = roi.toSlice()
         if slot == self.inputs["Classifier"]:
             logger.debug("OpPredictRandomForest: Classifier changed, setting dirty")

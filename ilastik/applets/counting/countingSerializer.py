@@ -158,7 +158,7 @@ class SerialPredictionSlot(SerialSlot):
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
 
 
-class Counting3dSerializer(AppletSerializer):
+class CountingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
     workflow parameters and datasets.
 
@@ -176,7 +176,7 @@ class Counting3dSerializer(AppletSerializer):
                                  operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,
                                  name='LabelSets',
-                                 subname='labels{:03d}',
+                                 subname='labels{:0}',
                                  selfdepends=False),
                  SerialCountingSlot(operator.Classifier,
                                       operator.classifier_cache,
@@ -185,7 +185,7 @@ class Counting3dSerializer(AppletSerializer):
                  self.predictionSlot]
 
 
-        super(Counting3dSerializer, self).__init__(projectFileGroupName,
+        super(CountingSerializer, self).__init__(projectFileGroupName,
                                                             slots=slots)
 
         self.predictionSlot.progressSignal.connect(self.progressSignal.emit)
