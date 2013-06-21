@@ -47,6 +47,7 @@ class MetaDict(defaultdict):
         """
         Copy all the elements from other into this
         """
+        assert isinstance(other, MetaDict), "assignFrom() arg must be another MetaDict."
         dirty = not (self == other)
         origdirty = self._dirty
         origready = self._ready
