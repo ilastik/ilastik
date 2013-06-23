@@ -1,6 +1,6 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opFillMissingSlices import OpFillMissingSlices
+from opFillMissingSlices import OpFillMissingSlices, setDetectionMethod
 
 class FillMissingSlicesApplet( StandardApplet ):
     """
