@@ -339,11 +339,14 @@ class OpAccumulateFragmentSegmentations( Operator ):
     
             for body_index, slot in enumerate(self.FragmentSegmentations):
                 slot(roi.start, roi.stop).writeInto(fragment_image.view(numpy.uint32)).wait()
-                # This next line shows what we want to do, but it creates a big temporary array (e.g. fragment_image + max_label)
+
+                # This next line shows what we want to do, but it creates a big 
+                # temporary array (e.g. fragment_image + max_label)
                 # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
+
                 # Instead, we bend over backwards here to do this 'in place'
                 print "Adding body {} to final image.".format( body_index )
-                fragment_image = numpy.where( fragment_image, fragment_image, -max_label )
+                fragment_image[:] = numpy.where( fragment_image, fragment_image, -max_label )
                 numpy.add( fragment_image, max_label, out=fragment_image )
                 result[:] = numpy.where( fragment_image, fragment_image, result )
                 
