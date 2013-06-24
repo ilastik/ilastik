@@ -107,62 +107,6 @@ class DottingInterpreter(BrushingInterpreter):
 
         
                 
-                
-                
-#         elif self._current_state == self.MAYBE_DRAW_MODE:
-#             if etype == QEvent.MouseMove:
-#                 # navigation interpreter also has to be in
-#                 # default mode to avoid inconsistencies
-#                 if self._navIntr.state == self._navIntr.DEFAULT_MODE:
-#                     ### maybe draw mode -> maybe draw mode
-#                     self._current_state = self.DRAW_MODE
-#                     self.onEntry_draw( watched, self._lastEvent )
-#                     self.onMouseMove_draw( watched, event )
-#                     return True
-#                 else:
-#                     self._navIntr.eventFilter( watched, self._lastEvent )
-#                     return self._navIntr.eventFilter( watched, event )
-#             elif etype == QEvent.MouseButtonDblClick:
-#                 ### maybe draw mode -> default mode
-#                 self._current_state = self.DEFAULT_MODE
-#                 return self._navIntr.eventFilter( watched, event )
-#             elif etype == QEvent.MouseButtonRelease:
-#                 self._current_state = self.DRAW_MODE
-#                 self.onEntry_draw( watched, self._lastEvent )
-#                 self.onExit_draw( watched, event )
-#                 self._current_state = self.DEFAULT_MODE
-#                 self.onEntry_default( watched, event )
-#                 return True
-# 
-#         elif self._current_state == self.DRAW_MODE:
-#             if etype == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
-#                 self.onExit_draw( watched, event )
-#                 ### draw mode -> default mode
-#                 self._current_state = self.DEFAULT_MODE
-#                 self.onEntry_default( watched, event )
-#                 return True
-#             
-#             elif etype == QEvent.MouseMove and event.buttons() & Qt.LeftButton:
-#                 if self._navIntr.mousePositionValid(watched, event):
-#                     self.onMouseMove_draw( watched, event )
-#                     return True
-#                 else:
-#                     self.onExit_draw( watched, event )
-#                     ### draw mode -> default mode
-#                     self._current_state = self.DEFAULT_MODE
-#                     self.onEntry_default( watched, event )
-# 
-#         # let the navigation interpreter handle common events
-#         return self._navIntr.eventFilter( watched, event )
-# 
-#     def onExit_draw( self, imageview, event ):
-#         self._brushingCtrl.endDrawing(imageview.mousePos)
-#         if self._temp_erasing:
-#             self._brushingCtrl._brushingModel.disableErasing()
-#             self._temp_erasing = False
-    
-
-
 class Tool():
     
     Navigation = 0 # Arrow
@@ -269,9 +213,11 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
     
     
+        #Default Appearence Properties
         self._fontColor=QColor(255, 255, 255)
-        self._fontSize=12
-        self._lineWidth=2
+        self._fontSize=10
+        self._lineWidth=1
+        
         
         
         
@@ -553,7 +499,7 @@ class CoupledRectangleElement(object):
         :param inputSlot: Should be the output slot of another operator from which you would like monitor a subregion
         :param scene: the scene where to put the graphics item
         :param parent: the parent object if any
-        :param qcolor: initial color of the rectagle
+        :param qcolor: initial color of the rectangle
         '''
         
         

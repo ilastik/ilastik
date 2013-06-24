@@ -8,8 +8,6 @@ from PyQt4 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
 
-
-
 class BoxDialog(QDialog):
     
     def __init__(self, parent=None):

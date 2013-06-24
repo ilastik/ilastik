@@ -296,7 +296,7 @@ class BoxListModel(ListModel):
                     el.linewidth=linewidth
             
             
-            print "HHHH",value["fontsize"]
+            
             if not fontsizeglobal:
                 self._elements[row].fontsize=fontsize
             else:
