@@ -118,8 +118,8 @@ class DotInterpreter(BrushingInterpreter):
 
 
 class DotSignaller(QObject):
-    createdSignal = pyqtSignal(int,int,object)
-    deletedSignal = pyqtSignal(int,int,object)
+    createdSignal = pyqtSignal(float,float,object)
+    deletedSignal = pyqtSignal(float,float,object)
     
 
 class QDot(QtGui.QGraphicsEllipseItem):
