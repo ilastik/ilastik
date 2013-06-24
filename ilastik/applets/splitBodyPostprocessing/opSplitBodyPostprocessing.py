@@ -287,6 +287,9 @@ class OpMaskedWatershed(Operator):
             stopping_threshold = drange[1]
             if isinstance( self.Input.meta.dtype, numpy.floating ):
                 stopping_threshold += 0.5
+            else:
+                assert drange < numpy.iinfo(self.Input.meta.dtype).max, \
+                    "Can't use OpMaskedWatershed if your image's drange max is the same as the dtype max (must leave some headroom)."
             numpy.logical_not( mask, out=mask )
             inputImage[:] = numpy.where( mask, stopping_threshold+1, inputImage )
         else:
