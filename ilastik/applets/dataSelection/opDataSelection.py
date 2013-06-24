@@ -50,7 +50,7 @@ class DatasetInfo(object):
         "_schema_version" : 0.1,
         
         "filepath" : str,
-        "drange" : str,
+        "drange" : tuple,
         "nickname" : str,
         "axistags" : str
     }
