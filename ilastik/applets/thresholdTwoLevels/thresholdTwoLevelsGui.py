@@ -198,7 +198,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         elif curIndex==0:
             if op.BeforeSizeFilter.ready():
                 thSrc = LazyflowSource(op.BeforeSizeFilter)
-                thLayer = ColortableLayer(thSrc, binct)
+                thLayer = ColortableLayer(thSrc, ct)
                 thLayer.name = "Thresholded Labels"
                 thLayer.visible = False
                 thLayer.opacity = 1.0
