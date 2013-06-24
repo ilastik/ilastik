@@ -257,18 +257,41 @@ class OpCounting( Operator ):
     
     def _checkConstraints(self, laneIndex):
         """
-        Ensure that all input images must be 2D
+        Ensure that all input images must be 2D and have the same number of channels
         """
         
         
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+        
         if thisLaneTaggedShape.has_key('z'):
             raise DatasetConstraintError(
-                "Object Counting Workflow",
+                "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
                 "Your new image has {} has z dimension"\
                 .format( thisLaneTaggedShape['z']))
+                # Find a different lane and use it for comparison
+        
+        validShape = thisLaneTaggedShape
+        for i, slot in enumerate(self.InputImages):
+            if slot.ready() and i != laneIndex:
+                validShape = slot.meta.getTaggedShape()
+                break
+        
+        if len(validShape) != len(thisLaneTaggedShape):
+            raise DatasetConstraintError(
+                 "Objects Couting Workflow Counting",
+                 "All input images must have the same dimensionality.  "\
+                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
+                 .format( len(thisLaneTaggedShape), len(validShape) ) )
             
+        if validShape['c'] != thisLaneTaggedShape['c']:
+            raise DatasetConstraintError(
+                 "Objects Counting Workflow",
+                 "All input images must have the same number of channels.  "\
+                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
+                 .format( thisLaneTaggedShape['c'], validShape['c'] ) )
+        
+        
 
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()

@@ -35,3 +35,4 @@ class CountingApplet(StandardApplet):
         return CountingGui(singleImageOperator,
                                        self.shellRequestSignal,
                                        self.guiControlSignal, self.predictionSerializer)
+        
