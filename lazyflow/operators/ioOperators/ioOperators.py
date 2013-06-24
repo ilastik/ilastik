@@ -412,8 +412,8 @@ class OpH5WriterBigDataset(Operator):
                                 shape=dataShape,
                                 dtype=dtype,
                                 chunks=self.chunkShape,
-                                compression='lzf'
-                                )
+                                compression='gzip', # <-- Would be nice to use lzf compression here, but that is h5py-specific.
+                                compression_opts=1) # <-- Optimize for speed, not disk space.
 
         if self.Image.meta.drange is not None:
             self.d.attrs['drange'] = self.Image.meta.drange
