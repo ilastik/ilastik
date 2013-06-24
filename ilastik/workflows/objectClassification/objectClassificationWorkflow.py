@@ -243,7 +243,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
-        if self.fillMissing:
+        if self.fillMissing !='none':
             opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
             opFillMissingSlices.Input.connect(opData.Image)
             rawslot = opFillMissingSlices.Output
