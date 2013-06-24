@@ -100,7 +100,7 @@ class LabelListView(QStackedWidget):
             self.setCurrentIndex(self.PAGE_LISTVIEW)
         else:
             self.setCurrentIndex(self.PAGE_EMPTY)
-        self.parent().updateGeometry()
+        if self.parent()!=None: self.parent().updateGeometry()
 
     def setModel(self, model):
         QTableView.setModel(self._table, model)
