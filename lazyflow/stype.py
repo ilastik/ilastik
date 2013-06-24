@@ -120,14 +120,21 @@ class ArrayLike( SlotType ):
 
 
     def setupMetaForValue(self, value):
-        if hasattr(value,"__getitem__")  and hasattr(value,"shape") and hasattr(value,"dtype"):
+        if isinstance(value, numpy.ndarray):
             self.slot.meta.shape = value.shape
             self.slot.meta.dtype = value.dtype
             if hasattr(value,"axistags"):
                 self.slot.meta.axistags = value.axistags
         else:
             self.slot.meta.shape = (1,)
-            self.slot.meta.dtype = object
+            if isinstance(value, int) or \
+               isinstance(value, float) or \
+               isinstance(value, numpy.floating) or \
+               isinstance(value, numpy.integer) or \
+               isinstance(value, numpy.bool_):
+                self.slot.meta.dtype = type(value)
+            else:
+                self.slot.meta.dtype = object
 
     def isConfigured(self):
         meta = self.slot.meta
