@@ -1,14 +1,12 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from opSplitBodyPostprocessing import OpSplitBodyPostprocessing
+from splitBodyPostprocessingSerializer import SplitBodyPostprocessingSerializer
 
 class SplitBodyPostprocessingApplet( StandardApplet ):
-    """
-    This applet can be used as a simple viewer of raw image data.  
-    Its main purpose is to provide a simple example of how to use the LayerViewerGui, 
-    which is intended to be used as a base class for most other applet GUIs.
-    """
     def __init__( self, workflow ):
         super(SplitBodyPostprocessingApplet, self).__init__("Split-body post-processing", workflow)
+
+        self._serializer = SplitBodyPostprocessingSerializer( self.topLevelOperator, "split-body-postprocessing" )
 
     @property
     def singleLaneOperatorClass(self):
@@ -25,4 +23,4 @@ class SplitBodyPostprocessingApplet( StandardApplet ):
     
     @property
     def dataSerializers(self):
-        return []
+        return [self._serializer]
