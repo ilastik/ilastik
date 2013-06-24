@@ -35,6 +35,13 @@ class OpSplitBodySupervoxelExport(Operator):
     FinalSupervoxels = OutputSlot()
     SupervoxelMapping = OutputSlot()
 
+    #
+    # RavelerLabels ------>-----------------------------------------------------------------------------------------------------------
+    #                      \                                                                                                          \
+    # AnnotationBodyIds --> opSelectLabel[n] --> opMaskedSelect[n] --> opRelabelSupervoxels[n] --> opRelabeledSupervoxelsCaches[n] --> opAccumulateFinalImage --> opFinalCache --> FinalSupervoxels
+    #                                           /                 \                           \                                                              \
+    #                             Supervoxels --                   MaskedSupervoxels           RelabeledSupervoxels                                           SupervoxelMapping
+
     def __init__(self, *args, **kwargs):
         super( OpSplitBodySupervoxelExport, self ).__init__(*args, **kwargs)
 
