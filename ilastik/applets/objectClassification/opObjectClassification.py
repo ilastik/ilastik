@@ -390,8 +390,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             if slot.level > 0 and len(slot) == finalLength + 1:
                 slot.removeSlot(laneIndex, finalLength)
 
-        self._ambiguousLabels.pop(laneIndex)
-        self._labelBBoxes.pop(laneIndex)
+        try:
+            self._ambiguousLabels.pop(laneIndex)
+            self._labelBBoxes.pop(laneIndex)
+        except:
+            #FIXME: sometimes this pop is called for no reason and makes the project unusable. We should fix the underlying issue.
+            pass
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
