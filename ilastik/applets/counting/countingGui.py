@@ -27,7 +27,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
-from ilastik.applets.counting.countingGuiElements import DottingInterpreter,DotCrosshairControler
+from ilastik.applets.counting.countingGuiDots import DotCrosshairController,DotInterpreter,DotSignaller, DotController
 
 
 
@@ -132,8 +132,10 @@ class CountingGui(LabelingGui):
             self.render = False
 
         
-        self.editor.brushingInterpreter = DottingInterpreter(self.editor.navCtrl,self.editor.brushingControler)
-        self.editor.crosshairControler=DotCrosshairControler(self.editor.brushingModel,self.editor.imageViews)
+        self.editor.crosshairControler=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
+        self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
+        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
+        self.dotIntepreter=self.editor.brushingInterpreter
         
         self.initCounting()
 
@@ -379,6 +381,7 @@ class CountingGui(LabelingGui):
                            self._labelControlUi.SigmaLine.text().split(" ")]
             
             self.editor.crosshairControler.setSigma(sigma[0])
+            self.dotController.setDotsRadius(sigma[0]*2)
             self.op.opTrain.Sigma.setValue(sigma)
             self.changedSigma = False
 
@@ -502,6 +505,8 @@ class CountingGui(LabelingGui):
         boxlabellayer.opacity = 1.0
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
+        
+        
         
         
         
@@ -774,7 +779,7 @@ class CountingGui(LabelingGui):
         if not self.render:
             return
         shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
-        time = self.editor.posModel.slicingPos5D[0]
+        time = self.editor._posModel.slicingPos5D[0]
         if not self._renderMgr.ready:
             self._renderMgr.setup(shape)
 

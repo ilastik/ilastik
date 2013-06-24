@@ -33,7 +33,7 @@ from countingGuiElements import OpArrayPiper2
 #===============================================================================
 # Dotting brush interface
 #===============================================================================
-class DotCrosshairControler(QObject):
+class DotCrosshairController(QObject):
     def __init__(self, brushingModel, imageViews):
         QObject.__init__(self, parent=None)
         self._brushingModel = brushingModel
@@ -63,9 +63,9 @@ class DotCrosshairControler(QObject):
         
 class DotInterpreter(BrushingInterpreter):
     
-    def __init__( self, navigationControler,posModel, brushingControler,dotsController ):
+    def __init__( self, navigationControler, brushingControler,dotsController ):
         super(DotInterpreter,self).__init__(navigationControler,brushingControler)
-        self.posModel=posModel
+        self._posModel=navigationControler._model
         self._brushingModel=self._brushingCtrl._brushingModel
         self._dotsController=dotsController
         
@@ -99,27 +99,42 @@ class DotInterpreter(BrushingInterpreter):
                     self._current_state = self.DEFAULT_MODE
                     self.onEntry_default( watched, event )
                     
-                    pos = [int(i) for i in self.posModel.cursorPos]
-                    pos = [self.posModel.time] + pos + [self.posModel.channel]
+                    pos = [int(i) for i in self._posModel.cursorPos]
+                    pos = [self._posModel.time] + pos + [self._posModel.channel]
                     self._dotsController.addNewDot(pos)
                     
                     return True
-        if self._current_state == self.DRAW_MODE:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            
-            items=self._dotsController.itemsAtPos(pos)
-            for item in items:
-                self._dotsController.deleteDot(pos[1],pos[2],item)
-                
+#         if self._current_state == self.DRAW_MODE or (self._current_state==self.MAYBE_DRAW_MODE and self.getColor()!=1):
+#             pos = [int(i) for i in self._posModel.cursorPos]
+#             pos = [self._posModel.time] + pos + [self._posModel.channel]
+#             
+#             items=self._dotsController.itemsAtPos(pos)
+#             for item in items:
+#                 self._dotsController.deleteDot(pos[1],pos[2],item)
+#                 
         return super(DotInterpreter,self).eventFilter(watched,event)
 
+    def onMouseMove_draw( self, imageview, event ):
+        self._navIntr.onMouseMove_default( imageview, event )
 
+        o = imageview.scene().data2scene.map(QPointF(imageview.oldX,imageview.oldY))
+        n = imageview.scene().data2scene.map(QPointF(imageview.x,imageview.y))
+        
+        # Draw temporary line for the brush stroke so the user gets feedback before the data is really updated.
+        pen = QPen( QBrush(self._brushingCtrl._brushingModel.drawColor), self._brushingCtrl._brushingModel.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        line = imageview.scene().addLine(o.x(), o.y(), n.x(), n.y(), pen)
+        items=imageview.scene().collidingItems(line)
+        items=filter(lambda el: isinstance(el, QDot),items)
+        for el in items:
+            self._dotsController.deleteDot(el)
+            
+        self._lineItems.append(line)
+        self._brushingCtrl._brushingModel.moveTo(imageview.mousePos)
 
 
 class DotSignaller(QObject):
     createdSignal = pyqtSignal(float,float,object)
-    deletedSignal = pyqtSignal(float,float,object)
+    deletedSignal = pyqtSignal(object)
     
 
 class QDot(QtGui.QGraphicsEllipseItem):
@@ -138,6 +153,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
         self._radius = radius
         self.hovering = False
         self._normalColor=normalColor
+        self._normalColor.setAlphaF(0.7)
         self.updateColor()
         self.Signaller=Signaller
         
@@ -158,7 +174,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
     def mousePressEvent(self, event):
         if QtCore.Qt.RightButton == event.button():
             event.setAccepted(True)
-            self.Signaller.deletedSignal.emit(self.x, self.y,self)
+            self.Signaller.deletedSignal.emit(self)
 
     def setColor(self,normalColor):
         self._normalColor=normalColor
@@ -187,7 +203,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
 
 
     
-class DotsController(QObject):
+class DotController(QObject):
     signalDotAdded =   pyqtSignal()
     signalDotDeleted = pyqtSignal()
     signalColorChanged=pyqtSignal(QColor)
@@ -231,13 +247,13 @@ class DotsController(QObject):
         
         self.signalDotAdded.emit()
     
-    def deleteDot(self,x,y,dot):
+    def deleteDot(self,dot):
         
         del self._currentDotsHash[dot.pos()]
         self.scene.removeItem(dot)
         
         eraseN=self._brushingModel.erasingNumber
-        mask=np.ones((3,3),np.int32)*eraseN
+        mask=np.ones((3,3),np.uint8)*eraseN
         self._brushingController._writeIntoSink(QPointF(dot.y-1.5,dot.x-1.5),mask)
         self.signalDotDeleted.emit()
         
@@ -247,17 +263,22 @@ class DotsController(QObject):
         items=filter(lambda el: isinstance(el, QDot),items)
         return items
     
-    def changeDotsRadius(self,radius):
+    def setDotsRadius(self,radius):
         self._radius=radius
         self.signalRadiusChanged.emit(self._radius)
-        for k,v in self._currentDotsHash:
+        for k,v in self._currentDotsHash.items():
             v.radius=radius
     
-    def changeDotsColor(self,qcolor):
+    def setDotsColor(self,qcolor):
         self._color=qcolor
-        for k,v in self._currentDotsHash:
+        for k,v in self._currentDotsHash.items():
             v.setColor(qcolor)
         self.signalColorChanged.emit(qcolor)
+    
+    def sedDotsVisibility(self,bool):
+        for k,v in self._currentDotsHash.items():
+            v.setVisible(bool)
+    
 
 import sys
 if __name__=="__main__":
@@ -353,6 +374,7 @@ if __name__=="__main__":
                 mainwin.editor.brushingModel.setBrushColor(QColor(255,0,0))
                 mainwin.editor.brushingModel.setBrushSize(1)
             else:
+                mainwin.editor.brushingModel.setBrushSize(20)
                 mainwin.editor.brushingModel.setBrushColor(QColor(0,255,0))
     
     labelListModel.elementSelected.connect(_handleSelection)
@@ -363,8 +385,8 @@ if __name__=="__main__":
     print mainwin.centralWidget()    
      
      
-    BoxContr=DotsController(mainwin.editor.imageScenes[2],mainwin.editor.brushingControler)
-    BoxInt=DotInterpreter(mainwin.editor.navCtrl,mainwin.editor.posModel,mainwin.editor.brushingControler,BoxContr)
+    BoxContr=DotController(mainwin.editor.imageScenes[2],mainwin.editor.brushingControler)
+    BoxInt=DotInterpreter(mainwin.editor.navCtrl,mainwin.editor.brushingControler,BoxContr)
     
     
 

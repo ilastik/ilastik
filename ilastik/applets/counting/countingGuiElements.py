@@ -33,7 +33,7 @@ from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 # #===============================================================================
 # # Dotting brush interface
 # #===============================================================================
-# class DotCrosshairControler(QObject):
+# class DotCrosshairController(QObject):
 #     def __init__(self, brushingModel, imageViews):
 #         QObject.__init__(self, parent=None)
 #         self._brushingModel = brushingModel
@@ -718,7 +718,7 @@ class BoxInterpreter(QObject):
         
         
         self.baseInterpret = navigationInterpreter
-        self.posModel      = positionModel
+        self._posModel      = positionModel
         self.rubberBand = RedRubberBand(QRubberBand.Rectangle, widget)
         
         self.boxController=BoxContr
@@ -738,8 +738,8 @@ class BoxInterpreter(QObject):
         self.baseInterpret.stop()
 
     def eventFilter( self, watched, event ):
-        pos = [int(i) for i in self.posModel.cursorPos]
-        pos = [self.posModel.time] + pos + [self.posModel.channel]
+        pos = [int(i) for i in self._posModel.cursorPos]
+        pos = [self._posModel.time] + pos + [self._posModel.channel]
         
         #Rectangles under the current point
         items=watched.scene().items(QPointF(*pos[1:3]))
@@ -800,8 +800,8 @@ class BoxInterpreter(QObject):
                                                   event.pos()).normalized())
         #Relasing the button
         if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
+            pos = [int(i) for i in self._posModel.cursorPos]
+            pos = [self._posModel.time] + pos + [self._posModel.channel]
             if event.button() == Qt.LeftButton:
                 self.rubberBand.hide()
                 self.leftClickReleased.emit( self.originpos,pos )                
@@ -1175,7 +1175,7 @@ if __name__=="__main__":
      
      
     BoxContr=BoxController(mainwin.editor.imageScenes[2],op.Output,boxListModel)
-    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,BoxContr,mainwin.centralWidget())
+    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor._posModel,BoxContr,mainwin.centralWidget())
     
 
     mainwin.editor.setNavigationInterpreter(BoxInt)
