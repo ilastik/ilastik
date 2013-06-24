@@ -372,7 +372,6 @@ class OpH5WriterBigDataset(Operator):
                 g = self.f.create_group(hdf5GroupName)
 
         dataShape=self.Image.meta.shape
-        axistags = self.Image.meta.axistags
         taggedShape = self.Image.meta.getTaggedShape()
         dtype = self.Image.meta.dtype
         if type(dtype) is numpy.dtype:
@@ -419,12 +418,10 @@ class OpH5WriterBigDataset(Operator):
             self.d.attrs['drange'] = self.Image.meta.drange
 
     def execute(self, slot, subindex, rroi, result):
-        key = roiToSlice(rroi.start, rroi.stop)
         self.progressSignal(0)
         
         slicings=self.computeRequestSlicings()
         numSlicings = len(slicings)
-        imSlot = self.inputs["Image"]
 
         self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
 
