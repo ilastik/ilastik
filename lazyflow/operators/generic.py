@@ -819,6 +819,38 @@ class OpTransposeSlots(Operator):
         # All outputs are directly connected to an input slot.
         pass
 
+class OpDtypeView(Operator):
+    """
+    Connect an input slot of one dtype to an output with a different
+     (but compatible) dtype, WITHOUT creating a copy.
+    For example, convert uint32 to int32.
+    
+    Note: This operator uses ndarray.view() and must be used with care.
+          For example, don't use it to convert a float to an int (or vice-versa), 
+             and don't use it to convert e.g. uint8 to uint32.
+          See ndarray.view() documentation for details.
+          
+          For converting between int and float, consider OpPixelOperator,
+          which will copy the data.
+    """
+    Input = InputSlot()
+    OutputDtype = InputSlot()
+    
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dtype = self.OutputDtype.value
+        #self.Output.meta.dtype = numpy.uint32
+
+    def execute(self, slot, subindex, roi, result):
+        result_view = result.view( self.Input.meta.dtype )
+        self.Input(roi.start, roi.stop).writeInto( result_view ).wait()
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty( roi )
+
 
 
 

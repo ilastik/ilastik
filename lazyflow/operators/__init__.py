@@ -41,6 +41,9 @@ except:
     from opCachedLabelImage import OpCachedLabelImage
     from opInterpMissingData import OpInterpMissingData
     from opCrosshairMarkers import OpCrosshairMarkers
+    from opMaskedWatershed import OpMaskedWatershed
+    from opSelectLabel import OpSelectLabel
+    from opMaskedSelect import OpMaskedSelect
 
     ops = list(itersubclasses(Operator))
     '''
