@@ -260,17 +260,50 @@ class BoxListModel(ListModel):
         
         if role == Qt.EditRole  and index.column() == self.ColumnID.Color:
             row = index.row()
-            color = QColor(value["color"])
-            fontsize = value["fontsize"]
-            linewidth = value["linewidth"]
-            fontcolor = QColor(value["fontcolor"])
-            if color.isValid() and fontcolor.isValid():
-                self._elements[row].color=color
-                self._elements[row].fontsize=fontsize
+            color = QColor(value["color"][0])
+            colorglobal=value["color"][1]
+            
+            fontsize,fontsizeglobal = value["fontsize"]
+            linewidth,linewidthglobal = value["linewidth"]
+            
+            fontcolor = QColor(value["fontcolor"][0])
+            fontcolorglobal = value["fontcolor"][1]
+            
+            
+            
+            if color.isValid():
+                if not colorglobal:
+                    self._elements[row].color=color
+                    self.dataChanged.emit(index, index)
+                else:
+                    for row,el in enumerate(self._elements):
+                        el.color=color
+                        ind=self.createIndex(row, self.ColumnID.Color, object=0)
+                        self.dataChanged.emit(ind, ind)
+                        
+            
+            if fontcolor.isValid():
+                if not fontcolorglobal:
+                    self._elements[row].fontcolor=fontcolor
+                else:
+                    for row,el in enumerate(self._elements):
+                        el.fontcolor=fontcolor
+        
+            if not linewidthglobal:
                 self._elements[row].linewidth=linewidth
-                self._elements[row].fontcolor=fontcolor
-                self.dataChanged.emit(index, index)
-                return True
+            else:
+                for row,el in enumerate(self._elements):
+                    el.linewidth=linewidth
+            
+            
+            print "HHHH",value["fontsize"]
+            if not fontsizeglobal:
+                self._elements[row].fontsize=fontsize
+            else:
+                for row,el in enumerate(self._elements):
+                    el.fontsize=fontsize
+        
+            return True
             
             
         if index.column()==self.ColumnID.Fix:
@@ -281,8 +314,8 @@ class BoxListModel(ListModel):
             self.dataChanged.emit(index,index)
             return True
 
-        
-            
+    
+
     def select(self, row):
         self._selectionModel.clear()
         self._selectionModel.select(self.index(row, self.ColumnID.Color),

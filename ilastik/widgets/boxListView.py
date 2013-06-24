@@ -11,43 +11,68 @@ from listView import ListView
 
 
 class BoxDialog(QDialog):
-    #FIXME:
-    #This is an hack to the functionality of the old ColorDialog
-
+    
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
         self._color = None
+        self._color_global=False
+        
         self._linewidth=None
+        self._linewidth_global=False
         
         self._fontcolor=None
+        self._fontcolor_global=False
+        
         self._fontsize=None
+        self._fontsize_global=False
+        
         
         self.ui = uic.loadUi(os.path.join(os.path.split(__file__)[0],
                                           'box_dialog.ui'),
                              self)
+
         self.ui.colorButton.clicked.connect(self.onColor)
         self.ui.fontColorButton.clicked.connect(self.onFontColor)
         self.ui.spinBoxWidth.valueChanged.connect(self.setLineWidth)
         self.ui.spinFontSize.valueChanged.connect(self.setFontSize)
         
+        self.ui.checkColorGlobal.stateChanged.connect(self.setColorGlobal)
+        self.ui.checkLineWidthGlobal.stateChanged.connect(self.setLineWidthGlobal)
+        self.ui.checkFontColorGlobal.stateChanged.connect(self.setFontColorGlobal)
+        self.ui.checkFontSizeGlobal.stateChanged.connect(self.setFontSizeGlobal)
+        
+        
+    
         self._modelIndex=None
         
     def setColor(self, c):
         self._color = c
         self.ui.colorButton.setStyleSheet("background-color: {}".format(c.name()))
 
+    def setColorGlobal(self,state):
+        self._color_global=(state==Qt.Checked)
+        
     def setFontColor(self,c):
         self._fontcolor = c
         self.ui.fontColorButton.setStyleSheet("background-color: {}".format(c.name()))
 
+    def setFontColorGlobal(self,state):
+        self._fontcolor_global=(state==Qt.Checked)
+        
     def setLineWidth(self,w):
         self._linewidth = w
         self.ui.spinBoxWidth.setValue(w)
-        
+    
+    def setLineWidthGlobal(self,state):
+        self._linewidth_global=(state==Qt.Checked)
+    
     def setFontSize(self,s):
         self._fontsize = s
         self.ui.spinFontSize.setValue(s)
     
+    def setFontSizeGlobal(self,state):
+        self._fontsize_global=(state==Qt.Checked)
+        
     
     def onFontColor(self):
         color=QColorDialog().getColor()
@@ -59,22 +84,32 @@ class BoxDialog(QDialog):
     
     
     def getColor(self):
-        return self._color
+        return self._color,self._color_global
     
     def getFontSize(self):
-        return self._fontsize
+        return self._fontsize,self._fontsize_global
     
     def getLineWidth(self):
-        return self._linewidth
+        return self._linewidth,self._linewidth_global
     
     def getFontColor(self):
-        return self._fontcolor
+        return self._fontcolor,self._fontcolor_global
     
     def getModelIndex(self):
         return self._modelIndex
     
     def setModelIndex(self,index):
         self._modelIndex=index
+    
+    def resetCheckBoxes(self):
+        self._fontcolor_global=False
+        self.ui.checkFontColorGlobal.setCheckState(Qt.Unchecked)
+        self._fontsize_global=False
+        self.ui.checkFontSizeGlobal.setCheckState(Qt.Unchecked)
+        self._color_global=False
+        self.ui.checkColorGlobal.setCheckState(Qt.Unchecked)
+        self._linewidth_global=False
+        self.ui.checkLineWidthGlobal.setCheckState(Qt.Unchecked)
     
 
     
@@ -96,7 +131,7 @@ class BoxListView(ListView):
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
             
-            print "RESETTING", modelIndex.row(), self._table.model()[modelIndex.row()].linewidth
+           #print "RESETTING", modelIndex.row(), self._table.model()[modelIndex.row()].linewidth
             
             self._colorDialog.setColor(self._table.model()[modelIndex.row()].color)
             self._colorDialog.setFontColor(self._table.model()[modelIndex.row()].fontcolor)
@@ -119,6 +154,7 @@ class BoxListView(ListView):
             
         modelIndex=self._colorDialog.getModelIndex()
         self._table.model().setData(modelIndex,d)
+        self._colorDialog.resetCheckBoxes()
             
             
     def tableViewCellClicked(self, modelIndex):
@@ -127,7 +163,7 @@ class BoxListView(ListView):
             self._table.model().removeRow(modelIndex.row())
         
         elif (modelIndex.column() == self.model.ColumnID.FixIcon):
-            state=self._table.isColumnHidden(self.model.ColumnID.Fix)
+            #state=self._table.isColumnHidden(self.model.ColumnID.Fix)
             
             #self._table.setColumnHidden(self.model.ColumnID.Fix, not state)
             self._table.setColumnHidden(self.model.ColumnID.Fix, False)

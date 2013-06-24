@@ -16,28 +16,28 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
+     <item row="2" column="0">
       <widget class="QPushButton" name="colorButton">
        <property name="text">
         <string/>
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="3" column="0">
       <widget class="QSpinBox" name="spinBoxWidth">
        <property name="value">
-        <number>2</number>
+        <number>1</number>
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="3" column="1">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Boxline Width</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="2" column="1">
       <widget class="QLabel" name="label">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -50,7 +50,7 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
+     <item row="5" column="0">
       <widget class="QPushButton" name="fontColorButton">
        <property name="enabled">
         <bool>true</bool>
@@ -60,24 +60,52 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
+     <item row="5" column="1">
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>Text Color</string>
+        <string>Font Color</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
+     <item row="2" column="2">
+      <widget class="QCheckBox" name="checkColorGlobal">
+       <property name="text">
+        <string>global</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
       <widget class="QSpinBox" name="spinFontSize">
        <property name="value">
-        <number>12</number>
+        <number>10</number>
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
+     <item row="6" column="1">
       <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Text Fontsize</string>
+        <string>Font Size</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
+      <widget class="QCheckBox" name="checkFontColorGlobal">
+       <property name="text">
+        <string>global</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QCheckBox" name="checkFontSizeGlobal">
+       <property name="text">
+        <string>global</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="2">
+      <widget class="QCheckBox" name="checkLineWidthGlobal">
+       <property name="text">
+        <string>global</string>
        </property>
       </widget>
      </item>
@@ -97,6 +125,16 @@
     </spacer>
    </item>
    <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QGridLayout" name="gridLayout_2" rowstretch="0"/>
    </item>
    <item>
@@ -111,16 +149,6 @@
       </size>
      </property>
     </spacer>
-   </item>
-   <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>

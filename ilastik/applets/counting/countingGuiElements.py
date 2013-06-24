@@ -877,7 +877,7 @@ class BoxController(QObject):
         :param boxListModel:
  
         '''
-        QObject.__init__(self)
+        QObject.__init__(self,parent=scene.parent())
         self._setUpRandomColors()
         self.scene=scene
         self.connectionInput=connectionInput
@@ -929,7 +929,7 @@ class BoxController(QObject):
         w=stop[0]-start[0]
         if h*w<9: return #too small
         
-        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,scene=self.scene)
+        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,scene=self.scene,parent=self.scene.parent())
         rect.setZValue(len(self._currentBoxesList))
         rect.setColor(self.currentColor)
         #self.counter-=1
@@ -1212,7 +1212,7 @@ if __name__=="__main__":
         jj=np.random.randint(0,500,1)
         a[ii,jj]=1
         a=vigra.filters.discDilation(a,radius=20)
-        array[:]=a.reshape(shape).view(np.ndarray)
+        array[:]=a.reshape(shape).view(np.ndarray)*255
         op.Input.setDirty()
     
     do()
