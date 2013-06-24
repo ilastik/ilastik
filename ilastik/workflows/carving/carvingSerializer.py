@@ -120,7 +120,7 @@ class CarvingSerializer( AppletSerializer ):
 
             # Start with inverse roi
             total_roi = roiFromShape(opCarving.opLabelArray.Output.meta.shape)
-            bounding_box_roi = [ total_roi[1][1:4], total_roi[0][1:4] ]
+            bounding_box_roi = numpy.array( [ total_roi[1][1:4], total_roi[0][1:4] ] )
             if fg_voxels is not None and len(fg_voxels[0]) > 0:
                 fg_bounding_box_start = numpy.array( map( numpy.min, fg_voxels ) )
                 fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fg_voxels ) )
