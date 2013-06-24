@@ -54,17 +54,24 @@ parser.add_argument('--headless', help="Don't start the ilastik gui.", action='s
 # Example:
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
+# DEBUG
+#sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
+
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
 # DEBUG DEBUG
 #parsed_args.project = '/magnetic/split-body-data/test_data2/full_proj2.ilp'
+#parsed_args.project = '/magnetic/split-body-data/test_data2/small_proj2.ilp'
 #parsed_args.project = '/home/bergs/MyProject.ilp'
 
 # DEBUG
 #parsed_args.headless = True
 #parsed_args.new_project = '/home/bergs/MyProject.ilp'
 #parsed_args.workflow = 'LayerViewerWorkflow'
+#parsed_args.new_project = '/magnetic/split-body-data/assignment980/MyProject.ilp'
+#parsed_args.workflow = 'SplitBodyCarvingWorkflow'
+
 
 if parsed_args.start_recording:
     assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
