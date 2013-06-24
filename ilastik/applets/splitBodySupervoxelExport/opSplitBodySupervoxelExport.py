@@ -3,13 +3,13 @@ import numpy
 import h5py
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpCompressedCache, OpVigraLabelVolume
+from lazyflow.operators import OpCompressedCache, OpVigraLabelVolume, OpFilterLabels
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.utility import bind, PathComponents
 from ilastik.applets.splitBodyCarving.opSplitBodyCarving import OpSelectLabel
-from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations
+from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations, OpMaskedWatershed
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,23 +24,26 @@ class OpSplitBodySupervoxelExport(Operator):
     RavelerLabels = InputSlot()
     Supervoxels = InputSlot()
     AnnotationBodyIds = InputSlot() # The list of bodies actually edited
-                                        # (Must be connected to ensure that setupOutputs will be 
-                                        #   called resize the multi-slots when necessary)
+                                    # (Must be connected to ensure that setupOutputs will be 
+                                    #   called resize the multi-slots when necessary)
 
     # For these multislots, N = number of raveler bodies that were edited
     EditedRavelerBodies = OutputSlot(level=1)
     MaskedSupervoxels = OutputSlot(level=1)
     RelabeledSupervoxels = OutputSlot(level=1)
+    FilteredMaskedSupervoxels = OutputSlot(level=1)
+    HoleFilledSupervoxels = OutputSlot(level=1)
     
     FinalSupervoxels = OutputSlot()
     SupervoxelMapping = OutputSlot()
 
-    #
-    # RavelerLabels ------>-----------------------------------------------------------------------------------------------------------
-    #                      \                                                                                                          \
-    # AnnotationBodyIds --> opSelectLabel[n] --> opMaskedSelect[n] --> opRelabelSupervoxels[n] --> opRelabeledSupervoxelsCaches[n] --> opAccumulateFinalImage --> opFinalCache --> FinalSupervoxels
-    #                                           /                 \                           \                                                              \
-    #                             Supervoxels --                   MaskedSupervoxels           RelabeledSupervoxels                                           SupervoxelMapping
+    # RavelerLabels ------>------------------------------------------------------------------------------------------------------------------------------------------------>------------------------------------------------------------------------------------------------------------------------------------
+    #                      \                                                                                                                                                \                                                                                                                                   \
+    #                       \       Supervoxels --                   MaskedSupervoxels                                                                                       \                                                                                                                                   \
+    #                        \                    \                 /                                                                                                         \                                                                                                                                   \
+    # AnnotationBodyIds ----> opSelectLabel[n] --> opMaskedSelect[n] --> opRelabelMaskedSupervoxels[n] --> opRelabeledMaskedSupervoxelsCaches[n] --> opSmallLabelFilter[n] --> opMaskedWatershed[n] --> opMaskedWatershedCaches[n] --> opRelabelMergedSupervoxels[n] --> opRelabeledMergedSupervoxelsCaches[n] --> opAccumulateFinalImage --> opFinalCache --> FinalSupervoxels
+    #                                         \                                                                                                                               /                                                                                                                               \                          \
+    #                                          -------------------------------------------------------------------------------------------------------------------------------                                                                                                                                 RelabeledSupervoxels       (SupervoxelMapping)
 
     def __init__(self, *args, **kwargs):
         super( OpSplitBodySupervoxelExport, self ).__init__(*args, **kwargs)
@@ -59,17 +62,44 @@ class OpSplitBodySupervoxelExport(Operator):
         self._opMaskedSelect.Mask.connect( self._opSelectLabel.Output )
         self.MaskedSupervoxels.connect( self._opMaskedSelect.Output )        
 
-        # Relabel the supervoxels in the mask to ensure contiguous supervoxels (after mask) and consecutive labels
-        self._opRelabelSupervoxels = OperatorWrapper( OpVigraLabelVolume, parent=self )
-        self._opRelabelSupervoxels.Input.connect( self._opMaskedSelect.Output )
+        # Must run CC before filter, to ensure that discontiguous labels can't avoid the filter.
+        self._opRelabelMaskedSupervoxels = OperatorWrapper( OpVigraLabelVolume, parent=self )
+        self._opRelabelMaskedSupervoxels.Input.connect( self._opMaskedSelect.Output )
         
-        self._opRelabeledSupervoxelCaches = OperatorWrapper( OpCompressedCache, parent=self )
-        self._opRelabeledSupervoxelCaches.Input.connect( self._opRelabelSupervoxels.Output )
-        self.RelabeledSupervoxels.connect( self._opRelabeledSupervoxelCaches.Output )
+        self._opRelabeledMaskedSupervoxelCaches = OperatorWrapper( OpCompressedCache, parent=self )
+        self._opRelabeledMaskedSupervoxelCaches.Input.connect( self._opRelabelMaskedSupervoxels.Output )
+
+        # Filter out the small CC to eliminate tiny pieces of supervoxels that overlap the mask boundaries
+        self._opSmallLabelFilter = OperatorWrapper( OpFilterLabels, parent=self, broadcastingSlotNames=['MinLabelSize'] )
+        self._opSmallLabelFilter.MinLabelSize.setValue( 10 )
+        self._opSmallLabelFilter.Input.connect( self._opRelabeledMaskedSupervoxelCaches.Output )
+
+        self._opSmallLabelFilterCaches = OperatorWrapper( OpCompressedCache, parent=self )
+        self._opSmallLabelFilterCaches.Input.connect( self._opSmallLabelFilter.Output )
+        self.FilteredMaskedSupervoxels.connect( self._opSmallLabelFilterCaches.Output )
+
+        # Re-fill the holes left by the filter using region growing (with a mask)
+        self._opMaskedWatersheds =  OperatorWrapper( OpMaskedWatershed, parent=self )
+        self._opMaskedWatersheds.Input.connect( self.InputData )
+        self._opMaskedWatersheds.Mask.connect( self._opSelectLabel.Output )
+        self._opMaskedWatersheds.Seeds.connect( self._opSmallLabelFilterCaches.Output )
+
+        # Cache is necessary because it ensures that the entire volume is used for watershed.
+        self._opMaskedWatershedCaches = OperatorWrapper( OpCompressedCache, parent=self )
+        self._opMaskedWatershedCaches.Input.connect( self._opMaskedWatersheds.Output )
+        self.HoleFilledSupervoxels.connect( self._opMaskedWatershedCaches.Output )
+
+        # Relabel the supervoxels in the mask to ensure contiguous supervoxels (after mask) and consecutive labels
+        self._opRelabelMergedSupervoxels = OperatorWrapper( OpVigraLabelVolume, parent=self )
+        self._opRelabelMergedSupervoxels.Input.connect( self._opMaskedWatershedCaches.Output )
+        
+        self._opRelabeledMergedSupervoxelCaches = OperatorWrapper( OpCompressedCache, parent=self )
+        self._opRelabeledMergedSupervoxelCaches.Input.connect( self._opRelabelMergedSupervoxels.Output )
+        self.RelabeledSupervoxels.connect( self._opRelabeledMergedSupervoxelCaches.Output )
 
         self._opAccumulateFinalImage = OpAccumulateFragmentSegmentations( parent=self )
         self._opAccumulateFinalImage.RavelerLabels.connect( self.RavelerLabels )
-        self._opAccumulateFinalImage.FragmentSegmentations.connect( self._opRelabeledSupervoxelCaches.Output )
+        self._opAccumulateFinalImage.FragmentSegmentations.connect( self._opRelabeledMergedSupervoxelCaches.Output )
         
         self._opFinalCache = OpCompressedCache( parent=self )
         self._opFinalCache.Input.connect( self._opAccumulateFinalImage.Output )

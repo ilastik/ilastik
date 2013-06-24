@@ -96,6 +96,8 @@ class SplitBodySupervoxelExportGui(LayerViewerGui):
                         layers.append(fragSegLayer)
 
         addFragmentSegmentationLayers( op.MaskedSupervoxels, "Masked Supervoxels" )
+        addFragmentSegmentationLayers( op.FilteredMaskedSupervoxels, "Filtered Masked Supervoxels" )
+        addFragmentSegmentationLayers( op.HoleFilledSupervoxels, "Hole Filled Supervoxels" )
         addFragmentSegmentationLayers( op.RelabeledSupervoxels, "Relabeled Supervoxels" )
 
         mslot = op.EditedRavelerBodies
