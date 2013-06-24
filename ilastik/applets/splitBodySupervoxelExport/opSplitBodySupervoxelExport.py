@@ -3,12 +3,11 @@ import numpy
 import h5py
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpCompressedCache, OpVigraLabelVolume, OpFilterLabels
+from lazyflow.operators import OpCompressedCache, OpVigraLabelVolume, OpFilterLabels, OpSelectLabel, OpMaskedSelect, OpDtypeView
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.utility import bind, PathComponents
-from ilastik.applets.splitBodyCarving.opSplitBodyCarving import OpSelectLabel
 from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations, OpMaskedWatershed
 
 import logging
@@ -57,7 +56,7 @@ class OpSplitBodySupervoxelExport(Operator):
         self.EditedRavelerBodies.connect( self._opSelectLabel.Output )
 
         # Mask in the body of interest
-        self._opMaskedSelect = OperatorWrapper( OpMaskedSelect, parent=self, broadcastingSlotNames=['Input'] )
+        self._opMaskedSelect = OperatorWrapper( OpMaskedSelectUint32, parent=self, broadcastingSlotNames=['Input'] )
         self._opMaskedSelect.Input.connect( self.Supervoxels )
         self._opMaskedSelect.Mask.connect( self._opSelectLabel.Output )
         self.MaskedSupervoxels.connect( self._opMaskedSelect.Output )        
@@ -203,36 +202,33 @@ class OpSplitBodySupervoxelExport(Operator):
         assert success
         return success
 
-
-class OpMaskedSelect(Operator):
+class OpMaskedSelectUint32(Operator):
+    # Upstream watershed is output as signed int32.
+    # We must produce uint32 for the label op.
     Input = InputSlot()
     Mask = InputSlot()
-    
     Output = OutputSlot()
     
-    def setupOutputs(self):
-        # Merge all meta fields from both
-        self.Output.meta.assignFrom( self.Input.meta )
-        self.Output.meta.update( self.Mask.meta )
+    def __init__(self, *args, **kwargs):
+        super( OpMaskedSelectUint32, self ).__init__( *args, **kwargs )
         
-        # Upstream watershed is output as signed int32.
-        # We must produce uint32 for the label op.
-        self.Output.meta.dtype = numpy.uint32
+        self._opMaskedSelect = OpMaskedSelect( parent=self )
+        self._opMaskedSelect.Input.connect( self.Input )
+        self._opMaskedSelect.Mask.connect( self.Mask )
+        
+        self._opConvertDtype = OpDtypeView( parent=self )
+        self._opConvertDtype.Input.connect( self._opMaskedSelect.Output )
+        self._opConvertDtype.OutputDtype.setValue( numpy.uint32 )
+        self.Output.connect( self._opConvertDtype.Output )
+
+    def setupOutputs(self):
+        pass
     
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
-        # Input is signed, but result is unsigned
-        result_view = result.view( self.Input.meta.dtype )
-        self.Input(roi.start, roi.stop).writeInto( result_view ).wait()
-        mask = self.Mask(roi.start, roi.stop).wait()
-        result[:] = numpy.where( mask, result, 0 )
-        return result
-    
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Input or slot == self.Mask:
-            self.Output.setDirty(roi)
-        else:
-            assert False, "Unknown input slot: {}".format( slot.name )
+        pass
 
 
 

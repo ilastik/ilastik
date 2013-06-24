@@ -3,7 +3,7 @@ import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape, roiToSlice, getIntersectingBlocks, getBlockBounds
-from lazyflow.operators import OpCrosshairMarkers
+from lazyflow.operators import OpCrosshairMarkers, OpSelectLabel
 from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
@@ -294,45 +294,6 @@ class OpFragmentSetLut(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         self.Lut.setDirty( slice(None) )
-
-class OpSelectLabel(Operator):
-    Input = InputSlot()
-    SelectedLabel = InputSlot()
-    Output = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super( OpSelectLabel, self ).__init__( *args, **kwargs )
-    
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.dtype = numpy.uint8
-        # As a convenience, store the selected label in the metadata.
-        self.Output.meta.selected_label = self.SelectedLabel.value
-    
-    def execute(self, slot, subindex, roi, result):
-        assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
-        if self.SelectedLabel.value == 0:
-            result[:] = 0
-        else:
-            # Can't use writeInto() here because dtypes don't match.
-            inputLabels = self.Input(roi.start, roi.stop).wait()
-            
-            # Use two in-place bitwise operations instead of numpy.where
-            # This avoids the temporary variable created by (inputLabels == x)
-            #result[:] = numpy.where( inputLabels == self.SelectedLabel.value, 1, 0 )
-            numpy.bitwise_xor(inputLabels, self.SelectedLabel.value, out=inputLabels) # All 
-            numpy.logical_not(inputLabels, out=inputLabels)
-            result[:] = inputLabels # Copy from uint32 to uint8
-            
-        return result
-    
-    def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Input:
-            self.Output.setDirty( roi.start, roi.stop )
-        elif slot == self.SelectedLabel:
-            self.Output.setDirty( slice(None) )
-        else:
-            assert False, "Dirty slot is unknown: {}".format( slot.name )
 
 
 
