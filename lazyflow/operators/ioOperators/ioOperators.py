@@ -194,7 +194,7 @@ class OpStackWriter(Operator):
                 patternEntries = iterationIndexDescriptors
                 
                 fullFilename = filepath + filepattern % (patternEntries)
-                vigra.impex.writeImage(data.reshape(*newImageShape).transpose(self.transposing), fullFilename)
+                vigra.impex.writeImage(data.reshape(newImageShape).transpose(self.transposing), fullFilename)
                 
                 req.clean() # Discard the data in the request and allow its children to be garbage collected.
 
