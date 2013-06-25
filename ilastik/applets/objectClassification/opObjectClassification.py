@@ -203,7 +203,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                     label_values[label_values==nextLabel+1]=nextLabel
 
     def setupOutputs(self):
-        super(OpObjectClassification, self).setupOutputs()
         self.Warnings.meta.shape = (1,)
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -939,7 +938,7 @@ class OpBadObjectsToWarningMessage(Operator):
     WarningMessage = OutputSlot(stype=Opaque)
 
     def setupOutputs(self):
-        super(OpBadObjectsToWarningMessage, self).setupOutputs()
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         try:

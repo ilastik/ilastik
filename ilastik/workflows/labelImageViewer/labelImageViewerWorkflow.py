@@ -19,10 +19,10 @@ class LabelImageViewerWorkflow(Workflow):
         #return self.rawDataSelectionApplet.topLevelOperator.ImageName
         return self.labelDataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LabelImageViewerWorkflow, self ).__init__( graph=graph, *args, **kwargs )
+        super(LabelImageViewerWorkflow, self ).__init__( headless, graph=graph, headless, *args, **kwargs )
         self._applets = []
 
         # Two data selection applets...

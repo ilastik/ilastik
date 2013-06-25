@@ -78,7 +78,7 @@ class LabelListModel(QAbstractTableModel):
         self._selectionModel = QItemSelectionModel(self)
 
         def onSelectionChanged(selected, deselected):
-            if selected:
+            if selected and selected[0].indexes():
                 self.labelSelected.emit(selected[0].indexes()[0].row())
 
         self._selectionModel.selectionChanged.connect(onSelectionChanged)

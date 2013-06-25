@@ -10,11 +10,14 @@ from cylemon.segmentation import MSTSegmentor
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-
-#ilastik
-from ilastik.applets.labeling import OpLabelingSingleLane
+from lazyflow.roi import roiToSlice
 
 from cylemon.segmentation import MSTSegmentor
+
+from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
+from lazyflow.operators.valueProviders import OpValueCache
+
+from ilastik.utility.timer import Timer
 
 class OpCarving(Operator):
     name = "Carving"
@@ -24,9 +27,12 @@ class OpCarving(Operator):
     
     #MST of preprocessed Graph
     MST = InputSlot()
-    
-    #raw data on which carving works
-    RawData      = InputSlot()
+
+    # These three slots are for display only.
+    # All computation is done with the MST.    
+    RawData = InputSlot(optional=True) # Display-only: Available to the GUI in case the input data was preprocessed in some way but you still want to see the 'raw' data.
+    InputData = InputSlot() # The data used by preprocessing (display only)
+    FilteredInputData = InputSlot() # The output of the preprocessing filter
     
     #write the seeds that the users draw into this slot
     WriteSeeds   = InputSlot()
@@ -37,14 +43,16 @@ class OpCarving(Operator):
     #number between 0.0 and 1.0
     #bias of the background
     #FIXME: correct name?
-    BackgroundPriority = InputSlot()
+    BackgroundPriority = InputSlot(value=0.95)
 
     #a number between 0 and 256
     #below the number, no background bias will be applied to the edge weights
-    NoBiasBelow        = InputSlot()
+    NoBiasBelow        = InputSlot(value=64)
 
     # uncertainty type
     UncertaintyType = InputSlot()
+
+    LabelsAllowed = InputSlot(value=True)
 
     # O u t p u t s #
 
@@ -74,15 +82,14 @@ class OpCarving(Operator):
     
     #Pmap Overlay
     PmapOverlay = OutputSlot()
+    
+    MstOut = OutputSlot()
 
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
-        blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
-        self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
-        self.opLabeling.LabelInput.connect( self.RawData )
-        self.opLabeling.InputImage.connect( self.RawData )
-        self.opLabeling.LabelDelete.setValue(-1)
-        self.opLabeling.LabelsAllowedFlag.setValue( True )
+        self.opLabelArray = OpDenseLabelArray( parent=self )
+        #self.opLabelArray.EraserLabelValue.setValue( 100 )
+        self.opLabelArray.MetaInput.connect( self.InputData )
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
@@ -114,11 +121,14 @@ class OpCarving(Operator):
         # the last serialization of this object to disk
         self._dirtyObjects = set()
         
-    def _clear(self):
+        self._opMstCache = OpValueCache( parent=self )
+        self.MstOut.connect( self._opMstCache.Output )
+        
+    def _clearLabels(self):
         #clear the labels 
-        self.opLabeling.LabelDelete.setValue(2)
-        self.opLabeling.LabelDelete.setValue(1)
-        self.opLabeling.LabelDelete.setValue(-1)
+        self.opLabelArray.DeleteLabel.setValue(2)
+        self.opLabelArray.DeleteLabel.setValue(1)
+        self.opLabelArray.DeleteLabel.setValue(-1)
         
     def _setCurrObjectName(self, n):
         """
@@ -132,16 +142,19 @@ class OpCarving(Operator):
         Builds the done segmentation anew, for example after saving an object or
         deleting an object.
         """
-        self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-        self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-        print "building done"
-        for name, objectSupervoxels in self._mst.object_lut.iteritems():
-            if name == self._currObjectName:
-                continue
-            self._done_lut[objectSupervoxels] += 1
-            assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
-            self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        print ""
+        if self._mst is None:
+            return
+        with Timer() as timer:
+            self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+            self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+            print "building 'done' luts"
+            for name, objectSupervoxels in self._mst.object_lut.iteritems():
+                if name == self._currObjectName:
+                    continue
+                self._done_lut[objectSupervoxels] += 1
+                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
+                self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
+        print "building the 'done' luts took {} seconds".format( timer.seconds() )
     
     def dataIsStorable(self):
         lut_seeds = self._mst.seeds.lut[:]
@@ -166,24 +179,24 @@ class OpCarving(Operator):
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
-        self._checkMeta(self.RawData)
+        self._checkMeta(self.InputData)
         
-        self.Segmentation.meta.assignFrom(self.RawData.meta)
+        self.Segmentation.meta.assignFrom(self.InputData.meta)
         self.Segmentation.meta.dtype = numpy.int32
         
         self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
         self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
         self.DoneSegmentation.meta.assignFrom(self.Segmentation.meta)
 
-        self.HintOverlay.meta.assignFrom(self.RawData.meta)
-        self.PmapOverlay.meta.assignFrom(self.RawData.meta)
+        self.HintOverlay.meta.assignFrom(self.InputData.meta)
+        self.PmapOverlay.meta.assignFrom(self.InputData.meta)
 
-        self.Uncertainty.meta.assignFrom(self.RawData.meta)
+        self.Uncertainty.meta.assignFrom(self.InputData.meta)
         self.Uncertainty.meta.dtype = numpy.uint8
 
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
-       
+
         if self._mst is not None:
             objects = self._mst.object_names.keys()
             self.AllObjectNames.meta.shape = len(objects)
@@ -202,8 +215,9 @@ class OpCarving(Operator):
 
     def currentObjectName(self):
         """
-        Returns current object name. None if it is not set.
+        Returns current object name. Return "" if no current object
         """
+        assert self._currObjectName is not None, "FIXME: This function should either return '' or None.  Why does it sometimes return one and then the other?"
         return self._currObjectName
 
     def hasObjectWithName(self, name):
@@ -237,16 +251,19 @@ class OpCarving(Operator):
         self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
     @Operator.forbidParallelExecute
-    def clearCurrentLabeling(self):
+    def clearCurrentLabeling(self, trigger_recompute=True):
         """
         Clears the current labeling.
         """
-        self._mst.seeds[:] = 0
+        self._clearLabels()
+
         lut_segmentation = self._mst.segmentation.lut[:]
         lut_segmentation[:] = 0
         lut_seeds = self._mst.seeds.lut[:]
         lut_seeds[:] = 0
         self.HasSegmentation.setValue(False)
+
+        self.Trigger.setDirty(slice(None))
                 
     def loadObject_impl(self, name):
         """
@@ -273,7 +290,6 @@ class OpCarving(Operator):
         bgVoxels = self._mst.object_seeds_bg_voxels[name]
 
         #user-drawn seeds:
-        self._mst.seeds[:] = 0
         self._mst.seeds[fgVoxels] = 2
         self._mst.seeds[bgVoxels] = 1
 
@@ -289,11 +305,6 @@ class OpCarving(Operator):
         return (fgVoxels, bgVoxels)
     
     def loadObject(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """
         print "want to load object with name = %s" % name
         if not self.hasObjectWithName(name):
             print "  --> no such object '%s'" % name 
@@ -301,20 +312,41 @@ class OpCarving(Operator):
         
         if self.hasCurrentObject():
             self.saveCurrentObject()
-        self._clear()
+        self._clearLabels()
         
         fgVoxels, bgVoxels = self.loadObject_impl(name)
+
+        fg_bounding_box_start = numpy.array( map( numpy.min, fgVoxels ) )
+        fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fgVoxels ) )
+
+        bg_bounding_box_start = numpy.array( map( numpy.min, bgVoxels ) )
+        bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bgVoxels ) )
+
+        bounding_box_start = numpy.minimum( fg_bounding_box_start, bg_bounding_box_start )
+        bounding_box_stop = numpy.maximum( fg_bounding_box_stop, bg_bounding_box_stop )
         
-        #if we want to supervoxelize the seeds, do this:
-        #self.opLabeling.LabelInput[:] = self._mst.seeds[:]
+        bounding_box_slicing = roiToSlice( bounding_box_start, bounding_box_stop )
         
-        #else:
-        shape = self.opLabeling.LabelImage.meta.shape
-        dtype = self.opLabeling.LabelImage.meta.dtype
-        z = numpy.zeros(shape, dtype=dtype)
-        z[0][fgVoxels] = 2
-        z[0][bgVoxels] = 1
-        self.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
+        bounding_box_shape = tuple(bounding_box_stop - bounding_box_start)
+        dtype = self.opLabelArray.Output.meta.dtype
+
+        # Convert coordinates to be relative to bounding box
+        fgVoxels = numpy.array(fgVoxels)
+        fgVoxels = fgVoxels - numpy.array( [bounding_box_start] ).transpose()
+        fgVoxels = list(fgVoxels)
+
+        bgVoxels = numpy.array(bgVoxels)
+        bgVoxels = bgVoxels - numpy.array( [bounding_box_start] ).transpose()
+        bgVoxels = list(bgVoxels)
+
+        with Timer() as timer:
+            print "Loading seeds...."
+            z = numpy.zeros(bounding_box_shape, dtype=dtype)
+            print "Allocating seed array took {} seconds".format( timer.seconds() )
+            z[fgVoxels] = 2
+            z[bgVoxels] = 1
+            self.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
+        print "Loading seeds took a total of {} seconds".format( timer.seconds() )
         
         #restore the correct parameter values 
         mst = self._mst
@@ -342,7 +374,6 @@ class OpCarving(Operator):
         lut_seeds = self._mst.seeds.lut[:]
         # clean seeds
         lut_seeds[:] = 0
-        self._mst.seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -352,7 +383,8 @@ class OpCarving(Operator):
         
         #delete it from object_names, as it indicates
         #whether the object exists
-        del self._mst.object_names[name]
+        if name in self._mst.object_names:
+            del self._mst.object_names[name]
 
         self._setCurrObjectName("")
 
@@ -360,11 +392,6 @@ class OpCarving(Operator):
         self._buildDone()
     
     def deleteObject(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """
         print "want to delete object with name = %s" % name
         if not self.hasObjectWithName(name):
             print "  --> no such object '%s'" % name 
@@ -372,7 +399,7 @@ class OpCarving(Operator):
         
         self.deleteObject_impl(name)
         #clear the user labels 
-        self._clear()
+        self._clearLabels()
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))
         self._dirtyObjects.add(name)
@@ -432,7 +459,9 @@ class OpCarving(Operator):
         self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
 
         # reset seeds
-        self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+        #self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+        # More efficient to set the lut directly:
+        self._mst.seeds.lut[:] = 0
 
         #numpy.asarray([BackgroundPriority.value()], dtype=numpy.float32)
         #numpy.asarray([NoBiasBelow.value()], dtype=numpy.int32)
@@ -450,13 +479,16 @@ class OpCarving(Operator):
 
 
     def get_label_voxels(self):
-        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[:].wait()[0]
-        
         #the voxel coordinates of fg and bg labels
+        if not self.opLabelArray.NonzeroBlocks.ready():
+            return (None,None)
+
+        nonzeroSlicings = self.opLabelArray.NonzeroBlocks[:].wait()[0]
+        
         coors1 = [[], [], []]
         coors2 = [[], [], []]
         for sl in nonzeroSlicings:
-            a = self.opLabeling.LabelImage[sl].wait()
+            a = self.opLabelArray.Output[sl].wait()
             w1 = numpy.where(a == 1)
             w2 = numpy.where(a == 2)
             w1 = [w1[i] + sl[i].start for i in range(1,4)]
@@ -478,11 +510,6 @@ class OpCarving(Operator):
 
     
     def saveObjectAs(self, name):
-        """
-        TODO: This function should ideally be part of the single-image operator (opCarving),
-        not this top-level operator.  For now, we have to pass in a sub-view that we can 
-        use to determine which image index the GUI is using.
-        """        
         # first, save the object under "name"
         self.saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
@@ -491,7 +518,7 @@ class OpCarving(Operator):
         
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
        
-        self._clear()
+        self._clearLabels()
          
         # trigger a re-computation
         self.Trigger.setDirty(slice(None))
@@ -566,23 +593,33 @@ class OpCarving(Operator):
 
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
-        if slot == self.WriteSeeds: 
-            self.opLabeling.LabelInput[roi.toSlice()] = value
+        if slot == self.WriteSeeds:
+            with Timer() as timer:
+                print "Writing seeds to label array"
+                self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
+                print "Writing seeds to label array took {} seconds".format( timer.seconds() )
             
             assert self._mst is not None
 
-            value = numpy.where(value == 100, 255, value[:])
+            # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
+            value[:] = numpy.where(value == 100, 255, value)
 
-            if hasattr(key, '__len__'):
-                self._mst.seeds[key[1:4]] = value
-            else:
-                self._mst.seeds[key] = value
+            with Timer() as timer:
+                print "Writing seeds to MST"
+                if hasattr(key, '__len__'):
+                    self._mst.seeds[key[1:4]] = value
+                else:
+                    self._mst.seeds[key] = value
+            print "Writing seeds to MST took {} seconds".format( timer.seconds() )
 
         else:
             raise RuntimeError("unknown slots")
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow or slot == self.UncertaintyType:
+        if slot == self.Trigger or \
+           slot == self.BackgroundPriority or \
+           slot == self.NoBiasBelow or \
+           slot == self.UncertaintyType:
             if self._mst is None:
                 return
             if not self.BackgroundPriority.ready():
@@ -608,4 +645,14 @@ class OpCarving(Operator):
             self.Segmentation.setDirty(slice(None))
             self.HasSegmentation.setValue(True)
         elif slot == self.MST:
+            self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
+            self._opMstCache.Input.setValue( self._mst )
+        elif slot == self.RawData or \
+             slot == self.InputData or \
+             slot == self.FilteredInputData or \
+             slot == self.WriteSeeds or \
+             slot == self.LabelsAllowed:
+            pass
+        else:
+            assert False, "Unknown input slot: {}".format( slot.name )

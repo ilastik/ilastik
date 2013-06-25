@@ -21,7 +21,7 @@ from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
                          LayerStackModel, VolumeEditor
 from volumina.utility import ShortcutManager
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 from volumina.interpreter import ClickReportingInterpreter
 
 from ilastik.widgets.viewerControls import ViewerControls
@@ -409,14 +409,14 @@ class LayerViewerGui(QWidget):
         for provider in self.observedSlots:
             for i, slot in enumerate(provider):
                 if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                    # Use an Op5ifyer adapter to transpose the shape for us.
-                    op5 = Op5ifyer( graph=slot.graph )
-                    op5.input.connect( slot )
-                    newDataShape = op5.output.meta.shape
+                    # Use an OpReorderAxes adapter to transpose the shape for us.
+                    op5 = OpReorderAxes( graph=slot.graph )
+                    op5.Input.connect( slot )
+                    newDataShape = op5.Output.meta.shape
 
                     # We just needed the operator to determine the transposed shape.
                     # Disconnect it so it can be garbage collected.
-                    op5.input.disconnect()
+                    op5.Input.disconnect()
         return newDataShape
 
     @traceLogged(traceLogger)

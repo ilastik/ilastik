@@ -6,10 +6,10 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 
 class FillMissingSlicesWorkflow(Workflow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(self.__class__, self).__init__(graph=graph, *args, **kwargs)
+        super(FillMissingSlicesWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 

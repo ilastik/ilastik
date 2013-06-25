@@ -50,6 +50,7 @@ class LabelListView(QStackedWidget):
         self.emptyMessage = QLabel("no labels defined yet")
         self.emptyMessage.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter )
         self.emptyMessage.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.emptyMessage.setAutoFillBackground(False)
         self.addWidget(self.emptyMessage)
         
         self._table = QTableView()

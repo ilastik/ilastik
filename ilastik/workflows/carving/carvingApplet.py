@@ -1,7 +1,8 @@
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
-from opCarvingTopLevel import OpCarvingTopLevel
+from ilastik.utility import OpMultiLaneWrapper
+from opCarving import OpCarving
 from carvingSerializer import CarvingSerializer
 from carvingGui import CarvingGui
 
@@ -14,15 +15,22 @@ class CarvingApplet(LabelingApplet):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow,  hintOverlayFile=hintOverlayFile, pmapOverlayFile=pmapOverlayFile )
-        self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
-        self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
+        if not hasattr(self, '_topLevelOperator'):
+            op_kwargs = { 'hintOverlayFile' : hintOverlayFile,
+                          'pmapOverlayFile' : pmapOverlayFile }
+            self._topLevelOperator = OpMultiLaneWrapper( OpCarving,
+                                                         parent=workflow,
+                                                         operator_kwargs=op_kwargs )
 
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
+        self._projectFileGroupName = projectFileGroupName
+        self._serializers = None
 
     @property
     def dataSerializers(self):
-        return [ CarvingSerializer(self._topLevelOperator, "carving") ]
+        if self._serializers is None:
+            self._serializers = [ CarvingSerializer(self.topLevelOperator, self._projectFileGroupName) ]
+        return self._serializers
     
     @property
     def topLevelOperator(self):
@@ -31,26 +39,6 @@ class CarvingApplet(LabelingApplet):
         """
         return self._topLevelOperator
     
-    def createSingleLaneGui(self, laneIndex):
-        """
-        Override from base class.
-        """
-        # Get a single-lane view of the top-level operator
-        topLevelOperatorView = self.topLevelOperator.getLane(laneIndex)
-
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = topLevelOperatorView.opCarving.WriteSeeds
-        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabeling.LabelImage
-        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabeling.LabelDelete
-        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabeling.MaxLabelValue
-        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.opLabeling.LabelsAllowedFlag
-        
-        gui = CarvingGui( labelingSlots,
-                          topLevelOperatorView,
-                          rawInputSlot=topLevelOperatorView.opCarving.RawData )
-
-        gui.minLabelNumber = 2
-        gui.maxLabelNumber = 2
-
-        return gui
+    @property
+    def singleLaneGuiClass(self):
+        return CarvingGui

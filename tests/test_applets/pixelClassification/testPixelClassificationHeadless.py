@@ -53,13 +53,13 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     @classmethod
     def create_new_tst_project(cls):
         # Instantiate 'shell'
-        shell = HeadlessShell( PixelClassificationWorkflow )
+        shell = HeadlessShell(  )
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, PixelClassificationWorkflow, [])
         newProjectFile.close()
-        shell.openProjectPath(newProjectFilePath)
+        shell.openProjectFile(newProjectFilePath)
         workflow = shell.workflow
         
         # Add a file
