@@ -194,7 +194,8 @@ class OpStackWriter(Operator):
                 patternEntries = iterationIndexDescriptors
                 
                 fullFilename = filepath + filepattern % (patternEntries)
-                vigra.impex.writeImage(data.reshape(newImageShape).transpose(self.transposing), fullFilename)
+                dataview = data.view(numpy.ndarray) # Some bug (in numpy.ndarray.reshape?) seems to require this cast.
+                vigra.impex.writeImage(dataview.reshape(newImageShape).transpose(self.transposing), fullFilename)
                 
                 req.clean() # Discard the data in the request and allow its children to be garbage collected.
 
