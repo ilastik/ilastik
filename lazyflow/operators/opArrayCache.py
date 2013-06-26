@@ -175,6 +175,7 @@ class OpArrayCache(OpCache):
             if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
+            self._blockShape = newBShape
             
             inputSlot = self.inputs["Input"]
             self.outputs["Output"].meta.assignFrom(inputSlot.meta)
@@ -195,18 +196,14 @@ class OpArrayCache(OpCache):
             start, stop = sliceToRoi(key, shape)
 
             with self._lock:
-                if self._cache is not None:
+                if self._blockState is not None:
                     blockStart = numpy.floor(1.0 * start / self._blockShape)
                     blockStop = numpy.ceil(1.0 * stop / self._blockShape)
                     blockKey = roiToSlice(blockStart,blockStop)
                     if self._fixed:
-                        # If this block was clean before we became fixed and now it's dirty,
-                        #  mark it so we can notify downstream operators that this block is dirty once we become unfixed.
-                        # We only care about blocks that weren't already dirty (because the downstream operators were 
-                        #  already notified of any blocks that were dirty before we became fixed.)
-                        self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != OpArrayCache.DIRTY, 
-                                                                 OpArrayCache.FIXED_DIRTY,
-                                                                 self._blockState[blockKey])
+                        # Remember that this block became dirty while we were fixed 
+                        #  so we can notify downstream operators when we become unfixed.
+                        self._blockState[blockKey] = OpArrayCache.FIXED_DIRTY
                         self._has_fixed_dirty_blocks = True
                     else:
                         self._blockState[blockKey] = OpArrayCache.DIRTY
@@ -216,7 +213,7 @@ class OpArrayCache(OpCache):
         if slot == self.inputs["fixAtCurrent"]:
             if self.inputs["fixAtCurrent"].ready():
                 self._fixed = self.inputs["fixAtCurrent"].value
-                if not self._fixed and self._cache is not None and self._has_fixed_dirty_blocks:
+                if not self._fixed and self.Output.meta.shape is not None and self._has_fixed_dirty_blocks:
                     # We've become unfixed, so we need to notify downstream 
                     #  operators of every block that became dirty while we were fixed.
                     # Convert all FIXED_DIRTY states into DIRTY states
@@ -229,7 +226,7 @@ class OpArrayCache(OpCache):
                     # To avoid lots of setDirty notifications, we simply merge all the dirtyblocks into one single superblock.
                     # This should be the best option in most cases, but could be bad in some cases.
                     # TODO: Optimize this by merging the dirty blocks via connected components or something.
-                    cacheShape = numpy.array(self._cache.shape)
+                    cacheShape = numpy.array(self.Output.meta.shape)
                     dirtyStart = cacheShape
                     dirtyStop = [0] * len(cacheShape)
                     for index in newDirtyBlocks:

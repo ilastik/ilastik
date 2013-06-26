@@ -231,7 +231,8 @@ class TestOpArrayCache(object):
         opCache.fixAtCurrent.setValue(False)
 
         # Output should be dirty from previous change
-        assert len(gotDirtyKeys) == 1
+        assert len(gotDirtyKeys) == 1, \
+            "Expected 1 dirty notification, got {}".format( len(gotDirtyKeys) )
 
 class TestOpArrayCacheWithObjectDtype(object):
     """
