@@ -167,6 +167,17 @@ Watershed Viewer
 Object Extraction
 -----------------
 
+The object extraction applet takes as input a data image and an object
+mask. It then computes object features on the objects and makes them
+available to downstream applets.
+
+The available features are provided by a plugin system. Each plugin
+reports the names of the features it supports, and handles the actual
+calculation. The GUI queries all plugins for the features they provide
+and present them to the user. The user selects some features, and the
+selection is sent to the operator, which calls the appropriate plugins
+and aggregates the results.
+
 .. currentmodule:: ilastik.applets.objectExtraction.objectExtractionApplet
 .. autoclass:: ObjectExtractionApplet
    :members:
@@ -198,6 +209,15 @@ Object Extraction
 Object Classification
 ---------------------
 
+The object classification applet provides functionality for labeling
+objects, training a classifier, and visualizing the prediction
+results. The top-level operator receives connected component images
+and object features from upstream operators, and it receives object
+labels from the object classification GUI. In addition to providing
+the usual output slots for classification, such as probabilities and
+predictions for each object, it also provides warnings for bad objects
+(i.e., those with missing or mangled features).
+
 .. currentmodule:: ilastik.applets.objectClassification.objectClassificationApplet
 .. autoclass:: ObjectClassificationApplet
    :members:
@@ -221,6 +241,8 @@ Object Classification
 .. autoclass:: OpMaxLabel
    :members:
 
-
+.. currentmodule:: ilastik.applets.objectClassification.objectClassificationGui
+.. autoclass:: ObjectClassificationGui
+   :members:
 
 

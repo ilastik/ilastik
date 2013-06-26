@@ -21,8 +21,17 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
-    """The top-level operator for object classification."""
+    """The top-level operator for object classification.
 
+    Most functionality is handled by specialized operators such as
+    OpObjectTrain and OpObjectPredict.
+
+    Also transfers existing labels if the upstream object segmentation
+    changes. The transfer is conservative: labels only get transfered
+    from an old object to a new object if they overlap sufficiently,
+    and the label does not overlap with other objects.
+
+    """
     name = "OpObjectClassification"
     category = "Top-level"
 
@@ -595,7 +604,12 @@ class OpObjectTrain(Operator):
 
 
 class OpObjectPredict(Operator):
-    """Predicts object labels in a single image."""
+    """Predicts object labels in a single image.
+
+    Performs prediction on all objects in a time slice at once, and
+    caches the result.
+
+    """
     # WARNING: right now we predict and cache a whole time slice. We
     # expect this to be fast because there are relatively few objects
     # compared to the number of pixels in pixel classification. If
