@@ -6,6 +6,7 @@ from lazyflow.rtype import SubRegion
 import numpy as np
 import vigra
 
+import cPickle as pickle
 
 np.set_printoptions(linewidth=200)
 
@@ -56,6 +57,14 @@ class OpInterpMissingData(Operator):
         
         self.Missing.connect(self.detector.Output)
 
+    def dumps(self):
+        #FIXME this is not good
+        #       a) accessing private attribute
+        #       b) could be bad if sklearn becomes available after saving
+        return pickle.dumps(self.detector._detectors)
+    
+    def loads(self, s):
+        self.detector._detectors = pickle.loads(s)
 
     def setupOutputs(self):
         # Output has the same shape/axes/dtype/drange as input
@@ -210,15 +219,6 @@ class OpInterpMissingData(Operator):
 ################################
 
 from vigra.analysis import labelVolumeWithBackground
-'''
-try:
-    from scipy.ndimage import label as connectedComponents
-except ImportError:
-    logger.warning("Could not import scipy.ndimage.label()")
-    def connectedComponents(X):
-        #FIXME!!
-        return (X,int(X.max()))
-''' 
 
 def _cubic_mat(n=1):
     n = float(n)
@@ -394,61 +394,43 @@ from lazyflow.operators.opPatchCreator import patchify
 
 try:
     from sklearn.svm import SVC
-    haveSKlearn = True
+    havesklearn = True
 except ImportError:
-    haveSKlearn = False
-finally:
-    class MySVM(object):
+    logger.warning("Could not import dependency 'sklearn' for SVMs")
+    havesklearn = False
+    
+class PseudoSVC(object):
+    '''
+    pseudo SVM 
+    '''
+    
+    def __init__(self, *args, **kwargs):
+        pass
+    
+    def fit(self, *args, **kwargs):
+        pass
         
-        ### setter and getter for property 'method' ###
-        _method = 'svm'
-        
-        @property
-        def method(self):
-            return self._method
-        
-        @method.setter
-        def method(self, value):
-            if not value in ['svm', 'classic']:
-                raise ValueError("Unknown method {}".format(value))
-            self._method = value
-        
-        ### ###
-        
-        def __init__(self, method='svm'):
-            if haveSKlearn:
-                self._svm = SVC(kernel=_histogramIntersectionKernel)
-            self.method = method
-
-
-        def fit(self, *args, **kwargs):
-            if self.method == 'classic':
-                pass
-            elif self.method == 'svm':
-                if not haveSKlearn:
-                    raise ImportError("missing module 'sklearn'")
-                self._svm.fit(*args, **kwargs)
-            
-        
-        def predict(self,*args, **kwargs):
-            if self.method == 'classic':
-                X = args[0]
-                out = np.zeros(len(X))
-                for k, patch in enumerate(X):
-                    out[k] = 0 if np.all(patch[1:] == 0) else 1
-                return out
-            elif self.method == 'svm':
-                if not haveSKlearn:
-                    raise ImportError("missing module 'sklearn'")
-                return self._svm.predict(*args, **kwargs)
+    def predict(self,*args, **kwargs):
+        X = args[0]
+        out = np.zeros(len(X))
+        for k, patch in enumerate(X):
+            out[k] = 1 if np.all(patch[1:] == 0) else 0
+        return out
             
 
 def _histogramIntersectionKernel(X,Y):
+    '''
+    implements the histogram intersection kernel in a fancy way
+    (standard: k(x,y) = sum(min(x_i,y_i)) )
+    '''
     A = X.reshape( (X.shape[0],1,X.shape[1]) )
     B = Y.reshape( (1,) + Y.shape )
     return np.sum(A+B-np.abs(A-B), axis=2)
 
 def _defaultTrainingSet(defectSize=128):
+    '''
+    produce a standard training set with black regions
+    '''
     vol = vigra.VigraArray(((np.random.rand(200,200,50)-.5)*125+125).astype(np.uint8), axistags=vigra.defaultAxistags('xyz'))
     labels = vigra.VigraArray(np.zeros((200,200,50),dtype=np.uint8), axistags=vigra.defaultAxistags('xyz'))
     
@@ -467,7 +449,7 @@ class OpDetectMissing(Operator):
     PatchSize = InputSlot(value=32)
     HaloSize = InputSlot(value=32)
     DetectionMethod = InputSlot(value='classic')
-    #DetectionMethod = InputSlot(value='svm')
+    NHistogramBins = InputSlot(value=20)
     
     TrainingVolume = InputSlot(value = _defaultTrainingSet()[0])
     
@@ -477,7 +459,10 @@ class OpDetectMissing(Operator):
     
     Output = OutputSlot()
     
-    _detectors = {}
+    
+    
+    ### PRIVATE ###
+    _detectors = {'svm': {}, 'classic': {}}
     
     
     def __init__(self, *args, **kwargs):
@@ -485,12 +470,9 @@ class OpDetectMissing(Operator):
         
         
     def propagateDirty(self, slot, subindex, roi):
-        
-        if not (slot == self.InputVolume):
-            #FIXME this leads to long retraining when two or more slots are being set subsequently
-            self._retrain()
-        
-        self.Output.setDirty(roi)
+        if slot == self.InputVolume:
+            #FIXME what about change of patch size and so on?
+            self.Output.setDirty(roi)
     
     
     def setupOutputs(self):
@@ -503,48 +485,38 @@ class OpDetectMissing(Operator):
         assert self.TrainingVolume.meta.getTaggedShape() == self.TrainingLabels.meta.getTaggedShape(), \
             "Training labels and training volume must have the same shape."  
         
-        self._train()
+        # determine range of input
+        if self.InputVolume.meta.dtype == np.uint8:
+            r = (0,255) 
+        elif self.InputVolume.meta.dtype == np.uint16:
+            r = (0,65535) 
+        else:
+            #FIXME hardcoded range, use np.iinfo
+            r = (0,255)
+        self._inputRange = r
 
 
     def execute(self, slot, subindex, roi, result):
         
+        # sanity check
+        assert self.DetectionMethod.value in ['svm', 'classic'], \
+            "Unknown detection method '{}'".format(self.DetectionMethod.value)
+        
         # prefill result
-        if slot == self.Output:
-            result[:] = 0
-            resultZYXCT = vigra.taggedView(result,self.InputVolume.meta.axistags).withAxes(*'zyxct')
-        #elif slot == self.IsBad:
-        #    resultZYXCT = result
+        result[:] = 0
+        resultZYXCT = vigra.taggedView(result,self.InputVolume.meta.axistags).withAxes(*'zyxct')
             
         # acquire data
         data = self.InputVolume.get(roi).wait()
         dataZYXCT = vigra.taggedView(data,self.InputVolume.meta.axistags).withAxes(*'zyxct')
         
-        
-        
+        # walk over time and channel axes
         for t in range(dataZYXCT.shape[4]):
             for c in range(dataZYXCT.shape[3]):
-                if slot == self.Output:
-                    resultZYXCT[...,c,t] = self._detectMissing(slot, dataZYXCT[...,c,t])
+                resultZYXCT[...,c,t] = self._detectMissing(slot, dataZYXCT[...,c,t])
 
         return result
     
-    
-    def isMissing(self,data):
-        """
-        determines if data is missing values or not 
-        
-        :param data: a slice
-        :type data: array-like
-        :returns: bool -- True, if data seems to be missing
-        """
-        
-        if not data.size in self._detectors.keys():
-            logger.error("Encountered invalid patch size ({} not in {}), cannot determine if missing...".format(data.size, self._detectors.keys()))
-            return False
-        else:
-            hist = self._toHistogram(data)
-            ans = self._detectors[data.size].predict((hist,))[0]
-            return not np.bool(ans)
     
 
     def _detectMissing(self, slot, data):
@@ -561,6 +533,8 @@ class OpDetectMissing(Operator):
             and len(data.shape) == 3, \
             "Data must be 3d with axis 'zyx'."
         
+        self._train(force=False)
+        
         result = vigra.VigraArray(data)*0
         
         patchSize = self.PatchSize.value
@@ -568,21 +542,26 @@ class OpDetectMissing(Operator):
         
         if patchSize is None or not patchSize>0:
             raise ValueError("PatchSize must be a positive integer")
-        if haloSize is None or not haloSize>=0:
+        if haloSize is None or haloSize<0:
             raise ValueError("HaloSize must be a non-negative integer")
         
         if np.any(patchSize>np.asarray(data.shape[1:])):
-            logger.warning("Ignoring small region (shape={})".format(data.shape))
+            logger.debug("Ignoring small region (shape={})".format(dict(zip([k.key for k in data.axistags], data.shape))))
             maxZ=0
         else:
             maxZ = data.shape[0]
+            
+        # choose detector to take
+        currentDetector = self._detectors[self.DetectionMethod.value][patchSize**2]
             
         # walk over slices
         for z in range(maxZ):
             patches, positions = patchify(data[z,:,:].view(np.ndarray), (patchSize, patchSize), (haloSize,haloSize), (0,0), data.shape[1:])
             # walk over patches
             for patch, pos in zip(patches, positions):
-                if self.isMissing(patch):
+                (hist, _) = np.histogram(patch, bins=self.NHistogramBins.value, range=self._inputRange)
+                if currentDetector.predict((hist,))[0] > 0: 
+                    #patch is classified as missing
                     ystart = pos[0]
                     ystop = min(ystart+patchSize, data.shape[1])
                     xstart = pos[1]
@@ -590,35 +569,32 @@ class OpDetectMissing(Operator):
                     result[z,ystart:ystop,xstart:xstop] = 1
          
         return result
-
-
-    def _toHistogram(self,data):
-        if self.InputVolume.meta.dtype == np.uint8:
-            r = (0,255) 
-        elif self.InputVolume.meta.dtype == np.uint16:
-            r = (0,65535) 
-        else:
-            #FIXME hardcoded range, use np.iinfo
-            r = (0,255)
-        (hist, _) = np.histogram(data, bins=100, range=r)
-        return hist
         
         
     def _train(self, force=False):
         '''
-        retrains if patch size is currently untrained or force is True
+        trains with samples drawn from slots TrainingVolume and TrainingLabels
+        (retrains only if patch size is currently untrained or force is True)
         '''
         patchSize = self.PatchSize.value + self.HaloSize.value
-        if force or not patchSize**2 in self._detectors.keys():
-            self._retrain(patchSize)
         
-    
-    def _retrain(self,  patchSize):
-        '''
-        trains with samples drawn from slots TrainingVolume and TrainingLabels
-        '''
-        self._detectors[patchSize**2] = MySVM(method=self.DetectionMethod.value)
+        # return early if unneccessary
+        if not force and patchSize**2 in self._detectors.keys():
+            return
         
+        logger.debug("Training for {} patch elements ...".format(patchSize**2))
+        
+        if self.DetectionMethod.value == 'svm' and havesklearn:
+            self._detectors[self.DetectionMethod.value][patchSize**2] = SVC(kernel=_histogramIntersectionKernel)
+        else:
+            self._detectors[self.DetectionMethod.value][patchSize**2] = PseudoSVC(kernel=_histogramIntersectionKernel)
+            return
+        
+        #from PyQt4.QtCore import pyqtRemoveInputHook
+        #from pdb import set_trace
+        #pyqtRemoveInputHook()
+        #set_trace()
+            
         vol = vigra.taggedView(self.TrainingVolume[:].wait(),axistags=self.TrainingVolume.meta.axistags).withAxes(*'zyx')
         labels = vigra.taggedView(self.TrainingLabels[:].wait(),axistags=self.TrainingLabels.meta.axistags).withAxes(*'zyx')
         
@@ -642,26 +618,26 @@ class OpDetectMissing(Operator):
                 
                 if not (xmin < 0 or ymin < 0 or xmax > vol.shape[2] or ymax > vol.shape[1]):
                     # valid patch, add it to the output
-                    out.append(self._toHistogram(vol[z,ymin:ymax,xmin:xmax]))
+                    (hist, _) = np.histogram(vol[z,ymin:ymax,xmin:xmax], bins=self.NHistogramBins.value, range=self._inputRange)
+                    out.append(hist)
                 
-
             return out
         #END subroutine
         
-        inliers = _extractHistograms(vol, labels == 1, nPatches = self.NTrainingSamples.value)
-        outliers = _extractHistograms(vol, labels == 2, nPatches = self.NTrainingSamples.value)
+        bad = _extractHistograms(vol, labels == 1, nPatches = self.NTrainingSamples.value)
+        good = _extractHistograms(vol, labels == 2, nPatches = self.NTrainingSamples.value)
         
         
-        if len(inliers)== 0 or len(outliers) == 0:
-            logger.error("Could not extract training data from volume.")
+        if len(bad)== 0 or len(good) == 0:
+            logger.error("Could not extract training data from volume - training aborted.")
             return
         
-        labelIn = [0]*len(inliers)
-        labelOut = [1]*len(outliers)
+        labelGood = [0]*len(good)
+        labelBad = [1]*len(bad)
         
-        x = inliers+outliers
-        y = labelIn+labelOut
-        self._detectors[patchSize**2].fit(x, y)
+        x = good + bad
+        y = labelGood+labelBad
+        self._detectors[self.DetectionMethod.value][patchSize**2].fit(x, y)
         
 
 if __name__ == "__main__":
