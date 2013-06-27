@@ -173,16 +173,10 @@ class TestDetection(unittest.TestCase):
         self.op.InputVolume.setValue(vol)
         self.op.Output[:].wait()
             
-    '''
-    def testOutputSlots(self):
-        (vol,_,_) = _singleMissingLayer()
-        self.op.InputVolume.setValue(vol)
-        self.assertTrue(self.op.IsBad[:].wait(), msg="Slot 'IsBad' was False for bad input.")
-        
-        vol = _volume()
-        self.op.InputVolume.setValue(vol)
-        self.assertFalse(self.op.IsBad[:].wait(), msg="Slot 'IsBad' was True for good input.")
-    '''
+    
+    def testPersistence(self):
+        dumpedString = self.op.dumps()
+        self.op.loads(dumpedString)
     
 class TestInterpolation(unittest.TestCase):
     '''
