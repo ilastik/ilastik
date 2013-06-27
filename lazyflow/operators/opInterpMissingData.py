@@ -61,10 +61,10 @@ class OpInterpMissingData(Operator):
         #FIXME this is not good
         #       a) accessing private attribute
         #       b) could be bad if sklearn becomes available after saving
-        return pickle.dumps(self.detector._detectors)
+        return self.detector.dumps()
     
     def loads(self, s):
-        self.detector._detectors = pickle.loads(s)
+        self.detector.loads(s)
 
     def setupOutputs(self):
         # Output has the same shape/axes/dtype/drange as input
@@ -517,6 +517,13 @@ class OpDetectMissing(Operator):
 
         return result
     
+    
+    def dumps(self):
+        return pickle.dumps(self._detectors)
+    
+    
+    def loads(self, s):
+        self._detectors = pickle.loads(s)
     
 
     def _detectMissing(self, slot, data):
