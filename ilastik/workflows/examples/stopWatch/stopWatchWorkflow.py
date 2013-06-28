@@ -9,10 +9,10 @@ class OpName( Operator ):
 
 
 class StopWatchWorkflow(Workflow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(StopWatchWorkflow, self).__init__(graph=graph, *args, **kwargs)
+        super(StopWatchWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         #self.name = OperatorWrapper(OpName( graph=graph)
         #self.name.Output[0].setValue("void")
 

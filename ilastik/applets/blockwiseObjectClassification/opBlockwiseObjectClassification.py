@@ -197,7 +197,7 @@ class OpBlockwiseObjectClassification( Operator ):
         assert self.RawImage.meta.shape == self.BinaryImage.meta.shape, "Raw and binary images must have the same shape!"
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
-        self.PredictionImage.meta.dtype = numpy.uint32 # (dtype ultimately comes from OpVigraLabelVolume)
+        self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
 
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value

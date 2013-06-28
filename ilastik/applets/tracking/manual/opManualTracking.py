@@ -84,23 +84,26 @@ class OpManualTracking(Operator):
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 0
-        labels = np.unique(volume)
+        labels = np.unique(volume).tolist()
+        if 0 in labels:
+            labels.remove(0)
         for label in labels:
-            if label > 0:
-                if label in replace and len(replace[label]) > 0:
-                    l = list(replace[label])[-1]
-                    if l == -1:
-                        mp[label] = 2**16-1
-                    else:
-                        mp[label] = l 
+            if label in replace and len(replace[label]) > 0:
+                l = list(replace[label])[-1]
+                if l == -1:
+                    mp[label] = 2**16-1
+                else:
+                    mp[label] = l 
         return mp[volume]
     
     def _relabelUntracked(self, volume, tracked_at):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 1
-        labels = np.unique(volume)
+        labels = np.unique(volume).tolist()
+        if 0 in labels:
+            labels.remove(0)
         for label in labels:
-            if (label != 0) and (label in tracked_at.keys()) and (len(tracked_at[label]) > 0):                
+            if (label in tracked_at.keys()) and (len(tracked_at[label]) > 0):                
                 mp[label] = 0
         return mp[volume]
     

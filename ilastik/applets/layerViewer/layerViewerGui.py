@@ -21,7 +21,7 @@ from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
                          LayerStackModel, VolumeEditor
 from volumina.utility import ShortcutManager
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 from volumina.interpreter import ClickReportingInterpreter
 
 from ilastik.widgets.viewerControls import ViewerControls
@@ -217,21 +217,9 @@ class LayerViewerGui(QWidget):
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
                                    If slot has 4 channels, this parameter has no effect.
         """
-        def getRange(meta):
-            if meta.drange is not None:
-                return meta.drange
-            if meta.dtype == numpy.uint8:
-                return (0, 255)
-            else:
-                # If we don't know the range of the data, create a layer that is auto-normalized.
-                # See volumina.pixelpipeline.datasources for details.
-                #
-                # Even in the case of integer data, which has more than 255 possible values,
-                # (like uint16), it seems reasonable to use this setting as default
-                return 'autoPercentiles'
+        
         
         shape = slot.meta.shape
-        normalize = getRange(slot.meta)
         
         try:
             channelAxisIndex = slot.meta.axistags.index('c')
@@ -319,8 +307,34 @@ class LayerViewerGui(QWidget):
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( aindex )
             alphaSource = LazyflowSource( alphaProvider.Output )
-
-        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource )
+        
+        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
+        
+        def getRange(meta):
+            if meta.drange is not None:
+                return meta.drange
+            if meta.normalizeDisplay is True:
+                return 'autoPercentiles'
+            elif meta.normalizeDisplay is False:
+                return (0, 255)
+            if meta.dtype == numpy.uint8:
+                return (0, 255)
+            else:
+                # If we don't know the range of the data and normalization is allowed
+                # by the user, create a layer that is auto-normalized.
+                # See volumina.pixelpipeline.datasources for details.
+                #
+                # Even in the case of integer data, which has more than 255 possible values,
+                # (like uint16), it seems reasonable to use this setting as default
+                return 'autoPercentiles'
+        
+        normalize = getRange(slot.meta)
+        for i in xrange(4):
+            if [redSource,greenSource,blueSource,alphaSource][i]:
+                if normalize=="autoPercentiles":
+                    layer.set_normalize(i,None)
+                else:
+                    layer.set_normalize(i,normalize)
         return layer
 
     @traceLogged(traceLogger)
@@ -409,14 +423,14 @@ class LayerViewerGui(QWidget):
         for provider in self.observedSlots:
             for i, slot in enumerate(provider):
                 if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                    # Use an Op5ifyer adapter to transpose the shape for us.
-                    op5 = Op5ifyer( graph=slot.graph )
-                    op5.input.connect( slot )
-                    newDataShape = op5.output.meta.shape
+                    # Use an OpReorderAxes adapter to transpose the shape for us.
+                    op5 = OpReorderAxes( graph=slot.graph )
+                    op5.Input.connect( slot )
+                    newDataShape = op5.Output.meta.shape
 
                     # We just needed the operator to determine the transposed shape.
                     # Disconnect it so it can be garbage collected.
-                    op5.input.disconnect()
+                    op5.Input.disconnect()
         return newDataShape
 
     @traceLogged(traceLogger)

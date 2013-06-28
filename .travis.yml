@@ -31,9 +31,10 @@ before_script:
    - "export PYTHONPATH=/tmp/volumina:/tmp/widgets:/tmp/lazyflow:$PYTHONPATH"
 script:
    - python ./tests/bin/generate_test_data.py /tmp/test_data
-   - cp tests/nose_single.py .
    - ./tests/run_each_unit_test.sh
-   - ./tests/run_recorded_tests.sh
+   # For some reason, recorded tests can segfault on travis.
+   # For now, we'll have to settle for running them independently in the ilastik-test-vm
+   # - ./tests/run_recorded_tests.sh
 notifications:
   email:
     - bergs@janelia.hhmi.org

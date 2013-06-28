@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
 NOSE_ARG=${1-"."}
 
 echo "BEGIN RECORDED TESTS"

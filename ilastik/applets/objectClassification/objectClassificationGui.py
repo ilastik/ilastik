@@ -45,6 +45,14 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
 
 
 class ObjectClassificationGui(LabelingGui):
+    """A subclass of LabelingGui for labeling objects.
+
+    Handles labeling objects, viewing the predicted results, and
+    displaying warnings from the top level operator. Also provides a
+    dialog for choosing subsets of the precalculated features provided
+    by the object extraction applet.
+
+    """
 
     def centralWidget(self):
         return self

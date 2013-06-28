@@ -1,7 +1,7 @@
 import time
 
 from PyQt4.QtCore import QObject
-from PyQt4.QtGui import QApplication
+from PyQt4.QtGui import QApplication, QWidget
 
 def get_fully_qualified_name(obj):
     """
@@ -31,9 +31,7 @@ def get_fully_qualified_name(obj):
     fullname = "{}.".format( get_fully_qualified_name(parent) ) + objName
 
     # Make sure no siblings have the same name!
-    for sibling in parent.children():
-        if sibling != obj:
-            assert sibling.objectName() != objName, "Detected multiple objects with full name: {}".format( fullname )
+    assert _has_unique_name(obj), "Detected multiple objects with full name: {}".format( fullname )
 
     return fullname
 
@@ -50,7 +48,24 @@ def get_named_object(full_name, timeout=10.0):
         timeout -= 1.0
         obj = _locate_descendent(None, full_name)
 
-    assert obj is not None, "Couldn't locate object: {} within timeout of {} seconds".format( full_name, timeout_ )
+    if obj is None:
+        # We couldn't find the child.
+        # To give a better error message, find the deepest object that COULD be found
+        names = full_name.split('.')
+        for i in range(len(names)):
+            ancestor_name = ".".join( names[:-i-1] )
+            obj = _locate_descendent(None, ancestor_name)
+            if obj is not None:
+                break
+            else:
+                ancestor_name = None
+
+        msg = "Couldn't locate object: {} within timeout of {} seconds\n".format( full_name, timeout_ )
+        if ancestor_name:
+            msg += "Deepest found object was: {}".format( ancestor_name )
+        else:
+            msg += "Failed to find the top-level widget {}".format( full_name.split('.')[0] )
+        raise RuntimeError( msg )
     return obj
 
 def _assign_default_object_name( obj ):
@@ -74,7 +89,9 @@ def _has_unique_name(obj):
     obj_name = obj.objectName()
     for child in parent.children():
         if child is not obj and child.objectName() == obj_name:
-            return False
+            # If the conflicting child is hidden, it doesn't count as a real conflict.
+            if isinstance(child, QWidget) and child.isVisible():
+                return False
     return True
 
 def _normalize_child_names(parent):
@@ -92,7 +109,11 @@ def _locate_immediate_child(parent, childname):
     if parent is None:
         siblings = QApplication.topLevelWidgets()
     else:
+        # Only consider visible children (or non-widgets)
         siblings = parent.children()
+        def isVisible(obj):
+            return not isinstance(obj, QWidget) or obj.isVisible()
+        siblings = filter( isVisible, siblings )
 
     for child in siblings:
         if child.objectName() == "":

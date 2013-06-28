@@ -1,6 +1,8 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
 import numpy
 
+from lazyflow.roi import roiFromShape, roiToSlice
+
 class CarvingSerializer( AppletSerializer ):
     def __init__(self, carvingTopLevelOperator, *args, **kwargs):
         super(CarvingSerializer, self).__init__(*args, **kwargs)
@@ -8,7 +10,7 @@ class CarvingSerializer( AppletSerializer ):
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
-        for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
+        for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
             for name in opCarving._dirtyObjects:
                 print "[CarvingSerializer] serializing %s" % name
@@ -55,6 +57,8 @@ class CarvingSerializer( AppletSerializer ):
             deleteIfPresent(topGroup, "bg_voxels")
 
             fg_voxels, bg_voxels = opCarving.get_label_voxels()
+            if fg_voxels is None:
+                return
 
             if fg_voxels[0].shape[0] > 0:
                 v = [fg_voxels[i][:,numpy.newaxis] for i in range(3)]
@@ -70,7 +74,7 @@ class CarvingSerializer( AppletSerializer ):
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         obj = topGroup["objects"]
-        for imageIndex, opCarving in enumerate( self._o.opCarving.innerOperators ):
+        for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
             
             for i, name in enumerate(obj):
@@ -100,27 +104,52 @@ class CarvingSerializer( AppletSerializer ):
                 except Exception as e:
                     print 'object %s could not be loaded due to exception: %s'% (name,e)
 
-            shape = opCarving.opLabeling.LabelImage.meta.shape
-            dtype = opCarving.opLabeling.LabelImage.meta.dtype
-            z = numpy.zeros(shape, dtype=dtype)
+            shape = opCarving.opLabelArray.Output.meta.shape
+            dtype = opCarving.opLabelArray.Output.meta.dtype
 
+            fg_voxels = None
             if "fg_voxels" in topGroup.keys():
                 fg_voxels = topGroup["fg_voxels"]
                 fg_voxels = [fg_voxels[:,k] for k in range(3)]
-                z[0][fg_voxels] = 2
 
+            bg_voxels = None
             if "bg_voxels" in topGroup.keys():
                 bg_voxels = topGroup["bg_voxels"]
                 bg_voxels = [bg_voxels[:,k] for k in range(3)]
-                z[0][bg_voxels] = 1
 
-            opCarving.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
-            print "restored seeds"
+
+            # Start with inverse roi
+            total_roi = roiFromShape(opCarving.opLabelArray.Output.meta.shape)
+            bounding_box_roi = numpy.array( [ total_roi[1][1:4], total_roi[0][1:4] ] )
+            if fg_voxels is not None and len(fg_voxels[0]) > 0:
+                fg_bounding_box_start = numpy.array( map( numpy.min, fg_voxels ) )
+                fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fg_voxels ) )
+                bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], fg_bounding_box_start )
+                bounding_box_roi[1] = numpy.maximum( bounding_box_roi[1], fg_bounding_box_stop )
+
+            if bg_voxels is not None and len(bg_voxels[0]) > 0:
+                bg_bounding_box_start = numpy.array( map( numpy.min, bg_voxels ) )
+                bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bg_voxels ) )
+                bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], bg_bounding_box_start )
+                bounding_box_roi[1] = numpy.maximum( bounding_box_roi[1], bg_bounding_box_stop )
+            
+            if (bounding_box_roi[1] > bounding_box_roi[0]).all():
+                z = numpy.zeros(bounding_box_roi[1] - bounding_box_roi[0], dtype=dtype)
+                if fg_voxels is not None:
+                    fg_voxels = fg_voxels - numpy.array( [bounding_box_roi[0]] ).transpose()
+                    z[fg_voxels] = 2
+                if bg_voxels is not None:
+                    bg_voxels = bg_voxels - numpy.array( [bounding_box_roi[0]] ).transpose()
+                    z[bg_voxels] = 1
+
+                bounding_box_slicing = roiToSlice( bounding_box_roi[0], bounding_box_roi[1] )
+                opCarving.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
+                print "restored seeds"
                 
             opCarving._buildDone()
            
     def isDirty(self):
-        for index, innerOp in enumerate(self._o.opCarving.innerOperators):
+        for index, innerOp in enumerate(self._o.innerOperators):
             if len(innerOp._dirtyObjects) > 0:
                 return True
         return True #FIXME: only return True if labels have changed and need to be saved

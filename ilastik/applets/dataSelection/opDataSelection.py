@@ -1,11 +1,12 @@
+import uuid
+import vigra
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators import OpMetadataInjector
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.operators import Op5ifyer
-
-import uuid
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class DatasetInfo(object):
     """
@@ -15,16 +16,20 @@ class DatasetInfo(object):
         FileSystem = 0
         ProjectInternal = 1
         
-    def __init__(self):
+    def __init__(self, jsonNamespace=None):
         Location = DatasetInfo.Location
         self.location = Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
         self.drange = None
+        self.normalizeDisplay = False
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
+
+        if jsonNamespace is not None:
+            self.updateFromJson( jsonNamespace )
 
     @property
     def filePath(self):
@@ -39,6 +44,28 @@ class DatasetInfo(object):
     @property
     def datasetId(self):
         return self._datasetId
+    
+    DatasetInfoSchema = \
+    {
+        "_schema_name" : "dataset-info",
+        "_schema_version" : 0.1,
+        
+        "filepath" : str,
+        "drange" : tuple,
+        "nickname" : str,
+        "axistags" : str
+    }
+
+    def updateFromJson(self, namespace):
+        """
+        Given a namespace object returned by a JsonConfigParser,
+        update the corresponding non-None fields of this DatasetInfo.
+        """
+        self.filePath = namespace.filepath or self.filePath        
+        self.drange = namespace.drange or self.drange
+        self.nickname = namespace.nickname or self.nickname
+        if namespace.axistags is not None:
+            self.axistags = vigra.defaultAxistags(namespace.axistags)
 
 class OpDataSelection(Operator):
     """
@@ -109,11 +136,12 @@ class OpDataSelection(Operator):
             opReader.FilePath.setValue(datasetInfo.filePath)
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
-
+        
         # Inject metadata if the dataset info specified any.
-        if datasetInfo.drange or datasetInfo.axistags is not None:
+        if datasetInfo.normalizeDisplay is not None or datasetInfo.drange or datasetInfo.axistags is not None:
             metadata = {}
             metadata['drange'] = datasetInfo.drange
+            metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 metadata['axistags'] = datasetInfo.axistags
             opMetadataInjector = OpMetadataInjector( parent=self )
@@ -125,20 +153,20 @@ class OpDataSelection(Operator):
         self._NonTransposedImage.connect(providerSlot)
         
         if self.force5d:
-            op5 = Op5ifyer(parent=self)
-            op5.input.connect(providerSlot)
-            providerSlot = op5.output
+            op5 = OpReorderAxes(parent=self)
+            op5.Input.connect(providerSlot)
+            providerSlot = op5.Output
             self._opReaders.append(op5)
         
-        # If there is no channel axis, use an Op5ifyer to append one.
+        # If there is no channel axis, use an OpReorderAxes to append one.
         if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
-            op5 = Op5ifyer( parent=self )
+            op5 = OpReorderAxes( parent=self )
             providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
-            op5.order.setValue(providerKeys + 'c')
-            op5.input.connect( providerSlot )
-            providerSlot = op5.output
+            op5.AxisOrder.setValue(providerKeys + 'c')
+            op5.Input.connect( providerSlot )
+            providerSlot = op5.Output
             self._opReaders.append( op5 )
-
+        
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)
         
