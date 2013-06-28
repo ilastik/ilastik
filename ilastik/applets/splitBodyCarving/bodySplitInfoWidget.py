@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 from functools import partial
@@ -198,12 +199,23 @@ class BodySplitInfoWidget( QWidget ):
         """
         Load the annotation file using the path stored in our member variable.
         """        
-        self.annotationFilepathEdit.setText( self._annotationFilepath )
-
         try:
-            with open(self._annotationFilepath) as annotationFile:
-                annotation_json_dict = json.load( annotationFile )
-        except Exception as ex:
+            self._annotations = self._parseAnnotationFile( self._annotationFilepath,
+                                                           self.opSplitBodyCarving.RavelerLabels )
+            self.annotationFilepathEdit.setText( self._annotationFilepath )
+        except self.AnnotationParsingException as ex :
+            import traceback
+            if ex.original_exc is not None:
+                traceback.print_exception( type(ex.original_exc), ex.original_exc, sys.exc_info()[2] )
+                sys.stderr.write( ex.msg )
+            else:
+                traceback.print_exc()
+            QMessageBox.critical(self,
+                                 "Failed to parse",
+                                 ex.msg + "\n\nSee console output for details." )
+            self._annotationFilepath = None
+            self.annotationFilepathEdit.setText("")
+        except:
             import traceback
             traceback.print_exc()
             QMessageBox.critical(self,
@@ -211,40 +223,57 @@ class BodySplitInfoWidget( QWidget ):
                                  "Wasn't able to parse your bookmark file.  See console output for details." )
             self._annotationFilepath = None
             self.annotationFilepathEdit.setText("")
-            return
+        else:
+            self._ravelerLabels = set( map( lambda (label, comment): label, self._annotations.values() ) )
+            self._reloadInfoWidgets()
+        
+            self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
+            self.opSplitBodyCarving.AnnotationLocations.setValue( self._annotations.keys() )
+            self.opSplitBodyCarving.AnnotationBodyIds.setValue( sorted(self._ravelerLabels) )
+
+    class AnnotationParsingException(Exception):
+        def __init__(self, msg, original_exc=None):
+            super(BodySplitInfoWidget.AnnotationParsingException, self).__init__()
+            self.original_exc = original_exc
+            self.msg = msg
+            
+    @classmethod
+    def _parseAnnotationFile(cls, annotation_filepath, body_label_img_slot):
+        """
+        Returns dict of annotations of the form { coordinate_3d : Annotation }
+        """
+        try:
+            with open(annotation_filepath) as annotationFile:
+                annotation_json_dict = json.load( annotationFile )
+        except Exception as ex:
+            raise cls.AnnotationParsingException(
+                 "Failed to parse your bookmark file.  It isn't valid JSON.", ex), None, sys.exc_info()[2]
 
         if 'data' not in annotation_json_dict:
-            QMessageBox.critical(self,
-                                 "Invalid format",
-                                 "Couldn't find the 'data' list in your bookmark file.  Giving up." )
-            self._annotationFilepath = None
-            self.annotationFilepathEdit.setText("")
-            return
+            raise cls.AnnotationParsingException(
+                 "Couldn't find the 'data' list in your bookmark file.  Giving up."), None, sys.exc_info()[2]
 
         # Before we parse the bookmarks data, locate the substack description
         #  to calculate the z-coordinate offset (see comment about substack coordinates, above)
-        bookmark_dir = os.path.split(self._annotationFilepath)[0]
+        bookmark_dir = os.path.split(annotation_filepath)[0]
         substack_dir = os.path.split(bookmark_dir)[0]
         substack_description_path = os.path.join( substack_dir, 'substack.json' )
         try:
             with open(substack_description_path) as substack_description_file:
-                 substack_description_json_dict = json.load( substack_description_file )
+                substack_description_json_dict = json.load( substack_description_file )
         except Exception as ex:
-            import traceback
-            traceback.print_exc()
-            QMessageBox.critical(self,
-                                 "Failed to parse SUBSTACK",
-                                 "Attempted to open substack description file:\n {}"
-                                 "\n but something went wrong.  See console output for details.  Giving up."
-                                 .format(substack_description_path) )
-            self._annotationFilepath = None
-            self.annotationFilepathEdit.setText("")
-            return
+            raise cls.AnnotationParsingException(
+                 "Failed to parse SUBSTACK",
+                 "Attempted to open substack description file:\n {}"
+                 "\n but something went wrong.  See console output for details.  Giving up."
+                 .format(substack_description_path) ), None, sys.exc_info()[2]
 
+        # See comment above about why we have to subtract a Z-offset
         z_offset = substack_description_json_dict['idz1'] - substack_description_json_dict['border']
 
-        bookmarks = annotation_json_dict['data']
         # Each bookmark is a dict (see example above)
+        annotations = {}
+        bookmarks = annotation_json_dict['data']
         for bookmark in bookmarks:
             if 'text' in bookmark and str(bookmark['text']).lower().find( 'split' ) != -1:
                 coord3d = bookmark['location']
@@ -256,19 +285,14 @@ class BodySplitInfoWidget( QWidget ):
                 sample_roi = (pos, pos+1)
                 # For debug purposes, we sometimes load a smaller volume than the original.
                 # Don't import bookmarks that fall outside our volume
-                if (pos < self.opSplitBodyCarving.RavelerLabels.meta.shape).all():
-                    ravelerLabelSample = self.opSplitBodyCarving.RavelerLabels(*sample_roi).wait()
-                    ravelerLabel = ravelerLabelSample[0,0,0,0,0]
-                    
-                    self._annotations[coord3d] = Annotation(ravelerLabel=ravelerLabel, comment=str(bookmark['text']))
-                    self._ravelerLabels.add( ravelerLabel )
-
-        self._reloadInfoWidgets()
+                if (pos < body_label_img_slot.meta.shape).all():
+                    # Sample the label volume to determine the body id (raveler label)
+                    label_sample = body_label_img_slot(*sample_roi).wait()
+                    annotations[coord3d] = Annotation( ravelerLabel=label_sample[0,0,0,0,0], 
+                                                       comment=str(bookmark['text']) )
         
-        self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
-        self.opSplitBodyCarving.AnnotationLocations.setValue( self._annotations.keys() )
-        bodies = set( map( lambda (label, comment): label, self._annotations.values() ) )
-        self.opSplitBodyCarving.AnnotationBodyIds.setValue( sorted(bodies) )
+        return annotations
+
 
     def _handleAnnotationDoubleClick(self, item):
         coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
