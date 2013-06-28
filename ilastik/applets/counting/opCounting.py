@@ -60,7 +60,7 @@ class OpCounting( Operator ):
     """
     Top-level operator for pixel classification
     """
-    name="OpPixelClassification"
+    name="OpCounting"
     category = "Top-level"
     
     # Graph inputs
@@ -210,6 +210,15 @@ class OpCounting( Operator ):
         
         self.options = self.opTrain.options
 
+    def setupOutputs(self):
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
+        self.PmapColors.meta.dtype = object
+        self.PmapColors.meta.shape = (1,)
+
+
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
         inputSlot = self.InputImages[imageIndex]
@@ -328,6 +337,8 @@ class OpLabelPipeline( Operator ):
         self.MaxLabel.connect( self.opLabelArray.maxLabel )
         self.BoxOutput.connect( self.opBoxArray.Output )
     
+
+
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
         blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
