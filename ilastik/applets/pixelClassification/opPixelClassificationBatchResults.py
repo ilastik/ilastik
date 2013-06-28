@@ -1,6 +1,6 @@
 from lazyflow.graph import InputSlot
 from ilastik.applets.batchIo.opBatchIo import OpBatchIo
-
+from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpPixelClassificationBatchResults( OpBatchIo ):
     # Add these additional input slots, to be used by the GUI.
@@ -21,9 +21,9 @@ class OpPixelClassificationBatchResults( OpBatchIo ):
         dataTrain = self.ConstraintDataset.meta
         dataBatch = self.RawImage.meta
         
-        assert len(dataTrain.shape) == len(dataBatch.shape),\
-            "Batch input must have the same dimension as training input."
-        assert dataTrain.shape[dataTrain.axistags.index("c")] == dataBatch.shape[dataBatch.axistags.index("c")],\
-            "Batch input must have the same number of channels as training input."
-        assert dataTrain.getAxisKeys() == dataBatch.getAxisKeys(),\
-            "Batch input axis must fit axis of training input."
+        if len(dataTrain.shape) != len(dataBatch.shape):
+            raise DatasetConstraintError("Batch Prediction Input","Batch input must have the same dimension as training input.")
+        elif dataTrain.getTaggedShape()['c'] != dataBatch.getTaggedShape()['c']:
+            raise DatasetConstraintError("Batch Prediction Input","Batch input must have the same number of channels as training input.")
+        elif dataTrain.getAxisKeys() != dataBatch.getAxisKeys():
+            raise DatasetConstraintError("Batch Prediction Input","Batch input axis must fit axis of training input.")
