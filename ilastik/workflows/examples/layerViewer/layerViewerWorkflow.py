@@ -6,11 +6,11 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 
 class LayerViewerWorkflow(Workflow):
-    def __init__(self, workflow_cmdline_args, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, *args, **kwargs):
         
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LayerViewerWorkflow, self).__init__(graph=graph, *args, **kwargs)
+        super(LayerViewerWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 
@@ -22,6 +22,15 @@ class LayerViewerWorkflow(Workflow):
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )
+
+        self._workflow_cmdline_args = workflow_cmdline_args
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+        """
+        print "LayerViewerWorkflow Project was opened with the following args: "
+        print self._workflow_cmdline_args
 
     def connectLane(self, laneIndex):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)

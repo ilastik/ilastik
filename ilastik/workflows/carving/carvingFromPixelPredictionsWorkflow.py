@@ -26,7 +26,10 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+    def __init__(self, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+        if workflow_cmdline_args:
+            assert False, "Not using workflow cmdline args yet."
+        
         if hintoverlayFile is not None:
             assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
         if pmapoverlayFile is not None:
@@ -34,7 +37,7 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
 
         graph = Graph()
         
-        super(CarvingFromPixelPredictionsWorkflow, self).__init__(graph=graph, *args, **kwargs)
+        super(CarvingFromPixelPredictionsWorkflow, self).__init__(headless, *args, graph=graph, **kwargs)
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -71,7 +74,7 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPixelClassification = self.pixelClassificationApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
-        opCarvingTopLevel = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
 
         op5 = Op5ifyer(parent=self)
         op5.order.setValue("txyzc")
@@ -89,10 +92,17 @@ class CarvingFromPixelPredictionsWorkflow(Workflow):
         opSingleChannelSelector.Input.connect( opPixelClassification.PredictionProbabilities )
         opSingleChannelSelector.Index.setValue(0)
         
-        opPreprocessing.RawData.connect(opSingleChannelSelector.Output)
-        opCarvingTopLevel.RawData.connect(opSingleChannelSelector.Output)
-        opCarvingTopLevel.MST.connect(opPreprocessing.PreprocessedData)
-        #opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
-        opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
+        opPreprocessing.InputData.connect( opSingleChannelSelector.Output )
+        opPreprocessing.RawData.connect( op5.output )
+        opCarvingLane.RawData.connect( op5.output )
+        opCarvingLane.InputData.connect( opSingleChannelSelector.Output )
+        opCarvingLane.FilteredInputData.connect( opPreprocessing.FilteredImage )
+
+        # Special input-input connection: WriteSeeds metadata must mirror the input data
+        opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
+
+        opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
+        #opCarvingLane.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
+        opCarvingLane.UncertaintyType.setValue("none")
         
         self.preprocessingApplet.enableDownstream(False)

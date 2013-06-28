@@ -57,6 +57,19 @@ class PreprocessingGui(QMainWindow):
             
             self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
             self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
+
+            self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
+            self.drawer.watershedSourceCombo.addItem("Filter Output", userData="filtered")
+            self.drawer.watershedSourceCombo.addItem("Raw Data (if available)", userData="raw")
+
+            sourceSetting = self.topLevelOperatorView.WatershedSource.value
+            comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
+            self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
+
+            self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
+
+            self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
+            self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
             
             self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
             self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
@@ -70,6 +83,13 @@ class PreprocessingGui(QMainWindow):
     
     def handleSigmaValueChanged(self):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
+
+    def handleWatershedSourceChange(self, index):
+        data = self.drawer.watershedSourceCombo.itemData(index).toString()
+        self.topLevelOperatorView.WatershedSource.setValue( str(data) )
+
+    def handleInvertWatershedSourceChange(self, checked):
+        self.topLevelOperatorView.InvertWatershedSource.setValue( checked )
     
     @threadRouted 
     def onFailed(self, exception, exc_info):
@@ -88,6 +108,8 @@ class PreprocessingGui(QMainWindow):
         for f in self.filterbuttons:
             f.setEnabled(not iswriteprotect)
         self.drawer.sigmaSpin.setEnabled(not iswriteprotect)
+        self.drawer.watershedSourceCombo.setEnabled(not iswriteprotect)
+        self.drawer.invertWatershedSourceCheckbox.setEnabled( not iswriteprotect )
         self.drawer.runButton.setEnabled(not iswriteprotect)
     
     def enableWriteprotect(self,ew):

@@ -123,6 +123,10 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                                      DatasetDetailedInfoColumn.Shape : "",
                                      DatasetDetailedInfoColumn.Range : "" }
 
+        if len( self._op.DatasetGroup ) <= laneIndex \
+        or len( self._op.DatasetGroup[laneIndex] ) <= self._roleIndex:
+            return UninitializedDisplayData[ index.column() ]
+
         datasetSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
 
         # Default

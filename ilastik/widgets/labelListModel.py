@@ -52,14 +52,73 @@ class LabelListModel(ListModel):
         Delete = 2
         
         ncols=3
+    
+    def __init__(self, labels=None, parent=None):
+        ListModel.__init__(self,labels, parent)
 
-    def __init__(self, elements=None, parent=None):
-        ListModel.__init__(self, parent)
 
         self._labels=self._elements
         self.elementSelected.connect(self.labelSelected.emit)
         
-    
+
+    def __len__(self):
+        return len(self._labels)
+
+    def __getitem__(self, i):
+        return self._labels[i]
+
+    def selectedRow(self):
+        selected = self._selectionModel.selectedRows()
+        if len(selected) == 1:
+            return selected[0].row()
+        return -1
+
+    def selectedIndex(self):
+        row = self.selectedRow()
+        if row >= 0:
+            return self.index(self.selectedRow())
+        else:
+            return QModelIndex()
+
+    def rowCount(self, parent=None):
+        return len(self._labels)
+
+    def columnCount(self, parent):
+        return 3
+
+    def _getToolTipSuffix(self, row):
+        """
+        Get the middle column tooltip suffix
+        """
+        suffix = "; Click to select"
+        if row in self._toolTipSuffixes:
+            suffix = self._toolTipSuffixes[row]
+        return suffix
+
+    def _setToolTipSuffix(self, row, text):
+        """
+        Set the middle column tooltip suffix
+        """
+        self._toolTipSuffixes[row] = text
+        index = self.createIndex(row, 1)
+        self.dataChanged.emit(index, index)
+
+    class EntryToolTipAdapter(object):
+        """This class can be used to make each row look like a
+        separate widget with its own tooltip.
+
+        In this case, the "tooltip" is the suffix appended to the
+        tooltip of the middle column.
+
+        """
+        def __init__(self, table, row):
+            self._row = row
+            self._table = table
+        def toolTip(self):
+            return self._table._getToolTipSuffix(self._row)
+        def setToolTip(self, text):
+            self._table._setToolTipSuffix(self._row, text)
+
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == self.ColumnID.Color:
             return (self._elements[index.row()].brushColor(),

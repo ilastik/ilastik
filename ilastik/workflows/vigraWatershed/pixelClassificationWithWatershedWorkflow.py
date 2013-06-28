@@ -3,8 +3,8 @@ from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
 class PixelClassificationWithVigraWatershedWorkflow(PixelClassificationWorkflow):
     
-    def __init__( self, *args, **kwargs ):
-        super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( appendBatchOperators=False, *args, **kwargs )
+    def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
+        super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( headless, workflow_cmdline_args, appendBatchOperators=False, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")

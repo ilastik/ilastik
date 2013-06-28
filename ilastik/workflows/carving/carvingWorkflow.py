@@ -35,7 +35,11 @@ class CarvingWorkflow(Workflow):
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(self,
+                                                       "Input Data",
+                                                       "Input Data",
+                                                       supportIlastik05Import=True,
+                                                       batchDataGui=False)
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
         
@@ -46,7 +50,7 @@ class CarvingWorkflow(Workflow):
         
         self.preprocessingApplet = PreprocessingApplet(workflow=self,
                                            title = "Preprocessing",
-                                           projectFileGroupName="carving")
+                                           projectFileGroupName="preprocessing")
         
         #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
         
@@ -61,15 +65,20 @@ class CarvingWorkflow(Workflow):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
-        opCarvingTopLevel = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
         op5 = Op5ifyer(parent=self)
         op5.order.setValue("txyzc")
         op5.input.connect(opData.Image)
-        
+
         ## Connect operators
-        opPreprocessing.RawData.connect(op5.output)
-        opCarvingTopLevel.RawData.connect(op5.output)
-        opCarvingTopLevel.MST.connect(opPreprocessing.PreprocessedData)
-        opCarvingTopLevel.opCarving.UncertaintyType.setValue("none")
+        opPreprocessing.InputData.connect(op5.output)
+        #opCarvingTopLevel.RawData.connect(op5.output)
+        opCarvingLane.InputData.connect(op5.output)
+        opCarvingLane.FilteredInputData.connect(opPreprocessing.FilteredImage)
+        opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
+        opCarvingLane.UncertaintyType.setValue("none")
+
+        # Special input-input connection: WriteSeeds metadata must mirror the input data
+        opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
         
         self.preprocessingApplet.enableDownstream(False)

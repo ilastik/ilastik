@@ -87,7 +87,7 @@ class DataSelectionSerializer( AppletSerializer ):
                         localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
     
                     # Make sure the dataSlot's axistags are updated with the dataset as we just wrote it
-                    # (The top-level operator may use an Op5ifyer, which changed the axisorder)
+                    # (The top-level operator may use an OpReorderAxes, which changed the axisorder)
                     info.axistags = dataSlot.meta.axistags
     
                     wroteInternalData = True
@@ -150,7 +150,11 @@ class DataSelectionSerializer( AppletSerializer ):
     def importStackAsLocalDataset(self, info):
         """
         Add the given stack data to the project file as a local dataset.
-        Does not update the topLevelOperator
+        Does not update the topLevelOperator.
+        
+        :param info: A DatasetInfo object.
+                     Note: info.filePath must be a stack files must be separated by '//' tokens.
+                     Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
         try:
             self.progressSignal.emit(0)
@@ -163,6 +167,11 @@ class DataSelectionSerializer( AppletSerializer ):
             info.location = DatasetInfo.Location.ProjectInternal
             firstPathParts = PathComponents(info.filePath.split('//')[0])
             info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
+
+            # Use absolute path
+            cwd = self.topLevelOperator.WorkingDirectory
+            if '//' not in globstring and not os.path.isabs(globstring):
+                globstring = os.path.normpath( os.path.join(cwd, globstring) )
             
             opWriter = OpStackToH5Writer(graph=self.topLevelOperator.graph)
             opWriter.hdf5Group.setValue(localDataGroup)

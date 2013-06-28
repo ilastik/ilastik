@@ -101,7 +101,7 @@ def runWorkflow(parsed_args):
 
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
-    shell.openProjectPath(args.project)
+    shell.openProjectFile(args.project)
 
     try:
         if not args.generate_project_predictions and len(args.batch_inputs) == 0:

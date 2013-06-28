@@ -21,8 +21,17 @@ logger = logging.getLogger(__name__)
 MISSING_VALUE = 0
 
 class OpObjectClassification(Operator, MultiLaneOperatorABC):
-    """The top-level operator for object classification."""
+    """The top-level operator for object classification.
 
+    Most functionality is handled by specialized operators such as
+    OpObjectTrain and OpObjectPredict.
+
+    Also transfers existing labels if the upstream object segmentation
+    changes. The transfer is conservative: labels only get transfered
+    from an old object to a new object if they overlap sufficiently,
+    and the label does not overlap with other objects.
+
+    """
     name = "OpObjectClassification"
     category = "Top-level"
 
@@ -203,7 +212,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                     label_values[label_values==nextLabel+1]=nextLabel
 
     def setupOutputs(self):
-        super(OpObjectClassification, self).setupOutputs()
         self.Warnings.meta.shape = (1,)
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -390,8 +398,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             if slot.level > 0 and len(slot) == finalLength + 1:
                 slot.removeSlot(laneIndex, finalLength)
 
-        self._ambiguousLabels.pop(laneIndex)
-        self._labelBBoxes.pop(laneIndex)
+        try:
+            self._ambiguousLabels.pop(laneIndex)
+            self._labelBBoxes.pop(laneIndex)
+        except:
+            #FIXME: sometimes this pop is called for no reason and makes the project unusable. We should fix the underlying issue.
+            pass
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
@@ -592,7 +604,12 @@ class OpObjectTrain(Operator):
 
 
 class OpObjectPredict(Operator):
-    """Predicts object labels in a single image."""
+    """Predicts object labels in a single image.
+
+    Performs prediction on all objects in a time slice at once, and
+    caches the result.
+
+    """
     # WARNING: right now we predict and cache a whole time slice. We
     # expect this to be fast because there are relatively few objects
     # compared to the number of pixels in pixel classification. If
@@ -935,7 +952,7 @@ class OpBadObjectsToWarningMessage(Operator):
     WarningMessage = OutputSlot(stype=Opaque)
 
     def setupOutputs(self):
-        super(OpBadObjectsToWarningMessage, self).setupOutputs()
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         try:

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-NOSE_ARG=${1-"."}
+TESTS_DIR=`dirname $0`
+NOSE_ARG=${1-$TESTS_DIR}
 
 for f in `find $NOSE_ARG -iname "*test*.py"`
 do
@@ -14,7 +15,7 @@ do
       continue
   fi
 
-  echo "Running $f"; python ./nose_single.py --nologcapture $f
+  echo "Running $f"; python $TESTS_DIR/nose_single.py --nologcapture $f
   RETVAL=$?
   if [[ $RETVAL -ne 0 ]]; then
     exit $RETVAL

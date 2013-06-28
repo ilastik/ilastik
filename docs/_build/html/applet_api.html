@@ -99,20 +99,27 @@ In that case, the GUI is provided with an object that looks like this:</p>
 <h2>The Workflow Base Class<a class="headerlink" href="#the-workflow-base-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.workflow.Workflow">
-<em class="property">class </em><tt class="descclassname">ilastik.workflow.</tt><tt class="descname">Workflow</tt><big>(</big><em>headless=False</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.workflow.</tt><tt class="descname">Workflow</tt><big>(</big><em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for all workflows.</p>
 <dl class="method">
 <dt id="ilastik.workflow.Workflow.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>headless=False</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructor.  Subclasses MUST call this in their own <tt class="docutils literal"><span class="pre">__init__</span></tt> functions.
-The args and kwargs parameters will be passed directly to the Operator base class.
-The graph argument should be included.</p>
+The parent and graph parameters will be passed directly to the Operator base class. If both are None,
+a new Graph is instantiated internally.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>headless</strong> &#8211; Set to True if this workflow is being instantiated by a &#8220;headless&#8221; script, 
-in which case the workflow should not attempt to access applet GUIs.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>headless</strong> &#8211; Set to True if this workflow is being instantiated by a &#8220;headless&#8221; script, 
+in which case the workflow should not attempt to access applet GUIs.</li>
+<li><strong>workflow_cmdline_args</strong> &#8211; a (possibly empty) sequence of arguments to control
+the workflow from the command line</li>
+<li><strong>parent</strong> &#8211; The parent operator of the workflow or None (see also: Operator)</li>
+<li><strong>graph</strong> &#8211; The graph instance the workflow is assigned to (see also: Operator)</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -140,6 +147,13 @@ This slot is typically provided by the DataSelection applet via its ImageName sl
 <li>Create room for the new image lane by adding a lane to each applet&#8217;s topLevelOperator</li>
 <li>Ask the subclass to hook up the new image lane by calling this function.</li>
 </ol>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.workflow.Workflow.onProjectLoaded">
+<tt class="descname">onProjectLoaded</tt><big>(</big><em>projectManager</em><big>)</big><a class="headerlink" href="#ilastik.workflow.Workflow.onProjectLoaded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called by the project manager after the project is loaded (deserialized).
+Extra workflow initialization be done here.</p>
 </dd></dl>
 
 <dl class="method">
@@ -314,9 +328,9 @@ StandardApplets are designed to simplify two tasks for most use-cases: Creating 
 </ol>
 <p>StandardApplet subclasses may expose their GUI in one of three ways:</p>
 <ol class="arabic simple">
-<li>(Advanced) Override <a class="reference internal" href="#ilastik.applets.base.applet.Applet.getMultiLaneGui" title="ilastik.applets.base.applet.Applet.getMultiLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">Applet.getMultiLaneGui()</span></tt></a> directly.</li>
-<li>(Simpler) Override <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">createSingleLaneGui()</span></tt></a>, in which case a default implementation of <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">getMultiLaneGui()</span></tt></a> is provided for you.</li>
-<li>(Simplest) Override <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass" title="ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass"><tt class="xref py py-attr docutils literal"><span class="pre">singleLaneGuiClass</span></tt></a>, in which case default implementations of <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">createSingleLaneGui()</span></tt></a> and <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">getMultiLaneGui()</span></tt></a> are provided for you.</li>
+<li>(Advanced) Override <tt class="xref py py-meth docutils literal"><span class="pre">createMultiLaneGui()</span></tt>.</li>
+<li>(Simpler) Override <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">createSingleLaneGui()</span></tt></a>, in which case a default implementation of <tt class="xref py py-meth docutils literal"><span class="pre">createMultiLaneGui()</span></tt> is provided for you.</li>
+<li>(Simplest) Override <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass" title="ilastik.applets.base.standardApplet.StandardApplet.singleLaneGuiClass"><tt class="xref py py-attr docutils literal"><span class="pre">singleLaneGuiClass</span></tt></a>, in which case default implementations of <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui" title="ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui"><tt class="xref py py-meth docutils literal"><span class="pre">createSingleLaneGui()</span></tt></a> and <tt class="xref py py-meth docutils literal"><span class="pre">createMultiLaneGui()</span></tt> are provided for you.</li>
 </ol>
 <dl class="method">
 <dt id="ilastik.applets.base.standardApplet.StandardApplet.__init__">
@@ -380,9 +394,7 @@ Otherwise, this default implementation generates instances of your <tt class="do
 <dl class="method">
 <dt id="ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui">
 <tt class="descname">getMultiLaneGui</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/standardApplet.html#StandardApplet.getMultiLaneGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui" title="Permalink to this definition">¶</a></dt>
-<dd><p>Overridden from <tt class="docutils literal"><span class="pre">Applet.getMultiLaneGui</span></tt>.  This default implementation adapts 
-multiple GUIs instantiated with <tt class="docutils literal"><span class="pre">createSingleLaneGui</span></tt> into one mult-image gui, 
-which is what the Applet interface expects.</p>
+<dd><p>Override from Applet base class.</p>
 </dd></dl>
 
 </dd></dl>

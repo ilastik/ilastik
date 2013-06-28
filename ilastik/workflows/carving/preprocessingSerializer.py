@@ -24,11 +24,17 @@ class PreprocessingSerializer( AppletSerializer ):
                 
                 deleteIfPresent(preproc, "sigma")
                 deleteIfPresent(preproc, "filter")
+                deleteIfPresent(preproc, "watershed_source")
+                deleteIfPresent(preproc, "invert_watershed_source")
                 deleteIfPresent(preproc, "graph")
                 
                 preproc.create_dataset("sigma",data= opPre.initialSigma)
                 preproc.create_dataset("filter",data= opPre.initialFilter)
-                 
+                ws_source = str(opPre.WatershedSource.value)
+                assert isinstance( ws_source, str ), "WatershedSource was {}, but it should be a string.".format( ws_source )
+                preproc.create_dataset("watershed_source", data=ws_source)                 
+                preproc.create_dataset("invert_watershed_source", data=opPre.InvertWatershedSource.value)
+                
                 preprocgraph = getOrCreateGroup(preproc, "graph")
                 mst.saveH5G(preprocgraph)
             
@@ -41,6 +47,12 @@ class PreprocessingSerializer( AppletSerializer ):
         
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
+        try:
+            watershed_source = str(topGroup["watershed_source"].value)
+            invert_watershed_source = bool(topGroup["invert_watershed_source"].value)
+        except KeyError:
+            watershed_source = None
+            invert_watershed_source = False
         
         if "graph" in topGroup.keys():
             graphgroup = topGroup["graph"]
@@ -58,6 +70,9 @@ class PreprocessingSerializer( AppletSerializer ):
             
             opPre.initialSigma = sigma
             opPre.Sigma.setValue(sigma)
+            if watershed_source:
+                opPre.WatershedSource.setValue( watershed_source )
+                opPre.InvertWatershedSource.setValue( invert_watershed_source )
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
             
