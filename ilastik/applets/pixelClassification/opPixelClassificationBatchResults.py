@@ -18,10 +18,12 @@ class OpPixelClassificationBatchResults( OpBatchIo ):
         if not self.ConstraintDataset.ready() or not self.RawImage.ready():
             return
         
-        cdm = self.ConstraintDataset.meta
-        rim = self.RawImage.meta
-        assert len(cdm.shape) == len(rim.shape),\
+        dataTrain = self.ConstraintDataset.meta
+        dataBatch = self.RawImage.meta
+        
+        assert len(dataTrain.shape) == len(dataBatch.shape),\
             "Batch input must have the same dimension as training input."
-        assert cdm.shape[cdm.axistags.index("c")] == rim.shape[rim.axistags.index("c")],\
+        assert dataTrain.shape[dataTrain.axistags.index("c")] == dataBatch.shape[dataBatch.axistags.index("c")],\
             "Batch input must have the same number of channels as training input."
-    
+        assert dataTrain.getAxisKeys() == dataBatch.getAxisKeys(),\
+            "Batch input axis must fit axis of training input."
