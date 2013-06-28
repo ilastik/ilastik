@@ -11,6 +11,10 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
+from lazyflow.operators.generic import OpMultiArrayMerger
+from ilastik.utility import OpMultiLaneWrapper
+        
+
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
@@ -91,6 +95,15 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
+        
+        opMergeLanes = OpMultiLaneWrapper(OpMultiArrayMerger, parent = self)
+        opMergeLanes.inputs["Inputs"].connect(opTrainingDataSelection.ImageGroup)
+        opMergeLanes.inputs["MergingFunction"].setValue(lambda a:a[0])
+        opMergeRoles = OpMultiArrayMerger(parent = self)
+        opMergeRoles.inputs["Inputs"].connect(opMergeLanes.outputs["Output"])
+        opMergeRoles.inputs["MergingFunction"].setValue(lambda a:a[0])
+        
+        opBatchResults.ConstraintDataset.connect( opMergeRoles.outputs["Output"] )
         
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
