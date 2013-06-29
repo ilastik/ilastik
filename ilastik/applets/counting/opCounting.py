@@ -10,7 +10,8 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
-                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
+                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
+                               Op5ifyer
                                
 from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter
 
@@ -167,9 +168,16 @@ class OpCounting( Operator ):
         #self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
         #self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
         self.Density.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        
+
+        
+        
         self.opVolumeSum = OpMultiLaneWrapper(OpVolumeOperator,parent=self, graph = self.graph )
         self.opVolumeSum.Input.connect(self.Density)
         self.opVolumeSum.Function.setValue(numpy.sum)
+        
+        
+        
 
         self.OutputSum.connect(self.opVolumeSum.Output)
 

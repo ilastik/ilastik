@@ -17,7 +17,6 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.api import Viewer
 from volumina.layer import ColortableLayer
 from volumina.colortables import jet
-from volumina.brushingcontroler import BrushingControler,BrushingInterpreter
 
 import numpy as np
 import vigra
@@ -30,79 +29,6 @@ from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 
 
 
-# #===============================================================================
-# # Dotting brush interface
-# #===============================================================================
-# class DotCrosshairController(QObject):
-#     def __init__(self, brushingModel, imageViews):
-#         QObject.__init__(self, parent=None)
-#         self._brushingModel = brushingModel
-#         self._imageViews = imageViews
-#         self._brushingModel.brushSizeChanged.connect(self._setBrushSize)
-#         self._brushingModel.brushColorChanged.connect(self._setBrushColor)
-#         self._brushingModel.drawnNumberChanged.connect(self._setBrushSize)
-#         self._sigma=2.5
-#     
-#     def setSigma(self,s):
-#         self._sigma=s
-#     
-#     def _setBrushSize(self, size):
-#         if self._brushingModel.drawnNumber==1:
-#             size=self._sigma*4
-#         else:
-#             size=self._brushingModel.brushSize
-#                         
-#         for v in self._imageViews:
-#             v._crossHairCursor.setBrushSize(size)
-# 
-#     def _setBrushColor(self, color):
-#         for v in self._imageViews:
-#             v._crossHairCursor.setColor(color)
-#         
-#         
-#         
-# class DottingInterpreter(BrushingInterpreter):
-#     
-#     def __init__( self, navigationControler, brushingControler ):
-#         super(DottingInterpreter,self).__init__(navigationControler,brushingControler)
-#         self._brushingModel=self._brushingCtrl._brushingModel
-#     
-#     
-#     
-#     def getColor(self):
-#         return self._brushingModel.drawnNumber
-#     
-# 
-#     
-#     def eventFilter( self, watched, event ):
-#         etype = event.type()
-#         
-#         if self._current_state == self.DEFAULT_MODE:
-#             if etype == QEvent.MouseButtonPress \
-#                 and event.button() == Qt.LeftButton \
-#                 and event.modifiers() == Qt.NoModifier \
-#                 and self._navIntr.mousePositionValid(watched, event):
-#                 
-#                 ### default mode -> maybe draw mode
-#                 self._current_state = self.MAYBE_DRAW_MODE
-#                 # event will not be valid to use after this function exits,
-#                 # so we must make a copy of it instead of just saving the pointer
-#                 self._lastEvent = QMouseEvent( event.type(), event.pos(), event.globalPos(), event.button(), event.buttons(), event.modifiers() )
-#                 
-#                 if self.getColor()==1:
-#                     self._current_state = self.DRAW_MODE
-#                     self.onEntry_draw( watched, self._lastEvent )
-#                     #self.onMouseMove_draw( watched, event )
-#                     
-#                     self.onExit_draw( watched, event )
-#                 
-#                     self._current_state = self.DEFAULT_MODE
-#                     self.onEntry_default( watched, event )
-# 
-#                     return True
-#                     
-#                 
-#         return super(DottingInterpreter,self).eventFilter(watched,event)
 
 
         

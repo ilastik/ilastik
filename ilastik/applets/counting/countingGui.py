@@ -27,7 +27,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
-from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter,DotSignaller, DotController
+from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
 
 
 
@@ -55,7 +55,29 @@ from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGra
 
 from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
+class CallToGui:
+    def __init__(self,opslot,setfun):
+        '''
+        Helper class which registers a simple callback between an operator and a gui 
+        element so that gui elements can be kept in sync across different images
+        :param opslot:
+        :param setfun:
+        :param defaultval:
         
+        '''
+        
+        self.val=None
+        self.opslot=opslot
+        self.setfun=setfun
+        self._exec()
+        self.opslot.notifyDirty(bind(self._exec))
+    
+    def _exec(self):
+        if self.opslot.ready():
+            self.val=self.opslot.value
+            
+        if self.val!=None:
+            self.setfun(self.val)        
 
 class CountingGui(LabelingGui):
 
@@ -94,13 +116,12 @@ class CountingGui(LabelingGui):
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         # We provide our own UI file (which adds an extra control for interactive mode)
-        labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
         super(CountingGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
         self.op = topLevelOperatorView
-        #self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
 
         self.topLevelOperatorView = topLevelOperatorView
         self.shellRequestSignal = shellRequestSignal
@@ -117,9 +138,7 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
-
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        
         self._initShortcuts()
 
         try:
@@ -132,19 +151,25 @@ class CountingGui(LabelingGui):
             self.render = False
 
         
-        self.editor.crosshairControler=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
-        self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
-        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
-        self.dotIntepreter=self.editor.brushingInterpreter
-        
         self.initCounting()
 
         
         
         
     def initCounting(self):
+        
         #=======================================================================
-        # Init Label Uic Custom  setup
+        # Init Dotting interface
+        #=======================================================================
+        
+        self.editor.crosshairControler=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
+        self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
+        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
+        self.dotIntepreter=self.editor.brushingInterpreter
+        
+        
+        #=======================================================================
+        # Init Label Control Ui Custom  setup
         #=======================================================================
         
         self._viewerControlUi.label.setVisible(False)
@@ -158,72 +183,63 @@ class CountingGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False) 
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self.selectLabel(0)
-
+        
+        
+        
+        #=======================================================================
+        # Init labeling Drawer Ui Custom  setup
+        #=======================================================================
+        
+        
+        #labels for foreground and background
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-        
         self.labelingDrawerUi.labelListModel[0].name = "Foreground"
         self.labelingDrawerUi.labelListModel[1].name = "Background"
-        
         self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
-        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
-        self.labelingDrawerUi.CBox.setRange(0,1000)
-        self.labelingDrawerUi.CBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.EpsilonBox.setDecimals(6)
-        self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
-
-        for option in self.op.options:
-            if "req" in option.keys():
-                try:
-                    import imp
-                    for req in option["req"]:
-                        imp.find_module(req)
-                except:
-                    continue
-            #values=[v for k,v in option.items() if k not in ["gui", "req"]]
-            self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
+        self.labelingDrawerUi.CountText.setReadOnly(True)
+            
+#         self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+#         self.labelingDrawerUi.CBox.setRange(0,1000)
+#         self.labelingDrawerUi.CBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+#         self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
+# 
+#         for option in self.op.options:
+#             if "req" in option.keys():
+#                 try:
+#                     import imp
+#                     for req in option["req"]:
+#                         imp.find_module(req)
+#                 except:
+#                     continue
+#             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
+#             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
+#         
         
         self._setUIParameters()
         
-        self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
-        #elf._updateSVROptions()
-        self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
-        #self.labelingDrawerUi.boxListView._colorDialog=BoxDialog()
-        #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
-        #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
-        self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
-        #self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
-        #self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
-        self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
-        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
-        self.labelingDrawerUi.SigmaLine.textChanged.connect(self._changedSigma)
-        self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
-        self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
-        self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
+        self._connectUIParameters()
         
-
-        self._registerOperatorsToGuiCallbacks() 
+        
+                
 
         
         
-        self._updateNtrees()
-        self._updateMaxDepth()
-        
-        
-        self.changedSigma = False
-        
-        self.labelingDrawerUi.CountText.setReadOnly(True)
-        
-        
-        
-        
         #=======================================================================
-        # Density boxes elements
+        # Init Boxes Interface
         #=======================================================================
-            
+        
+        #if not hasattr(self._labelControlUi, "boxListModel"):
+        self.labelingDrawerUi.boxListModel=BoxListModel()
+        self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
+        self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
+        self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
+        
+        #FOR DEBUG            
         def updateSum(*args, **kw):
             print "updatingSum"
             density = self.op.OutputSum.value 
@@ -232,25 +248,22 @@ class CountingGui(LabelingGui):
 
         self.op.Density.notifyDirty(updateSum)
     
-        self.density5d=Op5ifyer(graph=object()) #FIXME: Hack , get the proper reference to the graph
-        self.density5d.input.connect(self.op.Density)
-    
         
-        if not hasattr(self._labelControlUi, "boxListModel"):
-            self.labelingDrawerUi.boxListModel=BoxListModel()
-            self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
-            self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
-            self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
+        
+
         
         
         
         
         mainwin=self
+        self.density5d=Op5ifyer(graph=self.op.graph) #FIXME: Hack , get the proper reference to the graph
+        self.density5d.input.connect(self.op.Density)
         self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
+       
         self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
         
         
-#         ###FIXME: Only for debug
+#        ###FIXME: Only for debug
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
         self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
@@ -259,34 +272,52 @@ class CountingGui(LabelingGui):
 
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
     
-        
     
-    def _registerOperatorsToGuiCallbacks(self):
-        
-        class CallToGui:
-            def __init__(self,opslot,setfun):
-                '''
-                Helper class which defines a simple callback between an operator and a gui 
-                element so that gui elements can be kept in sync across different images
-                :param opslot:
-                :param setfun:
-                :param defaultval:
-                
-                '''
-                
-                self.val=None
-                self.opslot=opslot
-                self.setfun=setfun
-                self._exec()
-                self.opslot.notifyDirty(bind(self._exec))
             
-            def _exec(self):
-                if self.opslot.ready():
-                    self.val=self.opslot.value
-                    
-                if self.val!=None:
-                    self.setfun(self.val)
+    
+
+    
+    def _connectUIParameters(self):
+                
+        #=======================================================================
+        # Gui to operator connections
+        #=======================================================================
         
+        self._changedSigma = True
+        #Debug interface only available otadvanced users
+        self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
+        #elf._updateSVROptions()
+        self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
+        self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
+        self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
+        
+
+        def _editingSigma(text):
+            self._changedSigma =True
+        self.labelingDrawerUi.SigmaLine.textChanged.connect(_editingSigma)
+        
+        
+        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
+        self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
+        self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
+        self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
+        
+        #=======================================================================
+        # Operators to Gui connections
+        #=======================================================================
+
+        self._registerOperatorsToGuiCallbacks() 
+    
+        #=======================================================================
+        # Initialize Values
+        #=======================================================================
+
+        self._updateSigma()
+        self._updateNtrees()
+        self._updateMaxDepth()
+
+    def _registerOperatorsToGuiCallbacks(self):
+                
         op=self.op.opTrain
         gui=self.labelingDrawerUi
         
@@ -311,13 +342,31 @@ class CountingGui(LabelingGui):
             gui.SVROptions.setCurrentIndex(index)
             
         CallToGui(op.SelectedOption,_setoption)
+
         
-        
-        
-        
-        
-    
     def _setUIParameters(self):
+        
+        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+        self.labelingDrawerUi.CBox.setRange(0,1000)
+        self.labelingDrawerUi.CBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+        self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
+
+        for option in self.op.options:
+            if "req" in option.keys():
+                try:
+                    import imp
+                    for req in option["req"]:
+                        imp.find_module(req)
+                except:
+                    continue
+            #values=[v for k,v in option.items() if k not in ["gui", "req"]]
+            self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
+        
+        
+        
         if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
             params = self.op.classifier_cache.Output.value.get_params() 
@@ -330,7 +379,6 @@ class CountingGui(LabelingGui):
         
         else:
             #read parameters from opTrain Operator
-
             Sigma = self.op.opTrain.Sigma.value
             Epsilon = self.op.opTrain.Epsilon.value
             C = self.op.opTrain.C.value
@@ -376,17 +424,15 @@ class CountingGui(LabelingGui):
     def _updateC(self):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
-        if self.changedSigma:
+        if self._changedSigma:
             sigma = [float(n) for n in
                            self._labelControlUi.SigmaLine.text().split(" ")]
             
             self.editor.crosshairControler.setSigma(sigma[0])
             self.dotController.setDotsRadius(sigma[0]*2)
             self.op.opTrain.Sigma.setValue(sigma)
-            self.changedSigma = False
+            self._changedSigma = False
 
-    def _changedSigma(self, text):
-        self.changedSigma = True
 
     def _updateEpsilon(self):
         self.op.opTrain.Epsilon.setValue(self.labelingDrawerUi.EpsilonBox.value())
