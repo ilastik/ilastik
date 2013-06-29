@@ -455,7 +455,7 @@ class OpDetectMissing(Operator):
     
     # labels: {0: unknown, 1: missing, 2: good}
     TrainingLabels = InputSlot(value = _defaultTrainingSet()[1])
-    NTrainingSamples = InputSlot(value=250)
+    NTrainingSamples = InputSlot(value=50)
     
     Output = OutputSlot()
     
@@ -463,6 +463,7 @@ class OpDetectMissing(Operator):
     
     ### PRIVATE ###
     _detectors = {'svm': {}, 'classic': {}}
+    _inputRange = (0,255)
     
     
     def __init__(self, *args, **kwargs):
@@ -558,8 +559,9 @@ class OpDetectMissing(Operator):
         else:
             maxZ = data.shape[0]
             
+        #from pdb import set_trace;set_trace()
         # choose detector to take
-        currentDetector = self._detectors[self.DetectionMethod.value][patchSize**2]
+        currentDetector = self._detectors[self.DetectionMethod.value][(patchSize+haloSize)**2]
             
         # walk over slices
         for z in range(maxZ):
@@ -586,7 +588,7 @@ class OpDetectMissing(Operator):
         patchSize = self.PatchSize.value + self.HaloSize.value
         
         # return early if unneccessary
-        if not force and patchSize**2 in self._detectors.keys():
+        if not force and patchSize**2 in self._detectors[self.DetectionMethod.value].keys():
             return
         
         logger.debug("Training for {} patch elements ...".format(patchSize**2))
@@ -597,18 +599,12 @@ class OpDetectMissing(Operator):
             self._detectors[self.DetectionMethod.value][patchSize**2] = PseudoSVC(kernel=_histogramIntersectionKernel)
             return
         
-        #from PyQt4.QtCore import pyqtRemoveInputHook
-        #from pdb import set_trace
-        #pyqtRemoveInputHook()
-        #set_trace()
-            
         vol = vigra.taggedView(self.TrainingVolume[:].wait(),axistags=self.TrainingVolume.meta.axistags).withAxes(*'zyx')
         labels = vigra.taggedView(self.TrainingLabels[:].wait(),axistags=self.TrainingLabels.meta.axistags).withAxes(*'zyx')
         
         #BEGIN subroutine
         def _extractHistograms(vol, cond, nPatches=10):
             
-            filt = np.ones((patchSize, patchSize))
             out = []
             
             ind_z, ind_y, ind_x = np.where(cond.view(np.ndarray))
@@ -635,8 +631,8 @@ class OpDetectMissing(Operator):
         good = _extractHistograms(vol, labels == 2, nPatches = self.NTrainingSamples.value)
         
         
-        if len(bad)== 0 or len(good) == 0:
-            logger.error("Could not extract training data from volume - training aborted.")
+        if len(bad) < self.NTrainingSamples.value or len(good) < self.NTrainingSamples.value:
+            logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(bad), len(good), self.NTrainingSamples.value))
             return
         
         labelGood = [0]*len(good)
