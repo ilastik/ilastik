@@ -27,7 +27,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
-from ilastik.applets.counting.countingGuiDots import DotCrosshairController,DotInterpreter,DotSignaller, DotController
+from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter,DotSignaller, DotController
 
 
 
@@ -53,7 +53,7 @@ from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QStri
 from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
         QStylePainter, QPen
 
-from countingGuiElements import BoxController,BoxInterpreter,Tool
+from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
         
 
