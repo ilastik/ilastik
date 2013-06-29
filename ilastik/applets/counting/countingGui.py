@@ -239,36 +239,25 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
         self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
         
-        #FOR DEBUG            
+#        ###FIXME: Only for debug
         def updateSum(*args, **kw):
             print "updatingSum"
             density = self.op.OutputSum.value 
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
-
         self.op.Density.notifyDirty(updateSum)
-    
-        
-        
 
-        
-        
-        
-        
         mainwin=self
         self.density5d=Op5ifyer(graph=self.op.graph) #FIXME: Hack , get the proper reference to the graph
         self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
-       
+        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)       
         self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
         
         
-#        ###FIXME: Only for debug
         self.rubberbandClickReporter = self.boxIntepreter
         self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
         self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
         self.navigationIntepreterDefault=self.editor.navInterpret
-        #self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
 
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
     

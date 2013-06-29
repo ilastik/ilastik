@@ -59,7 +59,7 @@ class OpVolumeOperator(Operator):
 
 class OpCounting( Operator ):
     """
-    Top-level operator for pixel classification
+    Top-level operator for counting
     """
     name="OpCounting"
     category = "Top-level"
