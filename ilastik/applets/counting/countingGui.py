@@ -1089,7 +1089,7 @@ class CountingGui(LabelingGui):
         
         
     def handleBoxQuery(self, position5d_start, position5d_stop):
-        print "HANDLING BOX QUERY"
+        #print "HANDLING BOX QUERY"
         
         if self._labelControlUi.arrowToolButton.isChecked():
             self.test(position5d_start, position5d_stop)
