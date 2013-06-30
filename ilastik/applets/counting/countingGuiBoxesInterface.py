@@ -27,9 +27,25 @@ from lazyflow.operators.generic import OpSubRegion
 ##add tot hte pos model
 from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 
+import warnings
+import threading
 
-
-
+def mainthreadonly(func):
+    '''
+    Helper decorator to declare a function which can be called only from the main thread
+    In case the function is not called in the main thread, a warning is sent but the program
+    will not crash
+    :param func:
+    '''
+    def inner(*args,**kwargs):
+        if threading.current_thread().name=="MainThread":
+        
+            return func(*args,**kwargs)
+        else:
+            warnings.warn("Trying to execute: %s\n from thread %s\n"%(func,threading.current_thread().name))
+            #warnings.warn("Trying to execute: %s\n from thread %s\n with arguments:\n %s\n %s\n"%(func,threading.current_thread().name,args,kwargs))
+        
+    return inner
 
         
                 
@@ -221,7 +237,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.updateColor()
     
     
-    
+    @mainthreadonly    
     def _setupTextItem(self):
         #Set up the text         
         self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
@@ -240,7 +256,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self.textItemBottom.setDefaultTextColor(QColor(255, 255, 255))
         
             self._updateTextBottom("shape " +str(self.shape))
-        
+    
+    
+    @mainthreadonly    
     def _updateTextBottom(self,string):
         self.textItemBottom.setPlainText(QtCore.QString(string))   
         
@@ -346,6 +364,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         #FIXME: Implement me
         event.accept()
     
+    @mainthreadonly    
     def updateText(self,string):
         
         self.textItem.setPlainText(QtCore.QString(string))
@@ -456,7 +475,8 @@ class CoupledRectangleElement(object):
         self._rectItem.Signaller.signalHasMoved.connect(self._updateTextWhenChanges)
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
-        
+    
+    @mainthreadonly        
     def _updateTextWhenChanges(self,*args,**kwargs):
         '''
         Do the actual job of displaying a new number when the region gets notified dirty

@@ -607,7 +607,9 @@ class CountingGui(LabelingGui):
                 self.labelingDrawerUi.labelListView.allowDelete = True
                 #self.labelingDrawerUi.AddLabelButton.setEnabled( True )
         self.interactiveModeActive = checked
-
+        
+            
+    
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
@@ -1121,4 +1123,10 @@ class CountingGui(LabelingGui):
             self._labelControlUi.CountText.setText(strdensity)
         except:
             pass
-        
+    
+    
+    def hideEvent(self, event):
+        #Ensure interactive is toggled of when leaving this GUI
+        self.toggleInteractive(False)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+        LabelingGui.hideEvent(self, event)
