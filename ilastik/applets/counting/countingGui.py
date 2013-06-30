@@ -8,7 +8,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon,QApplication
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -162,7 +162,9 @@ class CountingGui(LabelingGui):
         # Init Dotting interface
         #=======================================================================
         
-        self.editor.crosshairControler=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
+        
+        self.dotcrosshairController=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
+        self.editor.crosshairControler=self.dotcrosshairController
         self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
         self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
         self.dotIntepreter=self.editor.brushingInterpreter
@@ -889,6 +891,11 @@ class CountingGui(LabelingGui):
         """
         Implement the GUI's response to the user selecting a new tool.
         """
+        QApplication.restoreOverrideCursor()
+        for v in self.editor.crosshairControler._imageViews:
+                    v._crossHairCursor.enabled=True
+        
+         
         # Uncheck all the other buttons
         for tool, button in self.toolButtons.items():
             if tool != toolId:
@@ -935,13 +942,17 @@ class CountingGui(LabelingGui):
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-                brushSize = 1
-                self.editor.brushingModel.setBrushSize(brushSize)
+                
+                if self.editor.brushingModel.drawnNumber==1:
+                    brushSize = 1
+                    self.editor.brushingModel.setBrushSize(brushSize)
+                
                 # update GUI 
                 self._gui_setBrushing()
 
 
             elif toolId == Tool.Erase:
+                
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
@@ -952,7 +963,10 @@ class CountingGui(LabelingGui):
                 self._gui_setErasing()
             
             elif toolId == Tool.Box:
-                print "Interaction mode box"
+                for v in self.editor.crosshairControler._imageViews:
+                    v._crossHairCursor.enabled=False
+        
+                QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(self.boxIntepreter)
                 self._gui_setBox()
