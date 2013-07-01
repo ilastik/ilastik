@@ -122,6 +122,10 @@ class OpSplitBodySupervoxelExport(Operator):
         self.FinalSupervoxels.setDirty()
 
     def exportFinalSupervoxels(self, outputPath, axisorder, progressCallback=None):
+        """
+        Executes the export process within a request.
+        The (already-running) request is returned, in case you want to wait for it or monitor its progress.
+        """
         assert self.FinalSupervoxels.ready(), "Can't export yet: The final segmentation isn't ready!"
 
         logger.info("Starting Final Segmentation Export...")
