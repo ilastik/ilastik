@@ -1,21 +1,15 @@
 import sys
 import os
-import json
 from functools import partial
-import collections
-
-import numpy
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSignal
 from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, \
                         QPushButton, QTableView, QHeaderView, QIcon, QProgressBar
 
-from lazyflow.roi import TinyVector
-
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
-from opSplitBodyCarving import OpParseAnnotations
+from opParseAnnotations import OpParseAnnotations
 
 class BodyProgressBar(QProgressBar):
     
