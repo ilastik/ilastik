@@ -15,94 +15,7 @@ from lazyflow.roi import TinyVector
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
-# Example Raveler bookmark json file:
-"""
-{
-  "data": [
-    {
-      "text": "split <username=ogundeyio> <time=1370275410> <status=review>", 
-      "body ID": 4199, 
-      "location": [
-        361, 
-        478, 
-        1531
-      ]
-    }, 
-    {
-      "text": "split <username=ogundeyio> <time=1370275416> <status=review>", 
-      "body ID": 4199, 
-      "location": [
-        301, 
-        352, 
-        1531
-      ]
-    }, 
-    {
-      "text": "Separate from bottom merge", 
-      "body ID": 4182, 
-      "location": [
-        176, 
-        419, 
-        1556
-      ]
-    }, 
-    {
-      "text": "Needs to be separate", 
-      "body ID": 4199, 
-      "location": [
-        163, 
-        244, 
-        1564
-      ]
-    }
-  ],
-  "metadata": {
-    "username": "ogundeyio", 
-    "software version": "1.7.15", 
-    "description": "bookmarks", 
-    "file version": 1, 
-    "software revision": "4406", 
-    "computer": "emrecon11.janelia.priv", 
-    "date": "03-June-2013 14:49", 
-    "session path": "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00051_3508-4007_3759-4258_1500-1999/focused-910-sessions/ogundeyio.910", 
-    "software": "Raveler"
-  }
-}
-"""
-
-# Example Raveler substack.json file.
-# Note that raveler substacks are viewed as 500**3 volumes with a 10 pixel border on all sides,
-#  which means that the volume ilastik actually loads is 520**3
-# The bookmark Z-coordinates are GLOBAL to the entire stack, but the XY coordinates are relative 
-#  to the 520**3 volume we have loaded.
-# Therefore, we need to offset the Z-coordinates in any bookmarks we load using the idz1 and border fields below.
-# In this example, idz1 = 1500, and border=10, which means the first Z-slice in the volume we loaded is slice 1490.
-"""
-{
-    "idz1": 1500, 
-    "gray_view": true, 
-    "idz2": 1999, 
-    "substack_id": 51, 
-    "stack_path": "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2", 
-    "ry2": 4268, 
-    "basename": "iso.%05d.png", 
-    "substack_path": "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00051_3508-4007_3759-4258_1500-1999", 
-    "idx2": 4007, 
-    "rz2": 2009, 
-    "rz1": 1490, 
-    "raveler_view": true, 
-    "rx1": 3498, 
-    "idy1": 3759, 
-    "idx1": 3508, 
-    "rx2": 4017, 
-    "border": 10, 
-    "idy2": 4258, 
-    "ry1": 3749
-}
-"""
-
-
-Annotation = collections.namedtuple( 'Annotation', ['ravelerLabel', 'comment'] )
+from opSplitBodyCarving import OpParseAnnotations
 
 class BodyProgressBar(QProgressBar):
     
@@ -136,17 +49,17 @@ class BodySplitInfoWidget( QWidget ):
         self.opSplitBodyCarving = opSplitBodyCarving
         self._bodyTreeParentItems = {} # This is easier to maintain than using setData/find
         
-        self._annotationFilepath = None
+        annotation_filepath = None
         if self.opSplitBodyCarving.AnnotationFilepath.ready():
-            self._annotationFilepath = self.opSplitBodyCarving.AnnotationFilepath.value
+            annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
         self._annotations = {} # coordinate : Annotation
         self._ravelerLabels = set()
         
         self._initUi()
         
-        if self._annotationFilepath is not None:
-            self._loadAnnotationFile()
-        self.refreshButton.setEnabled(self._annotationFilepath is not None)
+        if annotation_filepath is not None:
+            self._loadAnnotationFile( annotation_filepath )
+        self.refreshButton.setEnabled( annotation_filepath is not None )
 
     def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
@@ -172,7 +85,7 @@ class BodySplitInfoWidget( QWidget ):
         self.loadSplitAnnoationFileButton.pressed.connect( self._loadNewAnnotationFile )
         self.loadSplitAnnoationFileButton.setIcon( QIcon(ilastikIcons.Open) )
 
-        self.refreshButton.pressed.connect( self._loadAnnotationFile )
+        self.refreshButton.pressed.connect( self._refreshAnnotations )
         self.refreshButton.setIcon( QIcon(ilastikIcons.Refresh) )
 
     def _loadNewAnnotationFile(self):
@@ -188,22 +101,30 @@ class BodySplitInfoWidget( QWidget ):
                                     navDir,
                                     "JSON files (*.json)",
                                      options=QFileDialog.DontUseNativeDialog)
+
+        self.refreshButton.setEnabled( not selected_file.isNull() )
         if selected_file.isNull():
             return
 
-        self._annotationFilepath = str( selected_file )
-        self.refreshButton.setEnabled(self._annotationFilepath is not None)
-        self._loadAnnotationFile()
+        self._loadAnnotationFile( str( selected_file ) )
     
-    def _loadAnnotationFile(self):
+    def _loadAnnotationFile(self, annotation_filepath):
         """
         Load the annotation file using the path stored in our member variable.
         """        
         try:
-            self._annotations = self._parseAnnotationFile( self._annotationFilepath,
-                                                           self.opSplitBodyCarving.RavelerLabels )
-            self.annotationFilepathEdit.setText( self._annotationFilepath )
-        except self.AnnotationParsingException as ex :
+            # Configure operator
+            self.opSplitBodyCarving.AnnotationFilepath.setValue( annotation_filepath )
+
+            # Requesting annotations triggers parse.
+            self._annotations = self.opSplitBodyCarving.Annotations.value
+            self._ravelerLabels = self.opSplitBodyCarving.AnnotationBodyIds.value
+
+            # Update gui
+            self._reloadInfoWidgets()
+            self.annotationFilepathEdit.setText( annotation_filepath )
+            
+        except OpParseAnnotations.AnnotationParsingException as ex :
             import traceback
             if ex.original_exc is not None:
                 traceback.print_exception( type(ex.original_exc), ex.original_exc, sys.exc_info()[2] )
@@ -213,7 +134,9 @@ class BodySplitInfoWidget( QWidget ):
             QMessageBox.critical(self,
                                  "Failed to parse",
                                  ex.msg + "\n\nSee console output for details." )
-            self._annotationFilepath = None
+            
+            self._annotations = None
+            self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")
         except:
             import traceback
@@ -221,78 +144,16 @@ class BodySplitInfoWidget( QWidget ):
             QMessageBox.critical(self,
                                  "Failed to parse",
                                  "Wasn't able to parse your bookmark file.  See console output for details." )
-            self._annotationFilepath = None
+            self._annotations = None
+            self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")
-        else:
-            self._ravelerLabels = set( map( lambda (label, comment): label, self._annotations.values() ) )
-            self._reloadInfoWidgets()
-        
-            self.opSplitBodyCarving.AnnotationFilepath.setValue( self._annotationFilepath )
-            self.opSplitBodyCarving.AnnotationLocations.setValue( self._annotations.keys() )
-            self.opSplitBodyCarving.AnnotationBodyIds.setValue( sorted(self._ravelerLabels) )
 
-    class AnnotationParsingException(Exception):
-        def __init__(self, msg, original_exc=None):
-            super(BodySplitInfoWidget.AnnotationParsingException, self).__init__()
-            self.original_exc = original_exc
-            self.msg = msg
-            
-    @classmethod
-    def _parseAnnotationFile(cls, annotation_filepath, body_label_img_slot):
-        """
-        Returns dict of annotations of the form { coordinate_3d : Annotation }
-        """
-        try:
-            with open(annotation_filepath) as annotationFile:
-                annotation_json_dict = json.load( annotationFile )
-        except Exception as ex:
-            raise cls.AnnotationParsingException(
-                 "Failed to parse your bookmark file.  It isn't valid JSON.", ex), None, sys.exc_info()[2]
-
-        if 'data' not in annotation_json_dict:
-            raise cls.AnnotationParsingException(
-                 "Couldn't find the 'data' list in your bookmark file.  Giving up."), None, sys.exc_info()[2]
-
-        # Before we parse the bookmarks data, locate the substack description
-        #  to calculate the z-coordinate offset (see comment about substack coordinates, above)
-        bookmark_dir = os.path.split(annotation_filepath)[0]
-        substack_dir = os.path.split(bookmark_dir)[0]
-        substack_description_path = os.path.join( substack_dir, 'substack.json' )
-        try:
-            with open(substack_description_path) as substack_description_file:
-                substack_description_json_dict = json.load( substack_description_file )
-        except Exception as ex:
-            raise cls.AnnotationParsingException(
-                 "Failed to parse SUBSTACK",
-                 "Attempted to open substack description file:\n {}"
-                 "\n but something went wrong.  See console output for details.  Giving up."
-                 .format(substack_description_path) ), None, sys.exc_info()[2]
-
-        # See comment above about why we have to subtract a Z-offset
-        z_offset = substack_description_json_dict['idz1'] - substack_description_json_dict['border']
-
-        # Each bookmark is a dict (see example above)
-        annotations = {}
-        bookmarks = annotation_json_dict['data']
-        for bookmark in bookmarks:
-            if 'text' in bookmark and str(bookmark['text']).lower().find( 'split' ) != -1:
-                coord3d = bookmark['location']
-                coord3d[1] = 520 - coord3d[1] # Raveler y-axis is inverted (Raveler substacks are 520 cubes)
-                coord3d[2] -= z_offset # See comments above re: substack coordinates
-                coord3d = tuple(coord3d)
-                coord5d = (0,) + coord3d + (0,)
-                pos = TinyVector(coord5d)
-                sample_roi = (pos, pos+1)
-                # For debug purposes, we sometimes load a smaller volume than the original.
-                # Don't import bookmarks that fall outside our volume
-                if (pos < body_label_img_slot.meta.shape).all():
-                    # Sample the label volume to determine the body id (raveler label)
-                    label_sample = body_label_img_slot(*sample_roi).wait()
-                    annotations[coord3d] = Annotation( ravelerLabel=label_sample[0,0,0,0,0], 
-                                                       comment=str(bookmark['text']) )
-        
-        return annotations
-
+    def _refreshAnnotations(self):
+        if self.opSplitBodyCarving.AnnotationFilepath.ready():
+            # Disconnect, then refresh.
+            annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
+            self.opSplitBodyCarving.AnnotationFilepath.disconnect()
+            self._loadAnnotationFile( annotation_filepath )
 
     def _handleAnnotationDoubleClick(self, item):
         coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
