@@ -27,9 +27,12 @@ class HeadlessShell(object):
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
         
     def openProjectFile(self, projectFilePath):
+        # Make sure all workflow sub-classes have been loaded,
+        #  so we can detect the workflow type in the project.
+        import ilastik.workflows
         try:
             # Open the project file
-            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath)
+            hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
             
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
