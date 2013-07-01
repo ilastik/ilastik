@@ -7,6 +7,7 @@ from lazyflow.operators import OpCrosshairMarkers, OpSelectLabel
 from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
+from opParseAnnotations import OpParseAnnotations
 
 from ilastik.utility import bind
 
@@ -19,8 +20,6 @@ class OpSplitBodyCarving( OpCarving ):
     CurrentRavelerLabel = InputSlot(value=0)
     CurrentEditingFragment = InputSlot(value="", stype='string')
     AnnotationFilepath = InputSlot(optional=True, stype='filepath') # Included as a slot here for easy serialization
-    AnnotationLocations = InputSlot(optional=True) # Display-only
-    AnnotationBodyIds = InputSlot(optional=True)
 
     NavigationCoordinates = InputSlot(optional=True) # Display-only: For passing navigation request coordinates downstream
     
@@ -32,12 +31,23 @@ class OpSplitBodyCarving( OpCarving ):
     EditedRavelerBodyList = OutputSlot() # A single object: a list of strings
     
     AnnotationCrosshairs = OutputSlot()
+    AnnotationLocations = OutputSlot()
+    AnnotationBodyIds = OutputSlot()
+    Annotations = OutputSlot()
     
     BLOCK_SIZE = 520
     SEED_MARGIN = 10
 
     def __init__(self, *args, **kwargs):
         super( OpSplitBodyCarving, self ).__init__( *args, **kwargs )
+
+        self._opParseAnnotations = OpParseAnnotations( parent=self )
+        self._opParseAnnotations.AnnotationFilepath.connect( self.AnnotationFilepath )
+        self._opParseAnnotations.BodyLabels.connect( self.RavelerLabels )
+        self.AnnotationLocations.connect( self._opParseAnnotations.AnnotationLocations )
+        self.AnnotationBodyIds.connect( self._opParseAnnotations.AnnotationBodyIds )
+        self.Annotations.connect( self._opParseAnnotations.Annotations )
+        
         self._opSelectRavelerObject = OpSelectLabel( parent=self )
         self._opSelectRavelerObject.SelectedLabel.connect( self.CurrentRavelerLabel )
         self._opSelectRavelerObject.Input.connect( self.RavelerLabels )
@@ -294,11 +304,6 @@ class OpFragmentSetLut(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         self.Lut.setDirty( slice(None) )
-
-
-
-
-
 
 
 
