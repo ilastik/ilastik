@@ -1,9 +1,9 @@
-[submodule "lazyflow"]
-	path = lazyflow
-	url = http://github.com/ilastik/lazyflow.git
-[submodule "volumina"]
-	path = volumina
-	url = http://github.com/ilastik/volumina.git
 [submodule "ilastik"]
 	path = ilastik
-	url = http://github.com/ilastik/ilastik.git
+	url = git://github.com/ilastik/ilastik
+[submodule "volumina"]
+	path = volumina
+	url = git://github.com/ilastik/volumina
+[submodule "lazyflow"]
+	path = lazyflow
+	url = git://github.com/ilastik/lazyflow
