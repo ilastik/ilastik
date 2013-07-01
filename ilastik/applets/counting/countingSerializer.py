@@ -1,5 +1,5 @@
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, deleteIfPresent, SerialSlot, SerialSVMClassifierSlot, \
+    AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 import threading
@@ -158,7 +158,7 @@ class SerialPredictionSlot(SerialSlot):
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
 
 
-class Counting3dSerializer(AppletSerializer):
+class CountingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
     workflow parameters and datasets.
 
@@ -176,16 +176,16 @@ class Counting3dSerializer(AppletSerializer):
                                  operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,
                                  name='LabelSets',
-                                 subname='labels{:03d}',
+                                 subname='labels{:0}',
                                  selfdepends=False),
-                 SerialSVMClassifierSlot(operator.Classifier,
+                 SerialCountingSlot(operator.Classifier,
                                       operator.classifier_cache,
-                                      name="ClassifierForests",
-                                      subname="Forest{:04d}"),
+                                      name="CountingWrappers",
+                                      subname="wrapper{:04d}"),
                  self.predictionSlot]
 
 
-        super(Counting3dSerializer, self).__init__(projectFileGroupName,
+        super(CountingSerializer, self).__init__(projectFileGroupName,
                                                             slots=slots)
 
         self.predictionSlot.progressSignal.connect(self.progressSignal.emit)

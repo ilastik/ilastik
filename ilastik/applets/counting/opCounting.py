@@ -9,17 +9,18 @@ import vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
-                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
+                               OpArrayCache, OpMultiArraySlicer2, \
+                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
+                               Op5ifyer
                                
-from ilastik.applets.counting3d.countingOperators import OpTrainCounter, OpTrainCounterBlocked, OpPredictCounter
+from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter
 
 #ilastik
 
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 import threading
-
+from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpVolumeOperator(Operator):
     name = "OpVolumeOperator"
@@ -56,77 +57,11 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
-class OpTrainCounter3(Operator):
-    name = "OpCounter"
-    description = "OpTrainCounter"
-    inputSlots   = [InputSlot("Images", level = 1),InputSlot("Dots", level = 1),
-                    InputSlot("fixRegressor",
-                                                     stype="bool"),
-                   InputSlot("Sigma",stype="float"), InputSlot("UnderMult",
-                                                               stype="float"),
-                   InputSlot("OverMult", stype="float"),
-                    InputSlot("SelectedOption", stype="object")]
-    outputSlots = [OutputSlot("Output")]
-    
-    def __init__(self, *args, **kwargs):
-        super(OpTrainCounter3, self).__init__(*args, **kwargs)
-        self.cache = None
-        self._lock = threading.Lock()
-
-        self.ImageShortener = OpMultiLaneWrapper(OpMatchDimensions, parent=self)
-        self.ImageShortener.Input.connect(self.Images)
-        self.ImageShortener.AxisFlag.setValue(["x", "y", "z", "c"])
-        
-        self.LabelShortener = OpMultiLaneWrapper(OpMatchDimensions, parent=self)
-        self.LabelShortener.Input.connect(self.Dots)
-        self.LabelShortener.AxisFlag.setValue(["x", "y", "z"])
-
-    def setupOutputs(self):
-
-        if self.inputs["fixRegressor"].value == False:
-            print "falseSetupOutputs"
-            self.outputs["Output"].meta.dtype = object
-            self.outputs["Output"].meta.shape = (1,)
-            self.outputs["Output"].setDirty((slice(0,1,None),))
-        #self.function = self.inputs["BinaryFunction"].value
-
-        #self.Output.meta.shape = self.PredictionSlot.meta.shape
-        #self.Output.meta.axistags = self.PredictionSlot.meta.axistags
-        #self.Output.meta.dtype = self.PredictionSlot.meta.dtype
-        
-    def execute(self, slot, subindex, roi, result):
-        #key = roiToSlice(roi.start,roi.stop)
-        debug_trace()
-        with self._lock:
-
-            if self.cache is None:
-                print "bla", self.SelectedOption.value
-                self.cache = len(self.LabelShortener.Output) * [SVR(underMult =self.UnderMult.value, overMult =
-                     self.OverMult.value, limitDensity=False,
-                                                                    **self.SelectedOption.value)]
-                #print key
-
-                dots = [dot[:].allocate().wait() for dot in
-                        self.LabelShortener.Output]
-                imgs = [vol[:].allocate().wait() for vol in self.ImageShortener.Output]
-                for nr, svr, img, dot in zip(range(len(self.cache)), self.cache, imgs, dots):
-                    svr.fit(img, dot, sigma = self.Sigma.value, normalize =
-                            True, epsilon = 0)
-
-            return self.cache
-
-    def propagateDirty(self, slot, subindex, roi):
-        with self._lock:
-            if slot is not self.inputs["fixRegressor"] and self.inputs["fixRegressor"].value == False:
-                print "propagateDirty"
-
-                self.cache = None
-                self.Output.setDirty((slice(0,1,None),))
-class OpCounting3d( Operator ):
+class OpCounting( Operator ):
     """
-    Top-level operator for pixel classification
+    Top-level operator for counting
     """
-    name="OpPixelClassification"
+    name="OpCounting"
     category = "Top-level"
     
     # Graph inputs
@@ -146,8 +81,8 @@ class OpCounting3d( Operator ):
 
     PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
 
-    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
-    SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
+    #PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
+    #SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     
     MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
@@ -157,10 +92,10 @@ class OpCounting3d( Operator ):
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache AND prediction cache)
 
-    HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
-    HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
+    #HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
+    #HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
 
-    UncertaintyEstimate = OutputSlot(level=1)
+    #UncertaintyEstimate = OutputSlot(level=1)
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
@@ -173,7 +108,7 @@ class OpCounting3d( Operator ):
         """
         Instantiate all internal operators and connect them together.
         """
-        super(OpCounting3d, self).__init__(*args, **kwargs)
+        super(OpCounting, self).__init__(*args, **kwargs)
         
         # Default values for some input slots
         self.FreezePredictions.setValue(True)
@@ -227,15 +162,22 @@ class OpCounting3d( Operator ):
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
         self.CachedPredictionProbabilities.connect( self.opPredictionPipeline.CachedPredictionProbabilities )
-        self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
-        self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
-        self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
-        self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
-        self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
-        self.Density.connect(self.opPredictionPipeline.PredictionProbabilities)
+        #self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
+        #self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
+        #self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
+        #self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
+        #self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
+        self.Density.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
+        
+
+        
+        
         self.opVolumeSum = OpMultiLaneWrapper(OpVolumeOperator,parent=self, graph = self.graph )
         self.opVolumeSum.Input.connect(self.Density)
         self.opVolumeSum.Function.setValue(numpy.sum)
+        
+        
+        
 
         self.OutputSum.connect(self.opVolumeSum.Output)
 
@@ -253,6 +195,7 @@ class OpCounting3d( Operator ):
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
+                self._checkConstraints(index)
                 self.setupCaches( multislot.index(slot) )
             multislot[index].notifyReady(handleInputReady)
                 
@@ -274,6 +217,15 @@ class OpCounting3d( Operator ):
         
         
         self.options = self.opTrain.options
+
+    def setupOutputs(self):
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
+        self.PmapColors.meta.dtype = object
+        self.PmapColors.meta.shape = (1,)
+
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
@@ -319,6 +271,44 @@ class OpCounting3d( Operator ):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
+    
+    def _checkConstraints(self, laneIndex):
+        """
+        Ensure that all input images must be 2D and have the same number of channels
+        """
+        
+        
+        thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
+        
+        if thisLaneTaggedShape.has_key('z'):
+            raise DatasetConstraintError(
+                "Objects Counting Workflow",
+                "All input images must be 2D (they cannot contain the z dimension).  "\
+                "Your new image has {} has z dimension"\
+                .format( thisLaneTaggedShape['z']))
+                # Find a different lane and use it for comparison
+        
+        validShape = thisLaneTaggedShape
+        for i, slot in enumerate(self.InputImages):
+            if slot.ready() and i != laneIndex:
+                validShape = slot.meta.getTaggedShape()
+                break
+        
+        if len(validShape) != len(thisLaneTaggedShape):
+            raise DatasetConstraintError(
+                 "Objects Couting Workflow Counting",
+                 "All input images must have the same dimensionality.  "\
+                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
+                 .format( len(thisLaneTaggedShape), len(validShape) ) )
+            
+        if validShape['c'] != thisLaneTaggedShape['c']:
+            raise DatasetConstraintError(
+                 "Objects Counting Workflow",
+                 "All input images must have the same number of channels.  "\
+                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
+                 .format( thisLaneTaggedShape['c'], validShape['c'] ) )
+        
+        
 
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
@@ -355,6 +345,8 @@ class OpLabelPipeline( Operator ):
         self.MaxLabel.connect( self.opLabelArray.maxLabel )
         self.BoxOutput.connect( self.opBoxArray.Output )
     
+
+
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
         blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
@@ -427,9 +419,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
-    PredictionProbabilityChannels = OutputSlot( level=1 )
-    SegmentationChannels = OutputSlot( level=1 )
-    UncertaintyEstimate = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpPredictionPipeline, self).__init__( *args, **kwargs )
@@ -443,81 +432,48 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
         # Prediction cache for the GUI
-        self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
+        self.prediction_cache_gui = OpArrayCache( parent=self )
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
 
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
         self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions_gui.Output)
 
-        # Also provide each prediction channel as a separate layer (for the GUI)
-        self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
-        self.opPredictionSlicer.name = "opPredictionSlicer"
-        self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
-        self.opPredictionSlicer.AxisFlag.setValue('c')
-        self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
-        
-        self.opSegmentor = OpMaxChannelIndicatorOperator( parent=self )
-        self.opSegmentor.Input.connect( self.precomputed_predictions_gui.Output )
+        ## Also provide each prediction channel as a separate layer (for the GUI)
+        #self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
+        #self.opPredictionSlicer.name = "opPredictionSlicer"
+        #self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
+        #self.opPredictionSlicer.AxisFlag.setValue('c')
+        #self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
+        #
+        #self.opSegmentor = OpMaxChannelIndicatorOperator( parent=self )
+        #self.opSegmentor.Input.connect( self.precomputed_predictions_gui.Output )
 
-        self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
-        self.opSegmentationSlicer.name = "opSegmentationSlicer"
-        self.opSegmentationSlicer.Input.connect( self.opSegmentor.Output )
-        self.opSegmentationSlicer.AxisFlag.setValue('c')
-        self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
+        #self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
+        #self.opSegmentationSlicer.name = "opSegmentationSlicer"
+        #self.opSegmentationSlicer.Input.connect( self.opSegmentor.Output )
+        #self.opSegmentationSlicer.AxisFlag.setValue('c')
+        #self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
 
-        # Create a layer for uncertainty estimate
-        self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
-        self.opUncertaintyEstimator.Input.connect( self.precomputed_predictions_gui.Output )
+        ## Create a layer for uncertainty estimate
+        #self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
+        #self.opUncertaintyEstimator.Input.connect( self.precomputed_predictions_gui.Output )
 
-        # Cache the uncertainty so we get zeros for uncomputed points
-        self.opUncertaintyCache = OpSlicedBlockedArrayCache( parent=self )
-        self.opUncertaintyCache.name = "opUncertaintyCache"
-        self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
-        self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
-        self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
+        ## Cache the uncertainty so we get zeros for uncomputed points
+        #self.opUncertaintyCache = OpSlicedBlockedArrayCache( parent=self )
+        #self.opUncertaintyCache.name = "opUncertaintyCache"
+        #self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
+        #self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
+        #self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
 
     def setupOutputs(self):
-        # Set the blockshapes for each input image separately, depending on which axistags it has.
-        axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
+        pass
 
-        blockDimsX = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (128,256),
-                       'x' : (1,1),
-                       'c' : (100, 100) }
 
-        blockDimsY = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (1,1),
-                       'x' : (128,256),
-                       'c' : (100,100) }
-
-        blockDimsZ = { 't' : (1,1),
-                       'z' : (1,1),
-                       'y' : (128,256),
-                       'x' : (128,256),
-                       'c' : (100,100) }
-
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-
-        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
 class OpShapeReader(Operator):
