@@ -8,16 +8,17 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon,QApplication
 
 # HCI
 from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
 from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListView import Label
+from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
 from lazyflow.rtype import SubRegion
-
+from volumina.navigationControler import NavigationInterpreter
 
 # ilastik
 from ilastik.utility import bind
@@ -25,9 +26,13 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
+from lazyflow.operators.adaptors import Op5ifyer
+from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
+
+
 
 try:
-    from volumina.view3d.volumeRendering import RenderingManager
+    from volumina.view.volumeRendering import RenderingManager
 except:
     pass
 
@@ -42,118 +47,39 @@ def _listReplace(old, new):
         return new
 
 
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
-from PyQt4.QtGui import QRubberBand
 
-class ClickReportingInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)  # ditto
-    leftClickReleased = pyqtSignal(object, object)
+
+from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QString,QVariant
+from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
+        QStylePainter, QPen
+
+from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
+
+class CallToGui:
+    def __init__(self,opslot,setfun):
+        '''
+        Helper class which registers a simple callback between an operator and a gui 
+        element so that gui elements can be kept in sync across different images
+        :param opslot:
+        :param setfun:
+        :param defaultval:
+        
+        '''
+        
+        self.val=None
+        self.opslot=opslot
+        self.setfun=setfun
+        self._exec()
+        self.opslot.notifyDirty(bind(self._exec))
     
-    def __init__(self, navigationInterpreter, positionModel, editor):
-        QObject.__init__(self)
-        self.baseInterpret = navigationInterpreter
-        self.posModel      = positionModel
-        self.rubberBand = QRubberBand(QRubberBand.Rectangle, editor)
-        self.origin = QPoint()
-        self.originpos = object()
+    def _exec(self):
+        if self.opslot.ready():
+            self.val=self.opslot.value
+            
+        if self.val!=None:
+            self.setfun(self.val)        
 
-    def start( self ):
-        self.baseInterpret.start()
-
-    def stop( self ):
-        self.baseInterpret.stop()
-
-    def eventFilter( self, watched, event ):
-        if event.type() == QEvent.MouseButtonPress:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-                self.rubberBand.show()
-                gPos = watched.mapToGlobal( event.pos() )
-                self.leftClickReceived.emit( pos, gPos )
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal( event.pos() )
-                self.rightClickReceived.emit( pos, gPos )                
-        if event.type() == QEvent.MouseMove:
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin,
-                                                  event.pos()).normalized())
-        if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )                
-
-    
-
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
-
-
-class BoxInterpreter(QObject):
-    rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
-    leftClickReceived = pyqtSignal(object, QPoint)  # ditto
-    leftClickReleased = pyqtSignal(object, object)
-    
-    def __init__(self, navigationInterpreter, positionModel, editor):
-        QObject.__init__(self)
-        self.baseInterpret = navigationInterpreter
-        self.posModel      = positionModel
-        self.rubberBand = QRubberBand(QRubberBand.Rectangle, editor)
-        self.origin = QPoint()
-        self.originpos = object()
-
-    def start( self ):
-        self.baseInterpret.start()
-
-    def stop( self ):
-        self.baseInterpret.stop()
-
-    def eventFilter( self, watched, event ):
-        if event.type() == QEvent.MouseButtonPress:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-
-            if event.button() == Qt.LeftButton:
-                self.origin = QPoint(event.pos())
-                self.originpos = pos
-                self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-                self.rubberBand.show()
-                gPos = watched.mapToGlobal( event.pos() )
-                self.leftClickReceived.emit( pos, gPos )
-            if event.button() == Qt.RightButton:
-                gPos = watched.mapToGlobal( event.pos() )
-                self.rightClickReceived.emit( pos, gPos )                
-        if event.type() == QEvent.MouseMove:
-            if not self.origin.isNull():
-                self.rubberBand.setGeometry(QRect(self.origin,
-                                                  event.pos()).normalized())
-        if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self.posModel.cursorPos]
-            pos = [self.posModel.time] + pos + [self.posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )                
-
-        # Event is always forwarded to the navigation interpreter.
-        return self.baseInterpret.eventFilter(watched, event)
-
-
-
-class Tool():
-    
-    Navigation = 0 # Arrow
-    Paint      = 1
-    Erase      = 2
-    Box        = 3
-
-class Counting3dGui(LabelingGui):
+class CountingGui(LabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -163,7 +89,7 @@ class Counting3dGui(LabelingGui):
 
     def reset(self):
         # Base class first
-        super(Counting3dGui, self).reset()
+        super(CountingGui, self).reset()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.liveUpdateButton.setChecked(False)
@@ -190,13 +116,12 @@ class Counting3dGui(LabelingGui):
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         # We provide our own UI file (which adds an extra control for interactive mode)
-        labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
-        super(Counting3dGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(CountingGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
         self.op = topLevelOperatorView
-        #self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
 
         self.topLevelOperatorView = topLevelOperatorView
         self.shellRequestSignal = shellRequestSignal
@@ -213,77 +138,292 @@ class Counting3dGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
-
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        
         self._initShortcuts()
 
         try:
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
             self._renderMgr = RenderingManager(
-                renderer=self.editor.view3d.qvtk.renderer,
-                qvtk=self.editor.view3d.qvtk)
+                renderer=self.editor.view.qvtk.renderer,
+                qvtk=self.editor.view.qvtk)
         except:
             self.render = False
 
-
+        
         self.initCounting()
 
-
-    def initCounting(self):
-        self._addNewLabel()
-        self._addNewLabel()
-        self.labelingDrawerUi.SigmaLine.setText("1")
-        self.labelingDrawerUi.UnderBox.setRange(0,1000000)
-        self.labelingDrawerUi.UnderBox.setValue(1)
-        self.labelingDrawerUi.OverBox.setRange(0,1000000)
-        self.labelingDrawerUi.OverBox.setValue(1)
-        self.labelingDrawerUi.UnderBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.OverBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
-        self.labelingDrawerUi.EpsilonBox.setDecimals(6)
-        for option in self.op.options:
-            print "option", option
-            self.labelingDrawerUi.SVROptions.addItem('+'.join(option.values()), (option,))
-        self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
-        #self.labelingDrawerUi.TrainButton.pressed.connect(self._train)
-        #self.labelingDrawerUi.PredictionButton.pressed.connect(self.updateDensitySum)
-        self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
-        self._updateSVROptions()
-        self.labelingDrawerUi.OverBox.valueChanged.connect(self._updateOverMult)
-        self.labelingDrawerUi.UnderBox.valueChanged.connect(self._updateUnderMult)
-        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
-        self.labelingDrawerUi.SigmaLine.textChanged.connect(self._changedSigma)
-        self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
-        self.changedSigma = False
         
+        
+        
+    def initCounting(self):
+        
+        #=======================================================================
+        # Init Dotting interface
+        #=======================================================================
+        
+        
+        self.dotcrosshairController=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
+        self.editor.crosshairControler=self.dotcrosshairController
+        self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
+        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
+        self.dotIntepreter=self.editor.brushingInterpreter
+        
+        
+        #=======================================================================
+        # Init Label Control Ui Custom  setup
+        #=======================================================================
+        
+        self._viewerControlUi.label.setVisible(False)
+        self._viewerControlUi.checkShowPredictions.setVisible(False)
+        self._viewerControlUi.checkShowSegmentation.setVisible(False)
+        
+        
+        
+        self._addNewLabel()
+        self._addNewLabel()
+        self._labelControlUi.brushSizeComboBox.setEnabled(False) 
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self.selectLabel(0)
+        
+        
+        
+        #=======================================================================
+        # Init labeling Drawer Ui Custom  setup
+        #=======================================================================
+        
+        
+        #labels for foreground and background
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+        self.labelingDrawerUi.labelListModel[0].name = "Foreground"
+        self.labelingDrawerUi.labelListModel[1].name = "Background"
+        self.labelingDrawerUi.labelListView.shrinkToMinimum()
+
+        self.labelingDrawerUi.CountText.setReadOnly(True)
+            
+#         self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+#         self.labelingDrawerUi.CBox.setRange(0,1000)
+#         self.labelingDrawerUi.CBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+#         self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
+#         self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
+# 
+#         for option in self.op.options:
+#             if "req" in option.keys():
+#                 try:
+#                     import imp
+#                     for req in option["req"]:
+#                         imp.find_module(req)
+#                 except:
+#                     continue
+#             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
+#             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
+#         
+        
+        self._setUIParameters()
+        
+        self._connectUIParameters()
+        
+        
+                
+
+        
+        
+        #=======================================================================
+        # Init Boxes Interface
+        #=======================================================================
+        
+        #if not hasattr(self._labelControlUi, "boxListModel"):
+        self.labelingDrawerUi.boxListModel=BoxListModel()
+        self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
+        self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
+        self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
+        
+#        ###FIXME: Only for debug
         def updateSum(*args, **kw):
             print "updatingSum"
-            density = self.op.OutputSum.value / 255
+            density = self.op.OutputSum.value 
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
-
         self.op.Density.notifyDirty(updateSum)
+
+        mainwin=self
+        self.density5d=Op5ifyer(graph=self.op.graph) #FIXME: Hack , get the proper reference to the graph
+        self.density5d.input.connect(self.op.Density)
+        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)       
+        self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
+        
+        
+        self.rubberbandClickReporter = self.boxIntepreter
+        self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+        self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
+        self.navigationIntepreterDefault=self.editor.navInterpret
+
+        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
+    
+    
+            
+    
+
+    
+    def _connectUIParameters(self):
+                
+        #=======================================================================
+        # Gui to operator connections
+        #=======================================================================
+        
+        self._changedSigma = True
+        #Debug interface only available otadvanced users
+        self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
+        #elf._updateSVROptions()
+        self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
+        self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
+        self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
         
 
-        self.boxes = dict()
-        self._labelControlUi.labelListModel[0].name = "Foreground"
-        self._labelControlUi.labelListModel[1].name = "Background"
+        def _editingSigma(text):
+            self._changedSigma =True
+        self.labelingDrawerUi.SigmaLine.textChanged.connect(_editingSigma)
+        
+        
+        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
+        self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
+        self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
+        self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
+        
+        #=======================================================================
+        # Operators to Gui connections
+        #=======================================================================
 
-    def _updateOverMult(self):
-        self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
-    def _updateUnderMult(self):
-        self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+        self._registerOperatorsToGuiCallbacks() 
+    
+        #=======================================================================
+        # Initialize Values
+        #=======================================================================
+
+        self._updateSigma()
+        self._updateNtrees()
+        self._updateMaxDepth()
+
+    def _registerOperatorsToGuiCallbacks(self):
+                
+        op=self.op.opTrain
+        gui=self.labelingDrawerUi
+        
+        CallToGui(op.Ntrees,gui.NtreesBox.setValue)
+        CallToGui(op.MaxDepth,gui.MaxDepthBox.setValue)
+
+        CallToGui(op.C,gui.CBox.setValue)
+        
+        def _setsigma(floatList):
+            ss=""
+            for el in floatList:
+                ss+="%.1f "%el
+            ss=ss[:-1]
+            gui.SigmaLine.setText(QString(ss))
+        
+        CallToGui(op.Sigma,_setsigma)
+        CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
+        
+        def _setoption(option):
+            ss = option["method"]
+            index=gui.SVROptions.findText(ss)
+            gui.SVROptions.setCurrentIndex(index)
+            
+        CallToGui(op.SelectedOption,_setoption)
+
+        
+    def _setUIParameters(self):
+        
+        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+        self.labelingDrawerUi.CBox.setRange(0,1000)
+        self.labelingDrawerUi.CBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.EpsilonBox.setDecimals(6)
+        self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
+        self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
+
+        for option in self.op.options:
+            if "req" in option.keys():
+                try:
+                    import imp
+                    for req in option["req"]:
+                        imp.find_module(req)
+                except:
+                    continue
+            #values=[v for k,v in option.items() if k not in ["gui", "req"]]
+            self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
+        
+        
+        
+        if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
+            #use parameters from cached classifier
+            params = self.op.classifier_cache.Output.value.get_params() 
+            Sigma = params["Sigma"]
+            Epsilon = params["epsilon"]
+            C = params["C"]
+            Ntrees = params["ntrees"]
+            MaxDepth = params["maxdepth"]
+            _ind = self.labelingDrawerUi.SVROptions.findText(params["method"])
+        
+        else:
+            #read parameters from opTrain Operator
+            Sigma = self.op.opTrain.Sigma.value
+            Epsilon = self.op.opTrain.Epsilon.value
+            C = self.op.opTrain.C.value
+            Ntrees = self.op.opTrain.Ntrees.value
+            MaxDepth = self.op.opTrain.MaxDepth.value
+            _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value["method"])
+
+
+        self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
+        self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
+        self.labelingDrawerUi.CBox.setValue(C)
+        self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
+        self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
+        self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
+        self._hideParameters()
+        
+        
+        
+    def _updateMaxDepth(self):
+        self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
+    def _updateNtrees(self):
+        self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
+    
+    def _hideParameters(self):
+        _ind = self.labelingDrawerUi.SVROptions.currentIndex()
+        option = self.labelingDrawerUi.SVROptions.itemData(_ind).toPyObject()[0]
+        if "svr" not in option["gui"]:
+            self.labelingDrawerUi.gridLayout_2.setVisible(False)
+        else:
+            self.labelingDrawerUi.gridLayout_2.setVisible(True)
+            
+ 
+        if "rf" not in option["gui"]:
+            self.labelingDrawerUi.rf_panel.setVisible(False)
+        else:
+            self.labelingDrawerUi.rf_panel.setVisible(True)
+            
+        
+    #def _updateOverMult(self):
+    #    self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
+    #def _updateUnderMult(self):
+    #    self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
+    def _updateC(self):
+        self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
-        if self.changedSigma:
+        if self._changedSigma:
             sigma = [float(n) for n in
                            self._labelControlUi.SigmaLine.text().split(" ")]
+            
+            self.editor.crosshairControler.setSigma(sigma[0])
+            self.dotController.setDotsRadius(sigma[0]*2)
             self.op.opTrain.Sigma.setValue(sigma)
-            self.changedSigma = False
+            self._changedSigma = False
 
-    def _changedSigma(self, text):
-        self.changedSigma = True
 
     def _updateEpsilon(self):
         self.op.opTrain.Epsilon.setValue(self.labelingDrawerUi.EpsilonBox.value())
@@ -292,6 +432,24 @@ class Counting3dGui(LabelingGui):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
         self.op.opTrain.SelectedOption.setValue(option)
+        
+        self._hideFixable(option)
+        
+        self._hideParameters()        
+    
+    def _hideFixable(self,option):
+        if 'method' in option and option['method']=='rf-sklearn':
+            self.labelingDrawerUi.boxListView.allowFixIcon=False
+            self.labelingDrawerUi.boxListView.allowFixValues=False
+        elif 'method' in option and option['method']=='svrBoxed-gurobi':
+            self.labelingDrawerUi.boxListView.allowFixIcon=True
+            
+        
+    
+    def _handleBoxConstraints(self, constr):
+        self.op.opTrain.BoxConstraints.setValue(constr)
+
+        #boxes = self.boxController._currentBoxesList
 
 
     def _debug(self):
@@ -303,7 +461,7 @@ class Counting3dGui(LabelingGui):
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
-
+        
         # Connect checkboxes
         def nextCheckState(checkbox):
             checkbox.setChecked( not checkbox.isChecked() )
@@ -359,27 +517,36 @@ class Counting3dGui(LabelingGui):
         This function creates a layer for each slot we want displayed in the volume editor.
         """
         # Base class provides the label layer.
-        layers = super(Counting3dGui, self).setupLayers()
+        layers = super(CountingGui, self).setupLayers()
 
         # Add each of the predictions
         labels = self.labelListData
      
 
 
-        slots = {'density' : self.op.Density}
+        slots = {'Prediction' : self.op.Density}
 
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = colortables.jet(), normalize = 'auto')
                 layer.name = name
+                layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                #layer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 layers.append(layer)
 
 
         boxlabelsrc = LazyflowSinkSource(self.op.BoxLabelImages,self.op.BoxLabelInputs )
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
         boxlabellayer.name = "boxLabels"
-        boxlabellayer.opacity = 0.3
+        boxlabellayer.opacity = 1.0
+        boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
+        boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
+        
+        
+        
+        
+        
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
 
@@ -442,7 +609,9 @@ class Counting3dGui(LabelingGui):
                 self.labelingDrawerUi.labelListView.allowDelete = True
                 #self.labelingDrawerUi.AddLabelButton.setEnabled( True )
         self.interactiveModeActive = checked
-
+        
+            
+    
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
@@ -600,7 +769,7 @@ class Counting3dGui(LabelingGui):
         slot.setValue(_listReplace(old, new))
 
     def _onLabelRemoved(self, parent, start, end):
-        super(Counting3dGui, self)._onLabelRemoved(parent, start, end)
+        super(CountingGui, self)._onLabelRemoved(parent, start, end)
         op = self.topLevelOperatorView
         for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
             value = slot.value
@@ -609,29 +778,29 @@ class Counting3dGui(LabelingGui):
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
-                             super(Counting3dGui, self).getNextLabelName)
+                             super(CountingGui, self).getNextLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
             self.topLevelOperatorView.LabelColors,
-            super(Counting3dGui, self).getNextLabelColor,
+            super(CountingGui, self).getNextLabelColor,
             lambda x: QColor(*x)
         )
 
     def getNextPmapColor(self):
         return self._getNext(
             self.topLevelOperatorView.PmapColors,
-            super(Counting3dGui, self).getNextPmapColor,
+            super(CountingGui, self).getNextPmapColor,
             lambda x: QColor(*x)
         )
 
     def onLabelNameChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onLabelNameChanged,
+        self._onLabelChanged(super(CountingGui, self).onLabelNameChanged,
                              lambda l: l.name,
                              self.topLevelOperatorView.LabelNames)
 
     def onLabelColorChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onLabelColorChanged,
+        self._onLabelChanged(super(CountingGui, self).onLabelColorChanged,
                              lambda l: (l.brushColor().red(),
                                         l.brushColor().green(),
                                         l.brushColor().blue()),
@@ -639,7 +808,7 @@ class Counting3dGui(LabelingGui):
 
 
     def onPmapColorChanged(self):
-        self._onLabelChanged(super(Counting3dGui, self).onPmapColorChanged,
+        self._onLabelChanged(super(CountingGui, self).onPmapColorChanged,
                              lambda l: (l.pmapColor().red(),
                                         l.pmapColor().green(),
                                         l.pmapColor().blue()),
@@ -649,7 +818,7 @@ class Counting3dGui(LabelingGui):
         if not self.render:
             return
         shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
-        time = self.editor.posModel.slicingPos5D[0]
+        time = self.editor._posModel.slicingPos5D[0]
         if not self._renderMgr.ready:
             self._renderMgr.setup(shape)
 
@@ -679,7 +848,7 @@ class Counting3dGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (color.red(), color.green() , color.blue() )
             self._renderMgr.setColor(label, color)
 
 
@@ -688,26 +857,45 @@ class Counting3dGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-        self._labelControlUi.arrowToolButton.setChecked(True)
-        print "setNavigation"
-        if not hasattr(self, "rubberbandClickReporter"):
-            self.rubberbandClickReporter = ClickReportingInterpreter(
-                self.editor.navInterpret, self.editor.posModel, self.centralWidget() )
-            self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-        self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
+#         if not hasattr(self, "rubberbandClickReporter"):
+#             
+#             self.rubberbandClickReporter = self.boxIntepreter
+#             self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
+#         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
+    def _gui_setBrushing(self):
+#         self._labelControlUi.brushSizeComboBox.setEnabled(False)
+#         self._labelControlUi.brushSizeCaption.setEnabled(False)
+        # Make sure the paint button is pressed
+        self._labelControlUi.paintToolButton.setChecked(True)
+        # Show the brush size control and set its caption
+        self._labelControlUi.brushSizeCaption.setText("Size:")
+        # Make sure the GUI reflects the correct size
+        #self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+
     def _gui_setBox(self):
-        print "setBox"
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
-        self._labelControlUi.boxToolButton.setChecked(True)
+        self._labelControlUi.arrowToolButton.setChecked(False)
         
-
+        #self._labelControlUi.boxToolButton.setChecked(True)
+        
+    
+    def _onBoxChanged(self,parentFun, mapf):
+        
+        parentFun()
+        new = map(mapf, self.labelListData)
+    
     
     def _changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
         """
+        QApplication.restoreOverrideCursor()
+        for v in self.editor.crosshairControler._imageViews:
+                    v._crossHairCursor.enabled=True
+        
+         
         # Uncheck all the other buttons
         for tool, button in self.toolButtons.items():
             if tool != toolId:
@@ -745,6 +933,8 @@ class Counting3dGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI 
+                self.editor.brushingModel.setBrushSize(0)
+                self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
                 
             elif toolId == Tool.Paint:
@@ -752,12 +942,17 @@ class Counting3dGui(LabelingGui):
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-                brushSize = self.brushSizes[self.paintBrushSizeIndex]
-                self.editor.brushingModel.setBrushSize(brushSize)
+                
+                if self.editor.brushingModel.drawnNumber==1:
+                    brushSize = 1
+                    self.editor.brushingModel.setBrushSize(brushSize)
+                
                 # update GUI 
                 self._gui_setBrushing()
 
+
             elif toolId == Tool.Erase:
+                
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
@@ -766,7 +961,14 @@ class Counting3dGui(LabelingGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI 
                 self._gui_setErasing()
+            
             elif toolId == Tool.Box:
+                for v in self.editor.crosshairControler._imageViews:
+                    v._crossHairCursor.enabled=False
+        
+                QApplication.setOverrideCursor(Qt.CrossCursor)
+                self.editor.brushingModel.setBrushSize(0)
+                self.editor.setNavigationInterpreter(self.boxIntepreter)
                 self._gui_setBox()
 
         self.editor.setInteractionMode( modeNames[toolId] )
@@ -775,73 +977,124 @@ class Counting3dGui(LabelingGui):
 
 
     def _initLabelUic(self, drawerUiPath):
-        super(Counting3dGui, self)._initLabelUic(drawerUiPath)
-        self._labelControlUi.boxToolButton.setCheckable(True)
-        self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
-                                                                                                          Tool.Box) )
-        self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
+        super(CountingGui, self)._initLabelUic(drawerUiPath)
+        #self._labelControlUi.boxToolButton.setCheckable(True)
+        #self._labelControlUi.boxToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked,
+        #                                                                                                  Tool.Box) )
+        #self.toolButtons[Tool.Box] = self._labelControlUi.boxToolButton
         if hasattr(self._labelControlUi, "AddBoxButton"):
 
             self._labelControlUi.AddBoxButton.setIcon( QIcon(ilastikIcons.AddSel) )
-            self._labelControlUi.AddBoxButton.clicked.connect( bind(self._addNewBox) )
+            self._labelControlUi.AddBoxButton.clicked.connect( bind(self.onAddNewBoxButtonClicked) )
+        
+        
+    
+    def onAddNewBoxButtonClicked(self):
 
+        self._changeInteractionMode(Tool.Box)
+#         qcolor=self._getNextBoxColor()
+#         self.boxController.currentColor=qcolor
+        self.labelingDrawerUi.boxListView.resetEmptyMessage("Draw the box on the image")
+        
+    
     def _addNewBox(self):
+#         pass
+        
+        #Fixme: The functionality should maybe removed from here
+        
+        newRow = self.labelingDrawerUi.boxListModel.rowCount()-1
+        newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
+#         qcolor=self._getNextBoxColor()
+#         self.boxController.currentColor=qcolor
 
-        label = Label( "Box: ", self.getNextLabelColor(),
-                       pmapColor=self.getNextPmapColor(),
-                   )
-        label.nameChanged.connect(self._updateLabelShortcuts)
-        label.nameChanged.connect(self.onLabelNameChanged)
-        label.colorChanged.connect(self.onLabelColorChanged)
-
-        newRow = self._labelControlUi.labelListModel.rowCount()
-        self._labelControlUi.labelListModel.insertRow( newRow, label )
-        newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
-        self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
         # Call the 'changed' callbacks immediately to initialize any listeners
-        self.onLabelNameChanged()
-        self.onLabelColorChanged()
-        self.onPmapColorChanged()
+        #self.onLabelNameChanged()
+        #self.onLabelColorChanged()
+        #self.onPmapColorChanged()
 
-        # Make the new label selected
-        nlabels = self._labelControlUi.labelListModel.rowCount()
-        selectedRow = nlabels-1
-        self._labelControlUi.labelListModel.select(selectedRow)
+    
+    def _removeBox(self,index):
+        #handled by the boxController
+        pass 
+        
+        #self.boxController.deleteItem(index)
+        
+         
+    def _onBoxSelected(self, row):
+        print "switching to box=%r" % (self._labelControlUi.boxListModel[row])
+        print "row = ",row
+        logger.debug("switching to label=%r" % (self._labelControlUi.boxListModel[row]))
 
-        self._updateLabelShortcuts()
-       
-        e = self._labelControlUi.labelListModel.rowCount() > 0
-        self._gui_enableLabeling(e)
+        # If the user is selecting a label, he probably wants to be in paint mode
+        self._changeInteractionMode(Tool.Box)
 
+        print len(self.boxController._currentBoxesList)
+        self.boxController.selectBoxItem(row)
+    
+    @traceLogged(traceLogger)
+    def onBoxListDataChanged(self, topLeft, bottomRight):
+        pass
+#         """Handle changes to the label list selections."""
+#         firstRow = topLeft.row()
+#         lastRow  = bottomRight.row()
+#  
+#         firstCol = topLeft.column()
+#         lastCol  = bottomRight.column()
+#  
+#         # We only care about the color column
+#         if firstCol <= 0 <= lastCol:
+#             assert(firstRow == lastRow) # Only one data item changes at a time
+#  
+#             #in this case, the actual data (for example color) has changed
+#             color = self._labelControlUi.boxListModel[firstRow].brushColor()
+#             self._colorTable16[firstRow+1] = color.rgba()
+#             self.editor.brushingModel.setBrushColor(color)
+#  
+#             # Update the label layer colortable to match the list entry
+#             labellayer = self._getLabelLayer()
+#             if labellayer is not None:
+#                 labellayer.colorTable = self._colorTable16
+    
     def _onLabelSelected(self, row):
+        print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
-
+        
+        
+        
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
-        if row >= 2:
-            self.toolButtons[Tool.Paint].setEnabled(False)
-            self.toolButtons[Tool.Box].setEnabled(True)
-            self.toolButtons[Tool.Box].click()
-            self.activeBox = row - 2
-        else:
-            self.toolButtons[Tool.Paint].setEnabled(True)
-            self.toolButtons[Tool.Box].setEnabled(False)
-            self.toolButtons[Tool.Paint].click()
+  
+        self.toolButtons[Tool.Paint].setEnabled(True)
+        #elf.toolButtons[Tool.Box].setEnabled(False)
+        self.toolButtons[Tool.Paint].click()
 
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
-
-
+        
+        if row==0: #foreground
+            self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._labelControlUi.brushSizeComboBox.setEnabled(False)
+            self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+        else:
+            if not hasattr(self, "_cachedBrushSizeIndex"):
+                self._cachedBrushSizeIndex=0
+                
+            self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
+            
+        
+        
     def handleBoxQuery(self, position5d_start, position5d_stop):
+        #print "HANDLING BOX QUERY"
+        
         if self._labelControlUi.arrowToolButton.isChecked():
             self.test(position5d_start, position5d_stop)
-        elif self._labelControlUi.boxToolButton.isChecked():
-            self.test2(position5d_start, position5d_stop)
+        #elif self._labelControlUi.boxToolButton.isChecked():
+        #    self.test2(position5d_start, position5d_stop)
 
 
     def test2(self, position5d_start, position5d_stop):
@@ -879,8 +1132,15 @@ class Counting3dGui(LabelingGui):
             newKey.append(k)
         newKey = tuple(newKey)
         try:
-            density = numpy.sum(self.op.Density[newKey].wait()) / 255
+            density = numpy.sum(self.op.Density[newKey].wait())  
             strdensity = "{0:.2f}".format(density)
             self._labelControlUi.CountText.setText(strdensity)
         except:
             pass
+    
+    
+    def hideEvent(self, event):
+        #Ensure interactive is toggled of when leaving this GUI
+        self.toggleInteractive(False)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+        LabelingGui.hideEvent(self, event)

@@ -11,8 +11,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.request import Request, RequestPool
 from lazyflow.utility import traceLogged
 
-from ilastik.applets.counting3d.countingsvr import SVR
-
+from ilastik.applets.counting.countingsvr import SVR
 
 class OpTrainCounter(Operator):
     name = "TrainCounter"
@@ -21,14 +20,17 @@ class OpTrainCounter(Operator):
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "object"), 
+                  InputSlot("Sigma", value = [2.5], stype = "object"), 
                   InputSlot("Epsilon", value = 1E-3, stype = "float"), 
-                  InputSlot("UnderMult", value = 100, stype = "float"),
-                  InputSlot("OverMult", value = 100, stype = "float"), 
+                  #InputSlot("UnderMult", value = 100, stype = "float"),
+                  #InputSlot("OverMult", value = 100, stype = "float"), 
+                  InputSlot("C", value = 1, stype = "float"), 
                   InputSlot("SelectedOption", 
-                            value = {"optimization" : "svr", "kernel" : "rbf"},
+                            value = SVR.options[0],
                             stype = "object"),
-                  InputSlot("BoxConstraints", optional = True)
+                  InputSlot("Ntrees", value = 10, stype = "int"), #RF parameter
+                  InputSlot("MaxDepth", value =50, stype = "object"), #RF parameter, None means grow until purity
+                  InputSlot("BoxConstraints", stype = "list", optional = True)
                  ]
     outputSlots = [OutputSlot("Classifier")]
     options = SVR.options
@@ -36,31 +38,46 @@ class OpTrainCounter(Operator):
     def __init__(self, *args, **kwargs):
         super(OpTrainCounter, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
-        self._forest_count = 1
+        self._svr = SVR()
+        self.Classifier.meta.dtype = object
+        self.Classifier.meta.shape = (1,)
+        self.progressSignal = OrderedSignal()
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].meta.dtype = object
-            self.outputs["Classifier"].meta.shape = (self._forest_count,)
+            params = {"method" : self.SelectedOption.value["method"],
+                      "Sigma": self.Sigma.value,
+                      "epsilon" : self.Epsilon.value,
+                      "C" : self.C.value,
+                      "ntrees" : self.Ntrees.value,
+                      "maxdepth" :self.MaxDepth.value
+                     }
+            self._svr.set_params(**params)
+            #self.Classifier.setValue(self._svr)
+            #self.outputs["Classifier"].meta.dtype = object
+            #self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
 
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
+    @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
     def execute(self, slot, subindex, roi, result):
+        progress = 0
+        self.progressSignal(progress)
         featMatrix=[]
         labelsMatrix=[]
         tagList = []
+        
+        result[0] = self._svr
 
-        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **self.SelectedOption.value)
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
                 labels=labels[:].wait()
 
-                #Maybe later request only part of the region?
+                #Fixme: Maybe later request only part of the region?
 
                 image=self.inputs["Images"][i][:].wait()
 
                 newImg, newDot, mapping, tags = \
-                result[0].prepareData(image, labels, sigma = self.Sigma.value, smooth = True, normalize = False)
+                result[0].prepareData(image, labels, smooth = True, normalize = False)
                 features=newImg[mapping]
                 labels=newDot[mapping]
 
@@ -68,6 +85,8 @@ class OpTrainCounter(Operator):
                 labelsMatrix.append(labels)
                 tagList.append(tags)
                 #tagsMatrix.append(tags)
+
+
 
         posTags = [tag[0] for tag in tagList]
         negTags = [tag[1] for tag in tagList]
@@ -99,11 +118,32 @@ class OpTrainCounter(Operator):
         fullTags = [np.sum(posTags), np.sum(negTags)]
         #pool = RequestPool()
 
-        result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, fullTags, self.Epsilon.value)
+        self.progressSignal(30)
+        boxConstraints = []
+        if self.BoxConstraints.ready():
+            constraints = self.BoxConstraints.value
+            for constr in constraints:
+
+                value = float(constr[2].toDouble()[0])
+                slicing = [slice(start,stop) for start, stop in zip(constr[0][1:-2], constr[1][1:-2])]
+                slicing.append(slice(None)) 
+                slicing = tuple(slicing)
+                features = self.Images[0][slicing].wait() 
+                features = features.reshape((-1, features.shape[-1]))
+                constraint = (value, features)
+                boxConstraints.append(constraint)
+
+        self.progressSignal(50)
+        try:
+            result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, tags = fullTags, boxConstraints = boxConstraints)
         #req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
         #pool.wait()
         #pool.clean()
-
+        except:
+            logger.error("ERROR: could not learn regressor")
+            logger.error("fullFeatMatrix shape = {}, dtype = {}".format(fullFeatMatrix.shape, fullFeatMatrix.dtype) )
+            logger.error("fullLabelsMatrix shape = {}, dtype = {}".format(fullLabelsMatrix.shape, fullLabelsMatrix.dtype) )
+        self.progressSignal(100) 
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -111,156 +151,6 @@ class OpTrainCounter(Operator):
             self.outputs["Classifier"].setDirty((slice(None),))
 
 
-
-class OpTrainCounterBlocked(Operator):
-
-    name = "TrainCounterBlocked"
-    description = "Train a random forest on multiple images"
-    category = "Learning"
-
-    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
-                  InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "object"), 
-                  InputSlot("Epsilon", value = 1E-3, stype = "float"), 
-                  InputSlot("UnderMult", value = 100, stype = "float"),
-                  InputSlot("OverMult", value = 100, stype = "float"), 
-                  InputSlot("SelectedOption", 
-                            value = {"optimization" : "svr", "kernel" : "rbf"},
-                            stype = "object")
-                 ]
-    outputSlots = [OutputSlot("Classifier")]
-
-    WarningEmitted = False
-    options = SVR.options
-
-    def __init__(self, *args, **kwargs):
-        super(OpTrainCounterBlocked, self).__init__(*args, **kwargs)
-        self.progressSignal = OrderedSignal()
-        self._forest_count = 1
-        # TODO: Make treecount configurable via an InputSlot
-        #self._tree_count = 10
-
-    def setupOutputs(self):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].meta.dtype = object
-            self.outputs["Classifier"].meta.shape = (self._forest_count,)
-
-            # No need to set dirty here: notifyDirty handles it.
-            #self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
-    def execute(self, slot, subindex, roi, result):
-        progress = 0
-        self.progressSignal(progress)
-        numImages = len(self.Images)
-
-        featMatrix=[]
-        labelsMatrix=[]
-        tagsMatrix = []
-
-        result[0] = SVR(self.UnderMult.value, self.OverMult.value, limitDensity = True, **self.SelectedOption.value)
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.meta.shape is not None:
-                #labels=labels[:].wait()
-                blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
-
-                progress += 10/numImages
-                self.progressSignal(progress)
-
-                reqlistlabels = []
-                reqlistfeat = []
-                traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
-                for b in blocks[0]:
-
-                    request = labels[b]
-                    featurekey = list(b)
-                    featurekey[-1] = slice(None, None, None)
-                    request2 = self.inputs["Images"][i][featurekey]
-
-                    reqlistlabels.append(request)
-                    reqlistfeat.append(request2)
-
-                traceLogger.debug("Requests prepared")
-
-                numLabelBlocks = len(reqlistlabels)
-                progress_outer = [progress] # Store in list for closure access
-                if numLabelBlocks > 0:
-                    progressInc = (80-10)/numLabelBlocks/numImages
-
-                def progressNotify(req):
-                    # Note: If we wanted perfect progress reporting, we could use lock here
-                    #       to protect the progress from being incremented simultaneously.
-                    #       But that would slow things down and imperfect reporting is okay for our purposes.
-                    progress_outer[0] += progressInc/2
-                    self.progressSignal(progress_outer[0])
-
-                for ir, req in enumerate(reqlistfeat):
-                    image = req.notify_finished(progressNotify)
-
-                for ir, req in enumerate(reqlistlabels):
-                    labblock = req.notify_finished(progressNotify)
-
-                traceLogger.debug("Requests fired")
-
-                for ir, req in enumerate(reqlistlabels):
-                    traceLogger.debug("Waiting for a label block...")
-                    labblock = req.wait()
-
-                    traceLogger.debug("Waiting for an image block...")
-                    image = reqlistfeat[ir].wait()
-
-                    newImg, newDot, mapping, tags = \
-                    result[0].prepareData(image, labblock, sigma = self.Sigma.value, smooth = True, normalize = False)
-
-                    features = newImg[mapping]
-                    labbla = newDot[mapping]
-
-                    #indexes=np.nonzero(labblock[...,0].view(np.ndarray))
-                    #features=image[indexes]
-                    #labbla=labblock[indexes]
-
-                    featMatrix.append(features)
-                    labelsMatrix.append(labbla)
-                    tagsMatrix.append(tags)
-
-                progress = progress_outer[0]
-
-                traceLogger.debug("Requests processed")
-
-        self.progressSignal(80/numImages)
-
-        if len(featMatrix) == 0 or len(labelsMatrix) == 0:
-            # If there was no actual data for the random forest to train with, we return None
-            result[:] = None
-        else:
-            featMatrix=np.concatenate(featMatrix,axis=0)
-            labelsMatrix=np.concatenate(labelsMatrix,axis=0)
-            tagsMatrix=np.concatenate(tagsMatrix,axis=0)
-
-            try:
-                logger.debug("Learning with Vigra...")
-
-                pool = RequestPool()
-
-                #result[0].fitPrepared(featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value)
-                req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
-                pool.wait()
-                pool.clean()
-
-                logger.debug("Vigra finished")
-            except:
-                logger.error( "ERROR: could not learn classifier" )
-                logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
-                logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
-                raise
-            finally:
-                self.progressSignal(100)
-
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.fixClassifier and self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
 
 class OpPredictCounter(Operator):
@@ -297,7 +187,6 @@ class OpPredictCounter(Operator):
         newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
 
         res = self.inputs["Image"][newKey].wait()
-        print newKey
 
         shape=res.shape
         prod = np.prod(shape[:-1])
