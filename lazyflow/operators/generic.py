@@ -852,11 +852,27 @@ class OpDtypeView(Operator):
         self.Output.setDirty( roi )
 
 
+class OpSelectSubslot(Operator):
+    """
+    Select the Nth subslot from a multi-slot
+    """
+    SubslotIndex = InputSlot()
+    Inputs = InputSlot(level=1)
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        index = self.SubslotIndex.value
+        if len(self.Inputs) > index:
+            self.Output.connect( self.Inputs[index] )
+        else:
+            self.Output.disconnect()
+            self.Output.meta.NOTREADY = True
+    
+    def execute(self, slot, subindex, roi, result):
+        pass
 
-
-
-
-
+    def propagateDirty(self, slot, subindex, roi):
+        pass
 
 
 
