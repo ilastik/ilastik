@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui
 
 import volumina.colortables as colortables
 from volumina.api import \

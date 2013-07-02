@@ -24,7 +24,7 @@ from volumina.navigationControler import NavigationInterpreter
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController

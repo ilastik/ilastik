@@ -1,4 +1,3 @@
 from vigraWatershedViewerApplet import VigraWatershedViewerApplet
-#from vigraWatershedViewerGui import VigraWatershedViewerGui
 from opVigraWatershedViewer import OpVigraWatershedViewer
 #from vigraWatershedSerializer import VigraWatershedSerializer
