@@ -220,7 +220,8 @@ class SplitBodyCarvingWorkflow(Workflow):
         opPostprocessing.EditedRavelerBodyList.connect(opSplitBodyCarving.EditedRavelerBodyList)
         opPostprocessing.NavigationCoordinates.connect(opSplitBodyCarving.NavigationCoordinates)
 
-        self.preprocessingApplet.enableDownstream(False)
+        if not self._headless:
+            self.preprocessingApplet.enableDownstream(False)
 
         # Supervoxel export
         opSupervoxelExport = self.splitBodySupervoxelExportApplet.topLevelOperator.getLane(laneIndex)

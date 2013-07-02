@@ -1,10 +1,8 @@
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
-from ilastik.applets.labeling.labelingGui import LabelingGui
 
 from ilastik.utility import OpMultiLaneWrapper
 from opCarving import OpCarving
 from carvingSerializer import CarvingSerializer
-from carvingGui import CarvingGui
 
 class CarvingApplet(LabelingApplet):
     
@@ -41,4 +39,5 @@ class CarvingApplet(LabelingApplet):
     
     @property
     def singleLaneGuiClass(self):
+        from carvingGui import CarvingGui
         return CarvingGui
