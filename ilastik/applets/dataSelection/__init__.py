@@ -1,7 +1,1 @@
-from dataSelectionApplet import *
-import dataLaneSummaryTableView
-import dataLaneSummaryTableModel
-import dataDetailViewerWidget
-import datasetDetailedInfoTableModel
-import datasetDetailedInfoTableView
-import datasetInfoEditorWidget
+from dataSelectionApplet import OpMultiLaneDataSelectionGroup, DataSelectionApplet
