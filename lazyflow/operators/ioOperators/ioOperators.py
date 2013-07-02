@@ -4,6 +4,7 @@ import os
 import math
 import logging
 import glob
+import copy
 from itertools import product, chain
 from collections import deque
 logger = logging.getLogger(__name__)
@@ -52,49 +53,59 @@ class OpStackLoader(Operator):
 
     def setupOutputs(self):
         self.fileNameList = []
-        globStrings = self.inputs["globstring"].value
+        globStrings = self.globstring.value
 
         # Parse list into separate globstrings and combine them
         for globString in sorted(globStrings.split("//")):
             self.fileNameList += sorted(glob.glob(globString))
 
-        if len(self.fileNameList) != 0:
-            try:
-                self.info = vigra.impex.ImageInfo(self.fileNameList[0])
-            except RuntimeError:
-                raise OpStackLoader.FileOpenError(self.fileNameList[0])
+        num_files = len(self.fileNameList)
+        if len(self.fileNameList) == 0:
+            self.stack.meta.NOTREADY = True
+            return
+        try:
+            self.info = vigra.impex.ImageInfo(self.fileNameList[0])
+            self.slices_per_file = vigra.impex.numberImages(self.fileNameList[0])
+        except RuntimeError:
+            raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
-            oslot = self.outputs["stack"]
+        slice_shape = self.info.getShape()
+        X, Y, C = slice_shape
+        if self.slices_per_file == 1:
+            # If this is a stack of 2D images, we assume xy slices stacked along z
+            Z = num_files
+            shape = (X, Y, Z, C)
             
-            #input-file should have type xyc
-            #build 4D shape out of 2DShape and Filelist: xyzc
-            oslot.meta.shape = (self.info.getShape()[0],
-                                self.info.getShape()[1],
-                                len(self.fileNameList),
-                                self.info.getShape()[2])
-            oslot.meta.dtype = self.info.getDtype()
-            zAxisInfo = vigra.AxisInfo(key='z', typeFlags=vigra.AxisType.Space)
-            axistags = self.info.getAxisTags()
-            
-            #Can't insert in axistags because axistags
-            #of oslot and self.info are still connected!
-            #Manipulating them by insert would change them
-            #in self.info and shape and axistags will be mismatched.
-            
-            oslot.meta.axistags = vigra.AxisTags(axistags[0], axistags[1], zAxisInfo, axistags[2])
-            
+            axistags = copy.copy( self.info.getAxisTags() )
+            axistags.insert( 2, vigra.defaultAxistags('z')['z'] )
         else:
-            oslot = self.outputs["stack"]
-            oslot.meta.shape = None
-            oslot.meta.dtype = None
-            oslot.meta.axistags = None
+            # If it's a stack of 3D volumes, we assume xyz blocks stacked along t
+            T = num_files
+            Z = self.slices_per_file
+            shape = (T, X, Y, Z, C)
+            
+            axistags = copy.copy( self.info.getAxisTags() )
+            axistags.insert( 0, vigra.defaultAxistags('t')['t'] )
+            axistags.insert( 3, vigra.defaultAxistags('z')['z'] )
+            
+        self.stack.meta.shape = shape
+        self.stack.meta.axistags = axistags
+        self.stack.meta.dtype = self.info.getDtype()
 
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.globstring
         # Any change to the globstring means our entire output is dirty.
-        self.stack.setDirty(slice(None))
+        self.stack.setDirty()
 
     def execute(self, slot, subindex, roi, result):
+        if len(self.stack.meta.shape) == 4:
+            return self._execute_4d( roi, result )
+        elif len(self.stack.meta.shape) == 5:
+            return self._execute_5d( roi, result )
+        else:
+            assert False, "Unexpected output shape: {}".format( self.stack.meta.shape )
+        
+    def _execute_4d(self, roi, result):
         i=0
         key = roi.toSlice()
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
@@ -102,10 +113,29 @@ class OpStackLoader(Operator):
             traceLogger.debug( "Reading image: {}".format(fileName) )
             if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
                 raise RuntimeError('not all files have the same shape')
+            if self.slices_per_file != vigra.impex.numberImages(self.fileNameList[0]):
+                raise RuntimeError("Not all files have the same number of slices")
+
             # roi is in xyzc order.
             # Copy each z-slice one at a time.
             result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
             i = i+1
+        return result
+
+    def _execute_5d(self, roi, result):
+        t_start, x_start, y_start, z_start, c_start = roi.start
+        t_stop, x_stop, y_stop, z_stop, c_stop = roi.stop
+        
+        for result_t, t in enumerate( range( t_start, t_stop ) ):
+            file_name = self.fileNameList[t]
+            for result_z, z in enumerate( range( z_start, z_stop ) ):
+                img = vigra.readImage( file_name, index=z )
+                result[result_t, :, :, result_z, :] = img[ x_start:x_stop,
+                                                           y_start:y_stop,
+                                                           c_start:c_stop ]
+        return result
+        
+
 
 class OpStackWriter(Operator):
     name = "Stack File Writer"
