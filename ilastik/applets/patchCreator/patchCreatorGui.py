@@ -6,7 +6,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 import os
 import opGridCreator
 
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.utility import bind
 

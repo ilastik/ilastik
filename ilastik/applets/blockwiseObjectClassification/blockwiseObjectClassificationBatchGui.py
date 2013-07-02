@@ -4,7 +4,7 @@ from PyQt4.QtGui import QColor
 from volumina.api import ColortableLayer, LazyflowSource
 
 from ilastik.applets.batchIo.batchIoGui import BatchIoGui
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class BlockwiseObjectClassificationBatchGui( BatchIoGui ):
     """

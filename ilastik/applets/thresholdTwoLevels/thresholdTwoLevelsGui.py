@@ -8,7 +8,7 @@ from PyQt4.QtGui import QColor
 from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 

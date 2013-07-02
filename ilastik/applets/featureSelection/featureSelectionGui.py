@@ -21,7 +21,7 @@ from lazyflow.utility import Tracer, traceLogged
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import ControlCommand
 from ilastik.config import cfg as ilastik_config
 

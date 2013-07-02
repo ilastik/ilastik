@@ -3,7 +3,7 @@ from PyQt4 import uic
 
 import os
 
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 
 import logging

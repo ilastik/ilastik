@@ -7,7 +7,7 @@ import os
 from collections import defaultdict
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 

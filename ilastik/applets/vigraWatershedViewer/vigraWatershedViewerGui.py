@@ -11,7 +11,7 @@ from functools import partial
 import numpy
 
 from volumina.utility import PreferencesManager
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler
 

@@ -22,7 +22,7 @@ from ilastik.widgets.labelListModel import LabelListModel
 # ilastik
 from ilastik.utility import bind 
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 # Loggers
 logger = logging.getLogger(__name__)
