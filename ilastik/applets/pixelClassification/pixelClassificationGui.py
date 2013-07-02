@@ -190,32 +190,7 @@ class PixelClassificationGui(LabelingGui):
                 uncertaintyLayer )
             layers.append(uncertaintyLayer)
 
-        # Add each of the predictions
         labels = self.labelListData
-        for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
-            if predictionSlot.ready() and channel < len(labels):
-                ref_label = labels[channel]
-                predictsrc = LazyflowSource(predictionSlot)
-                predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=ref_label.pmapColor(),
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
-                predictLayer.opacity = 0.25
-                predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
-                predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
-
-                def setLayerColor(c, predictLayer=predictLayer):
-                    predictLayer.tintColor = c
-
-                def setPredLayerName(n, predictLayer=predictLayer):
-                    newName = "Prediction for %s" % n
-                    predictLayer.name = newName
-
-                setPredLayerName(ref_label.name)
-                ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setPredLayerName)
-                layers.append(predictLayer)
-
 
         # Add each of the segmentations
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
@@ -258,7 +233,31 @@ class PixelClassificationGui(LabelingGui):
                     #we're checking for 4 dimensions
                     self._setup_contexts(segLayer)
                 layers.append(segLayer)
+        
+        # Add each of the predictions
+        for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
+            if predictionSlot.ready() and channel < len(labels):
+                ref_label = labels[channel]
+                predictsrc = LazyflowSource(predictionSlot)
+                predictLayer = AlphaModulatedLayer( predictsrc,
+                                                    tintColor=ref_label.pmapColor(),
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0, 1.0) )
+                predictLayer.opacity = 0.25
+                predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
+                def setLayerColor(c, predictLayer=predictLayer):
+                    predictLayer.tintColor = c
+
+                def setPredLayerName(n, predictLayer=predictLayer):
+                    newName = "Prediction for %s" % n
+                    predictLayer.name = newName
+
+                setPredLayerName(ref_label.name)
+                ref_label.pmapColorChanged.connect(setLayerColor)
+                ref_label.nameChanged.connect(setPredLayerName)
+                layers.append(predictLayer)
 
         # Add the raw data last (on the bottom)
         inputDataSlot = self.topLevelOperatorView.InputImages
