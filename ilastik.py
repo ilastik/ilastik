@@ -95,7 +95,6 @@ if not parsed_args.headless:
     from PyQt4.QtGui import QApplication
 elif parsed_args.start_recording or \
      parsed_args.playback_script or \
-     parsed_args.playback_speed or \
      parsed_args.fullscreen or \
      parsed_args.exit_on_failure or \
      parsed_args.exit_on_success:
