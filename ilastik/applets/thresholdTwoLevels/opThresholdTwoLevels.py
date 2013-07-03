@@ -351,6 +351,10 @@ class OpThresholdTwoLevels(Operator):
         curIndex = self.CurOperator.value
         if curIndex==0:
             self.Output.connect(self._opTimeStacker1.Output)
+            # Blockshape is the entire block, except only 1 time slice
+            tagged_shape = self._opTimeStacker1.Output.meta.getTaggedShape()
+            tagged_shape['t'] = 1
+            self._opCache.BlockShape.setValue( tuple( tagged_shape.values() ) )
             self._opCache.Input.connect( self._opTimeStacker1.Output )
             
             self._bigRegionsStacker.Images.disconnect()
