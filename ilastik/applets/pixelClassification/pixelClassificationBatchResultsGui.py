@@ -1,6 +1,6 @@
 from PyQt4.QtGui import QColor
 from ilastik.applets.batchIo.batchIoGui import BatchIoGui
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.utility import bind
 

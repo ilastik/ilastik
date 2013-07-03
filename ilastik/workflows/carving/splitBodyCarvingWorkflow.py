@@ -32,7 +32,10 @@ SplitToolParamsSchema = \
     "raveler_labels_info" : JsonConfigParser( DatasetInfo.DatasetInfoSchema ),
     
     # Annotation (bookmarks) file
-    "raveler_bookmarks_file" : str
+    "raveler_bookmarks_file" : str,
+    
+    # Supervoxel export file (special tool for FlyEM)
+    "supervoxelized_bodies_export_path" : str
 }
 
 class SplitBodyCarvingWorkflow(Workflow):
@@ -115,50 +118,61 @@ class SplitBodyCarvingWorkflow(Workflow):
         
         # If there is already data in this project, don't touch it.
         if len(opDataSelection.DatasetGroup) > 0:
-            logger.warn("Not using cmd-line args because project appears to have data already.")
-            return
-        
-        opDataSelection.DatasetGroup.resize(1)
-        for role, data_params in [ ( self.DATA_ROLE_RAW,             self._split_tool_params.raw_data_info ),
-                                   ( self.DATA_ROLE_PIXEL_PROB,      self._split_tool_params.pixel_probabilities_info ),
-                                   ( self.DATA_ROLE_RAVELER_LABELS,  self._split_tool_params.raveler_labels_info ) ]:
-            logger.debug( "Configuring dataset for role {}".format( role ) )
-            logger.debug( "Params: {}".format(data_params) )
-            datasetInfo = DatasetInfo()
-            datasetInfo.updateFromJson( data_params )
-
-            # Check for globstring, which means we need to import the stack first.            
-            if '*' in datasetInfo.filePath:
-                totalProgress = [-100]
-                def handleStackImportProgress( progress ):
-                    if progress / 10 != totalProgress[0] / 10:
-                        totalProgress[0] = progress
-                        logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
-                serializer = self.dataSelectionApplet.dataSerializers[0]
-                serializer.progressSignal.connect( handleStackImportProgress )
-                serializer.importStackAsLocalDataset( datasetInfo )
+            logger.warn("Not changing project data, because your project appears to have data already.")
+        else:
+            opDataSelection.DatasetGroup.resize(1)
+            for role, data_params in [ ( self.DATA_ROLE_RAW,             self._split_tool_params.raw_data_info ),
+                                       ( self.DATA_ROLE_PIXEL_PROB,      self._split_tool_params.pixel_probabilities_info ),
+                                       ( self.DATA_ROLE_RAVELER_LABELS,  self._split_tool_params.raveler_labels_info ) ]:
+                logger.debug( "Configuring dataset for role {}".format( role ) )
+                logger.debug( "Params: {}".format(data_params) )
+                datasetInfo = DatasetInfo()
+                datasetInfo.updateFromJson( data_params )
+    
+                # Check for globstring, which means we need to import the stack first.            
+                if '*' in datasetInfo.filePath:
+                    totalProgress = [-100]
+                    def handleStackImportProgress( progress ):
+                        if progress / 10 != totalProgress[0] / 10:
+                            totalProgress[0] = progress
+                            logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
+                    serializer = self.dataSelectionApplet.dataSerializers[0]
+                    serializer.progressSignal.connect( handleStackImportProgress )
+                    serializer.importStackAsLocalDataset( datasetInfo )
+                
+                opDataSelection.DatasetGroup[0][ role ].setValue( datasetInfo )
+    
+    
+            # -- Split settings (annotation file)
+            opSplitBodyCarving = self.splitBodyCarvingApplet.topLevelOperator.getLane(0)
+            opSplitBodyCarving.AnnotationFilepath.setValue( self._split_tool_params.raveler_bookmarks_file )
             
-            opDataSelection.DatasetGroup[0][ role ].setValue( datasetInfo )
-
-
-        # -- Split settings (annotation file)
-        opSplitBodyCarving = self.splitBodyCarvingApplet.topLevelOperator.getLane(0)
-        opSplitBodyCarving.AnnotationFilepath.setValue( self._split_tool_params.raveler_bookmarks_file )
+            # -- Preprocessing settings
+            opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(0)
+            opPreprocessing.Sigma.setValue(1.0)
+            opPreprocessing.Filter.setValue( OpFilter.RAW )
+    
+            # Run preprocessing
+            def showProgress( progress ):
+                logger.info( "Preprocessing Progress: {}%".format( progress ) )
+            self.preprocessingApplet.progressSignal.connect( showProgress )
+            opPreprocessing.PreprocessedData[:].wait()
+            logger.info("Preprocessing Complete")
+            
+            logger.info("Saving project...")
+            projectManager.saveProject()
         
-        # -- Preprocessing settings
-        opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(0)
-        opPreprocessing.Sigma.setValue(1.0)
-        opPreprocessing.Filter.setValue( OpFilter.RAW )
-
-        # Run preprocessing
-        def showProgress( progress ):
-            logger.info( "Preprocessing Progress: {}%".format( progress ) )
-        self.preprocessingApplet.progressSignal.connect( showProgress )
-        opPreprocessing.PreprocessedData[:].wait()
-        logger.info("Preprocessing Complete")
+        # Special FlyEM supervoxelized body export:
+        if self._split_tool_params.supervoxelized_bodies_export_path is not None:
+            opSupervoxelExport = self.splitBodySupervoxelExportApplet.topLevelOperator.getLane(0)
+            def showExportProgress( progress ):
+                logger.info( "Supervoxelized Body Export Progress: {}%".format( progress ) )
+            req = opSupervoxelExport.exportFinalSupervoxels( self._split_tool_params.supervoxelized_bodies_export_path,
+                                                             'zyx',
+                                                             progressCallback=showExportProgress )
+            req.wait()
         
-        logger.info("Saving project...")
-        projectManager.saveProject()
+        logger.info("FINISHED")
 
     def connectLane(self, laneIndex):
         ## Access applet operators
@@ -206,7 +220,8 @@ class SplitBodyCarvingWorkflow(Workflow):
         opPostprocessing.EditedRavelerBodyList.connect(opSplitBodyCarving.EditedRavelerBodyList)
         opPostprocessing.NavigationCoordinates.connect(opSplitBodyCarving.NavigationCoordinates)
 
-        self.preprocessingApplet.enableDownstream(False)
+        if not self._headless:
+            self.preprocessingApplet.enableDownstream(False)
 
         # Supervoxel export
         opSupervoxelExport = self.splitBodySupervoxelExportApplet.topLevelOperator.getLane(laneIndex)

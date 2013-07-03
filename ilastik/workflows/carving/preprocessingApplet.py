@@ -1,15 +1,15 @@
-from ilastik.applets.dataSelection.dataSelectionSerializer import Ilastik05DataSelectionDeserializer
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.base.applet import ControlCommand
 
 from preprocessingSerializer import PreprocessingSerializer
-from preprocessingGui import PreprocessingGui
 from opPreprocessing import OpPreprocessing
 
 class PreprocessingApplet(StandardApplet):
 
     def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False):
         super(PreprocessingApplet, self).__init__( title, workflow)
+
+        self._workflow = workflow
         
         self._serializableItems = [ PreprocessingSerializer(self.topLevelOperator, projectFileGroupName) ]
         
@@ -21,6 +21,9 @@ class PreprocessingApplet(StandardApplet):
         self._enabledReset = False
         
     def enableReset(self,er):
+        if self._workflow._headless:
+            return
+        from preprocessingGui import PreprocessingGui
         if self._enabledReset != er:
             self._enabledReset = er
             #if GUI is not set up, _gui is an Adapter
@@ -28,6 +31,9 @@ class PreprocessingApplet(StandardApplet):
                 self._gui.enableReset(er)
     
     def enableDownstream(self,ed):
+        if self._workflow._headless:
+            return
+        from preprocessingGui import PreprocessingGui
         if ed and not self._enabledDS: # enable Downstream 
             self._enabledDS = True
             self.guiControlSignal.emit(ControlCommand.Pop)  
@@ -38,6 +44,7 @@ class PreprocessingApplet(StandardApplet):
             self._gui.enableWriteprotect(ed)
     
     def createSingleLaneGui( self , laneIndex):
+        from preprocessingGui import PreprocessingGui
         opPre = self.topLevelOperator.getLane(laneIndex)
         self._gui = PreprocessingGui( opPre )
         

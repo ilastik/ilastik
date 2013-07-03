@@ -8,7 +8,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 
 from ilastik.utility import bind
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class SplitBodySupervoxelExportGui(LayerViewerGui):
 

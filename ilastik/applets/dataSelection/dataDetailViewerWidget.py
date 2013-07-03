@@ -3,7 +3,6 @@ import os
 from PyQt4 import uic
 from PyQt4.QtGui import QWidget
 
-from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
 
 class DataDetailViewerWidget( QWidget ):

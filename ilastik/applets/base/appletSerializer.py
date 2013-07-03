@@ -467,18 +467,18 @@ class SerialClassifierSlot(SerialSlot):
         # retrained.)
         self.cache.forceValue(numpy.array(forests))
 
-class SerialSVMClassifierSlot(SerialSlot):
+class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
     def __init__(self, slot, cache, inslot=None, name=None, subname=None,
                  default=None, depends=None, selfdepends=True):
-        super(SerialSVMClassifierSlot, self).__init__(
+        super(SerialCountingSlot, self).__init__(
             slot, inslot, name, subname, default, depends, selfdepends
         )
         self.cache = cache
         if self.name is None:
             self.name = slot.name
         if self.subname is None:
-            self.subname = "Forest{:04d}"
+            self.subname = "wrapper{:04d}"
         self._bind(cache.Output)
 
     def unload(self):
@@ -517,7 +517,7 @@ class SerialSVMClassifierSlot(SerialSlot):
         """
         Have to override this to ensure that dirty is always set False.
         """
-        super(SerialSVMClassifierSlot, self).deserialize(group)
+        super(SerialCountingSlot, self).deserialize(group)
         self.dirty = False
 
     def _deserialize(self, classifierGroup, slot):
@@ -533,7 +533,7 @@ class SerialSVMClassifierSlot(SerialSlot):
         for name, forestGroup in sorted(classifierGroup.items()):
             targetname = '{0}/{1}'.format(self.name, name)
             #forests.append(vigra.learning.RandomForest(cachePath, targetname))
-            from ilastik.applets.counting3d.countingsvr import SVR
+            from ilastik.applets.counting.countingsvr import SVR
             forests.append(SVR.load(cachePath, targetname))
             
 

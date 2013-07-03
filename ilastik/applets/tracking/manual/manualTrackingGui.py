@@ -12,7 +12,7 @@ from copy import copy
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer

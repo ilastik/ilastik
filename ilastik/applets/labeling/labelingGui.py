@@ -22,7 +22,7 @@ from ilastik.widgets.labelListModel import LabelListModel
 # ilastik
 from ilastik.utility import bind 
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -99,9 +99,9 @@ class LabelingGui(LayerViewerGui):
         It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user's mouse clicks.
         """
         def __init__(self):
-            # Slot to insert labels onto
+            # Slot to insert elements onto
             self.labelInput = None # labelInput.setInSlot(xxx)
-            # Slot to read labels from
+            # Slot to read elements from
             self.labelOutput = None # labelOutput.get(roi)
             # Slot that determines which label value corresponds to erased values
             self.labelEraserValue = None # labelEraserValue.setValue(xxx)
@@ -121,7 +121,7 @@ class LabelingGui(LayerViewerGui):
         :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.
         :param topLevelOperatorView: is provided to the LayerViewerGui (the base class)
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
-        :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).
+        :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements (if provided).
         """
 
         # Do have have all the slots we need?
@@ -168,7 +168,7 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
-        _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
+        _labelControlUi.labelListModel.elementSelected.connect(self._onLabelSelected)
 
         # Connect Applet GUI to our event handlers
         if hasattr(_labelControlUi, "AddLabelButton"):
@@ -407,6 +407,8 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.eraserToolButton.setEnabled(enable)
         self._labelControlUi.brushSizeCaption.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
+    
+
 
     @traceLogged(traceLogger)
     def _onBrushSizeChange(self, index):

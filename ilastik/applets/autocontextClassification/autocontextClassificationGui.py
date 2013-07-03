@@ -19,7 +19,7 @@ from volumina.utility import ShortcutManager
 # ilastik
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
 try:

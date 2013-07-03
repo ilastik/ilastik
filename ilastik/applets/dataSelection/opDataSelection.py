@@ -138,10 +138,14 @@ class OpDataSelection(Operator):
             self._opReaders.append(opReader)
         
         # Inject metadata if the dataset info specified any.
-        if datasetInfo.normalizeDisplay is not None or datasetInfo.drange or datasetInfo.axistags is not None:
+        if datasetInfo.normalizeDisplay is not None or \
+           datasetInfo.drange is not None or \
+           datasetInfo.axistags is not None:
             metadata = {}
-            metadata['drange'] = datasetInfo.drange
-            metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
+            if datasetInfo.drange is not None:
+                metadata['drange'] = datasetInfo.drange
+            if datasetInfo.normalizeDisplay is not None:
+                metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 metadata['axistags'] = datasetInfo.axistags
             opMetadataInjector = OpMetadataInjector( parent=self )

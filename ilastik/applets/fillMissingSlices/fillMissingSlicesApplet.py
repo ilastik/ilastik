@@ -24,5 +24,5 @@ class FillMissingSlicesApplet( StandardApplet ):
     def singleLaneGuiClass(self):
         #from fillMissingSlicesGui import FillMissingSlicesGui
         #return FillMissingSlicesGui
-        from ilastik.applets.layerViewer import LayerViewerGui
+        from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
         return LayerViewerGui

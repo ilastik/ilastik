@@ -6,7 +6,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer
 
 #ilastik
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class PreprocessingViewerGui( LayerViewerGui ):
     

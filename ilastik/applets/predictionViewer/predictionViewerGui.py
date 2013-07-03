@@ -4,7 +4,7 @@ from PyQt4.QtGui import QColor
 from lazyflow.operators import OpMultiArraySlicer2
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.utility import bind
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class PredictionViewerGui( LayerViewerGui ):
     

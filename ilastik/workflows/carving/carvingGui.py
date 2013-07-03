@@ -561,7 +561,7 @@ class CarvingGui(LabelingGui):
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
-            layer = GrayscaleLayer( LazyflowSource(inputSlot) )
+            layer = GrayscaleLayer( LazyflowSource(inputSlot), direct=True )
             layer.name = "input"
             layer.visible = not rawSlot.ready()
             layer.opacity = 1.0

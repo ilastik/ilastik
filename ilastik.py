@@ -8,7 +8,6 @@ import logging
 from functools import partial
 
 # Third-party
-from PyQt4.QtGui import QApplication
 from ilastik.config import cfg as ilastik_config
 
 # Initialize logging before anything else
@@ -89,6 +88,17 @@ if parsed_args.workflow is None and parsed_args.new_project is not None:
     sys.exit(1)
 if parsed_args.project is not None and parsed_args.new_project is not None:
     sys.stderr.write("The --project and --new_project settings cannot be used together.  Choose one (or neither).")
+    sys.exit(1)
+
+if not parsed_args.headless:
+    # Only import GUI modules in non-headless mode.
+    from PyQt4.QtGui import QApplication
+elif parsed_args.start_recording or \
+     parsed_args.playback_script or \
+     parsed_args.fullscreen or \
+     parsed_args.exit_on_failure or \
+     parsed_args.exit_on_success:
+    sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
     sys.exit(1)
 
 # Auto-open project
