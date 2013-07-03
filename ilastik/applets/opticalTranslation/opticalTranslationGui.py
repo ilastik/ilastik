@@ -1,4 +1,4 @@
-from ilastik.applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
 from volumina.layer import GrayscaleLayer, ColortableLayer, RGBALayer
 import volumina.colortables as colortables
