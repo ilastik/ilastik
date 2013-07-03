@@ -1,15 +1,65 @@
+import copy
 import vigra
 import numpy
 import threading
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper, MetaDict
 from lazyflow import operators
 from lazyflow.operators import *
+
+from lazyflow.operators.valueProviders import OpOutputProvider
 
 from numpy.testing import *
 
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+class OpTrackedOutputProvider(OpOutputProvider):
+    """
+    Simply provides access to an array, but records the requests it processes.
+    """
+    def __init__(self, *args, **kwargs):
+        super( OpTrackedOutputProvider, self ).__init__( *args, **kwargs )
+        self.requested_rois = []
+        self._lock = threading.Lock()
+
+    def execute(self, slot, subindex, roi, result):
+        print "Requesting roi: {}".format(roi)
+        with self._lock:
+            self.requested_rois.append( copy.copy(roi) )
+        super( OpTrackedOutputProvider, self ).execute( slot, subindex, roi, result )
+    
+def testMinimalRequest():
+    """
+    Make sure that unneeded slices are not requested by the stacker.
+    """
+    graph = Graph()
+    ops = []
+    for op in range(10):
+        data = numpy.random.random( (100,100) )
+        data = vigra.taggedView( data, 'yx' )
+        meta = MetaDict( { 'shape' : data.shape, 
+                 'dtype' : data.dtype, 
+                 'axistags' : data.axistags } )
+        opData = OpTrackedOutputProvider( data, meta, graph=graph )
+        ops.append( opData )
+    
+    opStacker = OpMultiArrayStacker(graph=graph)    
+    opStacker.AxisFlag.setValue('z')
+    opStacker.AxisIndex.setValue(0)
+    opStacker.Images.resize( len(ops) )
+    for islot, opData in zip( opStacker.Images, ops ):
+        islot.connect( opData.Output )
+    
+    assert opStacker.Output.meta.getTaggedShape()['z'] == len(ops)
+    
+    stacked_data = opStacker.Output[3:5,:,:].wait()
+    assert stacked_data.shape == (2, 100, 100)                      
+    stacked_data = vigra.taggedView( stacked_data, 'zyx' )
+    expected_data = numpy.concatenate( (ops[3]._data[numpy.newaxis, :], ops[4]._data[numpy.newaxis, :]) )
+    expected_data = vigra.taggedView( expected_data, 'zyx' )
+    assert (stacked_data == expected_data).all(), "Stacker returned the wrong data"
+    for index, op in enumerate(ops):
+        assert len(op.requested_rois) == 0 or index in range(3,5), "Stacker requested more data than it needed."
 
 def testFullAllocate():
 
@@ -131,6 +181,11 @@ def testPartialAllocate():
     print newdata.shape, substack.shape
     assert_array_equal(newdata, substack.view(numpy.ndarray))
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
+    import sys
     import nose
-    nose.run(defaultTest=__file__)
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)
