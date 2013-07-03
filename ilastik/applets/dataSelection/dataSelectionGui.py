@@ -414,27 +414,38 @@ class DataSelectionGui(QWidget):
         opTop = self.topLevelOperator
         originalSize = len(opTop.DatasetGroup)
             
-        try:
-            if len( opTop.DatasetGroup ) < endingLane+1:
-                opTop.DatasetGroup.resize( endingLane+1 )
-    
-            for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
+        if len( opTop.DatasetGroup ) < endingLane+1:
+            opTop.DatasetGroup.resize( endingLane+1 )
+        for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
+            try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
-        except DatasetConstraintError as ex:
-            self.handleDatasetConstraintError(info.filePath, ex)
-            opTop.DatasetGroup.resize( originalSize )
-        except:
-            QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
-            opTop.DatasetGroup.resize( originalSize )
-            raise
+            except DatasetConstraintError as ex:
+                # Give the user a chance to fix the problem
+                if not self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex):
+                    opTop.DatasetGroup.resize( originalSize )
+                    break
+            except:
+                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
+                opTop.DatasetGroup.resize( originalSize )
+                raise
         self.updateInternalPathVisiblity()
 
-    def handleDatasetConstraintError(self, filename, ex):
-            msg = "Can't use dataset:\n\n" + \
-                  filename + "\n\n" + \
-                  "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
-                  ex.message
-            QMessageBox.critical( self, "Unacceptable Dataset", msg )
+    @threadRouted
+    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex):
+        msg = "Can't use default properties for dataset:\n\n" + \
+              filename + "\n\n" + \
+              "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
+              ex.message + "\n\n" + \
+              "Please enter valid dataset properties to continue."
+        QMessageBox.warning( self, "Dataset Needs Correction", msg )
+        
+        return self.repairDatasetInfo( info, roleIndex, laneIndex )
+
+    def repairDatasetInfo(self, info, roleIndex, laneIndex):
+        defaultInfos = {}
+        defaultInfos[laneIndex] = info
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos)
+        return ( editorDlg.exec_() == QDialog.Accepted )
 
     def getPossibleInternalPaths(self, absPath):
         datasetNames = []
@@ -484,8 +495,13 @@ class DataSelectionGui(QWidget):
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
                 self.serializer.importStackAsLocalDataset( info )
-                self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
-            
+                try:
+                    self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
+                except DatasetConstraintError as ex:
+                    # Give the user a chance to repair the problem.
+                    filename = files[0] + "\n...\n" + files[-1]
+                    if not self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex ):
+                        self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             finally:
                 self.guiControlSignal.emit( ControlCommand.Pop )
 
@@ -495,18 +511,13 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
-        if isinstance(exc, DatasetConstraintError):
-            filename = files[0] + "\n...\n" + files[-1]
-            self.handleDatasetConstraintError( filename, exc )
-        else:
-            import traceback
-            traceback.print_tb(exc_info[2])
-            msg = "Failed to load stack due to the following error:\n{}".format( exc )
-            msg += "Attempted stack files were:"
-            for f in files:
-                msg += f + "\n"
-            QMessageBox.critical(self, "Failed to load image stack", msg)
-        
+        import traceback
+        traceback.print_tb(exc_info[2])
+        msg = "Failed to load stack due to the following error:\n{}".format( exc )
+        msg += "Attempted stack files were:"
+        for f in files:
+            msg += f + "\n"
+        QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 
     def getMass(self, defaultDirectory):

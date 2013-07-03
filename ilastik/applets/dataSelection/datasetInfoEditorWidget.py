@@ -22,13 +22,32 @@ class StorageLocation(object):
     NumOptions = 3
 
 class DatasetInfoEditorWidget(QDialog):
+    """
+    This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     
-    def __init__(self, parent, topLevelOperator, roleIndex, laneIndexes):
+    It starts by copying the OpDataSelection operators for all selected lanes.  These temporary operators 
+    are NOT connected to the rest of the graph, so we are free to change their settings in 
+    response to user actions while this dialog is open.
+    
+    When the user clicks OK, the slot values from the temporary operators are copied to the 'real' 
+    OpDataSelection operators, which are connected to the rest of the graph.  If a downstream applet 
+    rejects one of the new settings, we'll see the exception it threw, and the dialog will not 
+    accept the user's new settings.
+    """
+    def __init__(self, parent, topLevelOperator, roleIndex, laneIndexes, defaultInfos={}):
+        """
+        :param topLevelOperator: The applet's OpMultiLaneDataSelectionGroup instance
+        :param roleIndex: The role of the dataset(s) we're editing
+        :param laneIndexes: A list of lanes this dialog will apply settings to. (Same role for each lane.)
+        :param defaultInfos: If the dialog should be initialized with the info for a dataset that hasn't 
+                             been applied to the top-level operator yet, add that dataset to this dict.
+                             This is useful for 'repairing' dataset properties that prevented the dataset 
+                             from being successfully applied to the original operator.
+        """
         super( DatasetInfoEditorWidget, self ).__init__(parent)
         self._op = topLevelOperator
         self._roleIndex = roleIndex
         self._laneIndexes = laneIndexes
-
         assert len(laneIndexes) > 0
 
         # We instantiate our own temporary operator for every input,
@@ -37,14 +56,19 @@ class DatasetInfoEditorWidget(QDialog):
         # operator until the user hits "OK".
         self.tempOps = {}
         for laneIndex in laneIndexes:
+            tmpOp = OpDataSelection(graph=topLevelOperator.graph)
             origOp = self._op.innerOperators[laneIndex]._opDatasets[roleIndex]
-            tmpOp = OpDataSelection(graph=origOp.graph)
-            tmpOp.ProjectFile.setValue( origOp.ProjectFile.value )
-            tmpOp.ProjectDataGroup.setValue( origOp.ProjectDataGroup.value )
-            tmpOp.WorkingDirectory.setValue( origOp.WorkingDirectory.value )
-            # Assumes that the original operator already has a dataset info.
-            assert origOp.Dataset.ready(), "Can't edit dataset info for lanes that aren't initialized yet."
-            tmpOp.Dataset.setValue( copy.copy( origOp.Dataset.value ) )
+            
+            if laneIndex in defaultInfos:
+                tmpOp.Dataset.setValue( copy.copy(defaultInfos[laneIndex]) )
+            else:
+                # Assumes that the original operator already has a dataset info.
+                assert origOp.Dataset.ready(), "Can't edit dataset info for lanes that aren't initialized yet."
+                tmpOp.Dataset.setValue( copy.copy( origOp.Dataset.value ) )
+
+            tmpOp.ProjectFile.setValue( topLevelOperator.ProjectFile.value )
+            tmpOp.ProjectDataGroup.setValue( topLevelOperator.ProjectDataGroup.value )
+            tmpOp.WorkingDirectory.setValue( topLevelOperator.WorkingDirectory.value )
             
             self.tempOps[laneIndex] = tmpOp
                 
@@ -161,7 +185,10 @@ class DatasetInfoEditorWidget(QDialog):
         originalInfos = {}
         for laneIndex in self._laneIndexes:
             realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-            originalInfos[laneIndex] = copy.copy( realSlot.value )
+            if realSlot.ready():
+                originalInfos[laneIndex] = copy.copy( realSlot.value )
+            else:
+                originalInfos[laneIndex] = None
 
         currentLane = self._laneIndexes[0]
         try:
@@ -186,7 +213,8 @@ class DatasetInfoEditorWidget(QDialog):
             # Revert everything back to the previous state
             for laneIndex, info in originalInfos.items():
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-                realSlot.setValue( info )
+                if realSlot is not None:
+                    realSlot.setValue( info )
                 if laneIndex == currentLane:
                     # Only need to revert the lanes we actually changed.
                     # Everything else wasn't touched
@@ -533,7 +561,8 @@ class DatasetInfoEditorWidget(QDialog):
         # If any dataset is either (1) not hdf5 or (2) project-internal, then we can't change the internal path.
         h5Exts = ['.ilp', '.h5', '.hdf5']
         for laneIndex in self._laneIndexes:
-            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            tmpOp = self.tempOps[laneIndex]
+            datasetInfo = tmpOp.Dataset.value
             externalPath = PathComponents( datasetInfo.filePath ).externalPath
             if os.path.splitext(externalPath)[1] not in h5Exts \
             or datasetInfo.location == DatasetInfo.Location.ProjectInternal:
@@ -546,10 +575,11 @@ class DatasetInfoEditorWidget(QDialog):
         commonInternalPaths = None
         
         for laneIndex in self._laneIndexes:
-            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            tmpOp = self.tempOps[laneIndex]
+            datasetInfo = tmpOp.Dataset.value
             
             externalPath = PathComponents( datasetInfo.filePath ).externalPath
-            absPath, relPath = getPathVariants( externalPath, self._op.WorkingDirectory.value )
+            absPath, relPath = getPathVariants( externalPath, tmpOp.WorkingDirectory.value )
             internalPaths = set( self._getPossibleInternalPaths(absPath) )
             
             if commonInternalPaths is None:
@@ -601,7 +631,8 @@ class DatasetInfoEditorWidget(QDialog):
         internalPath = None
         
         for laneIndex in self._laneIndexes:
-            datasetInfo = self._op.DatasetGroup[laneIndex][self._roleIndex].value
+            tmpOp = self.tempOps[laneIndex]
+            datasetInfo = tmpOp.Dataset.value
             
             nextPath = PathComponents( datasetInfo.filePath ).internalPath
             if internalPath is None:
@@ -654,7 +685,6 @@ class DatasetInfoEditorWidget(QDialog):
             return False
         
     def _initStorageCombo(self):
-        
         # If there's only one dataset, show the path in the combo
         showpaths = False
         if len( self._laneIndexes ) == 1:
