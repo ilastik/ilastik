@@ -8,6 +8,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.objectExtraction import config
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class ConservationTrackingWorkflow( Workflow ):
     workflowName = "Tracking Workflow (Conservation Tracking)"
@@ -72,11 +73,9 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
-        op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect(opData.ImageGroup[0])
-        
-        op5Predictions = Op5ifyer( parent=self )
-        op5Predictions.input.connect( opData.ImageGroup[1] )
+        op5Raw = OpReorderAxes(parent=self)
+        op5Raw.AxisOrder.setValue("txyzc")
+        op5Raw.Input.connect(opData.ImageGroup[0])
                
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
@@ -84,17 +83,18 @@ class ConservationTrackingWorkflow( Workflow ):
         
         # Use Op5ifyers for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding
-        op5Binary = Op5ifyer( parent=self )                
-        op5Binary.input.connect( opTwoLevelThreshold.CachedOutput )
+        op5Binary = OpReorderAxes( parent=self )         
+        op5Binary.AxisOrder.setValue("txyzc")
+        op5Binary.Input.connect( opTwoLevelThreshold.CachedOutput )
         
-        opOptTranslation.RawImage.connect( op5Raw.output )
-        opOptTranslation.BinaryImage.connect( op5Binary.output )
+        opOptTranslation.RawImage.connect( op5Raw.Output )
+        opOptTranslation.BinaryImage.connect( op5Binary.Output )
         
         ## Connect operators ##        
         features = {}
         features[config.features_vigra_name] = { name: {} for name in config.vigra_features }                
-        opObjExtraction.RawImage.connect( op5Raw.output )
-        opObjExtraction.BinaryImage.connect( op5Binary.output )
+        opObjExtraction.RawImage.connect( op5Raw.Output )
+        opObjExtraction.BinaryImage.connect( op5Binary.Output )
         opObjExtraction.TranslationVectors.connect( opOptTranslation.TranslationVectors )
         opObjExtraction.Features.setValue(features)        
         
@@ -102,8 +102,8 @@ class ConservationTrackingWorkflow( Workflow ):
         selected_features_div = {}
         for plugin_name in config.selected_features_division_detection.keys():
             selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division_detection[plugin_name] }
-        opDivDetection.BinaryImages.connect( op5Binary.output )
-        opDivDetection.RawImages.connect( op5Raw.output )        
+        opDivDetection.BinaryImages.connect( op5Binary.Output )
+        opDivDetection.RawImages.connect( op5Raw.Output )        
         opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
@@ -114,8 +114,8 @@ class ConservationTrackingWorkflow( Workflow ):
         selected_features_cell = {}
         for plugin_name in config.selected_features_cell_classification.keys():
             selected_features_cell[plugin_name] = { name: {} for name in config.selected_features_cell_classification[plugin_name] }
-        opCellClassification.BinaryImages.connect( op5Binary.output )
-        opCellClassification.RawImages.connect( op5Raw.output )
+        opCellClassification.BinaryImages.connect( op5Binary.Output )
+        opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
@@ -123,7 +123,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification.SelectedFeatures.setValue( selected_features_cell )        
 #        opCellClassification.LabelInputs.setValue([ str(i) + ' Objects' for i in range(0,config.num_max_objects) ] )
         
-        opTracking.RawImage.connect( op5Raw.output )
+        opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opDivDetection.ObjectFeatures )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
