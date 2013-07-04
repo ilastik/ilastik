@@ -54,6 +54,8 @@ class OpTrackingFeatureExtraction(OpObjectExtraction):
         assert False, "Shouldn't get here."
 
     def propagateDirty(self, inputSlot, subindex, roi):
+        super(OpTrackingFeatureExtraction,self).propagateDirty(inputSlot,subindex,roi)
+        
         if inputSlot is self.TranslationVectors:
             self.RegionFeatures.setDirty(slice(None))        
 
@@ -102,7 +104,7 @@ class OpCellFeatures(Operator):
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.TranslationVectors:
-            self.RegionFeaturesExtended.setDirty([])
+            self.RegionFeaturesExtended.setDirty(roi)
                         
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNames:
@@ -118,14 +120,21 @@ class OpCellFeatures(Operator):
             
             t = roi.start[0]
             
+            feats_cur = {}
+            if t not in self._cache and not self.fixed:
+                feats_cur = self.RegionFeaturesVigra.get(SubRegion(roi.slot, [t], [t+1]) ).wait()[0]
+                
             if t in self._cache:
                 # FIXME: if features have changed, they may not be in the cache.
                 feats_at = self._cache[t]
             elif self.fixed:
                 feats_at = dict((f, numpy.asarray([[]])) for f in self.features)
-            else:
-                print 'Extracting Division Features at t=%d' % t
-                
+            elif config.features_cell_classification_name in feats_cur.keys() \
+                and config.features_division_detection_name in feats_cur.keys():                
+
+                self._cache[t] = feats_cur  
+                feats_at = feats_cur
+            else:                
                 feats_at = {}
                 lshape = self.LabelImage.meta.shape                
                 
@@ -145,7 +154,8 @@ class OpCellFeatures(Operator):
                 feats_vigra_cur = region_feats_cur[config.features_vigra_name]
                 feats_cell_class = {}
                 feats_cell_div = {}
-                                
+                print 'Extracting Division Features at t=%d' % t
+                               
                 if self.with_corrected_features:
                     name = 'RegionCenter'+self.transl_corr_suffix
                     feats_vigra_cur[name] = numpy.zeros(feats_vigra_cur['RegionCenter'].shape)
@@ -234,13 +244,11 @@ class OpCellFeatures(Operator):
     
                 self._cache[t] = feats_at                
                 self.RegionFeaturesExtended._sig_value_changed()
-                
+                self.ComputedFeatureNames.setDirty([])
                 
             result[0] = feats_at
         
-        self.ComputedFeatureNames.setDirty([])
-        
-        return result     
+            return result     
     
     @staticmethod
     def gmm_num_parameters(gmm):
