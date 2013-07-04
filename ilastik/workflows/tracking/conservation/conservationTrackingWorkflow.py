@@ -22,7 +22,7 @@ class ConservationTrackingWorkflow( Workflow ):
                                                        "Input Data", 
                                                        "Input Data", 
                                                        batchDataGui=False,
-                                                       force5d=False)
+                                                       force5d=True)
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
