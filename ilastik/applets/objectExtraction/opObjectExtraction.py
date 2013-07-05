@@ -305,11 +305,11 @@ class OpRegionFeatures3d(Operator):
                 # include background. we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
-                try:
+                if key == 'Coord<ValueList>' or key == 'Coord<ValueList >':
+                    print 'Do not convert to float32 for Coord<ValueList>'
+                else:
                     value = value.astype(np.float32) #turn Nones into numpy.NaNs
                     assert value.dtype == np.float32
-                except:
-                    print 'FIXME: OpObjectExtraction:_extract: not converting values from Nones to numpy.NaNs for feature', key
                 
                 assert value.shape[0] == nobj
                 assert value.ndim == 2
