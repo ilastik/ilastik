@@ -33,7 +33,7 @@ class OpInterpMissingData(Operator):
     InputVolume = InputSlot()
     InputSearchDepth = InputSlot(value=3)
     PatchSize = InputSlot(value=128)
-    HaloSize = InputSlot(value=0)
+    HaloSize = InputSlot(value=30)
     DetectionMethod = InputSlot(value='svm')
     InterpolationMethod = InputSlot(value='cubic')
       
@@ -451,8 +451,8 @@ class OpDetectMissing(Operator):
     '''
     
     InputVolume = InputSlot()
-    PatchSize = InputSlot(value=32)
-    HaloSize = InputSlot(value=32)
+    PatchSize = InputSlot(value=128)
+    HaloSize = InputSlot(value=30)
     DetectionMethod = InputSlot(value='classic')
     NHistogramBins = InputSlot(value=30)
     
@@ -573,7 +573,7 @@ class OpDetectMissing(Operator):
             patches, positions = patchify(data[z,:,:].view(np.ndarray), (patchSize, patchSize), (haloSize,haloSize), (0,0), data.shape[1:])
             # walk over patches
             for patch, pos in zip(patches, positions):
-                (hist, _) = np.histogram(patch, bins=self.NHistogramBins.value, range=self._inputRange)
+                (hist, _) = np.histogram(patch, bins=self.NHistogramBins.value, range=self._inputRange, density=True)
                 if self._predict((hist,), nPatchElements)[0] > 0: 
                     #patch is classified as missing
                     ystart = pos[0]
@@ -590,6 +590,7 @@ class OpDetectMissing(Operator):
         trains with samples drawn from slots TrainingVolume and TrainingLabels
         (retrains only if patch size is currently untrained or force is True)
         '''
+        
         patchSize = self.PatchSize.value + self.HaloSize.value
         
         # return early if unneccessary
@@ -615,7 +616,10 @@ class OpDetectMissing(Operator):
             
             choice = np.random.permutation(len(ind_x))
             
-            for z,y,x in zip(ind_z[choice], ind_y[choice],ind_x[choice]):
+            for i, z,y,x in zip(range(len(choice)), ind_z[choice], ind_y[choice],ind_x[choice]):
+                if i%50000==0:
+                    logger.debug("extracing histograms, {}/{} done".format(i, len(choice)))
+                
                 if len(out)>=nPatches:
                     break
                 ymin = y - patchSize//2
@@ -625,16 +629,48 @@ class OpDetectMissing(Operator):
                 
                 if not (xmin < 0 or ymin < 0 or xmax > vol.shape[2] or ymax > vol.shape[1]):
                     # valid patch, add it to the output
-                    (hist, _) = np.histogram(vol[z,ymin:ymax,xmin:xmax], bins=self.NHistogramBins.value, range=self._inputRange)
+                    (hist, _) = np.histogram(vol[z,ymin:ymax,xmin:xmax], bins=self.NHistogramBins.value, range=self._inputRange, \
+                                             density = True)
                     out.append(hist)
                 
             return out
         #END subroutine
         
-        #FIXME make parallel
-        bad = _extractHistograms(vol, labels == 1, nPatches = np.inf)
-        good = _extractHistograms(vol, labels == 2, nPatches = np.inf)
+        histograms = [0,0]
+        logger.debug("starting extraction!")
+        def partFun(i):
+            if i==0:
+                histograms[i] = _extractHistograms(vol, labels == 2, nPatches = np.inf)
+            else:
+                histograms[i] = _extractHistograms(vol, labels == 1, nPatches = np.inf)
         
+        pool = RequestPool()
+
+        for i in range(len(histograms)):
+            req = Request(partial(partFun, i))
+            pool.add(req)
+        
+        pool.wait()
+        pool.clean()
+            
+        bad = histograms[1]
+        good = histograms[0]
+        '''
+        with open("/home/akreshuk/temp_histo_storage.pkl", "w") as f:
+            pickle.dump(histograms, f)
+        '''
+        '''
+        histograms = []
+        with open("/home/akreshuk/temp_histo_storage.pkl") as f:
+            histograms = pickle.load(f)
+        
+        if len(histograms)==0:
+            logger.debug("not loaded :(")
+            return
+        
+        bad = histograms[1]
+        good = histograms[0]
+        '''
         if len(bad) < self.NTrainingSamples.value or len(good) < self.NTrainingSamples.value:
             logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(bad), len(good), self.NTrainingSamples.value))
             return
@@ -655,7 +691,8 @@ class OpDetectMissing(Operator):
         n = (self.PatchSize.value + self.HaloSize.value)**2
         
         #FIXME arbitrary
-        maxSamples = 2000
+        firstSamples = 1000
+        maxSamples = 3000
         
         good = np.asarray(good)
         bad = np.asarray(bad)
@@ -666,8 +703,8 @@ class OpDetectMissing(Operator):
         #both = set(range(len(good)))
         
         # initial choice C_1
-        choiceGood = set(np.random.permutation(len(good))[0:nSamples])
-        choiceBad = set(np.random.permutation(len(bad))[0:nSamples])
+        choiceGood = np.random.permutation(len(good))[0:nSamples]
+        choiceBad = np.random.permutation(len(bad))[0:nSamples]
         choice = [choiceGood, choiceBad]
         G_t = good[list(choiceGood)]
         B_t = bad[list(choiceBad)]
@@ -680,18 +717,28 @@ class OpDetectMissing(Operator):
             
             pred = self._predict(x, n)
             
-            hard = set([i for i in range(len(pred)) if pred[i]!=ind])
-                
-            temp = len(choiceGood); tempBad = len(choiceBad)
-            choice |= hard
-
-            C = x[list(choice)]
+            #hard = set([i for i in range(len(pred)) if pred[i]!=ind])
+            hard = np.where(pred!=ind)[0]
+            logger.debug("currently {} hard examples with ind {}".format(len(hard), ind))
             
+            if len(hard) >maxSamples-firstSamples:
+                logger.debug("Cutting training set, too many samples.")
+                hard = np.random.permutation(hard)[0:maxSamples-firstSamples]
+                
+            
+                
+            #choice |= hard
+            choice = np.union1d(choice[0:firstSamples], hard)
+
+            C = x[choice]
+            logger.debug("expanded set to {} elements".format(len(C)))
+            '''
             if len(C) > maxSamples: 
                 logger.debug("Cutting training set, too many samples.")
-                C = C[np.random.permutation(len(C))[0:maxSamples]]
-            
-            return (C,choice,hard<=choice)
+                choice = np.random.permutation(choice)[0:maxSamples]
+                C = x[choice]
+            '''
+            return (C,choice,len(hard)==0)
         ### END SUBROUTINE ###
         
         ### BEGIN PARALLELIZATION FUNCTION ###
@@ -706,7 +753,7 @@ class OpDetectMissing(Operator):
         while True:
             k = k+1
 
-            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k, len(G_t), len(B_t)))
+            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k, len(S_t[0]), len(S_t[1])))
             self._fit(S_t[0], S_t[1], n)
             
             pool = RequestPool()
@@ -758,7 +805,7 @@ class OpDetectMissing(Operator):
         
         pool = RequestPool()
 
-        chunkSize = 10000 #FIXME magic number??
+        chunkSize = 1000 #FIXME magic number??
         nChunks = len(X)/chunkSize + (1 if len(X) % chunkSize > 0 else 0)
         
         s = [slice(k*chunkSize,min((k+1)*chunkSize,len(X))) for k in range(nChunks)]
@@ -832,7 +879,7 @@ if __name__ == "__main__":
     labelFile = argv[2]
     
     patchSize = 128
-    haloSize = 0
+    haloSize = 30
     
     logging.basicConfig()
     logger.setLevel(logging.DEBUG)
@@ -853,7 +900,7 @@ if __name__ == "__main__":
     
     # labels: {0: unknown, 1: missing, 2: good}
     op.TrainingLabels.setValue(labels)
-    op.NTrainingSamples.setValue(500)
+    op.NTrainingSamples.setValue(1000)
     
     
     op.InputVolume.setValue(data)
