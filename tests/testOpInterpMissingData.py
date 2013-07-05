@@ -338,11 +338,12 @@ class TestInterpMissingData(unittest.TestCase):
         self.op.InputSearchDepth.setValue(0)
         
         interpolationMethod = 'linear'
-        self.op.interpolationMethod = interpolationMethod
+        self.op.InterpolationMethod.setValue(interpolationMethod)
 
         for desc in _testDescriptions:
             (volume, _, expected) = _getTestVolume(desc, interpolationMethod)
             self.op.InputVolume.setValue( volume )
+            self.op.PatchSize.setValue( volume.shape[0] )
             assert_array_almost_equal(self.op.Output[:].wait().view(np.ndarray), expected.view(np.ndarray), decimal=2, err_msg="method='{}', test='{}'".format(interpolationMethod, desc))
         
     
@@ -350,48 +351,54 @@ class TestInterpMissingData(unittest.TestCase):
         self.op.InputSearchDepth.setValue(0)
         
         interpolationMethod = 'cubic'
-        self.op.interpolationMethod = interpolationMethod
-
+        self.op.InterpolationMethod.setValue(interpolationMethod)
+        
         for desc in _testDescriptions:
             (volume, _, expected) = _getTestVolume(desc, interpolationMethod)
             self.op.InputVolume.setValue( volume )
+            self.op.PatchSize.setValue( volume.shape[0] )
             assert_array_almost_equal(self.op.Output[:].wait().view(np.ndarray), expected.view(np.ndarray), decimal=2, err_msg="method='{}', test='{}'".format(interpolationMethod, desc))
 
     def testSwappedAxesLinear(self):
         self.op.InputSearchDepth.setValue(0)
         
         interpolationMethod = 'linear'
-        self.op.interpolationMethod = interpolationMethod
+        self.op.InterpolationMethod.setValue(interpolationMethod)
 
         for desc in _testDescriptions:
             (volume, _, expected) = _getTestVolume(desc, interpolationMethod)
+            self.op.PatchSize.setValue( volume.shape[0] )
             volume = volume.transpose()
             expected = expected.transpose()
             self.op.InputVolume.setValue( volume )
+            
             assert_array_almost_equal(self.op.Output[:].wait().view(np.ndarray), expected.view(np.ndarray), decimal=2, err_msg="method='{}', test='{}'".format(interpolationMethod, desc))
     
     def testSwappedAxesCubic(self):
         self.op.InputSearchDepth.setValue(0)
         
         interpolationMethod = 'cubic'
-        self.op.interpolationMethod = interpolationMethod
+        self.op.InterpolationMethod.setValue(interpolationMethod)
 
         for desc in _testDescriptions:
             (volume, _, expected) = _getTestVolume(desc, interpolationMethod)
+            self.op.PatchSize.setValue( volume.shape[0] )
             volume = volume.transpose()
             expected = expected.transpose()
             self.op.InputVolume.setValue( volume )
+            
             assert_array_almost_equal(self.op.Output[:].wait().view(np.ndarray), expected.view(np.ndarray), decimal=2, err_msg="method='{}', test='{}'".format(interpolationMethod, desc))
     
     def testDepthSearch(self):
         #TODO extend
         nz = 30
         interpolationMethod = 'cubic'
-        self.op.interpolationMethod = interpolationMethod
+        self.op.InterpolationMethod.setValue(interpolationMethod)
         (vol, _, exp) = _singleMissingLayer(layer=nz,method=interpolationMethod)
 
         self.op.InputVolume.setValue( vol )
         self.op.InputSearchDepth.setValue(15)
+        self.op.PatchSize.setValue( vol.shape[0] )
         
         result = self.op.Output[:,:,nz].wait()
         
@@ -400,13 +407,14 @@ class TestInterpMissingData(unittest.TestCase):
     def testRoi(self):
         nz = 30
         interpolationMethod = 'cubic'
-        self.op.interpolationMethod = interpolationMethod
+        self.op.InterpolationMethod.setValue(interpolationMethod)
         (vol, _, exp) = _singleMissingLayer(layer=nz,method=interpolationMethod)
         (vol2,_,_) = _singleMissingLayer(layer=nz+1,method=interpolationMethod)
         vol = np.sqrt(vol*vol2)
 
         self.op.InputVolume.setValue( vol )
         self.op.InputSearchDepth.setValue(5)
+        self.op.PatchSize.setValue( vol.shape[0] )
         
         result = self.op.Output[:,:,nz+1].wait()
         
