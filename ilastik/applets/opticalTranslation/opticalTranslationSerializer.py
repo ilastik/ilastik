@@ -34,7 +34,10 @@ class SerialTranslationVectorsSlot(SerialSlot):
             op._processedTimeSteps = ts            
             
             dest = op._mem_h5
-            del dest['TranslationVectors']
+            try:
+                del dest['TranslationVectors']
+            except:
+                pass
             dest.copy(mygroup['data'], dest, name='TranslationVectors')
         self.dirty = False
         
