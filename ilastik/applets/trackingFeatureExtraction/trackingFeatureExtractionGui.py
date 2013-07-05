@@ -5,6 +5,7 @@ import logging
 from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui,\
     ObjectExtractionGuiNonInteractive
 from lazyflow.rtype import SubRegion
+from ilastik.applets.objectExtraction import config
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -56,13 +57,21 @@ class TrackingFeatureExtractionGui( ObjectExtractionGui ):
                 req.wait()
 
         self.topLevelOperatorView._opCellFeats.fixed = True
-        progress.setValue(2*maxt)
+        progress.setValue(2*maxt)        
         print 'Division Feature Extraction: done.'
         
         
         
         self.topLevelOperatorView.ObjectCenterImage.setDirty(SubRegion(self.topLevelOperatorView.ObjectCenterImage))
-
+        
+        # Add the additionally computed features (specified in the config file rather than
+        # through the GUI dialog) to the Features slot 
+        features = self.topLevelOperatorView.Features([]).wait()
+        features[config.features_division_detection_name] = \
+            { name: {} for name in config.selected_features_division_detection[config.features_division_detection_name] }
+        features[config.features_cell_classification_name] = \
+            { name: {} for name in config.selected_features_cell_classification[config.features_cell_classification_name] }
+        self.topLevelOperatorView.Features.setValue(features)
         print 'Object Extraction: done.'
         
         
