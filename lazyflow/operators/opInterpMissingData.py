@@ -392,7 +392,6 @@ class OpInterpolate(Operator):
 ############################
 ############################
 
-from lazyflow.operators.opPatchCreator import patchify
 
 try:
     from sklearn.svm import SVC
@@ -419,6 +418,32 @@ class PseudoSVC(object):
             out[k] = 1 if np.all(patch[1:] == 0) else 0
         return out
             
+
+def _patchify(data, patchSize, haloSize):
+    '''
+    data must be 2D y-x
+    
+    returns (patches, slices)
+    '''
+    
+    patches = []
+    slices = []
+    nPatchesX = data.shape[1]/patchSize + (1 if data.shape[1]%patchSize > 0 else 0)
+    nPatchesY = data.shape[0]/patchSize + (1 if data.shape[0]%patchSize > 0 else 0)
+    
+    for y in range(nPatchesY):
+        for x in range(nPatchesX):
+            
+            left = max(x*patchSize - haloSize, 0)
+            top = max(y*patchSize - haloSize, 0)
+            right = min((x+1)*patchSize + haloSize, data.shape[1])
+            bottom = min((y+1)*patchSize + haloSize, data.shape[0])
+            patches.append(data[top:bottom, left:right])
+            slices.append( (slice(patchSize*y, min( patchSize*(y+1), data.shape[0] )), \
+                slice(patchSize*x, min( patchSize*(x+1), data.shape[1] ))) )
+            
+    return (patches, slices)
+    
 
 def _histogramIntersectionKernel(X,Y):
     '''
@@ -558,11 +583,11 @@ class OpDetectMissing(Operator):
         if haloSize is None or haloSize<0:
             raise ValueError("HaloSize must be a non-negative integer")
         
-        if np.any(patchSize>np.asarray(data.shape[1:])):
-            logger.debug("Ignoring small region (shape={})".format(dict(zip([k.key for k in data.axistags], data.shape))))
-            maxZ=0
-        else:
-            maxZ = data.shape[0]
+        #if np.any(patchSize>np.asarray(data.shape[1:])):
+            #logger.debug("Ignoring small region (shape={})".format(dict(zip([k.key for k in data.axistags], data.shape))))
+            #maxZ=0
+        #else:
+        maxZ = data.shape[0]
             
         #from pdb import set_trace;set_trace()
         # pixels in patch
@@ -570,17 +595,19 @@ class OpDetectMissing(Operator):
             
         # walk over slices
         for z in range(maxZ):
-            patches, positions = patchify(data[z,:,:].view(np.ndarray), (patchSize, patchSize), (haloSize,haloSize), (0,0), data.shape[1:])
+            patches, slices = _patchify(data[z,:,:], patchSize, haloSize)
+            hists = []
             # walk over patches
-            for patch, pos in zip(patches, positions):
+            for patch in patches:
                 (hist, _) = np.histogram(patch, bins=self.NHistogramBins.value, range=self._inputRange, density=True)
-                if self._predict((hist,), nPatchElements)[0] > 0: 
+                hists.append(hist)
+            
+            pred = self._predict(hists, nPatchElements)
+            
+            for i, p in enumerate(pred):
+                if p > 0: 
                     #patch is classified as missing
-                    ystart = pos[0]
-                    ystop = min(ystart+patchSize, data.shape[1])
-                    xstart = pos[1]
-                    xstop = min(xstart+patchSize, data.shape[2])
-                    result[z,ystart:ystop,xstart:xstop] = 1
+                    result[z, slices[i][0], slices[i][1]] = 1
          
         return result
         
@@ -749,9 +776,7 @@ class OpDetectMissing(Operator):
             finished[i] = newFinished
         ### END PARALLELIZATION FUNCTION ###
         
-        k = 0
-        while True:
-            k = k+1
+        for k in range(1): #just count iterations
 
             logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k, len(S_t[0]), len(S_t[1])))
             self._fit(S_t[0], S_t[1], n)
@@ -765,7 +790,7 @@ class OpDetectMissing(Operator):
             pool.wait()
             pool.clean()
             
-            if np.all(finished) or k>4: #FIXME arbitrary magic number
+            if np.all(finished): #FIXME arbitrary magic number
                 #already have all hard examples in training set
                 break
             
