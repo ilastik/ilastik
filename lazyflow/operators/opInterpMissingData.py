@@ -677,6 +677,7 @@ class OpDetectMissing(Operator):
         
         ### BEGIN UNSORTED MESS OF TEMPORARY STORAGE ### 
         #TODO clean-up
+        '''
         raise NotImplementedError("clean this up!")
         import os.path
         fn = "/tmp/temp_histo_storage.pkl"
@@ -700,6 +701,17 @@ class OpDetectMissing(Operator):
             with open(fn, "w") as f:
                 pickle.dump(histograms, f)
             logger.debug("Dumped training data to {}.".format(fn))
+        
+        '''
+        
+        pool = RequestPool()
+
+        for i in range(len(histograms)):
+            req = Request(partial(partFun, i))
+            pool.add(req)
+        
+        pool.wait()
+        pool.clean()
         
         ### END UNSORTED MESS OF TEMPORARY STORAGE ### 
         
