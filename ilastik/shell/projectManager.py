@@ -71,7 +71,6 @@ class ProjectManager(object):
         # Create the blank project file
         if 'mode' in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
-        print h5_file_kwargs
         h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         if workflow_class is not None:
