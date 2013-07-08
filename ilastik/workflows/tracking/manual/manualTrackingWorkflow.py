@@ -4,7 +4,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class ManualTrackingWorkflow( Workflow ):
     workflowName = "Tracking Workflow (Manual)"
@@ -28,12 +28,12 @@ class ManualTrackingWorkflow( Workflow ):
                                                        "Input Data", 
                                                        "Input Data", 
                                                        batchDataGui=False,
-                                                       force5d=False)
+                                                       force5d=True)
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )                
         
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
-                                                                  "Threshold & Size Filter", 
+                                                                  "Threshold \& Size Filter", 
                                                                   "ThresholdTwoLevels" )
                      
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, interactive=False)
@@ -53,21 +53,23 @@ class ManualTrackingWorkflow( Workflow ):
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
                         
         ## Connect operators ##
-        op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect(opData.ImageGroup[0])
+        op5Raw = OpReorderAxes(parent=self)
+        op5Raw.AxisOrder.setValue("txyzc")
+        op5Raw.Input.connect(opData.ImageGroup[0])
         
-        # Use Op5ifyers for both input datasets such that they are guaranteed to 
-        # have the same axis order after thresholding
-        op5Binary = Op5ifyer( parent=self )        
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
-        op5Binary.input.connect( opTwoLevelThreshold.CachedOutput )        
+        # Use OpReorderAxis for both input datasets such that they are guaranteed to 
+        # have the same axis order after thresholding
+        op5Binary = OpReorderAxes( parent=self )        
+        op5Binary.AxisOrder.setValue("txyzc")
+        op5Binary.Input.connect( opTwoLevelThreshold.CachedOutput )        
         
-        opObjExtraction.RawImage.connect( op5Raw.output )
-        opObjExtraction.BinaryImage.connect( op5Binary.output )
+        opObjExtraction.RawImage.connect( op5Raw.Output )
+        opObjExtraction.BinaryImage.connect( op5Binary.Output )
         
-        opTracking.RawImage.connect( op5Raw.output )
-        opTracking.BinaryImage.connect( op5Binary.output )
+        opTracking.RawImage.connect( op5Raw.Output )
+        opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
         
