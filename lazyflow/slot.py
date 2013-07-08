@@ -381,6 +381,14 @@ class Slot(object):
             assert isinstance(partner, Slot), ("Slot.connect() can only be used to"
                                                " connect other Slots.  Did you mean"
                                                " to use Slot.setValue()?")
+
+            my_op = self.getRealOperator()
+            partner_op = partner.getRealOperator()
+            assert partner_op.parent == my_op.parent or \
+                   (self._type == "output" and partner_op.parent == my_op) or \
+                   (self._type == "input" and my_op.parent == partner_op) or \
+                   my_op == partner_op,\
+                   "It is forbidden to connect slots of operators that are not siblings or not directly related as parent and child."
     
             if self.partner == partner and partner.level == self.level:
                 return

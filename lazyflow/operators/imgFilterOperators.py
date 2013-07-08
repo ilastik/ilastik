@@ -437,7 +437,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         for i in xrange(len(self.inMatrix)): #Cycle through operators == i
             for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
                 if self.inMatrix[i][j]:
-                    self.operatorMatrix[i][j] = self.FeatureInfos[self.features[i]][0](graph=self.graph)
+                    self.operatorMatrix[i][j] = self.FeatureInfos[self.features[i]][0](parent=self)
                     self.operatorMatrix[i][j].Input.connect(self.Input)
                     self.operatorMatrix[i][j].Sigma.setValue(self.inScales[i])
                     if self.FeatureInfos[self.features[i]][1]:
