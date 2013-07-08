@@ -609,6 +609,12 @@ class ManualTrackingGui(LayerViewerGui):
             
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)            
         
+        
+    @staticmethod
+    def _appendUnique(lst, obj):
+        if obj not in lst:
+            lst.append(obj)
+            
             
     def _getEvents(self):
         maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
@@ -673,24 +679,23 @@ class ManualTrackingGui(LayerViewerGui):
                                 child1_exists = (oid_child1 in oid2tids[t].keys())
                                 child2_exists = (oid_child2 in oid2tids[t].keys())
                                 if child1_exists and child2_exists:
-                                    divs[t].append((oid_prev,oid_child1,oid_child2,0.))                                
+                                    self._appendUnique(divs[t], (oid_prev,oid_child1,oid_child2,0.))
                                 elif child1_exists:
-                                    moves[t].append((oid_prev,oid_child1,0.))
+                                    self._appendUnique(moves[t], (oid_prev,oid_child1,0.))
                                 elif child2_exists:
-                                    moves[t].append((oid_prev,oid_child2,0.))
-                                
+                                    self._appendUnique(moves[t], (oid_prev,oid_child2,0.))                                
                                 break
                                     
                     # else: disappearance
-                    disapps[t].append((oid_prev, 0.))                    
+                    self._appendUnique(disapps[t], (oid_prev, 0.))        
                     # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
                 
                 elif (oid_prev is None) and (t != t_start) and (oid_cur is not None): # track starts
                     if tid in tracks_starting_in_div.keys() and tracks_starting_in_div[tid] != t:
-                        apps[t].append((oid_cur, 0.))                    
+                        self._appendUnique(apps[t], (oid_cur, 0.))
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
-                    moves[t].append((oid_prev, oid_cur, 0.))
+                    self._appendUnique(moves[t], (oid_prev, oid_cur, 0.))
                     
                     if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t-1][oid_prev]) > 1:
                         t_multiprev = None
@@ -707,8 +712,8 @@ class ManualTrackingGui(LayerViewerGui):
                             if found:
                                 break
                             
-                        if t_multiprev is not None and oid_multiprev is not None: 
-                            multiMoves[t].append((oid_multiprev, oid_cur, t_multiprev, 0.))
+                        if t_multiprev is not None and oid_multiprev is not None:
+                            self._appendUnique(multiMoves[t],(oid_multiprev, oid_cur, t_multiprev, 0.)) 
                 
                 oid_prev = oid_cur
         
