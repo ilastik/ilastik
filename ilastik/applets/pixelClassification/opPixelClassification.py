@@ -92,12 +92,12 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
                 
         # Find the highest label in all the label images
-        self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
+        self.opMaxLabel = OpMaxValue( parent=self )
         self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
         # Hook up the Training operator
-        self.opTrain = OpTrainRandomForestBlocked( parent=self, graph=self.graph )
+        self.opTrain = OpTrainRandomForestBlocked( parent=self )
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
@@ -107,7 +107,7 @@ class OpPixelClassification( Operator ):
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
-        self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
+        self.classifier_cache = OpValueCache( parent=self )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.Classifier.connect( self.classifier_cache.Output )
 

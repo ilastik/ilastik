@@ -74,7 +74,7 @@ class OpBatchIoSelective(Operator):
         self._createDirLock = threading.Lock()
         
         #make a cache of the input image not to request too much
-        self.ImageCache = OpBlockedArrayCache(parent=self, graph=self.graph)
+        self.ImageCache = OpBlockedArrayCache(parent=self)
         self.ImageCache.fixAtCurrent.setValue(False)
         self.ImageCache.Input.connect(self.ImageToExport)
 
@@ -192,7 +192,7 @@ class OpBatchIoSelective(Operator):
                     return
                 
                 # Set up the write operator
-                opH5Writer = OpH5WriterBigDataset(parent=self, graph=self.graph)
+                opH5Writer = OpH5WriterBigDataset(parent=self)
                 opH5Writer.hdf5File.setValue( hdf5File )
                 opH5Writer.hdf5Path.setValue( pathComp.internalPath )
                 #opH5Writer.Image.connect( self.ImageToExport )

@@ -203,7 +203,7 @@ class FeatureSelectionGui(LayerViewerGui):
             if numInputChannels > 3:
                 featureName += " (Ch. {})".format(inputChannel)
 
-            opSubRegion = OpSubRegion(graph=self.topLevelOperatorView.graph)
+            opSubRegion = OpSubRegion(parent=self.topLevelOperatorView.parent)
             opSubRegion.Input.connect( featureSlot )
             start = [0] * len(featureSlot.meta.shape)
             start[channelAxis] = inputChannel * featureChannelsPerInputChannel

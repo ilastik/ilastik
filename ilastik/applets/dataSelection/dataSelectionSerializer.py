@@ -70,7 +70,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
                     try:    
-                        opWriter = OpH5WriterBigDataset(graph=self.topLevelOperator.graph)
+                        opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent)
                         opWriter.hdf5File.setValue( localDataGroup )
                         opWriter.hdf5Path.setValue( info.datasetId )
                         opWriter.Image.connect(dataSlot)
@@ -173,7 +173,7 @@ class DataSelectionSerializer( AppletSerializer ):
             if '//' not in globstring and not os.path.isabs(globstring):
                 globstring = os.path.normpath( os.path.join(cwd, globstring) )
             
-            opWriter = OpStackToH5Writer(graph=self.topLevelOperator.graph)
+            opWriter = OpStackToH5Writer(parent=self.topLevelOperator.parent)
             opWriter.hdf5Group.setValue(localDataGroup)
             opWriter.hdf5Path.setValue(info.datasetId)
             opWriter.GlobString.setValue(globstring)

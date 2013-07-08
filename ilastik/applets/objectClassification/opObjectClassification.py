@@ -113,7 +113,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         # Find the highest label in all the label images
-        self.opMaxLabel = OpMaxLabel( parent=self, graph=self.graph)
+        self.opMaxLabel = OpMaxLabel( parent=self )
         self.opMaxLabel.Inputs.connect( self.LabelInputs )
 
         self.opPredict.inputs["Features"].connect(self.ObjectFeatures)

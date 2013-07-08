@@ -89,7 +89,7 @@ class SerialPredictionSlot(SerialSlot):
                 datasetName = self.subname.format(imageIndex)
 
                 # Use a big dataset writer to do this in chunks
-                opWriter = OpH5WriterBigDataset(graph=self.operator.graph)
+                opWriter = OpH5WriterBigDataset(parent=self.operator.parent)
                 opWriter.hdf5File.setValue(predictionDir)
                 opWriter.hdf5Path.setValue(datasetName)
                 opWriter.Image.connect(slot[imageIndex])
@@ -152,7 +152,7 @@ class SerialPredictionSlot(SerialSlot):
             for slot in self.operator.PredictionsFromDisk:
                 slot.disconnect()
         for imageIndex, datasetName in enumerate(group.keys()):
-            opStreamer = OpStreamingHdf5Reader(graph=self.operator.graph)
+            opStreamer = OpStreamingHdf5Reader(parent=self.operator.parent)
             opStreamer.Hdf5File.setValue(group)
             opStreamer.InternalPath.setValue(datasetName)
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)

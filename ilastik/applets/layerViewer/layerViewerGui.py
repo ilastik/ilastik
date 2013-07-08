@@ -131,7 +131,7 @@ class LayerViewerGui(QWidget):
                     continue
                 # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
                 # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
-                opPromoteInput = OpWrapSlot(graph=slot.operator.graph)
+                opPromoteInput = OpWrapSlot(parent=slot.getRealOperator().parent)
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Output
                 self._orphanOperators.append( opPromoteInput )
@@ -282,28 +282,28 @@ class LayerViewerGui(QWidget):
 
         redSource = None
         if rindex is not None:
-            redProvider = OpSingleChannelSelector(graph=slot.graph)
+            redProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             redProvider.Input.connect(slot)
             redProvider.Index.setValue( rindex )
             redSource = LazyflowSource( redProvider.Output )
         
         greenSource = None
         if gindex is not None:
-            greenProvider = OpSingleChannelSelector(graph=slot.graph)
+            greenProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             greenProvider.Input.connect(slot)
             greenProvider.Index.setValue( gindex )
             greenSource = LazyflowSource( greenProvider.Output )
         
         blueSource = None
         if bindex is not None:
-                blueProvider = OpSingleChannelSelector(graph=slot.graph)
+                blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
                 blueProvider.Input.connect(slot)
                 blueProvider.Index.setValue( bindex )
                 blueSource = LazyflowSource( blueProvider.Output )
 
         alphaSource = None
         if aindex is not None:
-            alphaProvider = OpSingleChannelSelector(graph=slot.graph)
+            alphaProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( aindex )
             alphaSource = LazyflowSource( alphaProvider.Output )
@@ -424,7 +424,7 @@ class LayerViewerGui(QWidget):
             for i, slot in enumerate(provider):
                 if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
                     # Use an OpReorderAxes adapter to transpose the shape for us.
-                    op5 = OpReorderAxes( graph=slot.graph )
+                    op5 = OpReorderAxes( parent=slot.getRealOperator().parent )
                     op5.Input.connect( slot )
                     newDataShape = op5.Output.meta.shape
 
