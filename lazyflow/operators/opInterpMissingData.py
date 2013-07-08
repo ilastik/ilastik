@@ -417,7 +417,10 @@ class PseudoSVC(object):
         for k, patch in enumerate(X):
             out[k] = 1 if np.all(patch[1:] == 0) else 0
         return out
-            
+
+def _chooseRandomSubset(data, n):
+    choice = np.random.permutation(len(data))
+    return (data[choice[:n]],data[choice[n:]]) 
 
 def _patchify(data, patchSize, haloSize):
     '''
@@ -671,6 +674,36 @@ class OpDetectMissing(Operator):
             else:
                 histograms[i] = _extractHistograms(vol, labels == 1, nPatches = np.inf)
         
+        
+        ### BEGIN UNSORTED MESS OF TEMPORARY STORAGE ### 
+        #TODO clean-up
+        '''
+        raise NotImplementedError("clean this up!")
+        import os.path
+        fn = "/tmp/temp_histo_storage.pkl"
+        if os.path.exists(fn):
+            with open("/tmp/temp_histo_storage.pkl") as f:
+                histograms = pickle.load(f)
+            if len(histograms)==0:
+                logger.debug("Was not able to load training data from {} :(".format(fn))
+                return
+            else:
+                logger.debug("Loaded training data from {}.".format(fn))
+        else:
+            pool = RequestPool()
+
+            for i in range(len(histograms)):
+                req = Request(partial(partFun, i))
+                pool.add(req)
+            
+            pool.wait()
+            pool.clean()
+            with open(fn, "w") as f:
+                pickle.dump(histograms, f)
+            logger.debug("Dumped training data to {}.".format(fn))
+        
+        '''
+        
         pool = RequestPool()
 
         for i in range(len(histograms)):
@@ -679,31 +712,35 @@ class OpDetectMissing(Operator):
         
         pool.wait()
         pool.clean()
-            
-        bad = histograms[1]
-        good = histograms[0]
-        '''
-        with open("/home/akreshuk/temp_histo_storage.pkl", "w") as f:
-            pickle.dump(histograms, f)
-        '''
-        '''
-        histograms = []
-        with open("/home/akreshuk/temp_histo_storage.pkl") as f:
-            histograms = pickle.load(f)
         
-        if len(histograms)==0:
-            logger.debug("not loaded :(")
-            return
+        ### END UNSORTED MESS OF TEMPORARY STORAGE ### 
         
         bad = histograms[1]
         good = histograms[0]
-        '''
-        if len(bad) < self.NTrainingSamples.value or len(good) < self.NTrainingSamples.value:
-            logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(bad), len(good), self.NTrainingSamples.value))
+        
+        
+        #FIXME use ndarray from the beginning!
+        pos = np.asarray(bad)
+        neg = np.asarray(good)
+        
+        (posTest, posTrain) = _chooseRandomSubset(pos, len(pos)/20)
+        (negTest, negTrain) = _chooseRandomSubset(neg, len(neg)/20)
+        
+        if len(posTrain) < self.NTrainingSamples.value or len(negTrain) < self.NTrainingSamples.value:
+            logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(badTrain), len(goodTrain), self.NTrainingSamples.value))
             return
         
-        logger.debug("Starting training with {} good patches and {} bad patches...".format( len(good), len(bad)))
-        self._felzenszwalbTraining(good, bad)
+        logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(neg), len(pos)))
+        self._felzenszwalbTraining(negTrain, posTrain)
+        
+        predNeg = self._predict(negTest, patchSize**2)
+        predPos = self._predict(posTest, patchSize**2)
+        
+        fp = (predNeg.sum())/float(predNeg.size)
+        fn = (predPos.size - predPos.sum())/float(predPos.size)
+        prec = predPos.sum()/float(predPos.sum()+predNeg.sum())
+        
+        logger.info(" Finished training, results of cross validation: FPR %.3f, FNR %.3f (recall %.3f, precision: %.3f)." % (fp, fn, 1-fn, prec))
         
             
     def _felzenszwalbTraining(self, good, bad):
@@ -721,8 +758,6 @@ class OpDetectMissing(Operator):
         firstSamples = 1000
         maxSamples = 3000
         
-        good = np.asarray(good)
-        bad = np.asarray(bad)
         samples = [good,bad]
         
         ## suppose we have a list of training samples, good and bad
@@ -776,9 +811,9 @@ class OpDetectMissing(Operator):
             finished[i] = newFinished
         ### END PARALLELIZATION FUNCTION ###
         
-        for k in range(1): #just count iterations
+        for k in range(3): #just count iterations
 
-            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k, len(S_t[0]), len(S_t[1])))
+            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k+1, len(S_t[0]), len(S_t[1])))
             self._fit(S_t[0], S_t[1], n)
             
             pool = RequestPool()
