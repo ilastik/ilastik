@@ -341,9 +341,9 @@ class Operator(object):
                             if p.getRealOperator() is not None and
                             not p.getRealOperator().externally_managed)
             if len(partners) > 0:
-                msg = ("Cannot clean up this operator: Slot '{}'"
+                msg = ("Cannot clean up this operator ({}): Slot '{}'"
                        " is still providing data to downstream"
-                       " operators!\n".format(s.name))
+                       " operators!\n".format( self.name, s.name))
                 for i, p in enumerate(s.partners):
                     msg += "Downstream Partner {}: {}.{}".format(
                         i, p.getRealOperator().name, p.name)
