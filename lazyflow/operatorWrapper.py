@@ -134,13 +134,15 @@ class OperatorWrapper(Operator):
         for s in self.inputs.values():
             if s.name in self.promotedSlotNames:
                 s.notifyInserted(self._callbackInserted)
-                s.notifyRemoved(self._callbackRemove)
+                s.notifyRemove(self._callbackPreRemove)
+                s.notifyRemoved(self._callbackPostRemoved)
                 s._notifyConnect(self._callbackConnect)
 
         # register callbacks for inserted and removed output subslots
         for s in self.outputs.values():
             s.notifyInserted(self._callbackInserted)
-            s.notifyRemoved(self._callbackRemove)
+            s.notifyRemove(self._callbackPreRemove)
+            s.notifyRemoved(self._callbackPostRemoved)
 
         for s in self.inputs.values():
             assert len(s) == 0
@@ -166,7 +168,15 @@ class OperatorWrapper(Operator):
         with Tracer(self.traceLogger, msg=self.name):
             self._insertInnerOperator(index, size)
 
-    def _callbackRemove(self, slot, index, size):
+    def _callbackPreRemove(self, slot, index, length):
+        # Prepare for disconnect which will occur in _removeInnerOperator
+        # (Can't properly disconnect a slot if backpropagate_values is True)
+        for mslot in self.outputs.values():
+            if len(mslot) > length:
+                mslot[index].backpropagate_values = False
+                mslot[index].unregisterDisconnect(self.handleEarlyDisconnect)
+
+    def _callbackPostRemoved(self, slot, index, size):
         with Tracer(self.traceLogger, msg=self.name):
             self._removeInnerOperator(index, size)
 
@@ -238,11 +248,6 @@ class OperatorWrapper(Operator):
             if len(self.innerOperators) <= length:
                 return
             assert index < len(self.innerOperators)
-
-            for key, mslot in self.outputs.items():
-                if len(mslot) > length:
-                    mslot[index].backpropagate_values = False
-                    mslot[index].unregisterDisconnect(self.handleEarlyDisconnect)
 
             op = self.innerOperators.pop(index)
             for slot in op.inputs.values():
