@@ -811,9 +811,9 @@ class OpDetectMissing(Operator):
             finished[i] = newFinished
         ### END PARALLELIZATION FUNCTION ###
         
-        for k in range(1): #just count iterations
+        for k in range(3): #just count iterations
 
-            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k, len(S_t[0]), len(S_t[1])))
+            logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k+1, len(S_t[0]), len(S_t[1])))
             self._fit(S_t[0], S_t[1], n)
             
             pool = RequestPool()
