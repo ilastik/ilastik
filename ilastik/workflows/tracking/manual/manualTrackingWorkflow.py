@@ -33,7 +33,7 @@ class ManualTrackingWorkflow( Workflow ):
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )                
         
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
-                                                                  "Threshold \& Size Filter", 
+                                                                  "Threshold and Size Filter", 
                                                                   "ThresholdTwoLevels" )
                      
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, interactive=False)
