@@ -349,6 +349,8 @@ class Operator(object):
                         i, p.getRealOperator().name, p.name)
                 raise RuntimeError(msg)
 
+        self._parent = None
+
         # Work with a copy of the child list
         # (since it will be modified with each iteration)
         children = set(self._children.keys())
