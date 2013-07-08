@@ -8,7 +8,7 @@ from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThres
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
-from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache, setDetectionMethod
+from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 from ilastik.applets.blockwiseObjectClassification \
     import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 
@@ -50,11 +50,10 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.projectMetadataApplet)
 
         self.setupInputs()
-
+        
         if self.fillMissing != 'none':
             self.fillMissingSlicesApplet = FillMissingSlicesApplet(
-                self, "Fill Missing Slices", "Fill Missing Slices")
-            setDetectionMethod(self.fillMissing)
+                self, "Fill Missing Slices", "Fill Missing Slices", self.fillMissing)
             self._applets.append(self.fillMissingSlicesApplet)
 
         # our main applets
