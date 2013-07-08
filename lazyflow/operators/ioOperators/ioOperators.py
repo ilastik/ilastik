@@ -283,7 +283,7 @@ class OpStackToH5Writer(Operator):
     def __init__(self, *args, **kwargs):
         super(OpStackToH5Writer, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
-        self.opStackLoader = OpStackLoader(graph=self.graph, parent=self)
+        self.opStackLoader = OpStackLoader(parent=self)
         self.opStackLoader.globstring.connect( self.GlobString )
 
     def setupOutputs(self):

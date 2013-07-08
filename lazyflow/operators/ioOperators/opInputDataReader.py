@@ -98,7 +98,7 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsStack(self, filePath):
         if '*' in filePath:
-            stackReader = OpStackLoader(parent=self, graph=self.graph)
+            stackReader = OpStackLoader(parent=self)
             stackReader.globstring.setValue(filePath)
             return (stackReader, stackReader.stack)
         else:
@@ -132,7 +132,7 @@ class OpInputDataReader(Operator):
             raise OpInputDataReader.DatasetReadError( msg )
         self._file = h5File
 
-        h5Reader = OpStreamingHdf5Reader(parent=self, graph=self.graph)
+        h5Reader = OpStreamingHdf5Reader(parent=self)
         h5Reader.Hdf5File.setValue(h5File)
 
         # Can't set the internal path yet if we don't have one
@@ -157,7 +157,7 @@ class OpInputDataReader(Operator):
         else:
             try:
                 # Create an internal operator
-                npyReader = OpNpyFileReader(parent=self, graph=self.graph)
+                npyReader = OpNpyFileReader(parent=self)
                 npyReader.FileName.setValue(filePath)
                 return (npyReader, npyReader.Output)
             except OpNpyFileReader.DatasetReadError as e:
@@ -202,11 +202,11 @@ class OpInputDataReader(Operator):
         if fileExtension not in OpInputDataReader.vigraImpexExts:
             return (None, None)
 
-        vigraReader = OpImageReader(parent=self, graph=self.graph)
+        vigraReader = OpImageReader(parent=self)
         vigraReader.Filename.setValue(filePath)
 
         # Cache the image instead of reading the hard disk for every access.
-        imageCache = OpBlockedArrayCache(parent=self, graph=self.graph)
+        imageCache = OpBlockedArrayCache(parent=self)
         imageCache.Input.connect(vigraReader.Image)
         
         # 2D: Just one block for the whole image
