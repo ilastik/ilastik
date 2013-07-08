@@ -39,10 +39,9 @@ class ViewerControls(QWidget):
         
         if not hasattr(dataSource, "dataSlot"):
             raise RuntimeError("can not export from a non-lazyflow data source (layer=%r, datasource=%r)" % (type(layer), type(dataSource)) )
-        expDlg = ExportDialog(parent = self)
         import lazyflow
         assert isinstance(dataSource.dataSlot, lazyflow.graph.Slot), "slot is of type %r" % (type(dataSource.dataSlot))
         assert isinstance(dataSource.dataSlot.getRealOperator(), lazyflow.graph.Operator), "slot's operator is of type %r" % (type(dataSource.dataSlot.getRealOperator()))
-        expDlg.setInput(dataSource.dataSlot)
+        expDlg = ExportDialog(self, inputslot=dataSource.dataSlot)
         expDlg.show()
         
