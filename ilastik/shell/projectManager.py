@@ -54,14 +54,25 @@ class ProjectManager(object):
     #########################    
     
     @classmethod
-    def createBlankProjectFile(cls, projectFilePath, workflow_class=None, workflow_cmdline_args=None):
-        """
-        Class method.
-        Create a new ilp file at the given path and initialize it with a project version.
-        If a file already existed at that location, it will be overwritten with a blank project.
+    def createBlankProjectFile(cls, projectFilePath, workflow_class=None, workflow_cmdline_args=None, h5_file_kwargs={}):
+        """Create a new ilp file at the given path and initialize it with a project version.
+
+        Class method. If a file already exists at the location, it
+        will be overwritten with a blank project (i.e. the mode is
+        fixed to 'w').
+
+        :param projectFilePath: Full path of the new project (for instance '/tmp/MyProject.ilp').
+        :param workflow_class: If not None, add dataset containing the name of the workflow_class.
+        :param workflow_cmdline_args: If not None, add dataset containing the commandline arguments.
+        :param h5_file_kwargs: Passed directly to h5py.File.__init__(); all standard params except 'mode' are allowed. 
+        :rtype: h5py.File
+
         """
         # Create the blank project file
-        h5File = h5py.File(projectFilePath, "w")
+        if 'mode' in h5_file_kwargs:
+            raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
+        print h5_file_kwargs
+        h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         if workflow_class is not None:
             h5File.create_dataset("workflowName", data=workflow_class.__name__)
