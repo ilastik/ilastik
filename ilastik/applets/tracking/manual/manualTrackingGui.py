@@ -361,26 +361,49 @@ class ManualTrackingGui(LayerViewerGui):
         
         t = position5d[0]
         activeTrack = self._getActiveTrack()
-        menu = QtGui.QMenu(self)        
-        delLabel = {}
-        delSubtrackToEnd = {}
-        delSubtrackToStart = {}
+        
         trackids = []
         if oid in self.mainOperator.labels[t].keys():
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
-                text = "remove label " + str(l)
-                delLabel[text] = l
+        
+        title = "Object " + str(oid)
+        if len(trackids) == 0:
+            title += " contains no track ids."
+        if len(trackids) == 1:
+            title += " contains track id " + str(trackids[0]) + "."
+        else:
+            title += " contains track ids " + str(trackids) + "."
+        menu = QtGui.QMenu( self )
+        
+        menuTitle = QtGui.QAction(title, menu)
+        font = menuTitle.font()
+        font.setItalic(True)
+        font.setBold(True)
+        menuTitle.setFont(font)
+        menuTitle.setEnabled(False)
+        menu.addAction(menuTitle)
+        menu.addSeparator()
+        
+        delLabel = {}
+        delSubtrackToEnd = {}
+        delSubtrackToStart = {}
+        
+        for l in trackids:
+            text = "remove label " + str(l)
+            delLabel[text] = l
+            menu.addAction(text)
+            
+            if activeTrack != self.misdetIdx:
+                text = "remove label " + str(l) + " from here to end"
+                delSubtrackToEnd[text] = l
                 menu.addAction(text)
-                
-                if activeTrack != self.misdetIdx:
-                    text = "remove label " + str(l) + " from here to end"
-                    delSubtrackToEnd[text] = l
-                    menu.addAction(text)
-                
-                    text = "remove label " + str(l) + " from here to start"
-                    delSubtrackToStart[text] = l
-                    menu.addAction(text)
+            
+                text = "remove label " + str(l) + " from here to start"
+                delSubtrackToStart[text] = l
+                menu.addAction(text)
+            
+            menu.addSeparator()
         
         if activeTrack != self.misdetIdx:
             runTracking = "run automatic tracking for object " + str(oid)
@@ -392,6 +415,7 @@ class ManualTrackingGui(LayerViewerGui):
                 if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
                     text = "remove division event from label " + str(trackid)
                     delDivision[text] = trackid
+                    menu.addSeparator()
                     menu.addAction(text)
         
         action = menu.exec_(globalWindowCoordiante)
