@@ -218,7 +218,19 @@ class LayerViewerGui(QWidget):
                                    If slot has 4 channels, this parameter has no effect.
         """
         
-        
+        def getRange(meta):
+            if meta.drange is not None and meta.normalizeDisplay is False:
+                # do not normalize if the user provided a range and set normalization to False
+                return meta.drange
+            else:
+                # If we don't know the range of the data and normalization is allowed
+                # by the user, create a layer that is auto-normalized.
+                # See volumina.pixelpipeline.datasources for details.
+                #
+                # Even in the case of integer data, which has more than 255 possible values,
+                # (like uint16), it seems reasonable to use this setting as default
+                return None # means autoNormalize
+                   
         shape = slot.meta.shape
         
         try:
@@ -251,6 +263,8 @@ class LayerViewerGui(QWidget):
                 source = LazyflowSource(slot)
                 layer = GrayscaleLayer(source)
                 layer.numberOfChannels = numChannels
+                normalize = getRange(slot.meta)
+                layer.set_normalize(0,normalize)
                 return layer
 
             assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
@@ -267,6 +281,8 @@ class LayerViewerGui(QWidget):
             source = LazyflowSource(slot)
             layer = GrayscaleLayer(source)
             layer.numberOfChannels = numChannels
+            normalize = getRange(slot.meta)
+            layer.set_normalize(0,normalize)            
             return layer
         
         elif axisinfo == "rgba":
@@ -310,31 +326,13 @@ class LayerViewerGui(QWidget):
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
         
-        def getRange(meta):
-            if meta.drange is not None:
-                return meta.drange
-            if meta.normalizeDisplay is True:
-                return 'autoPercentiles'
-            elif meta.normalizeDisplay is False:
-                return (0, 255)
-            if meta.dtype == numpy.uint8:
-                return (0, 255)
-            else:
-                # If we don't know the range of the data and normalization is allowed
-                # by the user, create a layer that is auto-normalized.
-                # See volumina.pixelpipeline.datasources for details.
-                #
-                # Even in the case of integer data, which has more than 255 possible values,
-                # (like uint16), it seems reasonable to use this setting as default
-                return 'autoPercentiles'
+
         
         normalize = getRange(slot.meta)
+        print "createLayer normalize", normalize
         for i in xrange(4):
             if [redSource,greenSource,blueSource,alphaSource][i]:
-                if normalize=="autoPercentiles":
-                    layer.set_normalize(i,None)
-                else:
-                    layer.set_normalize(i,normalize)
+                layer.set_normalize(i,normalize)
         return layer
 
     @traceLogged(traceLogger)
