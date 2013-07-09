@@ -16,6 +16,9 @@ class LabelingWorkflow(Workflow):
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.labelingApplet = LabelingApplet(self, "Generic Labeling Data")
 
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ["Raw Data", "Other Data"] )
+
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.labelingApplet )
 
