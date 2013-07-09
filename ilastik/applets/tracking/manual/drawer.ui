@@ -97,7 +97,7 @@
      <item>
       <widget class="QPushButton" name="markMisdetection">
        <property name="text">
-        <string>Mark as Misdetection</string>
+        <string>Mark as False Detection</string>
        </property>
       </widget>
      </item>

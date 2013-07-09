@@ -1,8 +1,6 @@
-from PyQt4.QtGui import *
 from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtCore import QThread
+from PyQt4.QtGui import QColor
 
-import h5py
 import os
 import numpy
 
@@ -16,6 +14,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
+from volumina.utility import ShortcutManager
     
 
 class ManualTrackingGui(LayerViewerGui):
@@ -44,6 +43,44 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
 
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Manual Tracking"
+
+        divisionEvent = QtGui.QShortcut( QtGui.QKeySequence("d"), self, member=self._drawer.divEvent.click )
+        mgr.register( shortcutGroupName,
+                      "Mark Division Event (Click on parent object first, then on the two children.)",
+                      divisionEvent,
+                      self._drawer.divEvent )
+        
+        newTrack = QtGui.QShortcut( QtGui.QKeySequence("s"), self, member=self._drawer.newTrack.click )
+        mgr.register( shortcutGroupName,
+                      "Start New Track",
+                      newTrack,
+                      self._drawer.newTrack )
+
+        markMisdet = QtGui.QShortcut( QtGui.QKeySequence("f"), self, member=self._drawer.markMisdetection.click )
+        mgr.register( shortcutGroupName,
+                      "Mark False Detection",
+                      markMisdet,
+                      self._drawer.markMisdetection )
+        
+        activeTrackUp = QtGui.QShortcut( QtGui.QKeySequence("q"), self, member=self._incrementActiveTrack )
+        mgr.register( shortcutGroupName,
+                      "Increment Active Track ID",
+                      activeTrackUp,)
+        
+        activeTrackDown = QtGui.QShortcut( QtGui.QKeySequence("a"), self, member=self._decrementActiveTrack )
+        mgr.register( shortcutGroupName,
+                      "Decrement Active Track ID",
+                      activeTrackDown,)
+        
+        goToNext = QtGui.QShortcut( QtGui.QKeySequence("g"), self, member=self._onNextUnlabeledPressed )
+        mgr.register( shortcutGroupName,
+                      "Go To Next Unlabeled Object",
+                      goToNext,)
+        
+        
         
     ###########################################
     ###########################################
@@ -73,6 +110,8 @@ class ManualTrackingGui(LayerViewerGui):
                 self._drawer.windowZBox.setEnabled(False)
         
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
+        
+        self._initShortcuts()
         
 
     def _onMetaChanged( self, slot ):
@@ -107,7 +146,17 @@ class ManualTrackingGui(LayerViewerGui):
         trackingLayer.name = "Manual Tracking"
         trackingLayer.visible = True
         trackingLayer.opacity = 0.8
+
+        def toggleTrackingVisibility():
+            trackingLayer.visible = not trackingLayer.visible
+            
+        trackingLayer.shortcutRegistration = (
+                "Layer Visibilities",
+                "Toggle Manual Tracking Layer Visibility",
+                QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
+                trackingLayer )
         layers.append(trackingLayer)
+        
         
         ct = colortables.create_random_16bit()
         ct[1] = QColor(230,0,0,150).rgba()
@@ -127,6 +176,16 @@ class ManualTrackingGui(LayerViewerGui):
         objLayer.name = "Objects"
         objLayer.opacity = 0.8
         objLayer.visible = True
+        
+        def toggleObjectVisibility():
+            objLayer.visible = not objLayer.visible
+            
+        objLayer.shortcutRegistration = (
+                "Layer Visibilities",
+                "Toggle Objects Layer Visibility",
+                QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
+                objLayer )
+        
         layers.append(objLayer)
 
 
@@ -150,7 +209,7 @@ class ManualTrackingGui(LayerViewerGui):
         return layers
 
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
-        divItem = QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
+        divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
         divItem.setCheckState(False)
         self._drawer.divisionsList.addItem(divItem)
@@ -188,6 +247,22 @@ class ManualTrackingGui(LayerViewerGui):
         
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
     
+    def _incrementActiveTrack(self):
+        activeTrackBox = self._drawer.activeTrackBox
+        if not activeTrackBox.isEnabled():
+            return
+        ind = activeTrackBox.currentIndex()
+        if ind+1 < activeTrackBox.count():            
+            activeTrackBox.setCurrentIndex(ind+1)
+
+    def _decrementActiveTrack(self):
+        activeTrackBox = self._drawer.activeTrackBox
+        if not activeTrackBox.isEnabled():
+            return
+        ind = activeTrackBox.currentIndex()
+        if ind-1 >= 0:            
+            activeTrackBox.setCurrentIndex(ind-1)
+                    
     @staticmethod
     def _getObject(slot, pos5d):
         slicing = tuple(slice(i, i+1) for i in pos5d)
@@ -286,7 +361,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         t = position5d[0]
         activeTrack = self._getActiveTrack()
-        menu = QMenu(self)        
+        menu = QtGui.QMenu(self)        
         delLabel = {}
         delSubtrackToEnd = {}
         delSubtrackToStart = {}
@@ -734,7 +809,7 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onExportButtonPressed(self):
         import h5py
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
         
         if directory is None or str(directory) == '':
             return
