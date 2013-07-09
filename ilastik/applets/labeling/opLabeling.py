@@ -103,7 +103,7 @@ class OpLabelingSingleLane( Operator ):
     
     LabelsAllowedFlag = InputSlot(stype='bool') #: Specifies which images are permitted to be labeled 
     LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
-    LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
+    LabelDelete = InputSlot(value=-1) #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 
     # Output slots
     LabelImage = OutputSlot() #: Stored labels from the user
