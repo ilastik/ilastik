@@ -15,6 +15,8 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
+
+from ilastik.config import cfg as ilastik_config
     
 
 class ManualTrackingGui(LayerViewerGui):
@@ -40,6 +42,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
 
@@ -370,7 +373,7 @@ class ManualTrackingGui(LayerViewerGui):
         title = "Object " + str(oid)
         if len(trackids) == 0:
             title += " contains no track ids."
-        if len(trackids) == 1:
+        elif len(trackids) == 1:
             title += " contains track id " + str(trackids[0]) + "."
         else:
             title += " contains track ids " + str(trackids) + "."
@@ -833,7 +836,11 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onExportButtonPressed(self):
         import h5py
-        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None or str(directory) == '':
             return
@@ -919,6 +926,55 @@ class ManualTrackingGui(LayerViewerGui):
         
             self._log("-> tracking successfully exported")
 
+    def _onExportTifButtonPressed(self):
+        import vigra
+        
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
+        
+        divisions = self.mainOperator.divisions
+        inverseDivisions = {}
+        for k, vals in divisions.items():
+            for v in vals[0]:
+                inverseDivisions[v] = k
+        replace = {}
+        activeTrackBox = self._drawer.activeTrackBox
+        tids = set()
+        for idx in range(activeTrackBox.count()):
+            tids.add(int(activeTrackBox.itemText(idx)))
+        if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
+            self._criticalMessage("There are no tracks to export.")
+        if 0 in tids:
+            tids.remove(0)
+        if -1 in tids:
+            tids.remove(-1)
+        for tid in tids:
+            replace[tid] = [tid] # identity
+            
+        for tid in inverseDivisions.keys():
+            rootTid = inverseDivisions[tid]
+            while rootTid in inverseDivisions.keys():
+                rootTid = inverseDivisions[rootTid]
+            replace[tid] = [rootTid]
+                
+        shape = list(self.mainOperator.TrackImage.meta.shape)
+        for t in range(shape[0]):
+            self._log('exporting tiffs for t = ' + str(t))            
+            
+            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
+            trackImage = self.mainOperator.TrackImage.get(roi).wait()
+            relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
+            for i in range(relabeled.shape[2]):
+                out_im = relabeled[:,:,i]
+                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
+        
+        self._log('Tiffs exported.')
+        
+        
     
     def _gotoObject(self, oid, t, keepZ=False):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
