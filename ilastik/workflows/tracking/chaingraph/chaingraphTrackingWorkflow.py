@@ -4,7 +4,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.tracking.chaingraph.chaingraphTrackingApplet import ChaingraphTrackingApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 class ChaingraphTrackingWorkflow( Workflow ):
@@ -54,24 +54,23 @@ class ChaingraphTrackingWorkflow( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
                 
         ## Connect operators ##
-        op5Raw = Op5ifyer(parent=self)
-        op5Raw.input.connect(opData.ImageGroup[0])
+        op5Raw = OpReorderAxes(parent=self)
+        op5Raw.AxisOrder.setValue("txyzc")
+        op5Raw.Input.connect(opData.ImageGroup[0])
         
-        op5Predictions = Op5ifyer( parent=self )
-        op5Predictions.input.connect( opData.ImageGroup[1] )
-               
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
         
-        # Use Op5ifyers for both input datasets such that they are guaranteed to 
+        # Use OpReorderAxes for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding
-        op5Binary = Op5ifyer( parent=self )                
-        op5Binary.input.connect( opTwoLevelThreshold.CachedOutput )
+        op5Binary = OpReorderAxes( parent=self )     
+        op5Binary.AxisOrder.setValue("txyzc")           
+        op5Binary.Input.connect( opTwoLevelThreshold.CachedOutput )
         
-        opObjExtraction.RawImage.connect( op5Raw.output )
-        opObjExtraction.BinaryImage.connect( op5Binary.output )
+        opObjExtraction.RawImage.connect( op5Raw.Output )
+        opObjExtraction.BinaryImage.connect( op5Binary.Output )
         
-        opTracking.RawImage.connect( op5Raw.output )
+        opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
         
