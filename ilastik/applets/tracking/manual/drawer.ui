@@ -97,7 +97,7 @@
      <item>
       <widget class="QPushButton" name="markMisdetection">
        <property name="text">
-        <string>Mark as Misdetection</string>
+        <string>Mark as False Detection</string>
        </property>
       </widget>
      </item>
@@ -335,7 +335,7 @@
      <item>
       <widget class="QPushButton" name="exportTifButton">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>Export Results as tif ...</string>

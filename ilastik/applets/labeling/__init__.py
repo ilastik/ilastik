@@ -1,2 +1,3 @@
 from labelingApplet import LabelingApplet
+from labelingSingleLaneApplet import LabelingSingleLaneApplet
 from opLabeling import OpLabelingTopLevel, OpLabelingSingleLane

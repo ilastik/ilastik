@@ -75,11 +75,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
-    BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List)
-    BadObjectImages = OutputSlot(level=1)
-    Warnings = OutputSlot(stype=Opaque)
+    BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List) #Objects with NaN-like features
+    BadObjectImages = OutputSlot(level=1) #Images, where objects with NaN-like features are black
+    Warnings = OutputSlot(stype=Opaque) #Warnings about objects with NaN-like features encountered in training
 
-    # TODO: not actually used
+    # Used for labeling
     Eraser = OutputSlot()
     DeleteLabel = OutputSlot()
 
@@ -441,7 +441,7 @@ def make_feature_array(feats, selected, labels=None):
 
     for t in sorted(feats.keys()):
         featsMatrix_tmp = []
-
+        index = None
         if labels is not None:
             labellist_tmp = []
             lab = labels[t].squeeze()
@@ -456,7 +456,7 @@ def make_feature_array(feats, selected, labels=None):
                     continue
                 value = feats[t][plugin][featname]
                 ft = numpy.asarray(value.squeeze())
-                if labels is not None:
+                if index is not None:
                     ft = ft[index]
                 featsMatrix_tmp.append(ft)
                 col_names.extend([(plugin, featname)] * value.shape[1])
@@ -465,8 +465,8 @@ def make_feature_array(feats, selected, labels=None):
         #FIXME: we can do it all with just arrays
         featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
         featlist.append(featsMatrix_tmp_combined)
-        row_names.extend(list((t, obj) for obj in range(featsMatrix_tmp_combined.shape[0])))
-
+        if index is not None:
+            row_names.extend(list((t, obj) for obj in index[0]))
         if labels is not None:
             labellist_tmp_combined = _concatenate(labellist_tmp, axis=1)
             labellist.append(labellist_tmp_combined)
@@ -579,7 +579,6 @@ class OpObjectTrain(Operator):
                 def train_and_store(number):
                     result[number] = vigra.learning.RandomForest(self._tree_count)
                     oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                    logger.info("intermediate oob: {}".format(oob[number]))
                 req = Request( partial(train_and_store, i) )
                 pool.add( req )
             pool.wait()
