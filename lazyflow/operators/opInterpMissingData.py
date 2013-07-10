@@ -677,12 +677,12 @@ class OpDetectMissing(Operator):
         
         ### BEGIN UNSORTED MESS OF TEMPORARY STORAGE ### 
         #TODO clean-up
-        '''
-        raise NotImplementedError("clean this up!")
+        
+        #raise NotImplementedError("clean this up!")
         import os.path
-        fn = "/tmp/temp_histo_storage.pkl"
+        fn = "/home/akreshuk/temp_histo_storage.pkl"
         if os.path.exists(fn):
-            with open("/tmp/temp_histo_storage.pkl") as f:
+            with open(fn) as f:
                 histograms = pickle.load(f)
             if len(histograms)==0:
                 logger.debug("Was not able to load training data from {} :(".format(fn))
@@ -702,8 +702,8 @@ class OpDetectMissing(Operator):
                 pickle.dump(histograms, f)
             logger.debug("Dumped training data to {}.".format(fn))
         
-        '''
         
+        '''
         pool = RequestPool()
 
         for i in range(len(histograms)):
@@ -712,7 +712,7 @@ class OpDetectMissing(Operator):
         
         pool.wait()
         pool.clean()
-        
+        '''
         ### END UNSORTED MESS OF TEMPORARY STORAGE ### 
         
         bad = histograms[1]
@@ -722,25 +722,48 @@ class OpDetectMissing(Operator):
         #FIXME use ndarray from the beginning!
         pos = np.asarray(bad)
         neg = np.asarray(good)
+        npos = len(pos)
+        nneg = len(neg)
+
+        #prepare for 10-fold cross-validation
+        nfolds = 10
+        pos_random = np.random.permutation(len(pos))
+        neg_random = np.random.permutation(len(neg))
+        #return (data[choice[:n]],data[choice[n:]]) 
+        templogfile = open("/home/akreshuk/scripts/crossvalidation.txt", "w")
+        for i in range(nfolds):
+            logger.debug("starting cross validation fold {}".format(i))
+            #print pos_random.shape, pos.shape
+            posTest=pos[pos_random[i*npos/nfolds:(i+1)*npos/nfolds],:]
+            #print posTest.shape
+            posTrain = np.vstack((pos[pos_random[0:npos/nfolds],:], pos[pos_random[(i+1)*npos/nfolds:],:]))
+            
+            negTest=neg[neg_random[i*nneg/nfolds:(i+1)*nneg/nfolds],:]
+            negTrain = np.vstack((neg[neg_random[0:i*nneg/nfolds],:], neg[neg_random[(i+1)*nneg/nfolds:],:]))
+            
+            #(posTest, posTrain) = _chooseRandomSubset(pos, len(pos)/20)
+            #(negTest, negTrain) = _chooseRandomSubset(neg, len(neg)/20)
+            logger.debug("positive training shape {}, negative training shape {}, positive testing shape {}, negative testing shape {}".format(posTrain.shape, negTrain.shape, posTest.shape, negTest.shape))
         
-        (posTest, posTrain) = _chooseRandomSubset(pos, len(pos)/20)
-        (negTest, negTrain) = _chooseRandomSubset(neg, len(neg)/20)
+
+
+            if len(posTrain) < self.NTrainingSamples.value or len(negTrain) < self.NTrainingSamples.value:
+                logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(badTrain), len(goodTrain), self.NTrainingSamples.value))
+                return
         
-        if len(posTrain) < self.NTrainingSamples.value or len(negTrain) < self.NTrainingSamples.value:
-            logger.error("Could not extract enough training data from volume (bad: {}, good: {} < needed: {} !) - training aborted.".format(len(badTrain), len(goodTrain), self.NTrainingSamples.value))
-            return
+            logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(neg), len(pos)))
+            self._felzenszwalbTraining(negTrain, posTrain)
         
-        logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(neg), len(pos)))
-        self._felzenszwalbTraining(negTrain, posTrain)
+            predNeg = self._predict(negTest, patchSize**2)
+            predPos = self._predict(posTest, patchSize**2)
         
-        predNeg = self._predict(negTest, patchSize**2)
-        predPos = self._predict(posTest, patchSize**2)
+            fp = (predNeg.sum())/float(predNeg.size)
+            fn = (predPos.size - predPos.sum())/float(predPos.size)
+            prec = predPos.sum()/float(predPos.sum()+predNeg.sum())
         
-        fp = (predNeg.sum())/float(predNeg.size)
-        fn = (predPos.size - predPos.sum())/float(predPos.size)
-        prec = predPos.sum()/float(predPos.sum()+predNeg.sum())
-        
-        logger.info(" Finished training, results of cross validation: FPR %.3f, FNR %.3f (recall %.3f, precision: %.3f)." % (fp, fn, 1-fn, prec))
+            logger.info(" Finished training, results of cross validation: FPR %.5f, FNR %.5f (recall %.5f, precision: %.5f)." % (fp, fn, 1-fn, prec))
+            templogfile.write(str(fp)+" "+str(fn)+" "+str(1-fn)+" "+str(prec)+"\n")
+        templogfile.close()
         
             
     def _felzenszwalbTraining(self, good, bad):
@@ -757,6 +780,7 @@ class OpDetectMissing(Operator):
         #FIXME arbitrary
         firstSamples = 1000
         maxSamples = 3000
+        hardMaxSamples = 5500 #never exceed this number of training samples
         
         samples = [good,bad]
         
@@ -790,7 +814,10 @@ class OpDetectMissing(Operator):
             
                 
             #choice |= hard
-            choice = np.union1d(choice[0:firstSamples], hard)
+            #choice = np.union1d(choice[0:firstSamples], hard)
+            choice = np.union1d(choice, hard)
+            if len(choice)>hardMaxSamples:
+                choice = np.random.permutation(choice)[0:hardMaxSamples]
 
             C = x[choice]
             logger.debug("expanded set to {} elements".format(len(C)))
@@ -811,7 +838,7 @@ class OpDetectMissing(Operator):
             finished[i] = newFinished
         ### END PARALLELIZATION FUNCTION ###
         
-        for k in range(3): #just count iterations
+        for k in range(4): #just count iterations
 
             logger.debug(" Felzenszwalb Training (step {}): {} hard negative samples, {} hard positive samples.".format(k+1, len(S_t[0]), len(S_t[1])))
             self._fit(S_t[0], S_t[1], n)
@@ -825,16 +852,16 @@ class OpDetectMissing(Operator):
             pool.wait()
             pool.clean()
             
-            if np.all(finished): #FIXME arbitrary magic number
+            if np.all(finished): 
                 #already have all hard examples in training set
                 break
             
-        '''
-        fp = float(len(hardGood))/len(good)
-        fn = float(len(hardBad))/len(bad)
+        self._fit(S_t[0], S_t[1], n)
+        #fp = float(len(hardGood))/len(good)
+        #fn = float(len(hardBad))/len(bad)
         
-        logger.debug(" Finished Felzenszwalb Training. Remaining: %02.3f%% false positives, %02.3f%% false negatives on training set." % (fp*100, fn*100))
-        '''
+        #logger.debug(" Finished Felzenszwalb Training. Remaining: %02.3f%% false positives, %02.3f%% false negatives on training set." % (fp*100, fn*100))
+        
         logger.debug(" Finished Felzenszwalb Training.")
         #TODO summary??
          
@@ -860,7 +887,9 @@ class OpDetectMissing(Operator):
         '''
         
         #FIXME do this parallel (RequestPool)
-        svm = self._detectors[self.DetectionMethod.value][self.NHistogramBins.value][nPatchElements]
+        #svm = self._detectors[self.DetectionMethod.value][self.NHistogramBins.value][nPatchElements]
+        #print self._detectors.items()
+        svm = self._detectors['svm'][30][24964]
         y = np.zeros((len(X),))*np.nan
         
         pool = RequestPool()
@@ -917,7 +946,7 @@ class OpDetectMissing(Operator):
         
         # detector
         if self.DetectionMethod.value == 'svm' and havesklearn:                                                                                                                                           
-            self._detectors[self.DetectionMethod.value][self.NHistogramBins.value][nPatchElements] = SVC(kernel=_histogramIntersectionKernel)                                                                                          
+            self._detectors[self.DetectionMethod.value][self.NHistogramBins.value][nPatchElements] = SVC(C=1000, kernel=_histogramIntersectionKernel)                                                                                          
         else:                                                                                                                                                                                             
             self._detectors[self.DetectionMethod.value][self.NHistogramBins.value][nPatchElements] = PseudoSVC() 
         
