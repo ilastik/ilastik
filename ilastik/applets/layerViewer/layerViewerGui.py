@@ -217,11 +217,13 @@ class LayerViewerGui(QWidget):
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
                                    If slot has 4 channels, this parameter has no effect.
         """
-        
         def getRange(meta):
+            return meta.drange
+                    
+        def getNormalize(meta):
             if meta.drange is not None and meta.normalizeDisplay is False:
                 # do not normalize if the user provided a range and set normalization to False
-                return meta.drange
+                return False
             else:
                 # If we don't know the range of the data and normalization is allowed
                 # by the user, create a layer that is auto-normalized.
@@ -263,7 +265,9 @@ class LayerViewerGui(QWidget):
                 source = LazyflowSource(slot)
                 layer = GrayscaleLayer(source)
                 layer.numberOfChannels = numChannels
-                normalize = getRange(slot.meta)
+                normalize = getNormalize(slot.meta)
+                range = getRange(slot.meta)
+                layer.set_range(0,range)
                 layer.set_normalize(0,normalize)
                 return layer
 
@@ -281,8 +285,10 @@ class LayerViewerGui(QWidget):
             source = LazyflowSource(slot)
             layer = GrayscaleLayer(source)
             layer.numberOfChannels = numChannels
-            normalize = getRange(slot.meta)
-            layer.set_normalize(0,normalize)            
+            normalize = getNormalize(slot.meta)
+            range = getRange(slot.meta)
+            layer.set_range(0,range)
+            layer.set_normalize(0,normalize)
             return layer
         
         elif axisinfo == "rgba":
@@ -328,11 +334,14 @@ class LayerViewerGui(QWidget):
         
 
         
-        normalize = getRange(slot.meta)
+        normalize = getNormalize(slot.meta)
+        range = getRange(slot.meta)
         print "createLayer normalize", normalize
         for i in xrange(4):
             if [redSource,greenSource,blueSource,alphaSource][i]:
+                layer.set_range(i,range)
                 layer.set_normalize(i,normalize)
+
         return layer
 
     @traceLogged(traceLogger)
