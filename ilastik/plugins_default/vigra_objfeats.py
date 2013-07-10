@@ -49,11 +49,40 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         local = set(names) & self.local_features
+        tooltips = {}
         names.extend([x+self.local_suffix for x in local])
-        result = dict((n, {}) for n in names)
+        result = dict((n, {}) for n in names)  
         for f, v in result.iteritems():
             if self.local_suffix in f:
                 v['margin'] = 0
+            #build human readable names from vigra names
+            #TODO: many cases are not covered
+            if "Central<PowerSum<" in f:
+                v['tooltip'] = "Sum_i{(X_i-object_mean)^n}"
+            elif "PowerSum<" in f:
+                v['tooltip'] = "Sum_i{(X_i)^n}"
+            elif "Minimum" in f:
+                v['tooltip'] = "Minimum"
+            elif "Maximum" in f:
+                v['tooltip'] = "Maximum"
+            elif "Variance" in f:
+                v['tooltip'] = "Variance"
+            elif "Skewness" in f:
+                v['tooltip'] = "Skewness"
+            elif "Kurtosis" in f:
+                v['tooltip'] = "Kurtosis"
+            else:
+                v['tooltip'] = f
+            if "Principal<" in f:
+                v['tooltip'] = v['tooltip'] + ", projected onto PCA eigenvectors"
+            if "Coord<" in f:
+                v['tooltip'] = v['tooltip'] + ", computed from object pixel coordinates"
+            if "DivideByCount<" in f:
+                v['tooltip'] = v['tooltip'] + ", divided by the number of pixels"
+            if self.local_suffix in f:
+                v['tooltip'] = v['tooltip'] + ", as defined by margin"
+        
+            
         return result
 
     def _do_4d(self, image, labels, features, axes):
