@@ -11,8 +11,18 @@ from lazyflow.operators import OpSubRegion, OpPixelOperator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 
-class OpDataExport(Operator):
-    RawData = InputSlot(optional=True)
+class OpExportLaneResult(Operator):
+    """
+    Top-level operator for the export applet.
+    Mostly a simple wrapper for OpProcessedDataExport, but with extra formatting of the export path based on lane attributes.
+    """
+    RawData = InputSlot(optional=True) # Display only
+
+    # The dataset info for the original dataset (raw data)
+    # If not provided, {nickname} and {dataset_dir} are not allowed in the filename format string
+    RawDatasetInfo = InputSlot()
+    WorkingDirectory = InputSlot() # Non-absolute paths are relative to this directory.  If not provided, paths must be absolute.
+    
     Input = InputSlot()
 
     # Subregion params
@@ -25,26 +35,93 @@ class OpDataExport(Operator):
     ExportMin = InputSlot(optional=True)
     ExportMax = InputSlot(optional=True)
 
-    ExportDtype = InputSlot()
-    OutputAxisOrder = InputSlot(optional=True) # If not provided, use input axistag order
+    ExportDtype = InputSlot(optional=True)
+    OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    WorkingDirectory = InputSlot() # The project file directory
     OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_RESULTS') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
 
-    # The dataset info for the original dataset (raw data)
-    # If not provided, {nickname} and {dataset_dir} are not allowed in the filename format string
-    RawDatasetInfo = InputSlot(optional=True)
+    ImageToExport = OutputSlot()
+    ExportPath = OutputSlot() # Location of the saved file after export is complete.
+
+    def __init__(self, *args, **kwargs):
+        super( OpExportLaneResult, self ).__init__(*args, **kwargs)
+        
+        self._opFormattedExport = OpFormattedDataExport( parent=self )
+        opFormattedExport = self._opFormattedExport
+
+        # Forward almost all inputs to the 'real' exporter
+        opFormattedExport.Input.connect( self.Input )
+        opFormattedExport.RegionStart.connect( self.RegionStart )
+        opFormattedExport.RegionStop.connect( self.RegionStop )
+        opFormattedExport.InputMin.connect( self.InputMin )
+        opFormattedExport.InputMax.connect( self.InputMax )
+        opFormattedExport.ExportMin.connect( self.ExportMin )
+        opFormattedExport.ExportMax.connect( self.ExportMax )
+        opFormattedExport.ExportDtype.connect( self.ExportDtype )
+        opFormattedExport.OutputAxisOrder.connect( self.OutputAxisOrder )
+        opFormattedExport.OutputInternalPath.connect( self.OutputInternalPath )
+        opFormattedExport.OutputFormat.connect( self.OutputFormat )        
+        
+        self.ImageToExport.connect( opFormattedExport.ImageToExport )
+        self.ExportPath.connect( opFormattedExport.ExportPath )
+        
+    def setupOutputs(self):
+        rawInfo = self.RawDatasetInfo.value
+        known_keys = {}        
+        known_keys['nickname'] = rawInfo.nickname
+        known_keys['dataset_dir'] = os.path.split(rawInfo.filePath)[0]
+
+        # use partial formatting to fill in non-coordinate name fields
+        name_format = self.OutputFilenameFormat.value
+        partially_formatted_name = _format_known_keys( name_format, known_keys )
+        
+        # Convert to absolute path
+        abs_path, _ = getPathVariants( partially_formatted_name, self.WorkingDirectory.value )
+        self._opFormattedExport.OutputFilenameFormat.setValue( abs_path )
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here"
     
+    def propagateDirty(self, slot, subindex, roi):
+        print "TODO"
+
+    def run_export(self):
+        self._opFormattedExport.run_export()
+
+class OpFormattedDataExport(Operator):
+    """
+    Exports a dataset, with optional
+    """
+    Input = InputSlot()
+
+    # Subregion params
+    RegionStart = InputSlot(optional=True)
+    RegionStop = OutputSlot(optional=True)
+
+    # Normalization params    
+    InputMin = InputSlot(optional=True)
+    InputMax = InputSlot(optional=True)
+    ExportMin = InputSlot(optional=True)
+    ExportMax = InputSlot(optional=True)
+
+    ExportDtype = InputSlot(optional=True)
+    OutputAxisOrder = InputSlot(optional=True)
+    
+    # File settings
+    OutputFilenameFormat = InputSlot(value='RESULTS_{roi}') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
+    OutputInternalPath = InputSlot(value='exported_data')
+    OutputFormat = InputSlot(value='hdf5')
+
     ImageToExport = OutputSlot()
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
     # Input -> OpSubRegion -> OpNormalize -> ImageToExport
     
     def __init__(self, *args, **kwargs):
-        super( OpDataExport, self ).__init__(*args, **kwargs)
+        super( OpFormattedDataExport, self ).__init__(*args, **kwargs)
         self._dirty = True
         
         opSubRegion = OpSubRegion( parent=self )
@@ -80,7 +157,7 @@ class OpDataExport(Operator):
             original_axistags = self.Input.meta.original_axistags or self.Input.meta.axistags
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in original_axistags ) )
 
-        # Prepare subregion
+        # Prepare subregion operator
         total_roi = roiFromShape( self.Input.meta.shape )
         if self.RegionStart.ready():
             self._opSubRegion.Start.connect( self.RegionStart )
@@ -92,8 +169,11 @@ class OpDataExport(Operator):
         else:
             self._opSubRegion.Stop.setValue( total_roi[1] )
         
-        # Set up normalization/dtype conversion
-        export_dtype = self.ExportDtype.value
+        # Set up normalization and dtype conversion
+        export_dtype = self.Input.meta.dtype
+        if self.ExportDtype.ready():
+            export_dtype = self.ExportDtype.value
+
         need_normalize = ( self.InputMin.ready() and 
                            self.InputMax.ready() and 
                            self.ExportMin.ready() and 
@@ -111,19 +191,12 @@ class OpDataExport(Operator):
 
         # Obtain values for possible name fields
         roi = [ tuple(self._opSubRegion.Start.value), tuple(self._opSubRegion.Stop.value) ]
-        known_keys = { 'roi' : roi }        
-        if self.RawDatasetInfo.ready():
-            rawInfo = self.RawDatasetInfo.value
-            known_keys['nickname'] = rawInfo.nickname
-            known_keys['dataset_dir'] = os.path.split(rawInfo.filePath)[0]
+        known_keys = { 'roi' : roi }
 
         # use partial formatting to fill in non-coordinate name fields
         name_format = self.OutputFilenameFormat.value
-        partially_formatted_name = _format_known_keys( name_format, known_keys )
-        
-        # Convert to absolute path
-        abs_path, _ = getPathVariants( partially_formatted_name, self.WorkingDirectory.value )
-        self._opExportSlot.OutputFilenameFormat.setValue( abs_path )
+        partially_formatted_path = _format_known_keys( name_format, known_keys )
+        self._opExportSlot.OutputFilenameFormat.setValue( partially_formatted_path )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
@@ -135,6 +208,11 @@ class OpDataExport(Operator):
         self._opExportSlot.run_export()
 
 class OpExportSlot(Operator):
+    """
+    Export a slot 'as-is', i.e. no subregion, no dtype conversion, no normalization, no axis re-ordering, etc.
+    For sequence export formats, the sequence is indexed by the axistags' FIRST axis.
+    For example, txyzc produces a sequence of xyzc volumes.
+    """
     # TODO: Put this in lazyflow? (It intentionally avoids using ilastik-specific concepts like DatasetInfo)
     Input = InputSlot()
     
