@@ -560,6 +560,7 @@ class OpObjectExtraction(Operator):
     # which features to compute.
     # nested dictionary with format:
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
+    # for example {"Vigra Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
     Features = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()

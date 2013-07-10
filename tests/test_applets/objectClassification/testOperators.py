@@ -63,7 +63,9 @@ class TestOpRelabelSegmentation(object):
         assert (np.all(img[1, 10:20, 10:20, 10:20, 0] == 60))
         assert (np.all(img[1, 20:25, 20:25, 20:25, 0] == 70))
 
-
+class TestOpObjectTrain(unittest.TestCase):
+    
+    nRandomForests = 1
     def setUp(self):
         segimg = segImage()
 
@@ -112,7 +114,7 @@ class TestOpRelabelSegmentation(object):
             self.assertIsInstance(randomForest, vigra.learning.RandomForest)
 
 
-class TestOpObjectPredict(object):
+class TestOpObjectPredict(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
         labels = {0 : np.array([0, 1, 2]),
@@ -185,7 +187,7 @@ class TestOpObjectPredict(object):
         
 
  
-class TestFeatureSelection(object):
+class TestFeatureSelection(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
         binimg = (segimg>0).astype(np.uint8)
@@ -282,7 +284,7 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.assertTrue('text' in messagedict.keys())
         
 
-class TestFullOperator(object):
+class TestFullOperator(unittest.TestCase):
     def setUp(self):
         segimg = segImage()
         binimg = (segimg>0).astype(np.uint8)
@@ -308,13 +310,16 @@ class TestFullOperator(object):
         assert self.extrOp.RegionFeatures.ready()
         
         self.classOp = OpObjectClassification(graph=g)
-        self.classOp.BinaryImages.resize(1)
         self.classOp.BinaryImages.setValues([binimg])
-        self.classOp.SegmentationImages.resize(1)
-        self.classOp.SegmentationImages.setValue(segimg)
-        self.classOp.RawImages.resize(1)
+        #self.classOp.BinaryImages.resize(1)
+        #self.classOp.BinaryImages.setValues([binimg])
+        self.classOp.SegmentationImages.setValues([segimg])
+        #self.classOp.SegmentationImages.resize(1)
+        #self.classOp.SegmentationImages.setValue(segimg)
         self.classOp.RawImages.setValues([rawimg])
-        self.classOp.LabelInputs.resize(1)
+        #self.classOp.RawImages.resize(1)
+        #self.classOp.RawImages.setValues([rawimg])
+        #self.classOp.LabelInputs.resize(1)
         self.classOp.LabelInputs.setValues([labels])
         self.classOp.LabelsAllowedFlags.resize(1)
         self.classOp.LabelsAllowedFlags.setValues([True])
