@@ -56,7 +56,7 @@ class DatasetInfoEditorWidget(QDialog):
         # operator until the user hits "OK".
         self.tempOps = {}
         for laneIndex in laneIndexes:
-            tmpOp = OpDataSelection(graph=topLevelOperator.graph)
+            tmpOp = OpDataSelection(parent=topLevelOperator.parent)
             origOp = self._op.innerOperators[laneIndex]._opDatasets[roleIndex]
             
             if laneIndex in defaultInfos:

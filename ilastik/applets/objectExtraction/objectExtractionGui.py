@@ -69,14 +69,16 @@ class FeatureSelectionDialog(QDialog):
             parent.setExpanded(True)
             for name in sorted(features.keys()):
                 parameters = features[name]
+                
                 item = QTreeWidgetItem(parent)
                 item.setText(0, name)
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-
+                if 'tooltip' in parameters:
+                    item.setToolTip(0, parameters['tooltip'])
                 # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
                 item.setCheckState(0, Qt.Unchecked)
-
+                
                 if pluginName in self.selectedFeatures:
                     if name in self.selectedFeatures[pluginName]:
                         item.setCheckState(0, Qt.Checked)

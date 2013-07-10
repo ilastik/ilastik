@@ -146,7 +146,7 @@ def runWorkflow(parsed_args):
     try:
         if args._node_work_ is not None:
             # We're doing node work
-            opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
+            opClusterTaskWorker = OperatorWrapper( OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent )
 
             # FIXME: Image index is hard-coded as 0.  We assume we are working with only one (big) dataset in cluster mode.            
             opClusterTaskWorker.Input.connect( finalOutputSlot )
@@ -178,7 +178,7 @@ def runWorkflow(parsed_args):
             clusterOperator = opClusterTaskWorker
         else:
             # We're the master
-            opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
+            opClusterizeMaster = OperatorWrapper( OpClusterize, parent=finalOutputSlot.getRealOperator().parent )
 
             opClusterizeMaster.Input.connect( finalOutputSlot )
             opClusterizeMaster.ProjectFilePath.setValue( args.project )

@@ -1,8 +1,6 @@
-from PyQt4.QtGui import *
 from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtCore import QThread
+from PyQt4.QtGui import QColor
 
-import h5py
 import os
 import numpy
 
@@ -16,20 +14,9 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
+from volumina.utility import ShortcutManager
 
-class GenericThread(QThread):
-    def __init__(self, function, *args, **kwargs):
-        QThread.__init__(self)
-        self.function = function
-        self.args = args
-        self.kwargs = kwargs
-        
-    def __del__(self):
-        self.wait()
-    
-    def run(self):
-        self.function(*self.args, **self.kwargs)
-        return
+from ilastik.config import cfg as ilastik_config
     
 
 class ManualTrackingGui(LayerViewerGui):
@@ -55,20 +42,47 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
-                
-#        self._drawer.printMultiple.pressed.connect(self._onPrintMultipleLabelsInTimestep)
-#        self._drawer.printApp.pressed.connect(self._onPrintAppearancesInMergers)
+
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Manual Tracking"
+
+        divisionEvent = QtGui.QShortcut( QtGui.QKeySequence("d"), self, member=self._drawer.divEvent.click )
+        mgr.register( shortcutGroupName,
+                      "Mark Division Event (Click on parent object first, then on the two children.)",
+                      divisionEvent,
+                      self._drawer.divEvent )
         
-#        self._drawer.from_time.valueChanged.connect(self._setRanges)
-#        self._drawer.from_x.valueChanged.connect(self._setRanges)
-#        self._drawer.from_y.valueChanged.connect(self._setRanges)
-#        self._drawer.from_z.valueChanged.connect(self._setRanges)
-#        self._drawer.to_time.valueChanged.connect(self._setRanges)
-#        self._drawer.to_x.valueChanged.connect(self._setRanges)
-#        self._drawer.to_y.valueChanged.connect(self._setRanges)
-#        self._drawer.to_z.valueChanged.connect(self._setRanges)
+        newTrack = QtGui.QShortcut( QtGui.QKeySequence("s"), self, member=self._drawer.newTrack.click )
+        mgr.register( shortcutGroupName,
+                      "Start New Track",
+                      newTrack,
+                      self._drawer.newTrack )
+
+        markMisdet = QtGui.QShortcut( QtGui.QKeySequence("f"), self, member=self._drawer.markMisdetection.click )
+        mgr.register( shortcutGroupName,
+                      "Mark False Detection",
+                      markMisdet,
+                      self._drawer.markMisdetection )
+        
+        activeTrackUp = QtGui.QShortcut( QtGui.QKeySequence("q"), self, member=self._incrementActiveTrack )
+        mgr.register( shortcutGroupName,
+                      "Increment Active Track ID",
+                      activeTrackUp,)
+        
+        activeTrackDown = QtGui.QShortcut( QtGui.QKeySequence("a"), self, member=self._decrementActiveTrack )
+        mgr.register( shortcutGroupName,
+                      "Decrement Active Track ID",
+                      activeTrackDown,)
+        
+        goToNext = QtGui.QShortcut( QtGui.QKeySequence("g"), self, member=self._onNextUnlabeledPressed )
+        mgr.register( shortcutGroupName,
+                      "Go To Next Unlabeled Object",
+                      goToNext,)
+        
         
         
     ###########################################
@@ -100,17 +114,14 @@ class ManualTrackingGui(LayerViewerGui):
         
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
         
+        self._initShortcuts()
+        
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
-                
-#                maxt = slot.meta.shape[0] - 1
-#                self._setRanges()
-#                self._drawer.from_time.setValue(0)                
-#                self._drawer.to_time.setValue(maxt)
-            
+
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    
                 self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
@@ -138,7 +149,17 @@ class ManualTrackingGui(LayerViewerGui):
         trackingLayer.name = "Manual Tracking"
         trackingLayer.visible = True
         trackingLayer.opacity = 0.8
+
+        def toggleTrackingVisibility():
+            trackingLayer.visible = not trackingLayer.visible
+            
+        trackingLayer.shortcutRegistration = (
+                "Layer Visibilities",
+                "Toggle Manual Tracking Layer Visibility",
+                QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
+                trackingLayer )
         layers.append(trackingLayer)
+        
         
         ct = colortables.create_random_16bit()
         ct[1] = QColor(230,0,0,150).rgba()
@@ -151,14 +172,23 @@ class ManualTrackingGui(LayerViewerGui):
         layers.append(untrackedLayer)
         
         self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
-#        ct = colortables.create_default_8bit()
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[1] = QColor(255,255,0,100).rgba() # make 0 transparent
+        ct[1] = QColor(255,255,0,100).rgba() 
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
         objLayer.opacity = 0.8
         objLayer.visible = True
+        
+        def toggleObjectVisibility():
+            objLayer.visible = not objLayer.visible
+            
+        objLayer.shortcutRegistration = (
+                "Layer Visibilities",
+                "Toggle Objects Layer Visibility",
+                QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
+                objLayer )
+        
         layers.append(objLayer)
 
 
@@ -172,21 +202,6 @@ class ManualTrackingGui(LayerViewerGui):
         
         if self.topLevelOperatorView.LabelImage.meta.shape:
             self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape    
-            
-#            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
-#            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
-#            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
-#            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
-#        
-#            self._setRanges()
-#            self._drawer.from_time.setValue(0)
-#            self._drawer.to_time.setValue(maxt) 
-#            self._drawer.from_x.setValue(0)
-#            self._drawer.to_x.setValue(maxx)
-#            self._drawer.from_y.setValue(0)
-#            self._drawer.to_y.setValue(maxy)   
-#            self._drawer.from_z.setValue(0)    
-#            self._drawer.to_z.setValue(maxz)
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
@@ -197,7 +212,7 @@ class ManualTrackingGui(LayerViewerGui):
         return layers
 
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
-        divItem = QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
+        divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
         divItem.setCheckState(False)
         self._drawer.divisionsList.addItem(divItem)
@@ -224,7 +239,6 @@ class ManualTrackingGui(LayerViewerGui):
             for oid in self.mainOperator.labels[t].keys():
                 for tr in list(self.mainOperator.labels[t][oid]):
                     allTracks.add(tr)        
-        #print 'allTracks = ', allTracks
         
         items = set()
         for idx in range(activeTrackBox.count()):
@@ -236,6 +250,22 @@ class ManualTrackingGui(LayerViewerGui):
         
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
     
+    def _incrementActiveTrack(self):
+        activeTrackBox = self._drawer.activeTrackBox
+        if not activeTrackBox.isEnabled():
+            return
+        ind = activeTrackBox.currentIndex()
+        if ind+1 < activeTrackBox.count():            
+            activeTrackBox.setCurrentIndex(ind+1)
+
+    def _decrementActiveTrack(self):
+        activeTrackBox = self._drawer.activeTrackBox
+        if not activeTrackBox.isEnabled():
+            return
+        ind = activeTrackBox.currentIndex()
+        if ind-1 >= 0:            
+            activeTrackBox.setCurrentIndex(ind-1)
+                    
     @staticmethod
     def _getObject(slot, pos5d):
         slicing = tuple(slice(i, i+1) for i in pos5d)
@@ -271,7 +301,7 @@ class ManualTrackingGui(LayerViewerGui):
             if len(self.divs) == 3:                
                 activeTrack = self._getActiveTrack()
                 if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
-                    self._criticalMessage("Error", "Error: The label of the parent cell must match the active track label.")
+                    self._criticalMessage("Error: The label of the parent cell must match the active track label.")
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
@@ -287,7 +317,6 @@ class ManualTrackingGui(LayerViewerGui):
                 self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)                
                 
                 self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
-                #print 'divisions = ', self.mainOperator.divisions
                 self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
                 
                 self._setDirty(self.mainOperator.Divisions, [])
@@ -299,12 +328,7 @@ class ManualTrackingGui(LayerViewerGui):
                 self.divLock = False
                 self.divs = []
                 self._drawer.divEvent.setChecked(False)
-                
-                self._drawer.activeTrackBox.setEnabled(True)
-                self._drawer.delTrack.setEnabled(True)
-                self._drawer.newTrack.setEnabled(True)
-                self._drawer.markMisdetection.setEnabled(True)
-                self._drawer.nextUnlabeledButton.setEnabled(True)
+                self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)                
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
@@ -340,26 +364,49 @@ class ManualTrackingGui(LayerViewerGui):
         
         t = position5d[0]
         activeTrack = self._getActiveTrack()
-        menu = QMenu(self)        
-        delLabel = {}
-        delSubtrackToEnd = {}
-        delSubtrackToStart = {}
+        
         trackids = []
         if oid in self.mainOperator.labels[t].keys():
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
-                text = "remove label " + str(l)
-                delLabel[text] = l
+        
+        title = "Object " + str(oid)
+        if len(trackids) == 0:
+            title += " contains no track ids."
+        elif len(trackids) == 1:
+            title += " contains track id " + str(trackids[0]) + "."
+        else:
+            title += " contains track ids " + str(trackids) + "."
+        menu = QtGui.QMenu( self )
+        
+        menuTitle = QtGui.QAction(title, menu)
+        font = menuTitle.font()
+        font.setItalic(True)
+        font.setBold(True)
+        menuTitle.setFont(font)
+        menuTitle.setEnabled(False)
+        menu.addAction(menuTitle)
+        menu.addSeparator()
+        
+        delLabel = {}
+        delSubtrackToEnd = {}
+        delSubtrackToStart = {}
+        
+        for l in trackids:
+            text = "remove label " + str(l)
+            delLabel[text] = l
+            menu.addAction(text)
+            
+            if activeTrack != self.misdetIdx:
+                text = "remove label " + str(l) + " from here to end"
+                delSubtrackToEnd[text] = l
                 menu.addAction(text)
-                
-                if activeTrack != self.misdetIdx:
-                    text = "remove label " + str(l) + " from here to end"
-                    delSubtrackToEnd[text] = l
-                    menu.addAction(text)
-                
-                    text = "remove label " + str(l) + " from here to start"
-                    delSubtrackToStart[text] = l
-                    menu.addAction(text)
+            
+                text = "remove label " + str(l) + " from here to start"
+                delSubtrackToStart[text] = l
+                menu.addAction(text)
+            
+            menu.addSeparator()
         
         if activeTrack != self.misdetIdx:
             runTracking = "run automatic tracking for object " + str(oid)
@@ -371,6 +418,7 @@ class ManualTrackingGui(LayerViewerGui):
                 if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
                     text = "remove division event from label " + str(trackid)
                     delDivision[text] = trackid
+                    menu.addSeparator()
                     menu.addAction(text)
         
         action = menu.exec_(globalWindowCoordiante)
@@ -409,8 +457,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, range(0,t+1))
             
         elif selection == runTracking:
-            self.genericThread = GenericThread(self._runSubtracking, position5d, oid)
-            self.genericThread.start()
+            self._runSubtracking(position5d, oid)
         
         elif selection in delDivision.keys():
             self._delDivisionEvent(delDivision[selection])
@@ -454,7 +501,7 @@ class ManualTrackingGui(LayerViewerGui):
             # (negative track ids are use for special cases like misdetections)
             newTrack = max(allTracks + [0,])+1
             
-            # avoid these track ids
+            # avoid these track ids due to inappropriate colors 
             if newTrack % 255 == 0:
                 newTrack += 2
             elif newTrack % 256 == 0:
@@ -473,6 +520,7 @@ class ManualTrackingGui(LayerViewerGui):
                                        " Remove division event first.")
             self._gotoObject(oid, t)
             return False
+        
         self.mainOperator.labels[t][oid].remove(track2remove)
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
@@ -499,12 +547,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         if success:
             activeTrackBox.removeItem(idx2remove)
-        
-#        # delete the track from division events if present:
-#        for key in self.mainOperator.divisions.keys():
-#            if track2remove in key or track2remove in self.mainOperator.divisions[key][0]:
-#                self._delDivisionEvent(key)                
-                
+          
         if len(affectedT) > 0:
             self._setDirty(self.mainOperator.TrackImage, affectedT)
             self._setDirty(self.mainOperator.UntrackedImage, affectedT)
@@ -601,6 +644,7 @@ class ManualTrackingGui(LayerViewerGui):
         if t_end > 0:
             self.editor.posModel.time = t_end
     
+    
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
             self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
@@ -609,18 +653,7 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
         
-        if self.divLock:
-            self._drawer.activeTrackBox.setEnabled(False)
-            self._drawer.delTrack.setEnabled(False)
-            self._drawer.newTrack.setEnabled(False)
-            self._drawer.markMisdetection.setEnabled(False)
-            self._drawer.nextUnlabeledButton.setEnabled(False)
-        else:
-            self._drawer.activeTrackBox.setEnabled(True)
-            self._drawer.delTrack.setEnabled(True)
-            self._drawer.newTrack.setEnabled(True)
-            self._drawer.markMisdetection.setEnabled(True)
-            self._drawer.nextUnlabeledButton.setEnabled(True)
+        self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
 
     def _setStyleSheet(self, widget, qcolor):                         
@@ -631,13 +664,11 @@ class ManualTrackingGui(LayerViewerGui):
                                      )
         widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
     
+    
     def _onDivisionsListActivated(self):        
         parent = int(str(self._drawer.divisionsList.currentItem().text()).split(':')[0])
         t = self.mainOperator.divisions[parent][1]        
-        
-        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
-        li = self.mainOperator.LabelImage.get(roi).wait()
-        
+                
         found = False
         for oid in self.mainOperator.labels[t].keys():
             if parent in self.mainOperator.labels[t][oid]:
@@ -659,12 +690,8 @@ class ManualTrackingGui(LayerViewerGui):
         
         if self.misdetLock:            
             self.lastActiveTrackIdx = activeTrackBox.currentIndex()
-            self._drawer.divEvent.setEnabled(False)
-            self._drawer.delTrack.setEnabled(False)
-            self._drawer.newTrack.setEnabled(False)
-            self._drawer.activeTrackBox.setEnabled(False)
-            self._drawer.nextUnlabeledButton.setEnabled(False)
-            
+            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=False)
+                    
             # add -1 to the tracks if not already present
             row = -1
             for idx in range(self._drawer.activeTrackBox.count()):
@@ -682,48 +709,16 @@ class ManualTrackingGui(LayerViewerGui):
                 activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
                 self._currentActiveTrackChanged()
             
-            self._drawer.divEvent.setEnabled(True)
-            self._drawer.delTrack.setEnabled(True)
-            self._drawer.newTrack.setEnabled(True)
-            self._drawer.activeTrackBox.setEnabled(True)
-            self._drawer.nextUnlabeledButton.setEnabled(True)
+            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)            
         
-    def _setRanges(self):
-        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
-        maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
-        maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
-        maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
         
-        from_time = self._drawer.from_time
-        to_time = self._drawer.to_time
-        from_x = self._drawer.from_x
-        to_x = self._drawer.to_x
-        from_y = self._drawer.from_y
-        to_y = self._drawer.to_y
-        from_z = self._drawer.from_z
-        to_z = self._drawer.to_z
-                
-        from_time.setRange(0, to_time.value()-1)        
-        to_time.setRange(from_time.value()+1,maxt)      
-        
-        from_x.setRange(0,to_x.value())
-        to_x.setRange(from_x.value(),maxx)
-        
-        from_y.setRange(0,to_y.value())
-        to_y.setRange(from_y.value(),maxy)
-        
-        from_z.setRange(0,to_z.value())
-        to_z.setRange(from_z.value(),maxz)
-    
+    @staticmethod
+    def _appendUnique(lst, obj):
+        if obj not in lst:
+            lst.append(obj)
+            
+            
     def _getEvents(self):
-#        time_range = [int(self._drawer.from_time.value()), int(self._drawer.to_time.value())+1]
-#        x_range = [int(self._drawer.from_x.value()), int(self._drawer.to_x.value())+1]
-#        y_range = [int(self._drawer.from_y.value()), int(self._drawer.to_y.value())+1]
-#        z_range = [int(self._drawer.from_z.value()), int(self._drawer.to_z.value())+1]
-#        size_range = [int(self._drawer.from_size.value()), int(self._drawer.to_size.value())+1]
-#        
-#        oid2tids, alltids = self.mainOperator._getObjects(time_range, x_range, y_range, z_range, size_range, self.misdetIdx)
-
         maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
         time_range = [0, maxt]
         oid2tids, alltids = self.mainOperator._getObjects(time_range, self.misdetIdx)
@@ -746,7 +741,6 @@ class ManualTrackingGui(LayerViewerGui):
             multiMoves[t] = []
         
         t_start = time_range[0]
-        t_end = time_range[1]-1
         
         tracks_starting_in_div = {}
         for d in divisions.keys():
@@ -763,7 +757,6 @@ class ManualTrackingGui(LayerViewerGui):
                 for o in oid2tids[t].keys():
                     if tid in oid2tids[t][o]:
                         oid_cur = o
-#                        found = True
                         break
                        
                 if (oid_prev is not None) and (oid_cur is None): # track ends
@@ -788,24 +781,23 @@ class ManualTrackingGui(LayerViewerGui):
                                 child1_exists = (oid_child1 in oid2tids[t].keys())
                                 child2_exists = (oid_child2 in oid2tids[t].keys())
                                 if child1_exists and child2_exists:
-                                    divs[t].append((oid_prev,oid_child1,oid_child2,0.))                                
+                                    self._appendUnique(divs[t], (oid_prev,oid_child1,oid_child2,0.))
                                 elif child1_exists:
-                                    moves[t].append((oid_prev,oid_child1,0.))
+                                    self._appendUnique(moves[t], (oid_prev,oid_child1,0.))
                                 elif child2_exists:
-                                    moves[t].append((oid_prev,oid_child2,0.))
-                                
+                                    self._appendUnique(moves[t], (oid_prev,oid_child2,0.))                                
                                 break
                                     
                     # else: disappearance
-                    disapps[t].append((oid_prev, 0.))                    
+                    self._appendUnique(disapps[t], (oid_prev, 0.))        
                     # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
                 
                 elif (oid_prev is None) and (t != t_start) and (oid_cur is not None): # track starts
                     if tid in tracks_starting_in_div.keys() and tracks_starting_in_div[tid] != t:
-                        apps[t].append((oid_cur, 0.))                    
+                        self._appendUnique(apps[t], (oid_cur, 0.))
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
-                    moves[t].append((oid_prev, oid_cur, 0.))
+                    self._appendUnique(moves[t], (oid_prev, oid_cur, 0.))
                     
                     if len(oid2tids[t][oid_cur]) == 1 and len(oid2tids[t-1][oid_prev]) > 1:
                         t_multiprev = None
@@ -822,8 +814,8 @@ class ManualTrackingGui(LayerViewerGui):
                             if found:
                                 break
                             
-                        if t_multiprev is not None and oid_multiprev is not None: 
-                            multiMoves[t].append((oid_multiprev, oid_cur, t_multiprev, 0.))
+                        if t_multiprev is not None and oid_multiprev is not None:
+                            self._appendUnique(multiMoves[t],(oid_multiprev, oid_cur, t_multiprev, 0.)) 
                 
                 oid_prev = oid_cur
         
@@ -844,7 +836,11 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onExportButtonPressed(self):
         import h5py
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None or str(directory) == '':
             return
@@ -930,6 +926,55 @@ class ManualTrackingGui(LayerViewerGui):
         
             self._log("-> tracking successfully exported")
 
+    def _onExportTifButtonPressed(self):
+        import vigra
+        
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
+        
+        divisions = self.mainOperator.divisions
+        inverseDivisions = {}
+        for k, vals in divisions.items():
+            for v in vals[0]:
+                inverseDivisions[v] = k
+        replace = {}
+        activeTrackBox = self._drawer.activeTrackBox
+        tids = set()
+        for idx in range(activeTrackBox.count()):
+            tids.add(int(activeTrackBox.itemText(idx)))
+        if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
+            self._criticalMessage("There are no tracks to export.")
+        if 0 in tids:
+            tids.remove(0)
+        if -1 in tids:
+            tids.remove(-1)
+        for tid in tids:
+            replace[tid] = [tid] # identity
+            
+        for tid in inverseDivisions.keys():
+            rootTid = inverseDivisions[tid]
+            while rootTid in inverseDivisions.keys():
+                rootTid = inverseDivisions[rootTid]
+            replace[tid] = [rootTid]
+                
+        shape = list(self.mainOperator.TrackImage.meta.shape)
+        for t in range(shape[0]):
+            self._log('exporting tiffs for t = ' + str(t))            
+            
+            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
+            trackImage = self.mainOperator.TrackImage.get(roi).wait()
+            relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
+            for i in range(relabeled.shape[2]):
+                out_im = relabeled[:,:,i]
+                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
+        
+        self._log('Tiffs exported.')
+        
+        
     
     def _gotoObject(self, oid, t, keepZ=False):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
@@ -946,6 +991,7 @@ class ManualTrackingGui(LayerViewerGui):
         self.editor.posModel.time = t      
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
 
+
     def _onGotoLabel(self):
         t = self._drawer.timeBox.value()
         tid = self._drawer.tidBox.value()
@@ -953,9 +999,6 @@ class ManualTrackingGui(LayerViewerGui):
         if t < 0 or t >= self.mainOperator.LabelImage.meta.shape[0]:
             self._criticalMessage("Error: Cannot access time step "  + str(t) + ".")
             return
-        
-#        roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
-#        li = self.mainOperator.LabelImage.get(roi).wait()
         
         found = False
         for oid in self.mainOperator.labels[t].keys():
@@ -968,66 +1011,7 @@ class ManualTrackingGui(LayerViewerGui):
             return
           
         self._gotoObject(oid, t)
-    
-    def _onPrintMultipleLabelsInTimestep(self):
-        maxt = self.mainOperator.LabelImage.meta.shape[0]
-        
-        affectedTids = {}
-        for t in range(maxt):
-            affectedTids_at = []
-            tids_at= []
-            for l in self.mainOperator.labels[t].keys():
-                for tid in list(self.mainOperator.labels[t][l]):
-                    if tid in tids_at:
-                        affectedTids_at.append(tid)
-                    tids_at.append(tid)
-            affectedTids[t] = affectedTids_at
-            
-        print 'Multiple Track IDs in one Timestep:'
-        print '==================================='
-        for t in sorted(affectedTids.keys()):
-            for el in sorted(affectedTids[t]):
-                print '(t, tid) = ', (t, el)
-        
-        print 
-        print
-            
-            
-    def _onPrintAppearancesInMergers(self):
-        maxt = self.mainOperator.LabelImage.meta.shape[0]
-    
-        oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
-            
-        affectedTids = {}
-        for t in range(maxt):
-            affectedTids_at = []
-            if t in apps.keys():
-                for app in apps[t]:
-                    # FIXME: make a numpy array out of that and search in the first column
-                    for merg in mergers[t]:
-                        if app[0] == merg[0]:
-                            tid = self.mainOperator.labels[t][app[0]]
-                            affectedTids_at.append(tid)                            
-            if t in disapps.keys():
-                if t == 0:
-                    continue
-                for disapp in disapps[t]:
-                        for merg in mergers[t-1]:
-                            if disapp[0] == merg[0]:
-                                tid = self.mainOperator.labels[t-1][disapp[0]]
-                                affectedTids_at.append(tid)
-            affectedTids[t] = affectedTids_at
-            
-        
-        print 'Mergers with appearing/disappearing labels:'
-        print '==========================================='
-        for t in sorted(affectedTids.keys()):
-            for el in sorted(affectedTids[t]):
-                print '(t, tid) = ', (t, el)
-        
-        print 
-        print
-    
+
     
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
@@ -1062,3 +1046,18 @@ class ManualTrackingGui(LayerViewerGui):
 
     def postCriticalMessage(self, prompt):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
+        
+        
+    def _enableButtons(self, exceptButtons=None, enable=True):
+        buttons = [self._drawer.activeTrackBox, 
+                   self._drawer.delTrack,
+                   self._drawer.newTrack,
+                   self._drawer.markMisdetection,
+                   self._drawer.nextUnlabeledButton,
+                   self._drawer.divEvent,
+                   ]
+        
+        for b in buttons:
+            if b not in exceptButtons:
+                b.setEnabled(enable)
+        

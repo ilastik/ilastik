@@ -46,7 +46,7 @@ class OpChaingraphTracking(OpTrackingBase):
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
-        self.Parameters.setValue(parameters)        
+        self.Parameters.setValue(parameters, check_changed=False)        
         
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)

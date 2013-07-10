@@ -51,17 +51,17 @@ class OpVigraWatershedViewer(Operator):
         # InputImage ----------> opThreshold --> opSeedLabeler --> opSeedFilter ----- ---> opSeedCache --> opSeedColorizer --> GUI
         
         # Create operators
-        self.opChannelSlicer = OpMultiArraySlicer2(graph=self.graph, parent=self)
-        self.opAverage = OpMultiArrayMerger(graph=self.graph, parent=self)
-        self.opWatershed = OpVigraWatershed(graph=self.graph, parent=self)
-        self.opWatershedCache = OpSlicedBlockedArrayCache(graph=self.graph, parent=self)
-        self.opColorizer = OpColorizeLabels(graph=self.graph, parent=self)
+        self.opChannelSlicer = OpMultiArraySlicer2(parent=self)
+        self.opAverage = OpMultiArrayMerger(parent=self)
+        self.opWatershed = OpVigraWatershed(parent=self)
+        self.opWatershedCache = OpSlicedBlockedArrayCache(parent=self)
+        self.opColorizer = OpColorizeLabels(parent=self)
         
-        self.opThreshold = OpPixelOperator(graph=self.graph, parent=self)
-        self.opSeedLabeler = OpVigraLabelVolume(graph=self.graph, parent=self)
-        self.opSeedFilter = OpFilterLabels(graph=self.graph, parent=self)
-        self.opSeedCache = OpSlicedBlockedArrayCache(graph=self.graph, parent=self)        
-        self.opSeedColorizer = OpColorizeLabels(graph=self.graph, parent=self)
+        self.opThreshold = OpPixelOperator(parent=self)
+        self.opSeedLabeler = OpVigraLabelVolume(parent=self)
+        self.opSeedFilter = OpFilterLabels(parent=self)
+        self.opSeedCache = OpSlicedBlockedArrayCache(parent=self)        
+        self.opSeedColorizer = OpColorizeLabels(parent=self)
 
         # Select specific input channels
         self.opChannelSlicer.Input.connect( self.InputImage )

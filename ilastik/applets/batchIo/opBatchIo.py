@@ -173,7 +173,7 @@ class OpBatchIo(Operator):
                     return
                 
                 # Set up the write operator
-                opH5Writer = OpH5WriterBigDataset(parent=self, graph=self.graph)
+                opH5Writer = OpH5WriterBigDataset(parent=self)
                 opH5Writer.hdf5File.setValue( hdf5File )
                 opH5Writer.hdf5Path.setValue( pathComp.internalPath )
                 opH5Writer.Image.connect( self.ImageToExport )

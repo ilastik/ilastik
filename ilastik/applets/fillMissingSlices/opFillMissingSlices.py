@@ -1,12 +1,14 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 
-_detectionMethod = 'classic'
-def setDetectionMethod(s):
-    _detectionMethod = s
+import logging
+loggerName = __name__ 
+logger = logging.getLogger(loggerName)
+logger.setLevel(logging.DEBUG)
 
 class OpFillMissingSlicesNoCache(Operator):
     Input = InputSlot()
+    DetectionMethod = InputSlot(value='classic')
     Output = OutputSlot()
     Missing = OutputSlot()
     
@@ -17,7 +19,8 @@ class OpFillMissingSlicesNoCache(Operator):
         self._opInterp = OpInterpMissingData( parent=self )
         self._opInterp.InputVolume.connect( self.Input )
         self._opInterp.InputSearchDepth.setValue(100)
-        self._opInterp.DetectionMethod.setValue(_detectionMethod)
+        
+        self._opInterp.DetectionMethod.connect(self.DetectionMethod)
 
         self.Output.connect( self._opInterp.Output )
         self.Missing.connect( self._opInterp.Missing )
@@ -27,6 +30,19 @@ class OpFillMissingSlicesNoCache(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         pass # Nothing to do here.
+    
+    def isDirty(self):
+        #FIXME
+        return True
+    
+    def dumps(self):
+        return self._opInterp.dumps()
+    
+    def loads(self, s):
+        self._opInterp.loads(s)
+    
+    
+    
 
 class OpFillMissingSlices(OpFillMissingSlicesNoCache):
     """
