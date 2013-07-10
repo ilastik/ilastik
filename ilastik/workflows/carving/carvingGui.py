@@ -489,6 +489,9 @@ class CarvingGui(LabelingGui):
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
             for i in range(254-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                # ensure colors have sufficient distance to pure red and pure green
+                while (255 - r)+g+b<128 or r+(255-g)+b<128:
+                    r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             #have to use lazyflow because it provides dirty signals
             layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
