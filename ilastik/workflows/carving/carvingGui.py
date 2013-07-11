@@ -31,6 +31,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 class CarvingGui(LabelingGui):
     def __init__(self, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
+        self.showUncertaintyLayer = False
 
         labelingSlots = LabelingGui.LabelingSlots()
         labelingSlots.labelInput = topLevelOperatorView.WriteSeeds
@@ -108,6 +109,7 @@ class CarvingGui(LabelingGui):
                 value = "none"
                 self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
                 self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+                self.showUncertaintyLayer = False
             else:
                 if value == 1:
                     value = "localMargin"
@@ -119,8 +121,10 @@ class CarvingGui(LabelingGui):
                     raise RuntimeError("unhandled case '%r'" % value)
                 self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
                 self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+                self.showUncertaintyLayer = True
                 print "uncertainty changed to %r" % value
             self.topLevelOperatorView.UncertaintyType.setValue(value)
+            self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
         self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onuncertaintyCombo)
 
         def onBackgroundPriorityDirty(slot, roi):
@@ -458,19 +462,19 @@ class CarvingGui(LabelingGui):
             self.editor.setLabelSink(labelsrc)
 
         #uncertainty
-        uncert = self.topLevelOperatorView.Uncertainty
-        if uncert.ready():
-            colortable = []
-            for i in range(256-len(colortable)):
-                r,g,b,a = i,0,0,i
-                colortable.append(QColor(r,g,b,a).rgba())
-
-            layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-            layer.name = "Uncertainty"
-            layer.visible = True
-            layer.opacity = 0.3
-            layers.append(layer)
-
+        if self.showUncertaintyLayer:
+            uncert = self.topLevelOperatorView.Uncertainty
+            if uncert.ready():
+                colortable = []
+                for i in range(256-len(colortable)):
+                    r,g,b,a = i,0,0,i
+                    colortable.append(QColor(r,g,b,a).rgba())
+    
+                layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+                layer.name = "Uncertainty"
+                layer.visible = True
+                layer.opacity = 0.3
+                layers.append(layer)
        
         #segmentation 
         seg = self.topLevelOperatorView.Segmentation
