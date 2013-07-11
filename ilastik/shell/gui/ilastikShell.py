@@ -92,7 +92,7 @@ class MemoryWidget(QWidget):
     def cleanUp(self):
         self.setMemoryBytes(0)
     def setMemoryBytes(self, bytes):
-        self.label.setText("cached: %1.1f" % (bytes/(1024.0**2.0)))
+        self.label.setText("cached: %1.1f MB" % (bytes/(1024.0**2.0)))
  
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
