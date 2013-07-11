@@ -68,7 +68,6 @@ class CarvingGui(LabelingGui):
         
 
         self._doneSegmentationLayer = None
-        self._showSegmentationIn3D = False
         
         #volume rendering
         try:
@@ -80,7 +79,11 @@ class CarvingGui(LabelingGui):
         except:
             self.render = False
 
-        
+        # Segmentation is toggled on by default in _after_init, below.
+        # (We can't enable it until the layers are all present.)
+        self._showSegmentationIn3D = False
+        self._segmentation_3d_label = None
+                
         self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
@@ -216,7 +219,11 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
         #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
-        
+    
+    def _after_init(self):
+        super(CarvingGui, self)._after_init()
+        self._toggleSegmentation3D()
+    
     def onSegmentButton(self):
         print "segment button clicked"
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
@@ -391,6 +398,7 @@ class CarvingGui(LabelingGui):
             self._segmentation_3d_label = self._renderMgr.addObject()
         else:
             self._renderMgr.removeObject(self._segmentation_3d_label)
+            self._segmentation_3d_label = None
         self._update_rendering()
     
     def _update_rendering(self):
@@ -427,7 +435,7 @@ class CarvingGui(LabelingGui):
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
-        if self._showSegmentationIn3D:
+        if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
     def getNextLabelName(self):
