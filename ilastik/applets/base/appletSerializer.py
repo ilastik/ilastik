@@ -242,7 +242,7 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            slot.resize(len(subgroup))
+            #slot.resize(len(subgroup))
             for i, key in enumerate(subgroup):
                 assert key == self.subname.format(i)
                 self._deserialize(subgroup[key], slot[i])
