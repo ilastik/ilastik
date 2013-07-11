@@ -33,13 +33,16 @@ class CarvingWorkflow(Workflow):
         
         super(CarvingWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       supportIlastik05Import=True,
-                                                       batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        supportIlastik05Import=True,
+                                                        batchDataGui=False,
+                                                        instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
         

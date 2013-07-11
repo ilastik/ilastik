@@ -207,9 +207,14 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from pixel classification)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(
-            self, "Data Selection", "DataSelection", batchDataGui=False,
-            force5d=False)
+        data_instructions = 'Use the "Raw Data" tab on the right to load your intensity image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self, 
+                                                        "Data Selection", 
+                                                        "DataSelection", 
+                                                        batchDataGui=False,
+                                                        force5d=False, 
+                                                        instructionText=data_instructions )
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data'])
 
@@ -271,11 +276,15 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True)
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Segmentation Image" tab to load your binary mask image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        batchDataGui=False,
+                                                        force5d=True,
+                                                        instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data', 'Segmentation Image'])
@@ -297,11 +306,15 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from prediction image)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True)
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        batchDataGui=False,
+                                                        force5d=True,
+                                                        instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])

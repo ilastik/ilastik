@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label">
+    <widget class="QLabel" name="instructionLabel">
      <property name="text">
       <string>Use the controls on the right to add image files.</string>
      </property>
