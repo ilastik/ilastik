@@ -86,7 +86,7 @@
      <item>
       <widget class="QRadioButton" name="filter4">
        <property name="toolTip">
-        <string>This setting assumes that boundaries in the original image are bright lines separating dark background.</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;bright lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;dark background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>bright lines (smoothed original image)</string>
@@ -96,7 +96,7 @@
      <item>
       <widget class="QRadioButton" name="filter5">
        <property name="toolTip">
-        <string>This setting assumes that boundaries in the original image are dark lines separating bright background.</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;dark lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;bright background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>dark lines (inverted, smoothed image)</string>
@@ -130,6 +130,9 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="sigmaSpin">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Lager sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="locale">
           <locale language="English" country="UnitedStates"/>
          </property>
@@ -208,20 +211,10 @@
        <item>
         <widget class="QCheckBox" name="writeprotectBox">
          <property name="toolTip">
-          <string>write-protect current carving graph file</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Write-protect&lt;/span&gt; current carving graph file.&lt;/p&gt;&lt;p&gt;The write protection prevents you from changing any of the pre-processing settings. This is useful if you have already segmented multiple objects, which rely on specific settings to produce specific supervoxels.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
           <string>write-protect</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="resetButton">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>reset</string>
          </property>
         </widget>
        </item>
