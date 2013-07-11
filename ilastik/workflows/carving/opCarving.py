@@ -18,6 +18,7 @@ from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
 
 from ilastik.utility.timer import Timer
+from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpCarving(Operator):
     name = "Carving"
@@ -123,7 +124,35 @@ class OpCarving(Operator):
         
         self._opMstCache = OpValueCache( parent=self )
         self.MstOut.connect( self._opMstCache.Output )
+
+        self.InputData.notifyReady( self._checkConstraints )
+    
+    def _checkConstraints(self, *args):
+        slot = self.InputData
+        numChannels = slot.meta.getTaggedShape()['c']
+        if numChannels != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must have exactly one channel.  " +
+                "You attempted to add a dataset with {} channels".format( numChannels ) )
         
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(slot.meta.shape) != 5:
+            # Raise a regular exception.  This error is for developers, not users.
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if slot.meta.getTaggedShape()['t'] != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must not have more than one time slice.  " +
+                "You attempted to add a dataset with {} time slices".format( slot.meta.getTaggedShape()['t'] ) )
+        
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                # This is for developers.  Don't need a user-friendly error.
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
+
+
     def _clearLabels(self):
         #clear the labels 
         self.opLabelArray.DeleteLabel.setValue(2)
@@ -165,22 +194,7 @@ class OpCarving(Operator):
         else:
             return True
         
-    def _checkMeta(self, slot):
-        sh = slot.meta.shape
-        ax = slot.meta.axistags
-        if len(ax) != 5:
-            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
-        if sh[0] != 1:
-            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
-        if sh[4] != 1:
-            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
-        for i in range(1,4):
-            if not ax[i].isSpatial():
-                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-
     def setupOutputs(self):
-        self._checkMeta(self.InputData)
-        
         self.Segmentation.meta.assignFrom(self.InputData.meta)
         self.Segmentation.meta.dtype = numpy.int32
         
