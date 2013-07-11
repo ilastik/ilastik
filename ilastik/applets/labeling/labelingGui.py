@@ -96,7 +96,8 @@ class LabelingGui(LayerViewerGui):
     class LabelingSlots(object):
         """
         This class serves as the parameter for the LabelingGui constructor.
-        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user's mouse clicks.
+        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
+        user's mouse clicks.
         """
         def __init__(self):
             # Slot to insert elements onto
@@ -118,10 +119,12 @@ class LabelingGui(LayerViewerGui):
         """
         Constructor.
 
-        :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.
+        :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots
+                              class source for details.
         :param topLevelOperatorView: is provided to the LayerViewerGui (the base class)
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
-        :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements (if provided).
+        :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements
+                             (if provided).
         """
 
         # Do have have all the slots we need?

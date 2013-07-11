@@ -35,9 +35,16 @@ class PixelClassificationWorkflow(Workflow):
         super( PixelClassificationWorkflow, self ).__init__( headless, graph=graph, *args, **kwargs )
         self._applets = []
 
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        supportIlastik05Import=True,
+                                                        batchDataGui=False,
+                                                        instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 

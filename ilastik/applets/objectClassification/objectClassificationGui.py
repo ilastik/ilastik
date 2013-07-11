@@ -42,6 +42,14 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.spinBox_X.setEnabled(False)
         self.ui.spinBox_Y.setEnabled(False)
         self.ui.spinBox_Z.setEnabled(False)
+        self.ui.spinBox_X.setVisible(False)
+        self.ui.spinBox_Y.setVisible(False)
+        self.ui.spinBox_Z.setVisible(False)
+        self.ui.marginLabel.setVisible(False)
+        self.ui.label.setVisible(False)
+        self.ui.label_2.setVisible(False)
+        self.ui.label_3.setVisible(False)
+        self._setAll(Qt.Checked)
 
 
 class ObjectClassificationGui(LabelingGui):
@@ -107,6 +115,8 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
+        
+        self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
 
         # button handlers

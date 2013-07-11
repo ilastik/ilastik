@@ -117,6 +117,8 @@ class CarvingSerializer( AppletSerializer ):
                 bg_voxels = topGroup["bg_voxels"]
                 bg_voxels = [bg_voxels[:,k] for k in range(3)]
 
+            # Determine boundings box of seeds so that we can send the smallest
+            # possible array to the WriteSeeds slot. 
 
             # Start with inverse roi
             total_roi = roiFromShape(opCarving.opLabelArray.Output.meta.shape)
@@ -137,10 +139,10 @@ class CarvingSerializer( AppletSerializer ):
                 z = numpy.zeros(bounding_box_roi[1] - bounding_box_roi[0], dtype=dtype)
                 if fg_voxels is not None:
                     fg_voxels = fg_voxels - numpy.array( [bounding_box_roi[0]] ).transpose()
-                    z[fg_voxels] = 2
+                    z[list(fg_voxels)] = 2 #fg_voxels is a 3xn numpy array, break it up into a list with three entries
                 if bg_voxels is not None:
                     bg_voxels = bg_voxels - numpy.array( [bounding_box_roi[0]] ).transpose()
-                    z[bg_voxels] = 1
+                    z[list(bg_voxels)] = 1
 
                 bounding_box_slicing = roiToSlice( bounding_box_roi[0], bounding_box_roi[1] )
                 opCarving.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]

@@ -376,6 +376,9 @@ class OpCarving(Operator):
         
         self.BackgroundPriority.setValue( mst.bg_priority[name] )
         self.NoBiasBelow.setValue( mst.no_bias_below[name] )
+
+        # The entire segmentation layer needs to be refreshed now.
+        self.Segmentation.setDirty()
         
         return True
 

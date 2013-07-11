@@ -12,6 +12,7 @@ from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
+from ilastik.utility.gui import threadRouted
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
@@ -297,8 +298,9 @@ class ObjectExtractionGui(LayerViewerGui):
             req.submit()
             reqs.append(req)
 
-        for i, req in enumerate(reqs):
+        for req in reqs:
             req.notify_finished(callback)
+            req.notify_failed( self.handleFeatureComputationFailure )
 
         # handle cancel button
         def cancel():
@@ -306,6 +308,12 @@ class ObjectExtractionGui(LayerViewerGui):
                 req.cancel()
         progress.canceled.connect(cancel)
 
+    @threadRouted
+    def handleFeatureComputationFailure(self, exc, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
+        msg = "Feature computation failed due to the following error:\n{}".format( exc )
+        QMessageBox.critical(self, "Feature computation failed", msg)
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):

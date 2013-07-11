@@ -75,8 +75,10 @@ class PreprocessingGui(QMainWindow):
 
             self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
             self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
-            
-            self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
+
+            #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
+            #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
+
             self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
     
     def handleFilterChanged(self):
@@ -131,7 +133,9 @@ class PreprocessingGui(QMainWindow):
         self.drawer.sigmaSpin.setValue(sigma)
     
     def enableReset(self,er):
-        self.drawer.resetButton.setEnabled(er)
+        pass
+        #TODO: re-enable this after the 0.6 release
+        #self.drawer.resetButton.setEnabled(er)
     
     def centralWidget( self ):
         return self.centralGui

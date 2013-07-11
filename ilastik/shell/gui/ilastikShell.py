@@ -68,7 +68,32 @@ class ShellActions(object):
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
-        
+ 
+#===----------------------------------------------------------------------------------------------------------------===
+#=== MemoryWidget                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
+
+class MemoryWidget(QWidget):
+    """Displays the current memory consumption and a button to open
+       a detailed memory consumption / usage dialog.
+    """
+    def __init__(self, parent=None):
+        super(MemoryWidget, self).__init__(parent)
+        self.label = QLabel()
+        h = QHBoxLayout() 
+        h.setContentsMargins(0,0,0,0)
+        w = QWidget()
+        h.addWidget(self.label)
+        self.showDialogButton = QToolButton()
+        self.showDialogButton.setText("...")
+        h.addWidget(self.showDialogButton)
+        self.cleanUp()
+        self.setLayout(h)
+    def cleanUp(self):
+        self.setMemoryBytes(0)
+    def setMemoryBytes(self, bytes):
+        self.label.setText("cached: %1.1f MB" % (bytes/(1024.0**2.0)))
+ 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -83,46 +108,50 @@ class ProgressDisplayManager(QObject):
     #  requiring the applet interface to be dependent on qt.
     dispatchSignal = pyqtSignal(int, int, "bool")
     
-    def __init__(self, statusBar, workflow):
+    def __init__(self, statusBar):
         """
         """
         super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
         self.statusBar = statusBar
         self.appletPercentages = {} # applet_index : percent_progress
+        self.workflow = None
         
         self.progressBar = QProgressBar()
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
-        
-        l = QLabel("cached: 0.0 MB")
-        h = QHBoxLayout() 
-        h.setContentsMargins(0,0,0,0)
-        w = QWidget()
-        h.addWidget(l)
-        btn = QToolButton()
-        btn.setText("...")
-        btn.clicked.connect(statusBar.parent().showMemUsageDialog)
-        h.addWidget(btn)
-        w.setLayout(h)
-        self.statusBar.addPermanentWidget(w)
+       
+        self.memoryWidget = MemoryWidget()
+        self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
+        self.statusBar.addPermanentWidget(self.memoryWidget)
         
         mgr = ArrayCacheMemoryMgr.instance
         def printIt(msg):
-            l.setText("cached: %1.1f MB" % (msg/1024.0**2.0,)) 
+            self.memoryWidget.setMemoryBytes(msg) 
         mgr.totalCacheMemory.subscribe(printIt)
         
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
 
         # Add all applets from the workflow
+    
+    def initializeForWorkflow(self, workflow):
+        """When a workflow is available, call this method to connect the workflows' progress signals
+        """
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
     
     def cleanUp(self):
         # Disconnect everything
-        self.dispatchSignal.disconnect()
-        if self.progressBar is not None:
-            self.statusBar.removeWidget( self.progressBar )
+        if self.workflow is not None:
+            for index, app in enumerate(self.workflow.applets):
+                self._removeApplet(index, app)
+        self.memoryWidget.cleanUp()
+        self.progressBar.hide()
+    
+    def _removeApplet(self, index, app):
+        app.progressSignal.disconnectAll()
+        for serializer in app.dataSerializers:
+            serializer.progressSignal.disconnectAll()
     
     def _addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
@@ -160,8 +189,6 @@ class ProgressDisplayManager(QObject):
             
             if numActive == 0 or totalPercentage == 100:
                 if self.progressBar is not None:
-                    #self.statusBar.removeWidget(self.progressBar)
-                    #self.progressBar = None
                     self.progressBar.setHidden(True)
                     self.appletPercentages.clear()
             else:
@@ -191,6 +218,8 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
         
         self._loaduifile()
+        
+        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
         
         #self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         #self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
@@ -1035,8 +1064,9 @@ class IlastikShell( QMainWindow ):
             self.mainStackedWidget.setCurrentIndex(1)
             # By default, make the splitter control expose a reasonable width of the applet bar
             self.mainSplitter.setSizes([300,1])
-            
-            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)
+           
+            self.progressDisplayManager.cleanUp()
+            self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
                 
             self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
             self.updateShellProjectDisplay()
