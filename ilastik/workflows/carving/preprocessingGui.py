@@ -38,6 +38,11 @@ class PreprocessingGui(QMainWindow):
             # (We don't pass self here because we keep the drawer ui in a separate object.)
             self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
             
+            # FIXME: for 0.6, we do not want to allow these options below
+            self.drawer.watershedSourceCombo.hide()
+            self.drawer.invertWatershedSourceCheckbox.hide()
+            self.drawer.watershedSourceInputLabel.hide()
+            
             # Set up radiobox layout
             self.filterbuttons = [self.drawer.filter1,
                                     self.drawer.filter2,
