@@ -89,6 +89,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
         result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+        #NOTE: this removes the background object!!!
         return cleanup(result, 0 in labels, True, features)
 
     def compute_global(self, image, labels, features, axes):
@@ -97,14 +98,15 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         features = list(set(features) - set(local))
         return self._do_4d(image, labels, features, axes)
 
-    def compute_local(self, image, binary_bbox, features, axes):
+    def compute_local(self, image, binary_bbox, feature_dict, axes):
         """helper that deals with individual objects"""
-        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': features})
-        features = features.keys()
+        
+        featurenames = feature_dict.keys()
         local = [x+self.local_suffix for x in self.local_features]
-        features = list(set(features) & set(local))
-        features = [x.split(' ')[0] for x in features]
+        featurenames = list(set(featurenames) & set(local))
+        featurenames = [x.split(' ')[0] for x in featurenames]
         results = []
+        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': feature_dict})
         #FIXME: this is done globally as if all the features have the same margin
         #we should group features by their margins
         passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)
@@ -112,6 +114,6 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         assert np.all(binary_bbox+excl==passed)
         for label, suffix in zip([excl, passed],
                                  self.local_out_suffixes):
-            result = self._do_4d(image, label, features, axes)
+            result = self._do_4d(image, label, featurenames, axes)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)
