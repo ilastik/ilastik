@@ -55,6 +55,7 @@ class OpArrayCache(OpCache):
     def __init__(self, *args, **kwargs):
         super( OpArrayCache, self ).__init__(*args, **kwargs)
         self._origBlockShape = self.DefaultBlockSize
+        self._last_access = None
         self._blockShape = None
         self._dirtyShape = None
         self._blockState = None
@@ -76,6 +77,8 @@ class OpArrayCache(OpCache):
             return 0
 
     def _blockShapeForIndex(self, index):
+        if self._cache is None:
+            return None
         cacheShape = numpy.array(self._cache.shape)
         blockStart = index * self._blockShape
         blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)

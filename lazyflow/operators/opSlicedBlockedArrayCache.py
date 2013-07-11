@@ -46,7 +46,8 @@ class OpSlicedBlockedArrayCache(OpCache):
         report.type = type(self)
         report.id = id(self)
         sh = self.Output.meta.shape
-        report.roi = ([0]*len(sh), sh)
+        if sh is not None:
+            report.roi = ([0]*len(sh), sh)
         
         for i, iOp in enumerate(self._innerOps):
             n = MemInfoNode()
