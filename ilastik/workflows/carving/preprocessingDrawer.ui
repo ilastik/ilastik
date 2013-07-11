@@ -119,9 +119,9 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QHBoxLayout" name="wsInputLayout">
        <item>
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="watershedSourceInputLabel">
          <property name="text">
           <string>WS Input</string>
          </property>
