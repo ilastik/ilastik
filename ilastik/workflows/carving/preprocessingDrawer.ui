@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>319</height>
+    <width>355</width>
+    <height>398</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,7 +47,7 @@
      <item>
       <widget class="QRadioButton" name="filter1">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>Boundaries appear as &lt;b&gt;thin bright lines&lt;/b&gt; in the image, separating dark background on one side from dark background on the other side.&lt;br&gt;&lt;br&gt;This will compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
         <string>bright lines (ridges)</string>
@@ -57,7 +57,7 @@
      <item>
       <widget class="QRadioButton" name="filter2">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>boundaries appear as &lt;b&gt;thin dark lines&lt;/b&gt; in the image, separating bright background on one side from bright background on the other side&lt;br&gt;&lt;br&gt;This will invert the image, then compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
         <string>dark lines (valleys)</string>
@@ -67,7 +67,7 @@
      <item>
       <widget class="QRadioButton" name="filter3">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>Boundaries appear in the image as &lt;b&gt;transitions&lt;/b&gt; from bright to dark or dark to bright.&lt;br&gt;&lt;br&gt;This will compute the gradient of the original image.</string>
        </property>
        <property name="text">
         <string>step edges</string>
@@ -77,7 +77,7 @@
      <item>
       <widget class="QRadioButton" name="filter4">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>This setting assumes that boundaries in the original image are bright lines separating dark background.</string>
        </property>
        <property name="text">
         <string>original image (optional smoothing)</string>
@@ -87,10 +87,10 @@
      <item>
       <widget class="QRadioButton" name="filter5">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>This setting assumes that boundaries in the original image are dark lines separating bright background.</string>
        </property>
        <property name="text">
-        <string>inverted original image</string>
+        <string>inverted original image (optional smoothing)</string>
        </property>
       </widget>
      </item>

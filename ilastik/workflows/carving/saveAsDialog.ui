@@ -91,7 +91,7 @@
       </palette>
      </property>
      <property name="text">
-      <string>such an object already existis</string>
+      <string>such an object already exists</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
