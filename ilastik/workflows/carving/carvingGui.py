@@ -459,7 +459,7 @@ class CarvingGui(LabelingGui):
                 colortable.append(QColor(r,g,b,a).rgba())
 
             layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-            layer.name = "uncertainty"
+            layer.name = "Uncertainty"
             layer.visible = True
             layer.opacity = 0.3
             layers.append(layer)
@@ -479,7 +479,9 @@ class CarvingGui(LabelingGui):
                 colortable.append(QColor(r,g,b).rgba())
 
             layer = ColortableLayer(LazyflowSource(seg), colortable, direct=True)
-            layer.name = "segmentation"
+            layer.name = "Segmentation"
+            layer.setToolTip("This layer displays the <i>current</i> segmentation. Simply add foreground and background " \
+                             "labels, then press <i>Segment</i>.")
             layer.visible = True
             layer.opacity = 0.3
             layers.append(layer)
@@ -496,12 +498,18 @@ class CarvingGui(LabelingGui):
                 colortable.append(QColor(r,g,b).rgba())
             #have to use lazyflow because it provides dirty signals
             layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
-            layer.name = "done"
+            layer.name = "Completed segments (unicolor)"
+            layer.setToolTip("In order to keep track of which objects you have already completed, this layer " \
+                             "shows <b>all completed object</b> in one color (<b>blue</b>). " \
+                             "The reason for only one color is that for finding out which " \
+                              "objects to label next, the identity of already completed objects is unimportant " \
+                              "and destracting.")
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
 
         #hints
+        '''
         useLazyflow = True
         ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
         ctable.extend( [QColor(255*random.random(), 255*random.random(), 255*random.random()) for x in range(254)] )
@@ -516,7 +524,9 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
-            
+        '''
+        
+        '''
         #pmaps
         useLazyflow = True
         pmaps = self.topLevelOperatorView._pmap
@@ -526,13 +536,16 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
+        '''
 
         #done seg
         doneSeg = self.topLevelOperatorView.DoneSegmentation
         if doneSeg.ready():
             if self._doneSegmentationLayer is None:
                 layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
-                layer.name = "done seg"
+                layer.name = "Completed segments (one color per object)"
+                layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
+                                 "shows <b>all completed object</b>, each with a random color.</html>")
                 layer.visible = False
                 layer.opacity = 0.5
                 self._doneSegmentationLayer = layer
@@ -547,34 +560,43 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
-            layer.name = "supervoxels"
+            layer.name = "Supervoxels"
+            layer.setToolTip("<html>This layer shows the partitioning of the input image into <b>supervoxels</b>. The carving " \
+                             "algorithm uses these tiny puzzle-piceces to piece together the segmentation of an " \
+                             "object. Sometimes, supervoxels are too large and straddle two distinct objects " \
+                             "(undersegmentation). In this case, it will be impossible to achieve the desired " \
+                             "segmentation. This layer helps you to understand these cases.</html>")
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
 
         #raw data
+        '''
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
             raw5D = self.topLevelOperatorView.RawData.value
             layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
             #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
-            layer.name = "raw"
             layer.visible = True
+            layer.name = 'raw'
             layer.opacity = 1.0
             layers.append(layer)
+        '''
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(inputSlot), direct=True )
-            layer.name = "input"
-            layer.visible = not rawSlot.ready()
+            layer.name = "Input Data"
+            layer.setToolTip("<html>The data originally loaded into ilastik (unprocessed).</html>")
+            #layer.visible = not rawSlot.ready()
+            layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
-            layer.name = "filtered input"
+            layer.name = "Filtered Input"
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
