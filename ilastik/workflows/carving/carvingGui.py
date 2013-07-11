@@ -1,5 +1,6 @@
 #Python
 import os
+import copy
 from functools import partial
 import numpy
 import random
@@ -48,6 +49,8 @@ class CarvingGui(LabelingGui):
 
         rawInputSlot = topLevelOperatorView.RawData        
         super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
+        
+        self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
         self.minLabelNumber = 2
@@ -79,6 +82,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.setEnabled(True)
 
         self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._update_rendering ) )
+        self.labelingDrawerUi.save.setEnabled(False)
 
         def onUncertaintyFGButton():
             print "uncertFG button clicked"
@@ -93,7 +97,6 @@ class CarvingGui(LabelingGui):
             self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
         self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
         self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-
 
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
@@ -242,6 +245,7 @@ class CarvingGui(LabelingGui):
                 return
             self.topLevelOperatorView.saveObjectAs(name)
             print "save object as %s" % name
+            self.labelingDrawerUi.save.setEnabled(False)
         else:
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
@@ -272,7 +276,9 @@ class CarvingGui(LabelingGui):
         dialog.objectNames.addItems(sorted(listOfItems))
         
         def loadSelection():
-            for name in dialog.objectNames.selectedItems():
+            selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
+            dialog.close()
+            for objectname in selected: 
                 objectname = str(name.text())
                 self.topLevelOperatorView.loadObject(objectname)
         
@@ -281,6 +287,7 @@ class CarvingGui(LabelingGui):
             if self.confirmAndDelete([str(name.text()) for name in items]):
                 for name in items:
                     name.setHidden(True)
+            dialog.close()
         
         dialog.loadButton.clicked.connect(loadSelection)
         dialog.deleteButton.clicked.connect(deleteSelection)
@@ -412,7 +419,6 @@ class CarvingGui(LabelingGui):
         if self._showSegmentationIn3D:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
-
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
         if l == 0:
@@ -429,13 +435,10 @@ class CarvingGui(LabelingGui):
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
             hasSeg  = self.topLevelOperatorView.HasSegmentation.value
-            #nzLB    = self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks[:].wait()[0]
             
-            self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
-            self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
-            #rethink this
-            #self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
-            #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
+            self.labelingDrawerUi.currentObjectLabel.setText(currObj)
+            self.labelingDrawerUi.save.setEnabled(hasSeg)
+
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.HasSegmentation.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opLabelArray.NonzeroBlocks.notifyDirty(onButtonsEnabled)
