@@ -326,7 +326,6 @@ class OpPreprocessing(Operator):
 
             
     def setupOutputs(self):
-        self._checkMeta(self.InputData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
