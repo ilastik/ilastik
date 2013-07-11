@@ -190,8 +190,11 @@ class CarvingGui(LabelingGui):
             self._doneSegmentationColortable = [QColor(0,0,0,0).rgba()]
             for i in range(254):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                # ensure colors have sufficient distance to pure red and pure green
+                while (255 - r)+g+b<128 or r+(255-g)+b<128:
+                    r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
-            self._doneSegmentationColortable[1:17] = colortables.default16
+            #self._doneSegmentationColortable[1:17] = colortables.default16
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
         self._doneSegmentationLayer = None
