@@ -46,7 +46,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose an option below to compute different filters on the original image such that boundaries are bright and everything else is dark.&lt;/p&gt;&lt;p&gt;Check the &lt;span style=&quot; font-style:italic;&quot;&gt;Filter Output &lt;/span&gt;layer for the effect of each option. The &lt;span style=&quot; font-style:italic;&quot;&gt;filter scale&lt;/span&gt; should be adapted according to the width of the boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose an option below to compute different filters on the original image such that boundaries are bright and everything else is dark.&lt;/p&gt;&lt;p&gt;Check the &lt;span style=&quot; font-style:italic;&quot;&gt;Filtered Data &lt;/span&gt;layer for the effect of each option. The &lt;span style=&quot; font-style:italic;&quot;&gt;filter scale&lt;/span&gt; should be adapted according to the width of the boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="wordWrap">
         <bool>true</bool>
@@ -59,7 +59,7 @@
         <string>Boundaries appear as &lt;b&gt;thin bright lines&lt;/b&gt; in the image, separating dark background on one side from dark background on the other side.&lt;br&gt;&lt;br&gt;This will compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
-        <string>bright lines (ridges)</string>
+        <string>bright lines (ridge filter)</string>
        </property>
       </widget>
      </item>
@@ -69,7 +69,7 @@
         <string>Boundaries appear as &lt;b&gt;thin dark lines&lt;/b&gt; in the image, separating bright background on one side from bright background on the other side.&lt;br&gt;&lt;br&gt;This will invert the image, then compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
-        <string>dark lines (valleys)</string>
+        <string>dark lines (valley filter)</string>
        </property>
       </widget>
      </item>
@@ -79,7 +79,7 @@
         <string>Boundaries appear in the image as &lt;b&gt;transitions&lt;/b&gt; from bright to dark or dark to bright.&lt;br&gt;&lt;br&gt;This will compute the gradient of the original image.</string>
        </property>
        <property name="text">
-        <string>step edges</string>
+        <string>step edges (edge filter)</string>
        </property>
       </widget>
      </item>
@@ -89,7 +89,7 @@
         <string>This setting assumes that boundaries in the original image are bright lines separating dark background.</string>
        </property>
        <property name="text">
-        <string>smoothed image</string>
+        <string>bright lines (smoothed original image)</string>
        </property>
       </widget>
      </item>
@@ -99,7 +99,7 @@
         <string>This setting assumes that boundaries in the original image are dark lines separating bright background.</string>
        </property>
        <property name="text">
-        <string>inverted, smoothed image</string>
+        <string>dark lines (inverted, smoothed image)</string>
        </property>
       </widget>
      </item>
@@ -133,6 +133,9 @@
          <property name="locale">
           <locale language="English" country="UnitedStates"/>
          </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
          <property name="singleStep">
           <double>0.100000000000000</double>
          </property>
@@ -140,6 +143,19 @@
           <double>1.600000000000000</double>
          </property>
         </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </item>

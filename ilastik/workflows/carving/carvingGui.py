@@ -132,9 +132,8 @@ class CarvingGui(LabelingGui):
             self.topLevelOperatorView.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
 
-        self.labelingDrawerUi.saveAs.clicked.connect(self.onSaveAsButton)
         self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
-        self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
+        self.labelingDrawerUi.save.setEnabled(True)
 
         self.labelingDrawerUi.clear.clicked.connect(self.topLevelOperatorView.clearCurrentLabeling)
         self.labelingDrawerUi.clear.setEnabled(True)
@@ -434,7 +433,6 @@ class CarvingGui(LabelingGui):
             
             self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
             self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
-            self.labelingDrawerUi.saveAs.setEnabled(currObj == "" and hasSeg)
             #rethink this
             #self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
             #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
