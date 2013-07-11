@@ -146,7 +146,7 @@ class CarvingGui(LabelingGui):
             self.topLevelOperatorView.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
 
-        self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
+        self.labelingDrawerUi.save.clicked.connect(self.saveCurrentObject)
         self.labelingDrawerUi.save.setEnabled(True)
 
         self.labelingDrawerUi.clear.clicked.connect(self.topLevelOperatorView.clearCurrentLabeling)
@@ -265,7 +265,7 @@ class CarvingGui(LabelingGui):
             msgBox.exec_()
             print "object not saved due to faulty data."
     
-    def onSaveButton(self):
+    def saveCurrentObject(self):
         if self.topLevelOperatorView.dataIsStorable():
             if self.topLevelOperatorView.hasCurrentObject():
                 name = self.topLevelOperatorView.currentObjectName()
@@ -370,10 +370,10 @@ class CarvingGui(LabelingGui):
         showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
         
         if op.dataIsStorable():
-            menu.addAction("Save objects").triggered.connect( self.onSegmentButton )
-        menu.addAction("Browse objects").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
-        menu.addAction("Segment").triggered.connect( self.onShowObjectNames )
-        menu.addAction("Clear").triggered.connect( self.onSaveAsButton )
+            menu.addAction("Save object").triggered.connect( self.saveCurrentObject )
+        menu.addAction("Browse objects").triggered.connect( self.onShowObjectNames )
+        menu.addAction("Segment").triggered.connect( self.onSegmentButton )
+        menu.addAction("Clear").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
         return menu
     
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
