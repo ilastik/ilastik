@@ -103,8 +103,8 @@ class OpFilter(Operator):
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     print "negative Gaussian Smoothing"
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
-            
-                result_view[...] = volume_feat
+
+                result_view[:,:,0] = volume_feat
                 print "Filter took {} seconds".format( filterTimer.seconds() )
         return result
 
@@ -157,7 +157,7 @@ class OpSimpleWatershed(Operator):
                 print "done" ,numpy.max(result[...])
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
-                assert (volume_feat.dtype == numpy.uint32 or volume_feat.dtype == numpy.int32)
+                
                 labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 print "done" ,numpy.max(labelVolume)
