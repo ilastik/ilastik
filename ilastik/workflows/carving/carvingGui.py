@@ -51,6 +51,8 @@ class CarvingGui(LabelingGui):
         super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
         
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
+        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
 
         # Init special base class members
         self.minLabelNumber = 2
@@ -89,14 +91,12 @@ class CarvingGui(LabelingGui):
             pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
             self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
         self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
-        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
 
         def onUncertaintyBGButton():
             print "uncertBG button clicked"
             pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
             self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
         self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
-        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
 
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
@@ -106,13 +106,20 @@ class CarvingGui(LabelingGui):
         def onuncertaintyCombo(value):
             if value == 0:
                 value = "none"
-            if value == 1:
-                value = "localMargin"
-            if value == 2:
-                value = "exchangeCount"
-            if value == 3:
-                value = "gabow"
-            print "uncertainty changed to %r" % value
+                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+            else:
+                if value == 1:
+                    value = "localMargin"
+                elif value == 2:
+                    value = "exchangeCount"
+                elif value == 3:
+                    value = "gabow"
+                else:
+                    raise RuntimeError("unhandled case '%r'" % value)
+                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
+                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+                print "uncertainty changed to %r" % value
             self.topLevelOperatorView.UncertaintyType.setValue(value)
         self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onuncertaintyCombo)
 
