@@ -100,6 +100,10 @@ class SubRegion(Roi):
             self.stop = TinyVector(stop)
         self.dim = len(self.start)
 
+        for start, stop in zip(self.start, self.stop):
+            assert isinstance(start, int) or isinstance( start, numpy.integer ), "Roi contains non-integers: {}".format( self )
+            assert isinstance(stop, int) or isinstance( stop, numpy.integer ), "Roi contains non-integers: {}".format( self )
+
     def __setstate__(self, state):
         """
         Support copy.copy()
