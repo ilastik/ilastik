@@ -3,22 +3,23 @@ import time
 import numpy, h5py
 import copy
 
-#carving
-from cylemon.segmentation import MSTSegmentor
-
 #Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 from lazyflow.roi import roiToSlice
-
-from cylemon.segmentation import MSTSegmentor
-
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
 
+#ilastik
 from ilastik.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.utility import bind
+
+#carving
+from cylemon.segmentation import MSTSegmentor
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class OpCarving(Operator):
     name = "Carving"
@@ -126,7 +127,7 @@ class OpCarving(Operator):
         self.MstOut.connect( self._opMstCache.Output )
 
         self.InputData.notifyReady( self._checkConstraints )
-    
+        
     def _checkConstraints(self, *args):
         slot = self.InputData
         numChannels = slot.meta.getTaggedShape()['c']
@@ -151,7 +152,6 @@ class OpCarving(Operator):
             if not ax[i].isSpatial():
                 # This is for developers.  Don't need a user-friendly error.
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-
 
     def _clearLabels(self):
         #clear the labels 
@@ -312,7 +312,7 @@ class OpCarving(Operator):
         lut_segmentation[:] = newSegmentation
 
         self._setCurrObjectName(name)
-        self.HasSegmentation.setValue(False)
+        self.HasSegmentation.setValue(True)
 
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
@@ -425,6 +425,8 @@ class OpCarving(Operator):
         print "save: len = ", len(objects)
         self.AllObjectNames.meta.shape = len(objects)
         
+        self.HasSegmentation.setValue(False)
+        
         return True
     
     @Operator.forbidParallelExecute
@@ -436,6 +438,7 @@ class OpCarving(Operator):
             name = copy.copy(self._currObjectName)
             print "saving object %s" % self._currObjectName
             self.saveCurrentObjectAs(self._currObjectName)
+            self.HasSegmentation.setValue(False)
             return name
         return ""
 
@@ -554,8 +557,6 @@ class OpCarving(Operator):
         return pos
 
     def execute(self, slot, subindex, roi, result):
-        start = time.time()
-        
         self._mst = self.MST.value
         
         if slot == self.AllObjectNames:
@@ -646,21 +647,22 @@ class OpCarving(Operator):
 
             bgPrio = self.BackgroundPriority.value
             noBiasBelow = self.NoBiasBelow.value
+
             print "compute new carving results with bg priority = %f, no bias below %d" % (bgPrio, noBiasBelow)
-
+            t1 = time.time()
             labelCount = 2
-
             params = dict()
             params["prios"] = [1.0, bgPrio, 1.0]
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
-
             unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
-            #assert numpy.sum(self._mst.seeds > 2) == 0, "seeds > 2 at %r" % numpy.where(self._mst.seeds > 2)
             self._mst.run(unaries, **params)
+            print " ... carving took %f sec." % (time.time()-t1)
 
             self.Segmentation.setDirty(slice(None))
-            self.HasSegmentation.setValue(True)
+            hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
+            self.HasSegmentation.setValue(hasSeg)
+            
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value

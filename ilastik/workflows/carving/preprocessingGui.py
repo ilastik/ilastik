@@ -100,7 +100,6 @@ class PreprocessingGui(QMainWindow):
     
     @threadRouted 
     def onFailed(self, exception, exc_info):
-        import traceback
         traceback.print_tb(exc_info[2])
         QMessageBox.critical(self, "error", str(exception))
     
@@ -151,12 +150,12 @@ class PreprocessingGui(QMainWindow):
     
     def setImageIndex(self,imageIndex):
         pass
+
     def imageLaneAdded(self,imageIndex):
         pass
+
     def imageLaneRemoved(self,laneIndex,finalLength):
         pass
+
     def stopAndCleanUp(self):
         self.centralGui.stopAndCleanUp()
-        
-        
-        

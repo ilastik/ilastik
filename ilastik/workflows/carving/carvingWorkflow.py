@@ -1,14 +1,17 @@
-from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.valueProviders import OpAttributeSelector
+#lazyflow
+from lazyflow.graph import Graph
 from lazyflow.operators.adaptors import Op5ifyer
 
+#ilastik
 from ilastik.workflow import Workflow
-
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 
+#this workflow: carving
 from carvingApplet import CarvingApplet
 from preprocessingApplet import PreprocessingApplet
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingWorkflow(Workflow):
     
