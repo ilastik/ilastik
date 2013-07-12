@@ -13,7 +13,6 @@ from PyQt4 import uic
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
-from volumina import colortables
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -44,8 +43,6 @@ class CarvingGui(LabelingGui):
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
         labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
         
-        print type(topLevelOperatorView.opLabelArray), topLevelOperatorView.opLabelArray, "%%%%%%%%%%%%%%%%%%%"
-
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
         if drawerUiPath is None:
@@ -223,7 +220,6 @@ class CarvingGui(LabelingGui):
                 while (255 - r)+g+b<128 or r+(255-g)+b<128:
                     r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
-            #self._doneSegmentationColortable[1:17] = colortables.default16
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
         def onRandomizeColors():
