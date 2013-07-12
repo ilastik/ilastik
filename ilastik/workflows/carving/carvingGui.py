@@ -281,7 +281,7 @@ class CarvingGui(LabelingGui):
             if name is None:
                 return
             objects = self.topLevelOperatorView.AllObjectNames[:].wait()
-            if name in objects:
+            if name in objects and name != prevName:
                 QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
                 return
             self.topLevelOperatorView.saveObjectAs(name)
