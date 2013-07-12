@@ -1,6 +1,6 @@
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice, roiFromShape
+from lazyflow.roi import roiToSlice
 
 class OpDenseLabelArray(Operator):
     """
@@ -38,11 +38,17 @@ class OpDenseLabelArray(Operator):
 
         if self._cache is None or self._cache.shape != self.Output.meta.shape:
             self._cache = numpy.zeros( self.Output.meta.shape, dtype=self.Output.meta.dtype )
-        
+       
         delete_label_value = self.DeleteLabel.value
         if self.DeleteLabel.value != -1:
             self._cache[self._cache == delete_label_value] = 0 
-
+            #FIXME: our nonzero blocks may have changed
+            #       however, if we call the method below,
+            #       there is a deadlock
+            #
+            # see ilastik bug #475
+            #self.NonzeroBlocks.setDirty(slice(None))
+            
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
             destination[:] = self._cache[roiToSlice(roi.start, roi.stop)]
@@ -85,10 +91,3 @@ class OpDenseLabelArray(Operator):
             # Set in the cache.
             self._cache[roiToSlice(roi.start, roi.stop)] = cleaned_block
             self.Output.setDirty( roi.start, roi.stop )
-
-
-
-
-
-
-

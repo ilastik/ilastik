@@ -1,6 +1,5 @@
 #Python
 import sys
-import copy
 import logging
 import itertools
 import threading
@@ -15,7 +14,7 @@ from lazyflow import rtype
 from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
 from lazyflow.metaDict import MetaDict
-from lazyflow.utility import slicingtools, Tracer, OrderedSignal, Singleton
+from lazyflow.utility import slicingtools, OrderedSignal
 
 class ValueRequest(object):
     """Pseudo request that behaves like a request.Request object.
