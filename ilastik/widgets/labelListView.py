@@ -44,8 +44,9 @@ class LabelListView(ListView):
     def __init__(self, parent = None):
         super(LabelListView, self).__init__(parent=parent)
         
-        self.resetEmptyMessage("no labels defined yet")
+        self._colorDialog = ColorDialog(self)
         
+        self.resetEmptyMessage("no labels defined yet")
     
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
