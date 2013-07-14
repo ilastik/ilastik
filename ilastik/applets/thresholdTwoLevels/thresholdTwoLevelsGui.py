@@ -165,7 +165,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, binct)
-            outputLayer.name = "Output (Cached)"
+            outputLayer.name = "Final output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
@@ -176,14 +176,14 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             if op.BigRegions.ready():
                 lowThresholdSrc = LazyflowSource(op.BigRegions)
                 lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
-                lowThresholdLayer.name = "Big Regions"
+                lowThresholdLayer.name = "After low threshold"
                 lowThresholdLayer.visible = False
                 lowThresholdLayer.opacity = 1.0
                 layers.append(lowThresholdLayer)
     
             if op.FilteredSmallLabels.ready():
                 filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
-                filteredSmallLabelsLayer.name = "Filtered Small Labels"
+                filteredSmallLabelsLayer.name = "After high threshold and size filter"
                 filteredSmallLabelsLayer.visible = False
                 filteredSmallLabelsLayer.opacity = 1.0
                 layers.append(filteredSmallLabelsLayer)
@@ -191,7 +191,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             if op.SmallRegions.ready():
                 highThresholdSrc = LazyflowSource(op.SmallRegions)
                 highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
-                highThresholdLayer.name = "Small Regions"
+                highThresholdLayer.name = "After high threshold"
                 highThresholdLayer.visible = False
                 highThresholdLayer.opacity = 1.0
                 layers.append(highThresholdLayer)
@@ -199,7 +199,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             if op.BeforeSizeFilter.ready():
                 thSrc = LazyflowSource(op.BeforeSizeFilter)
                 thLayer = ColortableLayer(thSrc, ct)
-                thLayer.name = "Thresholded Labels"
+                thLayer.name = "Before size filter"
                 thLayer.visible = False
                 thLayer.opacity = 1.0
                 layers.append(thLayer)
@@ -222,7 +222,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                                                 tintColor=QColor(self._channelColors[op.Channel.value]),
                                                 range=drange,
                                                 normalize=drange )
-            channelLayer.name = "Input Ch{}".format(op.Channel.value)
+            channelLayer.name = "Input Channel {}".format(op.Channel.value)
             channelLayer.opacity = 1.0
             #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
             layers.append(channelLayer)
