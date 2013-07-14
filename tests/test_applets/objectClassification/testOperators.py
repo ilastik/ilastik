@@ -206,10 +206,6 @@ class TestFeatureSelection(unittest.TestCase):
         
         sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
         
-        #objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
-        #objectExtraction.config.other_features = []
-        #objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
-        
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
@@ -325,8 +321,8 @@ class TestMaxLabel(object):
         self.op.LabelInputs.setValues([{0: labelArray1, 1: labelArray2}])
         
         nl = self.op.NumLabels[:].wait()
-        assert nl==4
-        
+        assert nl[0]==4
+   
 
 class TestFullOperator(unittest.TestCase):
     def setUp(self):
@@ -355,15 +351,8 @@ class TestFullOperator(unittest.TestCase):
         
         self.classOp = OpObjectClassification(graph=g)
         self.classOp.BinaryImages.setValues([binimg])
-        #self.classOp.BinaryImages.resize(1)
-        #self.classOp.BinaryImages.setValues([binimg])
         self.classOp.SegmentationImages.setValues([segimg])
-        #self.classOp.SegmentationImages.resize(1)
-        #self.classOp.SegmentationImages.setValue(segimg)
         self.classOp.RawImages.setValues([rawimg])
-        #self.classOp.RawImages.resize(1)
-        #self.classOp.RawImages.setValues([rawimg])
-        #self.classOp.LabelInputs.resize(1)
         self.classOp.LabelInputs.setValues([labels])
         self.classOp.LabelsAllowedFlags.resize(1)
         self.classOp.LabelsAllowedFlags.setValues([True])
@@ -380,7 +369,7 @@ class TestFullOperator(unittest.TestCase):
         #TODO write test with not so nice input
         pass
         
-  
+
         
         
  

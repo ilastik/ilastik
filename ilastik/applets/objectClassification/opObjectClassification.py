@@ -876,11 +876,12 @@ class OpMultiRelabelSegmentation(Operator):
 class OpMaxLabel(Operator):
     """Finds the maximum label value in the input labels.
 
-    More or less copied from opPixelClassification::OpMaxValue.
+    Special operator for object classification labels, expects
+    inputs to be in a dictionary
 
     """
     name = "OpMaxLabel"
-    Inputs = InputSlot(level=1, stype=Opaque)
+    Inputs = InputSlot(level=1,rtype=List,  stype=Opaque)
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -906,21 +907,15 @@ class OpMaxLabel(Operator):
         # Return the max value of all our inputs
         maxValue = None
         for i, inputSubSlot in enumerate(self.Inputs):
-            # Only use inputs that are actually configured
-            if inputSubSlot.ready():
-                subSlotMax = numpy.max(inputSubSlot.value)
-                #subSlotMax = 0
-                #print inputSubSlot.value
-                #for label_array in inputSubSlot.value.items():
-                #    localMax = numpy.max(label_array)
-                #    subSlotMax = max(subSlotMax, localMax)
-
+            
+            subSlotLabelDict = self.Inputs[i][:].wait()
+            for v in subSlotLabelDict.itervalues():
+                subSlotMax = numpy.max(v)
                 if maxValue is None:
                     maxValue = subSlotMax
                 else:
                     maxValue = max(maxValue, subSlotMax)
-
-        self._output = maxValue
+        self._output = int(maxValue)
 
 
 class OpBadObjectsToWarningMessage(Operator):
