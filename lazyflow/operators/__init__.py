@@ -44,6 +44,7 @@ except:
     from opMaskedWatershed import OpMaskedWatershed
     from opSelectLabel import OpSelectLabel
     from opMaskedSelect import OpMaskedSelect
+    from opReorderAxes import OpReorderAxes
 
     ops = list(itersubclasses(Operator))
     '''
