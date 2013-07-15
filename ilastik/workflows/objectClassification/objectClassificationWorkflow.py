@@ -265,7 +265,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
         op5raw.Input.connect(rawslot)
-        op5pred.Input.connect(opClassify.HeadlessPredictionProbabilities)
+        op5pred.Input.connect(opClassify.PredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
