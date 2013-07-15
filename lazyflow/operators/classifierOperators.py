@@ -224,7 +224,12 @@ class OpPredictRandomForest(Operator):
     outputSlots = [OutputSlot("PMaps")]
 
     def setupOutputs(self):
-        nlabels=self.inputs["LabelsCount"].value
+        
+        nlabels = max(self.inputs["LabelsCount"].value, 1) #we'll have at least 2 labels once we actually predict something
+                                                           #not setting it to 0 here is friendlier to possible downstream
+                                                           #ilastik operators, setting it to 2 causes errors in pixel classification
+                                                           #(live prediction doesn't work when only two labels are present)
+        
         self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis

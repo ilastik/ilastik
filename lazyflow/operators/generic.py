@@ -405,19 +405,21 @@ class OpSingleChannelSelector(Operator):
 
     def setupOutputs(self):
         
-        indexAxis=self.inputs["Input"].meta.axistags.channelIndex
-        inshape=list(self.inputs["Input"].meta.shape)
+        channelAxis=self.Input.meta.axistags.channelIndex
+        inshape=list(self.Input.meta.shape)
         outshape = list(inshape)
-        outshape.pop(indexAxis)
-        outshape.insert(indexAxis, 1)
+        outshape.pop(channelAxis)
+        outshape.insert(channelAxis, 1)
         outshape=tuple(outshape)
 
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = outshape
 
         # Output can't be accessed unless the input has enough channels
-        if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
-            self.Output.meta.NOTREADY = True
+        assert self.Input.meta.getTaggedShape()['c'] > self.Index.value, \
+                "Requested channel {} is out of range of input data (shape {})".format(self.Index.value, self.Input.meta.shape)
+        #if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
+        #    self.Output.meta.NOTREADY = True
         
     def execute(self, slot, subindex, roi, result):
         index=self.inputs["Index"].value
