@@ -42,13 +42,7 @@ class OpDenseLabelArray(Operator):
         delete_label_value = self.DeleteLabel.value
         if self.DeleteLabel.value != -1:
             self._cache[self._cache == delete_label_value] = 0 
-            #FIXME: our nonzero blocks may have changed
-            #       however, if we call the method below,
-            #       there is a deadlock
-            #
-            # see ilastik bug #475
-            #self.NonzeroBlocks.setDirty(slice(None))
-            
+
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
             destination[:] = self._cache[roiToSlice(roi.start, roi.stop)]
@@ -73,6 +67,8 @@ class OpDenseLabelArray(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.LabelSinkInput:
             self.Output.setDirty(*roi)
+        if slot == self.DeleteLabel and self.DeleteLabel.value != -1:
+            self.NonzeroBlocks.setDirty()
     
     def setInSlot(self, slot, subindex, roi, value):
         if slot == self.LabelSinkInput:
