@@ -35,6 +35,7 @@ from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
@@ -688,16 +689,10 @@ class IlastikShell( QMainWindow ):
         if applet_index < len(self._applets) and applet_index < self.appletBar.count():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
-            if updatedDrawerWidget.layout() is not None:
-                sizeHint = updatedDrawerWidget.layout().geometry().size()
-            else:
-                sizeHint = QSize(0,0)
-            
             self.appletBar.setItemText( applet_index , updatedDrawerTitle ) 
             appletDrawerStackedWidget = self.appletBar.widget(applet_index)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
-                #updatedDrawerWidget.setFixedSize( sizeHint )
                 # For test recording purposes, every gui we add MUST have a unique name
                 appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
@@ -751,7 +746,8 @@ class IlastikShell( QMainWindow ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        #assert issubclass( type(app.getMultiLaneGui()), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        assert isinstance( app.getMultiLaneGui(), AppletGuiInterface ), \
+            "Applet GUIs must conform to the Applet GUI interface."
                 
         # Add placeholder widget, since the applet's central widget may not exist yet.
         self.appletStack.addWidget( QWidget(parent=self) )
@@ -1265,22 +1261,17 @@ class IlastikShell( QMainWindow ):
         for applet_index, applet in enumerate(self._applets):
             enabled = self._disableCounts[applet_index] == 0
 
-            # Apply to the applet central widget
-            if applet.getMultiLaneGui().centralWidget() is not None:
-                applet.getMultiLaneGui().centralWidget().setEnabled( enabled and self.enableWorkflow )
-            
-            # Apply to the applet bar drawer
-            appletGui = applet.getMultiLaneGui().appletDrawer()
-            appletGui.setEnabled( enabled and self.enableWorkflow )
+            applet.getMultiLaneGui().setEnabled( enabled and self.enableWorkflow )
         
             # Apply to the applet bar drawer headings, too
-            
             if applet_index < self.appletBar.count():
-                self.appletBar.setItemEnabled(applet_index,(enabled and self.enableWorkflow))
-                '''drawerTitleItem = self.appletBar.widget(applet_index)
-                if enabled and self.enableWorkflow:
-                    drawerTitleItem.setFlags( Qt.ItemIsEnabled )
-                else:
-                    drawerTitleItem.setFlags( Qt.NoItemFlags )'''
-
+                enable_applet = (enabled and self.enableWorkflow)
+                
+                # Unfortunately, Qt will auto-select a different drawer if 
+                #  we try to disable the currently selected drawer.
+                # That can cause lots of problems for us (e.g. it trigger's the
+                #  creation of applet guis that haven't been created yet.)
+                # Therefore, only disable the title button of a drawer if it isn't already selected.
+                if enable_applet or self.appletBar.currentIndex() != applet_index:
+                    self.appletBar.setItemEnabled(applet_index, enable_applet)
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"

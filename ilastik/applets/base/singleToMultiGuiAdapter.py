@@ -7,7 +7,9 @@ class SingleToMultiGuiAdapter( object ):
         self.singleImageGuiFactory = singleImageGuiFactory
         self._imageLaneIndex = None
         self._guis = []
+        self._tempDrawers = {}
         self.topLevelOperator = topLevelOperator
+        self._enabled = False
 
     def currentGui(self):
         """
@@ -27,10 +29,13 @@ class SingleToMultiGuiAdapter( object ):
         Return the applet drawer of the current single-image gui.
         """
         if self.currentGui() is not None:
+            self._tempDrawers[ self._imageLaneIndex ] = self.currentGui().appletDrawer()
             return self.currentGui().appletDrawer()
-        else:
+        
+        if self._imageLaneIndex not in self._tempDrawers:
             from PyQt4.QtGui import QWidget
-            return QWidget()
+            self._tempDrawers[ self._imageLaneIndex ] = QWidget()
+        return self._tempDrawers[ self._imageLaneIndex ]
 
     def centralWidget( self ):
         """
@@ -88,3 +93,10 @@ class SingleToMultiGuiAdapter( object ):
             if gui is not None:
                 gui.stopAndCleanUp()
     
+    def setEnabled(self, enabled):
+        self._enabled = enabled
+        for gui in filter(lambda x:x, self._guis):
+            gui.setEnabled(enabled)
+        for blank_drawer in self._tempDrawers.values():
+            blank_drawer.setEnabled(enabled)
+        
