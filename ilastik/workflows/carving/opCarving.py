@@ -14,7 +14,6 @@ from lazyflow.operators.valueProviders import OpValueCache
 #ilastik
 from ilastik.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.utility import bind
 
 #carving
 from cylemon.segmentation import MSTSegmentor
@@ -186,6 +185,8 @@ class OpCarving(Operator):
         print "building the 'done' luts took {} seconds".format( timer.seconds() )
     
     def dataIsStorable(self):
+        if self._mst is None:
+            return False
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
         bg_seedNum = len(numpy.where(lut_seeds == 1)[0])

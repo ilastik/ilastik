@@ -234,7 +234,7 @@ class CarvingGui(LabelingGui):
     
     def _after_init(self):
         super(CarvingGui, self)._after_init()
-        self._toggleSegmentation3D()
+        #self._toggleSegmentation3D() #FIXME: see bug 494
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
