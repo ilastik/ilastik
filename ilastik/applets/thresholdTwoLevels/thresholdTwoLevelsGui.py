@@ -49,7 +49,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         for widget in self._allWatchedWidgets:
             # If the user pressed enter inside a spinbox, auto-click "Apply"
             widget.installEventFilter( self )
-
+        
+        self._drawer.showDebugCheckbox.stateChanged.connect( self._onShowDebugChanged )
+        self._showDebug = False
+        
         self._updateGuiFromOperator()
         self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
@@ -143,6 +146,13 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._updateOperatorFromGui()
         self.updateAllLayers()
         
+    def _onShowDebugChanged(self, state):
+        if state==Qt.Checked:
+            self._showDebug = True
+            self.updateAllLayers()
+        else:
+            self._showDebug = False
+            self.updateAllLayers()
 
     def eventFilter(self, watched, event):
         """
@@ -172,53 +182,54 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
 
-        #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
-        curIndex = self._drawer.tabWidget.currentIndex()
-        if curIndex==1:
-            if op.BigRegions.ready():
-                lowThresholdSrc = LazyflowSource(op.BigRegions)
-                lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
-                lowThresholdLayer.name = "After low threshold"
-                lowThresholdLayer.visible = False
-                lowThresholdLayer.opacity = 1.0
-                lowThresholdLayer.setToolTip("Results of thresholding with the low pixel value threshold")
-                layers.append(lowThresholdLayer)
-    
-            if op.FilteredSmallLabels.ready():
-                filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
-                filteredSmallLabelsLayer.name = "After high threshold and size filter"
-                filteredSmallLabelsLayer.visible = False
-                filteredSmallLabelsLayer.opacity = 1.0
-                filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
-                                                     followed by the size filter")
-                layers.append(filteredSmallLabelsLayer)
-    
-            if op.SmallRegions.ready():
-                highThresholdSrc = LazyflowSource(op.SmallRegions)
-                highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
-                highThresholdLayer.name = "After high threshold"
-                highThresholdLayer.visible = False
-                highThresholdLayer.opacity = 1.0
-                highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
-                layers.append(highThresholdLayer)
-        elif curIndex==0:
-            if op.BeforeSizeFilter.ready():
-                thSrc = LazyflowSource(op.BeforeSizeFilter)
-                thLayer = ColortableLayer(thSrc, ct)
-                thLayer.name = "Before size filter"
-                thLayer.visible = False
-                thLayer.opacity = 1.0
-                thLayer.setToolTip("Results of thresholding before the size filter is applied")
-                layers.append(thLayer)
+        if self._showDebug:
+            #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
+            curIndex = self._drawer.tabWidget.currentIndex()
+            if curIndex==1:
+                if op.BigRegions.ready():
+                    lowThresholdSrc = LazyflowSource(op.BigRegions)
+                    lowThresholdLayer = ColortableLayer(lowThresholdSrc, binct)
+                    lowThresholdLayer.name = "After low threshold"
+                    lowThresholdLayer.visible = False
+                    lowThresholdLayer.opacity = 1.0
+                    lowThresholdLayer.setToolTip("Results of thresholding with the low pixel value threshold")
+                    layers.append(lowThresholdLayer)
         
-        # Selected input channel, smoothed.
-        if op.Smoothed.ready():
-            smoothedLayer = self.createStandardLayerFromSlot( op.Smoothed )
-            smoothedLayer.name = "Smoothed input"
-            smoothedLayer.visible = True
-            smoothedLayer.opacity = 1.0
-            smoothedLayer.setToolTip("Selected channel data, smoothed with a Gaussian with user-defined sigma")
-            layers.append(smoothedLayer)
+                if op.FilteredSmallLabels.ready():
+                    filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsLayer.name = "After high threshold and size filter"
+                    filteredSmallLabelsLayer.visible = False
+                    filteredSmallLabelsLayer.opacity = 1.0
+                    filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
+                                                         followed by the size filter")
+                    layers.append(filteredSmallLabelsLayer)
+        
+                if op.SmallRegions.ready():
+                    highThresholdSrc = LazyflowSource(op.SmallRegions)
+                    highThresholdLayer = ColortableLayer(highThresholdSrc, binct)
+                    highThresholdLayer.name = "After high threshold"
+                    highThresholdLayer.visible = False
+                    highThresholdLayer.opacity = 1.0
+                    highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
+                    layers.append(highThresholdLayer)
+            elif curIndex==0:
+                if op.BeforeSizeFilter.ready():
+                    thSrc = LazyflowSource(op.BeforeSizeFilter)
+                    thLayer = ColortableLayer(thSrc, ct)
+                    thLayer.name = "Before size filter"
+                    thLayer.visible = False
+                    thLayer.opacity = 1.0
+                    thLayer.setToolTip("Results of thresholding before the size filter is applied")
+                    layers.append(thLayer)
+            
+            # Selected input channel, smoothed.
+            if op.Smoothed.ready():
+                smoothedLayer = self.createStandardLayerFromSlot( op.Smoothed )
+                smoothedLayer.name = "Smoothed input"
+                smoothedLayer.visible = True
+                smoothedLayer.opacity = 1.0
+                smoothedLayer.setToolTip("Selected channel data, smoothed with a Gaussian with user-defined sigma")
+                layers.append(smoothedLayer)
         
         # Show the selected channel
         if op.InputChannel.ready():

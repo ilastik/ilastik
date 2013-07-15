@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>292</width>
-    <height>294</height>
+    <height>325</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <item>
       <widget class="QLabel" name="label_3">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the input data which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Input Channel x&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the prediction images which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Selected input channel&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Input Channel:</string>
@@ -52,7 +52,7 @@
         </sizepolicy>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Smooth the input data with a Gaussian with user-defined sigma values for x, y and z. Anisotropic smoothing is allowed, i.e. sigmas can all be different. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Smoothed input&amp;quot;&lt;/span&gt; layer for the results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Smooth the input data with a Gaussian with user-defined sigma values for x, y and z. Anisotropic smoothing is allowed, i.e. sigmas can all be different. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Smoothed input&amp;quot;&lt;/span&gt; layer for the results (first check the &amp;quot;Show intermediate results&amp;quot; checkbox).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Sigmas:</string>
@@ -189,7 +189,7 @@
          <item>
           <widget class="QDoubleSpinBox" name="lowThresholdSpinBox">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Low threshold value. Look at &amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;After low threshold&lt;/span&gt;&amp;quot; layer for the result of changing this setting.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Low threshold value. Look at &amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;After low threshold&lt;/span&gt;&amp;quot; layer for the result of changing this setting (check the &amp;quot;Show intermediate results&amp;quot; checkbox to see it).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="maximum">
             <double>1.000000000000000</double>
@@ -202,7 +202,7 @@
          <item>
           <widget class="QDoubleSpinBox" name="highThresholdSpinBox">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;High threshold value. Look at the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;After high threshold&amp;quot;&lt;/span&gt; layer for the results of changing this setting. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;High threshold value. Look at the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;After high threshold&amp;quot;&lt;/span&gt; layer for the results of changing this setting (check the &amp;quot;Show intermediate results&amp;quot; checkbox to see it). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="maximum">
             <double>1.000000000000000</double>
@@ -259,6 +259,16 @@
     </layout>
    </item>
    <item>
+    <widget class="QCheckBox" name="showDebugCheckbox">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show intermediate computation results, such as the segmented objects after thresholding, but before size filter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Show intermediate results</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QLabel" name="label_4">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reason for the recomputation is that objects change shape if you change the settings of this applet. The object features have to be recalculated accordingly. Besides, if you have already annotated objects in one of the downstream applets, their labels have to be transfered to the new objects.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -285,6 +295,7 @@ recomputation and might take a while </string>
   <zorder>applyButton</zorder>
   <zorder>tabWidget</zorder>
   <zorder></zorder>
+  <zorder>showDebugCheckbox</zorder>
  </widget>
  <resources/>
  <connections/>
