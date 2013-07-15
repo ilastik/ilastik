@@ -158,6 +158,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         layers = []        
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
+        binct[0] = 0
         ct = self._createDefault16ColorColorTable()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
@@ -168,6 +169,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.name = "Final output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
+            outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
 
         #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
@@ -179,6 +181,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 lowThresholdLayer.name = "After low threshold"
                 lowThresholdLayer.visible = False
                 lowThresholdLayer.opacity = 1.0
+                lowThresholdLayer.setToolTip("Results of thresholding with the low pixel value threshold")
                 layers.append(lowThresholdLayer)
     
             if op.FilteredSmallLabels.ready():
@@ -186,6 +189,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 filteredSmallLabelsLayer.name = "After high threshold and size filter"
                 filteredSmallLabelsLayer.visible = False
                 filteredSmallLabelsLayer.opacity = 1.0
+                filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
+                                                     followed by the size filter")
                 layers.append(filteredSmallLabelsLayer)
     
             if op.SmallRegions.ready():
@@ -194,6 +199,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 highThresholdLayer.name = "After high threshold"
                 highThresholdLayer.visible = False
                 highThresholdLayer.opacity = 1.0
+                highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
                 layers.append(highThresholdLayer)
         elif curIndex==0:
             if op.BeforeSizeFilter.ready():
@@ -202,14 +208,16 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 thLayer.name = "Before size filter"
                 thLayer.visible = False
                 thLayer.opacity = 1.0
+                thLayer.setToolTip("Results of thresholding before the size filter is applied")
                 layers.append(thLayer)
         
         # Selected input channel, smoothed.
         if op.Smoothed.ready():
             smoothedLayer = self.createStandardLayerFromSlot( op.Smoothed )
-            smoothedLayer.name = "Smoothed Input"
+            smoothedLayer.name = "Smoothed input"
             smoothedLayer.visible = True
             smoothedLayer.opacity = 1.0
+            smoothedLayer.setToolTip("Selected channel data, smoothed with a Gaussian with user-defined sigma")
             layers.append(smoothedLayer)
         
         # Show the selected channel
@@ -222,8 +230,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                                                 tintColor=QColor(self._channelColors[op.Channel.value]),
                                                 range=drange,
                                                 normalize=drange )
-            channelLayer.name = "Input Channel {}".format(op.Channel.value)
+            channelLayer.name = "Selected input channel"
             channelLayer.opacity = 1.0
+            channelLayer.setToolTip("The selected channel of the prediction images")
             #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
             layers.append(channelLayer)
         
@@ -231,7 +240,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         rawSlot = self.topLevelOperatorView.RawInput
         if rawSlot.ready():
             rawLayer = self.createStandardLayerFromSlot( rawSlot )
-            rawLayer.name = "Raw Data"
+            rawLayer.name = "Raw data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
             layers.append(rawLayer)

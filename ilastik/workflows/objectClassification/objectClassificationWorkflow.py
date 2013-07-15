@@ -323,7 +323,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         opData.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
         self._applets.append(self.dataSelectionApplet)
 
-        self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold & Size Filter", "ThresholdTwoLevels")
+        self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold and Size Filter", "ThresholdTwoLevels")
         self._applets.append(self.thresholdingApplet)
 
     def connectInputs(self, laneIndex):

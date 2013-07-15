@@ -128,43 +128,6 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QLabel" name="label">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Minimum and maximum object size for the size filter&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Size Range:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSpinBox" name="minSizeSpinBox">
-       <property name="toolTip">
-        <string>Min object size</string>
-       </property>
-       <property name="maximum">
-        <number>100000</number>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSpinBox" name="maxSizeSpinBox">
-       <property name="toolTip">
-        <string>Max object size</string>
-       </property>
-       <property name="maximum">
-        <number>1000000</number>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="maximumSize">
       <size>
@@ -259,6 +222,43 @@
     </widget>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Minimum and maximum object size for the size filter&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Size Range:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="minSizeSpinBox">
+       <property name="toolTip">
+        <string>Min object size</string>
+       </property>
+       <property name="maximum">
+        <number>100000</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="maxSizeSpinBox">
+       <property name="toolTip">
+        <string>Max object size</string>
+       </property>
+       <property name="maximum">
+        <number>1000000</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <widget class="QLabel" name="label_4">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reason for the recomputation is that objects change shape if you change the settings of this applet. The object features have to be recalculated accordingly. Besides, if you have already annotated objects in one of the downstream applets, their labels have to be transfered to the new objects.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -284,6 +284,7 @@ recomputation and might take a while </string>
   <zorder>label_4</zorder>
   <zorder>applyButton</zorder>
   <zorder>tabWidget</zorder>
+  <zorder></zorder>
  </widget>
  <resources/>
  <connections/>
