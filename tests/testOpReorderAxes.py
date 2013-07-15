@@ -14,19 +14,22 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
-class OpMuncher( Operator ):
+class OpArrayProvider(Operator):
+    
     Input = InputSlot()
     Output = OutputSlot()
-
-    def execute( slot, subindex, roi, result ):
-        result[...] = 0
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom( self.Input.meta )
+    
+    def execute(self, slot, subindex, out_roi, result):
+        assert not isinstance( result, vigra.VigraArray ),\
+            "The 'write into' view passed to upstream operators must not be a VigraArray."
+        self.Input(out_roi.start, out_roi.stop).writeInto(result).wait()
         return result
 
-    def setupOutputs( self ):
-        self.Output.meta.assignFrom( self.Input.meta )
-
-    def propagateDirty( self, slot, subindex, roi ):
-        self.Output.setDirty( roi )
+    def propagateDirty(self, inputSlot, subindex, in_roi):
+        pass
 
 class TestOpReorderAxes(unittest.TestCase):
 
@@ -51,7 +54,10 @@ class TestOpReorderAxes(unittest.TestCase):
         self.array = (numpy.random.rand(*tuple(self.shape))*255)
         self.array =  (float(250)/255*self.array + 5).astype(int)
         self.inArray = vigra.VigraArray(self.array,axistags = axisTags)
-        self.operator.Input.setValue(self.inArray)
+
+        opProvider = OpArrayProvider( graph=self.operator.graph )
+        opProvider.Input.setValue( self.inArray )
+        self.operator.Input.connect( opProvider.Output )
 
     def test_Full(self):
         for i in range(self.tests):
@@ -71,6 +77,9 @@ class TestOpReorderAxes(unittest.TestCase):
 
             # Check the shape
             assert len(result.shape) == 5
+
+            assert not isinstance(result, vigra.VigraArray), \
+                "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in volumina order
             assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
@@ -106,6 +115,8 @@ class TestOpReorderAxes(unittest.TestCase):
 
             # Check the shape
             assert len(result.shape) == 5
+            assert not isinstance(result, vigra.VigraArray), \
+                "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in volumina order
             assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
@@ -150,6 +161,9 @@ class TestOpReorderAxes(unittest.TestCase):
             # Check the shape
             assert len(result.shape) == len( axisorder )
 
+            assert not isinstance(result, vigra.VigraArray), \
+                "For compatibility with generic code, output should be provided as a plain numpy array."
+
             # Ensure the result came out in the same strange order we asked for.
             assert self.operator.Output.meta.axistags == vigra.defaultAxistags(axisorder)
 
@@ -158,14 +172,6 @@ class TestOpReorderAxes(unittest.TestCase):
             vresult.axistags = self.operator.Output.meta.axistags
             reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.Output.meta.axistags])
             assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
-
-#        def test_Incomplete_graph( self ):
-#            g = Graph()
-#            opMunch = OpMuncher( graph = g )
-#            ls = LazyflowSource(opMunch.Output)
-#            res = ls.request((slice(1, 2, None),)).wait()
-#            assert res.shape == (1,)
-#            assert res[0] == 0
 
 if __name__ == "__main__":
     #logger.setLevel(logging.DEBUG)

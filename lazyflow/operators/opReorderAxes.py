@@ -1,5 +1,6 @@
 import copy
 from functools import partial
+import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
@@ -52,7 +53,7 @@ class OpReorderAxes(Operator):
         result_view_out = result.view( vigra.VigraArray )
         result_view_out.axistags = self.Output.meta.axistags
         result_view_in = result_view_out.withAxes( *self.Input.meta.getAxisKeys() )
-        self.Input( *in_roi ).writeInto( result_view_in ).wait()
+        self.Input( *in_roi ).writeInto( result_view_in.view(numpy.ndarray) ).wait()
         return result
 
     def propagateDirty(self, inputSlot, subindex, in_roi):
