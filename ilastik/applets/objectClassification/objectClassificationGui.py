@@ -118,6 +118,8 @@ class ObjectClassificationGui(LabelingGui):
         
         self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
+        self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
+        self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
 
         # button handlers
         self._interactiveMode = False
@@ -396,9 +398,12 @@ class ObjectClassificationGui(LabelingGui):
                                                  normalize=(0.0, 1.0) )
                 probLayer.opacity = 0.25
                 probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                self._colorTable16_forpmaps[channel] = ref_label.pmapColor()
 
-                def setLayerColor(c, predictLayer=probLayer):
+                def setLayerColor(c, predictLayer=probLayer, ch=channel):
                     predictLayer.tintColor = c
+                    self._colorTable16_forpmaps[ch] = c
+                    
 
                 def setLayerName(n, predictLayer=probLayer):
                     newName = "Prediction for %s" % n
@@ -413,7 +418,7 @@ class ObjectClassificationGui(LabelingGui):
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
             self.predictlayer = ColortableLayer(self.predictsrc,
-                                                colorTable=self._colorTable16)
+                                                colorTable=self._colorTable16_forpmaps)
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
