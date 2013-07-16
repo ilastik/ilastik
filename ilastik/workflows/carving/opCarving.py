@@ -94,6 +94,7 @@ class OpCarving(Operator):
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
+        self.has_seeds = False # keeps track of whether or not there are seeds currently loaded, either drawn by the user or loaded from a saved object
 
         #supervoxels of finished and saved objects
         self._done_lut = None
@@ -157,6 +158,7 @@ class OpCarving(Operator):
         self.opLabelArray.DeleteLabel.setValue(2)
         self.opLabelArray.DeleteLabel.setValue(1)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        self.has_seeds = False
         
     def _setCurrObjectName(self, n):
         """
@@ -631,6 +633,7 @@ class OpCarving(Operator):
                     self._mst.seeds[key] = value
             print "Writing seeds to MST took {} seconds".format( timer.seconds() )
 
+            self.has_seeds = True
         else:
             raise RuntimeError("unknown slots")
 

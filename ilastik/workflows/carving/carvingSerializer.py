@@ -8,6 +8,7 @@ class CarvingSerializer( AppletSerializer ):
         super(CarvingSerializer, self).__init__(*args, **kwargs)
         self._o = carvingTopLevelOperator 
         
+        
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
@@ -154,7 +155,9 @@ class CarvingSerializer( AppletSerializer ):
         for index, innerOp in enumerate(self._o.innerOperators):
             if len(innerOp._dirtyObjects) > 0:
                 return True
-        return True #FIXME: only return True if labels have changed and need to be saved
+            if innerOp.has_seeds:
+                return True
+        return False
     
     #this is present only for the serializer AppletInterface
     def unload(self):
