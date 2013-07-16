@@ -834,8 +834,8 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    min_coords = feats[t][default_features_key]['Coord<Minimum>'][obj]
-                    max_coords = feats[t][default_features_key]['Coord<Maximum>'][obj]
+                    min_coords = feats[t][default_features_key]['Coord<Minimum>'][obj].astype(numpy.uint32)
+                    max_coords = feats[t][default_features_key]['Coord<Maximum>'][obj].astype(numpy.uint32)
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)

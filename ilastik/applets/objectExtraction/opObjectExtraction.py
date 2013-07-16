@@ -352,9 +352,8 @@ class OpRegionFeatures3d(Operator):
 
                 pfeats[key] = value
         logger.debug("merged, returning")
-        # add features needed by downstream applets. these should be
-        # removed before classification.
-        #all_features[default_features_key] = extrafeats
+        pfeats["Coord<Minimum>"] = pfeats["Coord<Minimum>"].astype(np.uint32)
+        pfeats["Coord<Maximum>"] = pfeats["Coord<Maximum>"].astype(np.uint32)
         return all_features
 
     def propagateDirty(self, slot, subindex, roi):
