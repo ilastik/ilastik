@@ -294,7 +294,7 @@ class ObjectExtractionGui(LayerViewerGui):
                 if pname!='Default features':
                     for featname, feat in pfeats.iteritems():
                         nfeatures += feat.shape[1]
-            self._drawer.featuresSelected.setText("{} features selected".format(nfeatures))
+            self._drawer.featuresSelected.setText("{} features computed".format(nfeatures))
             logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
