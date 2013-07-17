@@ -49,8 +49,6 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label.setVisible(False)
         self.ui.label_2.setVisible(False)
         self.ui.label_3.setVisible(False)
-        #self._setAll(Qt.Checked)
-
 
 class ObjectClassificationGui(LabelingGui):
     """A subclass of LabelingGui for labeling objects.
@@ -384,24 +382,7 @@ class ObjectClassificationGui(LabelingGui):
         segmentedSlot = self.op.SegmentationImages
         rawSlot = self.op.RawImages
 
-        if segmentedSlot.ready():
-            ct = colortables.create_default_16bit()
-            self.objectssrc = LazyflowSource(segmentedSlot)
-            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
-            layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Objects"
-            layer.opacity = 0.5
-            layer.visible = True
-            layers.append(layer)
 
-        if binarySlot.ready():
-            ct_binary = [QColor(0, 0, 0, 0).rgba(),
-                         QColor(255, 255, 255, 255).rgba()]
-            self.binaryimagesrc = LazyflowSource(binarySlot)
-            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
-            layer.name = "Binary Image"
-            layer.visible = False
-            layers.append(layer)
 
         #This is just for colors
         labels = self.labelListData
@@ -430,7 +411,7 @@ class ObjectClassificationGui(LabelingGui):
                 setLayerName(ref_label.name)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
-                layers.insert(0, probLayer)
+                layers.append(probLayer)
 
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
@@ -441,6 +422,7 @@ class ObjectClassificationGui(LabelingGui):
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+            self.predictlayer.opacity = 0.5
 
             def setColorTable(index1, index2):
                 print "got the signal"
@@ -456,7 +438,7 @@ class ObjectClassificationGui(LabelingGui):
             self._labelControlUi.labelListModel.dataChanged.connect(setColorTable)
             # put first, so that it is visible after hitting "live
             # predict".
-            layers.insert(0, self.predictlayer)
+            layers.insert(1, self.predictlayer)
 
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
@@ -466,6 +448,25 @@ class ObjectClassificationGui(LabelingGui):
             self.badLayer.name = "Ambiguous objects"
             self.badLayer.visible = False
             layers.append(self.badLayer)
+
+        if segmentedSlot.ready():
+            ct = colortables.create_default_16bit()
+            self.objectssrc = LazyflowSource(segmentedSlot)
+            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+            layer = ColortableLayer(self.objectssrc, ct)
+            layer.name = "Objects"
+            layer.opacity = 0.5
+            layer.visible = True
+            layers.append(layer)
+
+        if binarySlot.ready():
+            ct_binary = [QColor(0, 0, 0, 0).rgba(),
+                         QColor(255, 255, 255, 255).rgba()]
+            self.binaryimagesrc = LazyflowSource(binarySlot)
+            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
+            layer.name = "Binary Image"
+            layer.visible = False
+            layers.append(layer)
 
         if rawSlot.ready():
             self.rawimagesrc = LazyflowSource(rawSlot)
