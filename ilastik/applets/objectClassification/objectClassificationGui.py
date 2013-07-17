@@ -511,8 +511,10 @@ class ObjectClassificationGui(LabelingGui):
             return
 
         menu = QMenu(self)
-        text = "print info for object {}".format(obj)
+        text = "print info for object {} in the terminal".format(obj)
         menu.addAction(text)
+        clearlabel = "clear object label"
+        menu.addAction(clearlabel)
         action = menu.exec_(globalWindowCoordinate)
         if action is not None and action.text() == text:
             numpy.set_printoptions(precision=4)
@@ -561,6 +563,10 @@ class ObjectClassificationGui(LabelingGui):
 
             
             print "------------------------------------------------------------"
+        elif action is not None and action.text()==clearlabel:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
+            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
 
     def setVisible(self, visible):
         super(ObjectClassificationGui, self).setVisible(visible)
