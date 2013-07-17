@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>288</width>
-    <height>420</height>
+    <height>418</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,6 +47,13 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QLabel" name="featuresSubset">
+       <property name="text">
+        <string>No features selected</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="label">

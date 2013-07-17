@@ -49,7 +49,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label.setVisible(False)
         self.ui.label_2.setVisible(False)
         self.ui.label_3.setVisible(False)
-        self._setAll(Qt.Checked)
+        #self._setAll(Qt.Checked)
 
 
 class ObjectClassificationGui(LabelingGui):
@@ -133,11 +133,20 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
             self.handleShowPredictionsClicked)
 
+        #select all the features in the beginning
+        cfn = self.op.ComputedFeatureNames[:].wait()
+        self.op.SelectedFeatures.setValue(self.op.ComputedFeatureNames[:].wait())
+        nfeatures = 0
+        for plugin_features in cfn.itervalues():
+            nfeatures += len(plugin_features)
+        self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
+
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.checkEnableButtons()
+        
 
     @property
     def labelMode(self):
@@ -198,7 +207,11 @@ class ObjectClassificationGui(LabelingGui):
         else:
             selectedFeatures = None
 
-        ndim = 3 # FIXME
+        ndim = 3
+        at = mainOperator.RawImages.meta.axistags
+        z_shape = mainOperator.RawImages.meta.shape[at.index('z')]
+        if z_shape==1:
+            ndim = 2
         dlg = FeatureSubSelectionDialog(computedFeatures,
                                         selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
@@ -206,6 +219,10 @@ class ObjectClassificationGui(LabelingGui):
             if len(dlg.selectedFeatures) == 0:
                 self.interactiveMode = False
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
+            nfeatures = 0
+            for plugin_features in dlg.selectedFeatures.itervalues():
+                nfeatures += len(plugin_features)
+            self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
 
     @pyqtSlot()
     def checkEnableButtons(self):
@@ -402,7 +419,8 @@ class ObjectClassificationGui(LabelingGui):
 
                 def setLayerColor(c, predictLayer=probLayer, ch=channel):
                     predictLayer.tintColor = c
-                    self._colorTable16_forpmaps[ch] = c
+                    #self._colorTable16_forpmaps[ch] = c
+                    #segmLayer.colorTable = self._colorTable16_forpmaps
                     
 
                 def setLayerName(n, predictLayer=probLayer):
@@ -417,12 +435,25 @@ class ObjectClassificationGui(LabelingGui):
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
+            self._colorTable16_forpmaps[0] = 0
             self.predictlayer = ColortableLayer(self.predictsrc,
                                                 colorTable=self._colorTable16_forpmaps)
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
 
+            def setColorTable(index1, index2):
+                print "got the signal"
+                row = index1.row()
+                element = self._labelControlUi.labelListModel[row]
+                self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
+                print "row for changing:", row, element.pmapColor().name()
+                print "new colortable:", self._colorTable16_forpmaps[0], QColor(self._colorTable16_forpmaps[1]).name(), \
+                                         QColor(self._colorTable16_forpmaps[2]).name()
+                                         
+                self.predictlayer.colorTable = self._colorTable16_forpmaps
+                
+            self._labelControlUi.labelListModel.dataChanged.connect(setColorTable)
             # put first, so that it is visible after hitting "live
             # predict".
             layers.insert(0, self.predictlayer)
