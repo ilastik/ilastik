@@ -39,8 +39,18 @@ class OpReorderAxes(Operator):
             assert len(input_tags) == len(self.Input.meta.shape)
 
         # These map between input axis indexes and output axis indexes
+        # (Used to translate between input/output rois in execute() and propagateDirty())
         self._in_out_map = map( partial(_index, output_order), input_order ) # For "abcd" and "bcde" in_out = [-1, 0, 1, 2]
-        self._out_in_map = map( partial(_index, input_order), output_order ) # For "abcd" and "bcde" out_in = [1, 2, 3, -1]    
+        self._out_in_map = map( partial(_index, input_order), output_order ) # For "abcd" and "bcde" out_in = [1, 2, 3, -1]
+
+        # Find the 'common' axes shared by both the input and output
+        input_common_axes = filter( lambda a: a in output_order, input_order)  # Ordered by appearance on the input
+        output_common_axes = filter( lambda a: a in input_order, output_order) # Ordered by appearance on the output
+
+        # These are used by execute() to create a view of the 'result' array for the input to write into
+        self._out_squeeze_slicing = tuple( slice(None) if a in input_order else 0 for a in output_order )
+        self._common_axis_transpose_order = map( output_common_axes.index, input_common_axes )
+        self._in_unsqueeze_slicing = tuple( slice(None) if a in output_order else numpy.newaxis for a in input_order )
 
     def execute(self, slot, subindex, out_roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
@@ -50,10 +60,25 @@ class OpReorderAxes(Operator):
         in_roi_pairs = map( out_roi_dict.__getitem__, self._in_out_map ) # e.g. [(0,1), (0,10), (0,20)]
         in_roi = zip( *in_roi_pairs ) # e.g. [(0,0,0), (1,10,20)]
 
-        result_view_out = result.view( vigra.VigraArray )
-        result_view_out.axistags = self.Output.meta.axistags
-        result_view_in = result_view_out.withAxes( *self.Input.meta.getAxisKeys() )
-        self.Input( *in_roi ).writeInto( result_view_in.view(numpy.ndarray) ).wait()
+        # Create a view of the result that can be written to by the input slot.
+        #   1) Drop (singleton) result axes that aren't used by the input
+        #   2) Transpose such that 'common' axes are in the order expected by input
+        #   3) Insert (singleton) axes that the 
+
+        # For example, if input is 'txyc' and output is 'yxzc'
+        #  ('result' has axes 'yxzc')
+        #   1) Drop 'z' axis: result[:,:,0,:] # view has axes 'yxc'
+        #   2) Transpose 'common' axes to the order they appear on the input: 'yxc' -> 'xyc'
+        #   3) Insert 't' axis: result[newaxis, :,:,:] # now has axes 'txyc'
+
+        # Perform the transformations described above using predetermined slicings and transpose order.
+        # This should be faster than using VigraArray.withAxes()
+        result_squeezed = result[self._out_squeeze_slicing] # (1)
+        result_reordered = numpy.transpose(result_squeezed, self._common_axis_transpose_order) # (2)
+        result_input_view = result_reordered[self._in_unsqueeze_slicing] # (3)
+        
+        # Now write into the special result view
+        self.Input( *in_roi ).writeInto( result_input_view ).wait()
         return result
 
     def propagateDirty(self, inputSlot, subindex, in_roi):
@@ -75,4 +100,3 @@ def _index(tup, element):
         return tup.index(element)
     except ValueError:
         return -1
-
