@@ -289,6 +289,13 @@ class ObjectExtractionGui(LayerViewerGui):
 
         def finished():
             self.topLevelOperatorView._opRegFeats.fixed = True
+            feats = self.topLevelOperatorView.RegionFeatures[0].wait()
+            nfeatures = 0
+            for pname, pfeats in feats[0].iteritems():
+                if pname!='Default features':
+                    for featname, feat in pfeats.iteritems():
+                        nfeatures += feat.shape[1]
+            self._drawer.featuresSelected.setText("{} features computed".format(nfeatures))
             logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
