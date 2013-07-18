@@ -12,6 +12,7 @@ from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
+from ilastik.utility.gui import threadRouted
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
@@ -58,6 +59,7 @@ class FeatureSelectionDialog(QDialog):
 
         self.populate()
         self.ndim = ndim
+        
         self.set_margin()
         self.setObjectName("FeatureSelectionDialog")
 
@@ -287,6 +289,13 @@ class ObjectExtractionGui(LayerViewerGui):
 
         def finished():
             self.topLevelOperatorView._opRegFeats.fixed = True
+            feats = self.topLevelOperatorView.RegionFeatures[0].wait()
+            nfeatures = 0
+            for pname, pfeats in feats[0].iteritems():
+                if pname!='Default features':
+                    for featname, feat in pfeats.iteritems():
+                        nfeatures += feat.shape[1]
+            self._drawer.featuresSelected.setText("{} features computed".format(nfeatures))
             logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
@@ -297,8 +306,9 @@ class ObjectExtractionGui(LayerViewerGui):
             req.submit()
             reqs.append(req)
 
-        for i, req in enumerate(reqs):
+        for req in reqs:
             req.notify_finished(callback)
+            req.notify_failed( self.handleFeatureComputationFailure )
 
         # handle cancel button
         def cancel():
@@ -306,6 +316,12 @@ class ObjectExtractionGui(LayerViewerGui):
                 req.cancel()
         progress.canceled.connect(cancel)
 
+    @threadRouted
+    def handleFeatureComputationFailure(self, exc, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
+        msg = "Feature computation failed due to the following error:\n{}".format( exc )
+        QMessageBox.critical(self, "Feature computation failed", msg)
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):

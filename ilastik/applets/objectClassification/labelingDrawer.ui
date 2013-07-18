@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>288</width>
-    <height>420</height>
+    <height>418</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -41,12 +41,22 @@
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QPushButton" name="subsetFeaturesButton">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;From the features computed in &amp;quot;Object Extraction&amp;quot; applet, &lt;span style=&quot; font-weight:600;&quot;&gt;select a subset of features&lt;/span&gt; to be used for classification. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This button is here, because computationally it is much cheaper to compute all the features at once and then, at this step, try out which combination of features is the best for the classification task.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Subset Features</string>
          </property>
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QLabel" name="featuresSubset">
+       <property name="text">
+        <string>No features selected</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="label">

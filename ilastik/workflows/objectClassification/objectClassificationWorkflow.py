@@ -13,7 +13,7 @@ from ilastik.applets.blockwiseObjectClassification \
     import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots
+from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots, OpReorderAxes
 from lazyflow.graph import OperatorWrapper
 
 import argparse
@@ -170,18 +170,18 @@ class ObjectClassificationWorkflow(Workflow):
 
         #  but image pathway is from the batch pipeline
         opBatchFillMissingSlices.Input.connect(batchInputsRaw)
-        op5Raw = OperatorWrapper(Op5ifyer, parent=self)
-        op5Raw.input.connect(opBatchFillMissingSlices.Output)
-        op5Binary = OperatorWrapper(Op5ifyer, parent=self)
+        op5Raw = OperatorWrapper(OpReorderAxes, parent=self)
+        op5Raw.Input.connect(opBatchFillMissingSlices.Output)
+        op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
         if not isinstance(self, ObjectClassificationWorkflowBinary):
             opBatchThreshold.RawInput.connect(batchInputsRaw)
             opBatchThreshold.InputImage.connect(batchInputsOther)
-            op5Binary.input.connect(opBatchThreshold.Output)
+            op5Binary.Input.connect(opBatchThreshold.Output)
         else:
-            op5Binary.input.connect(batchInputsOther)
+            op5Binary.Input.connect(batchInputsOther)
 
-        opBatchClassify.RawImage.connect(op5Raw.output)
-        opBatchClassify.BinaryImage.connect(op5Binary.output)
+        opBatchClassify.RawImage.connect(op5Raw.Output)
+        opBatchClassify.BinaryImage.connect(op5Binary.Output)
 
         self.opBatchClassify = opBatchClassify
 
@@ -207,9 +207,14 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from pixel classification)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(
-            self, "Data Selection", "DataSelection", batchDataGui=False,
-            force5d=False)
+        data_instructions = 'Use the "Raw Data" tab on the right to load your intensity image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self, 
+                                                        "Data Selection", 
+                                                        "DataSelection", 
+                                                        batchDataGui=False,
+                                                        force5d=False, 
+                                                        instructionText=data_instructions )
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data'])
 
@@ -232,10 +237,13 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
 
     def connectInputs(self, laneIndex):
-        op5raw = Op5ifyer(parent=self)
-        op5pred = Op5ifyer(parent=self)
-        op5threshold = Op5ifyer(parent=self)
-
+        op5raw = OpReorderAxes(parent=self)
+        op5raw.AxisOrder.setValue("txyzc")
+        op5pred = OpReorderAxes(parent=self)
+        op5pred.AxisOrder.setValue("txyzc")
+        op5threshold = OpReorderAxes(parent=self)
+        op5threshold.AxisOrder.setValue("txyzc")
+        
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -256,26 +264,30 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
-        op5raw.input.connect(rawslot)
-        op5pred.input.connect(opClassify.HeadlessPredictionProbabilities)
+        op5raw.Input.connect(rawslot)
+        op5pred.Input.connect(opClassify.PredictionProbabilities)
 
-        opThreshold.RawInput.connect(op5raw.output)
-        opThreshold.InputImage.connect(op5pred.output)
+        opThreshold.RawInput.connect(op5raw.Output)
+        opThreshold.InputImage.connect(op5pred.Output)
 
-        op5threshold.input.connect(opThreshold.CachedOutput)
+        op5threshold.Input.connect(opThreshold.CachedOutput)
 
-        return op5raw.output, op5threshold.output
+        return op5raw.Output, op5threshold.Output
 
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True)
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Segmentation Image" tab to load your binary mask image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        batchDataGui=False,
+                                                        force5d=True,
+                                                        instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data', 'Segmentation Image'])
@@ -297,25 +309,31 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from prediction image)"
 
     def setupInputs(self):
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True)
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+        
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        batchDataGui=False,
+                                                        force5d=True,
+                                                        instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
         self._applets.append(self.dataSelectionApplet)
 
-        self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold & Size Filter", "ThresholdTwoLevels")
+        self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold and Size Filter", "ThresholdTwoLevels")
         self._applets.append(self.thresholdingApplet)
 
     def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
-        op5raw = Op5ifyer(parent=self)
-        op5predictions = Op5ifyer(parent=self)
+        op5raw = OpReorderAxes(parent=self)
+        op5raw.AxisOrder.setValue("txyzc")
+        op5predictions = OpReorderAxes(parent=self)
+        op5predictions.AxisOrder.setValue("txyzc")
 
         if self.fillMissing != 'none':
             opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
@@ -324,17 +342,17 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         else:
             rawslot = opData.ImageGroup[0]
 
-        op5raw.input.connect(rawslot)
-        op5predictions.input.connect(opData.ImageGroup[1])
+        op5raw.Input.connect(rawslot)
+        op5predictions.Input.connect(opData.ImageGroup[1])
 
-        opTwoLevelThreshold.RawInput.connect(op5raw.output)
-        opTwoLevelThreshold.InputImage.connect(op5predictions.output)
+        opTwoLevelThreshold.RawInput.connect(op5raw.Output)
+        opTwoLevelThreshold.InputImage.connect(op5predictions.Output)
 
-        op5Binary = Op5ifyer(parent=self)
+        op5Binary = OpReorderAxes(parent=self)
+        op5Binary.AxisOrder.setValue("txyzc")
+        op5Binary.Input.connect(opTwoLevelThreshold.CachedOutput)
 
-        op5Binary.input.connect(opTwoLevelThreshold.CachedOutput)
-
-        return op5raw.output, op5Binary.output
+        return op5raw.Output, op5Binary.Output
 
 if __name__ == "__main__":
     from sys import argv

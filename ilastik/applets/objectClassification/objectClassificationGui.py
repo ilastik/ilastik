@@ -42,7 +42,13 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.spinBox_X.setEnabled(False)
         self.ui.spinBox_Y.setEnabled(False)
         self.ui.spinBox_Z.setEnabled(False)
-
+        self.ui.spinBox_X.setVisible(False)
+        self.ui.spinBox_Y.setVisible(False)
+        self.ui.spinBox_Z.setVisible(False)
+        self.ui.marginLabel.setVisible(False)
+        self.ui.label.setVisible(False)
+        self.ui.label_2.setVisible(False)
+        self.ui.label_3.setVisible(False)
 
 class ObjectClassificationGui(LabelingGui):
     """A subclass of LabelingGui for labeling objects.
@@ -107,7 +113,11 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
+        
+        self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
+        self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
+        self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
 
         # button handlers
         self._interactiveMode = False
@@ -121,11 +131,20 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
             self.handleShowPredictionsClicked)
 
+        #select all the features in the beginning
+        cfn = self.op.ComputedFeatureNames[:].wait()
+        self.op.SelectedFeatures.setValue(self.op.ComputedFeatureNames[:].wait())
+        nfeatures = 0
+        for plugin_features in cfn.itervalues():
+            nfeatures += len(plugin_features)
+        self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
+
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.checkEnableButtons()
+        
 
     @property
     def labelMode(self):
@@ -186,7 +205,11 @@ class ObjectClassificationGui(LabelingGui):
         else:
             selectedFeatures = None
 
-        ndim = 3 # FIXME
+        ndim = 3
+        at = mainOperator.RawImages.meta.axistags
+        z_shape = mainOperator.RawImages.meta.shape[at.index('z')]
+        if z_shape==1:
+            ndim = 2
         dlg = FeatureSubSelectionDialog(computedFeatures,
                                         selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
@@ -194,6 +217,10 @@ class ObjectClassificationGui(LabelingGui):
             if len(dlg.selectedFeatures) == 0:
                 self.interactiveMode = False
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
+            nfeatures = 0
+            for plugin_features in dlg.selectedFeatures.itervalues():
+                nfeatures += len(plugin_features)
+            self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
 
     @pyqtSlot()
     def checkEnableButtons(self):
@@ -355,24 +382,7 @@ class ObjectClassificationGui(LabelingGui):
         segmentedSlot = self.op.SegmentationImages
         rawSlot = self.op.RawImages
 
-        if segmentedSlot.ready():
-            ct = colortables.create_default_16bit()
-            self.objectssrc = LazyflowSource(segmentedSlot)
-            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
-            layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Objects"
-            layer.opacity = 0.5
-            layer.visible = True
-            layers.append(layer)
 
-        if binarySlot.ready():
-            ct_binary = [QColor(0, 0, 0, 0).rgba(),
-                         QColor(255, 255, 255, 255).rgba()]
-            self.binaryimagesrc = LazyflowSource(binarySlot)
-            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
-            layer.name = "Binary Image"
-            layer.visible = False
-            layers.append(layer)
 
         #This is just for colors
         labels = self.labelListData
@@ -386,9 +396,14 @@ class ObjectClassificationGui(LabelingGui):
                                                  normalize=(0.0, 1.0) )
                 probLayer.opacity = 0.25
                 probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
+                self._colorTable16_forpmaps[channel] = ref_label.pmapColor()
 
-                def setLayerColor(c, predictLayer=probLayer):
+                def setLayerColor(c, predictLayer=probLayer, ch=channel):
                     predictLayer.tintColor = c
+                    #self._colorTable16_forpmaps[ch] = c
+                    #segmLayer.colorTable = self._colorTable16_forpmaps
+                    
 
                 def setLayerName(n, predictLayer=probLayer):
                     newName = "Prediction for %s" % n
@@ -397,20 +412,36 @@ class ObjectClassificationGui(LabelingGui):
                 setLayerName(ref_label.name)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
-                layers.insert(0, probLayer)
+                layers.append(probLayer)
 
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
             self.predictsrc = LazyflowSource(predictionSlot)
+            self._colorTable16_forpmaps[0] = 0
             self.predictlayer = ColortableLayer(self.predictsrc,
-                                                colorTable=self._colorTable16)
+                                                colorTable=self._colorTable16_forpmaps)
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+            self.predictlayer.opacity = 0.5
+            self.predictlayer.setToolTip("Classification results, assigning a label to each object")
 
-            # put first, so that it is visible after hitting "live
+            def setColorTable(index1, index2):
+                print "got the signal"
+                print "colortable before:", id(self._colorTable16_forpmaps)
+                row = index1.row()
+                element = self._labelControlUi.labelListModel[row]
+                self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
+                print "row for changing:", row, element.pmapColor().name()
+                print "new colortable:", self._colorTable16_forpmaps[0], QColor(self._colorTable16_forpmaps[1]).name(), \
+                                         QColor(self._colorTable16_forpmaps[2]).name()
+                                         
+                self.predictlayer.colorTable = self._colorTable16_forpmaps
+                
+            self._labelControlUi.labelListModel.dataChanged.connect(setColorTable)
+            # put right after Labels, so that it is visible after hitting "live
             # predict".
-            layers.insert(0, self.predictlayer)
+            layers.insert(1, self.predictlayer)
 
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
@@ -418,8 +449,30 @@ class ObjectClassificationGui(LabelingGui):
             self.badSrc = LazyflowSource(badObjectsSlot)
             self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
             self.badLayer.name = "Ambiguous objects"
+            self.badLayer.setToolTip("Objects with infinite or invalid values in features")
             self.badLayer.visible = False
             layers.append(self.badLayer)
+
+        if segmentedSlot.ready():
+            ct = colortables.create_default_16bit()
+            self.objectssrc = LazyflowSource(segmentedSlot)
+            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+            layer = ColortableLayer(self.objectssrc, ct)
+            layer.name = "Objects"
+            layer.opacity = 0.5
+            layer.visible = False
+            layer.setToolTip("Segmented objects (labeled image/connected components)")
+            layers.append(layer)
+
+        if binarySlot.ready():
+            ct_binary = [QColor(0, 0, 0, 0).rgba(),
+                         QColor(255, 255, 255, 255).rgba()]
+            self.binaryimagesrc = LazyflowSource(binarySlot)
+            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
+            layer.name = "Binary image"
+            layer.visible = True
+            layer.setToolTip("Segmentation results as a binary mask")
+            layers.append(layer)
 
         if rawSlot.ready():
             self.rawimagesrc = LazyflowSource(rawSlot)
@@ -464,10 +517,25 @@ class ObjectClassificationGui(LabelingGui):
             return
 
         menu = QMenu(self)
-        text = "print info for object {}".format(obj)
+        text = "print info for object {} in the terminal".format(obj)
         menu.addAction(text)
+        clearlabel = "clear object label"
+        menu.addAction(clearlabel)
+        numLabels = self.labelListData.rowCount()
+        label_actions = []
+        for l in range(numLabels):
+            color_icon = self.labelListData.createIconForLabel(l)
+            act_text = "label with label {}".format(l+1)
+            act = QAction(color_icon, act_text, menu)
+            act.setIconVisibleInMenu(True)
+            label_actions.append(act_text)
+            menu.addAction(act)
+            
+        
         action = menu.exec_(globalWindowCoordinate)
-        if action is not None and action.text() == text:
+        if action is None:
+            return
+        if action.text() == text:
             numpy.set_printoptions(precision=4)
             print "------------------------------------------------------------"
             print "object:         {}".format(obj)
@@ -514,6 +582,21 @@ class ObjectClassificationGui(LabelingGui):
 
             
             print "------------------------------------------------------------"
+        elif action.text()==clearlabel:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
+            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
+        else:
+            try:
+                label = label_actions.index(action.text())
+            except ValueError:
+                return
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
+            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, label+1)
+            
+            
+
 
     def setVisible(self, visible):
         super(ObjectClassificationGui, self).setVisible(visible)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>73</height>
+    <height>157</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -38,6 +38,13 @@
       <widget class="QPushButton" name="selectFeaturesButton">
        <property name="text">
         <string>Select Features</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="featuresSelected">
+       <property name="text">
+        <string>No features selected</string>
        </property>
       </widget>
      </item>

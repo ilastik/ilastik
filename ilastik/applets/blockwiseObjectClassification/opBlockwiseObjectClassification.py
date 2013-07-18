@@ -17,6 +17,7 @@ from lazyflow.rtype import List
 from ilastik.utility import bind
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation, OpMaxLabel
+from ilastik.applets.base.applet import DatasetConstraintError
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -194,7 +195,15 @@ class OpBlockwiseObjectClassification( Operator ):
         
     def setupOutputs(self):
         # Check for preconditions.
-        assert self.RawImage.meta.shape == self.BinaryImage.meta.shape, "Raw and binary images must have the same shape!"
+        if self.RawImage.ready() and self.BinaryImage.ready():
+            rawTaggedShape = self.RawImage.meta.getTaggedShape()
+            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            rawTaggedShape['c'] = None
+            binTaggedShape['c'] = None
+            if dict(rawTaggedShape) != dict(binTaggedShape):
+                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
+                raise DatasetConstraintError( "Layer Viewer", msg )
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation

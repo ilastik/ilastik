@@ -443,6 +443,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.axesEdit.installEventFilter(self)
             # Either way, show the axes
             self._updateAxes()
+            self._updateChannelDisplayCombo()
 
     def _handleClearRangeButton(self):
         self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
@@ -830,6 +831,15 @@ class DatasetInfoEditorWidget(QDialog):
     def _updateChannelDisplayCombo(self):
         channel_description = None
         for laneIndex, op in self.tempOps.items():
+            tags = op.Dataset.value.axistags or op.Image.meta.axistags
+            if 'c' not in [tag.key for tag in tags]:
+                channel_description = None
+                self.channelDisplayComboBox.setEnabled(False)
+                self.channelDisplayComboBox.setCurrentIndex(-1)
+                return
+
+        self.channelDisplayComboBox.setEnabled(True)
+        for laneIndex, op in self.tempOps.items():
             cmp_description = op.Image.meta.axistags['c'].description
             if cmp_description == "":
                 cmp_description = "default"
@@ -862,10 +872,13 @@ class DatasetInfoEditorWidget(QDialog):
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
-                if info.axistags is None or info.axistags['c'].description != newChannelDescription:
+                if info.axistags is None or \
+                   info.axistags.index('c') >= len(info.axistags) or \
+                   info.axistags['c'].description != newChannelDescription:
                     if info.axistags is None:
                         info.axistags = op.Image.meta.axistags
-                    info.axistags['c'].description = newChannelDescription
+                    if info.axistags.index('c') < len(info.axistags):
+                        info.axistags['c'].description = newChannelDescription
                     op.Dataset.setValue( info )
             self._error_fields.discard('Channel Display')
             return True

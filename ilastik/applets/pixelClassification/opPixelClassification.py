@@ -352,8 +352,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
+        self.CachedPredictionProbabilities.connect(self.prediction_cache_gui.Output )
 
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )

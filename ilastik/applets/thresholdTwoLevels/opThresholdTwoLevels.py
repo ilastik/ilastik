@@ -557,11 +557,14 @@ class OpThresholdOneLevel(Operator):
         
         self._opLabeler = OpVigraLabelVolume( parent=self )
         self._opLabeler.Input.connect(self._opThresholder.Output)
+
+        self._opLabelCache = OpCompressedCache( parent=self )
+        self._opLabelCache.Input.connect( self._opLabeler.Output )
         
-        self.BeforeSizeFilter.connect(self._opLabeler.Output)
+        self.BeforeSizeFilter.connect( self._opLabelCache.Output )
         
         self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.Output )
+        self._opFilter.Input.connect(self._opLabelCache.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFilter.BinaryOut.setValue(True)

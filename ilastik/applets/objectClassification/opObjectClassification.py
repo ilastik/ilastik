@@ -834,8 +834,8 @@ class OpRelabelSegmentation(Operator):
                 ts = list(set(t for t, _ in roi._l))
                 feats = self.Features(ts).wait()
                 for t, obj in roi._l:
-                    min_coords = feats[t][default_features_key]['Coord<Minimum>'][obj]
-                    max_coords = feats[t][default_features_key]['Coord<Maximum>'][obj]
+                    min_coords = feats[t][default_features_key]['Coord<Minimum>'][obj].astype(numpy.uint32)
+                    max_coords = feats[t][default_features_key]['Coord<Maximum>'][obj].astype(numpy.uint32)
                     slcs = list(slice(*args) for args in zip(min_coords, max_coords))
                     slcs = [slice(t, t+1),] + slcs + [slice(None),]
                     self.Output.setDirty(slcs)
@@ -876,11 +876,12 @@ class OpMultiRelabelSegmentation(Operator):
 class OpMaxLabel(Operator):
     """Finds the maximum label value in the input labels.
 
-    More or less copied from opPixelClassification::OpMaxValue.
+    Special operator for object classification labels, expects
+    inputs to be in a dictionary
 
     """
     name = "OpMaxLabel"
-    Inputs = InputSlot(level=1, stype=Opaque)
+    Inputs = InputSlot(level=1,rtype=List,  stype=Opaque)
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -906,21 +907,15 @@ class OpMaxLabel(Operator):
         # Return the max value of all our inputs
         maxValue = None
         for i, inputSubSlot in enumerate(self.Inputs):
-            # Only use inputs that are actually configured
-            if inputSubSlot.ready():
-                subSlotMax = numpy.max(inputSubSlot.value)
-                #subSlotMax = 0
-                #print inputSubSlot.value
-                #for label_array in inputSubSlot.value.items():
-                #    localMax = numpy.max(label_array)
-                #    subSlotMax = max(subSlotMax, localMax)
-
+            
+            subSlotLabelDict = self.Inputs[i][:].wait()
+            for v in subSlotLabelDict.itervalues():
+                subSlotMax = numpy.max(v)
                 if maxValue is None:
                     maxValue = subSlotMax
                 else:
                     maxValue = max(maxValue, subSlotMax)
-
-        self._output = maxValue
+        self._output = int(maxValue)
 
 
 class OpBadObjectsToWarningMessage(Operator):

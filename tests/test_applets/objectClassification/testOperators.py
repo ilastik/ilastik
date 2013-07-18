@@ -6,7 +6,8 @@ import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from ilastik.applets.objectClassification.opObjectClassification import \
-    OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, OpBadObjectsToWarningMessage
+    OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, \
+    OpBadObjectsToWarningMessage, OpMaxLabel
     
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
@@ -15,9 +16,9 @@ from ilastik.applets.objectExtraction.opObjectExtraction import \
 
 def segImage():
     '''
-    a 50x50x50 cube over 2 time points
-      * t=0: 1 object 5x5x5, 1 object 10x10x10
-      * t=1: 1 object 5x5x5, 2 objects 10x10x10
+    #a 50x50x50 cube over 2 time points
+    #  * t=0: 1 object 5x5x5, 1 object 10x10x10
+    #  * t=1: 1 object 5x5x5, 2 objects 10x10x10
     '''
     
     img = np.zeros((2, 50, 50, 50, 1), dtype=np.int)
@@ -39,7 +40,6 @@ def emptyImage():
     img = img.view(vigra.VigraArray)
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
-
 
 class TestOpRelabelSegmentation(object):
     def setUp(self):
@@ -96,9 +96,9 @@ class TestOpObjectTrain(unittest.TestCase):
         self.op.ForestCount.setValue(self.nRandomForests)
 
     def test_train(self):
-        ''' 
-        Test OpObjectTrain
-        '''
+        ##
+        # Test OpObjectTrain
+        ##
         
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 1, 1, 2])}
@@ -156,19 +156,19 @@ class TestOpObjectPredict(unittest.TestCase):
         self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
 
     def test_predict(self):
-        '''
-        test whether prediction works correctly
+        ###
+        # test whether prediction works correctly
         
-        label 1 is 'big object', label 2 is 'small object'
-        '''
+        # label 1 is 'big object', label 2 is 'small object'
+        ###
         preds = self.op.Predictions([0, 1]).wait()
         self.assertTrue(np.all(preds[0] == np.array([0, 1, 2])))
         self.assertTrue(np.all(preds[1] == np.array([0, 1, 1, 2])))
         
     def test_probabilities(self):
-        '''
-        test whether the probability channel slots and the total probability slot return the same values
-        '''
+        ###
+        # test whether the probability channel slots and the total probability slot return the same values
+        ###
         probs = self.op.Probabilities([0, 1]).wait()
         probChannel0Time0 = self.op.ProbabilityChannels[0][0].wait()
         probChannel1Time0 = self.op.ProbabilityChannels[1][0].wait()
@@ -205,11 +205,7 @@ class TestFeatureSelection(unittest.TestCase):
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
         sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
-        '''
-        objectExtraction.config.vigra_features = ["Count", "Mean", "Variance", "Skewness"]
-        objectExtraction.config.other_features = []
-        objectExtraction.config.selected_features = ["Count", "Mean", "Mean_excl", "Variance"]
-        '''
+        
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
@@ -246,9 +242,9 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.op = OpBadObjectsToWarningMessage(graph=g)
         
     def test_false_input_format(self):
-        '''
-        test whether wrong formats are rejected
-        '''
+        ###
+        # test whether wrong formats are rejected
+        ###
     
         with self.assertRaises(TypeError):
             self.op.BadObjects.setValue([])
@@ -256,9 +252,9 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
             self.op.BadObjects.setValue({'objects':{}, 'feats': None})
         
     def test_true_input_format(self):
-        '''
-        test whether right formats are accepted and correctly processed
-        '''
+        ###
+        # test whether right formats are accepted and correctly processed
+        ###
         
         # valid format, bad features existent
         self.op.BadObjects.setValue({'objects':{1: {0: [1,2]}}, 'feats': set()})
@@ -282,7 +278,51 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         print(messagedict)
         self.assertTrue('title' in messagedict.keys())
         self.assertTrue('text' in messagedict.keys())
+
+
+class TestMaxLabel(object):
+    def setUp(self):
+        g = Graph()
+        rawimg = np.random.randint(0, 255, (2, 10, 10, 10, 1))
+        binimg = rawimg>100
+        cc0 = vigra.analysis.labelVolumeWithBackground(binimg[0,:, :, :, 0].astype(np.uint8))
+        cc1 = vigra.analysis.labelVolumeWithBackground(binimg[1,:, :, :, 0].astype(np.uint8))
+        nobj = np.max(cc0)+1+np.max(cc1)+1
+        segmimg = np.zeros(rawimg.shape)
+        segmimg[0,:, : , :, 0] = cc0[:]
+        segmimg[1,:, :, :,0] = cc1[:]
+        rawimg = vigra.taggedView(rawimg, 'txyzc')
+        binimg = vigra.taggedView(rawimg, 'txyzc')
+        segmimg = vigra.taggedView(segmimg, 'txyzc')
         
+        self.features = {"Bad Plugin": {"bad_feature_1": {}, "bad_feature_2":{}}}
+        self.featureArrays = {0: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
+                                               "bad_feature_2": np.array(range(nobj))}},
+                              1: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
+                                               "bad_feature_2": np.array(range(nobj))}}}
+        
+        self.op = OpObjectClassification(graph = g)
+        self.op.RawImages.setValues([rawimg])
+        self.op.BinaryImages.setValues([binimg])
+        self.op.SegmentationImages.setValues([segmimg])
+        self.op.ObjectFeatures.setValues([self.featureArrays])
+        self.op.ComputedFeatureNames.setValue(self.features)
+        self.op.SelectedFeatures.setValue(self.features)
+        
+    def testNumLabels(self):
+        labelArray1 =  np.zeros((7,))
+        labelArray1[1] = 1
+        labelArray1[3] = 2
+        labelArray2 = np.zeros((5,))
+        labelArray2[1] = 1
+        labelArray2[2] = 2
+        labelArray2[3] = 3
+        labelArray2[4] = 4
+        self.op.LabelInputs.setValues([{0: labelArray1, 1: labelArray2}])
+        
+        nl = self.op.NumLabels[:].wait()
+        assert nl[0]==4
+   
 
 class TestFullOperator(unittest.TestCase):
     def setUp(self):
@@ -311,15 +351,8 @@ class TestFullOperator(unittest.TestCase):
         
         self.classOp = OpObjectClassification(graph=g)
         self.classOp.BinaryImages.setValues([binimg])
-        #self.classOp.BinaryImages.resize(1)
-        #self.classOp.BinaryImages.setValues([binimg])
         self.classOp.SegmentationImages.setValues([segimg])
-        #self.classOp.SegmentationImages.resize(1)
-        #self.classOp.SegmentationImages.setValue(segimg)
         self.classOp.RawImages.setValues([rawimg])
-        #self.classOp.RawImages.resize(1)
-        #self.classOp.RawImages.setValues([rawimg])
-        #self.classOp.LabelInputs.resize(1)
         self.classOp.LabelInputs.setValues([labels])
         self.classOp.LabelsAllowedFlags.resize(1)
         self.classOp.LabelsAllowedFlags.setValues([True])
@@ -336,7 +369,7 @@ class TestFullOperator(unittest.TestCase):
         #TODO write test with not so nice input
         pass
         
-        
+
         
         
  

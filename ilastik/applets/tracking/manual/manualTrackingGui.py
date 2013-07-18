@@ -719,7 +719,7 @@ class ManualTrackingGui(LayerViewerGui):
             
             
     def _getEvents(self):
-        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0]
         time_range = [0, maxt]
         oid2tids, alltids = self.mainOperator._getObjects(time_range, self.misdetIdx)
         if self.misdetIdx in alltids:
