@@ -515,8 +515,21 @@ class ObjectClassificationGui(LabelingGui):
         menu.addAction(text)
         clearlabel = "clear object label"
         menu.addAction(clearlabel)
+        numLabels = self.labelListData.rowCount()
+        label_actions = []
+        for l in range(numLabels):
+            color_icon = self.labelListData.createIconForLabel(l)
+            act_text = "label with label {}".format(l+1)
+            act = QAction(color_icon, act_text, menu)
+            act.setIconVisibleInMenu(True)
+            label_actions.append(act_text)
+            menu.addAction(act)
+            
+        
         action = menu.exec_(globalWindowCoordinate)
-        if action is not None and action.text() == text:
+        if action is None:
+            return
+        if action.text() == text:
             numpy.set_printoptions(precision=4)
             print "------------------------------------------------------------"
             print "object:         {}".format(obj)
@@ -563,10 +576,21 @@ class ObjectClassificationGui(LabelingGui):
 
             
             print "------------------------------------------------------------"
-        elif action is not None and action.text()==clearlabel:
+        elif action.text()==clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
+        else:
+            try:
+                label = label_actions.index(action.text())
+            except ValueError:
+                return
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
+            self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, label+1)
+            
+            
+
 
     def setVisible(self, visible):
         super(ObjectClassificationGui, self).setVisible(visible)
