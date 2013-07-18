@@ -396,6 +396,7 @@ class ObjectClassificationGui(LabelingGui):
                                                  normalize=(0.0, 1.0) )
                 probLayer.opacity = 0.25
                 probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
                 self._colorTable16_forpmaps[channel] = ref_label.pmapColor()
 
                 def setLayerColor(c, predictLayer=probLayer, ch=channel):
@@ -423,9 +424,11 @@ class ObjectClassificationGui(LabelingGui):
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             self.predictlayer.opacity = 0.5
+            self.predictlayer.setToolTip("Classification results, assigning a label to each object")
 
             def setColorTable(index1, index2):
                 print "got the signal"
+                print "colortable before:", id(self._colorTable16_forpmaps)
                 row = index1.row()
                 element = self._labelControlUi.labelListModel[row]
                 self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
@@ -436,7 +439,7 @@ class ObjectClassificationGui(LabelingGui):
                 self.predictlayer.colorTable = self._colorTable16_forpmaps
                 
             self._labelControlUi.labelListModel.dataChanged.connect(setColorTable)
-            # put first, so that it is visible after hitting "live
+            # put right after Labels, so that it is visible after hitting "live
             # predict".
             layers.insert(1, self.predictlayer)
 
@@ -446,6 +449,7 @@ class ObjectClassificationGui(LabelingGui):
             self.badSrc = LazyflowSource(badObjectsSlot)
             self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
             self.badLayer.name = "Ambiguous objects"
+            self.badLayer.setToolTip("Objects with infinite or invalid values in features")
             self.badLayer.visible = False
             layers.append(self.badLayer)
 
@@ -456,7 +460,8 @@ class ObjectClassificationGui(LabelingGui):
             layer = ColortableLayer(self.objectssrc, ct)
             layer.name = "Objects"
             layer.opacity = 0.5
-            layer.visible = True
+            layer.visible = False
+            layer.setToolTip("Segmented objects (labeled image/connected components)")
             layers.append(layer)
 
         if binarySlot.ready():
@@ -464,8 +469,9 @@ class ObjectClassificationGui(LabelingGui):
                          QColor(255, 255, 255, 255).rgba()]
             self.binaryimagesrc = LazyflowSource(binarySlot)
             layer = ColortableLayer(self.binaryimagesrc, ct_binary)
-            layer.name = "Binary Image"
-            layer.visible = False
+            layer.name = "Binary image"
+            layer.visible = True
+            layer.setToolTip("Segmentation results as a binary mask")
             layers.append(layer)
 
         if rawSlot.ready():
