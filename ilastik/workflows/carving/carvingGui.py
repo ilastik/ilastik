@@ -234,7 +234,7 @@ class CarvingGui(LabelingGui):
     
     def _after_init(self):
         super(CarvingGui, self)._after_init()
-        self._toggleSegmentation3D()
+        if self.render:self._toggleSegmentation3D()
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
@@ -376,10 +376,11 @@ class CarvingGui(LabelingGui):
             menu.addSeparator()
 
         menu.addSeparator()
-        showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
-        showSeg3DAction.setCheckable(True)
-        showSeg3DAction.setChecked( self._showSegmentationIn3D )
-        showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
+        if self.render:
+            showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
+            showSeg3DAction.setCheckable(True)
+            showSeg3DAction.setChecked( self._showSegmentationIn3D )
+            showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
         
         if op.dataIsStorable():
             menu.addAction("Save object").triggered.connect( self.onSaveButton )
