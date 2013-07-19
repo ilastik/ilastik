@@ -182,7 +182,7 @@ class CarvingGui(LabelingGui):
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
-
+        
         def addLayerToggleShortcut(layername, shortcut):
             def toggle():
                 row = layerIndexForName(layername)
@@ -235,6 +235,7 @@ class CarvingGui(LabelingGui):
     def _after_init(self):
         super(CarvingGui, self)._after_init()
         if self.render:self._toggleSegmentation3D()
+        
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
@@ -471,6 +472,7 @@ class CarvingGui(LabelingGui):
         # Labels
         labellayer, labelsrc = self.createLabelLayer(direct=True)
         if labellayer is not None:
+            labellayer._allowToggleVisible = False
             layers.append(labellayer)
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
