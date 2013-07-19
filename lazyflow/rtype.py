@@ -101,8 +101,8 @@ class SubRegion(Roi):
         self.dim = len(self.start)
 
         for start, stop in zip(self.start, self.stop):
-            assert isinstance(start, int) or isinstance( start, numpy.integer ), "Roi contains non-integers: {}".format( self )
-            assert isinstance(stop, int) or isinstance( stop, numpy.integer ), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, int) or isinstance(start, long) or isinstance( start, numpy.integer ), "Roi contains non-integers: {}".format( self )
+            assert isinstance(stop, int) or isinstance(stop, long) or isinstance( stop, numpy.integer ), "Roi contains non-integers: {}".format( self )
 
     def __setstate__(self, state):
         """
