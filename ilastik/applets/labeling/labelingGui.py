@@ -113,6 +113,10 @@ class LabelingGui(LayerViewerGui):
 
             # Slot to specify which images the user is allowed to label.
             self.labelsAllowed = None # labelsAllowed.value == True
+            
+            self.LabelNames = None
+            self.LabelColors = None
+            self.PmapColors = None            
 
     @traceLogged(traceLogger)
     def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
@@ -138,7 +142,10 @@ class LabelingGui(LayerViewerGui):
         self._rawInputSlot = rawInputSlot
 
         self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
+        if self._labelingSlots.LabelNames is not None:
+            self._labelingSlots.LabelNames.notifyDirty( bind(self._updateLabelList) )
 
+        
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
 
@@ -461,8 +468,12 @@ class LabelingGui(LayerViewerGui):
         # Get the number of labels in the label data
         # (Or the number of the labels the user has added.)
         numLabels = None
+        names = []
+        if self._labelingSlots.LabelNames is not None:
+            names = self._labelingSlots.LabelNames.value
+            
         if self._labelingSlots.maxLabelValue.ready():
-            numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
+            numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount(), len(names))
         if numLabels is None:
             numLabels = 0
 
@@ -470,6 +481,10 @@ class LabelingGui(LayerViewerGui):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self._addNewLabel()
 
+        # synchronize labelNames
+        for i,n in enumerate(names):
+            self._labelControlUi.labelListModel[i].name = n
+                
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 

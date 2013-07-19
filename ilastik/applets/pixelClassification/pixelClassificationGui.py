@@ -71,6 +71,9 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
+        labelSlots.LabelNames = topLevelOperatorView.LabelNames
+        labelSlots.LabelColors = topLevelOperatorView.LabelColors
+        labelSlots.PmapColors = topLevelOperatorView.PmapColors
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
