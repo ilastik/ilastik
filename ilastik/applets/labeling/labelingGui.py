@@ -115,8 +115,7 @@ class LabelingGui(LayerViewerGui):
             self.labelsAllowed = None # labelsAllowed.value == True
             
             self.LabelNames = None
-            self.LabelColors = None
-            self.PmapColors = None            
+      
 
     @traceLogged(traceLogger)
     def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
