@@ -122,7 +122,7 @@ class ArrayLike( SlotType ):
     def setupMetaForValue(self, value):
         if isinstance(value, numpy.ndarray):
             self.slot.meta.shape = value.shape
-            self.slot.meta.dtype = value.dtype
+            self.slot.meta.dtype = value.dtype.type
             if hasattr(value,"axistags"):
                 self.slot.meta.axistags = value.axistags
         else:

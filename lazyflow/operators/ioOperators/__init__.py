@@ -5,3 +5,6 @@ from opRESTfulVolumeReader import *
 from opBlockwiseFilesetReader import *
 from opRESTfulBlockwiseFilesetReader import *
 from opInputDataReader import *
+from opNpyWriter import OpNpyWriter
+from opExportSlot import OpExportSlot
+from opFormattedDataExport import OpFormattedDataExport
