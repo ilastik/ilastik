@@ -1,15 +1,8 @@
 import os
-import string
-import numpy
-import vigra
-import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, getPathVariants
-from lazyflow.operators import OpSubRegion, OpPixelOperator
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.ioOperators import OpH5WriterBigDataset
+from lazyflow.utility import OrderedSignal, getPathVariants, format_known_keys
+from lazyflow.operators.ioOperators import OpFormattedDataExport
 
 class OpExportLaneResult(Operator):
     """
