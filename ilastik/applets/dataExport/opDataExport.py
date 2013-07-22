@@ -111,7 +111,7 @@ class OpFormattedDataExport(Operator):
     OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    OutputFilenameFormat = InputSlot(value='RESULTS_{roi}') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
+    OutputFilenameFormat = InputSlot(value='RESULTS_{roi}') # A format string allowing {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
 
@@ -154,6 +154,8 @@ class OpFormattedDataExport(Operator):
             self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
         else:
             # Use original order, if present
+            # FIXME: If the original_axistags have no channel axis but the new image has multiple channels,
+            #        append a channel axis.  Potentially an issue for 't' as well.
             original_axistags = self.Input.meta.original_axistags or self.Input.meta.axistags
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in original_axistags ) )
 
@@ -216,7 +218,7 @@ class OpExportSlot(Operator):
     # TODO: Put this in lazyflow? (It intentionally avoids using ilastik-specific concepts like DatasetInfo)
     Input = InputSlot()
     
-    OutputFormat = InputSlot() # string.  See formats, below
+    OutputFormat = InputSlot(value='hdf5') # string.  See formats, below
     OutputFilenameFormat = InputSlot() # A format string allowing {roi}, {t_start}, {t_stop}, etc (but not {nickname} or {dataset_dir})
     OutputInternalPath = InputSlot(value='exported_data')
 
@@ -314,10 +316,20 @@ class OpExportSlot(Operator):
     def _export_multipage_tiff(self): pass
 
 def _format_known_keys(s, entries):
-    # Like str.format(), but 
-    #  (1) accepts only a dict and 
-    #  (2) allows the dict to be incomplete, 
-    #      in which case those entries are left alone.
+    """
+    Like str.format(), but 
+     (1) accepts only a dict and 
+     (2) allows the dict to be incomplete, 
+         in which case those entries are left alone.
+    
+    Examples:
+    
+    >>> _format_known_keys("Hello, {first_name}, my name is {my_name}", {'first_name' : 'Jim', 'my_name' : "Jon"})
+    'Hello, Jim, my name is Jon'
+    
+    >>> _format_known_keys("Hello, {first_name:}, my name is {my_name}!", {"first_name" : [1,2,2]})
+    'Hello, [1, 2, 2], my name is {my_name}!'
+    """
     fmt = string.Formatter()
     it = fmt.parse(s)
     s = ''
@@ -339,6 +351,5 @@ def _format_known_keys(s, entries):
     return s
 
 if __name__ == "__main__":
-    print _format_known_keys("Hello, {first_name}, my name is {my_name}", {'first_name' : 'Jim', 'my_name' : "Jon"})
-    print _format_known_keys("Hello, {first_name:}, my name is {my_name}!", {"first_name" : [1,2,2]})
-    
+    import doctest
+    doctest.testmod()
