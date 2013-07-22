@@ -1,5 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
+from lazyflow.stype import Opaque
 
 import logging
 loggerName = __name__ 
@@ -9,8 +10,11 @@ logger.setLevel(logging.DEBUG)
 class OpFillMissingSlicesNoCache(Operator):
     Input = InputSlot()
     DetectionMethod = InputSlot(value='classic')
+    OverloadDetector = InputSlot(value='')
+    
     Output = OutputSlot()
     Missing = OutputSlot()
+    Detector = OutputSlot(stype=Opaque)
     
     def __init__(self, *args, **kwargs):
         super( OpFillMissingSlicesNoCache, self ).__init__(*args, **kwargs)
@@ -21,9 +25,12 @@ class OpFillMissingSlicesNoCache(Operator):
         self._opInterp.InputSearchDepth.setValue(100)
         
         self._opInterp.DetectionMethod.connect(self.DetectionMethod)
+        
+        self._opInterp.OverloadDetector.connect( self.OverloadDetector )
 
         self.Output.connect( self._opInterp.Output )
         self.Missing.connect( self._opInterp.Missing )
+        self.Detector.connect( self._opInterp.Detector)
         
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
@@ -35,11 +42,13 @@ class OpFillMissingSlicesNoCache(Operator):
         #FIXME
         return True
     
-    def dumps(self):
-        return self._opInterp.dumps()
-    
-    def loads(self, s):
-        self._opInterp.loads(s)
+    def setPrecomputedHistograms(self,histos):
+        self._opInterp.detector.TrainingHistograms.setValue(histos)
+        
+    def train(self):
+        
+        #FIXME OMG RLY? accessing private variables??
+        self._opInterp.detector._train(force=True)
     
     
     
