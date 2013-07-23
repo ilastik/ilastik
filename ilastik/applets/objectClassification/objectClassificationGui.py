@@ -87,7 +87,8 @@ class ObjectClassificationGui(LabelingGui):
 
         labelSlots.maxLabelValue = op.NumLabels
         labelSlots.labelsAllowed = op.LabelsAllowedFlags
-
+        labelSlots.LabelNames = op.LabelNames
+        
         # We provide our own UI file (which adds an extra control for
         # interactive mode) This UI file is copied from
         # pixelClassification pipeline
@@ -382,8 +383,6 @@ class ObjectClassificationGui(LabelingGui):
         segmentedSlot = self.op.SegmentationImages
         rawSlot = self.op.RawImages
 
-
-
         #This is just for colors
         labels = self.labelListData
         for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
@@ -420,14 +419,16 @@ class ObjectClassificationGui(LabelingGui):
             self._colorTable16_forpmaps[0] = 0
             self.predictlayer = ColortableLayer(self.predictsrc,
                                                 colorTable=self._colorTable16_forpmaps)
+            
             self.predictlayer.name = "Prediction"
             self.predictlayer.ref_object = None
             self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             self.predictlayer.opacity = 0.5
             self.predictlayer.setToolTip("Classification results, assigning a label to each object")
 
+            '''
             def setColorTable(index1, index2):
-                print "got the signal"
+                print "GOT THE SIGNAL!"
                 print "colortable before:", id(self._colorTable16_forpmaps)
                 row = index1.row()
                 element = self._labelControlUi.labelListModel[row]
@@ -435,10 +436,12 @@ class ObjectClassificationGui(LabelingGui):
                 print "row for changing:", row, element.pmapColor().name()
                 print "new colortable:", self._colorTable16_forpmaps[0], QColor(self._colorTable16_forpmaps[1]).name(), \
                                          QColor(self._colorTable16_forpmaps[2]).name()
+                print "layer id:", id(self.predictlayer)
+                print
                                          
                 self.predictlayer.colorTable = self._colorTable16_forpmaps
-                
-            self._labelControlUi.labelListModel.dataChanged.connect(setColorTable)
+            '''
+            self._labelControlUi.labelListModel.dataChanged.connect(self._setPredictionColorTable)
             # put right after Labels, so that it is visible after hitting "live
             # predict".
             layers.insert(1, self.predictlayer)
@@ -465,7 +468,7 @@ class ObjectClassificationGui(LabelingGui):
             layers.append(layer)
 
         if binarySlot.ready():
-            ct_binary = [QColor(0, 0, 0, 0).rgba(),
+            ct_binary = [0,
                          QColor(255, 255, 255, 255).rgba()]
             self.binaryimagesrc = LazyflowSource(binarySlot)
             layer = ColortableLayer(self.binaryimagesrc, ct_binary)
@@ -486,6 +489,12 @@ class ObjectClassificationGui(LabelingGui):
         #self.selectLabel(0)
 
         return layers
+
+    def _setPredictionColorTable(self, index1, index2):
+        row = index1.row()
+        element = self._labelControlUi.labelListModel[row]
+        self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
+        self.predictlayer.colorTable = self._colorTable16_forpmaps
 
     @staticmethod
     def _getObject(slot, pos5d):

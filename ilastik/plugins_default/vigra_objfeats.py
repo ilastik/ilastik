@@ -58,9 +58,9 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             #build human readable names from vigra names
             #TODO: many cases are not covered
             if "Central<PowerSum<" in f:
-                v['tooltip'] = "Sum_i{(X_i-object_mean)^n}"
+                v['tooltip'] = "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
             elif "PowerSum<" in f:
-                v['tooltip'] = "Sum_i{(X_i)^n}"
+                v['tooltip'] = "Unnormalized moment: Sum_i{(X_i)^n}"
             elif "Minimum" in f:
                 v['tooltip'] = "Minimum"
             elif "Maximum" in f:

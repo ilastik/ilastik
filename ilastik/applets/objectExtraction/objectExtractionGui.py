@@ -146,10 +146,10 @@ class ObjectExtractionGui(LayerViewerGui):
 
         if mainOperator.ObjectCenterImage.ready():
             self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
-            #layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
             redct = [0, QColor(255, 0, 0).rgba()]
             layer = ColortableLayer(self.centerimagesrc, redct)
-            layer.name = "Object Centers"
+            layer.name = "Object centers"
+            layer.setToolTip("Object center positions, marked with a little red cross")
             layer.visible = False
             layers.append(layer)
 
@@ -159,18 +159,20 @@ class ObjectExtractionGui(LayerViewerGui):
             self.objectssrc.setObjectName("LabelImage LazyflowSrc")
             ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
             layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Label Image"
+            layer.name = "Objects (connected components)"
+            layer.setToolTip("Segmented objects, shown in different colors")
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
 
         # white foreground on transparent background
-        binct = [QColor(0, 0, 0, 0).rgba(), QColor(255, 255, 255, 255).rgba()]
+        binct = [0, QColor(255, 255, 255, 255).rgba()]
         if mainOperator.BinaryImage.ready():
             self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
             layer = ColortableLayer(self.binaryimagesrc, binct)
-            layer.name = "Binary Image"
+            layer.name = "Binary image"
+            layer.setToolTip("Segmented objects, binary mask")
             layers.append(layer)
 
         ## raw data layer
@@ -178,7 +180,7 @@ class ObjectExtractionGui(LayerViewerGui):
         self.rawsrc = LazyflowSource(mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
-        layerraw.name = "Raw"
+        layerraw.name = "Raw data"
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
@@ -200,7 +202,7 @@ class ObjectExtractionGui(LayerViewerGui):
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
+                layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
 
     def _onReady(self, slot):
@@ -208,7 +210,7 @@ class ObjectExtractionGui(LayerViewerGui):
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
+                layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
 
 
