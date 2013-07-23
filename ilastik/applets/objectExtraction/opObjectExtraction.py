@@ -242,7 +242,7 @@ class OpRegionFeatures3d(Operator):
         selected_vigra_features = []
         for plugin_name, feature_dict in feature_names.iteritems():
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            if plugin_name == "Vigra Object Features":
+            if plugin_name == "Standard Object Features":
                 #expand the feature list by our default features
                 logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_dict))
                 selected_vigra_features = feature_dict.keys()
@@ -256,10 +256,10 @@ class OpRegionFeatures3d(Operator):
                 feature = None
                 if feat_key in selected_vigra_features:
                     #we wanted that feature independently
-                    feature = global_features["Vigra Object Features"][feat_key]
+                    feature = global_features["Standard Object Features"][feat_key]
                 else:
-                    feature = global_features["Vigra Object Features"].pop(feat_key)
-                    feature_names["Vigra Object Features"].pop(feat_key)
+                    feature = global_features["Standard Object Features"].pop(feat_key)
+                    feature_names["Standard Object Features"].pop(feat_key)
                 extrafeats[feat_key] = feature
         else:
             logger.debug("default features not computed, computing separately")
@@ -597,7 +597,7 @@ class OpObjectExtraction(Operator):
     # which features to compute.
     # nested dictionary with format:
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
-    # for example {"Vigra Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
+    # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
     Features = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
