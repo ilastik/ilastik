@@ -13,6 +13,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
 from ilastik.utility.gui import threadRouted
+from ilastik.config import cfg as ilastik_config
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
@@ -66,6 +67,9 @@ class FeatureSelectionDialog(QDialog):
     def populate(self):
         self.ui.treeWidget.setColumnCount(1)
         for pluginName, features in self.featureDict.iteritems():
+            if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
+                continue
+                
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setExpanded(True)
