@@ -292,8 +292,11 @@
     <layout class="QGridLayout" name="gridLayout_2">
      <item row="1" column="0">
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>&lt;html&gt;This parameter determines the relative speed of foreground and background. Usually, the background is the dominating class in the image. Therefore, we want the background to grow faster than the foreground. A number close to one means that foreground and background grow equally fast; a number close to zero means that the background grows much faster than the foreground.&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>bg priority</string>
+        <string>fg/bg speed (bias)</string>
        </property>
       </widget>
      </item>
@@ -315,6 +318,9 @@
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_3">
+       <property name="toolTip">
+        <string>&lt;html&gt;This parameter is used to &lt;b&gt;not&lt;/b&gt; apply the fg/bg speed bias to any pixel values below the given threshold.&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>no bias below</string>
        </property>
