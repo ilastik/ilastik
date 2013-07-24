@@ -45,6 +45,8 @@ class OpCarving(Operator):
     #bias of the background
     #FIXME: correct name?
     BackgroundPriority = InputSlot(value=0.95)
+    
+    LabelNames = OutputSlot(stype='list')
 
     #a number between 0 and 256
     #below the number, no background bias will be applied to the edge weights
@@ -95,7 +97,9 @@ class OpCarving(Operator):
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
         self.has_seeds = False # keeps track of whether or not there are seeds currently loaded, either drawn by the user or loaded from a saved object
-
+        
+        self.LabelNames.setValue( ["Background", "Object"] )
+        
         #supervoxels of finished and saved objects
         self._done_lut = None
         self._done_seg_lut = None

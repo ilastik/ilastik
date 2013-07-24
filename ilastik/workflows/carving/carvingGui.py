@@ -39,6 +39,7 @@ class CarvingGui(LabelingGui):
         labelingSlots.labelInput       = topLevelOperatorView.WriteSeeds
         labelingSlots.labelOutput      = topLevelOperatorView.opLabelArray.Output
         labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
+        labelingSlots.LabelNames       = topLevelOperatorView.LabelNames
         labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
         labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
@@ -445,17 +446,27 @@ class CarvingGui(LabelingGui):
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
-    def getNextLabelName(self):
-        l = len(self._labelControlUi.labelListModel)
-        if l == 0:
-            return "Background"
+    def _getNext(self, slot, parentFun, transform=None):
+        numLabels = self.labelListData.rowCount()
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
         else:
-            return "Object"
+            return parentFun()
+
+    def getNextLabelName(self):
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(CarvingGui, self).getNextLabelName)
 
     def appletDrawers(self):
         return [ ("Carving", self._labelControlUi) ]
 
     def setupLayers( self ):
+        print "setupLayers"
+        
         layers = []
 
         def onButtonsEnabled(slot, roi):
