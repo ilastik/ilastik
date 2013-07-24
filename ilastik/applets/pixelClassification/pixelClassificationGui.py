@@ -530,6 +530,10 @@ class PixelClassificationGui(LabelingGui):
         if not self.render:
             return
         shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
+        if len(shape) != 5:
+            #this might be a 2D image, no need for updating any 3D stuff 
+            return
+        
         time = self.editor.posModel.slicingPos5D[0]
         if not self._renderMgr.ready:
             self._renderMgr.setup(shape)
