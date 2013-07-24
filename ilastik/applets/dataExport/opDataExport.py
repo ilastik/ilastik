@@ -36,6 +36,7 @@ class OpExportLaneResult(Operator):
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
 
+    ConvertedImage = OutputSlot() # Not yet re-ordered
     ImageToExport = OutputSlot()
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
 
@@ -58,6 +59,7 @@ class OpExportLaneResult(Operator):
         opFormattedExport.OutputInternalPath.connect( self.OutputInternalPath )
         opFormattedExport.OutputFormat.connect( self.OutputFormat )        
         
+        self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
         
