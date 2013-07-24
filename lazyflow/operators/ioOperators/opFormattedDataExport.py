@@ -18,7 +18,7 @@ class OpFormattedDataExport(Operator):
     """
     Input = InputSlot()
 
-    # Subregion params
+    # Subregion params: 'None' can be provided for any axis, in which case it means 'full range' for that axis
     RegionStart = InputSlot(optional=True)
     RegionStop = InputSlot(optional=True)
 
@@ -36,6 +36,7 @@ class OpFormattedDataExport(Operator):
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
 
+    ConvertedImage = OutputSlot() # Not yet re-ordered
     ImageToExport = OutputSlot() # Preview of the pre-processed image that will be exported
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
@@ -51,13 +52,13 @@ class OpFormattedDataExport(Operator):
         
         opSubRegion = OpSubRegion( parent=self )
         opSubRegion.Input.connect( self.Input )
-        opSubRegion.Start.connect( self.RegionStart )
-        opSubRegion.Stop.connect( self.RegionStop )
         self._opSubRegion = opSubRegion
         
         opNormalizeAndConvert = OpPixelOperator( parent=self )
         opNormalizeAndConvert.Input.connect( opSubRegion.Output )
         self._opNormalizeAndConvert = opNormalizeAndConvert
+
+        self.ConvertedImage.connect( self._opNormalizeAndConvert.Output )
         
         opReorderAxes = OpReorderAxes( parent=self )
         opReorderAxes.Input.connect( opNormalizeAndConvert.Output )
@@ -88,14 +89,21 @@ class OpFormattedDataExport(Operator):
         total_roi = roiFromShape( self.Input.meta.shape )
         total_roi = map( tuple, total_roi )
         if self.RegionStart.ready():
-            self._opSubRegion.Start.connect( self.RegionStart )
+            # RegionStart is permitted to contain 'None' values, which we replace with zeros
+            start = map(lambda x: x or 0, self.RegionStart.value)
+            self._opSubRegion.Start.setValue( tuple(start) )
         else:
+            # If no RegionStart provided, use full roi
             self._opSubRegion.Start.disconnect()
             self._opSubRegion.Start.setValue( total_roi[0] )
 
         if self.RegionStop.ready():
-            self._opSubRegion.Stop.connect( self.RegionStop )
+            # RegionStop is permitted to contain 'None' values, 
+            #  which we replace with the full extent of the corresponding axis
+            stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
+            self._opSubRegion.Stop.setValue( tuple(stop) )
         else:
+            # If no RegionStop provided, use full roi
             self._opSubRegion.Stop.disconnect()
             self._opSubRegion.Stop.setValue( total_roi[1] )
         
@@ -112,7 +120,13 @@ class OpFormattedDataExport(Operator):
             minVal, maxVal = self.InputMin.value, self.InputMax.value
             outputMinVal, outputMaxVal = self.ExportMin.value, self.ExportMax.value
             def normalize(a):
-                frac = numpy.float32(outputMaxVal - outputMinVal) / numpy.float32(maxVal - minVal)
+                numerator = numpy.float32(outputMaxVal - outputMinVal)
+                denominator = numpy.float32(maxVal - minVal)
+                if denominator != 0.0:
+                    frac = numerator / denominator
+                else:
+                    # Denominator was zero.  The user is probably just temporarily changing the values.
+                    frac = 0.0
                 return numpy.asarray(outputMinVal + (a - minVal) * frac, export_dtype)
             self._opNormalizeAndConvert.Function.setValue( normalize )
         else:
