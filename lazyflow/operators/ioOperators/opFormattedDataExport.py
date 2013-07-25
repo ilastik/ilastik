@@ -1,6 +1,7 @@
+import collections
 import numpy
 
-from lazyflow.utility import format_known_keys
+from lazyflow.utility import format_known_keys, OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.operators import OpSubRegion, OpPixelOperator
@@ -49,7 +50,7 @@ class OpFormattedDataExport(Operator):
     def __init__(self, *args, **kwargs):
         super( OpFormattedDataExport, self ).__init__(*args, **kwargs)
         self._dirty = True
-        
+
         opSubRegion = OpSubRegion( parent=self )
         opSubRegion.Input.connect( self.Input )
         self._opSubRegion = opSubRegion
@@ -68,11 +69,11 @@ class OpFormattedDataExport(Operator):
         
         self._opExportSlot = OpExportSlot( parent=self )
         self._opExportSlot.Input.connect( opReorderAxes.Output )
-        self._opExportSlot.CoordinateOffset.connect( self.RegionStart )
         self._opExportSlot.OutputInternalPath.connect( self.OutputInternalPath )
         self._opExportSlot.OutputFormat.connect( self.OutputFormat )
         
         self.ExportPath.connect( self._opExportSlot.ExportPath )
+        self.progressSignal = self._opExportSlot.progressSignal
 
     def setupOutputs(self):
         # Use user-provided axis order if specified
@@ -106,6 +107,12 @@ class OpFormattedDataExport(Operator):
             # If no RegionStop provided, use full roi
             self._opSubRegion.Stop.disconnect()
             self._opSubRegion.Stop.setValue( total_roi[1] )
+
+        # Provide the coordinate offset, but only for the axes that are present in the output image
+        tagged_input_offset = dict( zip(self.Input.meta.getAxisKeys(), self._opSubRegion.Start.value ) )
+        output_axes = self._opReorderAxes.AxisOrder.value
+        output_offset = tuple( tagged_input_offset[axis] for axis in output_axes )
+        self._opExportSlot.CoordinateOffset.setValue( output_offset )
         
         # Set up normalization and dtype conversion
         export_dtype = self.Input.meta.dtype
@@ -120,8 +127,8 @@ class OpFormattedDataExport(Operator):
             minVal, maxVal = self.InputMin.value, self.InputMax.value
             outputMinVal, outputMaxVal = self.ExportMin.value, self.ExportMax.value
             def normalize(a):
-                numerator = numpy.float32(outputMaxVal - outputMinVal)
-                denominator = numpy.float32(maxVal - minVal)
+                numerator = numpy.float32(outputMaxVal) - numpy.float32(outputMinVal)
+                denominator = numpy.float32(maxVal) - numpy.float32(minVal)
                 if denominator != 0.0:
                     frac = numerator / denominator
                 else:
