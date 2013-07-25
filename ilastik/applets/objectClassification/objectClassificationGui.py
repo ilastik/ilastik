@@ -9,6 +9,8 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 
 import os
 import numpy
+import copy
+
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.operators import OpSubRegion
@@ -119,6 +121,14 @@ class ObjectClassificationGui(LabelingGui):
 
         self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
+        
+        #layers
+        self.rawLayer = None
+        self.binLayer = None
+        self.objLayer = None
+        self.predictLayer = None
+        self.badLayer = None
+        self.probLayers = []
 
         # button handlers
         self._interactiveMode = False
@@ -136,9 +146,10 @@ class ObjectClassificationGui(LabelingGui):
         cfn = self.op.ComputedFeatureNames[:].wait()
         self.op.SelectedFeatures.setValue(self.op.ComputedFeatureNames[:].wait())
         nfeatures = 0
+        
         for plugin_features in cfn.itervalues():
             nfeatures += len(plugin_features)
-        self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
+        self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
@@ -336,6 +347,8 @@ class ObjectClassificationGui(LabelingGui):
             value = slot.value
             value.pop(start)
             slot.setValue(value)
+        if len(self.probLayers)>start:
+            self.probLayers.pop(start)
 
 
     def createLabelLayer(self, direct=False):
@@ -385,103 +398,94 @@ class ObjectClassificationGui(LabelingGui):
 
         #This is just for colors
         labels = self.labelListData
+        
         for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
             if probSlot.ready() and channel < len(labels):
-                ref_label = labels[channel]
-                probsrc = LazyflowSource(probSlot)
-                probLayer = AlphaModulatedLayer( probsrc,
-                                                 tintColor=ref_label.pmapColor(),
-                                                 range=(0.0, 1.0),
-                                                 normalize=(0.0, 1.0) )
-                probLayer.opacity = 0.25
-                probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
-                probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
-                self._colorTable16_forpmaps[channel] = ref_label.pmapColor()
+                if len(self.probLayers)<channel+1:
+                    ref_label = labels[channel]
+                    probsrc = LazyflowSource(probSlot)
+                    probLayer = AlphaModulatedLayer( probsrc,
+                                                     tintColor=ref_label.pmapColor(),
+                                                     range=(0.0, 1.0),
+                                                     normalize=(0.0, 1.0) )
+                    probLayer.opacity = 0.25
+                    probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                    probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
+                        
+                    def setLayerColor(c, predictLayer=probLayer, ch=channel):
+                        predictLayer.tintColor = c
+    
+                    def setLayerName(n, predictLayer=probLayer):
+                        newName = "Prediction for %s" % n
+                        predictLayer.name = newName
 
-                def setLayerColor(c, predictLayer=probLayer, ch=channel):
-                    predictLayer.tintColor = c
-                    #self._colorTable16_forpmaps[ch] = c
-                    #segmLayer.colorTable = self._colorTable16_forpmaps
-                    
-
-                def setLayerName(n, predictLayer=probLayer):
-                    newName = "Prediction for %s" % n
-                    predictLayer.name = newName
-
-                setLayerName(ref_label.name)
-                ref_label.pmapColorChanged.connect(setLayerColor)
-                ref_label.nameChanged.connect(setLayerName)
-                layers.append(probLayer)
+                    setLayerName(ref_label.name)
+                    ref_label.pmapColorChanged.connect(setLayerColor)
+                    ref_label.nameChanged.connect(setLayerName)
+                    self.probLayers.append(probLayer)
+                layers.append(self.probLayers[channel])
 
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
-            self.predictsrc = LazyflowSource(predictionSlot)
-            self._colorTable16_forpmaps[0] = 0
-            self.predictlayer = ColortableLayer(self.predictsrc,
-                                                colorTable=self._colorTable16_forpmaps)
-            
-            self.predictlayer.name = "Prediction"
-            self.predictlayer.ref_object = None
-            self.predictlayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
-            self.predictlayer.opacity = 0.5
-            self.predictlayer.setToolTip("Classification results, assigning a label to each object")
-
-            '''
-            def setColorTable(index1, index2):
-                print "GOT THE SIGNAL!"
-                print "colortable before:", id(self._colorTable16_forpmaps)
-                row = index1.row()
-                element = self._labelControlUi.labelListModel[row]
-                self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
-                print "row for changing:", row, element.pmapColor().name()
-                print "new colortable:", self._colorTable16_forpmaps[0], QColor(self._colorTable16_forpmaps[1]).name(), \
-                                         QColor(self._colorTable16_forpmaps[2]).name()
-                print "layer id:", id(self.predictlayer)
-                print
-                                         
-                self.predictlayer.colorTable = self._colorTable16_forpmaps
-            '''
-            self._labelControlUi.labelListModel.dataChanged.connect(self._setPredictionColorTable)
+            if self.predictLayer is None:
+                self.predictsrc = LazyflowSource(predictionSlot)
+                self._colorTable16_forpmaps[0] = 0
+                self.predictLayer = ColortableLayer(self.predictsrc,
+                                                    colorTable=self._colorTable16_forpmaps)
+                
+                
+                
+                self.predictLayer.name = "Prediction"
+                self.predictLayer.ref_object = None
+                self.predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                self.predictLayer.opacity = 0.5
+                self.predictLayer.setToolTip("Classification results, assigning a label to each object")
+                self._labelControlUi.labelListModel.dataChanged.connect(self._setPredictionColorTable)
             # put right after Labels, so that it is visible after hitting "live
             # predict".
-            layers.insert(1, self.predictlayer)
+            layers.insert(1, self.predictLayer)
 
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
-            ct_black = [0, QColor(Qt.black).rgba()]
-            self.badSrc = LazyflowSource(badObjectsSlot)
-            self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
-            self.badLayer.name = "Ambiguous objects"
-            self.badLayer.setToolTip("Objects with infinite or invalid values in features")
-            self.badLayer.visible = False
+            if self.badLayer is None:
+                ct_black = [0, QColor(Qt.black).rgba()]
+                self.badSrc = LazyflowSource(badObjectsSlot)
+                self.badLayer = ColortableLayer(self.badSrc, colorTable = ct_black)
+                self.badLayer.name = "Ambiguous objects"
+                self.badLayer.setToolTip("Objects with infinite or invalid values in features")
+                self.badLayer.visible = False
             layers.append(self.badLayer)
 
         if segmentedSlot.ready():
-            ct = colortables.create_default_16bit()
-            self.objectssrc = LazyflowSource(segmentedSlot)
-            ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
-            layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Objects"
-            layer.opacity = 0.5
-            layer.visible = False
-            layer.setToolTip("Segmented objects (labeled image/connected components)")
-            layers.append(layer)
+            if self.objLayer is None:
+                ct = colortables.create_default_16bit()
+                self.objectssrc = LazyflowSource(segmentedSlot)
+                ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
+                self.objLayer = ColortableLayer(self.objectssrc, ct)
+                self.objLayer.name = "Objects"
+                self.objLayer.opacity = 0.5
+                self.objLayer.visible = False
+                self.objLayer.setToolTip("Segmented objects (labeled image/connected components)")
+            layers.append(self.objLayer)
 
         if binarySlot.ready():
-            ct_binary = [0,
-                         QColor(255, 255, 255, 255).rgba()]
-            self.binaryimagesrc = LazyflowSource(binarySlot)
-            layer = ColortableLayer(self.binaryimagesrc, ct_binary)
-            layer.name = "Binary image"
-            layer.visible = True
-            layer.setToolTip("Segmentation results as a binary mask")
-            layers.append(layer)
+            if self.binLayer is None:
+                ct_binary = [0,
+                             QColor(255, 255, 255, 255).rgba()]
+                self.binaryimagesrc = LazyflowSource(binarySlot)
+                self.binLayer = ColortableLayer(self.binaryimagesrc, ct_binary)
+                self.binLayer.name = "Binary image"
+                self.binLayer.visible = True
+                self.binLayer.opacity = 0.5
+                self.binLayer.setToolTip("Segmentation results as a binary mask")
+            layers.append(self.binLayer)
 
         if rawSlot.ready():
-            self.rawimagesrc = LazyflowSource(rawSlot)
-            layer = self.createStandardLayerFromSlot(rawSlot)
-            layer.name = "Raw data"
-            layers.append(layer)
+            if self.rawLayer is None:
+                self.rawimagesrc = LazyflowSource(rawSlot)
+                self.rawLayer = self.createStandardLayerFromSlot(rawSlot)
+                self.rawLayer.name = "Raw data"
+            layers.append(self.rawLayer)
 
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
@@ -493,8 +497,11 @@ class ObjectClassificationGui(LabelingGui):
     def _setPredictionColorTable(self, index1, index2):
         row = index1.row()
         element = self._labelControlUi.labelListModel[row]
-        self._colorTable16_forpmaps[row+1]=element.pmapColor().rgba()
-        self.predictlayer.colorTable = self._colorTable16_forpmaps
+        oldcolor = self._colorTable16_forpmaps[row+1]
+        if oldcolor != element.pmapColor().rgba():
+            self._colorTable16_forpmaps[row+1] = element.pmapColor().rgba()
+            self.predictLayer.colorTable = self._colorTable16_forpmaps
+            self.updateAllLayers()
 
     @staticmethod
     def _getObject(slot, pos5d):

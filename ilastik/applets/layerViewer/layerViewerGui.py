@@ -385,8 +385,8 @@ class LayerViewerGui(QWidget):
                 needDelete = True
             else:
                 newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
-                needDelete = (newLayer.datasources != oldLayer.datasources)
-
+                needDelete = newLayer.isDifferentEnough(oldLayer)
+                
             if needDelete:
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):

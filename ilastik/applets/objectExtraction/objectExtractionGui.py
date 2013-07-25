@@ -71,7 +71,11 @@ class FeatureSelectionDialog(QDialog):
                 continue
                 
             parent = QTreeWidgetItem(self.ui.treeWidget)
-            parent.setText(0, pluginName)
+            if pluginName == "Standard Object Features":
+                parent.setText(0, pluginName)
+                parent.setToolTip(0, 'http://hci.iwr.uni-heidelberg.de/vigra/doc/vigra/group__FeatureAccumulators.html')
+            else:
+                parent.setText(0, pluginName)
             parent.setExpanded(True)
             for name in sorted(features.keys()):
                 parameters = features[name]
@@ -297,11 +301,13 @@ class ObjectExtractionGui(LayerViewerGui):
             self.topLevelOperatorView._opRegFeats.fixed = True
             feats = self.topLevelOperatorView.RegionFeatures[0].wait()
             nfeatures = 0
+            nchannels = 0
             for pname, pfeats in feats[0].iteritems():
                 if pname!='Default features':
                     for featname, feat in pfeats.iteritems():
-                        nfeatures += feat.shape[1]
-            self._drawer.featuresSelected.setText("{} features computed".format(nfeatures))
+                        nchannels += feat.shape[1]
+                        nfeatures += 1
+            self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
             logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
