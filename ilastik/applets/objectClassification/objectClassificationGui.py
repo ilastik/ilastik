@@ -156,7 +156,6 @@ class ObjectClassificationGui(LabelingGui):
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.checkEnableButtons()
-        
 
     @property
     def labelMode(self):

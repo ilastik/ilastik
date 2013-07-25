@@ -64,7 +64,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
             predictlayer = ColortableLayer( LazyflowSource(predictionSlot),
                                                  colorTable=self._colorTable16 )
             predictlayer.name = "Prediction"
-            predictlayer.visible = True
+            predictlayer.visible = False
             layers.append(predictlayer)
 
         rawSlot = self.topLevelOperatorView.RawImage
