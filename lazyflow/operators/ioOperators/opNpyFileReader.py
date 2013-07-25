@@ -54,7 +54,7 @@ class OpNpyFileReader(Operator):
         self._rawVigraArray = rawNumpyArray.view(vigra.VigraArray)
         self._rawVigraArray.axistags = vigra.defaultAxistags(axisorder)
 
-        self.Output.meta.dtype = self._rawVigraArray.dtype
+        self.Output.meta.dtype = self._rawVigraArray.dtype.type
         self.Output.meta.axistags = copy.copy(self._rawVigraArray.axistags)
         self.Output.meta.shape = self._rawVigraArray.shape
 
