@@ -180,6 +180,7 @@ class ObjectClassificationGui(LabelingGui):
         if val:
             self.showPredictions = True
         self.labelMode = not val
+        self.op.FreezePredictions.setValue(not val)
 
     @pyqtSlot()
     def handleInteractiveModeClicked(self):

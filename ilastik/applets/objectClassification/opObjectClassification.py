@@ -7,7 +7,7 @@ from collections import defaultdict
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-from lazyflow.operators import OpValueCache
+from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache
 from lazyflow.request import Request, RequestPool, RequestLock
 from functools import partial
 
@@ -56,6 +56,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
+    
+    FreezePredictions = InputSlot(stype='bool')
 
     # for reading from disk
     InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
@@ -98,6 +100,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opPredict = OpMultiLaneWrapper(OpObjectPredict, **opkwargs)
         self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opPredictionImageCache = OpMultiLaneWrapper(OpSlicedBlockedArrayCache, **opkwargs)
+        
         self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
         self.opBadObjectsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opBadObjectsToWarningMessage = OpBadObjectsToWarningMessage(parent=self)
@@ -105,39 +109,43 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.classifier_cache = OpValueCache(parent=self)
 
         # connect inputs
-        self.opTrain.inputs["Features"].connect(self.ObjectFeatures)
-        self.opTrain.inputs['Labels'].connect(self.LabelInputs)
-        self.opTrain.inputs['FixClassifier'].setValue(False)
-        self.opTrain.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
+        self.opTrain.Features.connect(self.ObjectFeatures)
+        self.opTrain.Labels.connect(self.LabelInputs)
+        self.opTrain.FixClassifier.setValue(False)
+        self.opTrain.SelectedFeatures.connect(self.SelectedFeatures)
 
-        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
+        self.classifier_cache.Input.connect(self.opTrain.Classifier)
 
         # Find the highest label in all the label images
         self.opMaxLabel = OpMaxLabel( parent=self )
         self.opMaxLabel.Inputs.connect( self.LabelInputs )
 
-        self.opPredict.inputs["Features"].connect(self.ObjectFeatures)
-        self.opPredict.inputs["Classifier"].connect(self.classifier_cache.outputs['Output'])
-        self.opPredict.inputs["LabelsCount"].connect(self.opMaxLabel.Output)
-        self.opPredict.inputs['SelectedFeatures'].connect(self.SelectedFeatures)
+        self.opPredict.Features.connect(self.ObjectFeatures)
+        self.opPredict.Classifier.connect(self.classifier_cache.Output)
+        self.opPredict.LabelsCount.connect(self.opMaxLabel.Output)
+        self.opPredict.SelectedFeatures.connect(self.SelectedFeatures)
 
-        self.opLabelsToImage.inputs["Image"].connect(self.SegmentationImages)
-        self.opLabelsToImage.inputs["ObjectMap"].connect(self.LabelInputs)
-        self.opLabelsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        self.opLabelsToImage.Image.connect(self.SegmentationImages)
+        self.opLabelsToImage.ObjectMap.connect(self.LabelInputs)
+        self.opLabelsToImage.Features.connect(self.ObjectFeatures)
 
-        self.opPredictionsToImage.inputs["Image"].connect(self.SegmentationImages)
-        self.opPredictionsToImage.inputs["ObjectMap"].connect(self.opPredict.Predictions)
-        self.opPredictionsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        self.opPredictionsToImage.Image.connect(self.SegmentationImages)
+        self.opPredictionsToImage.ObjectMap.connect(self.opPredict.Predictions)
+        self.opPredictionsToImage.Features.connect(self.ObjectFeatures)
 
-        self.opProbabilityChannelsToImage.inputs["Image"].connect(self.SegmentationImages)
-        self.opProbabilityChannelsToImage.inputs["ObjectMaps"].connect(self.opPredict.ProbabilityChannels)
-        self.opProbabilityChannelsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        #self.opPredictionImageCache.name = "prediction_image_cache"
+        self.opPredictionImageCache.fixAtCurrent.connect( self.FreezePredictions )
+        self.opPredictionImageCache.Input.connect( self.opPredictionsToImage.Output )
 
-        self.opBadObjectsToImage.inputs["Image"].connect(self.SegmentationImages)
-        self.opBadObjectsToImage.inputs["ObjectMap"].connect(self.opPredict.BadObjects)
-        self.opBadObjectsToImage.inputs["Features"].connect(self.ObjectFeatures)
+        self.opProbabilityChannelsToImage.Image.connect(self.SegmentationImages)
+        self.opProbabilityChannelsToImage.ObjectMaps.connect(self.opPredict.ProbabilityChannels)
+        self.opProbabilityChannelsToImage.Features.connect(self.ObjectFeatures)
+        
+        self.opBadObjectsToImage.Image.connect(self.SegmentationImages)
+        self.opBadObjectsToImage.ObjectMap.connect(self.opPredict.BadObjects)
+        self.opBadObjectsToImage.Features.connect(self.ObjectFeatures)
 
-        self.opBadObjectsToWarningMessage.inputs["BadObjects"].connect(self.opTrain.BadObjects)
+        self.opBadObjectsToWarningMessage.BadObjects.connect(self.opTrain.BadObjects)
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
 
@@ -151,7 +159,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
-        self.PredictionImages.connect(self.opPredictionsToImage.Output)
+        self.PredictionImages.connect(self.opPredictionImageCache.Output)
         self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
@@ -176,7 +184,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.SegmentationImages.notifyInserted(handleNewInputImage)
 
     def setupCaches(self, imageIndex):
-        """Setup the label input to correct dimensions"""
+        """Setup the label input and caches to correct dimensions"""
         numImages=len(self.SegmentationImages)
         self.LabelInputs.resize(numImages)
         self.LabelInputs[imageIndex].meta.shape = (1,)
@@ -185,6 +193,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelInputs[imageIndex].meta.axistags = None
 
         self._resetLabelInputs(imageIndex)
+        
+        
 
     def _resetLabelInputs(self, imageIndex, roi=None):
         labels = dict()
@@ -213,6 +223,37 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)
+        axisOrder = [ tag.key for tag in self.RawImages[0].meta.axistags ]
+
+        blockDimsX = { 't' : (1,1),
+                       'z' : (128,256),
+                       'y' : (128,256),
+                       'x' : (1,1),
+                       'c' : (100, 100) }
+
+        blockDimsY = { 't' : (1,1),
+                       'z' : (128,256),
+                       'y' : (1,1),
+                       'x' : (128,256),
+                       'c' : (100,100) }
+
+        blockDimsZ = { 't' : (1,1),
+                       'z' : (1,1),
+                       'y' : (128,256),
+                       'x' : (128,256),
+                       'c' : (100,100) }
+
+        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+
+        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+
+        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
+        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+
+        self.opPredictionImageCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opPredictionImageCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
