@@ -265,7 +265,7 @@ class ObjectExtractionGui(LayerViewerGui):
             mainOperator.Features.setValue(dlg.selectedFeatures)
             self._calculateFeatures()
 
-    def _calculateFeatures(self):
+    def _calculateFeatures(self, interactive=True):
         mainOperator = self.topLevelOperatorView
         mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
@@ -307,7 +307,8 @@ class ObjectExtractionGui(LayerViewerGui):
                     for featname, feat in pfeats.iteritems():
                         nchannels += feat.shape[1]
                         nfeatures += 1
-            self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
+            if interactive:
+                self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
             logger.info('Object Extraction: done.')
         callback.all_finished.connect(finished)
 
@@ -337,9 +338,12 @@ class ObjectExtractionGui(LayerViewerGui):
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):
-        self.topLevelOperatorView.Features.setValue({})
-        self._calculateFeatures()
+        self.topLevelOperatorView.Features.setValue({})        
+        self._calculateFeatures(interactive=False)
 
     def initAppletDrawerUi(self):
         super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
         self._drawer.selectFeaturesButton.setText('Calculate features')
+        self._drawer.label.setText('')
+        self._drawer.featuresSelected.setText('')
+        
