@@ -42,7 +42,7 @@ class OpSplitBodyPostprocessing(Operator):
 
     # For serialization
     FinalSegmentationHdf5CacheInput = InputSlot(optional=True)
-    FinalSegmentationHdf5CacheOutput = OutputSlot(optional=True)
+    FinalSegmentationHdf5CacheOutput = OutputSlot()
     FinalSegmentationCleanBlocks = OutputSlot()
     
     # Parse list of saved objects to determine list of raveler labels
