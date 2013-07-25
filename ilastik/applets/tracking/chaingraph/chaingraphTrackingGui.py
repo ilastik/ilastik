@@ -41,14 +41,15 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         return self._drawer
     
     def initAppletDrawerUi(self):
-        super(ChaingraphTrackingGui, self).initAppletDrawerUi()    
+        super(ChaingraphTrackingGui, self).initAppletDrawerUi()
+        self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')    
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
-        self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
+        
                 
     def _onTimeoutBoxChanged(self):        
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
-            self._drawer.timeoutBox.setText(inString[:-1])
+            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
     
     def _onTrackButtonPressed( self ):    
         if not self.mainOperator.ObjectFeatures.ready():
