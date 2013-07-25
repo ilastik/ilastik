@@ -23,12 +23,16 @@ class ManualTrackingWorkflow( Workflow ):
         if 'graph' in kwargs: del kwargs['graph']
         super(ManualTrackingWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
                                                        batchDataGui=False,
-                                                       force5d=True)
+                                                       force5d=True,
+                                                       instructionText=data_instructions
+                                                       )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )                
         
