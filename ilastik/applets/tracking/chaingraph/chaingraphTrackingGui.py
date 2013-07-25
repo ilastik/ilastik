@@ -36,7 +36,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         if 'with_divisions' in parameters.keys():
             self._drawer.withDivisionsBox.setChecked(parameters['with_divisions'])
         if 'cplex_timeout' in parameters.keys():
-            self._drawer.timeoutBox.setText(parameters['cplex_timeout'])
+            self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
         
         return self._drawer
     
