@@ -649,13 +649,14 @@ class ManualTrackingGui(LayerViewerGui):
                 self._setPosModel(time=t_end)
     
         def _handle_finished(*args):
-            pass
+            self._enableButtons(enable=True)
                
         def _handle_failure( exc, exc_info ):
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
-            
+        
+        self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -861,6 +862,7 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onExportButtonPressed(self):
         import h5py
+        self._drawer.exportButton.setEnabled(False)
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
@@ -868,92 +870,109 @@ class ManualTrackingGui(LayerViewerGui):
         directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None or str(directory) == '':
+            self._drawer.exportButton.setEnabled(True)
             return
         directory = str(directory)
         
-        oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
-        
-        for t in sorted(oid2tids.keys()):
-            fn =  directory + "/" + str(t).zfill(5)  + ".h5"
-            self._log('Writing file ' + str(fn))
+        def _export():
+            oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
-            roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
-            labelImage = self.mainOperator.LabelImage.get(roi).wait()
-            labelImage = labelImage[0,...,0]
-             
-            dis_at = numpy.asarray(disapps[t])
-            app_at = numpy.asarray(apps[t])
-            div_at = numpy.asarray(divs[t])
-            mov_at = numpy.asarray(moves[t])
-            merger_at = numpy.asarray(mergers[t])
-            multiMoves_at = numpy.asarray(multiMoves[t])
+            for t in sorted(oid2tids.keys()):
+                fn =  directory + "/" + str(t).zfill(5)  + ".h5"
+                self._log('Writing file ' + str(fn))
+                
+                roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
+                labelImage = self.mainOperator.LabelImage.get(roi).wait()
+                labelImage = labelImage[0,...,0]
+                 
+                dis_at = numpy.asarray(disapps[t])
+                app_at = numpy.asarray(apps[t])
+                div_at = numpy.asarray(divs[t])
+                mov_at = numpy.asarray(moves[t])
+                merger_at = numpy.asarray(mergers[t])
+                multiMoves_at = numpy.asarray(multiMoves[t])
+                        
+                # write only if file exists
+                with h5py.File(fn, 'a') as f_curr:
+                    # delete old label image
+                    if "segmentation" in f_curr.keys():
+                        del f_curr["segmentation"]
                     
-            # write only if file exists
-            with h5py.File(fn, 'a') as f_curr:
-                # delete old label image
-                if "segmentation" in f_curr.keys():
-                    del f_curr["segmentation"]
-                
-                seg = f_curr.create_group("segmentation")            
-                # write label image
-                seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
-                
-                oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
-                ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
-                if 'objects' in f_curr.keys(): del f_curr['objects']
-                f_meta = f_curr.create_group('objects').create_group('meta')
-                f_meta.create_dataset('id', data=oids_meta, compression=1)
-                f_meta.create_dataset('valid', data=ones, compression=1)
-
-                # delete old tracking
-                if "tracking" in f_curr.keys():
-                    del f_curr["tracking"]
+                    seg = f_curr.create_group("segmentation")            
+                    # write label image
+                    seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
+                    
+                    oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                    ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
+                    if 'objects' in f_curr.keys(): del f_curr['objects']
+                    f_meta = f_curr.create_group('objects').create_group('meta')
+                    f_meta.create_dataset('id', data=oids_meta, compression=1)
+                    f_meta.create_dataset('valid', data=ones, compression=1)
     
-                tg = f_curr.create_group("tracking")            
-                
-                # write associations
-                if len(app_at):
-                    app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "cell label appeared in current file"    
-                    ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"    
-                if len(dis_at):
-                    dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "cell label disappeared in current file"
-                    ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"    
-                if len(mov_at):
-                    mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "from (previous file), to (current file)"    
-                    ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"                
-                if len(div_at):
-                    div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
-                    ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
-                if len(merger_at):
-                    merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "descendant (current file), number of objects"    
-                    ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
-                if len(multiMoves_at):
-                    multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
-                    ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                    # delete old tracking
+                    if "tracking" in f_curr.keys():
+                        del f_curr["tracking"]
         
+                    tg = f_curr.create_group("tracking")            
+                    
+                    # write associations
+                    if len(app_at):
+                        app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "cell label appeared in current file"    
+                        ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"    
+                    if len(dis_at):
+                        dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "cell label disappeared in current file"
+                        ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"    
+                    if len(mov_at):
+                        mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "from (previous file), to (current file)"    
+                        ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"                
+                    if len(div_at):
+                        div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                        ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"
+                    if len(merger_at):
+                        merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "descendant (current file), number of objects"    
+                        ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"
+                    if len(multiMoves_at):
+                        multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
+                        ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
+                        ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
+                        ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
+                        ds.attrs["Format"] = "lower energy -> higher confidence"
+            
             self._log("-> tracking successfully exported")
-
+        
+        def _handle_finished(*args):
+            self._drawer.exportButton.setEnabled(True)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            self._drawer.exportButton.setEnabled(True)            
+                
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
 
     def _onExportTifButtonPressed(self):
         import vigra
+        
+        self._drawer.exportTifButton.setEnabled(False)
         
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
@@ -961,46 +980,64 @@ class ManualTrackingGui(LayerViewerGui):
 
         directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
         if directory is None or len(str(directory)) == 0:
+            self._drawer.exportTifButton.setEnabled(True)
             return
         
-        divisions = self.mainOperator.divisions
-        inverseDivisions = {}
-        for k, vals in divisions.items():
-            for v in vals[0]:
-                inverseDivisions[v] = k
-        replace = {}
-        activeTrackBox = self._drawer.activeTrackBox
-        tids = set()
-        for idx in range(activeTrackBox.count()):
-            tids.add(int(activeTrackBox.itemText(idx)))
-        if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
-            self._criticalMessage("There are no tracks to export.")
-        if 0 in tids:
-            tids.remove(0)
-        if -1 in tids:
-            tids.remove(-1)
-        for tid in tids:
-            replace[tid] = [tid] # identity
+        def _export():
+            divisions = self.mainOperator.divisions
+            inverseDivisions = {}
+            for k, vals in divisions.items():
+                for v in vals[0]:
+                    inverseDivisions[v] = k
+            replace = {}
+            activeTrackBox = self._drawer.activeTrackBox
+            tids = set()
+            for idx in range(activeTrackBox.count()):
+                tids.add(int(activeTrackBox.itemText(idx)))
+            if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
+                self._criticalMessage("There are no tracks to export.")
+                return
             
-        for tid in inverseDivisions.keys():
-            rootTid = inverseDivisions[tid]
-            while rootTid in inverseDivisions.keys():
-                rootTid = inverseDivisions[rootTid]
-            replace[tid] = [rootTid]
+            if 0 in tids:
+                tids.remove(0)
+            if -1 in tids:
+                tids.remove(-1)
+            for tid in tids:
+                replace[tid] = [tid] # identity
                 
-        shape = list(self.mainOperator.TrackImage.meta.shape)
-        for t in range(shape[0]):
-            self._log('exporting tiffs for t = ' + str(t))            
+            for tid in inverseDivisions.keys():
+                rootTid = inverseDivisions[tid]
+                while rootTid in inverseDivisions.keys():
+                    rootTid = inverseDivisions[rootTid]
+                replace[tid] = [rootTid]
+                    
+            shape = list(self.mainOperator.TrackImage.meta.shape)
+            for t in range(shape[0]):
+                self._log('exporting tiffs for t = ' + str(t))            
+                
+                roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
+                trackImage = self.mainOperator.TrackImage.get(roi).wait()
+                relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
+                for i in range(relabeled.shape[2]):
+                    out_im = relabeled[:,:,i]
+                    out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                    vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
             
-            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
-            trackImage = self.mainOperator.TrackImage.get(roi).wait()
-            relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
-            for i in range(relabeled.shape[2]):
-                out_im = relabeled[:,:,i]
-                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
-                vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
+            self._log("-> tracking successfully exported")
         
-        self._log('Tiffs exported.')
+        def _handle_finished(*args):
+            self._drawer.exportTifButton.setEnabled(True)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")     
+            self._drawer.exportTifButton.setEnabled(True)       
+                
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
         
         
     
@@ -1081,8 +1118,8 @@ class ManualTrackingGui(LayerViewerGui):
                    self._drawer.nextUnlabeledButton,
                    self._drawer.divEvent,
                    ]
-        
+                
         for b in buttons:
-            if b not in exceptButtons:
+            if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
         
