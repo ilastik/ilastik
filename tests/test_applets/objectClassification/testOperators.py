@@ -73,7 +73,7 @@ class TestOpObjectTrain(unittest.TestCase):
         rawimg = rawimg.view(vigra.VigraArray)
         rawimg.axistags = vigra.defaultAxistags('txyzc')
 
-        feats = {"Vigra Object Features": 
+        feats = {"Standard Object Features": 
                     {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, "Coord<Minimum>":{}, "Coord<Maximum>":{}} 
                 }
 
@@ -126,7 +126,7 @@ class TestOpObjectPredict(unittest.TestCase):
         
         g = Graph()
         
-        features = {"Vigra Object Features": {"Count":{}}}
+        features = {"Standard Object Features": {"Count":{}}}
         
         self.featsop = OpRegionFeatures(graph=g)
         self.featsop.LabelImage.setValue(segimg)
@@ -200,11 +200,11 @@ class TestFeatureSelection(unittest.TestCase):
 
         g = Graph()
 
-        features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
+        features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
                                       "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
-        sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
+        sel_features = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
         
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)
@@ -337,11 +337,11 @@ class TestFullOperator(unittest.TestCase):
 
         g = Graph()
 
-        features = {"Vigra Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
+        features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
                                       "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
-        sel_features = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
+        sel_features = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
         
         self.extrOp = OpObjectExtraction(graph=g)
         self.extrOp.BinaryImage.setValue(binimg)

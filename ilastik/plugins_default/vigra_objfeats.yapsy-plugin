@@ -1,5 +1,5 @@
 [Core]
-Name = Vigra Object Features
+Name = Standard Object Features
 Module = vigra_objfeats
 
 [Documentation]

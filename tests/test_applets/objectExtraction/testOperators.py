@@ -6,7 +6,7 @@ from lazyflow.operators import OpLabelImage
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
 from ilastik.plugins import pluginManager
 
-NAME = "Vigra Object Features"
+NAME = "Standard Object Features"
 
 FEATURES = {
     NAME : {

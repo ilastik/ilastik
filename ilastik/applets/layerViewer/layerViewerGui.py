@@ -355,7 +355,7 @@ class LayerViewerGui(QWidget):
 
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
-
+        
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
@@ -385,8 +385,8 @@ class LayerViewerGui(QWidget):
                 needDelete = True
             else:
                 newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
-                needDelete = (newLayer.datasources != oldLayer.datasources)
-
+                needDelete = newLayer.isDifferentEnough(oldLayer)
+                
             if needDelete:
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):

@@ -22,16 +22,13 @@ class FillMissingSlicesApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        # Top-level operator broadcasting slices (yet)
-        return ["DetectionMethod"]
+        return ["DetectionMethod", "OverloadDetector"]
     
     
     @property
     def singleLaneGuiClass(self):
         from fillMissingSlicesGui import FillMissingSlicesGui
         return FillMissingSlicesGui
-        #from ilastik.applets.layerViewer import LayerViewerGui
-        #return LayerViewerGui
     
 
     @property

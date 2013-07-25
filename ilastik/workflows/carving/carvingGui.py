@@ -39,6 +39,7 @@ class CarvingGui(LabelingGui):
         labelingSlots.labelInput       = topLevelOperatorView.WriteSeeds
         labelingSlots.labelOutput      = topLevelOperatorView.opLabelArray.Output
         labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
+        labelingSlots.LabelNames       = topLevelOperatorView.LabelNames
         labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
         labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
@@ -182,7 +183,7 @@ class CarvingGui(LabelingGui):
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
-
+        
         def addLayerToggleShortcut(layername, shortcut):
             def toggle():
                 row = layerIndexForName(layername)
@@ -234,7 +235,8 @@ class CarvingGui(LabelingGui):
     
     def _after_init(self):
         super(CarvingGui, self)._after_init()
-        self._toggleSegmentation3D()
+        if self.render:self._toggleSegmentation3D()
+        
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
@@ -376,10 +378,11 @@ class CarvingGui(LabelingGui):
             menu.addSeparator()
 
         menu.addSeparator()
-        showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
-        showSeg3DAction.setCheckable(True)
-        showSeg3DAction.setChecked( self._showSegmentationIn3D )
-        showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
+        if self.render:
+            showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
+            showSeg3DAction.setCheckable(True)
+            showSeg3DAction.setChecked( self._showSegmentationIn3D )
+            showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
         
         if op.dataIsStorable():
             menu.addAction("Save object").triggered.connect( self.onSaveButton )
@@ -443,17 +446,27 @@ class CarvingGui(LabelingGui):
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
-    def getNextLabelName(self):
-        l = len(self._labelControlUi.labelListModel)
-        if l == 0:
-            return "Background"
+    def _getNext(self, slot, parentFun, transform=None):
+        numLabels = self.labelListData.rowCount()
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
         else:
-            return "Object"
+            return parentFun()
+
+    def getNextLabelName(self):
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(CarvingGui, self).getNextLabelName)
 
     def appletDrawers(self):
         return [ ("Carving", self._labelControlUi) ]
 
     def setupLayers( self ):
+        print "setupLayers"
+        
         layers = []
 
         def onButtonsEnabled(slot, roi):
@@ -470,6 +483,7 @@ class CarvingGui(LabelingGui):
         # Labels
         labellayer, labelsrc = self.createLabelLayer(direct=True)
         if labellayer is not None:
+            labellayer._allowToggleVisible = False
             layers.append(labellayer)
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)

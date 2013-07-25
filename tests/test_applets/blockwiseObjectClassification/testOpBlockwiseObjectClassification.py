@@ -92,7 +92,7 @@ class TestOpBlockwiseObjectClassification(object):
         Half of the image will be white, the other half gray.
         """
         
-        self.testingFeatures = {"Vigra Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(10, 10, 1)}}}
+        self.testingFeatures = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(10, 10, 1)}}}
         
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.
