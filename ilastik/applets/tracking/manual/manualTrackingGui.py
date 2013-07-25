@@ -7,6 +7,8 @@ import numpy
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
+from ilastik.utility.gui.threadRouter import threadRouted
+from lazyflow.request.request import Request
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -290,7 +292,7 @@ class ManualTrackingGui(LayerViewerGui):
             item = (position5d[0], oid)
             if len(self.divs) == 0:                
                 self.divs.append(item)
-                self.editor.posModel.time = self.editor.posModel.time + 1                
+                self._setPosModel(time=self.editor.posModel.time + 1)                
             elif len(self.divs) > 0:
                 if position5d[0] != self.divs[0][0] + 1:
                     self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
@@ -350,7 +352,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
     
-            self.editor.posModel.time = self.editor.posModel.time + 1
+            self._setPosModel(time=self.editor.posModel.time + 1)
 
             
         
@@ -578,73 +580,96 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _runSubtracking(self, position5d, oid):
-        window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
         
-        t_start = position5d[0]
-        activeTrack = self._getActiveTrack()
-        if activeTrack == 0:
-            self._criticalMessage("Error: There is no active track.")
-            return 
-        
-        res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
-        if res == -1:
-            return
-                
-        sroi = [slice(0,1),]
-        for idx,p in enumerate(position5d[1:-1]):
-            begin = max(0,p-window[idx]/2)
-            end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
-            sroi += [ slice(begin,end), ]
-        
-        key_start = [t_start,0,0,0,0]
-        key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
-        roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
-        li_prev = self.mainOperator.LabelImage.get(roi).wait()[sroi]
-        oid_prev = oid
-        t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
-        
-        for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):
-            key_start[0] = t
-            key_stop[0] = t+1
-            roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
-            li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+        def _subtracking():
+            window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
-            li_prev_oid = (li_prev == oid_prev)
-            li_product = li_prev_oid * li_cur
-            uniqueLabels = list(numpy.unique(li_product))
-            if 0 in uniqueLabels:
-                uniqueLabels.remove(0)
-            if len(uniqueLabels) != 1:                
-                self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                self._gotoObject(oid_prev, t-1, True)
-                t_end = t-1
-                break            
-            if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
-                self._log('too little overlap at t = ' + str(t))
-                self._gotoObject(oid_prev, t-1, True)
-                t_end = t-1
-                break
-             
-            res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+            t_start = position5d[0]
+            activeTrack = self._getActiveTrack()
+            if activeTrack == 0:
+                self._criticalMessage("Error: There is no active track.")
+                return 
+            
+            res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
             if res == -1:
-                self._gotoObject(uniqueLabels[0], t, False)
                 return
+                    
+            sroi = [slice(0,1),]
+            for idx,p in enumerate(position5d[1:-1]):
+                begin = max(0,p-window[idx]/2)
+                end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
+                sroi += [ slice(begin,end), ]
             
-            oid_prev = uniqueLabels[0]
-            li_prev = li_cur
-    
+            key_start = [t_start,0,0,0,0]
+            key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
+            roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
+            li_prev = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+            oid_prev = oid
+            t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
+            
+            for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):
+                key_start[0] = t
+                key_stop[0] = t+1
+                roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
+                li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+                
+                li_prev_oid = (li_prev == oid_prev)
+                li_product = li_prev_oid * li_cur
+                uniqueLabels = list(numpy.unique(li_product))
+                if 0 in uniqueLabels:
+                    uniqueLabels.remove(0)
+                if len(uniqueLabels) != 1:                
+                    self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
+                    self._gotoObject(oid_prev, t-1, True)
+                    t_end = t-1
+                    break            
+                if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
+                    self._log('too little overlap at t = ' + str(t))
+                    self._gotoObject(oid_prev, t-1, True)
+                    t_end = t-1
+                    break
+                 
+                res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+                if res == -1:
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                
+                oid_prev = uniqueLabels[0]
+                li_prev = li_cur
         
-        if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
-            self._log('tracking reached last time step.')
             
-        self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
-        self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
-        self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
-
-        if t_end > 0:
-            self.editor.posModel.time = t_end
+            if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
+                self._log('tracking reached last time step.')
+                
+            self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
     
+            if t_end > 0:
+                self._setPosModel(time=t_end)
     
+        def _handle_finished(*args):
+            pass
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+            
+        req = Request( _subtracking )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
+        
+    @threadRouted
+    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):
+        if time:
+            self.editor.posModel.time = time
+        if slicingPos:
+            self.editor.posModel.slicingPos = slicingPos
+        if cursorPos:
+            self.editor.posModel.cursorPos = cursorPos
+            
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
             self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
@@ -926,6 +951,7 @@ class ManualTrackingGui(LayerViewerGui):
         
             self._log("-> tracking successfully exported")
 
+
     def _onExportTifButtonPressed(self):
         import vigra
         
@@ -934,6 +960,8 @@ class ManualTrackingGui(LayerViewerGui):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
         directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
+        if directory is None or len(str(directory)) == 0:
+            return
         
         divisions = self.mainOperator.divisions
         inverseDivisions = {}
@@ -986,9 +1014,7 @@ class ManualTrackingGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
-        self.editor.posModel.slicingPos = new_slicing_pos
-        self.editor.posModel.cursorPos = new_slicing_pos
-        self.editor.posModel.time = t      
+        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
 
 
@@ -1012,7 +1038,8 @@ class ManualTrackingGui(LayerViewerGui):
           
         self._gotoObject(oid, t)
 
-    
+
+    @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
@@ -1032,9 +1059,7 @@ class ManualTrackingGui(LayerViewerGui):
                 break
         
         if nextCoords is not None:
-            self.editor.posModel.slicingPos = nextCoords  
-            self.editor.posModel.time = nextLabelT
-            self.editor.posModel.cursorPos = nextCoords
+            self._setPosModel(time=nextLabelT, slicingPos=nextCoords, cursorPos=nextCoords)
             self.editor.navCtrl.panSlicingViews(nextCoords, [0,1,2])
         else:
             self._log('There are no more untracked objects! :-)')   
@@ -1043,11 +1068,11 @@ class ManualTrackingGui(LayerViewerGui):
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
 
-
+    @threadRouted
     def postCriticalMessage(self, prompt):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
         
-        
+    @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
         buttons = [self._drawer.activeTrackBox, 
                    self._drawer.delTrack,
