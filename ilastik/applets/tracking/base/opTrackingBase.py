@@ -6,6 +6,7 @@ import numpy as np
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.base.applet import DatasetConstraintError
 
 
 class OpTrackingBase(Operator):
@@ -22,10 +23,36 @@ class OpTrackingBase(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []  
+        
+        # As soon as input data is available, check its constraints
+        self.RawImage.notifyReady( self._checkConstraints )
+        self.LabelImage.notifyReady( self._checkConstraints )
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)        
     
+    def _checkConstraints(self, *args):
+        if not self.RawImage.ready() or not self.LabelImage.ready():
+            return
+        
+        rawTaggedShape = self.RawImage.meta.getTaggedShape()
+        if rawTaggedShape['t'] < 2:
+            raise DatasetConstraintError(
+                 "Tracking",
+                 "For tracking, the dataset must have a time axis with at least 2 images.   "\
+                 "Please load time-series data instead. See user documentation for details." )        
+        
+        segmentationTaggedShape = self.LabelImage.meta.getTaggedShape()        
+        rawTaggedShape['c'] = None
+        segmentationTaggedShape['c'] = None
+        if dict(rawTaggedShape) != dict(segmentationTaggedShape):
+            raise DatasetConstraintError("Tracking",
+                 "For tracking, the raw data and the prediction maps must contain the same "\
+                 "number of timesteps and the same shape.   "\
+                 "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "\
+                 "shape of (t, x, y, z, c) = {}"\
+                 .format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ) )
+            
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
             result = self.LabelImage.get(roi).wait()

@@ -1,3 +1,5 @@
+from ilastik.applets.base.applet import DatasetConstraintError
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
@@ -24,6 +26,10 @@ class OpManualTracking(Operator):
         self.labels = {}
         self.divisions = {}
         
+        # As soon as input data is available, check its constraints
+        self.RawImage.notifyReady( self._checkConstraints )
+        self.BinaryImage.notifyReady( self._checkConstraints )
+        
     def setupOutputs(self):        
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
@@ -33,6 +39,29 @@ class OpManualTracking(Operator):
                 self.labels[t]={}     
 
     
+    def _checkConstraints(self, *args):
+        if not self.RawImage.ready() or not self.BinaryImage.ready():
+            return
+        
+        rawTaggedShape = self.RawImage.meta.getTaggedShape()
+        if rawTaggedShape['t'] < 2:
+            raise DatasetConstraintError(
+                 "Tracking",
+                 "For tracking, the dataset must have a time axis with at least 2 images.   "\
+                 "Please load time-series data instead. See user documentation for details." )        
+        
+        segmentationTaggedShape = self.BinaryImage.meta.getTaggedShape()        
+        rawTaggedShape['c'] = None
+        segmentationTaggedShape['c'] = None
+        if dict(rawTaggedShape) != dict(segmentationTaggedShape):
+            raise DatasetConstraintError("Tracking",
+                 "For tracking, the raw data and the prediction maps must contain the same "\
+                 "number of timesteps and the same shape.   "\
+                 "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "\
+                 "shape of (t, x, y, z, c) = {}"\
+                 .format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ) )
+            
+            
     def execute(self, slot, subindex, roi, result):
         if slot is self.Divisions:
             result = {}
