@@ -1,7 +1,7 @@
 import os
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import OrderedSignal, getPathVariants, format_known_keys
+from lazyflow.utility import getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpFormattedDataExport
 
 class OpExportLaneResult(Operator):
@@ -62,6 +62,7 @@ class OpExportLaneResult(Operator):
         self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
+        self.progressSignal = opFormattedExport.progressSignal
         
     def setupOutputs(self):
         rawInfo = self.RawDatasetInfo.value
