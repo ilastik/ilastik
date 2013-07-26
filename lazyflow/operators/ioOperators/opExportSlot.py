@@ -5,7 +5,7 @@ import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys
+from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter
 
 class OpExportSlot(Operator):
@@ -44,6 +44,9 @@ class OpExportSlot(Operator):
     def setupOutputs(self):
         self.ExportPath.meta.shape = (1,)
         self.ExportPath.meta.dtype = object
+        
+        if self.OutputFormat.value == 'hdf5' and self.OutputInternalPath.value == "":
+            self.ExportPath.meta.NOTREADY = True
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.ExportPath, "Unknown output slot: {}".format( slot.name )
@@ -54,11 +57,15 @@ class OpExportSlot(Operator):
         path_format = os.path.splitext(path_format)[0]
         path_format += '.' + file_extension
 
+        # Provide the TOTAL path (including dataset name)
+        if self.OutputFormat.value == 'hdf5':
+            path_format += '/' + self.OutputInternalPath.value
+
         roi = numpy.array( roiFromShape(self.Input.meta.shape) )
         if self.CoordinateOffset.ready():
             offset = self.CoordinateOffset.value
             assert len(roi[0] == len(offset))
-            roi += offset
+                roi += offset
         optional_replacements = {}
         optional_replacements['roi'] = map(tuple, roi)
         for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
@@ -92,13 +99,13 @@ class OpExportSlot(Operator):
         self.progressSignal( 0 )
 
         # Create and open the hdf5 file
-        export_path = self.ExportPath.value
-        with h5py.File(export_path, 'w') as hdf5File:
+        export_components = PathComponents(self.ExportPath.value)
+        with h5py.File(export_components.externalPath, 'w') as hdf5File:
             # Create a temporary operator to do the work for us
             opH5Writer = OpH5WriterBigDataset(parent=self)
             try:
                 opH5Writer.hdf5File.setValue( hdf5File )
-                opH5Writer.hdf5Path.setValue( self.OutputInternalPath.value )
+                opH5Writer.hdf5Path.setValue( export_components.internalPath )
                 opH5Writer.Image.connect( self.Input )
         
                 # The H5 Writer provides it's own progress signal, so just connect ours to it.
