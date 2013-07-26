@@ -49,14 +49,16 @@ class CarvingWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
         
-        self.carvingApplet = CarvingApplet(workflow=self,
-                                           projectFileGroupName="carving",
-                                           hintOverlayFile=hintoverlayFile,
-                                           pmapOverlayFile=pmapoverlayFile)
+        
         
         self.preprocessingApplet = PreprocessingApplet(workflow=self,
                                            title = "Preprocessing",
                                            projectFileGroupName="preprocessing")
+        
+        self.carvingApplet = CarvingApplet(workflow=self,
+                                           projectFileGroupName="carving",
+                                           hintOverlayFile=hintoverlayFile,
+                                           pmapOverlayFile=pmapoverlayFile)
         
         #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
         
@@ -72,6 +74,8 @@ class CarvingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        
+        opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
         op5 = Op5ifyer(parent=self)
         op5.order.setValue("txyzc")
         op5.input.connect(opData.Image)
@@ -83,7 +87,7 @@ class CarvingWorkflow(Workflow):
         opCarvingLane.FilteredInputData.connect(opPreprocessing.FilteredImage)
         opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingLane.UncertaintyType.setValue("none")
-
+        
         # Special input-input connection: WriteSeeds metadata must mirror the input data
         opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
         

@@ -23,7 +23,7 @@ from cylemon.segmentation import MSTSegmentor
 class OpCarving(Operator):
     name = "Carving"
     category = "interactive segmentation"
-
+    
     # I n p u t s #
     
     #MST of preprocessed Graph
@@ -126,12 +126,13 @@ class OpCarving(Operator):
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
         self._dirtyObjects = set()
+        self.preprocessingApplet = None
         
         self._opMstCache = OpValueCache( parent=self )
         self.MstOut.connect( self._opMstCache.Output )
 
         self.InputData.notifyReady( self._checkConstraints )
-        
+    
     def _checkConstraints(self, *args):
         slot = self.InputData
         numChannels = slot.meta.getTaggedShape()['c']
@@ -225,7 +226,18 @@ class OpCarving(Operator):
             self.AllObjectNames.meta.shape = 0
         
         self.AllObjectNames.meta.dtype = object
-
+    
+    def connectToPreprocessingApplet(self,applet):
+        self.PreprocessingApplet = applet
+    
+    def updatePreprocessing(self):
+        if self.PreprocessingApplet is None or self._mst is None:
+            return
+        if len(self._mst.object_names)==0:
+            self.PreprocessingApplet.enableWriteprotect(True)
+        else:
+            self.PreprocessingApplet.enableWriteprotect(False)
+    
     def hasCurrentObject(self):
         """
         Returns current object name. None if it is not set.
@@ -383,7 +395,8 @@ class OpCarving(Operator):
         
         self.BackgroundPriority.setValue( mst.bg_priority[name] )
         self.NoBiasBelow.setValue( mst.no_bias_below[name] )
-
+        
+        self.updatePreprocessing()
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
         
@@ -414,6 +427,7 @@ class OpCarving(Operator):
 
         #now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
+        self.updatePreprocessing()
     
     def deleteObject(self, name):
         print "want to delete object with name = %s" % name
@@ -500,9 +514,11 @@ class OpCarving(Operator):
 
         objects = self._mst.object_names.keys()
         self.AllObjectNames.meta.shape = len(objects)
-
+        
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
+        
+        self.updatePreprocessing()
 
 
     def get_label_voxels(self):

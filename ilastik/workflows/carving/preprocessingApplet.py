@@ -17,9 +17,15 @@ class PreprocessingApplet(StandardApplet):
         self._title = title
         
         self.writeprotected = False
+        self._enabledWriteprotect = True
         self._enabledDS = True
         self._enabledReset = False
         
+    def enableWriteprotect(self,value):
+        if self._enabledWriteprotect!=value:
+            self._enabledWriteprotect = value
+            self._gui.enableWriteprotect(value)
+    
     def enableReset(self,er):
         if self._workflow._headless:
             return
