@@ -23,6 +23,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
 
 # lazyflow
 from lazyflow.utility import Tracer
+from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
@@ -179,24 +180,26 @@ class ProgressDisplayManager(QObject):
                 if index in self.appletPercentages:
                     oldPercentage = self.appletPercentages[index]
                     self.appletPercentages[index] = max(percentage, oldPercentage)
-                # First percentage we get MUST be zero.
+                # First percentage we get MUST be 0 or -1.
                 # Other notifications are ignored.
-                if index in self.appletPercentages or percentage == 0:
+                if index in self.appletPercentages or percentage == 0 or percentage == -1:
                     self.appletPercentages[index] = percentage
     
             numActive = len(self.appletPercentages)
             if numActive > 0:
                 totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
             
+            # If any applet gave -1, put progress bar in "busy indicator" mode
+            if (TinyVector(self.appletPercentages.values()) == -1).any():
+                self.progressBar.setMaximum(0)
+            else:
+                self.progressBar.setMaximum(100)
+        
             if numActive == 0 or totalPercentage == 100:
-                if self.progressBar is not None:
-                    self.progressBar.setHidden(True)
-                    self.appletPercentages.clear()
+                self.progressBar.setHidden(True)
+                self.appletPercentages.clear()
             else:
                 self.progressBar.setHidden(False)
-                if self.progressBar is None:
-                    self.progressBar = QProgressBar()
-                    self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
 #===----------------------------------------------------------------------------------------------------------------===
