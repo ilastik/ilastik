@@ -19,7 +19,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
                         QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
-                        QVBoxLayout, QHBoxLayout
+                        QVBoxLayout, QHBoxLayout, QShortcut
 
 # lazyflow
 from lazyflow.utility import Tracer
@@ -28,7 +28,7 @@ import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -280,6 +280,30 @@ class IlastikShell( QMainWindow ):
         windowSize = PreferencesManager().get("shell","startscreenSize")
         if windowSize is not None:
             self.resize(*windowSize)
+            
+        self._initShortcuts()
+        
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Ilastik Shell"
+
+        nextImage = QShortcut( QKeySequence("PgDown"), self, member=self._nextImage)
+        mgr.register( shortcutGroupName,
+                      "Switch to next image",
+                      nextImage)        
+
+        prevImage = QShortcut( QKeySequence("PgUp"), self, member=self._prevImage)
+        mgr.register( shortcutGroupName,
+                      "Switch to previous image",
+                      prevImage)   
+    
+    def _nextImage(self):
+        newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
+        self.imageSelectionCombo.setCurrentIndex(newIndex)
+    
+    def _prevImage(self):
+        newIndex = max(0,self.imageSelectionCombo.currentIndex()-1)
+        self.imageSelectionCombo.setCurrentIndex(newIndex)
         
     @property
     def _applets(self):
