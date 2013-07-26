@@ -11,7 +11,7 @@ import vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
-from lazyflow.roi import roiToSlice, sliceToRoi
+from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector
 
 def axisTagObjectFromFlag(flag):
 
@@ -416,10 +416,14 @@ class OpSingleChannelSelector(Operator):
         self.Output.meta.shape = outshape
 
         # Output can't be accessed unless the input has enough channels
-        assert self.Input.meta.getTaggedShape()['c'] > self.Index.value, \
-                "Requested channel {} is out of range of input data (shape {})".format(self.Index.value, self.Input.meta.shape)
-        #if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
-        #    self.Output.meta.NOTREADY = True
+        # We can't assert here because it's okay to configure this slot incorrectly as long as it is never accessed.
+        # Because the order of callbacks isn't well defined, people may not disconnect this operator from its 
+        #  upstream partner until after it has already been configured.
+        # Again, that's okay as long as it isn't accessed.
+        #assert self.Input.meta.getTaggedShape()['c'] > self.Index.value, \
+        #        "Requested channel {} is out of range of input data (shape {})".format(self.Index.value, self.Input.meta.shape)
+        if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
+            self.Output.meta.NOTREADY = True
         
     def execute(self, slot, subindex, roi, result):
         index=self.inputs["Index"].value
@@ -468,18 +472,15 @@ class OpSubRegion(Operator):
         assert len(start) == len(stop)
         assert (numpy.array(stop)>= numpy.array(start)).all()
     
-        temp = tuple(numpy.array(stop) - numpy.array(start))
-        #drop singleton dimensions
-        outShape = ()
-        for e in temp:
-            if e > 0:
-                outShape = outShape + (e,)
-
-        self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = outShape
-        if self.Input.meta.drange is not None:
-            self.Output.meta.drange = self.Input.meta.drange
-
+        out_shape = TinyVector(stop) - TinyVector(start)
+        if (out_shape <= 0).any():
+            self.Output.meta.NOTREADY = True
+        else:
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.Output.meta.shape = out_shape
+            if self.Input.meta.drange is not None:
+                self.Output.meta.drange = self.Input.meta.drange
+            
     def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
