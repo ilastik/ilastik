@@ -88,7 +88,10 @@ class ArrayCacheMemoryMgr(threading.Thread):
             #calculate total memory usage and send as signal
             tot = 0.0
             for c in self.namedCaches:
-                tot += c.usedMemory()
+                if c.usedMemory() is None:
+                    continue
+                else:
+                    tot += c.usedMemory()
             self.totalCacheMemory(tot)
                 
             time.sleep(10)
