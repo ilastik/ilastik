@@ -271,6 +271,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
+        self.labelingDrawerUi.labelListView.allowDelete = True
 
 
     def initAppletDrawerUi(self):
