@@ -51,7 +51,7 @@ class PreprocessingGui(QMainWindow):
                                     self.drawer.filter5]
             
             self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
-            self.correspondingSigmaMins = [0.9,0.9,0.6,-float("infinity"),-float("infinity")]
+            self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
             
             # Set up our handlers
             for f in self.filterbuttons:
