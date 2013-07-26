@@ -236,7 +236,7 @@ class OpBlockwiseObjectClassification( Operator ):
         for block_start in block_starts:
             self._ensurePipelineExists(block_start)
 
-        # Retrieve result from each block, and write into the approprate region of the destination
+        # Retrieve result from each block, and write into the appropriate region of the destination
         # TODO: Parallelize this loop
         for block_start in block_starts:
             opBlockPipeline = self._blockPipelines[block_start]
@@ -320,11 +320,14 @@ class OpBlockwiseObjectClassification( Operator ):
     
     def _getFullShape(self, spatialShapeDict):
         axiskeys = self.RawImage.meta.getAxisKeys()
-        # xyz block shape comes from input slot, but other axes are 1
-        shape = [1] * len(axiskeys)
+        # xyz block shape comes from input slot, but other axes are as in raw data
+        shape = [0] * len(axiskeys)
         for i, k in enumerate(axiskeys):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
+            else:
+                shape[i] = self.RawImage.meta.shape[i]
+            
         return shape
 
     

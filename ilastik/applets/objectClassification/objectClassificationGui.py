@@ -409,7 +409,9 @@ class ObjectClassificationGui(LabelingGui):
                                                      range=(0.0, 1.0),
                                                      normalize=(0.0, 1.0) )
                     probLayer.opacity = 0.25
-                    probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                    #probLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                    #False, because it's much faster to draw predictions without these layers below
+                    probLayer.visible = False
                     probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
                         
                     def setLayerColor(c, predictLayer=probLayer, ch=channel):
@@ -476,7 +478,7 @@ class ObjectClassificationGui(LabelingGui):
                 self.binLayer = ColortableLayer(self.binaryimagesrc, ct_binary)
                 self.binLayer.name = "Binary image"
                 self.binLayer.visible = True
-                self.binLayer.opacity = 0.5
+                self.binLayer.opacity = 1.0
                 self.binLayer.setToolTip("Segmentation results as a binary mask")
             layers.append(self.binLayer)
 

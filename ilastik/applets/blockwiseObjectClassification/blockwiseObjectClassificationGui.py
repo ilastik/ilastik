@@ -63,16 +63,11 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         if predictionSlot.ready():
             predictlayer = ColortableLayer( LazyflowSource(predictionSlot),
                                                  colorTable=self._colorTable16 )
-            predictlayer.name = "Prediction"
+            predictlayer.name = "Blockwise prediction"
             predictlayer.visible = False
             layers.append(predictlayer)
 
-        rawSlot = self.topLevelOperatorView.RawImage
-        if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot(rawSlot)
-            rawLayer.name = "Raw data"
-            layers.append(rawLayer)
-
+        
         binarySlot = self.topLevelOperatorView.BinaryImage
         if binarySlot.ready():
             ct_binary = [QColor(0, 0, 0, 0).rgba(),
@@ -80,6 +75,13 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
             binaryLayer = ColortableLayer(LazyflowSource(binarySlot), ct_binary)
             binaryLayer.name = "Binary Image"
             layers.append(binaryLayer)
+            
+        rawSlot = self.topLevelOperatorView.RawImage
+        if rawSlot.ready():
+            rawLayer = self.createStandardLayerFromSlot(rawSlot)
+            rawLayer.name = "Raw data"
+            layers.append(rawLayer)
+
 
         return layers
 
