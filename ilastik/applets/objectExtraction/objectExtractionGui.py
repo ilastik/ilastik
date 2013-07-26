@@ -77,7 +77,16 @@ class FeatureSelectionDialog(QDialog):
             else:
                 parent.setText(0, pluginName)
             parent.setExpanded(True)
+            advanced_names = []
+            simple_names = []
             for name in sorted(features.keys()):
+                parameters = features[name]
+                if 'advanced' in parameters:
+                    advanced_names.append(name)
+                else:
+                    simple_names.append(name)
+            
+            for name in simple_names+advanced_names:
                 parameters = features[name]
                 
                 item = QTreeWidgetItem(parent)
@@ -108,7 +117,7 @@ class FeatureSelectionDialog(QDialog):
         if self.ndim==3:
             self.ui.spinBox_Z.setValue(margin[2])
         else:
-            self.ui.spinBox_Z.setEnabled(False)
+            self.ui.spinBox_Z.setVisible(False)
 
     def accept(self):
         QDialog.accept(self)

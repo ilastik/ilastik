@@ -59,8 +59,10 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             #TODO: many cases are not covered
             if "Central<PowerSum<" in f:
                 v['tooltip'] = "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
+                v['advanced'] = True
             elif "PowerSum<" in f:
                 v['tooltip'] = "Unnormalized moment: Sum_i{(X_i)^n}"
+                v['advanced'] = True
             elif "Minimum" in f:
                 v['tooltip'] = "Minimum"
             elif "Maximum" in f:
@@ -75,12 +77,14 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 v['tooltip'] = f
             if "Principal<" in f:
                 v['tooltip'] = v['tooltip'] + ", projected onto PCA eigenvectors"
+                v['advanced'] = True
             if "Coord<" in f:
                 v['tooltip'] = v['tooltip'] + ", computed from object pixel coordinates"
             if not "Coord<" in f:
                 v['tooltip'] = v['tooltip'] + ", computed from raw pixel values"
             if "DivideByCount<" in f:
                 v['tooltip'] = v['tooltip'] + ", divided by the number of pixels"
+                v['advanced'] = True
             if self.local_suffix in f:
                 v['tooltip'] = v['tooltip'] + ", as defined by neighborhood size below"
         
