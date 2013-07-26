@@ -144,10 +144,15 @@ class ObjectClassificationGui(LabelingGui):
 
         #select all the features in the beginning
         cfn = self.op.ComputedFeatureNames[:].wait()
-        self.op.SelectedFeatures.setValue(self.op.ComputedFeatureNames[:].wait())
+        already_selected = self.op.SelectedFeatures[:].wait()
+        if len(already_selected)==0:
+            #FIXME: this will break if the user explicitly de-selects all features
+            self.op.SelectedFeatures.setValue(cfn)
+            already_selected = cfn
+        
         nfeatures = 0
         
-        for plugin_features in cfn.itervalues():
+        for plugin_features in already_selected.itervalues():
             nfeatures += len(plugin_features)
         self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
@@ -232,7 +237,7 @@ class ObjectClassificationGui(LabelingGui):
             nfeatures = 0
             for plugin_features in dlg.selectedFeatures.itervalues():
                 nfeatures += len(plugin_features)
-            self.labelingDrawerUi.featuresSubset.setText("{} features selected".format(nfeatures))
+            self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
     @pyqtSlot()
     def checkEnableButtons(self):

@@ -57,7 +57,7 @@ class ObjectClassificationWorkflow(Workflow):
             self._applets.append(self.fillMissingSlicesApplet)
 
         # our main applets
-        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self)
+        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
