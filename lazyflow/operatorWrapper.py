@@ -164,6 +164,9 @@ class OperatorWrapper(Operator):
     def __len__(self):
         return len(self.innerOperators)
 
+    def __iter__(self):
+        return self.innerOperators.__iter__()
+
     def _callbackInserted(self, slot, index, size):
         with Tracer(self.traceLogger, msg=self.name):
             self._insertInnerOperator(index, size)
