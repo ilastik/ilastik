@@ -143,17 +143,25 @@ class ObjectClassificationGui(LabelingGui):
             self.handleShowPredictionsClicked)
 
         #select all the features in the beginning
-        cfn = self.op.ComputedFeatureNames[:].wait()
-        already_selected = self.op.SelectedFeatures[:].wait()
-        if len(already_selected)==0:
+        cfn = None
+        already_selected = None
+        if self.op.ComputedFeatureNames.ready():
+            cfn = self.op.ComputedFeatureNames[:].wait()
+            
+        if self.op.SelectedFeatures.ready():
+            already_selected = self.op.SelectedFeatures[:].wait()
+            
+        
+        if already_selected is not None and len(already_selected)==0 and cfn is not None:
             #FIXME: this will break if the user explicitly de-selects all features
             self.op.SelectedFeatures.setValue(cfn)
             already_selected = cfn
         
         nfeatures = 0
         
-        for plugin_features in already_selected.itervalues():
-            nfeatures += len(plugin_features)
+        if already_selected is not None:
+            for plugin_features in already_selected.itervalues():
+                nfeatures += len(plugin_features)
         self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
         # enable/disable buttons logic
