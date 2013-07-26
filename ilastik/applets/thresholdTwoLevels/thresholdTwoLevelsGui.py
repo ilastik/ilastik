@@ -141,6 +141,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
+        for layer in self.layerstack:
+            if "Final" in layer.name:
+                layer.visible = True
     
     def _onTabCurrentChanged(self, cur):
         self._updateOperatorFromGui()
@@ -237,10 +240,13 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             if drange is None:
                 drange = (0.0, 1.0)
             channelSrc = LazyflowSource(op.InputChannel)
-            channelLayer = AlphaModulatedLayer( channelSrc,
-                                                tintColor=QColor(self._channelColors[op.Channel.value]),
-                                                range=drange,
-                                                normalize=drange )
+            
+            #channelLayer = AlphaModulatedLayer( channelSrc,
+            #                                    tintColor=QColor(self._channelColors[op.Channel.value]),
+            #                                    range=drange,
+            #                                    normalize=drange )
+            #it used to be set to the label color, but people found it confusing
+            channelLayer = AlphaModulatedLayer( channelSrc, tintColor = QColor(Qt.white), range = drange, normalize=drange)
             channelLayer.name = "Selected input channel"
             channelLayer.opacity = 1.0
             channelLayer.setToolTip("The selected channel of the prediction images")

@@ -54,6 +54,17 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
                 
                 # If the user pressed enter inside a spinbox, auto-click "Apply"
                 spinBox.installEventFilter( self )
+        
+        #FIXME: we are relying on z being there because of the op5ifyer
+        zIndex = self.topLevelOperatorView.RawImage.meta.axistags.index('z')
+        nz = self.topLevelOperatorView.RawImage.meta.shape[zIndex]
+        if nz==1:
+            #it's a 2d image, hide z spin boxes
+            self._drawer.blockSpinBox_Z.setVisible(False)
+            self._drawer.haloSpinBox_Z.setVisible(False)
+            
+        self.predictLayer = None
+
 
     @traceLogged(traceLogger)
     def setupLayers(self):
@@ -61,11 +72,13 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         
         predictionSlot = self.topLevelOperatorView.PredictionImage
         if predictionSlot.ready():
-            predictlayer = ColortableLayer( LazyflowSource(predictionSlot),
-                                                 colorTable=self._colorTable16 )
-            predictlayer.name = "Blockwise prediction"
-            predictlayer.visible = False
-            layers.append(predictlayer)
+            if self.predictLayer is None:
+                self.predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
+                                                     colorTable=self._colorTable16 )
+                self.predictLayer.name = "Blockwise prediction"
+                self.predictLayer.visible = False
+            
+            layers.append(self.predictLayer)
 
         
         binarySlot = self.topLevelOperatorView.BinaryImage
@@ -110,7 +123,10 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
 
         blockShapeSlot.setValue( block_shape_dict )
         haloPaddingSlot.setValue( halo_padding_dict )
-        self._drawer.applyButton.setEnabled( False )
+        #make final output visible
+        for layer in self.layerstack:
+            if "prediction" in layer.name:
+                layer.visible = True
 
     @threadRouted
     def _updateGuiFromOperator(self, *args):

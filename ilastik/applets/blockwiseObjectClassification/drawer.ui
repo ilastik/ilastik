@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>244</width>
-    <height>377</height>
+    <width>282</width>
+    <height>382</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -35,19 +35,6 @@
         <number>0</number>
        </property>
        <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
         <widget class="QLabel" name="blockLabel">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -56,7 +43,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Blocks:</string>
+          <string>Blocks: </string>
          </property>
         </widget>
        </item>
@@ -66,7 +53,7 @@
           <string>Block shape: X dimension</string>
          </property>
          <property name="minimum">
-          <number>1</number>
+          <number>10</number>
          </property>
          <property name="maximum">
           <number>4096</number>
@@ -82,7 +69,7 @@
           <string>Block shape: Y dimension</string>
          </property>
          <property name="minimum">
-          <number>1</number>
+          <number>10</number>
          </property>
          <property name="maximum">
           <number>4096</number>
@@ -98,7 +85,7 @@
           <string>Block shape: Z dimension</string>
          </property>
          <property name="minimum">
-          <number>1</number>
+          <number>10</number>
          </property>
          <property name="maximum">
           <number>4096</number>
@@ -108,15 +95,8 @@
          </property>
         </widget>
        </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <property name="spacing">
-        <number>0</number>
-       </property>
        <item>
-        <spacer name="horizontalSpacer_2">
+        <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
@@ -128,6 +108,13 @@
          </property>
         </spacer>
        </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QLabel" name="haloLabel">
          <property name="sizePolicy">
@@ -137,7 +124,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Halo:</string>
+          <string>Halo:     </string>
          </property>
         </widget>
        </item>
@@ -180,10 +167,26 @@
          </property>
         </widget>
        </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
       </layout>
      </item>
      <item>
       <widget class="QPushButton" name="applyButton">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply the current settings. Activate the&lt;span style=&quot; font-weight:600;&quot;&gt; &amp;quot;Blockwise prediction&amp;quot;&lt;/span&gt; layer to see the results.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Apply</string>
        </property>
