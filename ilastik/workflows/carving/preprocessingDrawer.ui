@@ -184,32 +184,44 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="runButton">
-       <property name="toolTip">
-        <string>Start Preprocessing for selected Data</string>
-       </property>
-       <property name="text">
-        <string>Run Preprocessing</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
-       </property>
-       <property name="autoDefault">
-        <bool>true</bool>
-       </property>
-       <property name="default">
-        <bool>true</bool>
-       </property>
-       <property name="flat">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <item>
+        <widget class="QPushButton" name="runButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Start Preprocessing for selected Data</string>
+         </property>
+         <property name="text">
+          <string>Run Preprocessing</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
+         </property>
+         <property name="autoDefault">
+          <bool>true</bool>
+         </property>
+         <property name="default">
+          <bool>true</bool>
+         </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QCheckBox" name="writeprotectBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Write-protect&lt;/span&gt; current carving graph file.&lt;/p&gt;&lt;p&gt;The write protection prevents you from changing any of the pre-processing settings. This is useful if you have already segmented multiple objects, which rely on specific settings to produce specific supervoxels.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
@@ -219,6 +231,9 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
      </item>
     </layout>
    </item>
