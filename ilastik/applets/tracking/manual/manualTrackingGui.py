@@ -899,67 +899,71 @@ class ManualTrackingGui(LayerViewerGui):
                 merger_at = numpy.asarray(mergers[t])
                 multiMoves_at = numpy.asarray(multiMoves[t])
                         
-                # write only if file exists
-                with h5py.File(fn, 'a') as f_curr:
-                    # delete old label image
-                    if "segmentation" in f_curr.keys():
-                        del f_curr["segmentation"]
-                    
-                    seg = f_curr.create_group("segmentation")            
-                    # write label image
-                    seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
-                    
-                    oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
-                    ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
-                    if 'objects' in f_curr.keys(): del f_curr['objects']
-                    f_meta = f_curr.create_group('objects').create_group('meta')
-                    f_meta.create_dataset('id', data=oids_meta, compression=1)
-                    f_meta.create_dataset('valid', data=ones, compression=1)
     
-                    # delete old tracking
-                    if "tracking" in f_curr.keys():
-                        del f_curr["tracking"]
+                try:
+                    with h5py.File(fn, 'w-') as f_curr:
+                        # delete old label image
+                        if "segmentation" in f_curr.keys():
+                            del f_curr["segmentation"]
+                        
+                        seg = f_curr.create_group("segmentation")            
+                        # write label image
+                        seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
+                        
+                        oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                        ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
+                        if 'objects' in f_curr.keys(): del f_curr['objects']
+                        f_meta = f_curr.create_group('objects').create_group('meta')
+                        f_meta.create_dataset('id', data=oids_meta, compression=1)
+                        f_meta.create_dataset('valid', data=ones, compression=1)
         
-                    tg = f_curr.create_group("tracking")            
+                        # delete old tracking
+                        if "tracking" in f_curr.keys():
+                            del f_curr["tracking"]
+            
+                        tg = f_curr.create_group("tracking")            
+                        
+                        # write associations
+                        if len(app_at):
+                            app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "cell label appeared in current file"    
+                            ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"    
+                        if len(dis_at):
+                            dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "cell label disappeared in current file"
+                            ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"    
+                        if len(mov_at):
+                            mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "from (previous file), to (current file)"    
+                            ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"                
+                        if len(div_at):
+                            div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                            ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
+                        if len(merger_at):
+                            merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "descendant (current file), number of objects"    
+                            ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
+                        if len(multiMoves_at):
+                            multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
+                            ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
                     
-                    # write associations
-                    if len(app_at):
-                        app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "cell label appeared in current file"    
-                        ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"    
-                    if len(dis_at):
-                        dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "cell label disappeared in current file"
-                        ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"    
-                    if len(mov_at):
-                        mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "from (previous file), to (current file)"    
-                        ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"                
-                    if len(div_at):
-                        div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
-                        ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"
-                    if len(merger_at):
-                        merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "descendant (current file), number of objects"    
-                        ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"
-                    if len(multiMoves_at):
-                        multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
-                        ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
-                        ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
-                        ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
-                        ds.attrs["Format"] = "lower energy -> higher confidence"
-                
+                except IOError:                    
+                    self._criticalMessage("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
+                    return
                 _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
         
