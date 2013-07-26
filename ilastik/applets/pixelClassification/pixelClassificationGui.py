@@ -109,6 +109,13 @@ class PixelClassificationGui(LabelingGui):
         except:
             self.render = False
 
+        # toggle interactive mode according to freezePredictions.value
+        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+        def FreezePredDirty():
+            self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+        # listen to freezePrediction changes
+        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
@@ -205,7 +212,7 @@ class PixelClassificationGui(LabelingGui):
                                                 normalize=(0.0, 1.0) )
 
                 segLayer.opacity = 1
-                segLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                segLayer.visible = False #self.labelingDrawerUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
                 def setLayerColor(c, segLayer=segLayer):
@@ -305,7 +312,7 @@ class PixelClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
-
+        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
