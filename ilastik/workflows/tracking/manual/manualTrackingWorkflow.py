@@ -40,7 +40,8 @@ class ManualTrackingWorkflow( Workflow ):
                                                                   "Threshold and Size Filter", 
                                                                   "ThresholdTwoLevels" )
                      
-        self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, interactive=False)
+        self.objectExtractionApplet = ObjectExtractionApplet(name="Object Feature Computation",
+                                                             workflow=self, interactive=False)
         
         self.trackingApplet = ManualTrackingApplet( workflow=self )
         
