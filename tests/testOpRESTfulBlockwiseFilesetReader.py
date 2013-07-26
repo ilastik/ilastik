@@ -2,7 +2,11 @@ import os
 import sys
 import shutil
 import tempfile
+import platform
+
 import numpy
+import nose
+
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility.io import RESTfulBlockwiseFileset
@@ -19,6 +23,10 @@ class TestOpBlockwiseFilesetReader(object):
     
     @classmethod
     def setupClass(cls):
+        if 'Darwin' in platform.platform():
+            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
+            raise nose.SkipTest
+        
         cls.tempDir = tempfile.mkdtemp()
         logger.debug("Working in {}".format( cls.tempDir ))
 
