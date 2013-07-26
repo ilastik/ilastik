@@ -270,10 +270,17 @@ class ObjectExtractionGui(LayerViewerGui):
         mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
         maxt = mainOperator.LabelImage.meta.shape[0]
+        
+            
         progress = QProgressDialog("Calculating features...", "Cancel", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
+        
+        if maxt==1:
+            progress.setMaximum(0)
+            progress.setMinimum(0)
+            progress.setValue(0)
 
         # We will use notify_finished() to update the progress bar.
         # However, the callback will be called from a non-gui thread,
@@ -294,7 +301,8 @@ class ObjectExtractionGui(LayerViewerGui):
         callback = Callback()
 
         def updateProgress(progress, n):
-            progress.setValue(n)
+            if progress.maximum()>n:
+                progress.setValue(n)
         callback.timestep_done.connect(partial(updateProgress, progress))
 
         def finished():
@@ -310,9 +318,11 @@ class ObjectExtractionGui(LayerViewerGui):
             if interactive:
                 self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
             logger.info('Object Extraction: done.')
+            
         callback.all_finished.connect(finished)
 
         mainOperator._opRegFeats.fixed = False
+        
         reqs = []
         for t in range(maxt):
             req = mainOperator.RegionFeatures([t])
