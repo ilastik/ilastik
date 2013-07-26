@@ -7,7 +7,7 @@ from collections import defaultdict
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache
+from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper
 from lazyflow.request import Request, RequestPool, RequestLock
 from functools import partial
 
@@ -141,6 +141,39 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.ObjectMaps.connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.Features.connect(self.ObjectFeatures)
         
+        class OpWrappedCache(Operator):
+            """
+            This quick hack is necessary because there's not currently a way to wrap an OperatorWrapper.
+            We need to double-wrap the cache, so we need this operator to provide the first level of wrapping.
+            """
+            Input = InputSlot(level=1) 
+            innerBlockShape = InputSlot()
+            outerBlockShape = InputSlot()
+            fixAtCurrent = InputSlot(value = False)
+    
+            Output = OutputSlot(level=1)
+    
+            def __init__(self, *args, **kwargs):
+                super( OpWrappedCache, self ).__init__( *args, **kwargs )
+                self._innerOperator = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self )
+                self._innerOperator.Input.connect( self.Input )
+                self._innerOperator.fixAtCurrent.connect( self.fixAtCurrent )
+                self._innerOperator.innerBlockShape.connect( self.innerBlockShape )
+                self._innerOperator.outerBlockShape.connect( self.outerBlockShape )
+                self.Output.connect( self._innerOperator.Output )
+            
+            def execute(self, slot, subindex, roi, destination):
+                assert False, "Shouldn't get here."
+    
+            def propagateDirty(self, slot, subindex, roi):
+                pass # Nothing to do...
+
+        # Wrap the cache for probability channels twice TWICE.
+        self.opProbChannelsImageCache = OpMultiLaneWrapper( OpWrappedCache, parent=self )
+        self.opProbChannelsImageCache.Input.connect(self.opProbabilityChannelsToImage.Output)
+        self.opProbChannelsImageCache.fixAtCurrent.connect( self.FreezePredictions )
+        
+        
         self.opBadObjectsToImage.Image.connect(self.SegmentationImages)
         self.opBadObjectsToImage.ObjectMap.connect(self.opPredict.BadObjects)
         self.opBadObjectsToImage.Features.connect(self.ObjectFeatures)
@@ -160,7 +193,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
-        self.PredictionProbabilityChannels.connect(self.opProbabilityChannelsToImage.Output)
+        self.PredictionProbabilityChannels.connect(self.opProbChannelsImageCache.Output)
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
         self.Warnings.connect(self.opBadObjectsToWarningMessage.WarningMessage)
@@ -252,8 +285,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        self.opPredictionImageCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opPredictionImageCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opPredictionImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -915,6 +950,7 @@ class OpMultiRelabelSegmentation(Operator):
         self.Output.resize(nmaps)
         for i, oslot in enumerate(self.Output):
             oslot.connect(self._innerOperators[i].Output)
+            
 
     def propagateDirty(self, slot, subindex, roi):
         pass
