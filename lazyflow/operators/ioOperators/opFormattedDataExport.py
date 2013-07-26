@@ -69,7 +69,6 @@ class OpFormattedDataExport(Operator):
         
         self._opExportSlot = OpExportSlot( parent=self )
         self._opExportSlot.Input.connect( opReorderAxes.Output )
-        self._opExportSlot.OutputInternalPath.connect( self.OutputInternalPath )
         self._opExportSlot.OutputFormat.connect( self.OutputFormat )
         
         self.ExportPath.connect( self._opExportSlot.ExportPath )
@@ -80,33 +79,36 @@ class OpFormattedDataExport(Operator):
         if self.OutputAxisOrder.ready():
             self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
         else:
-            # Use original order, if present
-            # FIXME: If the original_axistags have no channel axis but the new image has multiple channels,
-            #        append a channel axis.  Potentially an issue for 't' as well.
-            original_axistags = self.Input.meta.original_axistags or self.Input.meta.axistags
-            self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in original_axistags ) )
+            axistags = self.Input.meta.axistags
+            self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
 
         # Prepare subregion operator
         total_roi = roiFromShape( self.Input.meta.shape )
         total_roi = map( tuple, total_roi )
+
+        # Default to full roi
+        new_start, new_stop = total_roi
+
         if self.RegionStart.ready():
             # RegionStart is permitted to contain 'None' values, which we replace with zeros
-            start = map(lambda x: x or 0, self.RegionStart.value)
-            self._opSubRegion.Start.setValue( tuple(start) )
-        else:
-            # If no RegionStart provided, use full roi
-            self._opSubRegion.Start.disconnect()
-            self._opSubRegion.Start.setValue( total_roi[0] )
+            new_start = map(lambda x: x or 0, self.RegionStart.value)
+            
 
         if self.RegionStop.ready():
             # RegionStop is permitted to contain 'None' values, 
             #  which we replace with the full extent of the corresponding axis
-            stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
-            self._opSubRegion.Stop.setValue( tuple(stop) )
+            new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
         else:
-            # If no RegionStop provided, use full roi
-            self._opSubRegion.Stop.disconnect()
             self._opSubRegion.Stop.setValue( total_roi[1] )
+
+        if not self._opSubRegion.Start.ready() or \
+           not self._opSubRegion.Stop.ready() or \
+           self._opSubRegion.Start.value != new_stop or \
+           self._opSubRegion.Stop.value != new_stop:
+            # Disconnect first to ensure that the start/stop slots are applied together (atomically)
+            self._opSubRegion.Stop.disconnect()        
+            self._opSubRegion.Start.setValue( tuple(new_start) )
+            self._opSubRegion.Stop.setValue( tuple(new_stop) )
 
         # Provide the coordinate offset, but only for the axes that are present in the output image
         tagged_input_offset = dict( zip(self.Input.meta.getAxisKeys(), self._opSubRegion.Start.value ) )
@@ -127,14 +129,15 @@ class OpFormattedDataExport(Operator):
             minVal, maxVal = self.InputMin.value, self.InputMax.value
             outputMinVal, outputMaxVal = self.ExportMin.value, self.ExportMax.value
             def normalize(a):
-                numerator = numpy.float32(outputMaxVal) - numpy.float32(outputMinVal)
-                denominator = numpy.float32(maxVal) - numpy.float32(minVal)
+                numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
+                denominator = numpy.float64(maxVal) - numpy.float64(minVal)
                 if denominator != 0.0:
-                    frac = numerator / denominator
+                    frac = numpy.float32(numerator / denominator)
                 else:
                     # Denominator was zero.  The user is probably just temporarily changing the values.
-                    frac = 0.0
-                return numpy.asarray(outputMinVal + (a - minVal) * frac, export_dtype)
+                    frac = numpy.float32(0.0)
+                result = numpy.asarray(outputMinVal + (a - minVal) * frac, export_dtype)
+                return result
             self._opNormalizeAndConvert.Function.setValue( normalize )
         else:
             # No normalization: just identity function with dtype conversion
@@ -144,11 +147,19 @@ class OpFormattedDataExport(Operator):
         roi = [ tuple(self._opSubRegion.Start.value), tuple(self._opSubRegion.Stop.value) ]
         known_keys = { 'roi' : roi }
 
+        # Blank the internal path while we update the external path
+        #  to avoid invalid intermediate states of ExportPath
+        self._opExportSlot.OutputInternalPath.setValue( "" )
+        
         # use partial formatting to fill in non-coordinate name fields
         name_format = self.OutputFilenameFormat.value
         partially_formatted_path = format_known_keys( name_format, known_keys )
         self._opExportSlot.OutputFilenameFormat.setValue( partially_formatted_path )
 
+        internal_dataset_format = self.OutputInternalPath.value 
+        partially_formatted_dataset_name = format_known_keys( internal_dataset_format, known_keys )
+        self._opExportSlot.OutputInternalPath.setValue( partially_formatted_dataset_name )
+        
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
     
@@ -157,3 +168,37 @@ class OpFormattedDataExport(Operator):
 
     def run_export(self):
         self._opExportSlot.run_export()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
