@@ -96,6 +96,9 @@ class ManualTrackingGui(LayerViewerGui):
         
         self.mainOperator = topLevelOperatorView
         
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.mainOperator.parent.parent.trackingApplet
+        
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
@@ -580,7 +583,7 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _runSubtracking(self, position5d, oid):
-        
+                    
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
@@ -607,7 +610,7 @@ class ManualTrackingGui(LayerViewerGui):
             oid_prev = oid
             t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
             
-            for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):
+            for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):                
                 key_start[0] = t
                 key_stop[0] = t+1
                 roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
@@ -635,8 +638,7 @@ class ManualTrackingGui(LayerViewerGui):
                     return
                 
                 oid_prev = uniqueLabels[0]
-                li_prev = li_cur
-        
+                li_prev = li_cur        
             
             if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
                 self._log('tracking reached last time step.')
@@ -647,15 +649,15 @@ class ManualTrackingGui(LayerViewerGui):
     
             if t_end > 0:
                 self._setPosModel(time=t_end)
-    
+        
         def _handle_finished(*args):
             self._enableButtons(enable=True)
-               
+            
         def _handle_failure( exc, exc_info ):
             import traceback, sys
             traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
-        
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
+            
         self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
@@ -874,8 +876,13 @@ class ManualTrackingGui(LayerViewerGui):
             return
         directory = str(directory)
         
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
+            
         def _export():
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
+            
+            num_files = float(len(oid2tids.keys()))
             
             for t in sorted(oid2tids.keys()):
                 fn =  directory + "/" + str(t).zfill(5)  + ".h5"
@@ -952,18 +959,22 @@ class ManualTrackingGui(LayerViewerGui):
                         ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
                         ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
                         ds.attrs["Format"] = "lower energy -> higher confidence"
-            
+                
+                _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
         
         def _handle_finished(*args):
             self._drawer.exportButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")
-            self._drawer.exportButton.setEnabled(True)            
-                
+            self._drawer.exportButton.setEnabled(True)    
+            self.applet.progressSignal.emit(100)
+        
+        self.applet.progressSignal.emit(0)      
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -983,6 +994,9 @@ class ManualTrackingGui(LayerViewerGui):
             self._drawer.exportTifButton.setEnabled(True)
             return
         
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
+            
         def _export():
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
@@ -1012,6 +1026,7 @@ class ManualTrackingGui(LayerViewerGui):
                 replace[tid] = [rootTid]
                     
             shape = list(self.mainOperator.TrackImage.meta.shape)
+            num_files = float(shape[0]-1)
             for t in range(shape[0]):
                 self._log('exporting tiffs for t = ' + str(t))            
                 
@@ -1023,17 +1038,21 @@ class ManualTrackingGui(LayerViewerGui):
                     out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
                     vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
             
+                _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
         
         def _handle_finished(*args):
             self._drawer.exportTifButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")     
-            self._drawer.exportTifButton.setEnabled(True)       
-                
+            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)       
+        
+        self.applet.progressSignal.emit(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
