@@ -336,7 +336,6 @@ class LayerViewerGui(QWidget):
         
         normalize = getNormalize(slot.meta)
         range = getRange(slot.meta)
-        print "createLayer normalize", normalize
         for i in xrange(4):
             if [redSource,greenSource,blueSource,alphaSource][i]:
                 layer.set_range(i,range)
