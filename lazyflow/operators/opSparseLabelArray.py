@@ -11,8 +11,9 @@ import blist
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.operators.opCache import OpCache
 
-class OpSparseLabelArray(Operator):
+class OpSparseLabelArray(OpCache):
     name = "Sparse Label Array"
     description = "simple cache for sparse label arrays"
 
@@ -33,6 +34,24 @@ class OpSparseLabelArray(Operator):
         self._sparseNZ = None
         self._oldShape = (0,)
         self._maxLabel = 0            
+
+    def usedMemory(self):
+        if self._denseArray is not None:
+            return self._denseArray.nbytes
+        return 0
+    
+    def lastAccessTime(self):
+        return 0
+        #return self._last_access
+        
+    def generateReport(self, report):
+        report.name = self.name
+        #report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        #report.lastAccessTime = self.lastAccessTime()
+        report.dtype = self.Output.meta.dtype
+        report.type = type(self)
+        report.id = id(self)
 
     def setupOutputs(self):
         if (self._oldShape != self.inputs["shape"].value).any():

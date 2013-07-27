@@ -18,8 +18,10 @@ from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
+from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
 
-class OpBlockedSparseLabelArray(Operator):
+class OpBlockedSparseLabelArray(OpCache):
     """
     This operator is designed to provide sparse access to label data.
     
@@ -78,6 +80,37 @@ class OpBlockedSparseLabelArray(Operator):
             self._maxLabel = 0
             self._maxLabelHistogram = numpy.zeros((1024,), numpy.uint32) # keeps track of how many sub- OpSparseLabelArrays vote for a vertain maxLabel
             self.deleteLabel.setValue(-1)
+            
+    def fractionOfUsedMemoryDirty(self):
+        """fraction of the currently used memory that is marked as dirty"""
+        return 0 #overwrite me
+
+    def lastAccessTime(self):
+        """timestamp of last access (time.time())"""
+        return 0 #overwrite me
+
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.type = type(self)
+        report.id = id(self)
+       
+        for i, (b_ind, block) in enumerate(self._labelers.iteritems()):
+            start = self._blockShape*self._flatBlockIndices[b_ind]
+            stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
+           
+            n = MemInfoNode()
+            n.roi = (start, stop)
+            report.children.append(n)
+            block.generateReport(n)
+            
+    def usedMemory(self):
+        tot = 0.0
+        for block in self._labelers.values():
+            tot += block.usedMemory()
+        return tot
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):

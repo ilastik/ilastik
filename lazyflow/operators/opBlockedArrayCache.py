@@ -122,8 +122,8 @@ class OpBlockedArrayCache(OpCache):
         report.type = type(self)
         report.id = id(self)
        
-        for i, block in enumerate(self._cache_list.values()):
-            start = self._blockShape*self._flatBlockIndices[i]
+        for b_ind, block in self._cache_list.iteritems():
+            start = self._blockShape*self._flatBlockIndices[b_ind]
             stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
             
             n = MemInfoNode()

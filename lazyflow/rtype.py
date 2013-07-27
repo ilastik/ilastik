@@ -115,6 +115,13 @@ class SubRegion(Roi):
 
     def __str__( self ):
         return "".join(("Subregion: start '", str(self.start), "' stop '", str(self.stop), "'"))
+    
+    def pprint(self):
+        """pretty-print this object"""
+        ret = ""
+        for a,b in zip(self.start, self.stop):
+            ret += "%d-%d " % (a,b)
+        return ret
 
     @staticmethod
     def _toString(roi):

@@ -3,7 +3,6 @@ import time
 import copy
 from functools import partial
 import logging
-logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
 #SciPy
@@ -23,6 +22,8 @@ class OpTrainRandomForest(Operator):
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool")]
     outputSlots = [OutputSlot("Classifier")]
+    
+    logger = logging.getLogger(__name__+".OpTrainRandomForest")
 
     def __init__(self, parent = None):
         Operator.__init__(self, parent)
@@ -36,8 +37,9 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].meta.shape = (self._forest_count,)
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
+    #FIXME: It is not possible to access the class variable logger here.
+    #
+    #@traceLogged(OpTrainRandomForest.logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
     def execute(self, slot, subindex, roi, result):
         featMatrix=[]
         labelsMatrix=[]
@@ -87,6 +89,8 @@ class OpTrainRandomForestBlocked(Operator):
     outputSlots = [OutputSlot("Classifier")]
 
     WarningEmitted = False
+    
+    logger = logging.getLogger(__name__+".OpTrainRandomForestBlocked")
 
     def __init__(self, *args, **kwargs):
         super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
@@ -103,7 +107,9 @@ class OpTrainRandomForestBlocked(Operator):
             # No need to set dirty here: notifyDirty handles it.
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
+    #FIXME: It is not possible to access the class variable logger here.
+    #
+    #@traceLogged(OpTrainRandomForestBlocked.logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, subindex, roi, result):
         progress = 0
         self.progressSignal(progress)
@@ -185,7 +191,8 @@ class OpTrainRandomForestBlocked(Operator):
             labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
             try:
-                logger.debug("Learning with Vigra...")
+                self.logger.debug("Learning %d random forests with %d trees each with vigra..." % (self._forest_count, self._tree_count))
+                t = time.time()
                 # train and store self._forest_count forests in parallel
                 pool = RequestPool()
 
@@ -199,11 +206,12 @@ class OpTrainRandomForestBlocked(Operator):
                 pool.wait()
                 pool.clean()
 
-                logger.debug("Vigra finished")
+                self.logger.debug("Learning %d random forests with %d trees each with vigra took %f sec." % \
+                    (self._forest_count, self._tree_count, time.time()-t))
             except:
-                logger.error( "ERROR: could not learn classifier" )
-                logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
-                logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
+                self.logger.error( "ERROR: could not learn classifier" )
+                self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
+                self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
                 raise
             finally:
                 self.progressSignal(100)
@@ -222,6 +230,8 @@ class OpPredictRandomForest(Operator):
 
     inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
     outputSlots = [OutputSlot("PMaps")]
+    
+    logger = logging.getLogger(__name__+".OpPredictRandomForestBlocked")
 
     def setupOutputs(self):
         
@@ -289,15 +299,14 @@ class OpPredictRandomForest(Operator):
 
         t3 = time.time()
 
-        # logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
+        self.logger.debug("predict roi=%r took %fseconds, actual RF time was %fs, feature time was %fs" % (key, t3-t1, t3-t2, t2-t1))
+        
         return result
-
-
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.inputs["Classifier"]:
-            logger.debug("OpPredictRandomForest: Classifier changed, setting dirty")
+            self.logger.debug("classifier changed, setting dirty")
             if self.LabelsCount.ready() and self.LabelsCount.value > 0:
                 self.outputs["PMaps"].setDirty(slice(None,None,None))
         elif slot == self.inputs["Image"]:
@@ -320,6 +329,8 @@ class OpSegmentation(Operator):
 
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
+    
+    logger = logging.getLogger(__name__+".OpSegmentation")
 
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
@@ -363,6 +374,8 @@ class OpAreas(Operator):
 
     inputSlots = [InputSlot("Input"), InputSlot("NumberOfChannels")]
     outputSlots = [OutputSlot("Areas")]
+
+    logger = logging.getLogger(__name__+".OpAreas")
 
     def setupOutputs(self):
 

@@ -328,6 +328,9 @@ class OpPixelFeaturesPresmoothed(Operator):
             return self.execute(self.Output, (), rroi, result)
         elif slot == self.outputs["Output"]:
             key = rroi.toSlice()
+            
+            logger.debug("OpPixelFeaturesPresmoothed: request %s" % (rroi.pprint(),))
+            
             cnt = 0
             written = 0
             assert (rroi.stop<=self.outputs["Output"].meta.shape).all()

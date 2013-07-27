@@ -86,6 +86,8 @@ class OpArrayCache(OpCache):
     def fractionOfUsedMemoryDirty(self):
         totAll   = numpy.prod(self.Output.meta.shape)
         totDirty = 0
+        if self._blockState is None:
+            return 0
         for i, v in enumerate(self._blockState.ravel()):
             sh = self._blockShapeForIndex(i)
             if sh is None:
