@@ -214,7 +214,7 @@ class OpRegionFeatures3d(Operator):
             raise Exception("both images must be 4D. raw image shape: {}"
                             " label image shape: {}".format(image.shape, labels.shape))
 
-        # FIXME: maybe simplify?
+        # FIXME: maybe simplify? taggedShape should be easier here
         class Axes(object):
             x = image.axistags.index('x')
             y = image.axistags.index('y')

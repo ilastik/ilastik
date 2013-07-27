@@ -50,7 +50,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.marginLabel.setVisible(False)
         self.ui.label.setVisible(False)
         self.ui.label_2.setVisible(False)
-        self.ui.label_3.setVisible(False)
+        self.ui.label_z.setVisible(False)
 
 class ObjectClassificationGui(LabelingGui):
     """A subclass of LabelingGui for labeling objects.

@@ -45,6 +45,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     local_suffix = " in neighborhood" #note the space in front, it's important
     local_out_suffixes = [local_suffix, " in object and neighborhood"]
 
+    ndim = None
+    
     def availableFeatures(self, image, labels):
         names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
@@ -88,13 +90,15 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             if self.local_suffix in f:
                 v['tooltip'] = v['tooltip'] + ", as defined by neighborhood size below"
         
-            
         return result
 
     def _do_4d(self, image, labels, features, axes):
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
-        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+        if self.ndim==2:
+            result = vigra.analysis.extractRegionFeatures(image.squeeze(), labels.squeeze(), features, ignoreLabel=0)
+        else:
+            result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
         #NOTE: this removes the background object!!!
         return cleanup(result, 0 in labels, True, features)
 
@@ -102,6 +106,16 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         features = features.keys()
         local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
+        
+        #the image parameter passed here is the whole dataset. 
+        #We can use it estimate if the data is 2D or 3D and then apply 
+        #this knowledge in compute_local
+        nZ = image.shape[axes.z]
+        if nZ>1:
+            self.ndim = 3
+        else:
+            self.ndim = 2
+            
         return self._do_4d(image, labels, features, axes)
 
     def compute_local(self, image, binary_bbox, feature_dict, axes):
