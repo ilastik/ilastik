@@ -1,6 +1,17 @@
 import ConfigParser
 import io, os
 
+"""
+ilastik will read settings from ~/.ilastikrc
+
+Example:
+
+[ilastik]
+debug: false
+plugin_directories: ~/.ilastik/plugins,
+logging_config: ~/custom_ilastik_logging_config.json
+"""
+
 default_config = """
 [ilastik]
 debug: false
