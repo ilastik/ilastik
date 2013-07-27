@@ -45,7 +45,7 @@ class OpArrayCache(OpCache):
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
-
+    
     # Block states
     IN_PROCESS  = 0
     DIRTY       = 1
@@ -69,7 +69,7 @@ class OpArrayCache(OpCache):
         self._has_fixed_dirty_blocks = False
         self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
-
+       
     def usedMemory(self):
         if self._cache is not None:
             return self._cache.nbytes
@@ -261,6 +261,7 @@ class OpArrayCache(OpCache):
             return self._executeCleanBlocks(slot, subindex, roi, result)
         
     def _executeOutput(self, slot, subindex, roi, result):
+        t = time.time()
         key = roi.toSlice()
 
         shape = self.Output.meta.shape
@@ -410,6 +411,7 @@ class OpArrayCache(OpCache):
         cacheView = None
 
         self._lock.release()
+        self.logger.debug("read %s took %f sec." % (roi.pprint(), time.time()-t))
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.inputs["Input"]

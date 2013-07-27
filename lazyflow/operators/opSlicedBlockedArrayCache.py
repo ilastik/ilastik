@@ -1,4 +1,5 @@
 #Python
+import time
 import logging
 import sys
 
@@ -98,6 +99,7 @@ class OpSlicedBlockedArrayCache(OpCache):
             slot.connect(self._innerOps[i].Output)
         
     def execute(self, slot, subindex, roi, result):
+        t = time.time()
         assert slot == self.Output
         
         key = roi.toSlice()
@@ -119,6 +121,7 @@ class OpSlicedBlockedArrayCache(OpCache):
 
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
+        self.logger.debug("read %r took %f sec." % (roi.pprint(), time.time()-t))
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()

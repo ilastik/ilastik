@@ -1,4 +1,5 @@
 #Python
+import time
 import generic
 import logging
 logger = logging.getLogger(__name__)
@@ -142,6 +143,8 @@ class OpBlockedArrayCache(OpCache):
             # this happends when the operator is not yet fully configured due to fixAtCurrent == True
             result[:] = 0
             return
+        
+        t = time.time()
 
         #find the block key
         key = roi.toSlice()
@@ -215,6 +218,8 @@ class OpBlockedArrayCache(OpCache):
 
         for r in requests:
             r.wait()
+            
+        self.logger.debug("read %r took %f sec." % (roi.pprint(), time.time()-t))
 
 
     def propagateDirty(self, slot, subindex, roi):
