@@ -118,6 +118,7 @@ class FeatureSelectionDialog(QDialog):
             self.ui.spinBox_Z.setValue(margin[2])
         else:
             self.ui.spinBox_Z.setVisible(False)
+            self.ui.label_z.setVisible(False)
 
     def accept(self):
         QDialog.accept(self)
@@ -260,21 +261,23 @@ class ObjectExtractionGui(LayerViewerGui):
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
 
-        imgshape = list(mainOperator.RawImage.meta.shape)
-        axistags = mainOperator.RawImage.meta.axistags
-        imgshape.pop(axistags.index('t'))
-        fakeimg = np.empty(imgshape, dtype=np.float32)
-
-        labelshape = list(mainOperator.BinaryImage.meta.shape)
-        axistags = mainOperator.BinaryImage.meta.axistags
-        labelshape.pop(axistags.index('t'))
-        labelshape.pop(axistags.index('c') - 1)
-        fakelabels = np.empty(labelshape, dtype=np.uint32)
-        
+        #FIXME: we assume force5D here and always expect to have z-axis. Maybe this is wrong
+        taggedShape = mainOperator.RawImage.meta.getTaggedShape()
+        fakeimg = None
+        fakeimgshp = [taggedShape['x'], taggedShape['y']]
+        fakelabelsshp = [taggedShape['x'], taggedShape['y']]
         ndim = 3
-        zIndex = axistags.index('z')
-        if len(labelshape)==2 or (zIndex<len(mainOperator.RawImage.meta.shape) and mainOperator.RawImage.meta.shape[zIndex]==1):
-            ndim=2
+        if 'z' in taggedShape and taggedShape['z']>1:
+            fakeimgshp.append(taggedShape['z'])
+            fakelabelsshp.append(taggedShape['z'])
+            ndim = 3
+        else:
+            ndim = 2
+        if 'c' in taggedShape and taggedShape['c']>1:
+            fakeimgshp.append(taggedShape['c'])
+        
+        fakeimg = np.empty(fakeimgshp, dtype=np.float32)
+        fakelabels = np.empty(fakelabelsshp, dtype=np.uint32)
         
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)

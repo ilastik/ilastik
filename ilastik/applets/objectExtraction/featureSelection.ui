@@ -13,9 +13,6 @@
   <property name="windowTitle">
    <string>Object feature selection</string>
   </property>
-  <property name="toolTip">
-   <string/>
-  </property>
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
@@ -30,9 +27,6 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="QTreeWidget" name="treeWidget">
-        <property name="toolTip">
-         <string/>
-        </property>
         <column>
          <property name="text">
           <string notr="true">Feature</string>
@@ -83,7 +77,7 @@
          <widget class="QSpinBox" name="spinBox_Y"/>
         </item>
         <item>
-         <widget class="QLabel" name="label_3">
+         <widget class="QLabel" name="label_z">
           <property name="text">
            <string>Z</string>
           </property>
