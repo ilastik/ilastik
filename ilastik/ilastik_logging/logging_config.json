@@ -18,6 +18,9 @@
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
         
+        "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
+        "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
+        
         "lazyflow.operators.operators.OpArrayCache":                { "level":"INFO" },
         "lazyflow.operators.operators.ArrayCacheMemoryMgr":         { "level":"INFO" },
         "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
