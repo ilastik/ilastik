@@ -237,6 +237,20 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        
+        slot = self.topLevelOperatorView.Features
+        if slot.ready():
+            selectedFeatures = self.topLevelOperatorView.Features([]).wait()
+        else:
+            selectedFeatures = None
+        
+        nfeatures = 0
+        if selectedFeatures is not None:
+            for plugin_features in selectedFeatures.itervalues():
+                nfeatures += len(plugin_features)
+
+        self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
+        
 
     def _selectFeaturesButtonPressed(self):
         featureDict = {}

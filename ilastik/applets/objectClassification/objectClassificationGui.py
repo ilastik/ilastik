@@ -151,11 +151,11 @@ class ObjectClassificationGui(LabelingGui):
         if self.op.SelectedFeatures.ready():
             already_selected = self.op.SelectedFeatures[:].wait()
             
+        if already_selected is None or len(already_selected)==0:
+            if cfn is not None:
+                already_selected = cfn
         
-        if already_selected is not None and len(already_selected)==0 and cfn is not None:
-            #FIXME: this will break if the user explicitly de-selects all features
-            self.op.SelectedFeatures.setValue(cfn)
-            already_selected = cfn
+        self.op.SelectedFeatures.setValue(already_selected)
         
         nfeatures = 0
         
