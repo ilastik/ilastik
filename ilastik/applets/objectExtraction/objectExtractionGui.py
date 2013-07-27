@@ -240,6 +240,18 @@ class ObjectExtractionGui(LayerViewerGui):
     def _selectFeaturesButtonPressed(self):
         featureDict = {}
         mainOperator = self.topLevelOperatorView
+        if not mainOperator.RawImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add the raw data before selecting features")
+            mexBox.exec_()
+            return
+        
+        if not mainOperator.BinaryImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add binary (segmentation) data before selecting features ")
+            mexBox.exec_()
+            return
+        
         slot = mainOperator.Features
         if slot.ready():
             selectedFeatures = mainOperator.Features([]).wait()
