@@ -28,6 +28,7 @@ def updateFromConfigFile():
     except:
         configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
         
+    configFilePath = os.path.expanduser(configFilePath)
     if not os.path.exists(configFilePath):
         raise RuntimeError("Could not find config file at '%s'" % configFilePath)
         
