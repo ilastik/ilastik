@@ -6,5 +6,6 @@ from opBlockwiseFilesetReader import *
 from opRESTfulBlockwiseFilesetReader import *
 from opInputDataReader import *
 from opNpyWriter import OpNpyWriter
+from opExport2DImage import OpExport2DImage
 from opExportSlot import OpExportSlot
 from opFormattedDataExport import OpFormattedDataExport
