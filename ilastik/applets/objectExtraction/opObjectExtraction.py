@@ -563,15 +563,24 @@ class OpObjectCenterImage(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
         result[:] = 0
+        ndim = 3
+        taggedShape = self.BinaryImage.meta.getTaggedShape()
+        if 'z' not in taggedShape or taggedShape['z']==1:
+            ndim = 2
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
+            #FIXME: this assumes that channel is the last axis
             for ch in range(roi.start[-1], roi.stop[-1]):
                 centers = obj_features[t][default_features_key]['RegionCenter']
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:
-                    x, y, z = center[0:3]
-                    c = (t, x, y, z, ch)
+                    if ndim==3:
+                        x, y, z = center[0:3]
+                        c = (t, x, y, z, ch)
+                    elif ndim==2:
+                        x, y = center[0:2]
+                        c = (t, x, y, 0, ch)
                     if self.__contained_in_subregion(roi, c):
                         result[self.__make_key(roi, c)] = 1
 
