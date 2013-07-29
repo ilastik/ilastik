@@ -145,7 +145,7 @@ class ObjectClassificationWorkflow(Workflow):
         
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
 
-        opBatchFillMissingSlices = OperatorWrapper(OpFillMissingSlicesNoCache, parent=self)
+        
 
         # If we are not in the binary workflow, connect the thresholding operator.
         # Parameter inputs are cloned from the interactive workflow,
@@ -185,13 +185,22 @@ class ObjectClassificationWorkflow(Workflow):
         opBatchClassify.HaloPadding3dDict.connect(opBlockwiseObjectClassification.HaloPadding3dDict)
 
         #  but image pathway is from the batch pipeline
-        opBatchFillMissingSlices.Input.connect(batchInputsRaw)
         op5Raw = OperatorWrapper(OpReorderAxes, parent=self)
-        op5Raw.Input.connect(opBatchFillMissingSlices.Output)
+        
+        if self.fillMissing != 'none':
+            opBatchFillMissingSlices = OperatorWrapper(OpFillMissingSlicesNoCache, parent=self)
+            opBatchFillMissingSlices.Input.connect(batchInputsRaw)
+            op5Raw.Input.connect(opBatchFillMissingSlices.Output)
+        else:
+            op5Raw.Input.connect(batchInputsRaw)
+        
+        
         op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
         if not self.binary:
-            opBatchThreshold.RawInput.connect(batchInputsRaw)
-            opBatchThreshold.InputImage.connect(batchInputsOther)
+            op5Pred = OperatorWrapper(OpReorderAxes, parent=self)
+            op5Pred.Input.connect(batchInputsOther)
+            opBatchThreshold.RawInput.connect(op5Raw.Output)
+            opBatchThreshold.InputImage.connect(op5Pred.Output)
             op5Binary.Input.connect(opBatchThreshold.Output)
         else:
             op5Binary.Input.connect(batchInputsOther)
