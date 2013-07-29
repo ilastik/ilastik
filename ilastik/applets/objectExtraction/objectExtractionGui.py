@@ -26,6 +26,8 @@ import numpy as np
 from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
 
+import sys
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -251,6 +253,8 @@ class ObjectExtractionGui(LayerViewerGui):
 
         self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
         
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
 
     def _selectFeaturesButtonPressed(self):
         featureDict = {}
@@ -275,7 +279,6 @@ class ObjectExtractionGui(LayerViewerGui):
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
 
-        #FIXME: we assume force5D here and always expect to have z-axis. Maybe this is wrong
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
         fakeimg = None
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
@@ -309,41 +312,14 @@ class ObjectExtractionGui(LayerViewerGui):
 
         maxt = mainOperator.LabelImage.meta.shape[0]
         
+        def _handle_one_finished(*args):
+            self.already_done = self.already_done+1
+            self.applet.progressSignal.emit(int(self.already_done*100./maxt))
+            if self.already_done == maxt:
+                _handle_all_finished(*args)
             
-        progress = QProgressDialog("Calculating features...", "Cancel", 0, maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-        
-        if maxt==1:
-            progress.setMaximum(0)
-            progress.setMinimum(0)
-            progress.setValue(0)
-
-        # We will use notify_finished() to update the progress bar.
-        # However, the callback will be called from a non-gui thread,
-        # which cannot access gui elements directly. Therefore we use
-        # this callback object to send signals back to this thread.
-
-        # FIXME: this could probably be done much more easily with threadRouted
-        class Callback(QObject):
-            ndone = 0
-            timestep_done = pyqtSignal(int)
-            all_finished = pyqtSignal()
-
-            def __call__(self, *args, **kwargs):
-                self.ndone += 1
-                self.timestep_done.emit(self.ndone)
-                if self.ndone == len(reqs):
-                    self.all_finished.emit()
-        callback = Callback()
-
-        def updateProgress(progress, n):
-            if progress.maximum()>n:
-                progress.setValue(n)
-        callback.timestep_done.connect(partial(updateProgress, progress))
-
-        def finished():
+        def _handle_all_finished(*args):
+            self.applet.progressSignal.emit(100)
             self.topLevelOperatorView._opRegFeats.fixed = True
             feats = self.topLevelOperatorView.RegionFeatures[0].wait()
             nfeatures = 0
@@ -356,26 +332,21 @@ class ObjectExtractionGui(LayerViewerGui):
             if interactive:
                 self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
             logger.info('Object Extraction: done.')
-            
-        callback.all_finished.connect(finished)
-
-        mainOperator._opRegFeats.fixed = False
+        
+        
+        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal.emit(-1)
         
         reqs = []
+        self.already_done = 0
         for t in range(maxt):
             req = mainOperator.RegionFeatures([t])
             req.submit()
             reqs.append(req)
 
         for req in reqs:
-            req.notify_finished(callback)
             req.notify_failed( self.handleFeatureComputationFailure )
-
-        # handle cancel button
-        def cancel():
-            for req in reqs:
-                req.cancel()
-        progress.canceled.connect(cancel)
+            req.notify_finished( _handle_one_finished )
 
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):
