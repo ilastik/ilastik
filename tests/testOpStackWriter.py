@@ -1,115 +1,89 @@
-from lazyflow.operators.ioOperators import OpStackWriter
-from lazyflow.operators.ioOperators import OpStackToH5Writer
+import os
+import glob
+import shutil
+import tempfile
+
 import numpy
 import vigra
 import h5py
-import os
-import sys
-import glob
-import lazyflow.graph
 
-#import logging
-#logger = logging.getLogger(__file__)
-#logger.addHandler(logging.StreamHandler(sys.stdout))
-#logger.setLevel(logging.DEBUG)
+import lazyflow.graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators.ioOperators import OpStackWriter, OpStackLoader
+
+import sys
+import logging
+logger = logging.getLogger('tests.testOpStackWriter')
 
 class TestOpStackWriter(object):
 
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
-        self.testFilePath = ''
-        self.testDataFileName = "stackWriter"
-        self.testFileType = "png"
-        self.testH5Group = "comparison.h5"
-        self.testH5Path = "/volume/data"
+        self._tmpdir = tempfile.mkdtemp()
+        self._name_pattern = 'test_stack_slice_{slice_index}.png'
+        self._stack_filepattern = os.path.join( self._tmpdir, self._name_pattern )
 
         # Generate some test data
         self.dataShape = (1, 10, 64, 128, 1)
+        self._axisorder = 'tzyxc'
         self.testData = vigra.VigraArray( self.dataShape,
-                                         axistags=vigra.defaultAxistags('txyzc'),
+                                         axistags=vigra.defaultAxistags(self._axisorder),
                                          order='C' ).astype(numpy.uint8)
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
-        # Clean up: Delete the test file.
-        try:
-            os.remove(self.testDataFileName)
-            os.remove(self.testH5Group)
-        except:
-            pass
-
+        # Clean up
+        shutil.rmtree(self._tmpdir)
+        
     def test_Writer(self):
-        # Create the h5 file
+        opData = OpArrayCache( graph=self.graph )
+        opData.blockShape.setValue( self.testData.shape )
+        opData.Input.setValue( self.testData )
         
         opWriter = OpStackWriter(graph=self.graph)
-        opWriter.Filename.setValue(self.testDataFileName)
-        opWriter.Image.setValue( self.testData )
+        opWriter.FilepathPattern.setValue( self._stack_filepattern )
+        opWriter.Input.connect( opData.Output )
+        #opWriter.Input.setValue( self.testData )
+        opWriter.SliceIndexOffset.setValue(22)
 
-        # Force the operator to execute by asking for the output (a bool)
-        success = opWriter.WriteImage.value
-        assert success
+        # Run the export
+        opWriter.run_export()
 
-        f = h5py.File(self.testH5Group, 'a')
-        opStackToH5Writer = OpStackToH5Writer(graph = self.graph)
-        opStackToH5Writer.GlobString.setValue(self.testDataFileName + "*" +
-                                              self.testFileType)
-        opStackToH5Writer.hdf5Group.setValue(f)
-        opStackToH5Writer.hdf5Path.setValue(self.testH5Path)
-        opStackToH5Writer.WriteImage[:].wait()
-        f.close()
-        try:
-            files = glob.glob(self.testDataFileName + "*" + self.testFileType)
-            for file in files:
-                os.remove(file)
-        except IOError as e:
-            print e 
-            pass
+        globstring = self._stack_filepattern.format( slice_index=999 )
+        globstring = globstring.replace('999', '*')
 
+        opReader = OpStackLoader( graph=self.graph )
+        opReader.globstring.setValue( globstring )
+
+        # (The OpStackLoader produces txyzc order.)
+        opReorderAxes = OpReorderAxes( graph=self.graph )
+        opReorderAxes.AxisOrder.setValue( self._axisorder )
+        opReorderAxes.Input.connect( opReader.stack )
         
-        f = h5py.File(self.testH5Group, 'r')
-        # Check the file.
-        dataset = f[self.testH5Path]
-        compdata = dataset.value.reshape(self.dataShape)
-        assert compdata.shape == self.dataShape
-        assert numpy.all( compdata[...] == self.testData.view(numpy.ndarray)[...] )
-        f.close()
-
-    def test_Writer2(self):
-        # Create the h5 file
+        readData = opReorderAxes.Output[:].wait()
+        logger.debug("Expected shape={}".format( self.testData.shape ) )
+        logger.debug("Read shape={}".format( readData.shape ) )
         
-        opWriter = OpStackWriter(graph=self.graph)
-        opWriter.Filename.setValue(self.testDataFileName)
-        opWriter.Image.setValue( self.testData )
-        opWriter.ImageAxesNames.setValue("yx")
+        assert opReorderAxes.Output.meta.shape == self.testData.shape, "Exported files were of the wrong shape or number."
+        assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), "Exported data was not correct"
 
-        # Force the operator to execute by asking for the output (a bool)
-        success = opWriter.WriteImage.value
-        assert success
-
-        f = h5py.File(self.testH5Group, 'a')
-        opStackToH5Writer = OpStackToH5Writer(graph = self.graph)
-        opStackToH5Writer.GlobString.setValue(self.testDataFileName + "*" +
-                                              self.testFileType)
-        opStackToH5Writer.hdf5Group.setValue(f)
-        opStackToH5Writer.hdf5Path.setValue(self.testH5Path)
-        opStackToH5Writer.WriteImage[:].wait()
-        f.close()
-        try:
-            files = glob.glob(self.testDataFileName + "*" + self.testFileType)
-            for file in files:
-                os.remove(file)
-        except IOError as e:
-            print e 
-            pass
-
-        
-        f = h5py.File(self.testH5Group, 'r')
-        # Check the file.
-        dataset = f[self.testH5Path]
-        compdata = dataset.value.transpose(1,0,2,3).reshape(self.dataShape)
-        assert compdata.shape == self.dataShape
-        assert numpy.all( compdata[...] == self.testData.view(numpy.ndarray)[...] )
-        f.close()
 if __name__ == "__main__":
+    # Run this file independently to see debug output.
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    ioOpLogger = logging.getLogger('lazyflow.operators.ioOperators')
+    ioOpLogger.addHandler( logging.StreamHandler(sys.stdout) )
+    ioOpLogger.setLevel(logging.DEBUG)
+
+    # BigRequestStreamer is used internally in OpStackWriter, so this logger may be useful...
+    #streamerLogger = logging.getLogger( 'lazyflow.utility.bigRequestStreamer' )
+    #streamerLogger.addHandler( logging.StreamHandler(sys.stdout) )
+    #streamerLogger.setLevel(logging.DEBUG)    
+
+    import sys
     import nose
-    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

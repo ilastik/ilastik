@@ -6,9 +6,12 @@ import logging
 import glob
 import copy
 from itertools import product, chain
-from collections import deque
+from collections import deque, OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
+from lazyflow.roi import roiFromShape
 
 #SciPy
 import vigra,numpy,h5py
@@ -141,133 +144,95 @@ class OpStackWriter(Operator):
     name = "Stack File Writer"
     category = "Output"
 
-    inputSlots = [InputSlot("Filepath", stype = "string", value = ''),
-                  InputSlot("Filename", stype = "string"),
-                  InputSlot("Filetype", stype = "string", value = 'png'),
-                  InputSlot("ImageAxesNames", stype = "list", value = 'xy'),
-                  InputSlot("Image")]
-    outputSlots = [OutputSlot("WriteImage"),
-                  OutputSlot("FilePattern", stype = "string")
-                  ]
+    Input = InputSlot() # The last two non-singleton axes (except 'c') are the axes of the slices.
+                        # Re-order the axes yourself if you want an alternative slicing direction
+
+    FilepathPattern = InputSlot() # A complete filepath including a {slice_index} member and a valid file extension.
+    SliceIndexOffset = InputSlot(value=0) # Added to the {slice_index} in the export filename.
 
     def __init__(self, *args, **kwargs):
         super(OpStackWriter, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
+    def run_export(self):
+        """
+        Request the volume in slices (running in parallel), and write each slice to a separate image.
+        """
+        assert len(self._volume_axes) == 3
+        # Sliceshape is the same as the input shape, except for the sliced dimension
+        tagged_sliceshape = self.Input.meta.getTaggedShape()
+        tagged_sliceshape[self._volume_axes[0]] = 1
+        slice_shape = (tagged_sliceshape.values())
+
+        # Use a request streamer to automatically request a constant batch of 4 active requests.
+        streamer = BigRequestStreamer( self.Input,
+                                       roiFromShape( self.Input.meta.shape ),
+                                       slice_shape,
+                                       batchSize=4 )
+
+        # Write the slices as they come in (possibly out-of-order, but probably not.        
+        streamer.resultSignal.subscribe( self._write_slice )
+        streamer.progressSignal.subscribe( self.progressSignal )
+
+        logger.debug("Starting Stack Export with slicing shape: {}".format( slice_shape ))
+        streamer.execute()
+
     def setupOutputs(self):
-        assert self.Image.meta.shape is not None
-        self.WriteImage.meta.shape = (1,)
-        self.WriteImage.meta.dtype = object
-        self.FilePattern.meta.shape = (1,)
-        self.FilePattern.meta.dtype = object
-        self.setupIndices()
+        # If stacking XY images in Z-steps,
+        #  then self._volume_axes = 'zxy'
+        self._volume_axes = self.get_nonsingleton_axes()
+        step_axis = self._volume_axes[0]
+        max_slice = self.SliceIndexOffset.value + self.Input.meta.getTaggedShape()[step_axis]
+        self._max_slice_digits = int(math.ceil(math.log10(max_slice+1)))
 
-    def setupIndices(self):
-        self.imageAxesFilteredNames = [axis for axis in
-                                       self.ImageAxesNames.value if axis in
-                                       self.Image.meta.getAxisKeys()]
-        self.imageAxes = [self.Image.meta.axistags.index(axis) for axis in
-                          self.imageAxesFilteredNames]
-        self.orderedImageAxes = sorted(self.imageAxes)
-        self.transposing = [self.imageAxes.index(x) for x in
-                            self.orderedImageAxes]
+        # Check for errors
+        assert len(self._volume_axes) == 3, \
+            "Exported stacks must have exactly 3 non-singleton dimensions (other than the channel dimension).  "\
+            "You stack dimensions are: {}".format( self.Input.meta.getTaggedShape() )
 
-        self.iterationIndices = [i for i in range(len(self.Image.meta.shape)) if i not in
-                            self.imageAxes]
+        # Test to make sure the filepath pattern includes slice index field        
+        filepath_pattern = self.FilepathPattern.value
+        assert '1234' in filepath_pattern.format( slice_index=1234 ), \
+            "Output filepath pattern must contain the '{slice_index}' field for formatting."
 
-        self.axisKeys = self.Image.meta.getAxisKeys()
+    # No output slots...
+    def execute(self, slot, subindex, roi, result): pass 
+    def propagateDirty(self, slot, subindex, roi): pass
+
+    def get_nonsingleton_axes(self):
+        # Find the non-singleton axes (not counting channel).
+        # The last 2 non-singleton axes will be the axes of the slices.
+        tagged_items = self.Input.meta.getTaggedShape().items()
+        filtered_items = filter( lambda (k, v): k != 'c' and v > 1, tagged_items )
+        filtered_axes = zip( *filtered_items )[0]
+        return filtered_axes
+
+    def _write_slice(self, roi, slice_data):
+        """
+        Write the data from the given roi into a slice image.
+        """
+        step_axis = self._volume_axes[0]
+        input_axes = self.Input.meta.getAxisKeys()
+        tagged_roi = OrderedDict( zip( input_axes, zip( *roi ) ) )
+        # e.g. tagged_roi={ 'x':(0,1), 'y':(3,4), 'z':(10,20) }
+        assert tagged_roi[step_axis][1] - tagged_roi[step_axis][0] == 1,\
+            "Expected roi to be a single slice."
+        slice_index = tagged_roi[step_axis][0] + self.SliceIndexOffset.value
+        filepattern = self.FilepathPattern.value
+
+        # If the user didn't provide custom formatting for the slice field,
+        #  auto-format to include zero-padding
+        if '{slice_index}' in filepattern:
+            filepattern = filepattern.format( slice_index='{' + 'slice_index:0{}'.format(self._max_slice_digits) + '}' )        
+        formatted_path = filepattern.format( slice_index=slice_index )
         
+        squeezed_data = slice_data.squeeze()
+        squeezed_data = vigra.taggedView(squeezed_data, vigra.defaultAxistags("".join(self._volume_axes[1:])))
+        assert len(squeezed_data.shape) == 2
 
-    def execute(self, slot, subindex, roi, result):
-        if slot == self.FilePattern:
-            filePattern = "%s-%s" % (self.Filename.value
-                                      ,''.join(self.imageAxesFilteredNames))
-            for iterationIndex in self.iterationIndices:
-                filePattern = filePattern + "-" + str(self.axisKeys[iterationIndex]) +  "_%04d"
-            filePattern = filePattern + "." + self.Filetype.value
-            result[0] = filePattern
-
-        if slot == self.WriteImage:
-            filepath = self.Filepath.value
-            filename = self.Filename.value
-            #s = ...
-            #image = self.Image[:].wait() #WIP, don't wait for everything at the same time
-            imageShape = self.Image.meta.shape 
-            slicings = self.computeRequestSlicings()
-            numSlicings = numpy.prod(self.iteratingShape, dtype = numpy.int)
-            axisKeys = self.Image.meta.getAxisKeys()
-            iterationAxisDescriptors = [axisKeys[i] for i in self.iterationIndices]
-            newImageShape = tuple([imageShape[key] for key in
-                                   self.orderedImageAxes])
-            #newImageAxisKeys = ''.join([axisKeys[i] for i in newImageIndices])
-            filepattern = self.FilePattern[:].wait()[0]
-            
-            self.progressSignal(0)
-            activeRequests = deque()
-            activeSlicings = deque()
-            # Start by activating 10 requests 
-            for i in range( min(10, numSlicings) ):
-                s = next(slicings)
-                activeSlicings.append(s)
-                self.logger.debug( "Creating request for slicing {}".format(s) )
-                activeRequests.append( self.Image[s] )
-            
-            counter = 0
-
-            while len(activeRequests) > 0:
-                # Wait for a request to finish
-                req = activeRequests.popleft()
-                slicing=activeSlicings.popleft()
-                data = req.wait()
-                iterationIndexDescriptors = tuple([slicing[i].start for i in
-                                                   self.iterationIndices])
-                patternEntries = iterationIndexDescriptors
-                
-                fullFilename = filepath + filepattern % (patternEntries)
-                dataview = data.view(numpy.ndarray) # Some bug (in numpy.ndarray.reshape?) seems to require this cast.
-                vigra.impex.writeImage(dataview.reshape(newImageShape).transpose(self.transposing), fullFilename)
-                
-                req.clean() # Discard the data in the request and allow its children to be garbage collected.
-
-                try:
-                    s = next(slicings)
-                    activeSlicings.append(s)
-                    activeRequests.append( self.Image[s] )
-                except StopIteration:
-                    pass
-
-                # Since requests finish in an arbitrary order (but we always block for them in the same order),
-                # this progress feedback will not be smooth.  It's the best we can do for now.
-                self.progressSignal( 100*counter/numSlicings )
-                self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
-                counter += 1
-
-
-            # We're finished.
-            result[0] = True
-
-            self.progressSignal(100)
-
-    def computeRequestSlicings(self):
-
-        imageShape = self.Image.meta.shape
-        self.iteratingShape = [imageShape[i] for i in self.iterationIndices]
-        indexList = [xrange(index) for index in self.iteratingShape]
-        fullSliceObject = [slice(None) for i in imageShape]
-        def fillSlicing(tup):
-            slicing = numpy.copy(fullSliceObject)
-            slicing[self.iterationIndices] = [slice(i, i + 1) for i in tup]
-            return tuple(slicing)
-
-        #for combo in product(*indexList):
-        #    slicing = numpy.copy(fullSliceObject)
-        #    slicing[self.iterationIndices] = [slice(i, i + 1) for i in combo]
-        #    slicings.append(tuple(slicing))
-        return (fillSlicing(tup) for tup in product(*indexList))
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.FilePattern.setDirty(slice(None))
-        self.WriteImage.setDirty(slice(None))
+        #logger.debug( "Writing slice image for roi: {}".format( roi ) )
+        logger.debug("Writing slice: {}".format(formatted_path) )
+        vigra.impex.writeImage( squeezed_data, formatted_path )
 
 class OpStackToH5Writer(Operator):
     name = "OpStackToH5Writer"
