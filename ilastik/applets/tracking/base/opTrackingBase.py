@@ -215,7 +215,14 @@ class OpTrackingBase(Operator):
             count = 0
             filtered_labels[t] = []
             for idx in range(rc.shape[0]):
-                x, y, z = rc[idx]
+                # for 2d data, set z-coordinate to 0:
+                if len(rc[idx]) == 2:
+                    x, y = rc[idx]
+                    z = 0
+                elif len(rc[idx]) == 3:                    
+                    x, y, z = rc[idx]
+                else:
+                    raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
                 size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
                     y < y_range[0] or y >= y_range[1] or
@@ -232,15 +239,17 @@ class OpTrackingBase(Operator):
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
                 
-                tr.add_feature_array("com", len(rc[idx]))                
-                for i, v in enumerate(rc[idx]):
-                    tr.set_feature_value('com', i, float(v))
+                # pgmlink expects always 3 coordinates, z=0 for 2d data
+                tr.add_feature_array("com", 3)
+                for i, v in enumerate([x,y,z]):
+                    tr.set_feature_value('com', i, float(v))                    
                 
                 if with_div:
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
                 
+                # FIXME: check whether it is 2d or 3d data!
                 if with_local_centers:
                     tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
                     tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))
