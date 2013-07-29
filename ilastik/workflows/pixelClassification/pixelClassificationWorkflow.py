@@ -90,7 +90,7 @@ class PixelClassificationWorkflow(Workflow):
 
     def _initBatchWorkflow(self):
         """
-        Connect the batch-mode top-level operators to the training workflow and to eachother.
+        Connect the batch-mode top-level operators to the training workflow and to each other.
         """
         # Access applet operators from the training workflow
         opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
