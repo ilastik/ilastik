@@ -17,6 +17,7 @@
         "lazyflow.operators.opArrayCache.OpArrayCache":                           { "level":"INFO" },
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
+        "lazyflow.operators.opCompressedCache.OpCompressedCache":                 { "level":"DEBUG" },
         
         "lazyflow.operators.ioOperators.opInputDataReader.OpInputDataReader":     { "level":"INFO" },
         "lazyflow.operators.ioOperators.opStreamingHdf5Reader.OpStreamingHdf5Reader":     { "level":"INFO" },

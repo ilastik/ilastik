@@ -1,5 +1,6 @@
 import numpy
 import vigra
+import time
 import warnings
 import itertools
 from collections import defaultdict
@@ -868,32 +869,52 @@ class OpRelabelSegmentation(Operator):
     ObjectMap = InputSlot(stype=Opaque, rtype=List)
     Features = InputSlot(rtype=List, stype=Opaque) #this is needed to limit dirty propagation to the object bbox
     Output = OutputSlot()
+    
+    loggingName = __name__ + ".OpRelabelSegmentation"
+    logger = logging.getLogger(loggingName)
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Image.meta)
         self.Output.meta.dtype = self.ObjectMap.meta.mapping_dtype
 
     def execute(self, slot, subindex, roi, result):
+        tStart = time.time()
+        
+        tIMG = time.time()
         img = self.Image(roi.start, roi.stop).wait()
+        tIMG = 1000.0*(time.time()-tIMG)
+        
         for t in range(roi.start[0], roi.stop[0]):
+            
+            tMAP = time.time()
             map_ = self.ObjectMap([t]).wait()
             tmap = map_[t]
             # FIXME: necessary because predictions are returned
             # enclosed in a list.
             if isinstance(tmap, list):
                 tmap = tmap[0]
-
             tmap = tmap.squeeze()
+            tMAP = 1000.0*(time.time()-tMAP)
 
-            warnings.warn("FIXME: This should be cached (and reset when the input becomes dirty)")
+            #FIXME: This should be cached (and reset when the input becomes dirty)")
+            
+            tMAX = time.time()
             idx = img.max()
             if len(tmap) <= idx:
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
                 tmap = newTmap
-
+            tMAX = 1000.0*(time.time()-tMAX)
+            
+            #do the work thing
+            tWORK = time.time()
             result[t-roi.start[0]] = tmap[img[t-roi.start[0]]]
-
+            tWORK = 1000.0*(time.time()-tWORK)
+            
+        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+            tStart = 1000.0*(time.time()-tStart)
+            self.logger.debug("took %f msec. (img: %f, wait ObjectMap: %f, do work: %f, max: %f)" % (tStart, tIMG, tMAP, tWORK, tMAX))
+        
         return result
 
     def propagateDirty(self, slot, subindex, roi):
