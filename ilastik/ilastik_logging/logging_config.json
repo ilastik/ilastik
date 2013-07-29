@@ -18,6 +18,11 @@
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
         
+        "lazyflow.operators.ioOperators.opInputDataReader.OpInputDataReader":     { "level":"INFO" },
+        "lazyflow.operators.ioOperators.opStreamingHdf5Reader.OpStreamingHdf5Reader":     { "level":"INFO" },
+        "lazyflow.operators.vigraOperators.OpImageReader":                        { "level":"INFO" },
+        "lazyflow.operators.vigraOperators.OpImageReader":                        { "level":"INFO" },
+        
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
         
