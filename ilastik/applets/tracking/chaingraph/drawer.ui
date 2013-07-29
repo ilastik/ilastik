@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>801</height>
+    <height>833</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -466,7 +466,7 @@
      <item>
       <widget class="QPushButton" name="exportButton">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>Export Results as h5 ...</string>
@@ -476,7 +476,7 @@
      <item>
       <widget class="QPushButton" name="exportTifButton">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>Export Results as tif ...</string>

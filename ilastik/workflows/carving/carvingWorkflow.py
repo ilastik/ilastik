@@ -1,14 +1,17 @@
-from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.valueProviders import OpAttributeSelector
+#lazyflow
+from lazyflow.graph import Graph
 from lazyflow.operators.adaptors import Op5ifyer
 
+#ilastik
 from ilastik.workflow import Workflow
-
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 
+#this workflow: carving
 from carvingApplet import CarvingApplet
 from preprocessingApplet import PreprocessingApplet
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingWorkflow(Workflow):
     
@@ -33,24 +36,29 @@ class CarvingWorkflow(Workflow):
         
         super(CarvingWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
         
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Input Data",
-                                                       "Input Data",
-                                                       supportIlastik05Import=True,
-                                                       batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet( self,
+                                                        "Input Data",
+                                                        "Input Data",
+                                                        supportIlastik05Import=True,
+                                                        batchDataGui=False,
+                                                        instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        
+        
+        
+        self.preprocessingApplet = PreprocessingApplet(workflow=self,
+                                           title = "Preprocessing",
+                                           projectFileGroupName="preprocessing")
         
         self.carvingApplet = CarvingApplet(workflow=self,
                                            projectFileGroupName="carving",
                                            hintOverlayFile=hintoverlayFile,
                                            pmapOverlayFile=pmapoverlayFile)
-        
-        self.preprocessingApplet = PreprocessingApplet(workflow=self,
-                                           title = "Preprocessing",
-                                           projectFileGroupName="preprocessing")
         
         #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
         
@@ -66,6 +74,8 @@ class CarvingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        
+        opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
         op5 = Op5ifyer(parent=self)
         op5.order.setValue("txyzc")
         op5.input.connect(opData.Image)
@@ -77,7 +87,7 @@ class CarvingWorkflow(Workflow):
         opCarvingLane.FilteredInputData.connect(opPreprocessing.FilteredImage)
         opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingLane.UncertaintyType.setValue("none")
-
+        
         # Special input-input connection: WriteSeeds metadata must mirror the input data
         opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
         

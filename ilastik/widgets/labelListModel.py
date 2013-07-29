@@ -79,27 +79,30 @@ class LabelListModel(ListModel):
 
         elif role == Qt.DecorationRole and index.column() == self.ColumnID.Color:
             row = index.row()
-            value = self._elements[row]
-            if value.brushColor == value.pmapColor():
-                pixmap = QPixmap(_NPIXELS, _NPIXELS)
-                pixmap.fill(value.brushColor)
-            else:
-                a = value.brushColor().rgba()
-                b = value.pmapColor().rgba()
-                img = QImage(_NPIXELS,_NPIXELS, QImage.Format_RGB32)
-                for i in range(_NPIXELS):
-                    for j in range(0, _NPIXELS - i):
-                        img.setPixel(i, j, a)
-                for i in range(_NPIXELS):
-                    for j in range(_NPIXELS - i, _NPIXELS):
-                        img.setPixel(i, j, b)
-                pixmap = QPixmap.fromImage(img)
-            icon = QIcon(pixmap)
-            return icon
-        
+            return self.createIconForLabel(row)
         
         else:
             return ListModel.data(self,index,role)
+    
+    
+    def createIconForLabel(self, row):
+        value = self._elements[row]
+        if value.brushColor == value.pmapColor():
+            pixmap = QPixmap(_NPIXELS, _NPIXELS)
+            pixmap.fill(value.brushColor)
+        else:
+            a = value.brushColor().rgba()
+            b = value.pmapColor().rgba()
+            img = QImage(_NPIXELS,_NPIXELS, QImage.Format_RGB32)
+            for i in range(_NPIXELS):
+                for j in range(0, _NPIXELS - i):
+                    img.setPixel(i, j, a)
+            for i in range(_NPIXELS):
+                for j in range(_NPIXELS - i, _NPIXELS):
+                    img.setPixel(i, j, b)
+            pixmap = QPixmap.fromImage(img)
+        icon = QIcon(pixmap)
+        return icon
     
     
     def flags(self, index):

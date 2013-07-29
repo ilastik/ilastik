@@ -10,6 +10,8 @@ from functools import partial
 
 logger = logging.getLogger(__name__)
 
+import ilastik
+
 class StdOutStreamHandler(logging.StreamHandler):
     """
     Stream Handler that defaults to sys.stdout instead of sys.stderr.
@@ -19,7 +21,17 @@ class StdOutStreamHandler(logging.StreamHandler):
 
 def updateFromConfigFile():
     # Import changes from a file    
-    configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
+   
+    configFilePath = None
+    try:
+        configFilePath = ilastik.config.cfg.get("ilastik", "logging_config")
+    except:
+        configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
+        
+    configFilePath = os.path.expanduser(configFilePath)
+    if not os.path.exists(configFilePath):
+        raise RuntimeError("Could not find config file at '%s'" % configFilePath)
+        
     f = open(configFilePath)
     try:
         updates = json.load(f)

@@ -30,7 +30,7 @@ class OpPixelClassification( Operator ):
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
-
+    
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
@@ -352,8 +352,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
+        self.CachedPredictionProbabilities.connect(self.prediction_cache_gui.Output )
 
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )

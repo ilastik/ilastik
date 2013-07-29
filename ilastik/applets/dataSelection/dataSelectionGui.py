@@ -100,7 +100,7 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal, title="Input Selection"):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, title="Input Selection"):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
 
@@ -114,7 +114,7 @@ class DataSelectionGui(QWidget):
             self.threadRouter = ThreadRouter(self)
 
             self._initCentralUic()
-            self._initAppletDrawerUic()
+            self._initAppletDrawerUic(instructionText)
             
             self._viewerControlWidgetStack = QStackedWidget(self)
 
@@ -141,12 +141,13 @@ class DataSelectionGui(QWidget):
         self._initViewerStack()
         self.splitter.setSizes( [150, 850] )
 
-    def _initAppletDrawerUic(self):
+    def _initAppletDrawerUic(self, instructionText):
         """
         Load the ui file for the applet drawer, which we own.
         """
         localDir = os.path.split(__file__)[0]+'/'
         self._drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
+        self._drawer.instructionLabel.setText( instructionText )
 
     def _initTableViews(self):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )

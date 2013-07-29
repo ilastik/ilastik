@@ -59,7 +59,9 @@ class ListModel(QAbstractTableModel):
 
         def onSelectionChanged(selected, deselected):
             if selected:
-                self.elementSelected.emit(selected[0].indexes()[0].row())
+                ind = selected[0].indexes()
+                if len(ind)>0:
+                    self.elementSelected.emit(ind[0].row())
 
         self._selectionModel.selectionChanged.connect(onSelectionChanged)
 

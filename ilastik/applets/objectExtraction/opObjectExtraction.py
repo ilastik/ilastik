@@ -34,11 +34,12 @@ import collections
 
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.
-default_features = ['Coord<Minimum>',
-                    'Coord<Maximum>',
-                    'RegionCenter',
-                    'Count',
-                ]
+#default_features = ['Coord<Minimum>',
+#                    'Coord<Maximum>',
+#                    'RegionCenter',
+#                    'Count',
+#                ]
+default_features = {'Coord<Minimum>':{}, 'Coord<Maximum>':{}, 'RegionCenter': {}, 'Count':{}}
 
 # to distinguish them, they go in their own category with this name
 default_features_key = 'Default features'
@@ -214,7 +215,7 @@ class OpRegionFeatures3d(Operator):
             raise Exception("both images must be 4D. raw image shape: {}"
                             " label image shape: {}".format(image.shape, labels.shape))
 
-        # FIXME: maybe simplify?
+        # FIXME: maybe simplify? taggedShape should be easier here
         class Axes(object):
             x = image.axistags.index('x')
             y = image.axistags.index('y')
@@ -233,46 +234,83 @@ class OpRegionFeatures3d(Operator):
         
         logger.debug("Computing default features")
 
-        #FIXME: clamp the global vigra features here
-        extrafeats = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
-                                                        default_features,
-                                                        ignoreLabel=0)
-        logger.debug("computed default features")
-
-        extrafeats = dict((k.replace(' ', ''), v)
-                          for k, v in extrafeats.iteritems())
-
-        mincoords = extrafeats["Coord<Minimum>"]
-        maxcoords = extrafeats["Coord<Maximum>"]
-        nobj = mincoords.shape[0]
-
         feature_names = self.Features([]).wait()
 
         # do global features
-        global_features = {}
-        for plugin_name, feature_list in feature_names.iteritems():
-            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            print 'FIXME: OpObjectExtraction:_extract reshapes image'
-            global_features[plugin_name] = plugin.plugin_object.compute_global(np.reshape(image, labels.shape), labels, feature_list, axes)
-
         logger.debug("computing global features")
+        extra_features_computed = False
+        global_features = {}
+        selected_vigra_features = []
+        for plugin_name, feature_dict in feature_names.iteritems():
+            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            if plugin_name == "Standard Object Features":
+                #expand the feature list by our default features
+                logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_dict))
+                selected_vigra_features = feature_dict.keys()
+                feature_dict.update(default_features)
+                extra_features_computed = True
+            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
+        
+        extrafeats = {}
+        if extra_features_computed:
+            for feat_key in default_features:
+                feature = None
+                if feat_key in selected_vigra_features:
+                    #we wanted that feature independently
+                    feature = global_features["Standard Object Features"][feat_key]
+                else:
+                    feature = global_features["Standard Object Features"].pop(feat_key)
+                    feature_names["Standard Object Features"].pop(feat_key)
+                extrafeats[feat_key] = feature
+        else:
+            logger.debug("default features not computed, computing separately")
+            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze(), labels.squeeze(),
+                                                        default_features.keys(),
+                                                        ignoreLabel=0)
+            #remove the 0th object, we'll add it again later
+            for k, v in extrafeats_acc.iteritems():
+                extrafeats[k]=v[1:]
+                if len(v.shape)==1:
+                    extrafeats[k]=extrafeats[k].reshape(extrafeats[k].shape+(1,))
+        
+        extrafeats = dict((k.replace(' ', ''), v)
+                          for k, v in extrafeats.iteritems())
+        
+        mincoords = extrafeats["Coord<Minimum>"]
+        maxcoords = extrafeats["Coord<Maximum>"]
+        nobj = mincoords.shape[0]
+        
         # local features: loop over all objects
         def dictextend(a, b):
             for key in b:
                 a[key].append(b[key])
             return a
+        
 
         local_features = defaultdict(lambda: defaultdict(list))
         margin = max_margin(feature_names)
+        has_local_features = {}
+        for plugin_name, feature_dict in feature_names.iteritems():
+            has_local_features[plugin_name] = False
+            for features in feature_dict.itervalues():
+                if 'margin' in features:
+                    has_local_features[plugin_name] = True
+                    break
+            
+                            
         if np.any(margin) > 0:
-            for i in range(1, nobj):
+            #starting from 0, we stripped 0th background object in global computation
+            for i in range(0, nobj):
                 logger.debug("processing object {}".format(i))
                 extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
                 rawbbox = self.compute_rawbbox(image, extent, axes)
-                binary_bbox = np.where(labels[tuple(extent)] == i, 1, 0).astype(np.bool)
-                for plugin_name, feature_list in feature_names.iteritems():
+                #it's i+1 here, because the background has label 0
+                binary_bbox = np.where(labels[tuple(extent)] == i+1, 1, 0).astype(np.bool)
+                for plugin_name, feature_dict in feature_names.iteritems():
+                    if not has_local_features[plugin_name]:
+                        continue
                     plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                    feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_list, axes)
+                    feats = plugin.plugin_object.compute_local(rawbbox, binary_bbox, feature_dict, axes)
                     local_features[plugin_name] = dictextend(local_features[plugin_name], feats)
 
         logger.debug("computing done, removing failures")
@@ -294,12 +332,13 @@ class OpRegionFeatures3d(Operator):
             d1 = global_features.get(name, {})
             d2 = local_features.get(name, {})
             all_features[name] = dict(d1.items() + d2.items())
+        all_features[default_features_key]=extrafeats
 
         # reshape all features
         for pfeats in all_features.itervalues():
             for key, value in pfeats.iteritems():
-                if value.shape[0] != nobj - 1:
-                    raise Exception('feature {} does not have enough rows')
+                if value.shape[0] != nobj:
+                    raise Exception('feature {} does not have enough rows'.format(key))
 
                 # because object classification operator expects nobj to
                 # include background. we should change that assumption.
@@ -311,14 +350,11 @@ class OpRegionFeatures3d(Operator):
                     value = value.astype(np.float32) #turn Nones into numpy.NaNs
                     assert value.dtype == np.float32
                 
-                assert value.shape[0] == nobj
+                assert value.shape[0] == nobj+1
                 assert value.ndim == 2
 
                 pfeats[key] = value
         logger.debug("merged, returning")
-        # add features needed by downstream applets. these should be
-        # removed before classification.
-        all_features[default_features_key] = extrafeats
         return all_features
 
     def propagateDirty(self, slot, subindex, roi):
@@ -530,15 +566,24 @@ class OpObjectCenterImage(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
         result[:] = 0
+        ndim = 3
+        taggedShape = self.BinaryImage.meta.getTaggedShape()
+        if 'z' not in taggedShape or taggedShape['z']==1:
+            ndim = 2
         for t in range(roi.start[0], roi.stop[0]):
             obj_features = self.RegionCenters([t]).wait()
+            #FIXME: this assumes that channel is the last axis
             for ch in range(roi.start[-1], roi.stop[-1]):
                 centers = obj_features[t][default_features_key]['RegionCenter']
                 if centers.size:
                     centers = centers[1:, :]
                 for center in centers:
-                    x, y, z = center[0:3]
-                    c = (t, x, y, z, ch)
+                    if ndim==3:
+                        x, y, z = center[0:3]
+                        c = (t, x, y, z, ch)
+                    elif ndim==2:
+                        x, y = center[0:2]
+                        c = (t, x, y, 0, ch)
                     if self.__contained_in_subregion(roi, c):
                         result[self.__make_key(roi, c)] = 1
 
@@ -564,7 +609,7 @@ class OpObjectExtraction(Operator):
     # which features to compute.
     # nested dictionary with format:
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
-    # for example {"Vigra Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
+    # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
     Features = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
@@ -642,11 +687,18 @@ class OpObjectExtraction(Operator):
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready() and self.BinaryImage.ready():
-            if self.RawImage.meta.shape != self.BinaryImage.meta.shape:
-                raise DatasetConstraintError( 
-                    "Object Extraction",
-                    "Raw Image shape {} does not match Binary Image shape {}.".format(
-                        self.RawImage.meta.shape, self.BinaryImage.meta.shape ))
+            rawTaggedShape = self.RawImage.meta.getTaggedShape()
+            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            rawTaggedShape['c'] = None
+            binTaggedShape['c'] = None
+            if dict(rawTaggedShape) != dict(binTaggedShape):
+                logger.info("Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ))
+                
+                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
+                raise DatasetConstraintError( "Object Extraction", msg )
+            
 
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()

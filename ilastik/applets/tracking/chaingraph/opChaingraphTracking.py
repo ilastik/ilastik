@@ -3,7 +3,7 @@ import math
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 
 class OpChaingraphTracking(OpTrackingBase): 
-    
+        
     def track( self,
             time_range,
             x_range,
@@ -75,11 +75,14 @@ class OpChaingraphTracking(OpTrackingBase):
         tracker.set_with_divisions(with_div)        
         if cplex_timeout:
             tracker.set_cplex_timeout(cplex_timeout)
-                
+            
         try:
             self.events = tracker(ts)
         except Exception as e:
-            raise Exception, 'Tracking terminated unsucessfully: ' + str(e)
+            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+        
+        if len(self.events) == 0:
+            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
         self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True)
-        
+    

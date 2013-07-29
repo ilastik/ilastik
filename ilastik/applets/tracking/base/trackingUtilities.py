@@ -70,53 +70,51 @@ def write_events(events, directory, t, labelImage, mergers=None):
         mult_mov = np.asarray(mult_mov)
     
         
-        # write only if file exists
-        with LineageH5(fn, 'a') as f_curr:
-            # delete old label image
-            if "segmentation" in f_curr.keys():
-                del f_curr["segmentation"]
-            
-            seg = f_curr.create_group("segmentation")            
-            # write label image
-            seg.create_dataset("labels", data = labelImage, dtype=np.uint32, compression=1)
-            
-            # delete old tracking
-            if "tracking" in f_curr.keys():
-                del f_curr["tracking"]
-
-            tg = f_curr.create_group("tracking")            
-            
-            # write associations
-            if len(app):
-                ds = tg.create_dataset("Appearances", data=app[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "cell label appeared in current file"    
-                ds = tg.create_dataset("Appearances-Energy", data=app[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"    
-            if len(dis):
-                ds = tg.create_dataset("Disappearances", data=dis[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "cell label disappeared in current file"
-                ds = tg.create_dataset("Disappearances-Energy", data=dis[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"    
-            if len(mov):
-                ds = tg.create_dataset("Moves", data=mov[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "from (previous file), to (current file)"    
-                ds = tg.create_dataset("Moves-Energy", data=mov[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"                
-            if len(div):
-                ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
-                ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
-            if len(merger):
-                ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "detection (current file), number of objects"    
-                ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
-            if len(mult_mov):
-                ds = tg.create_dataset("MultiFrameMove", data=mult_mov[:, :-1], dtype=np.uint32, compression=1)
-                ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
-                ds = tg.create_dataset("MultiFrameMove-Energy", data=mult_mov[:, -1], dtype=np.double, compression=1)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
+        try:
+            with LineageH5(fn, 'w-') as f_curr:
+                # delete old label image
+                if "segmentation" in f_curr.keys():
+                    del f_curr["segmentation"]
+                
+                seg = f_curr.create_group("segmentation")            
+                # write label image
+                seg.create_dataset("labels", data = labelImage, dtype=np.uint32, compression=1)
+                
+                # delete old tracking
+                if "tracking" in f_curr.keys():
+                    del f_curr["tracking"]
+    
+                tg = f_curr.create_group("tracking")            
+                
+                # write associations
+                if len(app):
+                    ds = tg.create_dataset("Appearances", data=app[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "cell label appeared in current file"    
+                    ds = tg.create_dataset("Appearances-Energy", data=app[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"    
+                if len(dis):
+                    ds = tg.create_dataset("Disappearances", data=dis[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "cell label disappeared in current file"
+                    ds = tg.create_dataset("Disappearances-Energy", data=dis[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"    
+                if len(mov):
+                    ds = tg.create_dataset("Moves", data=mov[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "from (previous file), to (current file)"    
+                    ds = tg.create_dataset("Moves-Energy", data=mov[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"                
+                if len(div):
+                    ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                    ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(merger):
+                    ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "descendant (current file), number of objects"    
+                    ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+        except IOError:                    
+            raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
+                
     
         print "-> results successfully written"
 

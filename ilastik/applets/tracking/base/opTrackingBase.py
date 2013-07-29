@@ -7,6 +7,7 @@ import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectExtraction import config
+from ilastik.applets.base.applet import DatasetConstraintError
 
 
 class OpTrackingBase(Operator):
@@ -24,10 +25,36 @@ class OpTrackingBase(Operator):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []  
         self.mergers = []
+        
+        # As soon as input data is available, check its constraints
+        self.RawImage.notifyReady( self._checkConstraints )
+        self.LabelImage.notifyReady( self._checkConstraints )
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)        
     
+    def _checkConstraints(self, *args):
+        if not self.RawImage.ready() or not self.LabelImage.ready():
+            return
+        
+        rawTaggedShape = self.RawImage.meta.getTaggedShape()
+        if rawTaggedShape['t'] < 2:
+            raise DatasetConstraintError(
+                 "Tracking",
+                 "For tracking, the dataset must have a time axis with at least 2 images.   "\
+                 "Please load time-series data instead. See user documentation for details." )        
+        
+        segmentationTaggedShape = self.LabelImage.meta.getTaggedShape()        
+        rawTaggedShape['c'] = None
+        segmentationTaggedShape['c'] = None
+        if dict(rawTaggedShape) != dict(segmentationTaggedShape):
+            raise DatasetConstraintError("Tracking",
+                 "For tracking, the raw data and the prediction maps must contain the same "\
+                 "number of timesteps and the same shape.   "\
+                 "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "\
+                 "shape of (t, x, y, z, c) = {}"\
+                 .format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ) )
+            
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
             result = self.LabelImage.get(roi).wait()
@@ -226,8 +253,14 @@ class OpTrackingBase(Operator):
             count = 0
             filtered_labels[t] = []
             for idx in range(rc.shape[0]):
-
-                x, y, z = rc[idx]
+                # for 2d data, set z-coordinate to 0:
+                if len(rc[idx]) == 2:
+                    x, y = rc[idx]
+                    z = 0
+                elif len(rc[idx]) == 3:                    
+                    x, y, z = rc[idx]
+                else:
+                    raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
                 size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
                     y < y_range[0] or y >= y_range[1] or
@@ -244,14 +277,17 @@ class OpTrackingBase(Operator):
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
 
-                tr.add_feature_array("com", len(rc[idx]))                
-                for i, v in enumerate(rc[idx]):
-                    tr.set_feature_value('com', i, float(v))
-
+                # pgmlink expects always 3 coordinates, z=0 for 2d data
+                tr.add_feature_array("com", 3)
+                for i, v in enumerate([x,y,z]):
+                    tr.set_feature_value('com', i, float(v))                    
+                
                 if with_opt_correction:
-                    tr.add_feature_array("com_corrected", len(rc_corr[idx]))
+                    tr.add_feature_array("com_corrected", 3)
                     for i, v in enumerate(rc_corr[idx]):
                         tr.set_feature_value("com_corrected", i, float(v))
+                    if len(rc_corr[idx]) == 2:
+                        tr.set_feature_value("com_corrected", 2, 0.)
 
                 if with_div:
                     tr.add_feature_array("divProb", 1)
@@ -268,6 +304,8 @@ class OpTrackingBase(Operator):
                             val = 0.95
                         tr.set_feature_value("detProb", i, float(v))
                         
+                
+                # FIXME: check whether it is 2d or 3d data!
                 if with_local_centers:
                     tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
                     tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))

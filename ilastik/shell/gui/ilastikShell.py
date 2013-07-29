@@ -19,22 +19,24 @@ from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
                         QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
-                        QVBoxLayout, QHBoxLayout
+                        QVBoxLayout, QHBoxLayout, QShortcut
 
 # lazyflow
 from lazyflow.utility import Tracer
+from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
@@ -68,7 +70,32 @@ class ShellActions(object):
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
-        
+ 
+#===----------------------------------------------------------------------------------------------------------------===
+#=== MemoryWidget                                                                                                   ===
+#===----------------------------------------------------------------------------------------------------------------===
+
+class MemoryWidget(QWidget):
+    """Displays the current memory consumption and a button to open
+       a detailed memory consumption / usage dialog.
+    """
+    def __init__(self, parent=None):
+        super(MemoryWidget, self).__init__(parent)
+        self.label = QLabel()
+        h = QHBoxLayout() 
+        h.setContentsMargins(0,0,0,0)
+        w = QWidget()
+        h.addWidget(self.label)
+        self.showDialogButton = QToolButton()
+        self.showDialogButton.setText("...")
+        h.addWidget(self.showDialogButton)
+        self.cleanUp()
+        self.setLayout(h)
+    def cleanUp(self):
+        self.setMemoryBytes(0)
+    def setMemoryBytes(self, bytes):
+        self.label.setText("cached: %1.1f MB" % (bytes/(1024.0**2.0)))
+ 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -83,46 +110,50 @@ class ProgressDisplayManager(QObject):
     #  requiring the applet interface to be dependent on qt.
     dispatchSignal = pyqtSignal(int, int, "bool")
     
-    def __init__(self, statusBar, workflow):
+    def __init__(self, statusBar):
         """
         """
         super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
         self.statusBar = statusBar
         self.appletPercentages = {} # applet_index : percent_progress
+        self.workflow = None
         
         self.progressBar = QProgressBar()
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
-        
-        l = QLabel("cached: 0.0 MB")
-        h = QHBoxLayout() 
-        h.setContentsMargins(0,0,0,0)
-        w = QWidget()
-        h.addWidget(l)
-        btn = QToolButton()
-        btn.setText("...")
-        btn.clicked.connect(statusBar.parent().showMemUsageDialog)
-        h.addWidget(btn)
-        w.setLayout(h)
-        self.statusBar.addPermanentWidget(w)
+       
+        self.memoryWidget = MemoryWidget()
+        self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
+        self.statusBar.addPermanentWidget(self.memoryWidget)
         
         mgr = ArrayCacheMemoryMgr.instance
         def printIt(msg):
-            l.setText("cached: %1.1f MB" % (msg/1024.0**2.0,)) 
+            self.memoryWidget.setMemoryBytes(msg) 
         mgr.totalCacheMemory.subscribe(printIt)
         
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
 
         # Add all applets from the workflow
+    
+    def initializeForWorkflow(self, workflow):
+        """When a workflow is available, call this method to connect the workflows' progress signals
+        """
         for index, app in enumerate(workflow.applets):
             self._addApplet(index, app)
     
     def cleanUp(self):
         # Disconnect everything
-        self.dispatchSignal.disconnect()
-        if self.progressBar is not None:
-            self.statusBar.removeWidget( self.progressBar )
+        if self.workflow is not None:
+            for index, app in enumerate(self.workflow.applets):
+                self._removeApplet(index, app)
+        self.memoryWidget.cleanUp()
+        self.progressBar.hide()
+    
+    def _removeApplet(self, index, app):
+        app.progressSignal.disconnectAll()
+        for serializer in app.dataSerializers:
+            serializer.progressSignal.disconnectAll()
     
     def _addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
@@ -149,26 +180,26 @@ class ProgressDisplayManager(QObject):
                 if index in self.appletPercentages:
                     oldPercentage = self.appletPercentages[index]
                     self.appletPercentages[index] = max(percentage, oldPercentage)
-                # First percentage we get MUST be zero.
+                # First percentage we get MUST be 0 or -1.
                 # Other notifications are ignored.
-                if index in self.appletPercentages or percentage == 0:
+                if index in self.appletPercentages or percentage == 0 or percentage == -1:
                     self.appletPercentages[index] = percentage
     
             numActive = len(self.appletPercentages)
             if numActive > 0:
                 totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
             
+            # If any applet gave -1, put progress bar in "busy indicator" mode
+            if (TinyVector(self.appletPercentages.values()) == -1).any():
+                self.progressBar.setMaximum(0)
+            else:
+                self.progressBar.setMaximum(100)
+        
             if numActive == 0 or totalPercentage == 100:
-                if self.progressBar is not None:
-                    #self.statusBar.removeWidget(self.progressBar)
-                    #self.progressBar = None
-                    self.progressBar.setHidden(True)
-                    self.appletPercentages.clear()
+                self.progressBar.setHidden(True)
+                self.appletPercentages.clear()
             else:
                 self.progressBar.setHidden(False)
-                if self.progressBar is None:
-                    self.progressBar = QProgressBar()
-                    self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -191,6 +222,8 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
         
         self._loaduifile()
+        
+        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
         
         #self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         #self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
@@ -250,6 +283,30 @@ class IlastikShell( QMainWindow ):
         windowSize = PreferencesManager().get("shell","startscreenSize")
         if windowSize is not None:
             self.resize(*windowSize)
+            
+        self._initShortcuts()
+        
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Ilastik Shell"
+
+        nextImage = QShortcut( QKeySequence("PgDown"), self, member=self._nextImage)
+        mgr.register( shortcutGroupName,
+                      "Switch to next image",
+                      nextImage)        
+
+        prevImage = QShortcut( QKeySequence("PgUp"), self, member=self._prevImage)
+        mgr.register( shortcutGroupName,
+                      "Switch to previous image",
+                      prevImage)   
+    
+    def _nextImage(self):
+        newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
+        self.imageSelectionCombo.setCurrentIndex(newIndex)
+    
+    def _prevImage(self):
+        newIndex = max(0,self.imageSelectionCombo.currentIndex()-1)
+        self.imageSelectionCombo.setCurrentIndex(newIndex)
         
     @property
     def _applets(self):
@@ -659,16 +716,10 @@ class IlastikShell( QMainWindow ):
         if applet_index < len(self._applets) and applet_index < self.appletBar.count():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
-            if updatedDrawerWidget.layout() is not None:
-                sizeHint = updatedDrawerWidget.layout().geometry().size()
-            else:
-                sizeHint = QSize(0,0)
-            
             self.appletBar.setItemText( applet_index , updatedDrawerTitle ) 
             appletDrawerStackedWidget = self.appletBar.widget(applet_index)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
-                #updatedDrawerWidget.setFixedSize( sizeHint )
                 # For test recording purposes, every gui we add MUST have a unique name
                 appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
@@ -722,7 +773,8 @@ class IlastikShell( QMainWindow ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        #assert issubclass( type(app.getMultiLaneGui()), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        assert isinstance( app.getMultiLaneGui(), AppletGuiInterface ), \
+            "Applet GUIs must conform to the Applet GUI interface."
                 
         # Add placeholder widget, since the applet's central widget may not exist yet.
         self.appletStack.addWidget( QWidget(parent=self) )
@@ -1035,8 +1087,9 @@ class IlastikShell( QMainWindow ):
             self.mainStackedWidget.setCurrentIndex(1)
             # By default, make the splitter control expose a reasonable width of the applet bar
             self.mainSplitter.setSizes([300,1])
-            
-            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)
+           
+            self.progressDisplayManager.cleanUp()
+            self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
                 
             self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
             self.updateShellProjectDisplay()
@@ -1235,22 +1288,17 @@ class IlastikShell( QMainWindow ):
         for applet_index, applet in enumerate(self._applets):
             enabled = self._disableCounts[applet_index] == 0
 
-            # Apply to the applet central widget
-            if applet.getMultiLaneGui().centralWidget() is not None:
-                applet.getMultiLaneGui().centralWidget().setEnabled( enabled and self.enableWorkflow )
-            
-            # Apply to the applet bar drawer
-            appletGui = applet.getMultiLaneGui().appletDrawer()
-            appletGui.setEnabled( enabled and self.enableWorkflow )
+            applet.getMultiLaneGui().setEnabled( enabled and self.enableWorkflow )
         
             # Apply to the applet bar drawer headings, too
-            
             if applet_index < self.appletBar.count():
-                self.appletBar.setItemEnabled(applet_index,(enabled and self.enableWorkflow))
-                '''drawerTitleItem = self.appletBar.widget(applet_index)
-                if enabled and self.enableWorkflow:
-                    drawerTitleItem.setFlags( Qt.ItemIsEnabled )
-                else:
-                    drawerTitleItem.setFlags( Qt.NoItemFlags )'''
-
+                enable_applet = (enabled and self.enableWorkflow)
+                
+                # Unfortunately, Qt will auto-select a different drawer if 
+                #  we try to disable the currently selected drawer.
+                # That can cause lots of problems for us (e.g. it trigger's the
+                #  creation of applet guis that haven't been created yet.)
+                # Therefore, only disable the title button of a drawer if it isn't already selected.
+                if enable_applet or self.appletBar.currentIndex() != applet_index:
+                    self.appletBar.setItemEnabled(applet_index, enable_applet)
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"

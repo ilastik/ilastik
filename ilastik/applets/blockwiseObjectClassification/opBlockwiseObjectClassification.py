@@ -17,6 +17,7 @@ from lazyflow.rtype import List
 from ilastik.utility import bind
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation, OpMaxLabel
+from ilastik.applets.base.applet import DatasetConstraintError
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -194,7 +195,15 @@ class OpBlockwiseObjectClassification( Operator ):
         
     def setupOutputs(self):
         # Check for preconditions.
-        assert self.RawImage.meta.shape == self.BinaryImage.meta.shape, "Raw and binary images must have the same shape!"
+        if self.RawImage.ready() and self.BinaryImage.ready():
+            rawTaggedShape = self.RawImage.meta.getTaggedShape()
+            binTaggedShape = self.BinaryImage.meta.getTaggedShape()
+            rawTaggedShape['c'] = None
+            binTaggedShape['c'] = None
+            if dict(rawTaggedShape) != dict(binTaggedShape):
+                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
+                raise DatasetConstraintError( "Layer Viewer", msg )
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
@@ -227,7 +236,7 @@ class OpBlockwiseObjectClassification( Operator ):
         for block_start in block_starts:
             self._ensurePipelineExists(block_start)
 
-        # Retrieve result from each block, and write into the approprate region of the destination
+        # Retrieve result from each block, and write into the appropriate region of the destination
         # TODO: Parallelize this loop
         for block_start in block_starts:
             opBlockPipeline = self._blockPipelines[block_start]
@@ -311,11 +320,14 @@ class OpBlockwiseObjectClassification( Operator ):
     
     def _getFullShape(self, spatialShapeDict):
         axiskeys = self.RawImage.meta.getAxisKeys()
-        # xyz block shape comes from input slot, but other axes are 1
-        shape = [1] * len(axiskeys)
+        # xyz block shape comes from input slot, but other axes are as in raw data
+        shape = [0] * len(axiskeys)
         for i, k in enumerate(axiskeys):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
+            else:
+                shape[i] = self.RawImage.meta.shape[i]
+            
         return shape
 
     

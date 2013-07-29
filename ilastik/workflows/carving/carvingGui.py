@@ -2,19 +2,17 @@
 import os
 from functools import partial
 import numpy
-import random
 
 #PyQt
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
-from PyQt4.QtGui import QInputDialog, QMessageBox
+from PyQt4.QtGui import QMessageBox
 from PyQt4 import uic
 
 #volumina
-from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
+from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
-from volumina import colortables
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -31,14 +29,21 @@ class CarvingGui(LabelingGui):
     def __init__(self, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
 
-        labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = topLevelOperatorView.WriteSeeds
-        labelingSlots.labelOutput = topLevelOperatorView.opLabelArray.Output
-        labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
-        labelingSlots.labelDelete = topLevelOperatorView.opLabelArray.DeleteLabel
-        labelingSlots.maxLabelValue = topLevelOperatorView.opLabelArray.MaxLabelValue
-        labelingSlots.labelsAllowed = topLevelOperatorView.LabelsAllowed
+        #members
+        self._doneSegmentationLayer = None
+        self._showSegmentationIn3D = False
+        self._showUncertaintyLayer = False
+        #end: members
 
+        labelingSlots = LabelingGui.LabelingSlots()
+        labelingSlots.labelInput       = topLevelOperatorView.WriteSeeds
+        labelingSlots.labelOutput      = topLevelOperatorView.opLabelArray.Output
+        labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
+        labelingSlots.LabelNames       = topLevelOperatorView.LabelNames
+        labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
+        labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
+        labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
+        
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
         if drawerUiPath is None:
@@ -48,6 +53,8 @@ class CarvingGui(LabelingGui):
 
         rawInputSlot = topLevelOperatorView.RawData        
         super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
+        
+        self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
         self.minLabelNumber = 2
@@ -60,11 +67,6 @@ class CarvingGui(LabelingGui):
                                     ambiguousMember=self.labelingDrawerUi.segment.click)
         mgr.register("Carving", "Run interactive segmentation", segmentShortcut, self.labelingDrawerUi.segment)
         
-
-        self._doneSegmentationLayer = None
-        self._showSegmentationIn3D = False
-        
-        #volume rendering
         try:
             self.render = True
             self._shownObjects3D = {}
@@ -74,44 +76,63 @@ class CarvingGui(LabelingGui):
         except:
             self.render = False
 
-        
+        # Segmentation is toggled on by default in _after_init, below.
+        # (We can't enable it until the layers are all present.)
+        self._showSegmentationIn3D = False
+        self._segmentation_3d_label = None
+                
         self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
         self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._update_rendering ) )
+        self.topLevelOperatorView.HasSegmentation.notifyValueChanged( bind( self._updateGui ) )
+
+        ## uncertainty
+
+        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
 
         def onUncertaintyFGButton():
             print "uncertFG button clicked"
             pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
             self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
         self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
-        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
 
         def onUncertaintyBGButton():
             print "uncertBG button clicked"
             pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
             self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
         self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
-        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
 
+        def onUncertaintyCombo(value):
+            if value == 0:
+                value = "none"
+                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+                self._showUncertaintyLayer = False
+            else:
+                if value == 1:
+                    value = "localMargin"
+                elif value == 2:
+                    value = "exchangeCount"
+                elif value == 3:
+                    value = "gabow"
+                else:
+                    raise RuntimeError("unhandled case '%r'" % value)
+                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
+                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+                self._showUncertaintyLayer = True
+                print "uncertainty changed to %r" % value
+            self.topLevelOperatorView.UncertaintyType.setValue(value)
+            self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
+        self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
+        ## background priority
+        
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
             self.topLevelOperatorView.BackgroundPriority.setValue(value)
         self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
-
-        def onuncertaintyCombo(value):
-            if value == 0:
-                value = "none"
-            if value == 1:
-                value = "localMargin"
-            if value == 2:
-                value = "exchangeCount"
-            if value == 3:
-                value = "gabow"
-            print "uncertainty changed to %r" % value
-            self.topLevelOperatorView.UncertaintyType.setValue(value)
-        self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onuncertaintyCombo)
 
         def onBackgroundPriorityDirty(slot, roi):
             oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
@@ -119,6 +140,8 @@ class CarvingGui(LabelingGui):
             if  newValue != oldValue:
                 self.labelingDrawerUi.backgroundPrioritySpin.setValue(newValue)
         self.topLevelOperatorView.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
+        
+        ## bias
         
         def onNoBiasBelowDirty(slot, roi):
             oldValue = self.labelingDrawerUi.noBiasBelowSpin.value()
@@ -131,13 +154,16 @@ class CarvingGui(LabelingGui):
             print "background priority changed to %f" % value
             self.topLevelOperatorView.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
+        
+        ## save
 
-        self.labelingDrawerUi.saveAs.clicked.connect(self.onSaveAsButton)
         self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
-        self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
+
+        ## clear
 
         self.labelingDrawerUi.clear.clicked.connect(self.topLevelOperatorView.clearCurrentLabeling)
-        self.labelingDrawerUi.clear.setEnabled(True)
+        
+        ## object names
         
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
         
@@ -157,7 +183,7 @@ class CarvingGui(LabelingGui):
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
-
+        
         def addLayerToggleShortcut(layername, shortcut):
             def toggle():
                 row = layerIndexForName(layername)
@@ -168,6 +194,7 @@ class CarvingGui(LabelingGui):
             shortcut = QShortcut(QKeySequence(shortcut), self, member=toggle, ambiguousMember=toggle)
             mgr.register("Carving", "Toggle layer %s" % layername, shortcut)
 
+        #TODO
         addLayerToggleShortcut("done", "d")
         addLayerToggleShortcut("segmentation", "s")
         addLayerToggleShortcut("raw", "r")
@@ -190,11 +217,12 @@ class CarvingGui(LabelingGui):
             self._doneSegmentationColortable = [QColor(0,0,0,0).rgba()]
             for i in range(254):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                # ensure colors have sufficient distance to pure red and pure green
+                while (255 - r)+g+b<128 or r+(255-g)+b<128:
+                    r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
-            self._doneSegmentationColortable[1:17] = colortables.default16
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
-        self._doneSegmentationLayer = None
         def onRandomizeColors():
             if self._doneSegmentationLayer is not None:
                 print "randomizing colors ..."
@@ -203,14 +231,24 @@ class CarvingGui(LabelingGui):
                 if self.render and self._renderMgr.ready:
                     self._update_rendering()
         #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
+        self._updateGui()
+    
+    def _after_init(self):
+        super(CarvingGui, self)._after_init()
+        if self.render:self._toggleSegmentation3D()
+        
+        
+    def _updateGui(self):
+        self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
         
     def onSegmentButton(self):
         print "segment button clicked"
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
     
-    def saveAsDialog(self):
+    def saveAsDialog(self, name=""):
         '''special functionality: reject names given to other objects'''
         dialog = uic.loadUi(self.dialogdirSAD)
+        dialog.lineEdit.setText(name)
         dialog.warning.setVisible(False)
         dialog.Ok.clicked.connect(dialog.accept)
         dialog.Cancel.clicked.connect(dialog.reject)
@@ -231,37 +269,27 @@ class CarvingGui(LabelingGui):
         if result:
             return str(dialog.lineEdit.text())
     
-    def onSaveAsButton(self):
+    def onSaveButton(self):
         print "save object as?"
         if self.topLevelOperatorView.dataIsStorable():
-            name = self.saveAsDialog()
+            prevName = ""
+            if self.topLevelOperatorView.hasCurrentObject():
+                prevName = self.topLevelOperatorView.currentObjectName()
+            name = self.saveAsDialog(name=prevName)
             if name is None:
                 return
             objects = self.topLevelOperatorView.AllObjectNames[:].wait()
-            if name in objects:
+            if name in objects and name != prevName:
                 QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
                 return
             self.topLevelOperatorView.saveObjectAs(name)
             print "save object as %s" % name
+            if prevName != name and prevName != "":
+                self.topLevelOperatorView.deleteObject(prevName)
         else:
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
             msgBox.setWindowTitle("Problem with Data")
-            msgBox.setIcon(2)
-            msgBox.exec_()
-            print "object not saved due to faulty data."
-    
-    def onSaveButton(self):
-        if self.topLevelOperatorView.dataIsStorable():
-            if self.topLevelOperatorView.hasCurrentObject():
-                name = self.topLevelOperatorView.currentObjectName()
-                self.topLevelOperatorView.saveObjectAs( name )
-            else:
-                self.onSaveAsButton()
-        else:
-            msgBox = QMessageBox(self)
-            msgBox.setText("The data does no seem fit to be stored.")
-            msgBox.setWindowTitle("Lousy Data")
             msgBox.setIcon(2)
             msgBox.exec_()
             print "object not saved due to faulty data."
@@ -273,7 +301,9 @@ class CarvingGui(LabelingGui):
         dialog.objectNames.addItems(sorted(listOfItems))
         
         def loadSelection():
-            for name in dialog.objectNames.selectedItems():
+            selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
+            dialog.close()
+            for objectname in selected: 
                 objectname = str(name.text())
                 self.topLevelOperatorView.loadObject(objectname)
         
@@ -282,6 +312,7 @@ class CarvingGui(LabelingGui):
             if self.confirmAndDelete([str(name.text()) for name in items]):
                 for name in items:
                     name.setHidden(True)
+            dialog.close()
         
         dialog.loadButton.clicked.connect(loadSelection)
         dialog.deleteButton.clicked.connect(deleteSelection)
@@ -347,16 +378,17 @@ class CarvingGui(LabelingGui):
             menu.addSeparator()
 
         menu.addSeparator()
-        showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
-        showSeg3DAction.setCheckable(True)
-        showSeg3DAction.setChecked( self._showSegmentationIn3D )
-        showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
+        if self.render:
+            showSeg3DAction = menu.addAction( "Show Editing Segmentation in 3D" )
+            showSeg3DAction.setCheckable(True)
+            showSeg3DAction.setChecked( self._showSegmentationIn3D )
+            showSeg3DAction.triggered.connect( self._toggleSegmentation3D )
         
         if op.dataIsStorable():
-            menu.addAction("Save objects").triggered.connect( self.onSegmentButton )
-        menu.addAction("Browse objects").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
-        menu.addAction("Segment").triggered.connect( self.onShowObjectNames )
-        menu.addAction("Clear").triggered.connect( self.onSaveAsButton )
+            menu.addAction("Save object").triggered.connect( self.onSaveButton )
+        menu.addAction("Browse objects").triggered.connect( self.onShowObjectNames )
+        menu.addAction("Segment").triggered.connect( self.onSegmentButton )
+        menu.addAction("Clear").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
         return menu
     
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
@@ -374,6 +406,7 @@ class CarvingGui(LabelingGui):
             self._segmentation_3d_label = self._renderMgr.addObject()
         else:
             self._renderMgr.removeObject(self._segmentation_3d_label)
+            self._segmentation_3d_label = None
         self._update_rendering()
     
     def _update_rendering(self):
@@ -410,34 +443,39 @@ class CarvingGui(LabelingGui):
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
-        if self._showSegmentationIn3D:
+        if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
 
+    def _getNext(self, slot, parentFun, transform=None):
+        numLabels = self.labelListData.rowCount()
+        value = slot.value
+        if numLabels < len(value):
+            result = value[numLabels]
+            if transform is not None:
+                result = transform(result)
+            return result
+        else:
+            return parentFun()
 
     def getNextLabelName(self):
-        l = len(self._labelControlUi.labelListModel)
-        if l == 0:
-            return "Background"
-        else:
-            return "Object"
+        return self._getNext(self.topLevelOperatorView.LabelNames,
+                             super(CarvingGui, self).getNextLabelName)
 
     def appletDrawers(self):
         return [ ("Carving", self._labelControlUi) ]
 
     def setupLayers( self ):
+        print "setupLayers"
+        
         layers = []
 
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.CurrentObjectName.value
             hasSeg  = self.topLevelOperatorView.HasSegmentation.value
-            #nzLB    = self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks[:].wait()[0]
             
-            self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
-            self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
-            self.labelingDrawerUi.saveAs.setEnabled(currObj == "" and hasSeg)
-            #rethink this
-            #self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
-            #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
+            self.labelingDrawerUi.currentObjectLabel.setText(currObj)
+            self.labelingDrawerUi.save.setEnabled(hasSeg)
+
         self.topLevelOperatorView.CurrentObjectName.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.HasSegmentation.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opLabelArray.NonzeroBlocks.notifyDirty(onButtonsEnabled)
@@ -445,24 +483,25 @@ class CarvingGui(LabelingGui):
         # Labels
         labellayer, labelsrc = self.createLabelLayer(direct=True)
         if labellayer is not None:
+            labellayer._allowToggleVisible = False
             layers.append(labellayer)
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
 
         #uncertainty
-        uncert = self.topLevelOperatorView.Uncertainty
-        if uncert.ready():
-            colortable = []
-            for i in range(256-len(colortable)):
-                r,g,b,a = i,0,0,i
-                colortable.append(QColor(r,g,b,a).rgba())
-
-            layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-            layer.name = "uncertainty"
-            layer.visible = True
-            layer.opacity = 0.3
-            layers.append(layer)
-
+        if self._showUncertaintyLayer:
+            uncert = self.topLevelOperatorView.Uncertainty
+            if uncert.ready():
+                colortable = []
+                for i in range(256-len(colortable)):
+                    r,g,b,a = i,0,0,i
+                    colortable.append(QColor(r,g,b,a).rgba())
+    
+                layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+                layer.name = "Uncertainty"
+                layer.visible = True
+                layer.opacity = 0.3
+                layers.append(layer)
        
         #segmentation 
         seg = self.topLevelOperatorView.Segmentation
@@ -478,7 +517,9 @@ class CarvingGui(LabelingGui):
                 colortable.append(QColor(r,g,b).rgba())
 
             layer = ColortableLayer(LazyflowSource(seg), colortable, direct=True)
-            layer.name = "segmentation"
+            layer.name = "Segmentation"
+            layer.setToolTip("This layer displays the <i>current</i> segmentation. Simply add foreground and background " \
+                             "labels, then press <i>Segment</i>.")
             layer.visible = True
             layer.opacity = 0.3
             layers.append(layer)
@@ -489,15 +530,24 @@ class CarvingGui(LabelingGui):
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
             for i in range(254-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                # ensure colors have sufficient distance to pure red and pure green
+                while (255 - r)+g+b<128 or r+(255-g)+b<128:
+                    r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             #have to use lazyflow because it provides dirty signals
             layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
-            layer.name = "done"
+            layer.name = "Completed segments (unicolor)"
+            layer.setToolTip("In order to keep track of which objects you have already completed, this layer " \
+                             "shows <b>all completed object</b> in one color (<b>blue</b>). " \
+                             "The reason for only one color is that for finding out which " \
+                              "objects to label next, the identity of already completed objects is unimportant " \
+                              "and destracting.")
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
 
         #hints
+        '''
         useLazyflow = True
         ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
         ctable.extend( [QColor(255*random.random(), 255*random.random(), 255*random.random()) for x in range(254)] )
@@ -512,7 +562,9 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
-            
+        '''
+        
+        '''
         #pmaps
         useLazyflow = True
         pmaps = self.topLevelOperatorView._pmap
@@ -522,13 +574,16 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
+        '''
 
         #done seg
         doneSeg = self.topLevelOperatorView.DoneSegmentation
         if doneSeg.ready():
             if self._doneSegmentationLayer is None:
                 layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
-                layer.name = "done seg"
+                layer.name = "Completed segments (one color per object)"
+                layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
+                                 "shows <b>all completed object</b>, each with a random color.</html>")
                 layer.visible = False
                 layer.opacity = 0.5
                 self._doneSegmentationLayer = layer
@@ -543,34 +598,43 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
-            layer.name = "supervoxels"
+            layer.name = "Supervoxels"
+            layer.setToolTip("<html>This layer shows the partitioning of the input image into <b>supervoxels</b>. The carving " \
+                             "algorithm uses these tiny puzzle-piceces to piece together the segmentation of an " \
+                             "object. Sometimes, supervoxels are too large and straddle two distinct objects " \
+                             "(undersegmentation). In this case, it will be impossible to achieve the desired " \
+                             "segmentation. This layer helps you to understand these cases.</html>")
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
 
         #raw data
+        '''
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
             raw5D = self.topLevelOperatorView.RawData.value
             layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
             #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
-            layer.name = "raw"
             layer.visible = True
+            layer.name = 'raw'
             layer.opacity = 1.0
             layers.append(layer)
+        '''
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(inputSlot), direct=True )
-            layer.name = "input"
-            layer.visible = not rawSlot.ready()
+            layer.name = "Input Data"
+            layer.setToolTip("<html>The data originally loaded into ilastik (unprocessed).</html>")
+            #layer.visible = not rawSlot.ready()
+            layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
             layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
-            layer.name = "filtered input"
+            layer.name = "Filtered Input"
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)

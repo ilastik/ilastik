@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QColor, QFileDialog
+from PyQt4.QtGui import QColor, QFileDialog, QMessageBox
 
 from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables
@@ -16,6 +16,8 @@ from volumina.layer import GrayscaleLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.config import cfg as ilastik_config
+from lazyflow.request.request import Request
+from ilastik.utility.gui.threadRouter import threadRouted
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -52,7 +54,9 @@ class TrackingBaseGui( LayerViewerGui ):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
-            
+        
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.mainOperator.parent.parent.trackingApplet
 
 
     def _onMetaChanged( self, slot ):
@@ -271,61 +275,81 @@ class TrackingBaseGui( LayerViewerGui ):
 
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
-        if directory is None:
+        if directory is None or len(str(directory)) == 0:
             print "cancelled."
             return
         
-        # determine from_time (it could has been changed in the GUI meanwhile)
-        for t_from, label2color_at in enumerate(self.mainOperator.label2color):
-            if len(label2color_at) == 0:                
-                continue
-            else:
-                break
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
+        
+        def _export():
+            t_from = None
+            # determine from_time (it could has been changed in the GUI meanwhile)            
+            for t_from, label2color_at in enumerate(self.mainOperator.label2color):
+                if len(label2color_at) == 0:                
+                    continue
+                else:
+                    break
             
-        print "Saving first label image..."
-        key = []
-        for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
-            if flag is 't':
-                key.append(slice(t_from,t_from+1))
-            elif flag is 'c':
-                key.append(slice(0,1))                
-            else:
-                key.append(slice(0,self.mainOperator.LabelImage.meta.shape[idx]))                        
-        
-        roi = SubRegion(self.mainOperator.LabelImage, key)
-        labelImage = self.mainOperator.LabelImage.get(roi).wait()
-        labelImage = labelImage[0,...,0]
-        
-        write_events([], str(directory), t_from, labelImage)
-
-        oids = np.unique(labelImage).astype(np.uint16)[1:]
-        oids = oids[::-1]
-        ones = np.ones(oids.shape, dtype=np.uint16)
-        with h5py.File(str(directory) + '/' + str(0).zfill(5) + '.h5', 'a') as h5file:
-            h5file.create_dataset('objects/meta/id', data=oids)
-            h5file.create_dataset('objects/meta/valid', data=ones)
+            if t_from == None:
+                return
             
-        events = self.mainOperator.events
-        print "Saving events..."
-        print "Length of events " + str(len(events))
+            print "Saving first label image..."
+            key = []
+            for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
+                if flag is 't':
+                    key.append(slice(t_from,t_from+1))
+                elif flag is 'c':
+                    key.append(slice(0,1))                
+                else:
+                    key.append(slice(0,self.mainOperator.LabelImage.meta.shape[idx]))                        
+            
         
-        for i, events_at in enumerate(events):
-            t = t_from + i            
-            key[0] = slice(t+1,t+2)
             roi = SubRegion(self.mainOperator.LabelImage, key)
             labelImage = self.mainOperator.LabelImage.get(roi).wait()
             labelImage = labelImage[0,...,0]
-            if self.withMergers:                
-                write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
-            else:
-                write_events(events_at, str(directory), t+1, labelImage)
-            oids = np.unique(labelImage).astype(np.uint16)[1:]
-            oids = oids[::-1]
-            ones = np.ones(oids.shape, dtype=np.uint16)
             
-            with h5py.File(str(directory) + '/' + str(t+1).zfill(5) + '.h5', 'a') as h5file:
-                h5file.create_dataset('objects/meta/id', data=oids)
-                h5file.create_dataset('objects/meta/valid', data=ones)
+            try:
+                write_events([], str(directory), t_from, labelImage)
+                
+                events = self.mainOperator.events
+                print "Saving events..."
+                print "Length of events " + str(len(events))
+                
+                num_files = float(len(events))
+                for i, events_at in enumerate(events):
+                    t = t_from + i            
+                    key[0] = slice(t+1,t+2)
+                    roi = SubRegion(self.mainOperator.LabelImage, key)
+                    labelImage = self.mainOperator.LabelImage.get(roi).wait()
+                    labelImage = labelImage[0,...,0]
+                    if self.withMergers:                
+                        write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
+                    else:
+                        write_events(events_at, str(directory), t+1, labelImage)
+                    _handle_progress(i/num_files * 100)
+            except IOError as e:                    
+                self._criticalMessage("Cannot export the tracking results. Maybe these files already exist. "\
+                                      "Please delete them or choose a different directory.")
+                return
+                
+        def _handle_finished(*args):
+            self._drawer.exportButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            self.applet.progressSignal.emit(100)
+            self._drawer.exportButton.setEnabled(True)
+        
+        self._drawer.exportButton.setEnabled(False)
+        self.applet.progressSignal.emit(0)      
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
             
             
     def _onExportTifButtonPressed(self):
@@ -334,8 +358,8 @@ class TrackingBaseGui( LayerViewerGui ):
             options |= QFileDialog.DontUseNativeDialog
 
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
-        
-        if directory is None:
+                
+        if directory is None or len(str(directory)) == 0:
             print "cancelled."
             return
         
@@ -344,21 +368,45 @@ class TrackingBaseGui( LayerViewerGui ):
         label2color = self.mainOperator.label2color
         lshape = list(self.mainOperator.LabelImage.meta.shape)
     
-        for t, label2color_at in enumerate(label2color):
-            if len(label2color_at) == 0:                
-                continue
-            print 'exporting tiffs for t = ' + str(t)            
-            
-            roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
-            labelImage = self.mainOperator.LabelImage.get(roi).wait()
-            relabeled = relabel(labelImage[0,...,0],label2color_at)
-            for i in range(relabeled.shape[2]):
-                out_im = relabeled[:,:,i]
-                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
-                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint32), out_fn)
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
         
-        print 'Tiffs exported.'
-                    
+        def _export():
+            num_files = float(len(label2color))
+            for t, label2color_at in enumerate(label2color):
+                if len(label2color_at) == 0:                
+                    continue
+                print 'exporting tiffs for t = ' + str(t)            
+                
+                roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
+                labelImage = self.mainOperator.LabelImage.get(roi).wait()
+                relabeled = relabel(labelImage[0,...,0],label2color_at)
+                for i in range(relabeled.shape[2]):
+                    out_im = relabeled[:,:,i]
+                    out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                    vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint32), out_fn)
+                
+                _handle_progress(t/num_files * 100)
+            print 'Tiffs exported.'
+            
+        def _handle_finished(*args):
+            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            self.applet.progressSignal.emit(100)
+            self._drawer.exportTifButton.setEnabled(True)
+        
+        self._drawer.exportTifButton.setEnabled(False)
+        self.applet.progressSignal.emit(0)      
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
+            
                     
     def _onLineageFileNameButton(self):
         options = QFileDialog.Options()
@@ -406,3 +454,8 @@ class TrackingBaseGui( LayerViewerGui ):
             if layer.name is name:
                 layer.visible = visible
     
+    @threadRouted
+    def _criticalMessage(self, prompt):
+        QMessageBox.critical(self, "Error", str(prompt), buttons=QMessageBox.Ok)
+        
+        

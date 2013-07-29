@@ -347,6 +347,20 @@
   </layout>
  </widget>
  <tabstops>
+  <tabstop>activeTrackBox</tabstop>
+  <tabstop>newTrack</tabstop>
+  <tabstop>delTrack</tabstop>
+  <tabstop>divEvent</tabstop>
+  <tabstop>markMisdetection</tabstop>
+  <tabstop>nextUnlabeledButton</tabstop>
+  <tabstop>logOutput</tabstop>
+  <tabstop>divisionsList</tabstop>
+  <tabstop>timeBox</tabstop>
+  <tabstop>tidBox</tabstop>
+  <tabstop>gotoLabel</tabstop>
+  <tabstop>windowXBox</tabstop>
+  <tabstop>windowYBox</tabstop>
+  <tabstop>windowZBox</tabstop>
   <tabstop>exportButton</tabstop>
   <tabstop>exportTifButton</tabstop>
  </tabstops>

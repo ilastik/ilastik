@@ -72,6 +72,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
+        labelSlots.LabelNames = topLevelOperatorView.LabelNames
+
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -107,6 +109,13 @@ class PixelClassificationGui(LabelingGui):
                 qvtk=self.editor.view3d.qvtk)
         except:
             self.render = False
+
+        # toggle interactive mode according to freezePredictions.value
+        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+        def FreezePredDirty():
+            self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+        # listen to freezePrediction changes
+        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
 
 
     @traceLogged(traceLogger)
@@ -204,7 +213,7 @@ class PixelClassificationGui(LabelingGui):
                                                 normalize=(0.0, 1.0) )
 
                 segLayer.opacity = 1
-                segLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                segLayer.visible = False #self.labelingDrawerUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
                 def setLayerColor(c, segLayer=segLayer):
@@ -304,7 +313,7 @@ class PixelClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
-
+        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
@@ -529,6 +538,10 @@ class PixelClassificationGui(LabelingGui):
         if not self.render:
             return
         shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
+        if len(shape) != 5:
+            #this might be a 2D image, no need for updating any 3D stuff 
+            return
+        
         time = self.editor.posModel.slicingPos5D[0]
         if not self._renderMgr.ready:
             self._renderMgr.setup(shape)

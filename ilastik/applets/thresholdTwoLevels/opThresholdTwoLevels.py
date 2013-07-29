@@ -227,7 +227,7 @@ class OpThresholdTwoLevels(Operator):
     RawInput = InputSlot(optional=True) # Display only
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int', value=100)
+    MinSize = InputSlot(stype='int', value=0)
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
@@ -400,7 +400,7 @@ class OpThresholdTwoLevels4d(Operator):
     name = "opThresholdTwoLevels4d"
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int', value=100)
+    MinSize = InputSlot(stype='int', value=0)
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
@@ -540,7 +540,7 @@ class OpThresholdOneLevel(Operator):
     name = "OpThresholdOneLevel"
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int', value=100)
+    MinSize = InputSlot(stype='int', value=0)
     MaxSize = InputSlot(stype='int', value=1000000)
     Threshold = InputSlot(stype='float', value=0.5)
     
@@ -557,11 +557,14 @@ class OpThresholdOneLevel(Operator):
         
         self._opLabeler = OpVigraLabelVolume( parent=self )
         self._opLabeler.Input.connect(self._opThresholder.Output)
+
+        self._opLabelCache = OpCompressedCache( parent=self )
+        self._opLabelCache.Input.connect( self._opLabeler.Output )
         
-        self.BeforeSizeFilter.connect(self._opLabeler.Output)
+        self.BeforeSizeFilter.connect( self._opLabelCache.Output )
         
         self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.Output )
+        self._opFilter.Input.connect(self._opLabelCache.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFilter.BinaryOut.setValue(True)

@@ -17,7 +17,7 @@ import h5py
 class TestWithCube(object):
     def setUp(self):
         
-        self.features = {"Vigra Object Features": {\
+        self.features = {"Standard Object Features": {\
                                      "Count":{}, \
                                      "Mean":{}, \
                                      "Mean in neighborhood":{"margin":(5, 5, 2)}}}
@@ -106,7 +106,7 @@ class TestWithCube(object):
         opPredict.LabelInputs.setValues([labelDict])
         
         #Predict by size
-        selFeatures = {"Vigra Object Features": {"Count":{}}}
+        selFeatures = {"Standard Object Features": {"Count":{}}}
         opPredict.SelectedFeatures.setValue(selFeatures)
         #[0][0] - first image, first time slice
         predictions = opPredict.Predictions[0][0].wait()
@@ -116,7 +116,7 @@ class TestWithCube(object):
         assert numpy.all(predicted_labels[16:]==2)
         
         #Predict by color
-        selFeatures = {"Vigra Object Features": {"Mean":{}}}
+        selFeatures = {"Standard Object Features": {"Mean":{}}}
         opPredict.SelectedFeatures.setValue(selFeatures)
         predictions = opPredict.Predictions[0][0].wait()
         predicted_labels = predictions[0]
@@ -131,7 +131,7 @@ class TestWithCube(object):
         assert predicted_labels[26]==2        
         
         #Predict by neighborhood color
-        selFeatures = {"Vigra Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
+        selFeatures = {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
         opPredict.SelectedFeatures.setValue(selFeatures)
         predictions = opPredict.Predictions[0][0].wait()
         predicted_labels = predictions[0]

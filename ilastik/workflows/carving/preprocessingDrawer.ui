@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>319</height>
+    <width>355</width>
+    <height>452</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,74 +39,105 @@
      </property>
      <item>
       <widget class="QLabel" name="label_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
-        <string>Choose boundary type:</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose an option below to compute different filters on the original image such that boundaries are bright and everything else is dark.&lt;/p&gt;&lt;p&gt;Check the &lt;span style=&quot; font-style:italic;&quot;&gt;Filtered Data &lt;/span&gt;layer for the effect of each option. The &lt;span style=&quot; font-style:italic;&quot;&gt;filter scale&lt;/span&gt; should be adapted according to the width of the boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="filter1">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>Boundaries appear as &lt;b&gt;thin bright lines&lt;/b&gt; in the image, separating dark background on one side from dark background on the other side.&lt;br&gt;&lt;br&gt;This will compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
-        <string>bright lines (ridges)</string>
+        <string>bright lines (ridge filter)</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="filter2">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>Boundaries appear as &lt;b&gt;thin dark lines&lt;/b&gt; in the image, separating bright background on one side from bright background on the other side.&lt;br&gt;&lt;br&gt;This will invert the image, then compute the Hessian (matrix of 2nd derivatives) and compute the largest eigenvalue (a high value then corresponds to high curvature in the image)</string>
        </property>
        <property name="text">
-        <string>dark lines (valleys)</string>
+        <string>dark lines (valley filter)</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="filter3">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>Boundaries appear in the image as &lt;b&gt;transitions&lt;/b&gt; from bright to dark or dark to bright.&lt;br&gt;&lt;br&gt;This will compute the gradient of the original image.</string>
        </property>
        <property name="text">
-        <string>step edges</string>
+        <string>step edges (edge filter)</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="filter4">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;bright lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;dark background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>original image (optional smoothing)</string>
+        <string>bright lines (smoothed original image)</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="filter5">
        <property name="toolTip">
-        <string>choose this filter for preprocessing</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;dark lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;bright background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>inverted original image</string>
+        <string>dark lines (inverted, smoothed image)</string>
        </property>
       </widget>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>sigma</string>
+          <string>filter scale</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="sigmaSpin">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Lager sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="locale">
           <locale language="English" country="UnitedStates"/>
+         </property>
+         <property name="decimals">
+          <number>3</number>
          </property>
          <property name="singleStep">
           <double>0.100000000000000</double>
@@ -116,12 +147,25 @@
          </property>
         </widget>
        </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QHBoxLayout" name="wsInputLayout">
        <item>
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="watershedSourceInputLabel">
          <property name="text">
           <string>WS Input</string>
          </property>
@@ -140,51 +184,56 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="runButton">
-       <property name="toolTip">
-        <string>Start Preprocessing for selected Data</string>
-       </property>
-       <property name="text">
-        <string>Run Preprocessing</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
-       </property>
-       <property name="autoDefault">
-        <bool>true</bool>
-       </property>
-       <property name="default">
-        <bool>true</bool>
-       </property>
-       <property name="flat">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <item>
+        <widget class="QPushButton" name="runButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Start Preprocessing for selected Data</string>
+         </property>
+         <property name="text">
+          <string>Run Preprocessing</string>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
+         </property>
+         <property name="autoDefault">
+          <bool>true</bool>
+         </property>
+         <property name="default">
+          <bool>true</bool>
+         </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QCheckBox" name="writeprotectBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="toolTip">
-          <string>write-protect current carving graph file</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Write-protect&lt;/span&gt; current carving graph file.&lt;/p&gt;&lt;p&gt;The write protection prevents you from changing any of the pre-processing settings. This is useful if you have already segmented multiple objects, which rely on specific settings to produce specific supervoxels.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
           <string>write-protect</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QPushButton" name="resetButton">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>reset</string>
-         </property>
-        </widget>
-       </item>
       </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
      </item>
     </layout>
    </item>

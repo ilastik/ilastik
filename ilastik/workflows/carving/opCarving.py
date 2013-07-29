@@ -3,26 +3,27 @@ import time
 import numpy, h5py
 import copy
 
-#carving
-from cylemon.segmentation import MSTSegmentor
-
 #Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 from lazyflow.roi import roiToSlice
-
-from cylemon.segmentation import MSTSegmentor
-
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
 
+#ilastik
 from ilastik.utility.timer import Timer
+from ilastik.applets.base.applet import DatasetConstraintError
+
+#carving
+from cylemon.segmentation import MSTSegmentor
+
+#===----------------------------------------------------------------------------------------------------------------===
 
 class OpCarving(Operator):
     name = "Carving"
     category = "interactive segmentation"
-
+    
     # I n p u t s #
     
     #MST of preprocessed Graph
@@ -44,6 +45,8 @@ class OpCarving(Operator):
     #bias of the background
     #FIXME: correct name?
     BackgroundPriority = InputSlot(value=0.95)
+    
+    LabelNames = OutputSlot(stype='list')
 
     #a number between 0 and 256
     #below the number, no background bias will be applied to the edge weights
@@ -93,7 +96,10 @@ class OpCarving(Operator):
         
         self._hintOverlayFile = hintOverlayFile
         self._mst = None
-
+        self.has_seeds = False # keeps track of whether or not there are seeds currently loaded, either drawn by the user or loaded from a saved object
+        
+        self.LabelNames.setValue( ["Background", "Object"] )
+        
         #supervoxels of finished and saved objects
         self._done_lut = None
         self._done_seg_lut = None
@@ -120,15 +126,44 @@ class OpCarving(Operator):
         # keep track of a set of object names that have changed since
         # the last serialization of this object to disk
         self._dirtyObjects = set()
+        self.preprocessingApplet = None
         
         self._opMstCache = OpValueCache( parent=self )
         self.MstOut.connect( self._opMstCache.Output )
+
+        self.InputData.notifyReady( self._checkConstraints )
+    
+    def _checkConstraints(self, *args):
+        slot = self.InputData
+        numChannels = slot.meta.getTaggedShape()['c']
+        if numChannels != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must have exactly one channel.  " +
+                "You attempted to add a dataset with {} channels".format( numChannels ) )
         
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(slot.meta.shape) != 5:
+            # Raise a regular exception.  This error is for developers, not users.
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if slot.meta.getTaggedShape()['t'] != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must not have more than one time slice.  " +
+                "You attempted to add a dataset with {} time slices".format( slot.meta.getTaggedShape()['t'] ) )
+        
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                # This is for developers.  Don't need a user-friendly error.
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
+
     def _clearLabels(self):
         #clear the labels 
         self.opLabelArray.DeleteLabel.setValue(2)
         self.opLabelArray.DeleteLabel.setValue(1)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        self.has_seeds = False
         
     def _setCurrObjectName(self, n):
         """
@@ -157,6 +192,8 @@ class OpCarving(Operator):
         print "building the 'done' luts took {} seconds".format( timer.seconds() )
     
     def dataIsStorable(self):
+        if self._mst is None:
+            return False
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
         bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
@@ -165,22 +202,7 @@ class OpCarving(Operator):
         else:
             return True
         
-    def _checkMeta(self, slot):
-        sh = slot.meta.shape
-        ax = slot.meta.axistags
-        if len(ax) != 5:
-            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
-        if sh[0] != 1:
-            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
-        if sh[4] != 1:
-            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
-        for i in range(1,4):
-            if not ax[i].isSpatial():
-                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-
     def setupOutputs(self):
-        self._checkMeta(self.InputData)
-        
         self.Segmentation.meta.assignFrom(self.InputData.meta)
         self.Segmentation.meta.dtype = numpy.int32
         
@@ -204,7 +226,18 @@ class OpCarving(Operator):
             self.AllObjectNames.meta.shape = 0
         
         self.AllObjectNames.meta.dtype = object
-
+    
+    def connectToPreprocessingApplet(self,applet):
+        self.PreprocessingApplet = applet
+    
+    def updatePreprocessing(self):
+        if self.PreprocessingApplet is None or self._mst is None:
+            return
+        if len(self._mst.object_names)==0:
+            self.PreprocessingApplet.enableWriteprotect(True)
+        else:
+            self.PreprocessingApplet.enableWriteprotect(False)
+    
     def hasCurrentObject(self):
         """
         Returns current object name. None if it is not set.
@@ -298,7 +331,7 @@ class OpCarving(Operator):
         lut_segmentation[:] = newSegmentation
 
         self._setCurrObjectName(name)
-        self.HasSegmentation.setValue(False)
+        self.HasSegmentation.setValue(True)
 
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
@@ -363,6 +396,10 @@ class OpCarving(Operator):
         self.BackgroundPriority.setValue( mst.bg_priority[name] )
         self.NoBiasBelow.setValue( mst.no_bias_below[name] )
         
+        self.updatePreprocessing()
+        # The entire segmentation layer needs to be refreshed now.
+        self.Segmentation.setDirty()
+        
         return True
 
     
@@ -390,6 +427,7 @@ class OpCarving(Operator):
 
         #now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
+        self.updatePreprocessing()
     
     def deleteObject(self, name):
         print "want to delete object with name = %s" % name
@@ -408,6 +446,8 @@ class OpCarving(Operator):
         print "save: len = ", len(objects)
         self.AllObjectNames.meta.shape = len(objects)
         
+        self.HasSegmentation.setValue(False)
+        
         return True
     
     @Operator.forbidParallelExecute
@@ -419,6 +459,7 @@ class OpCarving(Operator):
             name = copy.copy(self._currObjectName)
             print "saving object %s" % self._currObjectName
             self.saveCurrentObjectAs(self._currObjectName)
+            self.HasSegmentation.setValue(False)
             return name
         return ""
 
@@ -473,9 +514,11 @@ class OpCarving(Operator):
 
         objects = self._mst.object_names.keys()
         self.AllObjectNames.meta.shape = len(objects)
-
+        
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
+        
+        self.updatePreprocessing()
 
 
     def get_label_voxels(self):
@@ -537,8 +580,6 @@ class OpCarving(Operator):
         return pos
 
     def execute(self, slot, subindex, roi, result):
-        start = time.time()
-        
         self._mst = self.MST.value
         
         if slot == self.AllObjectNames:
@@ -612,6 +653,7 @@ class OpCarving(Operator):
                     self._mst.seeds[key] = value
             print "Writing seeds to MST took {} seconds".format( timer.seconds() )
 
+            self.has_seeds = True
         else:
             raise RuntimeError("unknown slots")
 
@@ -629,21 +671,22 @@ class OpCarving(Operator):
 
             bgPrio = self.BackgroundPriority.value
             noBiasBelow = self.NoBiasBelow.value
+
             print "compute new carving results with bg priority = %f, no bias below %d" % (bgPrio, noBiasBelow)
-
+            t1 = time.time()
             labelCount = 2
-
             params = dict()
             params["prios"] = [1.0, bgPrio, 1.0]
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
-
             unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
-            #assert numpy.sum(self._mst.seeds > 2) == 0, "seeds > 2 at %r" % numpy.where(self._mst.seeds > 2)
             self._mst.run(unaries, **params)
+            print " ... carving took %f sec." % (time.time()-t1)
 
             self.Segmentation.setDirty(slice(None))
-            self.HasSegmentation.setValue(True)
+            hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
+            self.HasSegmentation.setValue(hasSeg)
+            
         elif slot == self.MST:
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value

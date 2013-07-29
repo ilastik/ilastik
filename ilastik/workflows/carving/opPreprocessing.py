@@ -11,6 +11,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
 from ilastik.utility.timer import Timer
+from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module
 from cylemon.segmentation import MSTSegmentor
@@ -103,8 +104,8 @@ class OpFilter(Operator):
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     print "negative Gaussian Smoothing"
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
-            
-                result_view[...] = volume_feat
+
+                result_view[:,:,0] = volume_feat
                 print "Filter took {} seconds".format( filterTimer.seconds() )
         return result
 
@@ -157,7 +158,7 @@ class OpSimpleWatershed(Operator):
                 print "done" ,numpy.max(result[...])
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
-                assert (volume_feat.dtype == numpy.uint32 or volume_feat.dtype == numpy.int32)
+                
                 labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 print "done" ,numpy.max(labelVolume)
@@ -296,8 +297,35 @@ class OpPreprocessing(Operator):
         self.FilteredImage.connect( self._opFilterCache.Output )
         self.WatershedImage.connect( self._opWatershedCache.Output )
         
+        self.InputData.notifyReady( self._checkConstraints )
+        
+    def _checkConstraints(self, *args):
+        slot = self.InputData
+        numChannels = slot.meta.getTaggedShape()['c']
+        if numChannels != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must have exactly one channel.  " +
+                "You attempted to add a dataset with {} channels".format( numChannels ) )
+        
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if len(slot.meta.shape) != 5:
+            # Raise a regular exception.  This error is for developers, not users.
+            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
+        if slot.meta.getTaggedShape()['t'] != 1:
+            raise DatasetConstraintError(
+                "Carving",
+                "Input image must not have more than one time slice.  " +
+                "You attempted to add a dataset with {} time slices".format( slot.meta.getTaggedShape()['t'] ) )
+        
+        for i in range(1,4):
+            if not ax[i].isSpatial():
+                # This is for developers.  Don't need a user-friendly error.
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
+
+            
     def setupOutputs(self):
-        self._checkMeta(self.InputData)
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
@@ -374,19 +402,6 @@ class OpPreprocessing(Operator):
         return result
 
     
-    def _checkMeta(self, slot):
-        sh = slot.meta.shape
-        ax = slot.meta.axistags
-        if len(ax) != 5:
-            raise RuntimeError("was expecting a 5D dataset, got shape=%r" % (sh,))
-        if sh[0] != 1:
-            raise RuntimeError("0th axis has length %d != 1" % (sh[0],))
-        if sh[4] != 1:
-            raise RuntimeError("4th axis has length %d != 1" % (sh[4],))
-        for i in range(1,4):
-            if not ax[i].isSpatial():
-                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-            
     def AreSettingsInitial(self):
         '''analyse settings for sigma and filter
         return True if they are equal to those of last preprocess'''

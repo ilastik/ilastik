@@ -7,6 +7,8 @@ import numpy
 import logging
 from lazyflow.rtype import SubRegion
 from copy import copy
+from ilastik.utility.gui.threadRouter import threadRouted
+from lazyflow.request.request import Request
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -93,6 +95,9 @@ class ManualTrackingGui(LayerViewerGui):
         super(ManualTrackingGui, self).__init__(topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
+        
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.mainOperator.parent.parent.trackingApplet
         
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
@@ -290,7 +295,7 @@ class ManualTrackingGui(LayerViewerGui):
             item = (position5d[0], oid)
             if len(self.divs) == 0:                
                 self.divs.append(item)
-                self.editor.posModel.time = self.editor.posModel.time + 1                
+                self._setPosModel(time=self.editor.posModel.time + 1)                
             elif len(self.divs) > 0:
                 if position5d[0] != self.divs[0][0] + 1:
                     self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
@@ -350,7 +355,7 @@ class ManualTrackingGui(LayerViewerGui):
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
     
-            self.editor.posModel.time = self.editor.posModel.time + 1
+            self._setPosModel(time=self.editor.posModel.time + 1)
 
             
         
@@ -578,73 +583,96 @@ class ManualTrackingGui(LayerViewerGui):
         
         
     def _runSubtracking(self, position5d, oid):
-        window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
-        
-        t_start = position5d[0]
-        activeTrack = self._getActiveTrack()
-        if activeTrack == 0:
-            self._criticalMessage("Error: There is no active track.")
-            return 
-        
-        res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
-        if res == -1:
-            return
-                
-        sroi = [slice(0,1),]
-        for idx,p in enumerate(position5d[1:-1]):
-            begin = max(0,p-window[idx]/2)
-            end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
-            sroi += [ slice(begin,end), ]
-        
-        key_start = [t_start,0,0,0,0]
-        key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
-        roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
-        li_prev = self.mainOperator.LabelImage.get(roi).wait()[sroi]
-        oid_prev = oid
-        t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
-        
-        for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):
-            key_start[0] = t
-            key_stop[0] = t+1
-            roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
-            li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+                    
+        def _subtracking():
+            window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
-            li_prev_oid = (li_prev == oid_prev)
-            li_product = li_prev_oid * li_cur
-            uniqueLabels = list(numpy.unique(li_product))
-            if 0 in uniqueLabels:
-                uniqueLabels.remove(0)
-            if len(uniqueLabels) != 1:                
-                self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                self._gotoObject(oid_prev, t-1, True)
-                t_end = t-1
-                break            
-            if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
-                self._log('too little overlap at t = ' + str(t))
-                self._gotoObject(oid_prev, t-1, True)
-                t_end = t-1
-                break
-             
-            res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+            t_start = position5d[0]
+            activeTrack = self._getActiveTrack()
+            if activeTrack == 0:
+                self._criticalMessage("Error: There is no active track.")
+                return 
+            
+            res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
             if res == -1:
-                self._gotoObject(uniqueLabels[0], t, False)
                 return
+                    
+            sroi = [slice(0,1),]
+            for idx,p in enumerate(position5d[1:-1]):
+                begin = max(0,p-window[idx]/2)
+                end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
+                sroi += [ slice(begin,end), ]
             
-            oid_prev = uniqueLabels[0]
-            li_prev = li_cur
+            key_start = [t_start,0,0,0,0]
+            key_stop = [t_start+1,] + list(self.mainOperator.LabelImage.meta.shape[1:])
+            roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
+            li_prev = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+            oid_prev = oid
+            t_end = self.mainOperator.LabelImage.meta.shape[0] - 1 
+            
+            for t in range(t_start+1, self.mainOperator.LabelImage.meta.shape[0]):                
+                key_start[0] = t
+                key_stop[0] = t+1
+                roi = SubRegion(self.mainOperator.LabelImage, start=key_start, stop=key_stop)
+                li_cur = self.mainOperator.LabelImage.get(roi).wait()[sroi]
+                
+                li_prev_oid = (li_prev == oid_prev)
+                li_product = li_prev_oid * li_cur
+                uniqueLabels = list(numpy.unique(li_product))
+                if 0 in uniqueLabels:
+                    uniqueLabels.remove(0)
+                if len(uniqueLabels) != 1:                
+                    self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
+                    self._gotoObject(oid_prev, t-1, True)
+                    t_end = t-1
+                    break            
+                if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
+                    self._log('too little overlap at t = ' + str(t))
+                    self._gotoObject(oid_prev, t-1, True)
+                    t_end = t-1
+                    break
+                 
+                res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
+                if res == -1:
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                
+                oid_prev = uniqueLabels[0]
+                li_prev = li_cur        
+            
+            if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
+                self._log('tracking reached last time step.')
+                
+            self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
     
+            if t_end > 0:
+                self._setPosModel(time=t_end)
         
-        if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
-            self._log('tracking reached last time step.')
+        def _handle_finished(*args):
+            self._enableButtons(enable=True)
             
-        self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
-        self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
-        self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
-
-        if t_end > 0:
-            self.editor.posModel.time = t_end
-    
-    
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
+            
+        self._enableButtons(enable=False)
+        req = Request( _subtracking )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
+        
+    @threadRouted
+    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):
+        if time:
+            self.editor.posModel.time = time
+        if slicingPos:
+            self.editor.posModel.slicingPos = slicingPos
+        if cursorPos:
+            self.editor.posModel.cursorPos = cursorPos
+            
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
             self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
@@ -719,7 +747,7 @@ class ManualTrackingGui(LayerViewerGui):
             
             
     def _getEvents(self):
-        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
+        maxt = self.topLevelOperatorView.LabelImage.meta.shape[0]
         time_range = [0, maxt]
         oid2tids, alltids = self.mainOperator._getObjects(time_range, self.misdetIdx)
         if self.misdetIdx in alltids:
@@ -836,6 +864,7 @@ class ManualTrackingGui(LayerViewerGui):
         
     def _onExportButtonPressed(self):
         import h5py
+        self._drawer.exportButton.setEnabled(False)
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
@@ -843,136 +872,195 @@ class ManualTrackingGui(LayerViewerGui):
         directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
         
         if directory is None or str(directory) == '':
+            self._drawer.exportButton.setEnabled(True)
             return
         directory = str(directory)
         
-        oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
-        
-        for t in sorted(oid2tids.keys()):
-            fn =  directory + "/" + str(t).zfill(5)  + ".h5"
-            self._log('Writing file ' + str(fn))
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
             
-            roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
-            labelImage = self.mainOperator.LabelImage.get(roi).wait()
-            labelImage = labelImage[0,...,0]
-             
-            dis_at = numpy.asarray(disapps[t])
-            app_at = numpy.asarray(apps[t])
-            div_at = numpy.asarray(divs[t])
-            mov_at = numpy.asarray(moves[t])
-            merger_at = numpy.asarray(mergers[t])
-            multiMoves_at = numpy.asarray(multiMoves[t])
-                    
-            # write only if file exists
-            with h5py.File(fn, 'a') as f_curr:
-                # delete old label image
-                if "segmentation" in f_curr.keys():
-                    del f_curr["segmentation"]
+        def _export():
+            oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
+            
+            num_files = float(len(oid2tids.keys()))
+            
+            for t in sorted(oid2tids.keys()):
+                fn =  directory + "/" + str(t).zfill(5)  + ".h5"
+                self._log('Writing file ' + str(fn))
                 
-                seg = f_curr.create_group("segmentation")            
-                # write label image
-                seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
-                
-                oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
-                ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
-                if 'objects' in f_curr.keys(): del f_curr['objects']
-                f_meta = f_curr.create_group('objects').create_group('meta')
-                f_meta.create_dataset('id', data=oids_meta, compression=1)
-                f_meta.create_dataset('valid', data=ones, compression=1)
-
-                # delete old tracking
-                if "tracking" in f_curr.keys():
-                    del f_curr["tracking"]
+                roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))        
+                labelImage = self.mainOperator.LabelImage.get(roi).wait()
+                labelImage = labelImage[0,...,0]
+                 
+                dis_at = numpy.asarray(disapps[t])
+                app_at = numpy.asarray(apps[t])
+                div_at = numpy.asarray(divs[t])
+                mov_at = numpy.asarray(moves[t])
+                merger_at = numpy.asarray(mergers[t])
+                multiMoves_at = numpy.asarray(multiMoves[t])
+                        
     
-                tg = f_curr.create_group("tracking")            
-                
-                # write associations
-                if len(app_at):
-                    app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "cell label appeared in current file"    
-                    ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"    
-                if len(dis_at):
-                    dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "cell label disappeared in current file"
-                    ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"    
-                if len(mov_at):
-                    mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "from (previous file), to (current file)"    
-                    ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"                
-                if len(div_at):
-                    div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
-                    ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
-                if len(merger_at):
-                    merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "descendant (current file), number of objects"    
-                    ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
-                if len(multiMoves_at):
-                    multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
-                    ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
-                    ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
-                    ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                try:
+                    with h5py.File(fn, 'w-') as f_curr:
+                        # delete old label image
+                        if "segmentation" in f_curr.keys():
+                            del f_curr["segmentation"]
+                        
+                        seg = f_curr.create_group("segmentation")            
+                        # write label image
+                        seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
+                        
+                        oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                        ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
+                        if 'objects' in f_curr.keys(): del f_curr['objects']
+                        f_meta = f_curr.create_group('objects').create_group('meta')
+                        f_meta.create_dataset('id', data=oids_meta, compression=1)
+                        f_meta.create_dataset('valid', data=ones, compression=1)
         
+                        # delete old tracking
+                        if "tracking" in f_curr.keys():
+                            del f_curr["tracking"]
+            
+                        tg = f_curr.create_group("tracking")            
+                        
+                        # write associations
+                        if len(app_at):
+                            app_at = numpy.array(sorted(app_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Appearances", data=app_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "cell label appeared in current file"    
+                            ds = tg.create_dataset("Appearances-Energy", data=app_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"    
+                        if len(dis_at):
+                            dis_at = numpy.array(sorted(dis_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Disappearances", data=dis_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "cell label disappeared in current file"
+                            ds = tg.create_dataset("Disappearances-Energy", data=dis_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"    
+                        if len(mov_at):
+                            mov_at = numpy.array(sorted(mov_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Moves", data=mov_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "from (previous file), to (current file)"    
+                            ds = tg.create_dataset("Moves-Energy", data=mov_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"                
+                        if len(div_at):
+                            div_at = numpy.array(sorted(div_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Splits", data=div_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                            ds = tg.create_dataset("Splits-Energy", data=div_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
+                        if len(merger_at):
+                            merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "descendant (current file), number of objects"    
+                            ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
+                        if len(multiMoves_at):
+                            multiMoves_at = numpy.array(sorted(multiMoves_at, key=lambda a_entry: a_entry[0]))[::-1]
+                            ds = tg.create_dataset("MultiFrameMoves", data=multiMoves_at[:, :-1], dtype=numpy.uint32, compression=1)
+                            ds.attrs["Format"] = "from (file at t_from), to (current file), t_from"    
+                            ds = tg.create_dataset("MultiFrameMoves-Energy", data=multiMoves_at[:, -1], dtype=numpy.double, compression=1)
+                            ds.attrs["Format"] = "lower energy -> higher confidence"
+                    
+                except IOError:                    
+                    self._criticalMessage("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
+                    return
+                _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
+        
+        def _handle_finished(*args):
+            self._drawer.exportButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            self._drawer.exportButton.setEnabled(True)    
+            self.applet.progressSignal.emit(100)
+        
+        self.applet.progressSignal.emit(0)      
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
 
     def _onExportTifButtonPressed(self):
         import vigra
+        
+        self._drawer.exportTifButton.setEnabled(False)
         
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
         directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
+        if directory is None or len(str(directory)) == 0:
+            self._drawer.exportTifButton.setEnabled(True)
+            return
         
-        divisions = self.mainOperator.divisions
-        inverseDivisions = {}
-        for k, vals in divisions.items():
-            for v in vals[0]:
-                inverseDivisions[v] = k
-        replace = {}
-        activeTrackBox = self._drawer.activeTrackBox
-        tids = set()
-        for idx in range(activeTrackBox.count()):
-            tids.add(int(activeTrackBox.itemText(idx)))
-        if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
-            self._criticalMessage("There are no tracks to export.")
-        if 0 in tids:
-            tids.remove(0)
-        if -1 in tids:
-            tids.remove(-1)
-        for tid in tids:
-            replace[tid] = [tid] # identity
+        def _handle_progress(x):       
+            self.applet.progressSignal.emit(x)
             
-        for tid in inverseDivisions.keys():
-            rootTid = inverseDivisions[tid]
-            while rootTid in inverseDivisions.keys():
-                rootTid = inverseDivisions[rootTid]
-            replace[tid] = [rootTid]
+        def _export():
+            divisions = self.mainOperator.divisions
+            inverseDivisions = {}
+            for k, vals in divisions.items():
+                for v in vals[0]:
+                    inverseDivisions[v] = k
+            replace = {}
+            activeTrackBox = self._drawer.activeTrackBox
+            tids = set()
+            for idx in range(activeTrackBox.count()):
+                tids.add(int(activeTrackBox.itemText(idx)))
+            if len(tids) == 0 or max(tids) == -1 or max(tids) == 0:
+                self._criticalMessage("There are no tracks to export.")
+                return
+            
+            if 0 in tids:
+                tids.remove(0)
+            if -1 in tids:
+                tids.remove(-1)
+            for tid in tids:
+                replace[tid] = [tid] # identity
                 
-        shape = list(self.mainOperator.TrackImage.meta.shape)
-        for t in range(shape[0]):
-            self._log('exporting tiffs for t = ' + str(t))            
+            for tid in inverseDivisions.keys():
+                rootTid = inverseDivisions[tid]
+                while rootTid in inverseDivisions.keys():
+                    rootTid = inverseDivisions[rootTid]
+                replace[tid] = [rootTid]
+                    
+            shape = list(self.mainOperator.TrackImage.meta.shape)
+            num_files = float(shape[0]-1)
+            for t in range(shape[0]):
+                self._log('exporting tiffs for t = ' + str(t))            
+                
+                roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
+                trackImage = self.mainOperator.TrackImage.get(roi).wait()
+                relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
+                for i in range(relabeled.shape[2]):
+                    out_im = relabeled[:,:,i]
+                    out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
+                    vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
             
-            roi = SubRegion(self.mainOperator.TrackImage, start=[t,] + 4*[0,], stop=[t+1,] + list(shape[1:]))
-            trackImage = self.mainOperator.TrackImage.get(roi).wait()
-            relabeled = self.mainOperator._relabel(trackImage[0,...,0], replace)
-            for i in range(relabeled.shape[2]):
-                out_im = relabeled[:,:,i]
-                out_fn = str(directory) + '/vis_t' + str(t).zfill(4) + '_z' + str(i).zfill(4) + '.tif'
-                vigra.impex.writeImage(numpy.asarray(out_im,dtype=numpy.uint32), out_fn)
+                _handle_progress(t/num_files * 100)
+            self._log("-> tracking successfully exported")
         
-        self._log('Tiffs exported.')
+        def _handle_finished(*args):
+            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)
+               
+        def _handle_failure( exc, exc_info ):
+            import traceback, sys
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during export.  See traceback above.\n")     
+            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.progressSignal.emit(100)       
+        
+        self.applet.progressSignal.emit(0)
+        req = Request( _export )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
         
         
     
@@ -986,9 +1074,7 @@ class ManualTrackingGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
-        self.editor.posModel.slicingPos = new_slicing_pos
-        self.editor.posModel.cursorPos = new_slicing_pos
-        self.editor.posModel.time = t      
+        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
 
 
@@ -1012,7 +1098,8 @@ class ManualTrackingGui(LayerViewerGui):
           
         self._gotoObject(oid, t)
 
-    
+
+    @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
@@ -1032,9 +1119,7 @@ class ManualTrackingGui(LayerViewerGui):
                 break
         
         if nextCoords is not None:
-            self.editor.posModel.slicingPos = nextCoords  
-            self.editor.posModel.time = nextLabelT
-            self.editor.posModel.cursorPos = nextCoords
+            self._setPosModel(time=nextLabelT, slicingPos=nextCoords, cursorPos=nextCoords)
             self.editor.navCtrl.panSlicingViews(nextCoords, [0,1,2])
         else:
             self._log('There are no more untracked objects! :-)')   
@@ -1043,11 +1128,11 @@ class ManualTrackingGui(LayerViewerGui):
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
 
-
+    @threadRouted
     def postCriticalMessage(self, prompt):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
         
-        
+    @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
         buttons = [self._drawer.activeTrackBox, 
                    self._drawer.delTrack,
@@ -1056,8 +1141,8 @@ class ManualTrackingGui(LayerViewerGui):
                    self._drawer.nextUnlabeledButton,
                    self._drawer.divEvent,
                    ]
-        
+                
         for b in buttons:
-            if b not in exceptButtons:
+            if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
         

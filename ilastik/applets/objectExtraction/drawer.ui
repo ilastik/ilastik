@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>73</height>
+    <width>272</width>
+    <height>302</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,9 +35,23 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the object features which&lt;br&gt;you plan to use later in the workflow.&lt;br&gt;Note, that it's computationally cheap&lt;br&gt;to &lt;span style=&quot; font-weight:600;&quot;&gt;compute many features at once&lt;/span&gt;,&lt;br&gt;so we recommend to select many&lt;br&gt;features at this step and do an &lt;br&gt;additional subset selection step&lt;br&gt;in the next applet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="selectFeaturesButton">
        <property name="text">
         <string>Select Features</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="featuresSelected">
+       <property name="text">
+        <string>No features selected</string>
        </property>
       </widget>
      </item>

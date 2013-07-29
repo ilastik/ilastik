@@ -12,6 +12,8 @@ from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
+from ilastik.utility.gui import threadRouted
+from ilastik.config import cfg as ilastik_config
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
@@ -23,6 +25,8 @@ import numpy as np
 
 from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
+
+import sys
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,16 +62,33 @@ class FeatureSelectionDialog(QDialog):
 
         self.populate()
         self.ndim = ndim
+        
         self.set_margin()
         self.setObjectName("FeatureSelectionDialog")
 
     def populate(self):
         self.ui.treeWidget.setColumnCount(1)
         for pluginName, features in self.featureDict.iteritems():
+            if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
+                continue
+                
             parent = QTreeWidgetItem(self.ui.treeWidget)
-            parent.setText(0, pluginName)
+            if pluginName == "Standard Object Features":
+                parent.setText(0, pluginName)
+                parent.setToolTip(0, 'http://hci.iwr.uni-heidelberg.de/vigra/doc/vigra/group__FeatureAccumulators.html')
+            else:
+                parent.setText(0, pluginName)
             parent.setExpanded(True)
+            advanced_names = []
+            simple_names = []
             for name in sorted(features.keys()):
+                parameters = features[name]
+                if 'advanced' in parameters:
+                    advanced_names.append(name)
+                else:
+                    simple_names.append(name)
+            
+            for name in simple_names+advanced_names:
                 parameters = features[name]
                 
                 item = QTreeWidgetItem(parent)
@@ -98,7 +119,8 @@ class FeatureSelectionDialog(QDialog):
         if self.ndim==3:
             self.ui.spinBox_Z.setValue(margin[2])
         else:
-            self.ui.spinBox_Z.setEnabled(False)
+            self.ui.spinBox_Z.setVisible(False)
+            self.ui.label_z.setVisible(False)
 
     def accept(self):
         QDialog.accept(self)
@@ -144,10 +166,10 @@ class ObjectExtractionGui(LayerViewerGui):
 
         if mainOperator.ObjectCenterImage.ready():
             self.centerimagesrc = LazyflowSource(mainOperator.ObjectCenterImage)
-            #layer = RGBALayer(red=ConstantSource(255), alpha=self.centerimagesrc)
             redct = [0, QColor(255, 0, 0).rgba()]
             layer = ColortableLayer(self.centerimagesrc, redct)
-            layer.name = "Object Centers"
+            layer.name = "Object centers"
+            layer.setToolTip("Object center positions, marked with a little red cross")
             layer.visible = False
             layers.append(layer)
 
@@ -157,18 +179,20 @@ class ObjectExtractionGui(LayerViewerGui):
             self.objectssrc.setObjectName("LabelImage LazyflowSrc")
             ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
             layer = ColortableLayer(self.objectssrc, ct)
-            layer.name = "Label Image"
+            layer.name = "Objects (connected components)"
+            layer.setToolTip("Segmented objects, shown in different colors")
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
 
         # white foreground on transparent background
-        binct = [QColor(0, 0, 0, 0).rgba(), QColor(255, 255, 255, 255).rgba()]
+        binct = [0, QColor(255, 255, 255, 255).rgba()]
         if mainOperator.BinaryImage.ready():
             self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
             layer = ColortableLayer(self.binaryimagesrc, binct)
-            layer.name = "Binary Image"
+            layer.name = "Binary image"
+            layer.setToolTip("Segmented objects, binary mask")
             layers.append(layer)
 
         ## raw data layer
@@ -176,7 +200,7 @@ class ObjectExtractionGui(LayerViewerGui):
         self.rawsrc = LazyflowSource(mainOperator.RawImage)
         self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer(self.rawsrc)
-        layerraw.name = "Raw"
+        layerraw.name = "Raw data"
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
@@ -198,7 +222,7 @@ class ObjectExtractionGui(LayerViewerGui):
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
+                layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
 
     def _onReady(self, slot):
@@ -206,7 +230,7 @@ class ObjectExtractionGui(LayerViewerGui):
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource(self.topLevelOperatorView.RawImage)
                 layerraw = GrayscaleLayer(self.rawsrc)
-                layerraw.name = "Raw"
+                layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
 
     def initAppletDrawerUi(self):
@@ -214,10 +238,38 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        
+        slot = self.topLevelOperatorView.Features
+        if slot.ready():
+            selectedFeatures = self.topLevelOperatorView.Features([]).wait()
+        else:
+            selectedFeatures = None
+        
+        nfeatures = 0
+        if selectedFeatures is not None:
+            for plugin_features in selectedFeatures.itervalues():
+                nfeatures += len(plugin_features)
+
+        self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
+        
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
 
     def _selectFeaturesButtonPressed(self):
         featureDict = {}
         mainOperator = self.topLevelOperatorView
+        if not mainOperator.RawImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add the raw data before selecting features")
+            mexBox.exec_()
+            return
+        
+        if not mainOperator.BinaryImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add binary (segmentation) data before selecting features ")
+            mexBox.exec_()
+            return
+        
         slot = mainOperator.Features
         if slot.ready():
             selectedFeatures = mainOperator.Features([]).wait()
@@ -226,21 +278,22 @@ class ObjectExtractionGui(LayerViewerGui):
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
 
-        imgshape = list(mainOperator.RawImage.meta.shape)
-        axistags = mainOperator.RawImage.meta.axistags
-        imgshape.pop(axistags.index('t'))
-        fakeimg = np.empty(imgshape, dtype=np.float32)
-
-        labelshape = list(mainOperator.BinaryImage.meta.shape)
-        axistags = mainOperator.BinaryImage.meta.axistags
-        labelshape.pop(axistags.index('t'))
-        labelshape.pop(axistags.index('c') - 1)
-        fakelabels = np.empty(labelshape, dtype=np.uint32)
-        
+        taggedShape = mainOperator.RawImage.meta.getTaggedShape()
+        fakeimg = None
+        fakeimgshp = [taggedShape['x'], taggedShape['y']]
+        fakelabelsshp = [taggedShape['x'], taggedShape['y']]
         ndim = 3
-        zIndex = axistags.index('z')
-        if len(labelshape)==2 or (zIndex<len(mainOperator.RawImage.meta.shape) and mainOperator.RawImage.meta.shape[zIndex]==1):
-            ndim=2
+        if 'z' in taggedShape and taggedShape['z']>1:
+            fakeimgshp.append(taggedShape['z'])
+            fakelabelsshp.append(taggedShape['z'])
+            ndim = 3
+        else:
+            ndim = 2
+        if 'c' in taggedShape and taggedShape['c']>1:
+            fakeimgshp.append(taggedShape['c'])
+        
+        fakeimg = np.empty(fakeimgshp, dtype=np.float32)
+        fakelabels = np.empty(fakelabelsshp, dtype=np.uint32)
         
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
@@ -252,65 +305,63 @@ class ObjectExtractionGui(LayerViewerGui):
             mainOperator.Features.setValue(dlg.selectedFeatures)
             self._calculateFeatures()
 
-    def _calculateFeatures(self):
+    def _calculateFeatures(self, interactive=True):
         mainOperator = self.topLevelOperatorView
         mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
         maxt = mainOperator.LabelImage.meta.shape[0]
-        progress = QProgressDialog("Calculating features...", "Cancel", 0, maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-
-        # We will use notify_finished() to update the progress bar.
-        # However, the callback will be called from a non-gui thread,
-        # which cannot access gui elements directly. Therefore we use
-        # this callback object to send signals back to this thread.
-
-        # FIXME: this could probably be done much more easily with threadRouted
-        class Callback(QObject):
-            ndone = 0
-            timestep_done = pyqtSignal(int)
-            all_finished = pyqtSignal()
-
-            def __call__(self, *args, **kwargs):
-                self.ndone += 1
-                self.timestep_done.emit(self.ndone)
-                if self.ndone == len(reqs):
-                    self.all_finished.emit()
-        callback = Callback()
-
-        def updateProgress(progress, n):
-            progress.setValue(n)
-        callback.timestep_done.connect(partial(updateProgress, progress))
-
-        def finished():
+        
+        def _handle_one_finished(*args):
+            self.already_done = self.already_done+1
+            self.applet.progressSignal.emit(int(self.already_done*100./maxt))
+            if self.already_done == maxt:
+                _handle_all_finished(*args)
+            
+        def _handle_all_finished(*args):
+            self.applet.progressSignal.emit(100)
             self.topLevelOperatorView._opRegFeats.fixed = True
+            feats = self.topLevelOperatorView.RegionFeatures[0].wait()
+            nfeatures = 0
+            nchannels = 0
+            for pname, pfeats in feats[0].iteritems():
+                if pname!='Default features':
+                    for featname, feat in pfeats.iteritems():
+                        nchannels += feat.shape[1]
+                        nfeatures += 1
+            if interactive:
+                self._drawer.featuresSelected.setText("{} features computed, {} channels in total".format(nfeatures, nchannels))
             logger.info('Object Extraction: done.')
-        callback.all_finished.connect(finished)
-
-        mainOperator._opRegFeats.fixed = False
+        
+        
+        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal.emit(-1)
+        
         reqs = []
+        self.already_done = 0
         for t in range(maxt):
             req = mainOperator.RegionFeatures([t])
             req.submit()
             reqs.append(req)
 
-        for i, req in enumerate(reqs):
-            req.notify_finished(callback)
+        for req in reqs:
+            req.notify_failed( self.handleFeatureComputationFailure )
+            req.notify_finished( _handle_one_finished )
 
-        # handle cancel button
-        def cancel():
-            for req in reqs:
-                req.cancel()
-        progress.canceled.connect(cancel)
-
+    @threadRouted
+    def handleFeatureComputationFailure(self, exc, exc_info):
+        import traceback
+        traceback.print_tb(exc_info[2])
+        msg = "Feature computation failed due to the following error:\n{}".format( exc )
+        QMessageBox.critical(self, "Feature computation failed", msg)
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):
-        self.topLevelOperatorView.Features.setValue({})
-        self._calculateFeatures()
+        self.topLevelOperatorView.Features.setValue({})        
+        self._calculateFeatures(interactive=False)
 
     def initAppletDrawerUi(self):
         super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
         self._drawer.selectFeaturesButton.setText('Calculate features')
+        self._drawer.label.setText('')
+        self._drawer.featuresSelected.setText('')
+        

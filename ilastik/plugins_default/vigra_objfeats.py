@@ -45,6 +45,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     local_suffix = " in neighborhood" #note the space in front, it's important
     local_out_suffixes = [local_suffix, " in object and neighborhood"]
 
+    ndim = None
+    
     def availableFeatures(self, image, labels):
         #FIXME: remove the squeeze
         print 'FIXME: VigraObjFeats.availableFeatures() uses squeeze()'
@@ -60,9 +62,11 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             #build human readable names from vigra names
             #TODO: many cases are not covered
             if "Central<PowerSum<" in f:
-                v['tooltip'] = "Sum_i{(X_i-object_mean)^n}"
+                v['tooltip'] = "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
+                v['advanced'] = True
             elif "PowerSum<" in f:
-                v['tooltip'] = "Sum_i{(X_i)^n}"
+                v['tooltip'] = "Unnormalized moment: Sum_i{(X_i)^n}"
+                v['advanced'] = True
             elif "Minimum" in f:
                 v['tooltip'] = "Minimum"
             elif "Maximum" in f:
@@ -77,36 +81,54 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 v['tooltip'] = f
             if "Principal<" in f:
                 v['tooltip'] = v['tooltip'] + ", projected onto PCA eigenvectors"
+                v['advanced'] = True
             if "Coord<" in f:
                 v['tooltip'] = v['tooltip'] + ", computed from object pixel coordinates"
+            if not "Coord<" in f:
+                v['tooltip'] = v['tooltip'] + ", computed from raw pixel values"
             if "DivideByCount<" in f:
                 v['tooltip'] = v['tooltip'] + ", divided by the number of pixels"
+                v['advanced'] = True
             if self.local_suffix in f:
-                v['tooltip'] = v['tooltip'] + ", as defined by margin"
+                v['tooltip'] = v['tooltip'] + ", as defined by neighborhood size below"
         
-            
         return result
 
     def _do_4d(self, image, labels, features, axes):        
         image = np.asarray(image, dtype=np.float32)
         labels = np.asarray(labels, dtype=np.uint32)
-        result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+        if self.ndim==2:
+            result = vigra.analysis.extractRegionFeatures(image.squeeze(), labels.squeeze(), features, ignoreLabel=0)
+        else:
+            result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+        #NOTE: this removes the background object!!!
         return cleanup(result, 0 in labels, True, features)
 
     def compute_global(self, image, labels, features, axes):
         features = features.keys()
         local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
+        
+        #the image parameter passed here is the whole dataset. 
+        #We can use it estimate if the data is 2D or 3D and then apply 
+        #this knowledge in compute_local
+        nZ = image.shape[axes.z]
+        if nZ>1:
+            self.ndim = 3
+        else:
+            self.ndim = 2
+            
         return self._do_4d(image, labels, features, axes)
 
-    def compute_local(self, image, binary_bbox, features, axes):
+    def compute_local(self, image, binary_bbox, feature_dict, axes):
         """helper that deals with individual objects"""
-        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': features})
-        features = features.keys()
+        
+        featurenames = feature_dict.keys()
         local = [x+self.local_suffix for x in self.local_features]
-        features = list(set(features) & set(local))
-        features = [x.split(' ')[0] for x in features]
+        featurenames = list(set(featurenames) & set(local))
+        featurenames = [x.split(' ')[0] for x in featurenames]
         results = []
+        margin = ilastik.applets.objectExtraction.opObjectExtraction.max_margin({'': feature_dict})
         #FIXME: this is done globally as if all the features have the same margin
         #we should group features by their margins
         passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)
@@ -114,6 +136,6 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         assert np.all(binary_bbox+excl==passed)
         for label, suffix in zip([excl, passed],
                                  self.local_out_suffixes):
-            result = self._do_4d(image, label, features, axes)
+            result = self._do_4d(image, label, featurenames, axes)
             results.append(self.update_keys(result, suffix=suffix))
         return self.combine_dicts(results)
