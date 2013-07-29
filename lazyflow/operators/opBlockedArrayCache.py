@@ -219,7 +219,7 @@ class OpBlockedArrayCache(OpCache):
         for r in requests:
             r.wait()
             
-        self.logger.debug("read %r took %f sec." % (roi.pprint(), time.time()-t))
+        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
 
 
     def propagateDirty(self, slot, subindex, roi):

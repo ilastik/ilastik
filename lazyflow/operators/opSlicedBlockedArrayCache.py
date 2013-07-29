@@ -37,7 +37,7 @@ class OpSlicedBlockedArrayCache(OpCache):
             super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
             self._innerOps = []
             self._somethingIsDirty = False
-
+        
     def generateReport(self, report):
         report.name = self.name
         report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
@@ -121,7 +121,7 @@ class OpSlicedBlockedArrayCache(OpCache):
 
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
-        self.logger.debug("read %r took %f sec." % (roi.pprint(), time.time()-t))
+        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
