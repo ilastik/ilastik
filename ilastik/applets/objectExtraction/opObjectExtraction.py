@@ -263,7 +263,7 @@ class OpRegionFeatures3d(Operator):
                 extrafeats[feat_key] = feature
         else:
             logger.debug("default features not computed, computing separately")
-            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d], labels,
+            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze(), labels.squeeze(),
                                                         default_features.keys(),
                                                         ignoreLabel=0)
             #remove the 0th object, we'll add it again later
