@@ -6,6 +6,7 @@ import traceback
 from functools import partial
 import logging
 import copy
+import time
 logger = logging.getLogger(__name__)
 
 #SciPy
@@ -1456,6 +1457,9 @@ class OpImageReader(Operator):
 
     inputSlots = [InputSlot("Filename", stype = "filestring")]
     outputSlots = [OutputSlot("Image")]
+    
+    loggingName = __name__ + ".OpImageReader"
+    logger = logging.getLogger(loggingName)
 
     def setupOutputs(self):
         filename = self.inputs["Filename"].value
@@ -1491,6 +1495,7 @@ class OpImageReader(Operator):
             oslot.meta.axistags = None
 
     def execute(self, slot, subindex, rroi, result):
+        t = time.time()
         key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
         taggedShape = self.Image.meta.getTaggedShape()
@@ -1511,7 +1516,9 @@ class OpImageReader(Operator):
             key = tuple(key)
         else:
             temp = vigra.impex.readImage(filename)
-
+        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+            t = (1000.0*(time.time()-t))
+            self.logger.debug("reading file with vigra took %f msec." % t)
         return temp[key]
 
     def propagateDirty(self, slot, subindex, roi):

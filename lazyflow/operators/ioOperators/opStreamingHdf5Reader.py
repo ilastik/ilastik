@@ -1,4 +1,10 @@
+#Python
+import logging
+import time
+
+#SciPy
 import vigra
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 class OpStreamingHdf5Reader(Operator):
@@ -16,6 +22,9 @@ class OpStreamingHdf5Reader(Operator):
 
     # Output data
     OutputImage = OutputSlot()
+    
+    loggingName = __name__ + ".OpStreamingHdf5Reader"
+    logger = logging.getLogger(loggingName)
     
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
@@ -73,6 +82,7 @@ class OpStreamingHdf5Reader(Operator):
             self.OutputImage.meta.drange = tuple( self._hdf5File[internalPath].attrs['drange'] )
 
     def execute(self, slot, subindex, roi, result):
+        t = time.time()
         assert self._hdf5File is not None
         # Read the desired data directly from the hdf5File
         key = roi.toSlice()
@@ -83,6 +93,9 @@ class OpStreamingHdf5Reader(Operator):
             hdf5File[internalPath].read_direct( result[...], key )
         else:
             result[...] = hdf5File[internalPath][key]
+        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+            t = 1000.0*(time.time()-t)
+            self.logger.debug("took %f msec." % t)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:
