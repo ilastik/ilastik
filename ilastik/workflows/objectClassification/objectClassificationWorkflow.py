@@ -4,6 +4,8 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.objectClassification import ObjectClassificationApplet
@@ -14,7 +16,11 @@ from ilastik.applets.blockwiseObjectClassification \
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots, OpReorderAxes
+from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
+from lazyflow.operators.generic import OpSelectSubslot
 from lazyflow.graph import OperatorWrapper
+
+
 
 import argparse
 
@@ -56,21 +62,33 @@ class ObjectClassificationWorkflow(Workflow):
                 self, "Fill Missing Slices", "Fill Missing Slices", self.fillMissing)
             self._applets.append(self.fillMissingSlicesApplet)
 
+
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
 
+        self.pixel = False
+        if isinstance(self, ObjectClassificationWorkflowPixel):
+            self.pixel = True
+        self.binary = False
+        if isinstance(self, ObjectClassificationWorkflowBinary):
+            self.binary = True
+            
         if self.batch:
             self.dataSelectionAppletBatch = DataSelectionApplet(
-                self, "Batch Inputs", "Batch Inputs", batchDataGui=True, force5d=True)
+                    self, "Batch Inputs", "Batch Inputs", batchDataGui=True)
             self.opDataSelectionBatch = self.dataSelectionAppletBatch.topLevelOperator
-            if isinstance(self, ObjectClassificationWorkflowBinary):
-                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
+            
+            if self.pixel:
+                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data'])
             else:
-                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
-
+                if self.binary:
+                    self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
+                else:
+                    self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
+    
             self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
                 self, "Blockwise Object Classification", "Blockwise Object Classification")
             self._applets.append(self.blockwiseObjectClassificationApplet)
@@ -123,7 +141,7 @@ class ObjectClassificationWorkflow(Workflow):
 
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
-        opTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
+        opObjectTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
         
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
 
@@ -143,8 +161,6 @@ class ObjectClassificationWorkflow(Workflow):
             opBatchThreshold.Channel.connect(opInteractiveThreshold.Channel)
             opBatchThreshold.CurOperator.connect(opInteractiveThreshold.CurOperator)
 
-        # FIXME: need op5ifiers
-
         # OpDataSelectionGroup.ImageGroup is indexed by [laneIndex][roleIndex],
         # but we need a slot that is indexed by [roleIndex][laneIndex]
         # so we can pass each role to the appropriate slots.
@@ -162,9 +178,9 @@ class ObjectClassificationWorkflow(Workflow):
         # Parameter inputs are cloned from the interactive workflow,
         opBatchClassify = OperatorWrapper(OpBlockwiseObjectClassification, parent=self,
                                           promotedSlotNames=['RawImage', 'BinaryImage'])
-        opBatchClassify.Classifier.connect(opTrainingTopLevel.Classifier)
-        opBatchClassify.LabelsCount.connect(opTrainingTopLevel.NumLabels)
-        opBatchClassify.SelectedFeatures.connect(opTrainingTopLevel.SelectedFeatures)
+        opBatchClassify.Classifier.connect(opObjectTrainingTopLevel.Classifier)
+        opBatchClassify.LabelsCount.connect(opObjectTrainingTopLevel.NumLabels)
+        opBatchClassify.SelectedFeatures.connect(opObjectTrainingTopLevel.SelectedFeatures)
         opBatchClassify.BlockShape3dDict.connect(opBlockwiseObjectClassification.BlockShape3dDict)
         opBatchClassify.HaloPadding3dDict.connect(opBlockwiseObjectClassification.HaloPadding3dDict)
 
@@ -173,7 +189,7 @@ class ObjectClassificationWorkflow(Workflow):
         op5Raw = OperatorWrapper(OpReorderAxes, parent=self)
         op5Raw.Input.connect(opBatchFillMissingSlices.Output)
         op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
-        if not isinstance(self, ObjectClassificationWorkflowBinary):
+        if not self.binary:
             opBatchThreshold.RawInput.connect(batchInputsRaw)
             opBatchThreshold.InputImage.connect(batchInputsOther)
             op5Binary.Input.connect(opBatchThreshold.Output)
@@ -237,6 +253,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
 
     def connectInputs(self, laneIndex):
+               
         op5raw = OpReorderAxes(parent=self)
         op5raw.AxisOrder.setValue("txyzc")
         op5pred = OpReorderAxes(parent=self)
@@ -274,7 +291,128 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         return op5raw.Output, op5threshold.Output
 
+    def _initBatchWorkflow(self):
+        
+        # If we are in pixel workflow, start from raw data
+        # The part below is simply copied from the pixel classification
+        
+        # Access applet operators from the training workflow
+        opPixelTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
+        opPixelTrainingFeatures = self.featureSelectionApplet.topLevelOperator
+        opPixelClassify = self.pcApplet.topLevelOperator
+        
+        # Access the batch operators
+        opBatchInputs = self.dataSelectionAppletBatch.topLevelOperator
+        opBatchOutput = self.batchResultsApplet.topLevelOperator
+        
+        opBatchInputs.DatasetRoles.connect( opPixelTrainingDataSelection.DatasetRoles )
+        
+        opSelectFirstLane = OperatorWrapper( OpSelectSubslot, parent=self )
+        opSelectFirstLane.Inputs.connect( opPixelTrainingDataSelection.ImageGroup )
+        opSelectFirstLane.SubslotIndex.setValue(0)
+        
+        opSelectFirstRole = OpSelectSubslot( parent=self )
+        opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
+        opSelectFirstRole.SubslotIndex.setValue(0)
+        
+        ## Create additional batch workflow operators
+        # FIXME: this should take the same filter_implementation as the pixel operator!!!
+        opBatchPixelFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
+        opBatchPixelPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
+        
+        ## Connect Operators ##
+        opTranspose = OpTransposeSlots( parent=self )
+        opTranspose.OutputLength.setValue(1)
+        opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
+        
+        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
+        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
+        opFilePathProvider.AttributeName.setValue( 'filePath' )
+        
+        # Provide dataset paths from data selection applet to the batch export applet
+        opBatchOutput.DatasetPath.connect( opFilePathProvider.Result )
+        
+        # Connect (clone) the feature operator inputs from 
+        #  the interactive workflow's features operator (which gets them from the GUI)
+        opBatchPixelFeatures.Scales.connect( opPixelTrainingFeatures.Scales )
+        opBatchPixelFeatures.FeatureIds.connect( opPixelTrainingFeatures.FeatureIds )
+        opBatchPixelFeatures.SelectionMatrix.connect( opPixelTrainingFeatures.SelectionMatrix )
+        
+        # Classifier and LabelsCount are provided by the interactive workflow
+        opBatchPixelPredictionPipeline.Classifier.connect( opPixelClassify.Classifier )
+        opBatchPixelPredictionPipeline.MaxLabel.connect( opPixelClassify.MaxLabelValue )
+        opBatchPixelPredictionPipeline.FreezePredictions.setValue( False )
+        
+        # Provide these for the gui
+        #opBatchResults.RawImage.connect( opBatchInputs.Image )
+        #opBatchResults.PmapColors.connect( opPixelClassify.PmapColors )
+        #opBatchResults.LabelNames.connect( opClassify.LabelNames )
+        
+        # Connect Image pathway:
+        # Input Image -> Features Op -> Prediction Op -> Thresholding
+        opBatchPixelFeatures.InputImage.connect( opBatchInputs.Image )
+        opBatchPixelPredictionPipeline.FeatureImages.connect( opBatchPixelFeatures.OutputImage )
 
+        # We don't actually need the cached path in the batch pipeline.
+        # Just connect the uncached features here to satisfy the operator.
+        opBatchPixelPredictionPipeline.CachedFeatureImages.connect( opBatchPixelFeatures.OutputImage ) 
+        
+        # Now connect the object part
+        opObjectTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
+        
+        opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
+
+        op5Raw = OperatorWrapper(OpReorderAxes, parent=self)
+
+        if self.fillMissing != 'none':
+            opBatchFillMissingSlices = OperatorWrapper(OpFillMissingSlicesNoCache, parent=self)
+            opBatchFillMissingSlices.Input.connect(opBatchInputs.Image)
+            op5Raw.Input.connect(opBatchFillMissingSlices.Output)
+        else:
+            op5Raw.Input.connect(opBatchInputs.Image)
+        
+        opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
+        opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
+        opBatchThreshold.MinSize.connect(opInteractiveThreshold.MinSize)
+        opBatchThreshold.MaxSize.connect(opInteractiveThreshold.MaxSize)
+        opBatchThreshold.HighThreshold.connect(opInteractiveThreshold.HighThreshold)
+        opBatchThreshold.LowThreshold.connect(opInteractiveThreshold.LowThreshold)
+        opBatchThreshold.SingleThreshold.connect(opInteractiveThreshold.SingleThreshold)
+        opBatchThreshold.SmootherSigma.connect(opInteractiveThreshold.SmootherSigma)
+        opBatchThreshold.Channel.connect(opInteractiveThreshold.Channel)
+        opBatchThreshold.CurOperator.connect(opInteractiveThreshold.CurOperator)
+        
+        #  Image pathway is from the batch pipeline
+        op5Pred = OperatorWrapper(OpReorderAxes, parent=self)
+        op5Pred.Input.connect(opBatchPixelPredictionPipeline.HeadlessPredictionProbabilities)
+        op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
+        opBatchThreshold.RawInput.connect(op5Raw.Output)
+        opBatchThreshold.InputImage.connect(op5Pred.Output)
+        op5Binary.Input.connect(opBatchThreshold.Output)
+        
+        # Connect the blockwise classification operator
+        # Parameter inputs are cloned from the interactive workflow,
+        opBatchObjectClassify = OperatorWrapper(OpBlockwiseObjectClassification, parent=self,
+                                          promotedSlotNames=['RawImage', 'BinaryImage'])
+        opBatchObjectClassify.Classifier.connect(opObjectTrainingTopLevel.Classifier)
+        opBatchObjectClassify.LabelsCount.connect(opObjectTrainingTopLevel.NumLabels)
+        opBatchObjectClassify.SelectedFeatures.connect(opObjectTrainingTopLevel.SelectedFeatures)
+        opBatchObjectClassify.BlockShape3dDict.connect(opBlockwiseObjectClassification.BlockShape3dDict)
+        opBatchObjectClassify.HaloPadding3dDict.connect(opBlockwiseObjectClassification.HaloPadding3dDict)        
+        
+        opBatchObjectClassify.RawImage.connect(op5Raw.Output)
+        opBatchObjectClassify.BinaryImage.connect(op5Binary.Output)
+
+        self.opBatchClassify = opBatchObjectClassify
+
+        # Connect the batch OUTPUT applet
+        opBatchOutput = self.batchResultsApplet.topLevelOperator
+        #opBatchOutput.DatasetPath.connect(self.opDataSelectionBatch.ImageName)
+        opBatchOutput.RawImage.connect(opBatchInputs.Image)
+        opBatchOutput.ImageToExport.connect(opBatchObjectClassify.PredictionImage)
+        
+        
+        
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
 

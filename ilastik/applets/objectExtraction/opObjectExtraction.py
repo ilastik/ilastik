@@ -680,6 +680,9 @@ class OpObjectExtraction(Operator):
             rawTaggedShape['c'] = None
             binTaggedShape['c'] = None
             if dict(rawTaggedShape) != dict(binTaggedShape):
+                logger.info("Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ))
+                
                 msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
                       "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
                 raise DatasetConstraintError( "Object Extraction", msg )
