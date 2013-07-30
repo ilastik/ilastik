@@ -12,8 +12,6 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
 from lazyflow.operators.generic import OpSelectSubslot
-from ilastik.utility import OpMultiLaneWrapper
-        
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -42,13 +40,22 @@ class PixelClassificationWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
+
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        opClassify = self.pcApplet.topLevelOperator
+
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.PmapColors.connect( opClassify.PmapColors )
+        opDataExport.LabelNames.connect( opClassify.LabelNames )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
+        self._applets.append(self.dataExportApplet)
 
         if appendBatchOperators:
             # Create applets for batch workflow
@@ -67,6 +74,7 @@ class PixelClassificationWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
@@ -79,7 +87,12 @@ class PixelClassificationWorkflow(Workflow):
         
         # Training flags -> Classification Op (for GUI restrictions)
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
-        
+
+        # Data Export connections
+        opDataExport.RawData.connect( opData.ImageGroup[0] )
+        opDataExport.Input.connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
     def _initBatchWorkflow(self):
         """

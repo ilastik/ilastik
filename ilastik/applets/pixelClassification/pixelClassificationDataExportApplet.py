@@ -11,7 +11,7 @@ class PixelClassificationDataExportApplet( Applet ):
     def __init__( self, workflow, title, isBatch=False ):
         # Our operator is a subclass of the generic data export operator
         self._topLevelOperator = OpMultiLaneWrapper( OpPixelClassificationDataExport, parent=workflow,
-                                     promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo']) )
+                                     promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo', 'ConstraintDataset']) )
         # Users can temporarily disconnect the 'transaction' 
         #  slot to force all slots to be applied atomically.
         self._topLevelOperator.TransactionSlot.setValue(True)

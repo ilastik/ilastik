@@ -51,7 +51,7 @@ class LayerViewerWorkflow(Workflow):
 
         opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
         opDataExportView.Input.connect( opDataSelectionView.ImageGroup[1] )
-        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[1] )        
+        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
         opDataExportView.WorkingDirectory.connect( opDataSelectionView.WorkingDirectory )
 
     @property
