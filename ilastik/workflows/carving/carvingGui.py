@@ -275,6 +275,8 @@ class CarvingGui(LabelingGui):
             prevName = ""
             if self.topLevelOperatorView.hasCurrentObject():
                 prevName = self.topLevelOperatorView.currentObjectName()
+            if prevName == "<not saved yet>":
+                prevName = ""
             name = self.saveAsDialog(name=prevName)
             if name is None:
                 return

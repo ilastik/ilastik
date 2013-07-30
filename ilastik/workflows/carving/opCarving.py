@@ -120,7 +120,7 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap  = f["/data"].value[numpy.newaxis, :,:,:, numpy.newaxis]
 
-        self._setCurrObjectName("")
+        self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
         
         # keep track of a set of object names that have changed since
@@ -423,7 +423,7 @@ class OpCarving(Operator):
         if name in self._mst.object_names:
             del self._mst.object_names[name]
 
-        self._setCurrObjectName("")
+        self._setCurrObjectName("<not saved yet>")
 
         #now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
@@ -509,7 +509,7 @@ class OpCarving(Operator):
         self._mst.bg_priority[name] = self.BackgroundPriority.value
         self._mst.no_bias_below[name] = self.NoBiasBelow.value
 
-        self._setCurrObjectName("")
+        self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
 
         objects = self._mst.object_names.keys()
