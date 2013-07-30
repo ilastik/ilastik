@@ -5,7 +5,7 @@ compress_labels = False
 '''
 
 vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'Coord<ValueList>', 'RegionRadii']
-features_vigra_name = 'Vigra Object Features'
+features_vigra_name = 'Standard Object Features'
 
 other_features = []
 

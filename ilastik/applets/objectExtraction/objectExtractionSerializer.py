@@ -65,23 +65,20 @@ class SerialObjectFeaturesSlot(SerialSlot):
                                     curr_len = el.shape[0]
                                     if curr_len > max_len:
                                         max_len = curr_len
-                                storage_val = numpy.zeros((len(featval)*max_len, 3),dtype=numpy.float)
+                                ndim = len(el[0])
+                                storage_val = numpy.zeros((len(featval)*max_len, ndim),dtype=numpy.float)
                                 attribute_dict['stride'] = max_len
                                 attribute_dict['was_list'] = True
-                                attribute_dict['n_objects'] = len(featval)
+                                attribute_dict['n_objects'] = len(featval)                                
                                 for idx, tmp_el in enumerate(featval):
                                     if idx == 0:
-                                        el = numpy.array([], dtype=numpy.float).reshape((0,3))
+                                        el = numpy.array([], dtype=numpy.float).reshape((0,ndim))
                                     else:
                                         el = tmp_el[0]
                                     curr_len = el.shape[0]
                                     storage_val[idx*max_len:idx*max_len+curr_len,...] = numpy.array(el)
                                     if curr_len < max_len:
-                                        storage_val[idx*max_len+curr_len,...] = numpy.array([-1.0,-1.0,-1.0])
-                            else:
-                                pass
-                        else:
-                            pass
+                                        storage_val[idx*max_len+curr_len,...] = numpy.array([-1.0,]*ndim)
                         ds = plugin_group.create_dataset(name=featname, data=storage_val)
                         for k, v in attribute_dict.iteritems():
                             ds.attrs[k] = v

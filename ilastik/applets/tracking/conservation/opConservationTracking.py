@@ -80,7 +80,7 @@ class OpConservationTracking(OpTrackingBase):
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
-        self.Parameters.setValue(parameters)        
+        self.Parameters.setValue(parameters, check_changed=False)        
         
         if withClassifierPrior:
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
@@ -138,7 +138,9 @@ class OpConservationTracking(OpTrackingBase):
                                          ndim,
                                          transition_parameter,
                                          borderAwareWidth,
-                                         fov)
+                                         fov,
+                                         True #with_constraints
+                                         )
         
         try:
             self.events = tracker(ts)

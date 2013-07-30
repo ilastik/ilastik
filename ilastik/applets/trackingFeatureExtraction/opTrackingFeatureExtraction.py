@@ -1,15 +1,12 @@
 import numpy
-import h5py
-import vigra.analysis
 import math
-import pgmlink
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction    ,\
     default_features_key
-from ilastik.applets.objectExtraction import config, opObjectExtraction
+from ilastik.applets.objectExtraction import config
 
 
 
@@ -58,6 +55,9 @@ class OpTrackingFeatureExtraction(OpObjectExtraction):
         
         if inputSlot is self.TranslationVectors:
             self.RegionFeatures.setDirty(slice(None))        
+            self.RegionFeaturesVigra.setDirty(slice(None))
+            self.BlockwiseRegionFeatures.setDirty(slice(None))
+            
 
 
 
@@ -98,14 +98,17 @@ class OpCellFeatures(Operator):
         
     def setupOutputs(self):
         self.RegionFeaturesExtended.meta.assignFrom(self.RegionFeaturesVigra.meta)        
+        self.ComputedFeatureNames.meta.assignFrom(self.Features.meta)
+        
         if self.with_corrected_features and not self.TranslationVectors.ready():
-            raise Exception("TranslationVectors slot is not ready, cannot compute translation corrected features")        
-
+            raise Exception("TranslationVectors slot is not ready, cannot compute translation corrected features")                
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.TranslationVectors:
-            self.RegionFeaturesExtended.setDirty(roi)
-                        
+            self.RegionFeaturesExtended.setDirty(slice(None))   
+            self._cache = {}   
+            self.fixed = False      
+    
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNames:
             computed_features = {}
@@ -128,15 +131,22 @@ class OpCellFeatures(Operator):
                 # FIXME: if features have changed, they may not be in the cache.
                 feats_at = self._cache[t]
             elif self.fixed:
-                feats_at = dict((f, numpy.asarray([[]])) for f in self.features)
+                if self.Features.ready():
+                    computed_features = self.Features.get([]).wait()
+                feats_at = {}
+                for k in computed_features.keys():
+                    feats_at[k] = dict((f, numpy.asarray([[]])) for f in computed_features[k])
             elif config.features_cell_classification_name in feats_cur.keys() \
                 and config.features_division_detection_name in feats_cur.keys():                
 
                 self._cache[t] = feats_cur  
                 feats_at = feats_cur
-            else:                
+            else:
+                # assumes t,x,y,z,c
+                # the number of channels in TranslationVectors is identical with num.dimensions
+                self.ndim = self.TranslationVectors.meta.shape[-1]
                 feats_at = {}
-                lshape = self.LabelImage.meta.shape                
+                lshape = self.LabelImage.meta.shape
                 
                 roi_cur = SubRegion(roi.slot, [t], [t+1])                
                 region_feats_cur = self.RegionFeaturesVigra.get(roi_cur).wait()[0]
@@ -149,8 +159,7 @@ class OpCellFeatures(Operator):
 #                    feats_at_plugin = {}
                 
 #                for name in region_feats_cur[plugin_name].keys():                        
-#                    feats_at_plugin[name] = region_feats_cur[plugin_name][name]
-                
+#                    feats_at_plugin[name] = region_feats_cur[plugin_name][name]                
                 feats_vigra_cur = region_feats_cur[config.features_vigra_name]
                 feats_cell_class = {}
                 feats_cell_div = {}
@@ -163,12 +172,13 @@ class OpCellFeatures(Operator):
                     for label in range(1,feats_vigra_cur['RegionCenter'].shape[0]):
                         coord = feats_vigra_cur['RegionCenter'][label]
                         coord_rounded = [int(round(x)) for x in coord]
-                        coord_rounded_end = [x+1 for x in coord_rounded]
+                        coord_rounded_end = [x+1 for x in coord_rounded]                        
                         coord_roi = SubRegion(self.TranslationVectors, 
                                              start=[t,] + coord_rounded + [0,],
-                                             stop=[t+1,] + coord_rounded_end + [3,])
+                                             stop=[t+1,] + coord_rounded_end + [self.ndim,])
                         translation = self.TranslationVectors.get(coord_roi).wait().flatten() 
-                        feats_vigra_cur[name][label] = coord + translation
+                        new_coord = coord + translation
+                        feats_vigra_cur[name][label] = [ max(x, 0) for x in new_coord ]
                     
                 num = feats_vigra_cur['RegionCenter'].shape[0]
                 
@@ -190,14 +200,7 @@ class OpCellFeatures(Operator):
                     if self.with_corrected_features:     
                         feats_cell_div[name+self.transl_corr_suffix] = numpy.zeros([num,1])
                 
-                if self.with_cell_classification_features:
-                    if self.ndim is None:
-                        ndim = 2
-                        for rc in feats_vigra_cur['RegionCenter']:
-                            if rc[2] != 0:
-                                ndim = 3
-                                break
-                        self.ndim = ndim
+                if self.with_cell_classification_features:                    
                     for name in self.cellClassificationFeatures:
                         feats_cell_class[name] = numpy.zeros([num,config.num_max_objects])
                     
@@ -358,15 +361,15 @@ class OpCellFeatures(Operator):
         ''' adds division features to feats_at_cur '''
         #calculate cell division features according to the voxel scale   
         try:
-            scale = config.image_scale
+            scale = config.image_scale[0:self.ndim]
         except:
-            scale = [1.0,1.0,1.0]
+            scale = [1.,] * self.ndim
             print 'no scale given, using the default one'
             
         for label_cur, com_cur in enumerate(feats_vigra_cur['RegionCenter' + suffix]):
             if label_cur == 0:
                 continue
-            
+                        
             coms_next = {}
             sizes_next_all = {}
             labels_next = []  

@@ -29,6 +29,7 @@ class OpTrackingBase(Operator):
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.LabelImage.notifyReady( self._checkConstraints )
+        
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)        
@@ -65,7 +66,7 @@ class OpTrackingBase(Operator):
             t_start = roi.start[0]
             t_end = roi.stop[0]
             for t in range(t_start, t_end):
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):                
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and len(self.label2color) > t:                
                     result[t-t_start, ..., 0] = relabel(result[t-t_start, ..., 0], self.label2color[t])
                 else:
                     result[t-t_start,...] = 0
@@ -204,7 +205,7 @@ class OpTrackingBase(Operator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['size_range'] = size_range
-        self.Parameters.setValue(parameters)
+        self.Parameters.setValue(parameters, check_changed=False)
         
         print "generating traxels"
         print "fetching region features and division probabilities"
@@ -280,7 +281,7 @@ class OpTrackingBase(Operator):
                 # pgmlink expects always 3 coordinates, z=0 for 2d data
                 tr.add_feature_array("com", 3)
                 for i, v in enumerate([x,y,z]):
-                    tr.set_feature_value('com', i, float(v))                    
+                    tr.set_feature_value('com', i, float(v))            
                 
                 if with_opt_correction:
                     tr.add_feature_array("com_corrected", 3)
@@ -298,10 +299,10 @@ class OpTrackingBase(Operator):
                     tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
                     for i, v in enumerate(detProbs[t][idx+1]):
                         val = float(v)
-                        if val < 0.01:
-                            val = 0.01
-                        if val > 0.95:
-                            val = 0.95
+                        if val < 0.0000001:
+                            val = 0.0000001
+                        if val > 0.99999999:
+                            val = 0.99999999
                         tr.set_feature_value("detProb", i, float(v))
                         
                 
@@ -326,7 +327,12 @@ class OpTrackingBase(Operator):
                     for i, v in enumerate(coordinates[idx][0]):
                         tr.set_feature_value("coordinates", 3*i,   float(v[0]))
                         tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
-                        tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
+                        if len(v) == 2:
+                            tr.set_feature_value("coordinates", 3*i+2, 0.)
+                        elif len(v) == 3:
+                            tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
+                        else:
+                            raise Exception, "dimensions must be 2 or 3"
 
                     
                 ts.add(tr)   

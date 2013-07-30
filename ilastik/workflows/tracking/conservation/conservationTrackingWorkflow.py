@@ -18,24 +18,28 @@ class ConservationTrackingWorkflow( Workflow ):
         if 'graph' in kwargs: del kwargs['graph']
         super(ConservationTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
+                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
                                                        batchDataGui=False,
-                                                       force5d=True)
+                                                       force5d=True,
+                                                       instructionText=data_instructions
+                                                       )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
-                                                                  "Threshold & Size Filter", 
+                                                                  "Threshold and Size Filter", 
                                                                   "ThresholdTwoLevels" )        
         
         self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self,
-                                                                      name="Object Extraction")                                                                      
+                                                                      name="Object Feature Computation")                                                                      
         
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection",

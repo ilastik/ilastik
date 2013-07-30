@@ -7,7 +7,7 @@ import lazyflow.request
 from lazyflow.rtype import SubRegion
 import math
 from lazyflow.operators.generic import axisTagsToString
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import roiToSlice, sliceToRoi
 
 class OpOpticalTranslation(Operator):
     name = "Optical Translation"
@@ -38,7 +38,11 @@ class OpOpticalTranslation(Operator):
         self.TranslationVectors.meta.assignFrom(self.BinaryImage.meta)
         self.TranslationVectors.meta.dtype = numpy.int8
         shape = list(self.TranslationVectors.meta.shape)
-        shape[-1] = 3                
+        ndim = 3
+        # assumes t, x, y, z, c
+        if shape[3] == 1:
+            ndim = 2            
+        shape[-1] = ndim                
         self.TranslationVectors.meta.shape = shape
         
         self.TranslationVectorsComputation.meta.dtype = numpy.float
@@ -51,7 +55,7 @@ class OpOpticalTranslation(Operator):
         
         
         if 'TranslationVectors' not in self._mem_h5.keys():
-            chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),3)
+            chunks = (1,min(64,shape[1]),min(64,shape[2]),min(64,shape[3]),ndim)
             self._mem_h5.create_dataset('TranslationVectors', shape=shape, dtype=self.TranslationVectors.meta.dtype, 
                                         compression=1,chunks=chunks) 
         if 'WarpedImage' not in self._mem_h5.keys():
@@ -79,7 +83,7 @@ class OpOpticalTranslation(Operator):
             dest = self._mem_h5['TranslationVectors']
             
             if t == shape[0]-1:
-                dest[t,...][:] = [0]
+                dest[t,...][:] = 0
                 self._processedTimeSteps.add(t)
                 self.TranslationVectors._sig_value_changed()
                 continue
@@ -123,7 +127,7 @@ class OpOpticalTranslation(Operator):
             
         
             if self.twospacedim:
-                dest[t,...,0,0:3] = res.astype(numpy.int8)
+                dest[t,...,0,:] = res.astype(numpy.int8)[...,0:2]
             else:
                 dest[t,...] = res.astype(numpy.int8)
                                                         
@@ -146,12 +150,15 @@ class OpOpticalTranslation(Operator):
                         src = self._mem_h5['TranslationVectors']                    
                         result[dslc] = src[slc]
                     return result
-            elif slot is self.TranslationVectorsDisplay:                
-#                start, stop = roi.start[0], roi.stop[0]
+            elif slot is self.TranslationVectorsDisplay:     
+                tstart, tstop = roi.start[0], roi.stop[0]                
                 maxTranslation = self.Parameters.value['maxTranslation'] 
                 scale = math.floor(255/(2*maxTranslation))           
-#                for t in range(start, stop):
-                translVectors = (self.TranslationVectors.get(roi).wait()).astype(numpy.int16)                    
+                # FIXME: assumes t,x,y,z,c
+                # the entire image for the roi time slices
+                troi = SubRegion(self.TranslationVectors, start = [tstart,] + 4*[0,], stop = [tstop,] + self.TranslationVectors.meta.shape[1:])
+                # the corresponding sub-image
+                translVectors = (self.TranslationVectors.get(troi).wait()).astype(numpy.int16)[[slice(0,tstop-tstart),] + list(roiToSlice(roi.start, roi.stop))[1:]]
                 translVectors *= scale
                 translVectors += 128                
                 result = translVectors.astype(numpy.uint8)                    
@@ -176,10 +183,10 @@ class OpOpticalTranslation(Operator):
                                          stop = [roi.stop[0],] + list(self.BinaryImage.meta.shape[1:]))
                         img_cur = (self.BinaryImage.get(sroi).wait()).astype(numpy.float)
                         
-                        if self.twospacedim:
-                            self._mem_h5['WarpedImage'][start,...,0,0] = pgmlink.translateImage(img_cur[0,...,0,0],translVectors[0,...,0,0:3])
+                        if self.twospacedim:                            
+                            self._mem_h5['WarpedImage'][start,...,0,0] = pgmlink.translateImage(img_cur.squeeze(),translVectors.squeeze())
                         else:
-                            self._mem_h5['WarpedImage'][start,...,0] = pgmlink.translateImage(img_cur[0,...,0],translVectors[0,...])
+                            self._mem_h5['WarpedImage'][start,...,0] = pgmlink.translateImage(img_cur.squeeze(),translVectors.squeeze())
                         self._processedTimeStepsWarped.add(start)                
                         
                     result = self._mem_h5['WarpedImage'][roiToSlice(roi.start,roi.stop)]
@@ -187,16 +194,12 @@ class OpOpticalTranslation(Operator):
                     
         
     def propagateDirty(self, slot, subindex, roi):
-        if slot is self.BinaryImage or slot is self.Parameters:            
-            start, stop = 0, self.BinaryImage.meta.shape[0]            
-            self.TranslationVectors.setDirty(slice(start,stop))
-            self.TranslationVectorsDisplay.setDirty(slice(start,stop))
-            self.WarpedImage.setDirty(slice(start,stop))
-            for t in range(start, stop):
-                try:
-                    self._processedTimeSteps.remove(t)
-                    self._processedTimeStepsWarped.remove(t)
-                except KeyError:
-                    continue            
+        if slot == self.BinaryImage or slot == self.Parameters:            
+            self.TranslationVectors.setDirty(slice(None))
+            self.TranslationVectorsDisplay.setDirty(slice(None))
+            self.WarpedImage.setDirty(slice(None))
+            self._processedTimeSteps = set()
+            self._processedTimeStepsWarped = set()
+                        
         else:
             print "Unknown dirty input slot: " + str(slot.name)    
