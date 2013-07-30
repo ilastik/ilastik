@@ -1,14 +1,17 @@
 import os
+import collections
+from functools import partial
+
 import numpy
 import vigra
 import h5py
-from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter
 
+FormatInfo = collections.namedtuple('FormatInfo', ('name', 'extension', 'min_dim', 'max_dim'))
 class OpExportSlot(Operator):
     """
     Export a slot 'as-is', i.e. no subregion, no dtype conversion, no normalization, no axis re-ordering, etc.
@@ -25,11 +28,20 @@ class OpExportSlot(Operator):
     CoordinateOffset = InputSlot(optional=True) # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
 
     ExportPath = OutputSlot()
-    SupportedFormats = OutputSlot()
+    FormatSelectionIsValid = OutputSlot()
 
-    _2d_formats = vigra.impex.listExtensions().split()
-    _3d_sequence_formats = map( lambda s: s + ' sequence', _2d_formats )
-    FORMATS = [ 'hdf5', 'npy' ] + _2d_formats + _3d_sequence_formats + ['multipage tiff', 'multipage tiff sequence']
+    _2d_exts = vigra.impex.listExtensions().split()    
+
+    # List all supported formats
+    _2d_formats = map( lambda ext: FormatInfo(ext, ext, 2, 2), _2d_exts)
+    _3d_sequence_formats = map( lambda ext: FormatInfo(ext + ' sequence', ext, 3, 3), _2d_exts)
+    _3d_volume_formats = [ FormatInfo('multipage tiff', 'tiff', 3, 3) ]
+    _4d_sequence_formats = [ FormatInfo('multipage tiff sequence', 'tiff', 4, 4) ]
+    nd_format_formats = [ FormatInfo('hdf5', 'h5', 0, 5),
+                        FormatInfo('numpy', 'npy', 0, 5)]
+    
+    ALL_FORMATS = _2d_formats + _3d_sequence_formats + _3d_volume_formats\
+                + _4d_sequence_formats + nd_format_formats
 
     def __init__(self, *args, **kwargs):
         super( OpExportSlot, self ).__init__(*args, **kwargs)
@@ -41,15 +53,22 @@ class OpExportSlot(Operator):
         export_impls['npy'] = ('npy', self._export_npy)
         
         for fmt in self._2d_formats:
-            export_impls[fmt] = (fmt, partial(self._export_2d, fmt) )
-            export_impls[fmt + ' sequence'] = (fmt, partial(self._export_2d_sequence, fmt) )
+            export_impls[fmt.name] = (fmt.extension, partial(self._export_2d, fmt.extension) )
+
+        for fmt in self._3d_sequence_formats:
+            export_impls[fmt.name] = (fmt.extension, partial(self._export_3d_sequence, fmt.extension) )
+
         export_impls['multipage tiff'] = ('tiff', self._export_multipage_tiff)
         export_impls['multipage tiff sequence'] = ('tiff', self._export_multipage_tiff_sequence)
         self._export_impls = export_impls
+
+        self.Input.notifyMetaChanged( self._updateFormatSelectionIsValid )
     
     def setupOutputs(self):
         self.ExportPath.meta.shape = (1,)
         self.ExportPath.meta.dtype = object
+        self.FormatSelectionIsValid.meta.shape = (1,)
+        self.FormatSelectionIsValid.meta.dtype = object
         
         if self.OutputFormat.value == 'hdf5' and self.OutputInternalPath.value == "":
             self.ExportPath.meta.NOTREADY = True
@@ -57,58 +76,91 @@ class OpExportSlot(Operator):
     def execute(self, slot, subindex, roi, result):
         if slot == self.ExportPath:
             return self._executeExportPath(result)
-        if slot == self.SupportedFormats:
-            return self._executeSupportedFormats(result)
+        if slot == self.FormatSelectionIsValid:
+            return self._executeFormatSelectionIsValid(result)
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 
     def _executeExportPath(self, result):
-            path_format = self.OutputFilenameFormat.value
-            file_extension = self._export_impls[ self.OutputFormat.value ][0]
-            
-            # Remove existing extension (if present) and add the correct extension
-            path_format = os.path.splitext(path_format)[0]
-            path_format += '.' + file_extension
-    
-            # Provide the TOTAL path (including dataset name)
-            if self.OutputFormat.value == 'hdf5':
-                path_format += '/' + self.OutputInternalPath.value
-    
-            roi = numpy.array( roiFromShape(self.Input.meta.shape) )
-            if self.CoordinateOffset.ready():
-                offset = self.CoordinateOffset.value
-                assert len(roi[0] == len(offset))
-                roi += offset
-            optional_replacements = {}
-            optional_replacements['roi'] = map(tuple, roi)
-            for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
-                optional_replacements[key + '_start'] = start
-                optional_replacements[key + '_stop'] = stop
-            formatted_path = format_known_keys( path_format, optional_replacements )
-            result[0] = formatted_path
-            return result
+        path_format = self.OutputFilenameFormat.value
+        file_extension = self._export_impls[ self.OutputFormat.value ][0]
+        
+        # Remove existing extension (if present) and add the correct extension
+        path_format = os.path.splitext(path_format)[0]
+        path_format += '.' + file_extension
 
-    def _executeSupportedFormats(self, result):
-        # Start with hdf5 and npy, because they support everything
-        supported_formats = ['hdf5', 'npy']
+        # Provide the TOTAL path (including dataset name)
+        if self.OutputFormat.value == 'hdf5':
+            path_format += '/' + self.OutputInternalPath.value
 
-        # Count the number of non-singleton axes
-        dimensionality = sum( TinyVector(self.Input.meta.shape) > 1 )
-
-        if dimensionality <= 2:
-            supported_formats += OpExportSlot._2d_formats
-        if dimensionality == 3:
-            supported_formats += OpExportSlot._3d_sequence_formats
-            supported_formats += ['multipage tiff']
-        if dimensionality == 4:
-            supported_formats += ['multipage tiff sequence']
-
-        result[0] = supported_formats
+        roi = numpy.array( roiFromShape(self.Input.meta.shape) )
+        if self.CoordinateOffset.ready():
+            offset = self.CoordinateOffset.value
+            assert len(roi[0] == len(offset))
+            roi += offset
+        optional_replacements = {}
+        optional_replacements['roi'] = map(tuple, roi)
+        for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
+            optional_replacements[key + '_start'] = start
+            optional_replacements[key + '_stop'] = stop
+        formatted_path = format_known_keys( path_format, optional_replacements )
+        result[0] = formatted_path
         return result
+
+    def _updateFormatSelectionIsValid(self, *args):
+        valid = self._is_format_selection_valid()
+        self.FormatSelectionIsValid.setValue( valid )
+
+    def _is_format_selection_valid(self, *args):
+        """
+        Return True if the currently selected format is valid to export the current input dataset
+        """
+        if not self.Input.ready():
+            return False
+        output_format = self.OutputFormat.value
+
+        # hdf5 and npy support all combinations
+        if output_format == 'hdf5' or output_format == 'npy':
+            return True
+        
+        tagged_shape = self.Input.meta.getTaggedShape()
+        axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
+
+        # 2D formats only support 2D images (singleton/channel axes excepted)
+        if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
+            # Examples:
+            # OK: 'xy', 'xyc'
+            # NOT OK: 'xc', 'xyz'
+            nonchannel_axes = filter(lambda a: a != 'c', axes)
+            return len(nonchannel_axes) == 2
+
+        nonstep_axes = axes[1:]
+        nonchannel_axes = filter( lambda a: a != 'c', nonstep_axes )
+
+        # 3D sequences of 2D images require a 3D image
+        # (singleton/channel axes excepted, unless channel is the 'step' axis)
+        if filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats)\
+           or output_format == 'multipage tiff':
+            # Examples:
+            # OK: 'xyz', 'xyzc', 'cxy'
+            # NOT OK: 'cxyz'
+            return len(nonchannel_axes) == 2
+
+        # 4D sequences of 3D images require a 4D image
+        # (singleton/channel axes excepted, unless channel is the 'step' axis)
+        if output_format == 'multipage tiff sequence':
+            # Examples:
+            # OK: 'txyz', 'txyzc', 'cxyz'
+            # NOT OK: 'xyzc', 'xyz', 'xyc'
+            return len(nonchannel_axes) == 3
+
+        assert False, "Unknown format case: {}".format( output_format )
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.OutputFormat or slot == self.OutputFilenameFormat:
             self.ExportPath.setDirty()
+        if slot == self.OutputFormat:
+            self._updateFormatSelectionIsValid()
 
     def run_export(self):
         """
@@ -122,9 +174,9 @@ class OpExportSlot(Operator):
         try:
             export_func = self._export_impls[output_format][1]
         except KeyError:
-            assert "Unknown export format: {}".format( output_format )
-
-        export_func()
+            raise Exception( "Unknown export format: {}".format( output_format ) )
+        else:
+            export_func()
     
     def _export_hdf5(self):
         self.progressSignal( 0 )
@@ -176,30 +228,27 @@ class OpExportSlot(Operator):
             opExport.cleanUp()
             self.progressSignal(100)
     
-    def _export_2d_sequence(self, fmt):
+    def _export_3d_sequence(self, extension):
         self.progressSignal(0)
-        export_path_pattern = self.ExportPath.value
-        directory, filename = os.path.split(export_path_pattern)
+        export_path_base, export_path_ext = os.path.splitext( self.ExportPath.value )
+        export_path_pattern = export_path_base + "." + extension
         
         try:
-            # Find the non-singleton axes (not counting channel).
-            # Choose last 2 non-singleton axes as the axes of the slices.
-            tagged_items = self.ImageToExport.getTaggedShape().items()
-            filtered_items = filter( lambda (k, v): k != 'c' and v > 1, tagged_items )
-            filtered_axes = zip( *filtered_items )[0]
-            assert len(filtered_axes) <= 3
-            
             opWriter = OpStackWriter( parent=self )
-            opWriter.ImageAxesNames.setValue( filtered_axes[-2:] )
-            opWriter.Filepath.setValue( directory )
-            opWriter.Filepath.setValue( filename )
-            opWriter.Filetype.setValue( fmt )
-            opWriter.Image.connect( self.Input )
+            opWriter.FilepathPattern.setValue( export_path_pattern )
+            opWriter.Input.connect( self.Input )
+            opWriter.progressSignal.subscribe( self.progressSignal )
             
+            if self.CoordinateOffset.ready():
+                step_axis = opWriter.get_nonsingleton_axes()[0]
+                step_axis_index = self.Input.meta.getAxisKeys().index(step_axis)
+                step_axis_offset = self.CoordinateOffset.value[step_axis_index]
+                opWriter.SliceIndexOffset.setValue( step_axis_offset )
+
             # Run the export
             opWriter.run_export()
         finally:
-            opWriter.cleanUp()
+            #opWriter.cleanUp()
             self.progressSignal(100)
     
     def _export_multipage_tiff(self): pass

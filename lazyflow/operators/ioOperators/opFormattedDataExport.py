@@ -17,6 +17,9 @@ class OpFormattedDataExport(Operator):
     - convert to a different dtype
     - transpose axis order
     """
+    TransactionSlot = InputSlot() # To apply all settings in one 'transaction', 
+                                  # disconnect this slot and reconnect it when all slots are ready
+
     Input = InputSlot()
 
     # Subregion params: 'None' can be provided for any axis, in which case it means 'full range' for that axis
@@ -40,6 +43,7 @@ class OpFormattedDataExport(Operator):
     ConvertedImage = OutputSlot() # Not yet re-ordered
     ImageToExport = OutputSlot() # Preview of the pre-processed image that will be exported
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
+    FormatSelectionIsValid = OutputSlot()
     
     # Simplified block diagram:
     #
@@ -72,6 +76,7 @@ class OpFormattedDataExport(Operator):
         self._opExportSlot.OutputFormat.connect( self.OutputFormat )
         
         self.ExportPath.connect( self._opExportSlot.ExportPath )
+        self.FormatSelectionIsValid.connect( self._opExportSlot.FormatSelectionIsValid )
         self.progressSignal = self._opExportSlot.progressSignal
 
     def setupOutputs(self):
@@ -106,16 +111,17 @@ class OpFormattedDataExport(Operator):
            self._opSubRegion.Start.value != new_stop or \
            self._opSubRegion.Stop.value != new_stop:
             # Disconnect first to ensure that the start/stop slots are applied together (atomically)
-            self._opSubRegion.Stop.disconnect()        
+            self._opSubRegion.Stop.disconnect()
+
+            # Provide the coordinate offset, but only for the axes that are present in the output image
+            tagged_input_offset = dict( zip(self.Input.meta.getAxisKeys(), new_start ) )
+            output_axes = self._opReorderAxes.AxisOrder.value
+            output_offset = tuple( tagged_input_offset[axis] for axis in output_axes )
+            self._opExportSlot.CoordinateOffset.setValue( output_offset )
+
             self._opSubRegion.Start.setValue( tuple(new_start) )
             self._opSubRegion.Stop.setValue( tuple(new_stop) )
 
-        # Provide the coordinate offset, but only for the axes that are present in the output image
-        tagged_input_offset = dict( zip(self.Input.meta.getAxisKeys(), self._opSubRegion.Start.value ) )
-        output_axes = self._opReorderAxes.AxisOrder.value
-        output_offset = tuple( tagged_input_offset[axis] for axis in output_axes )
-        self._opExportSlot.CoordinateOffset.setValue( output_offset )
-        
         # Set up normalization and dtype conversion
         export_dtype = self.Input.meta.dtype
         if self.ExportDtype.ready():

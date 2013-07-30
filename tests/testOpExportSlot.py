@@ -6,7 +6,10 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot
+from lazyflow.utility import PathComponents
+from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 
 class TestOpExportSlot(object):
     
@@ -31,12 +34,13 @@ class TestOpExportSlot(object):
         opExport.CoordinateOffset.setValue( (10, 20) )
         
         assert opExport.ExportPath.ready()
-        assert os.path.split(opExport.ExportPath.value)[1] == 'test_export_x10-110_y20-120.h5'
+        export_file = PathComponents( opExport.ExportPath.value ).externalPath
+        assert os.path.split(export_file)[1] == 'test_export_x10-110_y20-120.h5'
         #print "exporting data to: {}".format( opExport.ExportPath.value )
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value + '/volume/data' )
+        opRead.FilePath.setValue( opExport.ExportPath.value )
         expected_data = data.view(numpy.ndarray)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
@@ -63,6 +67,65 @@ class TestOpExportSlot(object):
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
 
+    def testBasic_2d(self):
+        data = 255 * numpy.random.random( (50,100) )
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
+        
+        graph = Graph()
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.setValue(data)
+        opExport.OutputFormat.setValue( 'png' )
+        opExport.OutputFilenameFormat.setValue( self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
+        opExport.CoordinateOffset.setValue( (10, 20) )
+        
+        assert opExport.ExportPath.ready()
+        assert os.path.split(opExport.ExportPath.value)[1] == 'test_export_x10-60_y20-120.png'
+        opExport.run_export()
+        
+        opRead = OpInputDataReader( graph=graph )
+        opRead.FilePath.setValue( opExport.ExportPath.value )
+        expected_data = data.view(numpy.ndarray)
+        read_data = opRead.Output[:].wait()
+        
+        # Note: vigra inserts a channel axis, so read_data is xyc
+        assert (read_data[...,0] == expected_data).all(), "Read data didn't match exported data!"
+
+    def testBasic_2d_Sequence(self):
+        data = 255 * numpy.random.random( (10, 50,100, 3) )
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('zyxc') )
+
+        # Must run this through an operator
+        # Can't use opExport.setValue() because because OpStackWriter can't work with ValueRequests
+        graph = Graph()
+        opData = OpArrayCache( graph=graph )
+        opData.blockShape.setValue( data.shape )
+        opData.Input.setValue( data )
+        
+        filepattern = self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}_z{slice_index}'
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect( opData.Output )
+        opExport.OutputFormat.setValue( 'png sequence' )
+        opExport.OutputFilenameFormat.setValue( filepattern )
+        opExport.CoordinateOffset.setValue( (10, 20, 30, 0) )
+
+        opExport.run_export()
+        
+        export_pattern = opExport.ExportPath.value
+        globstring = export_pattern.format( slice_index=999 )
+        globstring = globstring.replace('999', '*')
+
+        opReader = OpStackLoader( graph=graph )
+        opReader.globstring.setValue( globstring )
+
+        # (The OpStackLoader produces txyzc order.)
+        opReorderAxes = OpReorderAxes( graph=graph )
+        opReorderAxes.AxisOrder.setValue( 'zyxc' )
+        opReorderAxes.Input.connect( opReader.stack )
+        
+        assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
+        assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
 
 
 if __name__ == "__main__":
