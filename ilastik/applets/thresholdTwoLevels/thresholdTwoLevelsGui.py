@@ -56,6 +56,13 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._updateGuiFromOperator()
         self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
+        
+        # check if the data is 2D. If so, hide the z-sigma
+        if self.topLevelOperatorView.InputImage.ready():
+            tShape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+            if not 'z' in tShape or tShape['z']==1:
+                self._drawer.sigmaSpinBox_Z.setVisible(False) 
+        
     
     @threadRouted
     def _updateGuiFromOperator(self):
