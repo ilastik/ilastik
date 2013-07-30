@@ -197,7 +197,7 @@
           <string>Start Preprocessing for selected Data</string>
          </property>
          <property name="text">
-          <string>Run Preprocessing</string>
+          <string>Run</string>
          </property>
          <property name="icon">
           <iconset>
