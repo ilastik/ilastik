@@ -4,7 +4,7 @@ import numpy
 from lazyflow.utility import OrderedSignal
 import lazyflow.stype
 
-from lazyflow.request import RequestLock
+from lazyflow.request import Request, RequestLock
 
 class FakeLock(object):
     def do_nothing(self, *args, **kwargs):
@@ -117,6 +117,13 @@ class RoiRequestBatch( object ):
                 pass
             else:
                 req = self._outputSlot( roi[0], roi[1] )
+                
+                # We have to make sure that we didn't get a so-called "ValueRequest"
+                # because those don't work the same way.
+                # (This can happen if array data was given to a slot via setValue().)
+                assert isinstance( req, Request ), \
+                    "Can't use RoiRequestBatch with non-standard requests.  See comment above."
+                
                 self._activeRequests.append( (roi, req) )
                 req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
                 req.submit()

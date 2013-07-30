@@ -11,6 +11,7 @@ import vigra
 
 #lazyflow
 from lazyflow import rtype
+from lazyflow.roi import TinyVector
 from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
 from lazyflow.metaDict import MetaDict
@@ -383,11 +384,15 @@ class Slot(object):
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
-            assert partner_op.parent == my_op.parent or \
-                   (self._type == "output" and partner_op.parent == my_op) or \
-                   (self._type == "input" and my_op.parent == partner_op) or \
-                   my_op == partner_op,\
-                   "It is forbidden to connect slots of operators that are not siblings or not directly related as parent and child."
+            if not( partner_op.parent == my_op.parent or \
+                    (self._type == "output" and partner_op.parent == my_op) or \
+                    (self._type == "input" and my_op.parent == partner_op) or \
+                    my_op == partner_op):
+                msg = "It is forbidden to connect slots of operators that are not siblings "\
+                      "or not directly related as parent and child."
+                if partner_op.parent is None or my_op.parent is None:
+                    msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
+                raise Exception(msg)
     
             if self.partner == partner and partner.level == self.level:
                 return
@@ -983,7 +988,7 @@ class Slot(object):
                             # Some values can't be compared with __eq__,
                             # in which case we assume the values are different
                             same = False
-                        if isinstance(same, numpy.ndarray):
+                        if isinstance(same, (numpy.ndarray, TinyVector)):
                             same = same.all()
                     changed = not same
             
@@ -1164,7 +1169,7 @@ class Slot(object):
         elif self._type == "output":
             s = OutputSlot(self.name, operator, stype=self._stypeType,
                            rtype=self.rtype, value=self._defaultValue,
-                           optional=self._optional, level=level,
+                           level=level,
                            nonlane=self.nonlane)
         return s
 
@@ -1337,6 +1342,7 @@ class OutputSlot(Slot):
     def __init__(self, *args, **kwargs):
         super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
+        assert 'optional' not in kwargs, '"optional" init arg cannot be used with OutputSlot'
 
     def execute(self, slot, subindex, roi, result):
         """For now, OutputSlots with level > 0 must pretend to be
