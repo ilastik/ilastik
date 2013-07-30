@@ -11,11 +11,11 @@ class OpDataExport(Operator):
     Top-level operator for the export applet.
     Mostly a simple wrapper for OpProcessedDataExport, but with extra formatting of the export path based on lane attributes.
     """
-    TransactionSlot = InputSlot() # To apply all settings in one 'transaction', 
-                                  # disconnect this slot and reconnect it when all slots are ready
+    TransactionSlot = InputSlot()   # To apply all settings in one 'transaction', 
+                                    # disconnect this slot and reconnect it when all slots are ready
 
     RawData = InputSlot(optional=True) # Display only
-    FormattedRawData = OutputSlot()
+    FormattedRawData = OutputSlot() # OUTPUT - for overlaying the transformed raw data with the export data.
 
     # The dataset info for the original dataset (raw data)
     RawDatasetInfo = InputSlot()
@@ -91,6 +91,7 @@ class OpDataExport(Operator):
         opHelper.ExportStop.connect( self.RegionStop )
 
         opFormatRaw = OpFormattedDataExport( parent=self )
+        opFormatRaw.TransactionSlot.connect( self.TransactionSlot )
         opFormatRaw.Input.connect( self.RawData )
         opFormatRaw.RegionStart.connect( opHelper.RawStart )
         opFormatRaw.RegionStop.connect( opHelper.RawStop )
