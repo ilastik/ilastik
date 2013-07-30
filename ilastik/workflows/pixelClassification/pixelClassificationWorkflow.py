@@ -1,6 +1,6 @@
 from ilastik.workflow import Workflow
 
-from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationBatchResultsApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -12,8 +12,6 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
 from lazyflow.operators.generic import OpSelectSubslot
-from ilastik.utility import OpMultiLaneWrapper
-        
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -49,18 +47,27 @@ class PixelClassificationWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
+
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        opClassify = self.pcApplet.topLevelOperator
+
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.PmapColors.connect( opClassify.PmapColors )
+        opDataExport.LabelNames.connect( opClassify.LabelNames )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
+        self._applets.append(self.dataExportApplet)
 
         if appendBatchOperators:
             # Create applets for batch workflow
             self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = PixelClassificationBatchResultsApplet(self, "Batch Prediction Output Locations")
+            self.batchResultsApplet = PixelClassificationDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
     
             # Expose in shell        
             self._applets.append(self.batchInputApplet)
@@ -74,6 +81,7 @@ class PixelClassificationWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
@@ -86,7 +94,12 @@ class PixelClassificationWorkflow(Workflow):
         
         # Training flags -> Classification Op (for GUI restrictions)
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
-        
+
+        # Data Export connections
+        opDataExport.RawData.connect( opData.ImageGroup[0] )
+        opDataExport.Input.connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
     def _initBatchWorkflow(self):
         """
@@ -122,12 +135,13 @@ class PixelClassificationWorkflow(Workflow):
         opTranspose.OutputLength.setValue(1)
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
         
-        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
-        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
-        opFilePathProvider.AttributeName.setValue( 'filePath' )
+#        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
+#        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
+#        opFilePathProvider.AttributeName.setValue( 'filePath' )
         
         # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.DatasetPath.connect( opFilePathProvider.Result )
+        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )
+        opBatchResults.WorkingDirectory.connect( opBatchInputs.WorkingDirectory )
         
         # Connect (clone) the feature operator inputs from 
         #  the interactive workflow's features operator (which gets them from the GUI)
@@ -141,7 +155,7 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictionPipeline.FreezePredictions.setValue( False )
         
         # Provide these for the gui
-        opBatchResults.RawImage.connect( opBatchInputs.Image )
+        opBatchResults.RawData.connect( opBatchInputs.Image )
         opBatchResults.PmapColors.connect( opClassify.PmapColors )
         opBatchResults.LabelNames.connect( opClassify.LabelNames )
         
@@ -149,7 +163,7 @@ class PixelClassificationWorkflow(Workflow):
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        opBatchResults.ImageToExport.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+        opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.

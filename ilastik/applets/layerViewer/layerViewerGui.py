@@ -308,6 +308,7 @@ class LayerViewerGui(QWidget):
             redProvider.Input.connect(slot)
             redProvider.Index.setValue( rindex )
             redSource = LazyflowSource( redProvider.Output )
+            redSource.additional_owned_ops.append( redProvider )
         
         greenSource = None
         if gindex is not None:
@@ -315,6 +316,7 @@ class LayerViewerGui(QWidget):
             greenProvider.Input.connect(slot)
             greenProvider.Index.setValue( gindex )
             greenSource = LazyflowSource( greenProvider.Output )
+            greenSource.additional_owned_ops.append( greenProvider )
         
         blueSource = None
         if bindex is not None:
@@ -322,6 +324,7 @@ class LayerViewerGui(QWidget):
                 blueProvider.Input.connect(slot)
                 blueProvider.Index.setValue( bindex )
                 blueSource = LazyflowSource( blueProvider.Output )
+                blueSource.additional_owned_ops.append( blueProvider )
 
         alphaSource = None
         if aindex is not None:
@@ -329,6 +332,7 @@ class LayerViewerGui(QWidget):
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( aindex )
             alphaSource = LazyflowSource( alphaProvider.Output )
+            alphaSource.additional_owned_ops.append( alphaProvider )
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
         
@@ -412,6 +416,7 @@ class LayerViewerGui(QWidget):
                 if hasattr(layer, 'shortcutRegistration'):
                     shortcut = layer.shortcutRegistration[2]
                     shortcut.setEnabled(False)
+                    layer.clean_up()
 
                 # Move existing layer to the correct position
                 stackIndex = self.layerstack.findMatchingIndex(lambda l: l.name == layer.name)
@@ -428,16 +433,24 @@ class LayerViewerGui(QWidget):
         newDataShape = None
         for provider in self.observedSlots:
             for i, slot in enumerate(provider):
-                if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                    # Use an OpReorderAxes adapter to transpose the shape for us.
-                    op5 = OpReorderAxes( parent=slot.getRealOperator().parent )
-                    op5.Input.connect( slot )
-                    newDataShape = op5.Output.meta.shape
-
-                    # We just needed the operator to determine the transposed shape.
-                    # Disconnect it so it can be garbage collected.
-                    op5.Input.disconnect()
+                if newDataShape is None:
+                    newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
+
+    @classmethod
+    def getVoluminaShapeForSlot(self, slot):
+        shape = None
+        if slot.ready() and slot.meta.axistags is not None:
+            # Use an OpReorderAxes adapter to transpose the shape for us.
+            op5 = OpReorderAxes( parent=slot.getRealOperator().parent )
+            op5.Input.connect( slot )
+            shape = op5.Output.meta.shape
+
+            # We just needed the operator to determine the transposed shape.
+            # Disconnect it so it can be garbage collected.
+            op5.Input.disconnect()
+            op5.cleanUp()
+        return shape
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
