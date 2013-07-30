@@ -37,15 +37,17 @@ class TestOpFormattedDataExport(object):
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.OutputInternalPath.setValue('volume/data')
         
+        opExport.TransactionSlot.setValue( True )
+
         assert opExport.ImageToExport.ready()
         assert opExport.ExportPath.ready()
         
         #print "exporting data to: {}".format( opExport.ExportPath.value )
-        assert opExport.ExportPath.value == self._tmpdir + '/' + 'export_x10-100_y0-80.h5'
+        assert opExport.ExportPath.value == self._tmpdir + '/' + 'export_x10-100_y0-80.h5/volume/data'
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value + '/volume/data' )
+        opRead.FilePath.setValue( opExport.ExportPath.value )
 
         # Compare with the correct subregion and convert dtype.
         sub_roi[1] = (100, 80) # Replace 'None' with full extent
