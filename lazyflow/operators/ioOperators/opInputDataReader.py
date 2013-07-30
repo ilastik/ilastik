@@ -205,6 +205,9 @@ class OpInputDataReader(Operator):
         if fileExtension not in OpInputDataReader.vigraImpexExts:
             return (None, None)
 
+        if not os.path.exists(filePath):
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
+
         vigraReader = OpImageReader(parent=self)
         vigraReader.Filename.setValue(filePath)
 
