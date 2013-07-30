@@ -25,7 +25,7 @@ class TestOpStackWriter(object):
         self._stack_filepattern = os.path.join( self._tmpdir, self._name_pattern )
 
         # Generate some test data
-        self.dataShape = (1, 10, 64, 128, 1)
+        self.dataShape = (1, 10, 64, 128, 2)
         self._axisorder = 'tzyxc'
         self.testData = vigra.VigraArray( self.dataShape,
                                          axistags=vigra.defaultAxistags(self._axisorder),

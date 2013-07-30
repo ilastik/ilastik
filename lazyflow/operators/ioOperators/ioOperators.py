@@ -158,7 +158,11 @@ class OpStackWriter(Operator):
         """
         Request the volume in slices (running in parallel), and write each slice to a separate image.
         """
-        assert len(self._volume_axes) == 3
+        # Make the directory first if necessary
+        export_dir = os.path.split(self.FilepathPattern.value)[0]
+        if not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+        
         # Sliceshape is the same as the input shape, except for the sliced dimension
         tagged_sliceshape = self.Input.meta.getTaggedShape()
         tagged_sliceshape[self._volume_axes[0]] = 1
@@ -186,24 +190,30 @@ class OpStackWriter(Operator):
         self._max_slice_digits = int(math.ceil(math.log10(max_slice+1)))
 
         # Check for errors
-        assert len(self._volume_axes) == 3, \
+        assert len(self._volume_axes) == 3 or len(self._volume_axes) == 4 and 'c' in self._volume_axes[1:], \
             "Exported stacks must have exactly 3 non-singleton dimensions (other than the channel dimension).  "\
             "You stack dimensions are: {}".format( self.Input.meta.getTaggedShape() )
 
         # Test to make sure the filepath pattern includes slice index field        
         filepath_pattern = self.FilepathPattern.value
-        assert '1234' in filepath_pattern.format( slice_index=1234 ), \
-            "Output filepath pattern must contain the '{slice_index}' field for formatting."
+        assert '123456789' in filepath_pattern.format( slice_index=123456789 ), \
+            "Output filepath pattern must contain the '{slice_index}' field for formatting.\n"\
+            "Your format was: {}".format( filepath_pattern )
 
     # No output slots...
     def execute(self, slot, subindex, roi, result): pass 
     def propagateDirty(self, slot, subindex, roi): pass
 
     def get_nonsingleton_axes(self):
-        # Find the non-singleton axes (not counting channel).
-        # The last 2 non-singleton axes will be the axes of the slices.
-        tagged_items = self.Input.meta.getTaggedShape().items()
-        filtered_items = filter( lambda (k, v): k != 'c' and v > 1, tagged_items )
+        return self.get_nonsingleton_axes_for_tagged_shape( self.Input.meta.getTaggedShape() )
+
+    @classmethod
+    def get_nonsingleton_axes_for_tagged_shape(self, tagged_shape):
+        # Find the non-singleton axes.
+        # The first non-singleton axis is the step axis.
+        # The last 2 non-channel non-singleton axes will be the axes of the slices.
+        tagged_items = tagged_shape.items()
+        filtered_items = filter( lambda (k, v): v > 1, tagged_items )
         filtered_axes = zip( *filtered_items )[0]
         return filtered_axes
 
@@ -228,7 +238,7 @@ class OpStackWriter(Operator):
         
         squeezed_data = slice_data.squeeze()
         squeezed_data = vigra.taggedView(squeezed_data, vigra.defaultAxistags("".join(self._volume_axes[1:])))
-        assert len(squeezed_data.shape) == 2
+        assert len(squeezed_data.shape) == len(self._volume_axes)-1
 
         #logger.debug( "Writing slice image for roi: {}".format( roi ) )
         logger.debug("Writing slice: {}".format(formatted_path) )
