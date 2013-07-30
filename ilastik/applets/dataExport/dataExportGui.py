@@ -179,10 +179,17 @@ class DataExportGui(QWidget):
                               opExportModelOp.OutputInternalPath,
                               opExportModelOp.OutputFormat ]
 
+            # Disconnect the special 'transaction' slot to prevent these 
+            #  settings from triggering many calls to setupOutputs.
+            self.topLevelOperator.TransactionSlot.disconnect()
+
             for model_slot in setting_slots:
                 real_inslot = getattr(self.topLevelOperator, model_slot.name)
                 if model_slot.ready():
                     real_inslot.setValue( model_slot.value )
+
+            # Re-connect the 'transaction' slot to apply all settings at once.
+            self.topLevelOperator.TransactionSlot.setValue(True)
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()

@@ -4,7 +4,6 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
-from lazyflow.operators.valueProviders import OpDummyData
 from lazyflow.operators.generic import OpSubRegion
 
 class OpDataExport(Operator):
@@ -12,6 +11,9 @@ class OpDataExport(Operator):
     Top-level operator for the export applet.
     Mostly a simple wrapper for OpProcessedDataExport, but with extra formatting of the export path based on lane attributes.
     """
+    TransactionSlot = InputSlot() # To apply all settings in one 'transaction', 
+                                  # disconnect this slot and reconnect it when all slots are ready
+
     RawData = InputSlot(optional=True) # Display only
     FormattedRawData = OutputSlot()
 
@@ -35,7 +37,7 @@ class OpDataExport(Operator):
     OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_RESULTS') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
+    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_export') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
     
@@ -46,6 +48,7 @@ class OpDataExport(Operator):
 
     ImageOnDisk = OutputSlot() # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
+    FormatSelectionIsValid = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpDataExport, self ).__init__(*args, **kwargs)
@@ -54,6 +57,7 @@ class OpDataExport(Operator):
         opFormattedExport = self._opFormattedExport
 
         # Forward almost all inputs to the 'real' exporter
+        opFormattedExport.TransactionSlot.connect( self.TransactionSlot )
         opFormattedExport.Input.connect( self.Input )
         opFormattedExport.RegionStart.connect( self.RegionStart )
         opFormattedExport.RegionStop.connect( self.RegionStop )
@@ -68,6 +72,7 @@ class OpDataExport(Operator):
         self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
+        self.FormatSelectionIsValid.connect( opFormattedExport.FormatSelectionIsValid )
         self.progressSignal = opFormattedExport.progressSignal
 
         self.Dirty.meta.shape = (1,)
@@ -103,10 +108,12 @@ class OpDataExport(Operator):
         if self._opImageOnDiskProvider is not None:
             self.ImageOnDisk.disconnect()
             self._opImageOnDiskProvider.cleanUp()
+            self._opImageOnDiskProvider = None
 
     def setupOnDiskView(self):
         # Set up the output that let's us view the exported file
         self._opImageOnDiskProvider = OpImageOnDiskProvider( parent=self )
+        self._opImageOnDiskProvider.TransactionSlot.connect( self.TransactionSlot )
         self._opImageOnDiskProvider.Input.connect( self.ImageToExport )
         self._opImageOnDiskProvider.WorkingDirectory.connect( self.WorkingDirectory )
         self._opImageOnDiskProvider.DatasetPath.connect( self._opFormattedExport.ExportPath )
@@ -122,6 +129,11 @@ class OpDataExport(Operator):
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
         known_keys['nickname'] = rawInfo.nickname
+
+        # Disconnect to open the 'transaction'
+        if self._opImageOnDiskProvider is not None:
+            self._opImageOnDiskProvider.TransactionSlot.disconnect()
+        self._opFormattedExport.TransactionSlot.disconnect()
 
         # Blank the internal path while we manipulate the external path
         #  to avoid invalid intermediate states of ExportPath
@@ -139,6 +151,11 @@ class OpDataExport(Operator):
         internal_dataset_format = self.OutputInternalPath.value 
         partially_formatted_dataset_name = format_known_keys( internal_dataset_format, known_keys )
         self._opFormattedExport.OutputInternalPath.setValue( partially_formatted_dataset_name )
+
+        # Re-connect to finish the 'transaction'
+        self._opFormattedExport.TransactionSlot.connect( self.TransactionSlot )
+        if self._opImageOnDiskProvider is not None:
+            self._opImageOnDiskProvider.TransactionSlot.connect( self.TransactionSlot )
         
         self.setupOnDiskView()
 
@@ -191,6 +208,7 @@ class OpImageOnDiskProvider(Operator):
     """
     This simply wraps a lazyflow OpInputDataReader, but provides a default output if the file doesn't exist yet.
     """
+    TransactionSlot = InputSlot()
     Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
 
     WorkingDirectory = InputSlot()
@@ -202,18 +220,16 @@ class OpImageOnDiskProvider(Operator):
     def __init__(self, *args, **kwargs):
         super( OpImageOnDiskProvider, self ).__init__(*args, **kwargs)
         self._opReader = None
-        self._opDummyData = OpDummyData( parent=self )
     
     def setupOutputs( self ):
         if self._opReader is not None:
             self.Output.disconnect()
             self._opReader.cleanUp()
+            self._opReader = None
 
-        self._opDummyData.Input.connect( self.Input )
-        
-        dataReady = True
         try:
             # Configure the reader
+            dataReady = True
             self._opReader = OpInputDataReader( parent=self )
             self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
             self._opReader.FilePath.setValue( self.DatasetPath.value )
@@ -222,16 +238,19 @@ class OpImageOnDiskProvider(Operator):
             dataReady &= self._opReader.Output.meta.dtype == self.Input.meta.dtype
             if dataReady:
                 self.Output.connect( self._opReader.Output )
-        
-        except OpInputDataReader.DatasetReadError:
-            # The dataset doesn't exist yet.
-            dataReady = False
+            else:
+                self._opReader.cleanUp()
+                self._opReader = None
+                self.Output.meta.NOTREADY = True
 
-        if not dataReady:
-            # The dataset isn't ready.
-            # That's okay, we'll just return dummy data.
+        except OpInputDataReader.DatasetReadError:
+            # Note: If the data is exported as a 'sequence', then this will always be NOTREADY
+            #       because the 'path' (e.g. 'myfile_{slice_index}.png' will be nonexistent.
+            #       That's okay because a stack is probably too slow to be of use for a preview anyway.
+            self._opReader.cleanUp()
             self._opReader = None
-            self.Output.connect( self._opDummyData.Output )
+            # The dataset doesn't exist yet.
+            self.Output.meta.NOTREADY = True
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Output is supposed to be directly connected to an internal operator."

@@ -9,6 +9,9 @@ class DataExportApplet( Applet ):
     def __init__( self, workflow, title, isBatch=False ):
         self._topLevelOperator = OpMultiLaneWrapper( OpDataExport, parent=workflow,
                                      promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo']) )
+        # Users can temporarily disconnect the 'transaction' 
+        #  slot to force all slots to be applied atomically.
+        self._topLevelOperator.TransactionSlot.setValue(True)
         super(DataExportApplet, self).__init__(title, syncWithImageIndex=not isBatch)
 
         self._gui = None
