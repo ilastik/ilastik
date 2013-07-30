@@ -43,14 +43,14 @@ class TestOpMultiArraySlicer2(object):
         for i in range(2):
             for j in range(3):
                 data[i,j] = SpecialNumber(i*j)
-        
+
         graph = Graph()
         opSlicer = OpMultiArraySlicer2(graph=graph)
         opSlicer.AxisFlag.setValue('t')
         opSlicer.Input.setValue( data )
         assert len(opSlicer.Slices) == 2
-        assert opSlicer.Input.meta.dtype == object
-        assert opSlicer.Slices[0].meta.dtype == object
+        assert opSlicer.Input.meta.dtype == numpy.object_
+        assert opSlicer.Slices[0].meta.dtype == numpy.object_
         
         for i, slot in enumerate( opSlicer.Slices ):
             a = slot[:].wait()
