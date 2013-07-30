@@ -384,11 +384,15 @@ class Slot(object):
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
-            assert partner_op.parent == my_op.parent or \
-                   (self._type == "output" and partner_op.parent == my_op) or \
-                   (self._type == "input" and my_op.parent == partner_op) or \
-                   my_op == partner_op,\
-                   "It is forbidden to connect slots of operators that are not siblings or not directly related as parent and child."
+            if not( partner_op.parent == my_op.parent or \
+                    (self._type == "output" and partner_op.parent == my_op) or \
+                    (self._type == "input" and my_op.parent == partner_op) or \
+                    my_op == partner_op):
+                msg = "It is forbidden to connect slots of operators that are not siblings "\
+                      "or not directly related as parent and child."
+                if partner_op.parent is None or my_op.parent is None:
+                    msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
+                raise Exception(msg)
     
             if self.partner == partner and partner.level == self.level:
                 return
