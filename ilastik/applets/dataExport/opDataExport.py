@@ -75,8 +75,6 @@ class OpDataExport(Operator):
         self.FormatSelectionIsValid.connect( opFormattedExport.FormatSelectionIsValid )
         self.progressSignal = opFormattedExport.progressSignal
 
-        self.Dirty.meta.shape = (1,)
-        self.Dirty.meta.dtype = bool
         self.Dirty.setValue(True) # Default to Dirty
 
         self._opImageOnDiskProvider = None
