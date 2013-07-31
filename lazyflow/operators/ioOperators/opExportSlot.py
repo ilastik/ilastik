@@ -7,7 +7,7 @@ import vigra
 import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import TinyVector, roiFromShape
+from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter
 
@@ -18,7 +18,6 @@ class OpExportSlot(Operator):
     For sequence export formats, the sequence is indexed by the axistags' FIRST axis.
     For example, txyzc produces a sequence of xyzc volumes.
     """
-    # TODO: Put this in lazyflow? (It intentionally avoids using ilastik-specific concepts like DatasetInfo)
     Input = InputSlot()
     
     OutputFormat = InputSlot(value='hdf5') # string.  See formats, below

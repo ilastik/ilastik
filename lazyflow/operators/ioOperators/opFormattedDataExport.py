@@ -1,10 +1,9 @@
-import collections
 import numpy
 
-from lazyflow.utility import format_known_keys, OrderedSignal
+from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.operators import OpSubRegion, OpPixelOperator
+from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from .opExportSlot import OpExportSlot
