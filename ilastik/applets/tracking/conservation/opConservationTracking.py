@@ -110,7 +110,7 @@ class OpConservationTracking(OpTrackingBase):
         transition_parameter = 5
         disappearance_cost = 500.0
         appearance_cost = 500.0
-
+        
         fov = pgmlink.FieldOfView(time_range[0] * 1.0,
                                       x_range[0] * x_scale,
                                       y_range[0] * y_scale,
@@ -119,6 +119,18 @@ class OpConservationTracking(OpTrackingBase):
                                       (x_range[1]-1) * x_scale,
                                       (y_range[1]-1) * y_scale,
                                       (z_range[1]-1) * z_scale,)
+        
+        print 'fov =', (time_range[0] * 1.0,
+                                      x_range[0] * x_scale,
+                                      y_range[0] * y_scale,
+                                      z_range[0] * z_scale,
+                                      time_range[-1] * 1.0,
+                                      (x_range[1]-1) * x_scale,
+                                      (y_range[1]-1) * y_scale,
+                                      (z_range[1]-1) * z_scale,)
+        
+        if ndim == 2:
+            assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
         tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
