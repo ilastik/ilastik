@@ -9,6 +9,7 @@ from lazyflow.operators.adaptors import Op5ifyer
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
+from lazyflow.roi import roiToSlice
 
 import numpy as np
 import numpy as np
@@ -25,8 +26,7 @@ import vigra
 ############################
 ############################
 
-loggerName = __name__ 
-logger = logging.getLogger(loggerName)
+logger = logging.getLogger(__name__)
 
 
 class OpInterpMissingData(Operator):
@@ -38,13 +38,17 @@ class OpInterpMissingData(Operator):
     HaloSize = InputSlot(value=30)
     DetectionMethod = InputSlot(value='svm')
     InterpolationMethod = InputSlot(value='cubic')
+    
+    # be careful when using the following: setting the same thing twice will not trigger
+    # the action you desire, even if something else has changed
     OverloadDetector = InputSlot(value='')
-      
+    
     Output = OutputSlot()
     Missing = OutputSlot()
     Detector = OutputSlot(stype=Opaque)
     
     _requiredMargin = {'cubic': 2, 'linear': 1, 'constant': 0}
+    _dirty = False
     
     def __init__(self, *args, **kwargs):
         super(OpInterpMissingData, self).__init__(*args, **kwargs)
@@ -57,18 +61,23 @@ class OpInterpMissingData(Operator):
         self.detector.PatchSize.connect(self.PatchSize)
         self.detector.HaloSize.connect(self.HaloSize)
         self.detector.DetectionMethod.connect(self.DetectionMethod)
+        self.detector.OverloadDetector.connect(self.OverloadDetector)
         
         self.interpolator.InputVolume.connect(self.InputVolume)
         self.interpolator.Missing.connect(self.detector.Output) 
         self.interpolator.InterpolationMethod.connect(self.InterpolationMethod) 
         
         self.Missing.connect(self.detector.Output)
-
-    def dumps(self):
-        return self.detector.dumps()
+        self.Detector.connect(self.detector.Detector)
+        
+        
+    def isDirty(self):
+        return self._dirty
     
-    def loads(self, s):
-        self.detector.loads(s)
+    def resetDirty(self):
+        self._dirty = False
+    
+        
 
     def setupOutputs(self):
         # Output has the same shape/axes/dtype/drange as input
@@ -78,6 +87,7 @@ class OpInterpMissingData(Operator):
         taggedShape = self.InputVolume.meta.getTaggedShape()
         
         # this assumption is important!
+        #FIXME why??
         if 't' in taggedShape:
             assert taggedShape['t'] == 1, "Non-spatial dimensions must be of length 1"
         if 'c' in taggedShape:
@@ -90,21 +100,13 @@ class OpInterpMissingData(Operator):
         execute
         '''
         
-        if slot == self.Detector:
-            result = self.dumps()
-            return result
         
         method = self.InterpolationMethod.value
         
         assert method in self._requiredMargin.keys(), "Unknown interpolation method {}".format(method)
         
-        def roi2slice(roi):
-            out = []
-            for start, stop in zip(roi.start, roi.stop):
-                out.append(slice(start, stop))
-            return tuple(out)
 
-        
+        # keep a backup of the original roi
         oldStart = np.asarray([k for k in roi.start])
         oldStop = np.asarray([k for k in roi.stop])
 
@@ -126,7 +128,7 @@ class OpInterpMissingData(Operator):
         roi.start *= 0
         roi.start[z_index] += z_offsets[0]
         roi.stop[z_index] -= z_offsets[1]
-        key = roi2slice(roi)
+        key = roiToSlice(roi.start, roi.stop)
         
         result[:] = a[key]
         
@@ -140,10 +142,11 @@ class OpInterpMissingData(Operator):
             self.Output.setDirty(roi)
         
         if slot == self.OverloadDetector:
-            s = self.OverloadDetector.value
-            self.loads(s)
-        
-        
+            self._dirty = True
+
+   
+    def train(self, force=False):
+        return self.detector.train(force=force)
         
     
     def _extendRoi(self, roi):
@@ -490,6 +493,8 @@ class OpInterpolate(Operator):
 try:
     from sklearn.svm import SVC
     havesklearn = True
+    from sklearn import __version__ as sklearnVersion
+    svcTakesScaleC = int(sklearnVersion.split('.')[1]) < 11
 except ImportError:
     logger.warning("Could not import dependency 'sklearn' for SVMs")
     havesklearn = False
@@ -521,13 +526,16 @@ class SVMManager(object):
     manages our SVMs for multiple bin numbers
     '''
     
-    _svms = {'version': 1}
+    _svms = None
+    
+    def __init__(self):
+        self._svms = {'version': 1}
     
     def get(self, n):
         try:
             return self._svms[n]
         except KeyError:
-            raise NotTrainedError("Detector for bin size {} not trained.".format(n))
+            raise NotTrainedError("Detector for bin size {} not trained.\nHave {}.".format(n, self._svms))
     
     def add(self, svm, n, overwrite=False):
         if not n in self._svms.keys() or overwrite:
@@ -556,6 +564,9 @@ class SVMManager(object):
                         self.add(svm, n, overwrite=True)
             except KeyError:
                 raise ValueError("Format not recognized.")
+            
+    def __str__(self):
+        return str(self._svms)
 
 
 def _chooseRandomSubset(data, n):
@@ -633,6 +644,7 @@ class OpDetectMissing(Operator):
     HaloSize = InputSlot(value=30)
     DetectionMethod = InputSlot(value='classic')
     NHistogramBins = InputSlot(value=_defaultBinSize)
+    OverloadDetector = InputSlot(value='')
     
     #histograms: ndarray, shape: nHistograms x (NHistogramBins.value + 1)
     # the last column holds the label, i.e. {0: negative, 1: positive}
@@ -640,6 +652,7 @@ class OpDetectMissing(Operator):
     
     
     Output = OutputSlot()
+    Detector = OutputSlot(stype=Opaque)
     
     
     
@@ -647,6 +660,7 @@ class OpDetectMissing(Operator):
     _manager = SVMManager()
     _inputRange = (0,255)
     _needsTraining = True
+    _doCrossValidation = False
     
     
     def __init__(self, *args, **kwargs):
@@ -661,6 +675,14 @@ class OpDetectMissing(Operator):
             
         if slot == self.NHistogramBins:
             OpDetectMissing._needsTraining = OpDetectMissing._manager.has(self.NHistogramBins.value)
+            
+        if slot == self.PatchSize or slot == self.HaloSize:
+            self.Output.setDirty()
+            
+        if slot == self.OverloadDetector:
+            s = self.OverloadDetector.value
+            self.loads(s)
+            self.Output.setDirty()
         
     
     def setupOutputs(self):
@@ -676,9 +698,15 @@ class OpDetectMissing(Operator):
             #FIXME hardcoded range, use np.iinfo
             r = (0,255)
         self._inputRange = r
+        
+        self.Detector.meta.shape = (1,)
 
 
     def execute(self, slot, subindex, roi, result):
+        
+        if slot == self.Detector:
+            result = self.dumps()
+            return result
         
         # sanity check
         assert self.DetectionMethod.value in ['svm', 'classic'], \
@@ -699,15 +727,6 @@ class OpDetectMissing(Operator):
 
         return result
     
-    
-    def dumps(self):
-        return pickle.dumps(OpDetectMissing._manager.extract())
-    
-    
-    def loads(self, s):
-        OpDetectMissing._manager.overload(pickle.loads(s))
-        OpDetectMissing._needsTraining = OpDetectMissing._manager.has(self.NHistogramBins.value)
-    
 
     def _detectMissing(self, slot, data):
         '''
@@ -722,9 +741,6 @@ class OpDetectMissing(Operator):
             and data.axistags.index('x') == 2 \
             and len(data.shape) == 3, \
             "Data must be 3d with axis 'zyx'."
-        
-        if not OpDetectMissing._manager.has(self.NHistogramBins.value):
-            self._train()
         
         result = vigra.VigraArray(data)*0
         
@@ -754,8 +770,9 @@ class OpDetectMissing(Operator):
             for patch in patches:
                 (hist, _) = np.histogram(patch, bins=self.NHistogramBins.value, range=self._inputRange, density=True)
                 hists.append(hist)
+            hists = np.vstack(hists)
             
-            pred = self._predict(hists)
+            pred = self.predict(hists, method=self.DetectionMethod.value)
             
             for i, p in enumerate(pred):
                 if p > 0: 
@@ -765,16 +782,18 @@ class OpDetectMissing(Operator):
         return result
         
         
-    def _train(self, force=False):
+    def train(self, force=False):
         '''
         trains with samples drawn from slot TrainingHistograms
         (retrains only if bin size is currently untrained or force is True)
         '''
         
-        #FIXME unneccessary force input        
-        
         # return early if unneccessary
-        if not OpDetectMissing._needsTraining and OpDetectMissing._manager.has(self.NHistogramBins.value):
+        if not force and not OpDetectMissing._needsTraining and OpDetectMissing._manager.has(self.NHistogramBins.value):
+            return
+        
+        #return if we don't have svms
+        if not havesklearn:
             return
         
         logger.debug("Training for {} histogram bins ...".format(self.NHistogramBins.value))
@@ -810,59 +829,65 @@ class OpDetectMissing(Operator):
         crec = np.zeros((nfolds,))
         pos_random = np.random.permutation(len(pos))
         neg_random = np.random.permutation(len(neg))
-
-        with tempfile.NamedTemporaryFile(suffix='.txt', prefix='crossvalidation_', delete=False) as templogfile:
-            for i in range(nfolds):
-                logger.debug("starting cross validation fold {}".format(i))
-                
-                # partition the set in training and test data, use i-th for testing
-                posTest=pos[pos_random[i*npos/nfolds:(i+1)*npos/nfolds],:]
-                posTrain = np.vstack((pos[pos_random[0:i*npos/nfolds],:], pos[pos_random[(i+1)*npos/nfolds:],:]))
-                
-                negTest=neg[neg_random[i*nneg/nfolds:(i+1)*nneg/nfolds],:]
-                negTrain = np.vstack((neg[neg_random[0:i*nneg/nfolds],:], neg[neg_random[(i+1)*nneg/nfolds:],:]))
-                
-                logger.debug("positive training shape {}, negative training shape {}, positive testing shape {}, negative testing shape {}".format(posTrain.shape, negTrain.shape, posTest.shape, negTest.shape))
-
-                #FIXME do we need a minimum training set size??
-                
-                logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(neg), len(pos)))
-                self._felzenszwalbTraining(negTrain, posTrain)
-            
-
-                predNeg = self._predict(negTest)
-                predPos = self._predict(posTest)
-
-            
-                fp = (predNeg.sum())/float(predNeg.size); cfp[i] = fp
-                fn = (predPos.size - predPos.sum())/float(predPos.size); cfn[i] = fn
-                
-                prec = predPos.sum()/float(predPos.sum()+predNeg.sum()); cprec[i] = prec
-                recall = 1-fn; crec[i] = recall
-            
-                logger.debug(" Finished training. Results of cross validation: FPR=%.5f, FNR=%.5f (recall=%.5f, precision=%.5f)." % (fp, fn, recall, prec))
-                templogfile.write(str(fp)+" "+str(fn)+" "+str(1-fn)+" "+str(prec)+"\n")
-            
-            fp = np.mean(cfp)
-            fn = np.mean(cfn)
-            recall = np.mean(crec)
-            prec = np.mean(cprec)
-            logger.info(" Finished training. Averaged results of cross validation: FPR=%.5f, FNR=%.5f (recall=%.5f, precision=%.5f)." % (fp, fn, recall, prec))
-            logger.info(" Wrote training results to '{}'.".format(templogfile.name))
         
+        if self._doCrossValidation:
+            with tempfile.NamedTemporaryFile(suffix='.txt', prefix='crossvalidation_', delete=False) as templogfile:
+                for i in range(nfolds):
+                    logger.debug("starting cross validation fold {}".format(i))
+                    
+                    # partition the set in training and test data, use i-th for testing
+                    posTest=pos[pos_random[i*npos/nfolds:(i+1)*npos/nfolds],:]
+                    posTrain = np.vstack((pos[pos_random[0:i*npos/nfolds],:], pos[pos_random[(i+1)*npos/nfolds:],:]))
+                    
+                    negTest=neg[neg_random[i*nneg/nfolds:(i+1)*nneg/nfolds],:]
+                    negTrain = np.vstack((neg[neg_random[0:i*nneg/nfolds],:], neg[neg_random[(i+1)*nneg/nfolds:],:]))
+                    
+                    logger.debug("positive training shape {}, negative training shape {}, positive testing shape {}, negative testing shape {}".format(posTrain.shape, negTrain.shape, posTest.shape, negTest.shape))
+
+                    #FIXME do we need a minimum training set size??
+                    
+                    logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(negTrain), len(posTrain)))
+                    self._felzenszwalbTraining(negTrain, posTrain)
+                
+
+                    predNeg = self.predict(negTest, method=self.DetectionMethod.value)
+                    predPos = self.predict(posTest, method=self.DetectionMethod.value)
+
+                
+                    fp = (predNeg.sum())/float(predNeg.size); cfp[i] = fp
+                    fn = (predPos.size - predPos.sum())/float(predPos.size); cfn[i] = fn
+                    
+                    prec = predPos.sum()/float(predPos.sum()+predNeg.sum()); cprec[i] = prec
+                    recall = 1-fn; crec[i] = recall
+                
+                    logger.debug(" Finished training. Results of cross validation: FPR=%.5f, FNR=%.5f (recall=%.5f, precision=%.5f)." % (fp, fn, recall, prec))
+                    templogfile.write(str(fp)+" "+str(fn)+" "+str(1-fn)+" "+str(prec)+"\n")
+                
+                fp = np.mean(cfp)
+                fn = np.mean(cfn)
+                recall = np.mean(crec)
+                prec = np.mean(cprec)
+                logger.info(" Finished training. Averaged results of cross validation: FPR=%.5f, FNR=%.5f (recall=%.5f, precision=%.5f)." % (fp, fn, recall, prec))
+                logger.info(" Wrote training results to '{}'.".format(templogfile.name))
+        else:
+            logger.debug("Starting training with {} negative patches and {} positive patches...".format( len(neg), len(pos)))
+            self._felzenszwalbTraining(neg, pos)
+            logger.debug("Finished training.")
+            
         OpDetectMissing._needsTraining = False
             
         
             
     def _felzenszwalbTraining(self, negative, positive):
         '''
-        we want to train on a 'hard' subset of the non-defective training data, see
+        we want to train on a 'hard' subset of the training data, see
         FELZENSZWALB ET AL.: OBJECT DETECTION WITH DISCRIMINATIVELY TRAINED PART-BASED MODELS (4.4), PAMI 32/9
         '''
         
         #TODO sanity checks
         
         n = (self.PatchSize.value + self.HaloSize.value)**2
+        method = self.DetectionMethod.value
         
         #FIXME arbitrary
         firstSamples = 200
@@ -886,7 +911,7 @@ class OpDetectMissing(Operator):
         def felzenstep(x, cache, ind):
             
             case = ("positive" if ind>0 else "negative") + " set"
-            pred = self._predict(x)
+            pred = self.predict(x, method=method)
             
             hard = np.where(pred != ind)[0]
             easy = np.setdiff1d(range(len(x)), hard)
@@ -929,7 +954,7 @@ class OpDetectMissing(Operator):
         for k in range(nTrainingSteps): #just count iterations
 
             logger.debug("Felzenszwalb Training (step {}/{}): {} hard negative samples, {} hard positive samples.".format(k+1,nTrainingSteps, len(S_t[0]), len(S_t[1])))
-            self._fit(S_t[0], S_t[1])
+            self.fit(S_t[0], S_t[1], method=method)
             
             pool = RequestPool()
 
@@ -944,40 +969,59 @@ class OpDetectMissing(Operator):
                 #already have all hard examples in training set
                 break
 
-        self._fit(S_t[0], S_t[1])
+        self.fit(S_t[0], S_t[1], method=method)
         
         logger.debug(" Finished Felzenszwalb Training.")
+        
+        
+    #####################
+    ### CLASS METHODS ###
+    #####################
     
-    
-    def _fit(self, negative, positive):
+    @classmethod
+    def fit(cls, negative, positive, method='classic'):
         '''
         train the underlying SVM
         '''
         
-        if self.DetectionMethod.value == 'classic' or not havesklearn:
+        if method == 'classic' or not havesklearn:
             return
+        
+        assert len(negative.shape) == 2, "Negative training set must have shape (nSamples, nHistogramBins)."
+        assert len(positive.shape) == 2, "Positive training set must have shape (nSamples, nHistogramBins)."
+        
+        assert negative.shape[1] == positive.shape[1], "Negative and positive histograms must have the same number of bins."
+        nBins = negative.shape[1]
         
         labels = [0]*len(negative) + [1]*len(positive)
         samples = np.vstack( (negative,positive) )
         
-        svm = SVC(C=1000, kernel=_histogramIntersectionKernel)
+        
+        if svcTakesScaleC:
+            # old scikit-learn versions take scale_C as a parameter, new ones don't and default to True
+            svm = SVC(C=1000, kernel=_histogramIntersectionKernel, scale_C=True)
+        else:
+            svm = SVC(C=1000, kernel=_histogramIntersectionKernel)
         
         svm.fit(samples, labels)
         
-        OpDetectMissing._manager.add(svm, self.NHistogramBins.value, overwrite=True)
+        cls._manager.add(svm, nBins, overwrite=True)
         
-        
-    def _predict(self, X):
+    @classmethod
+    def predict(cls, X, method='classic'):
         '''
         predict if the histograms in X correspond to missing regions
         do this for subsets of X in parallel
         '''
         
-        if self.DetectionMethod.value == 'classic' or not havesklearn:
+        assert len(X.shape) == 2, "Prediction data must have shape (nSamples, nHistogramBins)."
+        nBins = X.shape[1]
+        
+        if method == 'classic' or not havesklearn:
             svm = PseudoSVC()
         else:
-            svm = OpDetectMissing._manager.get(self.NHistogramBins.value)
-        
+            svm = cls._manager.get(nBins)
+            
         y = np.zeros((len(X),))*np.nan
         
         pool = RequestPool()
@@ -997,9 +1041,33 @@ class OpDetectMissing(Operator):
         pool.wait()
         pool.clean()
         
-        assert not np.any(np.isnan(y))
+        # not neccessary
+        #assert not np.any(np.isnan(y))
         return np.asarray(y)
-
+    
+    
+    @classmethod
+    def has(cls, n, method='classic'):
+        if method == 'classic' or not havesklearn:
+            return True
+        return cls._manager.has(n)
+    
+    
+    @classmethod
+    def reset(cls):
+        cls._manager = SVMManager()
+        logger.debug("Reset all detectors.")
+    
+    
+    @classmethod
+    def dumps(cls):
+        return pickle.dumps(cls._manager.extract())
+    
+    @classmethod
+    def loads(cls, s):
+        cls._manager.overload(pickle.loads(s))
+        logger.debug("Loaded detector: {}".format(str(cls._manager)))
+        
 
 if __name__ == "__main__":
     
@@ -1059,7 +1127,7 @@ if __name__ == "__main__":
     
     op.TrainingHistograms.setValue(histograms)
     
-    op._train(force=True)
+    op.train(force=True)
     
     try:
         if args.detfile is None:
