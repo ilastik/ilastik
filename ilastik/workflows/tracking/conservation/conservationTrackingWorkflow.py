@@ -83,7 +83,7 @@ class ConservationTrackingWorkflow( Workflow ):
                
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
-        opTwoLevelThreshold.Channel.setValue(1)
+        # opTwoLevelThreshold.Channel.setValue(1)
         
         # Use Op5ifyers for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding
