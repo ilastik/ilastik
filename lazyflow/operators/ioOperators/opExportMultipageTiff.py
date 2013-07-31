@@ -56,7 +56,9 @@ class OpExportMultipageTiff(Operator):
         for slice_index in range( min(self.BATCH_SIZE, tagged_shape[step_axis]) ):
             reqs.append( create_slice_req( slice_index ) )
         
+        self.progressSignal(0)
         while reqs:
+            self.progressSignal( 100*slice_index / tagged_shape[step_axis] )
             req = reqs.popleft()
             slice_data = req.wait()
             slice_index += 1
@@ -70,7 +72,8 @@ class OpExportMultipageTiff(Operator):
 
             # Append a slice to the multipage tiff file
             vigra.impex.writeImage( squeezed_data, image_path, dtype='', compression='', mode='a' )
-            self.progressSignal( 100*slice_index / tagged_shape[step_axis] )
+
+        self.progressSignal(100)
 
     def setupOutputs(self):
         # If stacking XY images in Z-steps,

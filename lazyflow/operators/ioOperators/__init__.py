@@ -8,5 +8,6 @@ from opInputDataReader import *
 from opNpyWriter import OpNpyWriter
 from opExport2DImage import OpExport2DImage
 from opExportMultipageTiff import OpExportMultipageTiff
+from opExportMultipageTiffSequence import OpExportMultipageTiffSequence
 from opExportSlot import OpExportSlot
 from opFormattedDataExport import OpFormattedDataExport
