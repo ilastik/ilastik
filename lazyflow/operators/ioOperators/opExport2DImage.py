@@ -4,7 +4,6 @@ import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot
-from lazyflow.roi import TinyVector
 
 class OpExport2DImage(Operator):
     """
@@ -14,10 +13,6 @@ class OpExport2DImage(Operator):
     Filepath = InputSlot()
     
     def setupOutputs(self):
-        # Check for errors...
-        shape = TinyVector(self.Input.meta.shape)
-        assert sum(shape > 1) <= 2, "Image must have no more than 2 non-singleton dimensions."
-
         # Ask vigra which extensions are supported.
         # If vigra was compiled with libpng, libjpeg, etc.,
         #  then 'png', 'jpeg', etc. will be in this list.
@@ -38,11 +33,17 @@ class OpExport2DImage(Operator):
         Requests all of the input and saves the output file.
         SYNCHRONOUSLY.
         """
+        # Check for errors...
+        tagged_shape = self.Input.meta.getTaggedShape()
+        nonzero_dims = filter( lambda (k,v): k != 'c' and v > 1, tagged_shape.items() )
+        assert len(nonzero_dims) <= 2, "Image must have no more than 2 non-singleton dimensions."
+
         data = self.Input[:].wait()
+        data = vigra.taggedView( data, self.Input.meta.axistags )
         data = data.squeeze()
-        if len(data.shape) == 1:
+        if len(data.shape) == 1 or len(data.shape) == 2 and data.axistags.channelIndex < 2:
             data = data[numpy.newaxis, :]
-        assert len(data.shape) == 2, "Image has shape {}".format(data.shape)
+        assert len(data.shape) == 2 or (len(data.shape) == 3 and data.axistags.channelIndex < 3), "Image has shape {}, channelIndex is {}".format(data.shape, data.axistags.channelIndex)
         
         vigra.impex.writeImage(data, self.Filepath.value)
 
