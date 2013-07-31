@@ -127,6 +127,41 @@ class TestOpExportSlot(object):
         assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
         assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
 
+    def testBasic_MultipageTiffSequence(self):
+        data = 255 * numpy.random.random( (5, 10, 50,100, 3) )
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
+
+        # Must run this through an operator
+        # Can't use opExport.setValue() because because OpStackWriter can't work with ValueRequests
+        graph = Graph()
+        opData = OpArrayCache( graph=graph )
+        opData.blockShape.setValue( data.shape )
+        opData.Input.setValue( data )
+        
+        filepattern = self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}_t{slice_index}'
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect( opData.Output )
+        opExport.OutputFormat.setValue( 'multipage tiff sequence' )
+        opExport.OutputFilenameFormat.setValue( filepattern )
+        opExport.CoordinateOffset.setValue( (7, 10, 20, 30, 0) )
+
+        opExport.run_export()
+        
+        export_pattern = opExport.ExportPath.value
+        globstring = export_pattern.format( slice_index=999 )
+        globstring = globstring.replace('999', '*')
+
+        opReader = OpStackLoader( graph=graph )
+        opReader.globstring.setValue( globstring )
+
+        # (The OpStackLoader produces txyzc order.)
+        opReorderAxes = OpReorderAxes( graph=graph )
+        opReorderAxes.AxisOrder.setValue( 'tzyxc' )
+        opReorderAxes.Input.connect( opReader.stack )
+        
+        assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
+        assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
 
 if __name__ == "__main__":
     import sys

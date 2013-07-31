@@ -79,9 +79,8 @@ class OpExportMultipageTiffSequence(Operator):
                 # Run the export for this block
                 opExportBlock.run_export()
             finally:
-                pass
-                #opExportBlock.cleanUp()
-                #opSubregion.cleanUp()
+                opExportBlock.cleanUp()
+                opSubregion.cleanUp()
 
         self.progressSignal(100)
 
