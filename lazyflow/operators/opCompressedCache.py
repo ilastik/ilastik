@@ -3,6 +3,7 @@ import copy
 import logging
 from functools import partial
 import collections
+import time
 
 # Third-party
 import numpy
@@ -28,6 +29,9 @@ class OpCompressedCache(OpCache):
     InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
     OutputHdf5 = OutputSlot() # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
+    
+    loggerName = __name__ + ".OpCompressedCache"
+    logger = logging.getLogger(loggerName)
     
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
@@ -63,6 +67,7 @@ class OpCompressedCache(OpCache):
 
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
+            
             return self._executeOutput(roi, destination)
         elif slot == self.CleanBlocks:
             return self._executeCleanBlocks(destination)
@@ -73,6 +78,7 @@ class OpCompressedCache(OpCache):
         
 
     def _executeOutput(self, roi, destination):
+        t = time.time()
         assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
         assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
         
@@ -104,6 +110,7 @@ class OpCompressedCache(OpCache):
             # Copy from block to destination
             dataset = self._getBlockDataset( entire_block_roi )
             destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
+        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
         return destination
 
 

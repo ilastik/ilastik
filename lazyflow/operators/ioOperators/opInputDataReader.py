@@ -8,6 +8,7 @@ from lazyflow.utility.jsonConfig import JsonConfigParser
 import h5py
 import vigra
 import os
+import logging
 
 class OpInputDataReader(Operator):
     """
@@ -31,6 +32,9 @@ class OpInputDataReader(Operator):
     WorkingDirectory = InputSlot(stype='filestring', optional=True)
     FilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
+    
+    loggingName = __name__ + ".OpInputDataReader"
+    logger = logging.getLogger(loggingName)
 
     class DatasetReadError(Exception):
         pass
@@ -95,7 +99,7 @@ class OpInputDataReader(Operator):
 
         # Directly connect our own output to the internal output
         self.Output.connect( self.internalOutput )
-
+    
     def _attemptOpenAsStack(self, filePath):
         if '*' in filePath:
             stackReader = OpStackLoader(parent=self)
