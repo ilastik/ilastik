@@ -76,8 +76,6 @@ class OpExportSlot(Operator):
     def execute(self, slot, subindex, roi, result):
         if slot == self.ExportPath:
             return self._executeExportPath(result)
-        if slot == self.FormatSelectionIsValid:
-            return self._executeFormatSelectionIsValid(result)
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 
@@ -128,6 +126,10 @@ class OpExportSlot(Operator):
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
+            if output_format == 'jpg' or output_format == 'jpeg':
+                if axes[0] != 'c' and 'c' in tagged_shape:
+                    # JPEG supports 1 or 3 channels, not 2 or 4 (or 5,6..)
+                    return tagged_shape['c'] == 1 or tagged_shape['c'] == 3
             # Examples:
             # OK: 'xy', 'xyc'
             # NOT OK: 'xc', 'xyz'
@@ -141,6 +143,10 @@ class OpExportSlot(Operator):
         # (singleton/channel axes excepted, unless channel is the 'step' axis)
         if filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats)\
            or output_format == 'multipage tiff':
+            if output_format == 'jpg' or output_format == 'jpeg':
+                if axes[0] != 'c' and 'c' in tagged_shape:
+                    # JPEG supports 1 or 3 channels, not 2 or 4 (or 5,6..)
+                    return tagged_shape['c'] == 1 or tagged_shape['c'] == 3
             # Examples:
             # OK: 'xyz', 'xyzc', 'cxy'
             # NOT OK: 'cxyz'
