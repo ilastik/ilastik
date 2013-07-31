@@ -432,22 +432,15 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QDoubleSpinBox" name="bordWidthBox">
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.010000000000000</double>
-         </property>
-        </widget>
-       </item>
        <item row="7" column="0">
         <widget class="QLabel" name="label_20">
          <property name="text">
-          <string>Border Width (%)</string>
+          <string>Border Width (abs.)</string>
          </property>
         </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QSpinBox" name="bordWidthBox"/>
        </item>
       </layout>
      </item>
@@ -457,7 +450,7 @@
         <string>Hard Prior</string>
        </property>
        <property name="checked">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -478,6 +471,9 @@
       <widget class="QRadioButton" name="classifierPriorBox">
        <property name="text">
         <string>Classifier Prior</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -783,7 +779,6 @@
   <tabstop>avgSizeBox</tabstop>
   <tabstop>divWeightBox</tabstop>
   <tabstop>transWeightBox</tabstop>
-  <tabstop>bordWidthBox</tabstop>
   <tabstop>hardPriorBox</tabstop>
   <tabstop>sizeDepBox</tabstop>
   <tabstop>classifierPriorBox</tabstop>

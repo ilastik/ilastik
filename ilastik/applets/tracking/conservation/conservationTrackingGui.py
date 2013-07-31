@@ -72,6 +72,18 @@ class ConservationTrackingGui( TrackingBaseGui ):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
 
+    def _setRanges(self):
+        super(ConservationTrackingGui, self)._setRanges()        
+        maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
+        maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
+        maxz = self.topLevelOperatorView.LabelImage.meta.shape[3] - 1
+        
+        maxBorder = min(maxx, maxy)
+        if maxz != 0:
+            maxBorder = min(maxBorder, maxz)
+        self._drawer.bordWidthBox.setRange(0, maxBorder/2)
+        
+        
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         
