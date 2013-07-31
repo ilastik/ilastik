@@ -97,7 +97,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
                         # now: features for Coord<ValueList> reside in own subfolder
                         if featname == 'Coord<ValueList>':
                             list_feat = [[]]
-                            for obj_id, values in featval.iteritems():
+                            for obj_id in sorted([int(x) for x in featval.keys()]):
+                                values = featval[str(obj_id)]
                                 list_feat.append(numpy.array([numpy.array(values.value, dtype=object)], dtype=object))
                             region_features[key][featname] = numpy.array(list_feat, dtype=object)
 
