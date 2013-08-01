@@ -49,3 +49,16 @@ class DataExportSerializer(AppletSerializer):
         super(DataExportSerializer, self).__init__(projectFileGroupName,
                                                    slots=slots)
 
+    def deserializeFromHdf5(self, *args):
+        """
+        Overriden from the base class so we can use the special TransactionSlot to
+        speed up the otherwise SLOW process of configuring so many optional slots.
+        """
+        # Disconnect the transaction slot to prevent setupOutput() calls while we do this.
+        self.topLevelOperator.TransactionSlot.disconnect()
+
+        super( DataExportSerializer, self ).deserializeFromHdf5(*args)
+        
+        # Give the slot a value again to complete the 'transaction' (call setupOutputs)
+        self.topLevelOperator.TransactionSlot.setValue(True)
+        
