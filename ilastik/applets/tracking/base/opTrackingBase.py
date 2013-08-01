@@ -100,6 +100,9 @@ class OpTrackingBase(Operator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        
     def _setLabel2Color(self, events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True):        
         label2color = []
         label2color.append({})
@@ -229,7 +232,6 @@ class OpTrackingBase(Operator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['size_range'] = size_range
-        self.Parameters.setValue(parameters, check_changed=False)
         
         print "generating traxels"
         print "fetching region features and division probabilities"
