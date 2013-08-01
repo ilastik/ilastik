@@ -5,14 +5,12 @@ import threading
 import h5py
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtGui import QWidget, QStackedWidget, QMenu, QMessageBox, QFileDialog, QDialog
 
 #lazyflow
-from lazyflow.utility import Tracer
 from lazyflow.request import Request
 
 #volumina
@@ -101,33 +99,32 @@ class DataSelectionGui(QWidget):
     ###########################################
 
     def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, title="Input Selection"):
-        with Tracer(traceLogger):
-            super(DataSelectionGui, self).__init__()
+        super(DataSelectionGui, self).__init__()
 
-            self.title = title
+        self.title = title
 
-            self._viewerControls = QWidget()
-            self.topLevelOperator = dataSelectionOperator
-            self.guiMode = guiMode
-            self.serializer = serializer
-            self.guiControlSignal = guiControlSignal
-            self.threadRouter = ThreadRouter(self)
+        self._viewerControls = QWidget()
+        self.topLevelOperator = dataSelectionOperator
+        self.guiMode = guiMode
+        self.serializer = serializer
+        self.guiControlSignal = guiControlSignal
+        self.threadRouter = ThreadRouter(self)
 
-            self._initCentralUic()
-            self._initAppletDrawerUic(instructionText)
-            
-            self._viewerControlWidgetStack = QStackedWidget(self)
+        self._initCentralUic()
+        self._initAppletDrawerUic(instructionText)
+        
+        self._viewerControlWidgetStack = QStackedWidget(self)
 
-            def handleImageRemoved(multislot, index, finalLength):
-                # Remove the viewer for this dataset
-                imageSlot = self.topLevelOperator.Image[index]
-                if imageSlot in self.volumeEditors.keys():
-                    editor = self.volumeEditors[imageSlot]
-                    self.viewerStack.removeWidget( editor )
-                    self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
-                    editor.stopAndCleanUp()
+        def handleImageRemoved(multislot, index, finalLength):
+            # Remove the viewer for this dataset
+            imageSlot = self.topLevelOperator.Image[index]
+            if imageSlot in self.volumeEditors.keys():
+                editor = self.volumeEditors[imageSlot]
+                self.viewerStack.removeWidget( editor )
+                self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
+                editor.stopAndCleanUp()
 
-            self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
 
     def _initCentralUic(self):
         """

@@ -2,7 +2,6 @@
 import os
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 #SciPy
 import numpy
@@ -15,7 +14,6 @@ from PyQt4 import uic
 
 #lazyflow
 from lazyflow.operators import OpSubRegion
-from lazyflow.utility import Tracer, traceLogged
 
 #ilastik
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -73,7 +71,6 @@ class FeatureSelectionGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    @traceLogged(traceLogger)
     def __init__(self, topLevelOperatorView, applet):
         """
         """
@@ -97,7 +94,6 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView.Scales.setValue( self.ScalesList )
         self.topLevelOperatorView.FeatureIds.setValue( self.getFeatureIdOrder() )
             
-    @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -111,7 +107,6 @@ class FeatureSelectionGui(LayerViewerGui):
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
-    @traceLogged(traceLogger)
     def initViewerControlUi(self):
         """
         Load the viewer controls GUI, which appears below the applet bar.
@@ -154,7 +149,6 @@ class FeatureSelectionGui(LayerViewerGui):
         self.layerstack.rowsInserted.connect( handleInsertedLayers )
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
-    @traceLogged(traceLogger)
     def setupLayers(self):
         opFeatureSelection = self.topLevelOperatorView
         inputSlot = opFeatureSelection.InputImage
@@ -177,7 +171,6 @@ class FeatureSelectionGui(LayerViewerGui):
             layers[0].visible = True
         return layers
 
-    @traceLogged(traceLogger)
     def getFeatureLayers(self, inputSlot, featureSlot):
         """
         Generate a list of layers for the feature image produced by the given slot.
@@ -221,7 +214,6 @@ class FeatureSelectionGui(LayerViewerGui):
 
         return layers
 
-    @traceLogged(traceLogger)
     def initFeatureDlg(self):
         """
         Initialize the feature selection widget.

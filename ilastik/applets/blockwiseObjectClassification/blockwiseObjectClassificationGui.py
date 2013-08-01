@@ -8,13 +8,11 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
-from lazyflow.utility import traceLogged
 from ilastik.utility.gui import threadRouted
 from volumina.api import LazyflowSource, ColortableLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 class BlockwiseObjectClassificationGui( LayerViewerGui ):
     
@@ -66,7 +64,6 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         self.predictLayer = None
 
 
-    @traceLogged(traceLogger)
     def setupLayers(self):
         layers = []
         

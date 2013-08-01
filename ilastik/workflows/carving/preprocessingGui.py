@@ -3,14 +3,10 @@ import os
 import logging
 import traceback
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 #PyQt
 from PyQt4.QtGui import *
 from PyQt4 import uic
-
-#lazyflow
-from lazyflow.utility import Tracer
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -32,54 +28,53 @@ class PreprocessingGui(QMainWindow):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        with Tracer(traceLogger):
-            # Load the ui file (find it in our own directory)
-            localDir = os.path.split(__file__)[0]+'/'
-            # (We don't pass self here because we keep the drawer ui in a separate object.)
-            self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
-            
-            # FIXME: for 0.6, we do not want to allow these options below
-            self.drawer.watershedSourceCombo.hide()
-            self.drawer.invertWatershedSourceCheckbox.hide()
-            self.drawer.watershedSourceInputLabel.hide()
-            
-            # Set up radiobox layout
-            self.filterbuttons = [self.drawer.filter1,
-                                    self.drawer.filter2,
-                                    self.drawer.filter3,
-                                    self.drawer.filter4,
-                                    self.drawer.filter5]
-            
-            self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
-            self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
-            
-            # Set up our handlers
-            for f in self.filterbuttons:
-                f.clicked.connect(self.handleFilterChanged)
-            
-            self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
-            self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
-            
-            self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
-            self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]+'/'
+        # (We don't pass self here because we keep the drawer ui in a separate object.)
+        self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
+        
+        # FIXME: for 0.6, we do not want to allow these options below
+        self.drawer.watershedSourceCombo.hide()
+        self.drawer.invertWatershedSourceCheckbox.hide()
+        self.drawer.watershedSourceInputLabel.hide()
+        
+        # Set up radiobox layout
+        self.filterbuttons = [self.drawer.filter1,
+                                self.drawer.filter2,
+                                self.drawer.filter3,
+                                self.drawer.filter4,
+                                self.drawer.filter5]
+        
+        self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
+        self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
+        
+        # Set up our handlers
+        for f in self.filterbuttons:
+            f.clicked.connect(self.handleFilterChanged)
+        
+        self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
+        self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
+        
+        self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
+        self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
 
-            self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
-            self.drawer.watershedSourceCombo.addItem("Filter Output", userData="filtered")
-            self.drawer.watershedSourceCombo.addItem("Raw Data (if available)", userData="raw")
+        self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
+        self.drawer.watershedSourceCombo.addItem("Filter Output", userData="filtered")
+        self.drawer.watershedSourceCombo.addItem("Raw Data (if available)", userData="raw")
 
-            sourceSetting = self.topLevelOperatorView.WatershedSource.value
-            comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
-            self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
+        sourceSetting = self.topLevelOperatorView.WatershedSource.value
+        comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
+        self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
 
-            self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
+        self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
 
-            self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
-            self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
+        self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
+        self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
 
-            #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
-            #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
+        #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
+        #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
 
-            self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
+        self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
     
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)

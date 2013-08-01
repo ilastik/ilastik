@@ -22,7 +22,6 @@ from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QVBoxLayout, QHBoxLayout, QShortcut
 
 # lazyflow
-from lazyflow.utility import Tracer
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
@@ -52,7 +51,6 @@ import ilastik.workflows
 ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ShellActions                                                                                                   ===
@@ -171,36 +169,35 @@ class ProgressDisplayManager(QObject):
 
     def handleAppletProgressImpl(self, index, percentage, cancelled):
         # No need for locking; this function is always run from the GUI thread
-        with Tracer(traceLogger, msg="from applet {}: {}%, cancelled={}".format(index, percentage, cancelled)):
-            if cancelled:
-                if index in self.appletPercentages.keys():
-                    del self.appletPercentages[index]
-            else:
-                # Take max (never go back down)
-                if index in self.appletPercentages:
-                    oldPercentage = self.appletPercentages[index]
-                    self.appletPercentages[index] = max(percentage, oldPercentage)
-                # First percentage we get MUST be 0 or -1.
-                # Other notifications are ignored.
-                if index in self.appletPercentages or percentage == 0 or percentage == -1:
-                    self.appletPercentages[index] = percentage
-    
-            numActive = len(self.appletPercentages)
-            if numActive > 0:
-                totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
-            
-            # If any applet gave -1, put progress bar in "busy indicator" mode
-            if (TinyVector(self.appletPercentages.values()) == -1).any():
-                self.progressBar.setMaximum(0)
-            else:
-                self.progressBar.setMaximum(100)
+        if cancelled:
+            if index in self.appletPercentages.keys():
+                del self.appletPercentages[index]
+        else:
+            # Take max (never go back down)
+            if index in self.appletPercentages:
+                oldPercentage = self.appletPercentages[index]
+                self.appletPercentages[index] = max(percentage, oldPercentage)
+            # First percentage we get MUST be 0 or -1.
+            # Other notifications are ignored.
+            if index in self.appletPercentages or percentage == 0 or percentage == -1:
+                self.appletPercentages[index] = percentage
+
+        numActive = len(self.appletPercentages)
+        if numActive > 0:
+            totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
         
-            if numActive == 0 or totalPercentage == 100:
-                self.progressBar.setHidden(True)
-                self.appletPercentages.clear()
-            else:
-                self.progressBar.setHidden(False)
-                self.progressBar.setValue(totalPercentage)
+        # If any applet gave -1, put progress bar in "busy indicator" mode
+        if (TinyVector(self.appletPercentages.values()) == -1).any():
+            self.progressBar.setMaximum(0)
+        else:
+            self.progressBar.setMaximum(100)
+    
+        if numActive == 0 or totalPercentage == 100:
+            self.progressBar.setHidden(True)
+            self.appletPercentages.clear()
+        else:
+            self.progressBar.setHidden(False)
+            self.progressBar.setValue(totalPercentage)
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== IlastikShell                                                                                                   ===
@@ -852,10 +849,9 @@ class IlastikShell( QMainWindow ):
         """
         An applet is asking us to do something.  Handle the request.
         """
-        with Tracer(traceLogger):
-            if requestAction == ShellRequest.RequestSave:
-                # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
-                self.projectManager.saveProject()
+        if requestAction == ShellRequest.RequestSave:
+            # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
+            self.projectManager.saveProject()
 
     def __len__( self ):
         return self.appletBar.count()

@@ -11,7 +11,6 @@ from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
-from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 
@@ -29,7 +28,6 @@ except:
 
 # Loggers
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -61,7 +59,6 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    @traceLogged(traceLogger)
     def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -117,7 +114,6 @@ class PixelClassificationGui(LabelingGui):
         self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
 
 
-    @traceLogged(traceLogger)
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
@@ -172,7 +168,6 @@ class PixelClassificationGui(LabelingGui):
         if self.render:
             layer.contexts.append(('Toggle 3D rendering', callback))
 
-    @traceLogged(traceLogger)
     def setupLayers(self):
         """
         Called by our base class when one of our data slots has changed.
@@ -294,7 +289,6 @@ class PixelClassificationGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
-    @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
         """
         If enable
@@ -329,7 +323,6 @@ class PixelClassificationGui(LabelingGui):
         self.interactiveModeActive = checked
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
@@ -337,7 +330,6 @@ class PixelClassificationGui(LabelingGui):
                 layer.visible = checked
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def handleShowSegmentationClicked(self):
         checked = self._viewerControlUi.checkShowSegmentation.isChecked()
         for layer in self.layerstack:
@@ -345,7 +337,6 @@ class PixelClassificationGui(LabelingGui):
                 layer.visible = checked
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def updateShowPredictionCheckbox(self):
         predictLayerCount = 0
         visibleCount = 0
@@ -363,7 +354,6 @@ class PixelClassificationGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def updateShowSegmentationCheckbox(self):
         segLayerCount = 0
         visibleCount = 0
@@ -382,7 +372,6 @@ class PixelClassificationGui(LabelingGui):
 
     @pyqtSlot()
     @threadRouted
-    @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
         if self.topLevelOperatorView.MaxLabelValue.ready():
@@ -397,7 +386,6 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def onSavePredictionsButtonClicked(self):
         """
         The user clicked "Train and Predict".
@@ -418,7 +406,6 @@ class PixelClassificationGui(LabelingGui):
             # Make sure the user can't paint anything while the computation is in progress.
             self._changeInteractionMode(Tool.Navigation)
 
-            @traceLogged(traceLogger)
             def saveThreadFunc():
                 logger.info("Starting full volume save...")
                 # Disable all other applets
