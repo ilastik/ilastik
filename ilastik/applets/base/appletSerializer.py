@@ -177,7 +177,8 @@ class SerialSlot(object):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        self._serialize(group, self.name, self.slot)
+        if self.slot.ready():
+            self._serialize(group, self.name, self.slot)
         self.dirty = False
 
     @staticmethod
@@ -274,7 +275,7 @@ class SerialListSlot(SerialSlot):
 
     """
     def __init__(self, slot, inslot=None, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, transform=None):
+                 default=None, depends=None, selfdepends=True, transform=None, store_transform=None, iterable=list):
         """
         :param transform: function applied to members on deserialization.
 
@@ -289,13 +290,20 @@ class SerialListSlot(SerialSlot):
         if transform is None:
             transform = lambda x: x
         self.transform = transform
+        
+        self._iterable = iterable
+        self._store_transform = store_transform
+        if store_transform is None:
+            self._store_transform = lambda x:x
 
-    @staticmethod
-    def _saveValue(group, name, value):
+    def _saveValue(self, group, name, value):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        sg = group.create_dataset(name, data=value)
+        try:
+            sg = group.create_dataset(name, data=map(self._store_transform, value))
+        except:
+            raise
         sg.attrs['isEmpty'] = isempty
 
     def deserialize(self, group):
@@ -308,7 +316,7 @@ class SerialListSlot(SerialSlot):
                 self.unload()
             else:
                 try:
-                    self.inslot.setValue(list(map(self.transform, subgroup[()])))
+                    self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
                 except:
                     self.unload()
         finally:
@@ -316,7 +324,7 @@ class SerialListSlot(SerialSlot):
 
     def unload(self):
         if self.slot.level == 0:
-            self.inslot.setValue([])
+            self.inslot.disconnect()
         else:
             self.slot.resize(0)
         self.dirty = False

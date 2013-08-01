@@ -62,11 +62,13 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
 
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
+                drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = LazyflowSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=QColor(*colors[channel]),
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
+                                                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?
+                                                    range=drange,
+                                                    normalize=drange )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
                 predictLayer.name = names[channel]

@@ -1,5 +1,6 @@
 from ilastik.applets.base.applet import Applet
 from opPixelClassificationDataExport import OpPixelClassificationDataExport
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -20,10 +21,11 @@ class PixelClassificationDataExportApplet( Applet ):
 
         self._gui = None
         self._title = title
+        self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
         
     @property
     def dataSerializers(self):
-        return []
+        return self._serializers
 
     @property
     def topLevelOperator(self):
