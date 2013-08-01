@@ -8,6 +8,7 @@ from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators.valueProviders import OpZeroDefault
 
 
 class OpTrackingBase(Operator):
@@ -24,9 +25,7 @@ class OpTrackingBase(Operator):
     CleanBlocks = OutputSlot()    
     OutputHdf5 = OutputSlot()
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
-    
-    # provide zeros while waiting for the tracking result
-    ZeroOutput = OutputSlot()
+        
     Output = OutputSlot()    
     
     def __init__(self, parent=None, graph=None):
@@ -39,7 +38,6 @@ class OpTrackingBase(Operator):
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)
-        self.ZeroOutput.meta.assignFrom(self.LabelImage.meta)
         
         #cache our own output, don't propagate from internal operator
         chunks = list(self.LabelImage.meta.shape)
@@ -53,6 +51,9 @@ class OpTrackingBase(Operator):
         self.CleanBlocks.connect( self._opCache.CleanBlocks )
         self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
         self.CachedOutput.connect(self._opCache.Output)
+        
+        self.zeroProvider = OpZeroDefault( parent=self )
+        self.zeroProvider.MetaInput.connect( self.LabelImage )
     
     def _checkConstraints(self, *args):
         if not self.RawImage.ready() or not self.LabelImage.ready():
@@ -91,9 +92,6 @@ class OpTrackingBase(Operator):
                 else:
                     result[t-t_start,...] = 0
             return result         
-        elif slot is self.ZeroOutput:
-            result[:] = 0
-            return result 
         
     def propagateDirty(self, inputSlot, subindex, roi):     
         if inputSlot is self.LabelImage:

@@ -109,8 +109,9 @@ class TrackingBaseGui( LayerViewerGui ):
             trackingLayer.visible = True
             trackingLayer.opacity = 1.0
             layers.append(trackingLayer)
-        else:
-            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.ZeroOutput )
+        elif self.topLevelOperatorView.zeroProvider.Output.ready(): 
+            # provide zeros while waiting for the tracking result
+            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
             trackingLayer = ColortableLayer( self.trackingsrc, ct )
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
