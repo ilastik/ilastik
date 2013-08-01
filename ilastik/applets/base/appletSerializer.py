@@ -324,7 +324,7 @@ class SerialListSlot(SerialSlot):
 
     def unload(self):
         if self.slot.level == 0:
-            self.inslot.setValue([])
+            self.inslot.disconnect()
         else:
             self.slot.resize(0)
         self.dirty = False
