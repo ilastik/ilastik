@@ -80,7 +80,6 @@ class OpConservationTracking(OpTrackingBase):
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
-        self.Parameters.setValue(parameters, check_changed=False)        
         
         if withClassifierPrior:
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
@@ -156,8 +155,12 @@ class OpConservationTracking(OpTrackingBase):
         
         try:
             self.events = tracker(ts)
-        except:
-            raise Exception, 'tracking terminated unsucessfully.'
+        except Exception as e:
+            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
+        if len(self.events) == 0:
+            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+        
+        self.Parameters.setValue(parameters, check_changed=False)
         self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range)
         

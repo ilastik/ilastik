@@ -4,6 +4,8 @@ import logging
 import sys
 import traceback
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.gui.threadRouter import threadRouted
+from lazyflow.request.request import Request
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -12,6 +14,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
     
     withMergers = True
     
+    @threadRouted
     def _setMergerLegend(self, labels, selection):   
         for i in range(1,len(labels)+1):
             if i <= selection:
@@ -72,7 +75,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
 
-    def _setRanges(self):
+    def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        
         maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
         maxy = self.topLevelOperatorView.LabelImage.meta.shape[2] - 1
@@ -87,75 +90,95 @@ class ConservationTrackingGui( TrackingBaseGui ):
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         
-    def _onTrackButtonPressed( self ):        
-        maxDist = self._drawer.maxDistBox.value()
-        maxObj = self._drawer.maxObjectsBox.value()        
-        divThreshold = self._drawer.divThreshBox.value()
+    def _onTrackButtonPressed( self ):    
+        if not self.mainOperator.ObjectFeatures.ready():
+            self._criticalMessage("You have to compute object features first.")            
+            return
         
-        from_t = self._drawer.from_time.value()
-        to_t = self._drawer.to_time.value()
-        from_x = self._drawer.from_x.value()
-        to_x = self._drawer.to_x.value()
-        from_y = self._drawer.from_y.value()
-        to_y = self._drawer.to_y.value()        
-        from_z = self._drawer.from_z.value()
-        to_z = self._drawer.to_z.value()        
-        from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()        
-        
-        self.time_range =  range(from_t, to_t + 1)
-        avgSize = [self._drawer.avgSizeBox.value()]
-                
-        withTracklets = self._drawer.trackletsBox.isChecked()
-        sizeDependent = self._drawer.sizeDepBox.isChecked()
-        hardPrior = self._drawer.hardPriorBox.isChecked()
-        classifierPrior = self._drawer.classifierPriorBox.isChecked()
-        divWeight = self._drawer.divWeightBox.value()
-        transWeight = self._drawer.transWeightBox.value()
-        withDivisions = self._drawer.divisionsBox.isChecked()        
-        withOpticalCorrection = self._drawer.opticalBox.isChecked()
-        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
-        borderAwareWidth = self._drawer.bordWidthBox.value()
-
-        ndim=3
-        if (to_z - from_z == 0):
-            ndim=2
-        
-        try:
-            self.mainOperator.track(
-                time_range = self.time_range,
-                x_range = (from_x, to_x + 1),
-                y_range = (from_y, to_y + 1),
-                z_range = (from_z, to_z + 1),
-                size_range = (from_size, to_size + 1),
-                x_scale = self._drawer.x_scale.value(),
-                y_scale = self._drawer.y_scale.value(),
-                z_scale = self._drawer.z_scale.value(),
-                maxDist=maxDist,         
-                maxObj = maxObj,               
-                divThreshold=divThreshold,
-                avgSize=avgSize,                
-                withTracklets=withTracklets,
-                sizeDependent=sizeDependent,
-                divWeight=divWeight,
-                transWeight=transWeight,
-                withDivisions=withDivisions,
-                withOpticalCorrection=withOpticalCorrection,
-                withClassifierPrior=classifierPrior,
-                ndim=ndim,
-                withMergerResolution=withMergerResolution,
-                borderAwareWidth = borderAwareWidth
-                )
-        except Exception:            
-            ex_type, ex, tb = sys.exc_info()
-            traceback.print_tb(tb)            
-            QtGui.QMessageBox.critical(self, "Error", "Exception(" + str(ex_type) + "): " + str(ex), QtGui.QMessageBox.Ok)
-            return                     
-        
-        self._drawer.exportButton.setEnabled(True)
-        self._drawer.exportTifButton.setEnabled(True)
-#        self._drawer.lineageTreeButton.setEnabled(True)
-        
-        self._setLayerVisible("Objects", False)
+        def _track():    
+            maxDist = self._drawer.maxDistBox.value()
+            maxObj = self._drawer.maxObjectsBox.value()        
+            divThreshold = self._drawer.divThreshBox.value()
             
+            from_t = self._drawer.from_time.value()
+            to_t = self._drawer.to_time.value()
+            from_x = self._drawer.from_x.value()
+            to_x = self._drawer.to_x.value()
+            from_y = self._drawer.from_y.value()
+            to_y = self._drawer.to_y.value()        
+            from_z = self._drawer.from_z.value()
+            to_z = self._drawer.to_z.value()        
+            from_size = self._drawer.from_size.value()
+            to_size = self._drawer.to_size.value()        
+            
+            self.time_range =  range(from_t, to_t + 1)
+            avgSize = [self._drawer.avgSizeBox.value()]
+                    
+            withTracklets = self._drawer.trackletsBox.isChecked()
+            sizeDependent = self._drawer.sizeDepBox.isChecked()
+            hardPrior = self._drawer.hardPriorBox.isChecked()
+            classifierPrior = self._drawer.classifierPriorBox.isChecked()
+            divWeight = self._drawer.divWeightBox.value()
+            transWeight = self._drawer.transWeightBox.value()
+            withDivisions = self._drawer.divisionsBox.isChecked()        
+            withOpticalCorrection = self._drawer.opticalBox.isChecked()
+            withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+            borderAwareWidth = self._drawer.bordWidthBox.value()
+    
+            ndim=3
+            if (to_z - from_z == 0):
+                ndim=2
+            
+            try:
+                self.mainOperator.track(
+                    time_range = self.time_range,
+                    x_range = (from_x, to_x + 1),
+                    y_range = (from_y, to_y + 1),
+                    z_range = (from_z, to_z + 1),
+                    size_range = (from_size, to_size + 1),
+                    x_scale = self._drawer.x_scale.value(),
+                    y_scale = self._drawer.y_scale.value(),
+                    z_scale = self._drawer.z_scale.value(),
+                    maxDist=maxDist,         
+                    maxObj = maxObj,               
+                    divThreshold=divThreshold,
+                    avgSize=avgSize,                
+                    withTracklets=withTracklets,
+                    sizeDependent=sizeDependent,
+                    divWeight=divWeight,
+                    transWeight=transWeight,
+                    withDivisions=withDivisions,
+                    withOpticalCorrection=withOpticalCorrection,
+                    withClassifierPrior=classifierPrior,
+                    ndim=ndim,
+                    withMergerResolution=withMergerResolution,
+                    borderAwareWidth = borderAwareWidth
+                    )
+            except Exception:            
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)            
+                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))       
+                return                     
+        
+        def _handle_finished(*args):
+            self.applet.progressSignal.emit(100)
+            self._drawer.TrackButton.setEnabled(True)
+            self._drawer.exportButton.setEnabled(True)
+            self._drawer.exportTifButton.setEnabled(True)
+            self._setLayerVisible("Objects", False) 
+            
+        def _handle_failure( exc, exc_info ):
+            self.applet.progressSignal.emit(100)
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
+            self._drawer.TrackButton.setEnabled(True)
+        
+        self._drawer.TrackButton.setEnabled(False)        
+        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal.emit(-1)
+        req = Request( _track )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
+                
             
