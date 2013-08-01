@@ -225,6 +225,15 @@ class DataSelectionSerializer( AppletSerializer ):
 
         force_dirty = False
         self.topLevelOperator.DatasetGroup.resize( len(infoDir) )
+        
+        
+        # Use the WorkingDirectory slot as a 'transaction' guard.
+        # To prevent setupOutputs() from being called a LOT of times during this loop,
+        # We'll disconnect it so the operator is not 'configured' while we do this work.
+        # We'll reconnect it after we're done so the configure step happens all at once.
+        working_dir = self.topLevelOperator.WorkingDirectory.value
+        self.topLevelOperator.WorkingDirectory.disconnect()
+        
         for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
             # BACKWARDS COMPATIBILITY:
@@ -245,6 +254,9 @@ class DataSelectionSerializer( AppletSerializer ):
                     # Give the new info to the operator
                     if datasetInfo is not None:
                         self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+
+        # Finish the 'transaction' as described above.
+        self.topLevelOperator.WorkingDirectory.setValue( working_dir )
         
         self._dirty = force_dirty
     
