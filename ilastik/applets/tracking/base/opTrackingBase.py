@@ -182,7 +182,7 @@ class OpTrackingBase(Operator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['size_range'] = size_range
-        self.Parameters.setValue(parameters)
+        self.Parameters.setValue(parameters, check_changed=False)
         
         print "generating traxels"
         print "fetching region features and division probabilities"
