@@ -51,6 +51,35 @@ class OpDataExport(Operator):
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
     FormatSelectionIsValid = OutputSlot()
 
+
+    ####
+    # Simplified block diagram for actual export data and 'live preview' display:
+    # 
+    #                            --> ExportPath
+    #                           /
+    # Input -> opFormattedExport --> ImageToExport (live preview)
+    #                          |\
+    #                          \ --> ConvertedImage
+    #                           \
+    #                            --> FormatSeletionIsValid
+
+    ####
+    # Simplified block diagram for Raw data display:
+    #
+    # RegionStart --
+    #               \
+    # RegionStop --> OpRawSubRegionHelper.RawStart -
+    #               /                    .RawStop --\
+    #              /                                 \
+    # RawData ---->---------------------------------> opFormatRaw --> FormattedRawData
+
+    ####
+    # Simplified block diagram for "on-disk view" of the exported results file:
+    #
+    # opFormattedExport.ImageToExport (for metadata only) -->
+    #                                                        \
+    # opFormattedExport.ExportPath -------------------------> opImageOnDiskProvider --> ImageOnDisk
+
     def __init__(self, *args, **kwargs):
         super( OpDataExport, self ).__init__(*args, **kwargs)
         
@@ -94,11 +123,12 @@ class OpDataExport(Operator):
         opFormatRaw.Input.connect( self.RawData )
         opFormatRaw.RegionStart.connect( opHelper.RawStart )
         opFormatRaw.RegionStop.connect( opHelper.RawStop )
-        opFormatRaw.InputMin.connect( self.InputMin )
-        opFormatRaw.InputMax.connect( self.InputMax )
-        opFormatRaw.ExportMin.connect( self.ExportMin )
-        opFormatRaw.ExportMax.connect( self.ExportMax )
-        opFormatRaw.ExportDtype.connect( self.ExportDtype )
+        # Don't normalize the raw data.
+        #opFormatRaw.InputMin.connect( self.InputMin )
+        #opFormatRaw.InputMax.connect( self.InputMax )
+        #opFormatRaw.ExportMin.connect( self.ExportMin )
+        #opFormatRaw.ExportMax.connect( self.ExportMax )
+        #opFormatRaw.ExportDtype.connect( self.ExportDtype )
         opFormatRaw.OutputAxisOrder.connect( self.OutputAxisOrder )
         opFormatRaw.OutputFormat.connect( self.OutputFormat )
         self._opFormatRaw = opFormatRaw
@@ -114,7 +144,7 @@ class OpDataExport(Operator):
         # Set up the output that let's us view the exported file
         self._opImageOnDiskProvider = OpImageOnDiskProvider( parent=self )
         self._opImageOnDiskProvider.TransactionSlot.connect( self.TransactionSlot )
-        self._opImageOnDiskProvider.Input.connect( self.ImageToExport )
+        self._opImageOnDiskProvider.Input.connect( self._opFormattedExport.ImageToExport )
         self._opImageOnDiskProvider.WorkingDirectory.connect( self.WorkingDirectory )
         self._opImageOnDiskProvider.DatasetPath.connect( self._opFormattedExport.ExportPath )
         self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
@@ -175,6 +205,14 @@ class OpDataExport(Operator):
             self.setupOnDiskView()
 
 class OpRawSubRegionHelper(Operator):
+    """
+    We display the raw data underneath the export data.
+    To do that, we need to show the SAME subregion of the raw data that the user selected to export.
+    However, it's possible that the exported data has a different number of channels than the raw data has.
+    Therefore, the subregion for the raw layer should be the same in all dimensions EXCEPT for the number of channels.
+    
+    This simple helper operator produces the correct subregion settings to be used with the raw data formatting operator.
+    """
     RawImage = InputSlot()
     ExportStart = InputSlot(optional=True)
     ExportStop = InputSlot(optional=True)
@@ -206,7 +244,9 @@ class OpRawSubRegionHelper(Operator):
 
 class OpImageOnDiskProvider(Operator):
     """
-    This simply wraps a lazyflow OpInputDataReader, but provides a default output if the file doesn't exist yet.
+    This simply wraps a lazyflow OpInputDataReader, but ensures that the metadata 
+    (axistags, drange) on the output matches the metadata from the original data 
+    (even if the output file format doesn't support metadata fields).
     """
     TransactionSlot = InputSlot()
     Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
@@ -221,6 +261,14 @@ class OpImageOnDiskProvider(Operator):
         super( OpImageOnDiskProvider, self ).__init__(*args, **kwargs)
         self._opReader = None
         self._opMetadataInjector = None
+    
+    # Block diagram:
+    #
+    # (Input.axistags, Input.drange)
+    #                               \  
+    # DatasetPath ---> opReader ---> opMetadataInjector --> Output
+    #                 /
+    # WorkingDirectory
     
     def setupOutputs( self ):
         if self._opReader is not None:
