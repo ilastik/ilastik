@@ -187,6 +187,8 @@ class DataExportGui(QWidget):
                 real_inslot = getattr(self.topLevelOperator, model_slot.name)
                 if model_slot.ready():
                     real_inslot.setValue( model_slot.value )
+                else:
+                    real_inslot.disconnect()
 
             # Re-connect the 'transaction' slot to apply all settings at once.
             self.topLevelOperator.TransactionSlot.setValue(True)
