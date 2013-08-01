@@ -32,6 +32,11 @@ class TestOpFormattedDataExport(object):
         opExport.RegionStop.setValue( sub_roi[1] )
         
         opExport.ExportDtype.setValue( numpy.uint8 )
+
+        opExport.InputMin.setValue( 0.0 )
+        opExport.InputMax.setValue( 100.0 )
+        opExport.ExportMin.setValue( 100 )
+        opExport.ExportMax.setValue( 200 )
         
         opExport.OutputFormat.setValue( 'hdf5' )
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
@@ -41,6 +46,7 @@ class TestOpFormattedDataExport(object):
 
         assert opExport.ImageToExport.ready()
         assert opExport.ExportPath.ready()
+        assert opExport.ImageToExport.meta.drange == (100,200)
         
         #print "exporting data to: {}".format( opExport.ExportPath.value )
         assert opExport.ExportPath.value == self._tmpdir + '/' + 'export_x10-100_y0-80.h5/volume/data'
@@ -53,6 +59,7 @@ class TestOpFormattedDataExport(object):
         sub_roi[1] = (100, 80) # Replace 'None' with full extent
         expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
         expected_data = expected_data.astype(numpy.uint8)
+        expected_data += 100 # see renormalization settings
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
 
