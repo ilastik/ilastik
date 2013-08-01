@@ -5,6 +5,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.valueProviders import OpMetadataInjector
 
 class OpDataExport(Operator):
     """
@@ -219,10 +220,14 @@ class OpImageOnDiskProvider(Operator):
     def __init__(self, *args, **kwargs):
         super( OpImageOnDiskProvider, self ).__init__(*args, **kwargs)
         self._opReader = None
+        self._opMetadataInjector = None
     
     def setupOutputs( self ):
         if self._opReader is not None:
             self.Output.disconnect()
+            if self._opMetadataInjector:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
             self._opReader.cleanUp()
             self._opReader = None
 
@@ -233,11 +238,26 @@ class OpImageOnDiskProvider(Operator):
             self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
             self._opReader.FilePath.setValue( self.DatasetPath.value )
 
-            dataReady &= self._opReader.Output.meta.shape == self.Input.meta.shape
-            dataReady &= self._opReader.Output.meta.dtype == self.Input.meta.dtype
+            # Since most file formats don't save meta-info,
+            # The reader output's axis order may be incorrect.
+            # (For example, if we export in npy format with zxy order, 
+            #  the Npy reader op will simply assume xyz order when it reads the data.)
+
+            # Force the metadata back to the correct state by copying select items from Input.meta
+            metadata = {}
+            metadata['axistags'] = self.Input.meta.axistags
+            metadata['drange'] = self.Input.meta.drange
+            self._opMetadataInjector = OpMetadataInjector( parent=self )
+            self._opMetadataInjector.Input.connect( self._opReader.Output )
+            self._opMetadataInjector.Metadata.setValue( metadata )
+
+            dataReady &= self._opMetadataInjector.Output.meta.shape == self.Input.meta.shape
+            dataReady &= self._opMetadataInjector.Output.meta.dtype == self.Input.meta.dtype
             if dataReady:
-                self.Output.connect( self._opReader.Output )
+                self.Output.connect( self._opMetadataInjector.Output )
             else:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
                 self._opReader.cleanUp()
                 self._opReader = None
                 self.Output.meta.NOTREADY = True
@@ -246,6 +266,9 @@ class OpImageOnDiskProvider(Operator):
             # Note: If the data is exported as a 'sequence', then this will always be NOTREADY
             #       because the 'path' (e.g. 'myfile_{slice_index}.png' will be nonexistent.
             #       That's okay because a stack is probably too slow to be of use for a preview anyway.
+            if self._opMetadataInjector:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
             self._opReader.cleanUp()
             self._opReader = None
             # The dataset doesn't exist yet.
