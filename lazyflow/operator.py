@@ -6,7 +6,6 @@ import functools
 
 #lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
-from lazyflow.utility import Tracer
 
 class InputDict(collections.OrderedDict):
 
@@ -401,78 +400,76 @@ class Operator(object):
         return wrapper
 
     def _setupOutputs(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            # Don't setup this operator if there are currently
-            # requests on it.
-            with self._condition:
-                while self._executionCount > 0:
-                    self._condition.wait()
-                self._settingUp = True
+        # Don't setup this operator if there are currently
+        # requests on it.
+        with self._condition:
+            while self._executionCount > 0:
+                self._condition.wait()
+            self._settingUp = True
 
-                # Outputslots may become "ready" during setupOutputs().
-                # Save a copy of the ready flag for each output slot
-                # so we can decide whether or not to fire the ready
-                # signal.
-                readyFlags = {}
-                for k, oslot in self.outputs.items():
-                    readyFlags[k] = oslot.meta._ready
-
-                # Call the subclass
-                self.setupOutputs()
-
-                self._settingUp = False
-                self._condition.notifyAll()
-
-            try:
-                # Determine new "ready" flags
-                for k, oslot in self.outputs.items():
-                    if oslot.partner is None:
-                        # Special case, operators can flag an output as not actually being ready yet,
-                        #  in which case we do NOT notify downstream connections.
-                        if oslot.meta.NOTREADY:
-                            oslot.disconnect() # Forces unready state
-                        else:
-                            # All unconnected outputs are ready after
-                            # setupOutputs
-                            oslot._setReady()
-                    else:
-                        assert oslot.meta.NOTREADY is None, \
-                            "The special NOTREADY setting can only be used for output " \
-                            "slots that have no explicit upstream connection."
-    
-                #notify outputs of probably changed meta information
-                for k, v in self.outputs.items():
-                    v._changed()
-            except:
-                # Something went wrong
-                # Make the operator-supplied outputs unready again
-                for k, oslot in self.outputs.items():
-                    if oslot.partner is None:
-                        oslot.disconnect() # Forces unready state
-                raise
-
-    def handleInputBecameUnready(self, slot):
-        with Tracer(self.traceLogger, msg=self.name):
-            # One of our input slots was disconnected.
-            # If it was optional, we don't care.
-            if slot._optional:
-                return
-
-            # Keep track of the old ready statuses so we know if
-            # something changed
+            # Outputslots may become "ready" during setupOutputs().
+            # Save a copy of the ready flag for each output slot
+            # so we can decide whether or not to fire the ready
+            # signal.
             readyFlags = {}
             for k, oslot in self.outputs.items():
                 readyFlags[k] = oslot.meta._ready
 
-            # All unconnected outputs are no longer ready
-            for oslot in self.outputs.values():
-                oslot.meta._ready &= (oslot.partner is not None)
+            # Call the subclass
+            self.setupOutputs()
 
-            # If the ready status changed, signal it.
+            self._settingUp = False
+            self._condition.notifyAll()
+
+        try:
+            # Determine new "ready" flags
             for k, oslot in self.outputs.items():
-                if readyFlags[k] != oslot.meta._ready:
-                    oslot._sig_unready(self)
-                    oslot._changed()
+                if oslot.partner is None:
+                    # Special case, operators can flag an output as not actually being ready yet,
+                    #  in which case we do NOT notify downstream connections.
+                    if oslot.meta.NOTREADY:
+                        oslot.disconnect() # Forces unready state
+                    else:
+                        # All unconnected outputs are ready after
+                        # setupOutputs
+                        oslot._setReady()
+                else:
+                    assert oslot.meta.NOTREADY is None, \
+                        "The special NOTREADY setting can only be used for output " \
+                        "slots that have no explicit upstream connection."
+
+            #notify outputs of probably changed meta information
+            for k, v in self.outputs.items():
+                v._changed()
+        except:
+            # Something went wrong
+            # Make the operator-supplied outputs unready again
+            for k, oslot in self.outputs.items():
+                if oslot.partner is None:
+                    oslot.disconnect() # Forces unready state
+            raise
+
+    def handleInputBecameUnready(self, slot):
+        # One of our input slots was disconnected.
+        # If it was optional, we don't care.
+        if slot._optional:
+            return
+
+        # Keep track of the old ready statuses so we know if
+        # something changed
+        readyFlags = {}
+        for k, oslot in self.outputs.items():
+            readyFlags[k] = oslot.meta._ready
+
+        # All unconnected outputs are no longer ready
+        for oslot in self.outputs.values():
+            oslot.meta._ready &= (oslot.partner is not None)
+
+        # If the ready status changed, signal it.
+        for k, oslot in self.outputs.items():
+            if readyFlags[k] != oslot.meta._ready:
+                oslot._sig_unready(self)
+                oslot._changed()
 
     def setupOutputs(self):
         """This method is called when all input slots of an operator

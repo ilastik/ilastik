@@ -8,7 +8,6 @@ import numpy
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import Tracer
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
@@ -33,10 +32,9 @@ class OpSlicedBlockedArrayCache(OpCache):
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
-        with Tracer(self.traceLogger):
-            super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
-            self._innerOps = []
-            self._somethingIsDirty = False
+        super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
+        self._innerOps = []
+        self._somethingIsDirty = False
         
     def generateReport(self, report):
         report.name = self.name

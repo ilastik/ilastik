@@ -13,7 +13,6 @@ import numpy
 import blist
 
 #lazyflow
-from lazyflow.utility import Tracer
 from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
@@ -68,18 +67,17 @@ class OpBlockedSparseLabelArray(OpCache):
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
-        with Tracer(self.traceLogger):
-            super(OpBlockedSparseLabelArray, self).__init__( *args, **kwargs )
-            self.lock = threading.Lock()
+        super(OpBlockedSparseLabelArray, self).__init__( *args, **kwargs )
+        self.lock = threading.Lock()
 
-            self._sparseNZ = None
-            self._labelers = {}
-            self._oldMaxLabels = {}
-            self._cacheShape = None
-            self._cacheEraser = None
-            self._maxLabel = 0
-            self._maxLabelHistogram = numpy.zeros((1024,), numpy.uint32) # keeps track of how many sub- OpSparseLabelArrays vote for a vertain maxLabel
-            self.deleteLabel.setValue(-1)
+        self._sparseNZ = None
+        self._labelers = {}
+        self._oldMaxLabels = {}
+        self._cacheShape = None
+        self._cacheEraser = None
+        self._maxLabel = 0
+        self._maxLabelHistogram = numpy.zeros((1024,), numpy.uint32) # keeps track of how many sub- OpSparseLabelArrays vote for a vertain maxLabel
+        self.deleteLabel.setValue(-1)
             
     def fractionOfUsedMemoryDirty(self):
         """fraction of the currently used memory that is marked as dirty"""
@@ -113,85 +111,84 @@ class OpBlockedSparseLabelArray(OpCache):
         return tot
 
     def setupOutputs(self):
-        with Tracer(self.traceLogger):
-            if self.inputs["shape"].ready():
-                self._cacheShape = self.inputs["shape"].value
+        if self.inputs["shape"].ready():
+            self._cacheShape = self.inputs["shape"].value
 
-                # FIXME: This is a super-special case because we are changing an INPUT shape from within setupOutputs!
-                if self.inputs["Input"].meta.shape != self._cacheShape:
-                    self.inputs["Input"].meta.shape = self._cacheShape
-                    # If we're wrapped, then we have to propagate this shape change BACKWARDS.
-                    if self.inputs['Input'].partner is not None:
-                        self.inputs['Input'].partner.meta.shape = self._cacheShape
-                    #self.inputs["Input"]._changed()
+            # FIXME: This is a super-special case because we are changing an INPUT shape from within setupOutputs!
+            if self.inputs["Input"].meta.shape != self._cacheShape:
+                self.inputs["Input"].meta.shape = self._cacheShape
+                # If we're wrapped, then we have to propagate this shape change BACKWARDS.
+                if self.inputs['Input'].partner is not None:
+                    self.inputs['Input'].partner.meta.shape = self._cacheShape
+                #self.inputs["Input"]._changed()
 
-                self.outputs["Output"].meta.dtype = numpy.uint8
-                self.outputs["Output"].meta.shape = self._cacheShape
-                self.outputs["Output"].meta.axistags = self.Input.meta.axistags
+            self.outputs["Output"].meta.dtype = numpy.uint8
+            self.outputs["Output"].meta.shape = self._cacheShape
+            self.outputs["Output"].meta.axistags = self.Input.meta.axistags
 
-                # Copy axis tags from input if possible
-                inputAxisTags = self.inputs["Input"].meta.axistags
-                if inputAxisTags is not None:
-                    self.outputs["Output"].meta.axistags = copy.copy(inputAxisTags)
+            # Copy axis tags from input if possible
+            inputAxisTags = self.inputs["Input"].meta.axistags
+            if inputAxisTags is not None:
+                self.outputs["Output"].meta.axistags = copy.copy(inputAxisTags)
 
-                self.outputs["nonzeroValues"].meta.dtype = object
-                self.outputs["nonzeroValues"].meta.shape = (1,)
+            self.outputs["nonzeroValues"].meta.dtype = object
+            self.outputs["nonzeroValues"].meta.shape = (1,)
 
-                self.outputs["nonzeroCoordinates"].meta.dtype = object
-                self.outputs["nonzeroCoordinates"].meta.shape = (1,)
+            self.outputs["nonzeroCoordinates"].meta.dtype = object
+            self.outputs["nonzeroCoordinates"].meta.shape = (1,)
 
-                self.outputs["nonzeroBlocks"].meta.dtype = object
-                self.outputs["nonzeroBlocks"].meta.shape = (1,)
+            self.outputs["nonzeroBlocks"].meta.dtype = object
+            self.outputs["nonzeroBlocks"].meta.shape = (1,)
 
-                self.outputs["maxLabel"].setValue(self._maxLabel)
+            self.outputs["maxLabel"].setValue(self._maxLabel)
 
-                #Filled on request
-                self._sparseNZ =  blist.sorteddict()
+            #Filled on request
+            self._sparseNZ =  blist.sorteddict()
 
-            if self.inputs["eraser"].ready():
-                self._cacheEraser = self.inputs["eraser"].value
-                for l in self._labelers.values():
-                    l.inputs['eraser'].setValue(self._cacheEraser)
+        if self.inputs["eraser"].ready():
+            self._cacheEraser = self.inputs["eraser"].value
+            for l in self._labelers.values():
+                l.inputs['eraser'].setValue(self._cacheEraser)
 
-            if self.inputs["blockShape"].ready():
-                self._origBlockShape = self.inputs["blockShape"].value
+        if self.inputs["blockShape"].ready():
+            self._origBlockShape = self.inputs["blockShape"].value
 
-                if type(self._origBlockShape) != tuple:
-                    self._blockShape = (self._origBlockShape,)*len(self._cacheShape)
-                else:
-                    self._blockShape = self._origBlockShape
+            if type(self._origBlockShape) != tuple:
+                self._blockShape = (self._origBlockShape,)*len(self._cacheShape)
+            else:
+                self._blockShape = self._origBlockShape
 
-                self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
+            self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
 
-                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
+            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
 
-                self.logger.debug( "Reconfigured Sparse labels with {}, {}, {}, {}".format( self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape ) )
-                #FIXME: we don't really need this blockState thing
-                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+            self.logger.debug( "Reconfigured Sparse labels with {}, {}, {}, {}".format( self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape ) )
+            #FIXME: we don't really need this blockState thing
+            self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
 
-                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-                _blockNumbers.shape = self._dirtyShape
+            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+            _blockNumbers.shape = self._dirtyShape
 
-                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-
-
-                self._blockNumbers = _blockNumbers
-                #self._blockIndices = _blockIndices
-
-                # allocate queryArray object
-                self._flatBlockIndices =  _blockIndices[:]
-                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
 
 
-            if self.inputs["deleteLabel"].ready():
-                for l in self._labelers.values():
-                    l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
-                    
-                    # Our internal labelers will mark their outputs as dirty,
-                    # But we aren't hooked up to forward those dirty notifications to our outputs.
-                    # Instead, we'll just mark our whole output dirty right now.
-                    self.Output.setDirty(slice(None))
+            self._blockNumbers = _blockNumbers
+            #self._blockIndices = _blockIndices
+
+            # allocate queryArray object
+            self._flatBlockIndices =  _blockIndices[:]
+            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+
+
+        if self.inputs["deleteLabel"].ready():
+            for l in self._labelers.values():
+                l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
+                
+                # Our internal labelers will mark their outputs as dirty,
+                # But we aren't hooked up to forward those dirty notifications to our outputs.
+                # Instead, we'll just mark our whole output dirty right now.
+                self.Output.setDirty(slice(None))
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
@@ -260,80 +257,79 @@ class OpBlockedSparseLabelArray(OpCache):
 
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
-        with Tracer(self.traceLogger):
-            time1 = time.time()
-            start, stop = sliceToRoi(key, self._cacheShape)
+        time1 = time.time()
+        start, stop = sliceToRoi(key, self._cacheShape)
 
-            blockStart = (1.0 * start / self._blockShape).floor()
-            blockStop = (1.0 * stop / self._blockShape).ceil()
-            blockStop = numpy.where(stop == self._cacheShape, self._dirtyShape, blockStop)
-            blockKey = roiToSlice(blockStart,blockStop)
-            innerBlocks = self._blockNumbers[blockKey]
-            for b_ind in innerBlocks.ravel():
+        blockStart = (1.0 * start / self._blockShape).floor()
+        blockStop = (1.0 * stop / self._blockShape).ceil()
+        blockStop = numpy.where(stop == self._cacheShape, self._dirtyShape, blockStop)
+        blockKey = roiToSlice(blockStart,blockStop)
+        innerBlocks = self._blockNumbers[blockKey]
+        for b_ind in innerBlocks.ravel():
 
-                offset = self._blockShape*self._flatBlockIndices[b_ind]
-                bigstart = numpy.maximum(offset, start)
-                bigstop = numpy.minimum(offset + self._blockShape, stop)
-                smallstart = bigstart-offset
-                smallstop = bigstop - offset
-                bigkey = roiToSlice(bigstart-start, bigstop-start)
-                smallkey = roiToSlice(smallstart, smallstop)
-                smallvalues = value[tuple(bigkey)]
-                if (smallvalues != 0 ).any():
-                    if not b_ind in self._labelers:
-                        self._labelers[b_ind]=OpSparseLabelArray(self)
-                        # Don't connect deletelabel; it is set manually (here and also above)
-                        self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
-                        self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                        self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
+            offset = self._blockShape*self._flatBlockIndices[b_ind]
+            bigstart = numpy.maximum(offset, start)
+            bigstop = numpy.minimum(offset + self._blockShape, stop)
+            smallstart = bigstart-offset
+            smallstop = bigstop - offset
+            bigkey = roiToSlice(bigstart-start, bigstop-start)
+            smallkey = roiToSlice(smallstart, smallstop)
+            smallvalues = value[tuple(bigkey)]
+            if (smallvalues != 0 ).any():
+                if not b_ind in self._labelers:
+                    self._labelers[b_ind]=OpSparseLabelArray(self)
+                    # Don't connect deletelabel; it is set manually (here and also above)
+                    self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
+                    self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
+                    self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
 
-                        # remember old max labele, i.e. 0 since we just created
-                        self._oldMaxLabels[b_ind] = 0
-                        # add the 0 to the histogram
-                        self._maxLabelHistogram[0] += 1
+                    # remember old max labele, i.e. 0 since we just created
+                    self._oldMaxLabels[b_ind] = 0
+                    # add the 0 to the histogram
+                    self._maxLabelHistogram[0] += 1
+                    
+                    def max_label_changed(b_ind, slot, *args):
+                        self.lock.acquire()
+
+                        newmax = slot.value
+
+                        # make sure histogram is large enough
+                        if newmax > self._maxLabelHistogram.shape[0] -1:
+                            self._maxLabelHistogram.resize((newmax+1,))
+
+                        # update histogram
+                        oldmax = self._oldMaxLabels[b_ind]
+                        self._maxLabelHistogram[oldmax] -= 1
+                        self._maxLabelHistogram[newmax] += 1
+                        self._oldMaxLabels[b_ind] = newmax
                         
-                        def max_label_changed(b_ind, slot, *args):
-                            self.lock.acquire()
+                        # check wether self._maxlabel needs to be updated (up and down)
+                        maxdirty = False
+                        if newmax > self._maxLabel:
+                            assert self._maxLabelHistogram[newmax] == 1
+                            self._maxLabel = newmax
+                        elif self._maxLabelHistogram[oldmax] == 0:
+                            self._maxLabel = numpy.max(numpy.nonzero(self._maxLabelHistogram)[0])
 
-                            newmax = slot.value
-
-                            # make sure histogram is large enough
-                            if newmax > self._maxLabelHistogram.shape[0] -1:
-                                self._maxLabelHistogram.resize((newmax+1,))
-
-                            # update histogram
-                            oldmax = self._oldMaxLabels[b_ind]
-                            self._maxLabelHistogram[oldmax] -= 1
-                            self._maxLabelHistogram[newmax] += 1
-                            self._oldMaxLabels[b_ind] = newmax
-                            
-                            # check wether self._maxlabel needs to be updated (up and down)
-                            maxdirty = False
-                            if newmax > self._maxLabel:
-                                assert self._maxLabelHistogram[newmax] == 1
-                                self._maxLabel = newmax
-                            elif self._maxLabelHistogram[oldmax] == 0:
-                                self._maxLabel = numpy.max(numpy.nonzero(self._maxLabelHistogram)[0])
-
-                            self.lock.release()
-                            
-                            self.maxLabel.setValue(self._maxLabel)
-
-
-                            
-                        self._labelers[b_ind].inputs["maxLabel"].notifyDirty(partial(max_label_changed, b_ind))
+                        self.lock.release()
                         
-                    self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
-            
-            time2 = time.time()
-            logger.debug("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
-            # Set our max label output dirty
+                        self.maxLabel.setValue(self._maxLabel)
 
-            self.Output.setDirty(key)
 
-            time3 = time.time()
-            logger.debug("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
-            logger.debug("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
+                        
+                    self._labelers[b_ind].inputs["maxLabel"].notifyDirty(partial(max_label_changed, b_ind))
+                    
+                self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
+        
+        time2 = time.time()
+        logger.debug("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
+        # Set our max label output dirty
+
+        self.Output.setDirty(key)
+
+        time3 = time.time()
+        logger.debug("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
+        logger.debug("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()

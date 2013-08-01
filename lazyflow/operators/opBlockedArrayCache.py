@@ -12,7 +12,6 @@ import numpy
 from lazyflow.roi import roiToSlice
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.utility import Tracer
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
@@ -36,84 +35,82 @@ class OpBlockedArrayCache(OpCache):
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
-        with Tracer(self.traceLogger):
-            super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
+        super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
+        self._configured = False
+        self._fixed = False
+        self._fixed_dirty_blocks = set()
+        self._lock = Lock()
+        self._innerBlockShape = None
+        self._outerBlockShape = None
+        self._blockShape = None
+        self._fixed_all_dirty = False  # this is a shortcut for storing wehter all subblocks are dirty
+        self._forward_dirty = False
+        self._opDummy = None
+        self._opSub_list = {}
+        self._cache_list = {}
+
+    def setupOutputs(self):
+        self._fixed = self.inputs["fixAtCurrent"].value
+        self._forward_dirty = self.forward_dirty.value
+
+        inputSlot = self.inputs["Input"]
+        shape = inputSlot.meta.shape
+        if (    shape != self.Output.meta.shape
+             or self._outerBlockShape != self.outerBlockShape.value
+             or self._innerBlockShape != self.innerBlockShape.value ):
             self._configured = False
-            self._fixed = False
-            self._fixed_dirty_blocks = set()
-            self._lock = Lock()
-            self._innerBlockShape = None
-            self._outerBlockShape = None
-            self._blockShape = None
-            self._fixed_all_dirty = False  # this is a shortcut for storing wehter all subblocks are dirty
-            self._forward_dirty = False
-            self._opDummy = None
+            
+        if min(shape) == 0:
+            self._configured = False
+            return
+        else:
+            if self.Output.partner is not None:
+                self.Output.disconnect()
+
+        if not self._configured:
+            self.Output.meta.assignFrom(inputSlot.meta)
+            with self._lock:
+                self._innerBlockShape = self.innerBlockShape.value
+                self._outerBlockShape = self.outerBlockShape.value
+                if len(self._fixed_dirty_blocks) > 0:
+                    self._fixed_dirty_blocks = set()
+                    notifyOutputDirty = True # Notify dirty output after we're fully configured
+                else:
+                    notifyOutputDirty = False
+
+                self.shape = self.Input.meta.shape
+                self._blockShape = self.inputs["outerBlockShape"].value
+                self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
+                assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
+
+                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+
+            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+            _blockNumbers.shape = self._dirtyShape
+
+            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+
+            self._blockNumbers = _blockNumbers
+
+            # allocate queryArray object
+            self._flatBlockIndices =  _blockIndices[:]
+            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+
+            for op in self._cache_list.values():
+                op.cleanUp()
+            for op in self._opSub_list.values():
+                op.cleanUp()
+
             self._opSub_list = {}
             self._cache_list = {}
 
-    def setupOutputs(self):
-        with Tracer(self.traceLogger):
-            self._fixed = self.inputs["fixAtCurrent"].value
-            self._forward_dirty = self.forward_dirty.value
+            self._configured = True
 
-            inputSlot = self.inputs["Input"]
-            shape = inputSlot.meta.shape
-            if (    shape != self.Output.meta.shape
-                 or self._outerBlockShape != self.outerBlockShape.value
-                 or self._innerBlockShape != self.innerBlockShape.value ):
-                self._configured = False
-                
-            if min(shape) == 0:
-                self._configured = False
-                return
-            else:
-                if self.Output.partner is not None:
-                    self.Output.disconnect()
-    
-            if not self._configured:
-                self.Output.meta.assignFrom(inputSlot.meta)
-                with self._lock:
-                    self._innerBlockShape = self.innerBlockShape.value
-                    self._outerBlockShape = self.outerBlockShape.value
-                    if len(self._fixed_dirty_blocks) > 0:
-                        self._fixed_dirty_blocks = set()
-                        notifyOutputDirty = True # Notify dirty output after we're fully configured
-                    else:
-                        notifyOutputDirty = False
-    
-                    self.shape = self.Input.meta.shape
-                    self._blockShape = self.inputs["outerBlockShape"].value
-                    self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-                    assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
-                    self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-                    assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
-
-                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-
-                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-                _blockNumbers.shape = self._dirtyShape
-
-                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-
-                self._blockNumbers = _blockNumbers
-
-                # allocate queryArray object
-                self._flatBlockIndices =  _blockIndices[:]
-                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-
-                for op in self._cache_list.values():
-                    op.cleanUp()
-                for op in self._opSub_list.values():
-                    op.cleanUp()
-
-                self._opSub_list = {}
-                self._cache_list = {}
-
-                self._configured = True
-
-                if notifyOutputDirty:
-                    self.Output.setDirty(slice(None))
+            if notifyOutputDirty:
+                self.Output.setDirty(slice(None))
 
     def generateReport(self, report):
         report.name = self.name

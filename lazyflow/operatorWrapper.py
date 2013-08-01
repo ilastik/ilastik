@@ -4,7 +4,6 @@ import logging
 
 #lazyflow
 from lazyflow.operator import Operator
-from lazyflow.utility import Tracer
 
 class OperatorWrapper(Operator):
     name = "OperatorWrapper"
@@ -168,8 +167,7 @@ class OperatorWrapper(Operator):
         return self.innerOperators.__iter__()
 
     def _callbackInserted(self, slot, index, size):
-        with Tracer(self.traceLogger, msg=self.name):
-            self._insertInnerOperator(index, size)
+        self._insertInnerOperator(index, size)
 
     def _callbackPreRemove(self, slot, index, length):
         # Prepare for disconnect which will occur in _removeInnerOperator
@@ -180,14 +178,12 @@ class OperatorWrapper(Operator):
                 mslot[index].unregisterDisconnect(self.handleEarlyDisconnect)
 
     def _callbackPostRemoved(self, slot, index, size):
-        with Tracer(self.traceLogger, msg=self.name):
-            self._removeInnerOperator(index, size)
+        self._removeInnerOperator(index, size)
 
     def _callbackConnect(self, slot):
-        with Tracer(self.traceLogger, msg=self.name):
-            slot.resize(len(self.innerOperators))
-            for index, innerOp in enumerate(self.innerOperators):
-                innerOp.inputs[slot.name].connect(slot[index])
+        slot.resize(len(self.innerOperators))
+        for index, innerOp in enumerate(self.innerOperators):
+            innerOp.inputs[slot.name].connect(slot[index])
 
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do: All inputs are directly connected to internal
@@ -195,51 +191,50 @@ class OperatorWrapper(Operator):
         pass
 
     def _insertInnerOperator(self, index, length):
-        with Tracer(self.traceLogger, msg=self.name):
-            if len(self.innerOperators) >= length:
-                return self.innerOperators[index]
-            op = self._createInnerOperator()
+        if len(self.innerOperators) >= length:
+            return self.innerOperators[index]
+        op = self._createInnerOperator()
 
-            # Update our name (if the client didn't already give us a
-            # special one)
-            if self._customName is False:
-                self._name = "Wrapped " + op.name
+        # Update our name (if the client didn't already give us a
+        # special one)
+        if self._customName is False:
+            self._name = "Wrapped " + op.name
 
-            # If anyone calls setValue() on one of these slots,
-            # forward the setValue call to the slot's partner (the
-            # outer slot on the operator wrapper)
-            for slot in op.inputs.values():
-                slot.backpropagate_values = True
-                slot.notifyDisconnect(self.handleEarlyDisconnect)
+        # If anyone calls setValue() on one of these slots,
+        # forward the setValue call to the slot's partner (the
+        # outer slot on the operator wrapper)
+        for slot in op.inputs.values():
+            slot.backpropagate_values = True
+            slot.notifyDisconnect(self.handleEarlyDisconnect)
 
-            self.innerOperators.insert(index, op)
+        self.innerOperators.insert(index, op)
 
-            # Connect the inner operator's inputs to our outer input
-            # slots
-            for key, outerSlot in self.inputs.items():
-                # Only connect to a subslot if it was promoted during
-                # wrapping
-                if outerSlot.name in self.promotedSlotNames:
-                    outerSlot.insertSlot(index, length)
-                    partner = outerSlot[index]
-                else:
-                    partner = outerSlot
-                if op.inputs[key].partner is not None:
-                    msg = ("Can't set up OperatorWrapper connections."
-                           " Input slot {} is already connected to a"
-                           " partner (must have happened in {}'s"
-                           " constructor".format(key, op.name))
-                    raise RuntimeError(msg)
-                op.inputs[key].connect(partner)
+        # Connect the inner operator's inputs to our outer input
+        # slots
+        for key, outerSlot in self.inputs.items():
+            # Only connect to a subslot if it was promoted during
+            # wrapping
+            if outerSlot.name in self.promotedSlotNames:
+                outerSlot.insertSlot(index, length)
+                partner = outerSlot[index]
+            else:
+                partner = outerSlot
+            if op.inputs[key].partner is not None:
+                msg = ("Can't set up OperatorWrapper connections."
+                       " Input slot {} is already connected to a"
+                       " partner (must have happened in {}'s"
+                       " constructor".format(key, op.name))
+                raise RuntimeError(msg)
+            op.inputs[key].connect(partner)
 
-            # Connect our outer output slots to the inner operator's output slots.
-            for key, mslot in self.outputs.items():
-                mslot.insertSlot(index, length)
-                mslot[index].backpropagate_values = True
-                mslot[index].connect(op.outputs[key])
-                mslot[index].notifyDisconnect(self.handleEarlyDisconnect)
-                #mslot[index]._changed()
-            return op
+        # Connect our outer output slots to the inner operator's output slots.
+        for key, mslot in self.outputs.items():
+            mslot.insertSlot(index, length)
+            mslot[index].backpropagate_values = True
+            mslot[index].connect(op.outputs[key])
+            mslot[index].notifyDisconnect(self.handleEarlyDisconnect)
+            #mslot[index]._changed()
+        return op
 
     def handleEarlyDisconnect(self, slot):
         assert False, \
@@ -247,29 +242,27 @@ class OperatorWrapper(Operator):
              " connections of an operator wrapper.")
 
     def _removeInnerOperator(self, index, length):
-        with Tracer(self.traceLogger, msg=self.name):
-            if len(self.innerOperators) <= length:
-                return
-            assert index < len(self.innerOperators)
+        if len(self.innerOperators) <= length:
+            return
+        assert index < len(self.innerOperators)
 
-            op = self.innerOperators.pop(index)
-            for slot in op.inputs.values():
-                slot.backpropagate_values = False
-                slot.unregisterDisconnect(self.handleEarlyDisconnect)
+        op = self.innerOperators.pop(index)
+        for slot in op.inputs.values():
+            slot.backpropagate_values = False
+            slot.unregisterDisconnect(self.handleEarlyDisconnect)
 
-            for oslot in self.outputs.values():
-                oslot.removeSlot(index, length)
+        for oslot in self.outputs.values():
+            oslot.removeSlot(index, length)
 
-            for islot in self.inputs.values():
-                islot.removeSlot(index, length)
+        for islot in self.inputs.values():
+            islot.removeSlot(index, length)
 
-            op.cleanUp()
-            length = len(self.innerOperators)
+        op.cleanUp()
+        length = len(self.innerOperators)
 
     def _setupOutputs(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            for oslot in self.outputs.values():
-                oslot._changed()
+        for oslot in self.outputs.values():
+            oslot._changed()
 
     def execute(self, slot, subindex, roi, result):
         #this should never be called !!!

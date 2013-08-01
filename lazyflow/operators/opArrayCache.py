@@ -15,7 +15,7 @@ from lazyflow.request import RequestPool
 from lazyflow.drtile import drtile
 from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.utility import fastWhere, Tracer
+from lazyflow.utility import fastWhere
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
@@ -129,28 +129,27 @@ class OpArrayCache(OpCache):
             return freed
 
     def _allocateManagementStructures(self):
-        with Tracer(self.traceLogger):
-            shape = self.Output.meta.shape
-            if type(self._origBlockShape) != tuple:
-                self._blockShape = (self._origBlockShape,)*len(shape)
-            else:
-                self._blockShape = self._origBlockShape
+        shape = self.Output.meta.shape
+        if type(self._origBlockShape) != tuple:
+            self._blockShape = (self._origBlockShape,)*len(shape)
+        else:
+            self._blockShape = self._origBlockShape
     
-            self._blockShape = numpy.minimum(self._blockShape, shape)
+        self._blockShape = numpy.minimum(self._blockShape, shape)
     
-            self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape))
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape))
     
-            self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
-   
-            #if a request has been submitted to get a block, the request object
-            #is stored within this array
-            self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-           
-            #keep track of the dirty state of each block
-            self._blockState = OpArrayCache.DIRTY * numpy.ones(self._dirtyShape, numpy.uint8)
+        self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
     
-            self._blockState[:]= OpArrayCache.DIRTY
-            self._dirtyState = OpArrayCache.CLEAN
+        #if a request has been submitted to get a block, the request object
+        #is stored within this array
+        self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+       
+        #keep track of the dirty state of each block
+        self._blockState = OpArrayCache.DIRTY * numpy.ones(self._dirtyShape, numpy.uint8)
+    
+        self._blockState[:]= OpArrayCache.DIRTY
+        self._dirtyState = OpArrayCache.CLEAN
     
     def _allocateCache(self):
         with self._cacheLock:
@@ -267,9 +266,7 @@ class OpArrayCache(OpCache):
         shape = self.Output.meta.shape
         start, stop = sliceToRoi(key, shape)
 
-        self.traceLogger.debug("Acquiring ArrayCache lock...")
         self._lock.acquire()
-        self.traceLogger.debug("ArrayCache lock acquired.")
 
         ch = self._cacheHits
         ch += 1
@@ -315,7 +312,6 @@ class OpArrayCache(OpCache):
         def onCancel(req):
             return False # indicate that this request cannot be canceled
 
-        self.traceLogger.debug("Creating cache input requests")
         for i in range(tileArray.shape[1]):
 
             drStart3 = tileArray[:half,i]
@@ -372,7 +368,6 @@ class OpArrayCache(OpCache):
         temp = itertools.count(0)
 
         #wait for all requests to finish
-        self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyPool)) )
         dirtyPool.wait()
         if len( dirtyPool ) > 0:
             # Signal that something was updated.
@@ -380,7 +375,6 @@ class OpArrayCache(OpCache):
             #  because they are already in the dirtyPool in some other thread
             self.Output._sig_value_changed()
         dirtyPool.clean()
-        self.traceLogger.debug( "All cache input requests received." )
 
         # indicate the finished inprocess state (i.e. CLEAN)
         if not self._fixed and temp.next() == 0:
@@ -403,9 +397,7 @@ class OpArrayCache(OpCache):
         if self._cache is not None:
             result[:] = self._cache[roiToSlice(start, stop)]
         else:
-            self.traceLogger.debug( "WAITING FOR INPUT WITH THE CACHE LOCK LOCKED!" )
             self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
-            self.traceLogger.debug( "INPUT RECEIVED WITH THE CACHE LOCK LOCKED." )
         self._running -= 1
         self._updatePriority()
         cacheView = None
