@@ -335,14 +335,34 @@ class OpDummyData(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
     
+class OpZeroDefault(Operator):
+    """
+    Provides an output that is always 'ready'.  
+    Acts as a simple pass-through if 'Input' is ready().  Otherwise, provides zeros.  
+    Marks everything dirty as soon as the Input becomes ready().
+    """
+    MetaInput = InputSlot() # Output metadata is copied from this slot
+    Input = InputSlot(optional=True) # 'Real' data comes from this slot
+    Output = OutputSlot() # This slot is always ready (as long as MetaInput is ready)
 
+    def __init__(self, *args, **kwargs):
+        super( OpZeroDefault, self ).__init__(*args, **kwargs)
+        self._input_ready = True
 
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.MetaInput.meta)
+        input_became_ready = not self._input_ready and self.Input.ready()
+        self._input_ready = self.Input.ready()
+        if input_became_ready:
+            self.Output.setDirty()
 
+    def execute(self, slot, subindex, roi, result):
+        if self._input_ready:
+            self.Input(roi.start, roi.stop).writeInto( result ).wait()
+        else:
+            result[...] = 0
+        return result
 
-
-
-
-
-
-
-
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Input:
+            self.Output.setDirty( roi )

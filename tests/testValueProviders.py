@@ -2,9 +2,8 @@ import time
 import threading
 import numpy
 import vigra
-import lazyflow
 import lazyflow.graph
-from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge
+from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge, OpZeroDefault, OpArrayCache
 
 class TestOpMetadataInjector(object):
     
@@ -177,6 +176,41 @@ class TestOpValueCache(object):
         assert opCache._request is None
         assert opCache.Output.value == 100
 
+class TestOpZeroDefault(object):
+    
+    def test_basic(self):
+        graph = lazyflow.graph.Graph()
+        data = numpy.indices( (100,100), dtype=numpy.uint8 ).sum(0)
+        data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
+        
+        opDataProvider = OpArrayCache( graph=graph )
+        opDataProvider.Input.setValue( data )
+        
+        op = OpZeroDefault( graph=graph )
+        op.MetaInput.setValue( data )
+    
+        # Zero by default    
+        output_data = op.Output[:].wait()
+        assert (output_data == 0).all()
+        
+        # Connecting a real input triggers dirty notification
+        dirty_notification_count = [0]
+        def handleDirty(*args):
+            dirty_notification_count[0] += 1
+    
+        op.Output.notifyDirty( handleDirty )
+        op.Input.connect( opDataProvider.Output )
+    
+        assert dirty_notification_count[0] == 1
+    
+        # Output should provide real data if available    
+        assert ( op.Output[:].wait() == data.view( numpy.ndarray ) ).all()
+        
+        # Output provides zeros again when the data is no longer available
+        op.Input.disconnect()    
+        output_data = op.Output[:].wait()
+        assert (output_data == 0).all()
+        
 #if __name__ == "__main__":
 #    import logging
 #    traceLogger = logging.getLogger("TRACE.lazyflow.operators.valueProviders.OpValueCache")
