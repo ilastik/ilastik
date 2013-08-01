@@ -9,7 +9,8 @@ import h5py
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
-from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter
+from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
+                                           OpExportMultipageTiff, OpExportMultipageTiffSequence
 
 FormatInfo = collections.namedtuple('FormatInfo', ('name', 'extension', 'min_dim', 'max_dim'))
 class OpExportSlot(Operator):
@@ -253,11 +254,46 @@ class OpExportSlot(Operator):
             # Run the export
             opWriter.run_export()
         finally:
-            #opWriter.cleanUp()
+            opWriter.cleanUp()
             self.progressSignal(100)
     
-    def _export_multipage_tiff(self): pass
-    def _export_multipage_tiff_sequence(self): pass
+    def _export_multipage_tiff(self):
+        self.progressSignal(0)
+        export_path = self.ExportPath.value
+        try:
+            opExport = OpExportMultipageTiff( parent=self )
+            opExport.Filepath.setValue( export_path )
+            opExport.Input.connect( self.Input )
+            
+            # Run the export
+            opExport.run_export()
+        finally:
+            opExport.cleanUp()
+            self.progressSignal(100)
+        
+    def _export_multipage_tiff_sequence(self):
+        self.progressSignal(0)
+        export_path_base, export_path_ext = os.path.splitext( self.ExportPath.value )
+        export_path_pattern = export_path_base + ".tiff"
+        
+        try:
+            opExport = OpExportMultipageTiffSequence( parent=self )
+            opExport.FilepathPattern.setValue( export_path_pattern )
+            opExport.Input.connect( self.Input )
+            opExport.progressSignal.subscribe( self.progressSignal )
+            
+            if self.CoordinateOffset.ready():
+                step_axis = opExport.get_nonsingleton_axes()[0]
+                step_axis_index = self.Input.meta.getAxisKeys().index(step_axis)
+                step_axis_offset = self.CoordinateOffset.value[step_axis_index]
+                opExport.SliceIndexOffset.setValue( step_axis_offset )
+
+            # Run the export
+            opExport.run_export()
+        finally:
+            opExport.cleanUp()
+            self.progressSignal(100)
+    
 
 
 

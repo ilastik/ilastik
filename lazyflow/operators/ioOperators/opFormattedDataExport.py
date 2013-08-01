@@ -4,6 +4,7 @@ from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
+from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from .opExportSlot import OpExportSlot
@@ -18,6 +19,7 @@ class OpFormattedDataExport(Operator):
     """
     TransactionSlot = InputSlot() # To apply all settings in one 'transaction', 
                                   # disconnect this slot and reconnect it when all slots are ready
+                                  # This avoids multiple calls to setupOutputs when setting several optional slots in a row.
 
     Input = InputSlot()
 
@@ -42,13 +44,13 @@ class OpFormattedDataExport(Operator):
     ConvertedImage = OutputSlot() # Not yet re-ordered
     ImageToExport = OutputSlot() # Preview of the pre-processed image that will be exported
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
-    FormatSelectionIsValid = OutputSlot()
+    FormatSelectionIsValid = OutputSlot() # True or False depending on whether or not the currently selected format can support the current export data.
     
-    # Simplified block diagram:
-    #
-    # Input -> opSubRegion -> opNormalizeAndConvert -> opReorderAxes -> opExportSlot
-    #                                                               \
-    #                                                                -> ImageToExport
+    # Simplified block diagram:                                          -> ConvertedImage                -> FormatSelectionIsValid
+    #                                                                   /                                /
+    # Input -> opSubRegion -> opDrangeInjection -> opNormalizeAndConvert -> opReorderAxes -> opExportSlot -> ExportPath
+    #                                                                                    \
+    #                                                                                     -> ImageToExport
     
     def __init__(self, *args, **kwargs):
         super( OpFormattedDataExport, self ).__init__(*args, **kwargs)
@@ -58,10 +60,19 @@ class OpFormattedDataExport(Operator):
         opSubRegion.Input.connect( self.Input )
         self._opSubRegion = opSubRegion
         
+        # If normalization parameters are provided, we inject a 'drange' 
+        #  metadata item for downstream operators/gui to use.
+        opDrangeInjection = OpMetadataInjector( parent=self )
+        opDrangeInjection.Input.connect( opSubRegion.Output )
+        self._opDrangeInjection = opDrangeInjection
+
+        # Normalization and dtype conversion are performed in one step
+        #  using an OpPixelOperator.
         opNormalizeAndConvert = OpPixelOperator( parent=self )
-        opNormalizeAndConvert.Input.connect( opSubRegion.Output )
+        opNormalizeAndConvert.Input.connect( opDrangeInjection.Output )
         self._opNormalizeAndConvert = opNormalizeAndConvert
 
+        # ConvertedImage shows the full result but WITHOUT axis reordering.
         self.ConvertedImage.connect( self._opNormalizeAndConvert.Output )
         
         opReorderAxes = OpReorderAxes( parent=self )
@@ -96,7 +107,6 @@ class OpFormattedDataExport(Operator):
         if self.RegionStart.ready():
             # RegionStart is permitted to contain 'None' values, which we replace with zeros
             new_start = map(lambda x: x or 0, self.RegionStart.value)
-            
 
         if self.RegionStop.ready():
             # RegionStop is permitted to contain 'None' values, 
@@ -133,6 +143,12 @@ class OpFormattedDataExport(Operator):
         if need_normalize:
             minVal, maxVal = self.InputMin.value, self.InputMax.value
             outputMinVal, outputMaxVal = self.ExportMin.value, self.ExportMax.value
+
+            # Force a drange onto the input slot metadata.
+            # opNormalizeAndConvert is an OpPixelOperator, 
+            #  which transforms the drange correctly in this case.
+            self._opDrangeInjection.Metadata.setValue( { 'drange' : (minVal, maxVal) } )
+            
             def normalize(a):
                 numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
                 denominator = numpy.float64(maxVal) - numpy.float64(minVal)
@@ -144,7 +160,17 @@ class OpFormattedDataExport(Operator):
                 result = numpy.asarray(outputMinVal + (a - minVal) * frac, export_dtype)
                 return result
             self._opNormalizeAndConvert.Function.setValue( normalize )
+
+            # The OpPixelOperator sets the drange correctly using the function we give it.
+            output_drange = self._opNormalizeAndConvert.Output.meta.drange
+            assert type(output_drange[0]) == export_dtype
+            assert type(output_drange[1]) == export_dtype
         else:
+            # We have no drange to set.
+            # If the original slot metadata had a drange, 
+            #  it will be propagated downstream anyway.
+            self._opDrangeInjection.Metadata.setValue( {} )
+
             # No normalization: just identity function with dtype conversion
             self._opNormalizeAndConvert.Function.setValue( lambda a: numpy.asarray(a, export_dtype) )
 
