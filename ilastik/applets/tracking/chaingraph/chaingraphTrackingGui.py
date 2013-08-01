@@ -122,7 +122,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
-              
+        
         self._drawer.TrackButton.setEnabled(False)        
         self.applet.progressSignal.emit(0)
         self.applet.progressSignal.emit(-1)

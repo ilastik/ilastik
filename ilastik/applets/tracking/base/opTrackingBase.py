@@ -7,6 +7,7 @@ import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.operators.opCompressedCache import OpCompressedCache
 
 
 class OpTrackingBase(Operator):
@@ -18,18 +19,40 @@ class OpTrackingBase(Operator):
     RawImage = InputSlot()
     Parameters = InputSlot( value={} ) 
 
+    # for serialization
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()    
+    OutputHdf5 = OutputSlot()
+    CachedOutput = OutputSlot() # For the GUI (blockwise-access)
+    
+    # provide zeros while waiting for the tracking result
+    ZeroOutput = OutputSlot()
     Output = OutputSlot()    
     
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
-        self.label2color = []  
+        self.label2color = []    
         
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.LabelImage.notifyReady( self._checkConstraints )
     
     def setupOutputs(self):        
-        self.Output.meta.assignFrom(self.LabelImage.meta)        
+        self.Output.meta.assignFrom(self.LabelImage.meta)
+        self.ZeroOutput.meta.assignFrom(self.LabelImage.meta)
+        
+        #cache our own output, don't propagate from internal operator
+        chunks = list(self.LabelImage.meta.shape)
+        # FIXME: assumes t,x,y,z,c
+        chunks[0] = 1  # 't'
+        
+        self._opCache = OpCompressedCache( parent=self )        
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
+        self._opCache.Input.connect( self.Output )        
+        self._opCache.BlockShape.setValue( tuple(chunks) )
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
+        self.CachedOutput.connect(self._opCache.Output)
     
     def _checkConstraints(self, *args):
         if not self.RawImage.ready() or not self.LabelImage.ready():
@@ -63,11 +86,14 @@ class OpTrackingBase(Operator):
             t_start = roi.start[0]
             t_end = roi.stop[0]
             for t in range(t_start, t_end):
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):                
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]) and len(self.label2color) > t:                
                     result[t-t_start, ..., 0] = relabel(result[t-t_start, ..., 0], self.label2color[t])
                 else:
                     result[t-t_start,...] = 0
-            return result          
+            return result         
+        elif slot is self.ZeroOutput:
+            result[:] = 0
+            return result 
         
     def propagateDirty(self, inputSlot, subindex, roi):     
         if inputSlot is self.LabelImage:

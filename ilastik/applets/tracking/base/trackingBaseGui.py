@@ -88,7 +88,7 @@ class TrackingBaseGui( LayerViewerGui ):
     def setupLayers( self ):        
         layers = []
         
-        if "MergerOutput" in self.topLevelOperatorView.outputs:
+        if "MergerOutput" in self.topLevelOperatorView.outputs and self.topLevelOperatorView.MergerOutput.ready():
             ct = colortables.create_default_8bit()
             for i in range(7):
                 ct[i] = self.mergerColors[i].rgba()
@@ -98,35 +98,42 @@ class TrackingBaseGui( LayerViewerGui ):
             mergerLayer.visible = True
             layers.append(mergerLayer)     
             
-            
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
-        self.trackingsrc = LazyflowSource( self.topLevelOperatorView.Output )
-        trackingLayer = ColortableLayer( self.trackingsrc, ct )
-        trackingLayer.name = "Tracking"
-        trackingLayer.visible = True
-        trackingLayer.opacity = 1.0
-        layers.append(trackingLayer)
         
+        if self.topLevelOperatorView.CachedOutput.ready():            
+            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.CachedOutput )
+            trackingLayer = ColortableLayer( self.trackingsrc, ct )
+            trackingLayer.name = "Tracking"
+            trackingLayer.visible = True
+            trackingLayer.opacity = 1.0
+            layers.append(trackingLayer)
+        else:
+            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.ZeroOutput )
+            trackingLayer = ColortableLayer( self.trackingsrc, ct )
+            trackingLayer.name = "Tracking"
+            trackingLayer.visible = True
+            trackingLayer.opacity = 1.0
+            layers.append(trackingLayer)
         
-        self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
-#        ct = colortables.create_default_8bit()
-        ct = colortables.create_random_16bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        objLayer = ColortableLayer( self.objectssrc, ct )
-        objLayer.name = "Objects"
-        objLayer.opacity = 1.0
-        objLayer.visible = True
-        layers.append(objLayer)
+        if self.topLevelOperatorView.LabelImage.ready():
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )    
+            ct = colortables.create_random_16bit()
+            ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+            objLayer = ColortableLayer( self.objectssrc, ct )
+            objLayer.name = "Objects"
+            objLayer.opacity = 1.0
+            objLayer.visible = True
+            layers.append(objLayer)
 
 
-        ## raw data layer
-        self.rawsrc = None
-        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-        rawLayer = GrayscaleLayer( self.rawsrc )
-        rawLayer.name = "Raw"        
-        layers.insert( len(layers), rawLayer )   
+        if self.mainOperator.RawImage.ready():
+            self.rawsrc = None
+            self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+            rawLayer = GrayscaleLayer( self.rawsrc )
+            rawLayer.name = "Raw"        
+            layers.insert( len(layers), rawLayer )   
         
         
         if self.topLevelOperatorView.LabelImage.meta.shape:
