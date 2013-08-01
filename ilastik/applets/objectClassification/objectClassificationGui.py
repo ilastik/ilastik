@@ -605,13 +605,12 @@ class ObjectClassificationGui(LabelingGui):
                         pred = int(preds[obj])
                 else:
                     pred = 'none'
-    
+                
+                prob = 'none'
                 if self.op.Probabilities.ready():
                     probs = self.op.Probabilities([t]).wait()[t]
                     if len(probs) >= obj:
                         prob = probs[obj]
-                else:
-                    prob = 'none'
     
                 print "probabilities:  {}".format(prob)
                 print "prediction:     {}".format(pred)

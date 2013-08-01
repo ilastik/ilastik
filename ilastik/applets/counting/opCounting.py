@@ -86,7 +86,7 @@ class OpCounting( Operator ):
     
     MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
-    BoxLabelImages= OutputSlot(optional = True, level=1) # Input for providing label data from an external source
+    BoxLabelImages= OutputSlot(level=1) # Input for providing label data from an external source
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 

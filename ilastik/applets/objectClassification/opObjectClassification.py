@@ -401,14 +401,24 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         nobj_new = mins_new.shape[0]
         if axistags is None:
             axistags = "xyz"
+        
+        data2D = False
+        if mins_old.shape[1]==2:
+            data2D = True
         class bbox():
             def __init__(self, minmaxs, axistags):
                 self.xmin = minmaxs[0][axistags.index('x')]
                 self.ymin = minmaxs[0][axistags.index('y')]
-                self.zmin = minmaxs[0][axistags.index('z')]
+                if not data2D:
+                    self.zmin = minmaxs[0][axistags.index('z')]
+                else:
+                    self.zmin = 0
                 self.xmax = minmaxs[1][axistags.index('x')]
                 self.ymax = minmaxs[1][axistags.index('y')]
-                self.zmax = minmaxs[1][axistags.index('z')]
+                if not data2D:
+                    self.zmax = minmaxs[1][axistags.index('z')]
+                else:
+                    self.zmax = 0
                 self.rad_x = 0.5*(self.xmax - self.xmin)
                 self.cent_x = self.xmin+self.rad_x
                 self.rad_y = 0.5*(self.ymax-self.ymin)
@@ -423,9 +433,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 over_x = this.rad_x+that.rad_x - (abs(this.cent_x-that.cent_x))
                 over_y = this.rad_y+that.rad_y - (abs(this.cent_y-that.cent_y))
                 over_z = this.rad_z+that.rad_z - (abs(this.cent_z-that.cent_z))
-
-                if over_x>0 and over_y>0 and over_z>0:
-                    return over_x*over_y*over_z
+                if not data2D:
+                    if over_x>0 and over_y>0 and over_z>0:
+                        return over_x*over_y*over_z
+                else:
+                    if over_x>0 and over_y>0:
+                        return over_x*over_y
                 return 0
 
         nonzeros = numpy.nonzero(old_labels)[0]

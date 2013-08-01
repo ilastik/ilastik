@@ -330,14 +330,11 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
-                def setMatrix():
-                    self.applet.guiControlSignal.emit(ControlCommand.DisableUpstream)
-                    self.applet.guiControlSignal.emit(ControlCommand.DisableDownstream)
-                    opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
-                    self.applet.guiControlSignal.emit(ControlCommand.Pop)
-                    self.applet.guiControlSignal.emit(ControlCommand.Pop)
-                matrixThread = threading.Thread(target = setMatrix)
-                matrixThread.start()
+                self.applet.guiControlSignal.emit(ControlCommand.DisableUpstream)
+                self.applet.guiControlSignal.emit(ControlCommand.DisableDownstream)
+                opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                self.applet.guiControlSignal.emit(ControlCommand.Pop)
+                self.applet.guiControlSignal.emit(ControlCommand.Pop)
                 self.topLevelOperatorView._setupOutputs()
                 
             else:
