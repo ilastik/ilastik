@@ -127,7 +127,7 @@ class OpOpticalTranslation(Operator):
             
         
             if self.twospacedim:
-                dest[t,...,0,:] = res.astype(numpy.int8)[...,0:2]
+                dest[t,...,0,:] = res.astype(numpy.int8).squeeze()[...,0:2]
             else:
                 dest[t,...] = res.astype(numpy.int8)
                                                         
