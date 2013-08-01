@@ -478,7 +478,10 @@ class DataSelectionGui(QWidget):
         info = DatasetInfo()
         info.filePath = "//".join( files )
         prefix = os.path.commonprefix(files)
-        info.nickname = PathComponents(prefix).filenameBase + "..."
+        info.nickname = PathComponents(prefix).filenameBase
+        # Add an underscore for each wildcard digit
+        num_wildcards = len(files[-1]) - len(prefix) - len( os.path.splitext(files[-1])[1] )
+        info.nickname += "_"*num_wildcards
 
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
