@@ -45,8 +45,7 @@ class OpChaingraphTracking(OpTrackingBase):
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
         else:
-            parameters['cplex_timeout'] = ''
-        self.Parameters.setValue(parameters, check_changed=False)        
+            parameters['cplex_timeout'] = ''        
         
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
@@ -84,5 +83,6 @@ class OpChaingraphTracking(OpTrackingBase):
         if len(self.events) == 0:
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
+        self.Parameters.setValue(parameters, check_changed=False)        
         self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True)
-    
+        
