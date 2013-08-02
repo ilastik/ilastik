@@ -243,10 +243,26 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            #slot.resize(len(subgroup))
-            for i, key in enumerate(subgroup):
-                assert key == self.subname.format(i)
-                self._deserialize(subgroup[key], slot[i])
+            # Pair stored indexes with their keys,
+            # e.g. [(0,'0'), (2, '2'), (3, '3')]
+            # Note that in some cases an index might be intentionally skipped.
+            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+            
+            # Ensure the slot is at least big enough to deserialize into.
+            max_index = max( indexes_to_keys.keys() )
+            if len(slot) < max_index+1:
+                slot.resize(max_index+1)
+
+            # Now retrieve the data
+            for i, subslot in enumerate(slot):
+                if i in indexes_to_keys:
+                    key = indexes_to_keys[i]
+                    assert key == self.subname.format(i)
+                    self._deserialize(subgroup[key], subslot)
+                else:
+                    # Since there was no data for this subslot in the project file,
+                    # we disconnect the subslot.
+                    subslot.disconnect()
 
     def unload(self):
         """see AppletSerializer.unload()"""
@@ -313,7 +329,7 @@ class SerialListSlot(SerialSlot):
             self.unload()
         else:
             if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
-                self.unload()
+                self.inslot.setValue( self._iterable([]) )
             else:
                 try:
                     self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
