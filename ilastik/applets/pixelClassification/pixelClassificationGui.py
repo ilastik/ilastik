@@ -475,12 +475,17 @@ class PixelClassificationGui(LabelingGui):
         slot.setValue(_listReplace(old, new))
 
     def _onLabelRemoved(self, parent, start, end):
-        super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
+        # Update the label names/colors BEFORE calling the base class,
+        #  which will update the operator and expects the 
+        #  label names list to be correct.
         op = self.topLevelOperatorView
         for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
             value = slot.value
             value.pop(start)
             slot.setValue(value)
+        
+        # Call the base class to update the operator.
+        super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
