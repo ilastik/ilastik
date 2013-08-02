@@ -1,3 +1,4 @@
+import os
 import vigra
 import numpy
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed, OpPixelFeaturesPresmoothed
@@ -7,6 +8,11 @@ from numpy.testing import assert_array_almost_equal
 
 class TestInterpolatedFeatures():
     def setUp(self):
+        if 'TRAVIS' in os.environ:
+            # This test takes a long time, so skip it on Travis-CI.
+            import nose
+            raise nose.SkipTest
+
         self.scaleZ = 2
         self.scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         self.featureIds = [ 'GaussianSmoothing', 'LaplacianOfGaussian',\
