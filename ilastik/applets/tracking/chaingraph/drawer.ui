@@ -35,6 +35,16 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
+      <widget class="QPushButton" name="TrackButton">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="text">
+        <string>Track!</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QLabel" name="label">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -46,178 +56,6 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Parameters&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <layout class="QGridLayout" name="gridLayout_2">
-       <item row="7" column="0">
-        <widget class="QLabel" name="label_20">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the optimization. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Timeout in sec.</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QDoubleSpinBox" name="noiseRateSpinBox">
-         <property name="minimum">
-          <double>0.010000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>0.990000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.010000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.100000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="1">
-        <widget class="QLineEdit" name="timeoutBox"/>
-       </item>
-       <item row="0" column="1">
-        <widget class="QSpinBox" name="appSpinBox">
-         <property name="maximum">
-          <number>10000</number>
-         </property>
-         <property name="value">
-          <number>1000</number>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥1000) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Disappearance</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QDoubleSpinBox" name="epGapSpinBox">
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.010000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.050000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QSpinBox" name="oppSpinBox">
-         <property name="maximum">
-          <number>10000</number>
-         </property>
-         <property name="value">
-          <number>1000</number>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_4">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The estimated &lt;span style=&quot; font-weight:600;&quot;&gt;rate of false detections&lt;/span&gt; coming from the segmentation step. Small values (≈0.01) treat every detected object as a true detection, if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Noise rate</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="disSpinBox">
-         <property name="maximum">
-          <number>10000</number>
-         </property>
-         <property name="value">
-          <number>1000</number>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs for the lost &lt;span style=&quot; font-weight:600;&quot;&gt;opportunity &lt;/span&gt;to explain more of the data, i.e. the costs for not tracking one object and treating it as false detections. High values (≥1000) lead to more tracks (but could also include the tracking of noise objects).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Opportunity</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The guaranteed upper bound for a solution to deviate from the exact solution of the tracking model. Low values (≤ 0.05) lead to better solutions but may lead to long optimization times. Higher values (≥0.1) speed up optimization time but lead to approximate solutions only.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Optimality Gap</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_23">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of neighbors to be considered as potential association candidates. Less neighbors speed up optimization time, but might have negative impact on tracking results. A reasonable value might be 2 or 3.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Number of Neighbors</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QSpinBox" name="nNeighborsSpinBox">
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="singleStep">
-          <number>1</number>
-         </property>
-         <property name="value">
-          <number>2</number>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥1000) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Appearance</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QSpinBox" name="noiseWeightSpinBox">
-         <property name="maximum">
-          <number>10000</number>
-         </property>
-         <property name="singleStep">
-          <number>10</number>
-         </property>
-         <property name="value">
-          <number>100</number>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Noise weight</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </item>
      <item>
       <widget class="QCheckBox" name="withDivisionsBox">
@@ -233,14 +71,176 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="TrackButton">
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
-       <property name="text">
-        <string>Track!</string>
-       </property>
-      </widget>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="7" column="1">
+        <widget class="QSpinBox" name="nNeighborsSpinBox">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="singleStep">
+          <number>1</number>
+         </property>
+         <property name="value">
+          <number>2</number>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_20">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the optimization. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Timeout in sec.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QDoubleSpinBox" name="noiseRateSpinBox">
+         <property name="minimum">
+          <double>0.010000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>0.990000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="appSpinBox">
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="value">
+          <number>1000</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥1000) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Disappearance</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QDoubleSpinBox" name="epGapSpinBox">
+         <property name="maximum">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.010000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.050000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="oppSpinBox">
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="value">
+          <number>1000</number>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The estimated &lt;span style=&quot; font-weight:600;&quot;&gt;rate of false detections&lt;/span&gt; coming from the segmentation step. Small values (≈0.01) treat every detected object as a true detection, if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Noise rate</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="disSpinBox">
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="value">
+          <number>1000</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs for the lost &lt;span style=&quot; font-weight:600;&quot;&gt;opportunity &lt;/span&gt;to explain more of the data, i.e. the costs for not tracking one object and treating it as false detections. High values (≥1000) lead to more tracks (but could also include the tracking of noise objects).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Opportunity</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="label_6">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The guaranteed upper bound for a solution to deviate from the exact solution of the tracking model. Low values (≤ 0.05) lead to better solutions but may lead to long optimization times. Higher values (≥0.1) speed up optimization time but lead to approximate solutions only.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Optimality Gap</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_23">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of neighbors to be considered as potential association candidates. Less neighbors speed up optimization time, but might have negative impact on tracking results. A reasonable value might be 2 or 3.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Number of Neighbors</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥1000) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Appearance</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <widget class="QSpinBox" name="noiseWeightSpinBox">
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="singleStep">
+          <number>10</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The costs to&lt;span style=&quot; font-weight:600;&quot;&gt; balance a detected object&lt;/span&gt; against transitions. High values (≥100) treat most objects as true detections if the noise rate is set to a small value (≈0.01).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Noise weight</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>
@@ -488,6 +488,8 @@
   </layout>
  </widget>
  <tabstops>
+  <tabstop>TrackButton</tabstop>
+  <tabstop>withDivisionsBox</tabstop>
   <tabstop>appSpinBox</tabstop>
   <tabstop>disSpinBox</tabstop>
   <tabstop>oppSpinBox</tabstop>
@@ -496,8 +498,6 @@
   <tabstop>epGapSpinBox</tabstop>
   <tabstop>nNeighborsSpinBox</tabstop>
   <tabstop>timeoutBox</tabstop>
-  <tabstop>withDivisionsBox</tabstop>
-  <tabstop>TrackButton</tabstop>
   <tabstop>from_time</tabstop>
   <tabstop>to_time</tabstop>
   <tabstop>from_x</tabstop>

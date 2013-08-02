@@ -7,7 +7,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class ManualTrackingWorkflow( Workflow ):
-    workflowName = "Tracking Workflow (Manual)"
+    workflowName = "Manual Tracking Workflow"
     workflowDescription = "Manual tracking of objects, based on Prediction Maps or (binary) Segmentation Images"    
 
     @property
