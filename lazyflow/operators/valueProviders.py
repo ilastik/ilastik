@@ -7,8 +7,8 @@ import threading
 import numpy
 
 #lazyflow
+from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-import lazyflow.roi
 from operators import OpArrayCache, OpArrayPiper
 
 class ListToMultiOperator(Operator):
@@ -230,7 +230,22 @@ class OpValueCache(Operator):
 
         # Now release the lock and block for the request
         if state != State.Clean:
-            value = request.wait()
+            success = False
+            while not success:
+                try:
+                    value = request.wait()
+                    success = True
+                except Request.InvalidRequestException:
+                    # Oops, we're sharing the request with another thread 
+                    #  and that other thread cancelled it before we got a chance to call wait().
+                    # Just regenerate the request and try again...
+                    with self._lock:
+                        if request == self._request:
+                            request = self.Input[...]
+                            self._request = request
+                        else:
+                            request = self._request
+                    state = State.Dirty
         
         result[...] = value
         

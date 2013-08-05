@@ -1,9 +1,12 @@
 import time
+import random
 import threading
+from functools import partial
 import numpy
 import vigra
 import lazyflow.graph
-from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge, OpZeroDefault, OpArrayCache
+from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators.valueProviders import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge, OpZeroDefault 
 
 class TestOpMetadataInjector(object):
     
@@ -175,6 +178,44 @@ class TestOpValueCache(object):
         assert opCache._dirty == False
         assert opCache._request is None
         assert opCache.Output.value == 100
+    
+    def test_cancel(self):
+        """
+        This ensures that the Output can be acessed from multiple 
+        threads, even if one thread cancels its request.
+        The OpValueCache must handle Request.InvalidRequestException errors correctly. 
+        """
+        graph = lazyflow.graph.Graph()
+        opCompute = TestOpValueCache.OpSlowComputation(graph=graph)
+        opCache = OpValueCache(graph=graph)
+
+        opCompute.Input.setValue(100)
+        opCache.Input.connect(opCompute.Output)
+
+        def checkOutput():
+            req = opCache.Output[:]
+            req.submit()
+            if random.random() < 0.2:
+                value = req.wait()[0]
+                assert value == 100
+            else:
+                # Cancel the request and mark the data dirty
+                # (forces the next request to restart it.
+                req.cancel()
+                opCache._dirty = True
+
+        # Create 20 threads, start them, and join them.
+        threads = []
+        for i in range(20):
+            threads.append( threading.Thread(target=checkOutput) )
+        
+        for t in threads:
+            t.start()
+            
+        for t in threads:
+            t.join()
+
+        assert opCache.Output.value == 100
 
 class TestOpZeroDefault(object):
     
@@ -225,7 +266,7 @@ class TestOpZeroDefault(object):
 if __name__ == "__main__":
     import sys
     import nose
-    #sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)
