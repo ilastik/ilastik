@@ -335,7 +335,7 @@ class OpMultiArrayStacker(Operator):
 
 
         for i, inSlot in enumerate(self.inputs['Images']):
-            if inSlot.connected():
+            if inSlot.ready():
                 req = None
                 inTagKeys = [ax.key for ax in inSlot.meta.axistags]
                 if flag in inTagKeys:
