@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>342</height>
+    <height>359</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -154,16 +154,6 @@
      </property>
      <property name="toolButtonStyle">
       <enum>Qt::ToolButtonTextBesideIcon</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="savePredictionsButton">
-     <property name="toolTip">
-      <string>Compute predictions for your entire dataset (all images) and save the project</string>
-     </property>
-     <property name="text">
-      <string>Full Volume Predict and Save</string>
      </property>
     </widget>
    </item>
