@@ -129,7 +129,6 @@ class FeatureSelectionGui(LayerViewerGui):
             layerListWidget.item(row).setText(self.layerstack[row].name)
         
         def handleSelectionChanged(row):
-            print "feature list: selection changed for row = %d, feature = %s" % (row, self.layerstack[row].name)
             # Only one layer is visible at a time
             for i, layer in enumerate(self.layerstack):
                 layer.visible = (i == row)
