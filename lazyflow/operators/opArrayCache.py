@@ -309,9 +309,6 @@ class OpArrayCache(OpCache):
         half = tileArray.shape[0]/2
         dirtyPool = RequestPool()
 
-        def onCancel(req):
-            return False # indicate that this request cannot be canceled
-
         for i in range(tileArray.shape[1]):
 
             drStart3 = tileArray[:half,i]
