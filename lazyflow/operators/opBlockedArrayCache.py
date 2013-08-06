@@ -197,6 +197,8 @@ class OpBlockedArrayCache(OpCache):
                 smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
                 req = op.Output(smallroi.start, smallroi.stop)
                 req.writeInto(result[bigkey])
+                # FIXME: These requests are not being executed in parallel!
+                #        This wait() should be moved outside the loop.
                 req.wait()
                 #op.execute(op.outputs["Output"], (), smallroi, result[bigkey])
 
