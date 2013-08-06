@@ -1,4 +1,6 @@
 import warnings
+import argparse
+
 from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -8,21 +10,15 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
-from ilastik.applets.objectClassification import ObjectClassificationApplet
+from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
-from ilastik.applets.blockwiseObjectClassification \
-    import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification, BlockwiseObjectClassificationBatchApplet
+from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification
 
-from lazyflow.graph import Graph
-from lazyflow.operators import OpSegmentation, Op5ifyer, OpTransposeSlots, OpReorderAxes
-from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
-from lazyflow.operators.generic import OpSelectSubslot
-from lazyflow.graph import OperatorWrapper
-
-
-
-import argparse
+from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
+from lazyflow.operators.valueProviders import OpAttributeSelector
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
@@ -66,8 +62,13 @@ class ObjectClassificationWorkflow(Workflow):
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
+        self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Prediction Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
+        self._applets.append(self.dataExportApplet)
 
         self.pixel = False
         if isinstance(self, ObjectClassificationWorkflowPixel):
@@ -93,10 +94,14 @@ class ObjectClassificationWorkflow(Workflow):
                 self, "Blockwise Object Classification", "Blockwise Object Classification")
             self._applets.append(self.blockwiseObjectClassificationApplet)
 
-            self.batchResultsApplet = BlockwiseObjectClassificationBatchApplet(
-                self, "Prediction Output Locations")
+            self.batchExportApplet = ObjectClassificationDataExportApplet(
+                self, "Batch Object Prediction Export", isBatch=True)
+        
+            opBatchDataExport = self.batchExportApplet.topLevelOperator
+            opBatchDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+
             self._applets.append(self.dataSelectionAppletBatch)
-            self._applets.append(self.batchResultsApplet)
+            self._applets.append(self.batchExportApplet)
 
             self._initBatchWorkflow()
 
@@ -116,6 +121,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         opObjExtraction.RawImage.connect(rawslot)
         opObjExtraction.BinaryImage.connect(binaryslot)
@@ -128,6 +134,11 @@ class ObjectClassificationWorkflow(Workflow):
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opObjClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
 
+        # Data Export connections
+        opDataExport.RawData.connect( opData.ImageGroup[0] )
+        opDataExport.Input.connect( opObjClassification.UncachedPredictionImages )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+
         if self.batch:
             opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
             opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
@@ -137,7 +148,6 @@ class ObjectClassificationWorkflow(Workflow):
             opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
             opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
             opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
-
 
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
@@ -210,11 +220,17 @@ class ObjectClassificationWorkflow(Workflow):
 
         self.opBatchClassify = opBatchClassify
 
+        # We need to transpose the dataset group, because it is indexed by [image_index][group_index]
+        # But we want it to be indexed by [group_index][image_index] for the RawDatasetInfo connection, below.
+        opTransposeDatasetGroup = OpTransposeSlots( parent=self )
+        opTransposeDatasetGroup.OutputLength.setValue(1)
+        opTransposeDatasetGroup.Inputs.connect( self.opDataSelectionBatch.DatasetGroup )
+
         # Connect the batch OUTPUT applet
-        opBatchOutput = self.batchResultsApplet.topLevelOperator
-        opBatchOutput.DatasetPath.connect(self.opDataSelectionBatch.ImageName)
-        opBatchOutput.RawImage.connect(batchInputsRaw)
-        opBatchOutput.ImageToExport.connect(opBatchClassify.PredictionImage)
+        opBatchExport = self.batchExportApplet.topLevelOperator
+        opBatchExport.RawData.connect( batchInputsRaw )
+        opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
+        opBatchExport.Input.connect( opBatchClassify.PredictionImage )
 
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
@@ -312,7 +328,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         
         # Access the batch operators
         opBatchInputs = self.dataSelectionAppletBatch.topLevelOperator
-        opBatchOutput = self.batchResultsApplet.topLevelOperator
+        opBatchExport = self.batchExportApplet.topLevelOperator
         
         opBatchInputs.DatasetRoles.connect( opPixelTrainingDataSelection.DatasetRoles )
         
@@ -329,18 +345,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opBatchPixelFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPixelPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
-        ## Connect Operators ##
-        opTranspose = OpTransposeSlots( parent=self )
-        opTranspose.OutputLength.setValue(1)
-        opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
-        
-        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
-        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
-        opFilePathProvider.AttributeName.setValue( 'filePath' )
-        
-        # Provide dataset paths from data selection applet to the batch export applet
-        opBatchOutput.DatasetPath.connect( opFilePathProvider.Result )
-        
         # Connect (clone) the feature operator inputs from 
         #  the interactive workflow's features operator (which gets them from the GUI)
         opBatchPixelFeatures.Scales.connect( opPixelTrainingFeatures.Scales )
@@ -351,12 +355,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opBatchPixelPredictionPipeline.Classifier.connect( opPixelClassify.Classifier )
         opBatchPixelPredictionPipeline.MaxLabel.connect( opPixelClassify.MaxLabelValue )
         opBatchPixelPredictionPipeline.FreezePredictions.setValue( False )
-        
-        # Provide these for the gui
-        #opBatchResults.RawImage.connect( opBatchInputs.Image )
-        #opBatchResults.PmapColors.connect( opPixelClassify.PmapColors )
-        #opBatchResults.LabelNames.connect( opClassify.LabelNames )
-        
+                
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Thresholding
         opBatchPixelFeatures.InputImage.connect( opBatchInputs.Image )
@@ -399,6 +398,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opBatchThreshold.InputImage.connect(op5Pred.Output)
         op5Binary.Input.connect(opBatchThreshold.Output)
         
+        # BATCH outputs are computed BLOCKWISE.
         # Connect the blockwise classification operator
         # Parameter inputs are cloned from the interactive workflow,
         opBatchObjectClassify = OperatorWrapper(OpBlockwiseObjectClassification, parent=self,
@@ -414,14 +414,17 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         self.opBatchClassify = opBatchObjectClassify
 
+        # We need to transpose the dataset group, because it is indexed by [image_index][group_index]
+        # But we want it to be indexed by [group_index][image_index] for the RawDatasetInfo connection, below.
+        opTransposeDatasetGroup = OpTransposeSlots( parent=self )
+        opTransposeDatasetGroup.OutputLength.setValue(1)
+        opTransposeDatasetGroup.Inputs.connect( opBatchInputs.DatasetGroup )
+
         # Connect the batch OUTPUT applet
-        opBatchOutput = self.batchResultsApplet.topLevelOperator
-        #opBatchOutput.DatasetPath.connect(self.opDataSelectionBatch.ImageName)
-        opBatchOutput.RawImage.connect(opBatchInputs.Image)
-        opBatchOutput.ImageToExport.connect(opBatchObjectClassify.PredictionImage)
-        
-        
-        
+        opBatchExport.Input.connect( opBatchObjectClassify.PredictionImage )
+        opBatchExport.RawData.connect( opBatchInputs.Image )
+        opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
+
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
 

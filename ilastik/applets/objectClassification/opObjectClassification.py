@@ -76,6 +76,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     CachedProbabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
 
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
+    UncachedPredictionImages = OutputSlot(level=1)
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
     BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List) #Objects with NaN-like features
@@ -194,6 +195,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Probabilities.connect(self.opPredict.Probabilities)
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
+        self.UncachedPredictionImages.connect(self.opPredictionsToImage.Output)
         self.PredictionProbabilityChannels.connect(self.opProbChannelsImageCache.Output)
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
