@@ -326,8 +326,9 @@ class DataExportGui(QWidget):
         for innerOp in self.topLevelOperator:
             operatorView = innerOp
             operatorView.cleanupOnDiskView()
-            pathComp = PathComponents(operatorView.OutputDataPath.value, operatorView.WorkingDirectory.value)
-            os.remove(pathComp.externalPath)
+            pathComp = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value)
+            if os.path.exists(pathComp.externalPath):
+                os.remove(pathComp.externalPath)
             operatorView.setupOnDiskView()
             # we need to toggle the dirts state in order to enforce a frech dirty signal
             operatorView.Dirty.setValue( False )
