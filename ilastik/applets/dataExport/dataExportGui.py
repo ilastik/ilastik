@@ -3,11 +3,11 @@ import threading
 from functools import partial
 
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
 
 import ilastik.applets.base.applet
 from ilastik.utility import bind, PathComponents
-from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -70,6 +70,7 @@ class DataExportGui(QWidget):
         self.topLevelOperator = topLevelOperator
 
         self.threadRouter = ThreadRouter(self)
+        self._thunkEventHandler = ThunkEventHandler(self)
         
         self._initAppletDrawerUic()
         self.initCentralUic()
@@ -87,6 +88,9 @@ class DataExportGui(QWidget):
             multislot[index].notifyReady( bind( self.updateTableForSlot ) )
             if multislot[index].ready():
                 self.updateTableForSlot( multislot[index] )
+
+            multislot[index].notifyUnready( self._updateExportButtons )
+            multislot[index].notifyReady( self._updateExportButtons )
 
         self.topLevelOperator.ExportPath.notifyInserted( bind( handleNewDataset ) )
         
@@ -235,6 +239,22 @@ class DataExportGui(QWidget):
         selectedRanges = self.batchOutputTableWidget.selectedRanges()
         if len(selectedRanges) == 0:
             self.batchOutputTableWidget.selectRow(0)
+
+    def _updateExportButtons(self, *args):
+        """Called when at least one dataset became 'unready', so we have to disable the export button."""
+        all_ready = True
+        # Enable/disable the appropriate export buttons in the table.
+        # Use ThunkEvents to ensure that this happens in the Gui thread.
+        for row, slot in enumerate( self.topLevelOperator.ImageToExport ):
+            all_ready &= slot.ready()
+            export_button = self.batchOutputTableWidget.cellWidget( row, Column.Action )
+            if export_button is not None:
+                executable_event = ThunkEvent( partial(export_button.setEnabled, slot.ready()) )
+                QApplication.instance().postEvent( self, executable_event )
+
+        # Disable the "Export all" button unless all slots are ready.
+        executable_event = ThunkEvent( partial(self.drawer.exportAllButton.setEnabled, all_ready) )
+        QApplication.instance().postEvent( self, executable_event )
 
     def handleTableSelectionChange(self):
         """
