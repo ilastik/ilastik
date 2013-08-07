@@ -1,10 +1,9 @@
-import sys
 import os
 import threading
 from functools import partial
 
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton
+from PyQt4.QtGui import QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
 
 import ilastik.applets.base.applet
 from ilastik.utility import bind, PathComponents
@@ -285,8 +284,13 @@ class DataExportGui(QWidget):
 
                 try:
                     opLaneView.run_export()
-                except:
-                    logger.error( "Failed to export a result" )
+                except Exception as ex:
+                    msg = "Failed to generate export file: \n"
+                    msg += opLaneView.ExportPath.value
+                    msg += "\n{}".format( ex )
+                    self.showExportError(msg)
+                    
+                    logger.error( msg )
                     import traceback
                     traceback.print_exc()
 
@@ -303,6 +307,10 @@ class DataExportGui(QWidget):
             # Now that we're finished, it's okay to use the other applets again.
             self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
             self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
+
+    @threadRouted
+    def showExportError(self, msg):
+        QMessageBox.critical(self, msg, "Failed to export", msg )
 
     def exportResultsForSlot(self, opLane):
         # Do this in a separate thread so the UI remains responsive
