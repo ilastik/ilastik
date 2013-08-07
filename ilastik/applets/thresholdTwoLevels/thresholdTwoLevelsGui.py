@@ -169,7 +169,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
         """
         if watched in self._allWatchedWidgets:
-            if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Enter:
+            if  event.type() == QEvent.KeyPress and\
+              ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
                 self._drawer.applyButton.click()
                 return True
         return False

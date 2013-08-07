@@ -186,7 +186,8 @@ class StackFileSelectionWidget(QDialog):
 
     def _filterPatternEditEvent(self, event):
         # If the user presses "enter" while editing the pattern, auto-click "Apply".
-        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Enter:
+        if  event.type() == QEvent.KeyPress and\
+          ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
             self.patternApplyButton.click()
             return True
         return False
