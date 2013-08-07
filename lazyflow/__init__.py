@@ -5,3 +5,4 @@ import stype
 import operators
 import request
 import graph
+import slot
