@@ -213,7 +213,9 @@ class DataSelectionGui(QWidget):
         rows = set()
         for modelIndex in selectedIndexes:
             rows.add( modelIndex.row() )
-        rows.discard( self.laneSummaryTableView.model().rowCount() )
+
+        # Don't remove the last row, which is just buttons.
+        rows.discard( self.laneSummaryTableView.model().rowCount()-1 )
 
         # Remove in reverse order so row numbers remain consistent
         for row in reversed(sorted(rows)):
@@ -223,7 +225,7 @@ class DataSelectionGui(QWidget):
             finalSize = len(self.topLevelOperator.DatasetGroup) - 1
             self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
     
-            # The gui and the operator should be in sync
+            # The gui and the operator should be in sync (model has one extra row for the button row)
             assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
     def showDataset(self, laneIndex, roleIndex=None):
@@ -243,6 +245,8 @@ class DataSelectionGui(QWidget):
                     if not opLaneView.DatasetRoles.ready():
                         return
                     datasetRoles = opLaneView.DatasetRoles.value
+                    if roleIndex >= len(datasetRoles):
+                        return
                     roleName = datasetRoles[roleIndex]
                     try:
                         layerIndex = [l.name for l in self.layerstack].index(roleName)
