@@ -471,9 +471,10 @@ class OpCachedRegionFeatures(Operator):
 
         if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
                            for k in "txyz")):
-            raise Exception("shapes do not match. label volume shape: {}."
-                            " raw data shape: {}".format(self.LabelImage.meta.shape,
-                                                         self.RawVolume.meta.shape))
+            raise DatasetConstraintError( "Object Extraction",
+                                          "Raw Image and Label Image shapes do not match.\n"\
+                                          "Label Image shape: {}. Raw Image shape: {}"\
+                                          "".format(self.LabelImage.meta.shape, self.RawVolume.meta.shape))
 
 
         # Every value in the regionfeatures output is cached seperately as it's own "block"
