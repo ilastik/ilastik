@@ -153,7 +153,22 @@ class OpDataExport(Operator):
     def setupOutputs(self):
         self.cleanupOnDiskView()        
 
-        rawInfo = self.RawDatasetInfo.value
+        # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then 
+        #          we have no guarantees about which one will trigger setupOutputs() first.
+        #        It is therefore possible for 'RawDatasetInfo' to appear ready() to us, 
+        #          even though it's upstream partner is UNready.  We are about to get the 
+        #          unready() notification, but it will come too late to prevent our 
+        #          setupOutputs method from being called.
+        #        Without proper graph setup transaction semantics, we have to use this 
+        #          hack as a workaround.
+        try:
+            rawInfo = self.RawDatasetInfo.value
+        except:
+            for oslot in self.outputs.values():
+                if oslot.partner is None:
+                    oslot.meta.NOTREADY = True
+            return
+
         dataset_dir = PathComponents(rawInfo.filePath).externalDirectory
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
