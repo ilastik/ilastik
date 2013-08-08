@@ -40,7 +40,10 @@ def threadRouted(func):
 
         # If we're already in the parent thread, then we can call the function directly
         if obj.threadRouter.ident == threading.current_thread().ident:
-            func(*args, **kwargs)
+            val = func(*args, **kwargs)
+            # We rely on Qt signals (below) so it is an error to 
+            #  use @threadRouted with a function that gives a return value
+            assert val is None, "Can't return a valud from an @threadRouted function."
         
         # Otherwise, we rely on the Qt BlockingQueuedConnection 
         #  signal behavior to transfer the call to the parent thread. 
