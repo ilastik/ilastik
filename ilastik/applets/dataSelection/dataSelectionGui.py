@@ -422,8 +422,11 @@ class DataSelectionGui(QWidget):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
             except DatasetConstraintError as ex:
+                return_val = [False]
                 # Give the user a chance to fix the problem
-                if not self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex):
+                self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
+                if not return_val[0]:
+                    # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
                     break
             except OpDataSelection.InvalidDimensionalityError as ex:
@@ -437,7 +440,7 @@ class DataSelectionGui(QWidget):
         self.updateInternalPathVisiblity()
 
     @threadRouted
-    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex):
+    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
         msg = "Can't use default properties for dataset:\n\n" + \
               filename + "\n\n" + \
               "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
@@ -445,13 +448,18 @@ class DataSelectionGui(QWidget):
               "Please enter valid dataset properties to continue."
         QMessageBox.warning( self, "Dataset Needs Correction", msg )
         
-        return self.repairDatasetInfo( info, roleIndex, laneIndex )
+        # The success of this is 'returned' via our special out-param
+        # (We can't return a value from this func because it is @threadRouted.
+        successfully_repaired = self.repairDatasetInfo( info, roleIndex, laneIndex )
+        return_val[0] = successfully_repaired
 
     def repairDatasetInfo(self, info, roleIndex, laneIndex):
+        """Open the dataset properties editor and return True if the new properties are acceptable."""
         defaultInfos = {}
         defaultInfos[laneIndex] = info
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos)
-        return ( editorDlg.exec_() == QDialog.Accepted )
+        dlg_state = editorDlg.exec_()
+        return ( dlg_state == QDialog.Accepted )
 
     def getPossibleInternalPaths(self, absPath):
         datasetNames = []
@@ -509,7 +517,10 @@ class DataSelectionGui(QWidget):
                 except DatasetConstraintError as ex:
                     # Give the user a chance to repair the problem.
                     filename = files[0] + "\n...\n" + files[-1]
-                    if not self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex ):
+                    return_val = [False]
+                    self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex, return_val )
+                    if not return_val[0]:
+                        # Not successfully repaired.  Roll back the changes and give up.
                         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             finally:
                 self.guiControlSignal.emit( ControlCommand.Pop )
