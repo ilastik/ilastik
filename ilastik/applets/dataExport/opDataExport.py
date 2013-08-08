@@ -355,7 +355,7 @@ def get_model_op(wrappedOp):
     be copied over to the 'real' (wrapped) operator slots. 
     """
     if len( wrappedOp ) == 0:
-        return
+        return None, None
 
     # These are the slots the export settings gui will manipulate.
     setting_slots = [ wrappedOp.RegionStart,
@@ -381,15 +381,19 @@ def get_model_op(wrappedOp):
     shape = None
     axes = None
     for slot in wrappedOp.Input:
-        assert slot.ready()
-        if shape is None:
-            shape = slot.meta.shape
-            axes = slot.meta.getAxisKeys()
-            dtype = slot.meta.dtype
-        else:
-            assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
-            assert slot.meta.dtype == dtype
-            shape = numpy.minimum( slot.meta.shape, shape )
+        if slot.ready():
+            if shape is None:
+                shape = slot.meta.shape
+                axes = slot.meta.getAxisKeys()
+                dtype = slot.meta.dtype
+            else:
+                assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
+                assert slot.meta.dtype == dtype
+                shape = numpy.minimum( slot.meta.shape, shape )
+
+    # If NO slots were ready, then we can't do anything here.
+    if shape is None:
+        return None, None
 
     # Must provide a 'ready' slot for the gui
     # Use a subregion operator to provide a slot with the meta data we chose.
@@ -402,7 +406,7 @@ def get_model_op(wrappedOp):
     #  It only cares about the metadata.)
     model_op.Input.connect( opSubRegion.Output )
 
-    return model_op
+    return model_op, opSubRegion # We return the subregion op, too, so the caller can clean it up.
 
 
 

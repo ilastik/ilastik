@@ -166,7 +166,14 @@ class DataExportGui(QWidget):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
     def _chooseSettings(self):
-        opExportModelOp = get_model_op( self.topLevelOperator )
+        opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
+        if opExportModelOp is None:
+            QMessageBox.information( self, 
+                                     "Image not ready for export", 
+                                     "Export isn't possible yet: No images are ready for export.  "
+                                     "Please configure upstream pipeline with valid settings and try again." )
+            return
+        
         settingsDlg = DataExportOptionsDlg(self, opExportModelOp)
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
             # Copy the settings from our 'model op' into the real op
@@ -198,6 +205,7 @@ class DataExportGui(QWidget):
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()
+            opSubRegion.cleanUp()
 
             print "configured shape is: {}".format( self.topLevelOperator.getLane(0).ImageToExport.meta.shape )
 
