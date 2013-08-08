@@ -1,16 +1,11 @@
 # Built-in
 import os
-import logging
-import threading
-from functools import partial
 
 # Third-party
-import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
+from PyQt4.QtGui import QWidget
 
-from volumina.widgets.exportDlg import ExportDialog
+from volumina.widgets.exportHelper import get_settings_and_export_layer
 
 class ViewerControls(QWidget):
     def __init__(self, parent = None, model=None):
@@ -31,7 +26,6 @@ class ViewerControls(QWidget):
         self.SaveButton.clicked.connect(self.export)
 
     def export(self):
-        
         modelindex = self.layerWidget.currentIndex()
         model = self.layerWidget.model()
         layer = model[modelindex.row()]
@@ -42,6 +36,5 @@ class ViewerControls(QWidget):
         import lazyflow
         assert isinstance(dataSource.dataSlot, lazyflow.graph.Slot), "slot is of type %r" % (type(dataSource.dataSlot))
         assert isinstance(dataSource.dataSlot.getRealOperator(), lazyflow.graph.Operator), "slot's operator is of type %r" % (type(dataSource.dataSlot.getRealOperator()))
-        expDlg = ExportDialog(self, inputslot=dataSource.dataSlot)
-        expDlg.show()
+        get_settings_and_export_layer( layer, self )
         
