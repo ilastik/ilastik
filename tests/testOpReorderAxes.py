@@ -215,6 +215,23 @@ class TestOpReorderAxes(unittest.TestCase):
             reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.Output.meta.axistags])
             assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
 
+    def test_attempt_drop_nonsingleton_axis(self):
+        """
+        Attempt to configure the operator with invalid settings by trying to drop a non-singleton axis.
+        The execute method should assert in that case.
+        """
+        data = numpy.zeros( (100,100,100), dtype=numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('xyz') )
+        
+        op = OpReorderAxes( graph=Graph() )
+        op.Input.setValue( data )
+        
+        # Attempt to drop some axes that can't be dropped.
+        op.AxisOrder.setValue( 'txc' )
+
+        # Make sure this results in an error.        
+        self.assertRaises( AssertionError, op.Output[:].wait )
+
 if __name__ == "__main__":
     #logger.setLevel(logging.DEBUG)
     unittest.main()

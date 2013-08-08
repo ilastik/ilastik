@@ -16,8 +16,17 @@ class OpReorderAxes(Operator):
         tagged_input_shape = self.Input.meta.getTaggedShape()
 
         # Check for errors
+        self._invalid_axes = []
         for a in set(input_order) - set(output_order):
-            assert tagged_input_shape[a] <= 1, "OpReorderAxes: Cannot drop non-singleton axis '{}'".format( a )
+            if tagged_input_shape[a] > 1:
+                # It looks like someone is attempting to drop a NON-singleton axis,
+                #   which is an error.
+                # But maybe they're about to change BOTH Input and AxisOrder, which 
+                #   could result in a valid output_order.
+                # Instead of asserting here, we'll keep track of the invalid axes.
+                # We'll assert if the user actually attempts to call exceute() 
+                #   without fixing the axis order.
+                self._invalid_axes.append( a )
 
         # Determine output shape/axistags
         output_shape = []
@@ -54,6 +63,9 @@ class OpReorderAxes(Operator):
 
     def execute(self, slot, subindex, out_roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
+        assert len(self._invalid_axes) == 0, \
+            "Can't exceute this OpReorderAxes because you are attempting to drop "\
+            "the following non-singleton axes: {}.".format( self._invalid_axes )
         out_roi_dict = dict( enumerate( zip(out_roi.start, out_roi.stop) ) )
         out_roi_dict[-1] = (0,1) # Input axes that are missing on the output map to roi of 0:1
 
