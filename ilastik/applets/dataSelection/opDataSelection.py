@@ -3,7 +3,8 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
-from lazyflow.operators import OpMetadataInjector
+from lazyflow.operators.valueProviders import OpMetadataInjector
+from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -91,9 +92,16 @@ class OpDataSelection(Operator):
 
     ImageName = OutputSlot(stype='string') #: The name of the output image
     
+    class InvalidDimensionalityError(Exception):
+        """Raised if the user tries to replace the dataset with a new one of differing dimensionality."""
+        def __init__(self, message ):
+            super( OpDataSelection.InvalidDimensionalityError, self ).__init__()
+            self.message = message
+
     def __init__(self, force5d=False, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.force5d = force5d
+        self._previous_output_axiskeys = None
         self._opReaders = []
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
@@ -115,72 +123,92 @@ class OpDataSelection(Operator):
         self.internalCleanup()
         datasetInfo = self.Dataset.value
 
-        # Data only comes from the project file if the user said so AND it exists in the project
-        datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
-        datasetInProject &= self.ProjectFile.ready()
-        if datasetInProject:
-            internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
-            datasetInProject &= internalPath in self.ProjectFile.value
+        try:
+            # Data only comes from the project file if the user said so AND it exists in the project
+            datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
+            datasetInProject &= self.ProjectFile.ready()
+            if datasetInProject:
+                internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
+                datasetInProject &= internalPath in self.ProjectFile.value
+    
+            # If we should find the data in the project file, use a dataset reader
+            if datasetInProject:
+                opReader = OpStreamingHdf5Reader(parent=self)
+                opReader.Hdf5File.setValue(self.ProjectFile.value)
+                opReader.InternalPath.setValue(internalPath)
+                providerSlot = opReader.OutputImage
+                self._opReaders.append(opReader)
+            else:
+                # Use a normal (filesystem) reader
+                opReader = OpInputDataReader(parent=self)
+                opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
+                opReader.FilePath.setValue(datasetInfo.filePath)
+                providerSlot = opReader.Output
+                self._opReaders.append(opReader)
+            
+            # Inject metadata if the dataset info specified any.
+            if datasetInfo.normalizeDisplay is not None or \
+               datasetInfo.drange is not None or \
+               datasetInfo.axistags is not None:
+                metadata = {}
+                if datasetInfo.drange is not None:
+                    metadata['drange'] = datasetInfo.drange
+                if datasetInfo.normalizeDisplay is not None:
+                    metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
+                if datasetInfo.axistags is not None:
+                    metadata['axistags'] = datasetInfo.axistags
+                opMetadataInjector = OpMetadataInjector( parent=self )
+                opMetadataInjector.Input.connect( providerSlot )
+                opMetadataInjector.Metadata.setValue( metadata )
+                providerSlot = opMetadataInjector.Output
+                self._opReaders.append( opMetadataInjector )
+            
+            self._NonTransposedImage.connect(providerSlot)
+            
+            if self.force5d:
+                op5 = OpReorderAxes(parent=self)
+                op5.Input.connect(providerSlot)
+                providerSlot = op5.Output
+                self._opReaders.append(op5)
+            
+            # If there is no channel axis, use an OpReorderAxes to append one.
+            if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
+                op5 = OpReorderAxes( parent=self )
+                providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
+                op5.AxisOrder.setValue(providerKeys + 'c')
+                op5.Input.connect( providerSlot )
+                providerSlot = op5.Output
+                self._opReaders.append( op5 )
+            
+            # Most of workflows can't handle replacement of a dataset of a different dimensionality.
+            # We guard against that by checking for errors NOW, before connecting our Image output,
+            #  which is connected to the rest of the workflow.
+            new_axiskeys = "".join( providerSlot.meta.getAxisKeys() )
+            if self._previous_output_axiskeys is not None and len(new_axiskeys) != len(self._previous_output_axiskeys):
+                msg =  "You can't replace an existing dataset with one of a different dimensionality.\n"\
+                       "Your existing dataset was {}D ({}), but the new dataset is {}D ({}).\n"\
+                       "Your original dataset entry has been reset.  "\
+                       "Please remove it and then add your new dataset."\
+                       "".format( len(self._previous_output_axiskeys), self._previous_output_axiskeys,
+                                  len(new_axiskeys), new_axiskeys )
+                raise OpDataSelection.InvalidDimensionalityError( msg )
 
-        # If we should find the data in the project file, use a dataset reader
-        if datasetInProject:
-            opReader = OpStreamingHdf5Reader(parent=self)
-            opReader.Hdf5File.setValue(self.ProjectFile.value)
-            opReader.InternalPath.setValue(internalPath)
-            providerSlot = opReader.OutputImage
-            self._opReaders.append(opReader)
-        else:
-            # Use a normal (filesystem) reader
-            opReader = OpInputDataReader(parent=self)
-            opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
-            opReader.FilePath.setValue(datasetInfo.filePath)
-            providerSlot = opReader.Output
-            self._opReaders.append(opReader)
+            self._previous_output_axiskeys = new_axiskeys
+            
+            # Connect our external outputs to the internal operators we chose
+            self.Image.connect(providerSlot)
+            
+            # Set the image name and usage flag
+            self.AllowLabels.setValue( datasetInfo.allowLabels )
+            
+            imageName = datasetInfo.nickname
+            if imageName == "":
+                imageName = datasetInfo.filePath
+            self.ImageName.setValue(imageName)
         
-        # Inject metadata if the dataset info specified any.
-        if datasetInfo.normalizeDisplay is not None or \
-           datasetInfo.drange is not None or \
-           datasetInfo.axistags is not None:
-            metadata = {}
-            if datasetInfo.drange is not None:
-                metadata['drange'] = datasetInfo.drange
-            if datasetInfo.normalizeDisplay is not None:
-                metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
-            if datasetInfo.axistags is not None:
-                metadata['axistags'] = datasetInfo.axistags
-            opMetadataInjector = OpMetadataInjector( parent=self )
-            opMetadataInjector.Input.connect( providerSlot )
-            opMetadataInjector.Metadata.setValue( metadata )
-            providerSlot = opMetadataInjector.Output
-            self._opReaders.append( opMetadataInjector )
-        
-        self._NonTransposedImage.connect(providerSlot)
-        
-        if self.force5d:
-            op5 = OpReorderAxes(parent=self)
-            op5.Input.connect(providerSlot)
-            providerSlot = op5.Output
-            self._opReaders.append(op5)
-        
-        # If there is no channel axis, use an OpReorderAxes to append one.
-        if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
-            op5 = OpReorderAxes( parent=self )
-            providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
-            op5.AxisOrder.setValue(providerKeys + 'c')
-            op5.Input.connect( providerSlot )
-            providerSlot = op5.Output
-            self._opReaders.append( op5 )
-        
-        # Connect our external outputs to the internal operators we chose
-        self.Image.connect(providerSlot)
-        
-        # Set the image name and usage flag
-        self.AllowLabels.setValue( datasetInfo.allowLabels )
-        
-        imageName = datasetInfo.nickname
-        if imageName == "":
-            imageName = datasetInfo.filePath
-        self.ImageName.setValue(imageName)
+        except:
+            self.internalCleanup()
+            raise
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators

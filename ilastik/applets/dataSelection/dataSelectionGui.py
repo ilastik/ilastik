@@ -426,6 +426,10 @@ class DataSelectionGui(QWidget):
                 if not self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex):
                     opTop.DatasetGroup.resize( originalSize )
                     break
+            except OpDataSelection.InvalidDimensionalityError as ex:
+                    opTop.DatasetGroup.resize( originalSize )
+                    QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
+                    break
             except:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
                 opTop.DatasetGroup.resize( originalSize )
