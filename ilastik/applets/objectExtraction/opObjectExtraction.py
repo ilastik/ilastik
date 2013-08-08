@@ -472,7 +472,7 @@ class OpCachedRegionFeatures(Operator):
         if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
                            for k in "txyz")):
             raise Exception("shapes do not match. label volume shape: {}."
-                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
+                            " raw data shape: {}".format(self.LabelImage.meta.shape,
                                                          self.RawVolume.meta.shape))
 
 
