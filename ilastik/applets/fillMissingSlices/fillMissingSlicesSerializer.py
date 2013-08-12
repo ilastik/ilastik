@@ -11,14 +11,16 @@ class FillMissingSlicesSerializer(AppletSerializer):
         self._operator = topLevelOperator
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        #FIXME OperatorSubView
+        #FIXME REALLY!!! FIX THIS!!! OperatorSubView
         for i, s in enumerate(self._operator.innerOperators):
             self._setDataset(topGroup, 'SVM_%d'%i, s.dumps())
+            s.resetDirty()
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         #FIXME OperatorSubView
         for i, s in enumerate(self._operator.innerOperators):
             s.loads(self._getDataset(topGroup, 'SVM_%d'%i))
+            s.resetDirty()
         
 
     def isDirty(self):
