@@ -124,6 +124,10 @@ class OpExportSlot(Operator):
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
 
+        if output_format == 'hdr' or 'hdr sequence':
+            # HDR format supports float32 only.
+            return self.Input.meta.dtype == numpy.float32
+
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
             if output_format == 'jpg' or output_format == 'jpeg':
