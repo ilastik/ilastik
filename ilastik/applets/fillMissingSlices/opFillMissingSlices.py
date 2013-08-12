@@ -8,13 +8,18 @@ logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
 
 class OpFillMissingSlicesNoCache(Operator):
+    
+    Missing = OutputSlot()
     Input = InputSlot()
+    Output = OutputSlot()
+    
     DetectionMethod = InputSlot(value='classic')
     OverloadDetector = InputSlot(value='')
+    PatchSize = InputSlot(value=128)
+    HaloSize = InputSlot(value=30)
     
-    Output = OutputSlot()
-    Missing = OutputSlot()
     Detector = OutputSlot(stype=Opaque)
+    
     
     def __init__(self, *args, **kwargs):
         super( OpFillMissingSlicesNoCache, self ).__init__(*args, **kwargs)
@@ -25,6 +30,10 @@ class OpFillMissingSlicesNoCache(Operator):
         self._opInterp.InputSearchDepth.setValue(100)
         
         self._opInterp.DetectionMethod.connect(self.DetectionMethod)
+        
+        self._opInterp.PatchSize.connect(self.PatchSize)
+        self._opInterp.HaloSize.connect(self.HaloSize)
+        
         
         self._opInterp.OverloadDetector.connect( self.OverloadDetector )
 
@@ -39,16 +48,23 @@ class OpFillMissingSlicesNoCache(Operator):
         pass # Nothing to do here.
     
     def isDirty(self):
-        #FIXME
-        return True
+        return self._opInterp.isDirty()
+    
+    def resetDirty(self):
+        self._opInterp.resetDirty()
+        
+    def dumps(self):
+        return self._opInterp.dumps()
+    
+    def loads(self, s):
+        self._opInterp.loads(s)
     
     def setPrecomputedHistograms(self,histos):
         self._opInterp.detector.TrainingHistograms.setValue(histos)
         
     def train(self):
+        self._opInterp.train()
         
-        #FIXME OMG RLY? accessing private variables??
-        self._opInterp.detector._train(force=True)
     
     
     

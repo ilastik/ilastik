@@ -22,7 +22,7 @@ class FillMissingSlicesApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ["DetectionMethod", "OverloadDetector"]
+        return ["DetectionMethod", "OverloadDetector", "PatchSize", "HaloSize"]
     
     
     @property
