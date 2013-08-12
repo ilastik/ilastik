@@ -1,3 +1,4 @@
+import collections
 import numpy
 
 from lazyflow.utility import format_known_keys
@@ -123,9 +124,10 @@ class OpFormattedDataExport(Operator):
             self._opSubRegion.Stop.disconnect()
 
             # Provide the coordinate offset, but only for the axes that are present in the output image
-            tagged_input_offset = dict( zip(self.Input.meta.getAxisKeys(), new_start ) )
+            tagged_input_offset = collections.defaultdict( lambda: -1, zip(self.Input.meta.getAxisKeys(), new_start ) )
             output_axes = self._opReorderAxes.AxisOrder.value
-            output_offset = tuple( tagged_input_offset[axis] for axis in output_axes )
+            output_offset = [ tagged_input_offset[axis] for axis in output_axes ]
+            output_offset = tuple( filter( lambda x: x != -1, output_offset ) )
             self._opExportSlot.CoordinateOffset.setValue( output_offset )
 
             self._opSubRegion.Start.setValue( tuple(new_start) )
