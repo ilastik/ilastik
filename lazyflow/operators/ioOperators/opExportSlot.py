@@ -124,7 +124,7 @@ class OpExportSlot(Operator):
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
 
-        if output_format == 'hdr' or 'hdr sequence':
+        if output_format == 'hdr' or output_format == 'hdr sequence':
             # HDR format supports float32 only.
             return self.Input.meta.dtype == numpy.float32
 
