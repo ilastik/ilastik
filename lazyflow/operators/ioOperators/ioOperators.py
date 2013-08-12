@@ -192,7 +192,7 @@ class OpStackWriter(Operator):
         # Check for errors
         assert len(self._volume_axes) == 3 or len(self._volume_axes) == 4 and 'c' in self._volume_axes[1:], \
             "Exported stacks must have exactly 3 non-singleton dimensions (other than the channel dimension).  "\
-            "You stack dimensions are: {}".format( self.Input.meta.getTaggedShape() )
+            "Your stack dimensions are: {}".format( self.Input.meta.getTaggedShape() )
 
         # Test to make sure the filepath pattern includes slice index field        
         filepath_pattern = self.FilepathPattern.value
