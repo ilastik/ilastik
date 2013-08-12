@@ -83,6 +83,7 @@ class OpInterpMissingData(Operator):
         # Output has the same shape/axes/dtype/drange as input
         self.Output.meta.assignFrom( self.InputVolume.meta )
 
+        '''
         # Check for errors
         taggedShape = self.InputVolume.meta.getTaggedShape()
         
@@ -92,7 +93,8 @@ class OpInterpMissingData(Operator):
             assert taggedShape['t'] == 1, "Non-spatial dimensions must be of length 1"
         if 'c' in taggedShape:
             assert taggedShape['c'] == 1, "Non-spatial dimensions must be of length 1"
-            
+        '''
+        
         self.Detector.meta.shape = (1,)
 
     def execute(self, slot, subindex, roi, result):
@@ -105,33 +107,64 @@ class OpInterpMissingData(Operator):
         
         assert method in self._requiredMargin.keys(), "Unknown interpolation method {}".format(method)
         
-
+        '''
         # keep a backup of the original roi
         oldStart = np.asarray([k for k in roi.start])
         oldStop = np.asarray([k for k in roi.stop])
-
+        '''
+        
+        
+        
         z_index = self.InputVolume.meta.axistags.index('z')
-        nz = self.InputVolume.meta.getTaggedShape()['z']
+        c_index = self.InputVolume.meta.axistags.index('c')
+        t_index = self.InputVolume.meta.axistags.index('t')
+        #nz = self.InputVolume.meta.getTaggedShape()['z']
         
-        # check if more input is needed, and how many
-        z_offsets = self._extendRoi(roi)
+        resultZYXCT = vigra.taggedView(result,self.InputVolume.meta.axistags).withAxes(*'zyxct')
         
+        # backup ROI
+        oldStart = np.copy(roi.start)
+        oldStop = np.copy(roi.stop)
         
-        # get extended interpolation
-        roi.start[z_index] -= z_offsets[0]
-        roi.stop[z_index] += z_offsets[1]
+        cRange = np.arange(roi.start[c_index],roi.stop[c_index]) if c_index<len(roi.start) \
+            else np.array([0])
+        tRange = np.arange(roi.start[t_index],roi.stop[t_index]) if t_index<len(roi.start) \
+            else np.array([0])
         
-        a = self.interpolator.Output.get(roi).wait()
+        for c in cRange:
+            for t in tRange:
+                
+                # change roi to single block
+                if c_index<len(roi.start):
+                    roi.start[c_index] = c
+                    roi.stop[c_index] = c+1
+                    
+                if t_index<len(roi.start):
+                    roi.start[t_index] = t
+                    roi.stop[t_index] = t+1
         
-        # reduce to original roi
-        roi.stop = roi.stop - roi.start
-        roi.start *= 0
-        roi.start[z_index] += z_offsets[0]
-        roi.stop[z_index] -= z_offsets[1]
-        key = roiToSlice(roi.start, roi.stop)
-        
-        result[:] = a[key]
-        
+                # check if more input is needed, and how many
+                z_offsets = self._extendRoi(roi)
+                
+                
+                # get extended interpolation
+                roi.start[z_index] -= z_offsets[0]
+                roi.stop[z_index] += z_offsets[1]
+                
+                a = self.interpolator.Output.get(roi).wait()
+                
+                # reduce to original roi
+                roi.stop = roi.stop - roi.start
+                roi.start *= 0
+                roi.start[z_index] += z_offsets[0]
+                roi.stop[z_index] -= z_offsets[1]
+                key = roiToSlice(roi.start, roi.stop)
+                
+                resultZYXCT[..., c,t] = vigra.taggedView(a[key], self.InputVolume.meta.axistags).withAxes(*'zyx')
+                
+                #restore ROI, will be used in other methods!!!
+                roi.start = np.copy(oldStart)
+                roi.stop = np.copy(oldStop)
         
         return result
     
@@ -224,7 +257,7 @@ class OpInterpMissingData(Operator):
         
 ### HISTOGRAM EXTRACTION FUNCTION ###
 
-def extractHistograms(volume, labels, patchSize = 64, nBins=30, intRange=(0,255)):
+def extractHistograms(volume, labels, patchSize = 64, haloSize = 0, nBins=30, intRange=(0,255)):
     '''
     extracts histograms from 3d-volume 
      - labels are
@@ -250,18 +283,22 @@ def extractHistograms(volume, labels, patchSize = 64, nBins=30, intRange=(0,255)
         labelsZYX = labels
         pass
     
+    # compute actual patch size
+    patchSize = patchSize + 2*haloSize
+    
     
     # fill list of patch centers (VigraArray does not support bitwise_or)
     ind_z, ind_y, ind_x = np.where((labelsZYX==1).view(np.ndarray) | (labelsZYX==2).view(np.ndarray))
     index = np.arange(len(ind_z))
     
     # prepare chunking of histogram centers
-    chunkSize = 1000 #FIXME magic number??
+    chunkSize = 10000 #FIXME magic number??
     nChunks = len(index)//chunkSize + (1 if len(index) % chunkSize > 0 else 0)
     s = [slice(k*chunkSize,min((k+1)*chunkSize,len(index))) for k in range(nChunks)]
     histoList = [None]*nChunks
     
     # prepare subroutine for parallel extraction
+    reporter = ProgressReporter(nChunks)
     
     #BEGIN subroutine
     def _extract(index):
@@ -281,11 +318,12 @@ def extractHistograms(volume, labels, patchSize = 64, nBins=30, intRange=(0,255)
                                             density = True)
                 hist[nBins] = 1 if labelsZYX[z,y,x] == 1 else 0
                 out.append(hist)
-            
+        
         return np.vstack(out) if len(out) > 0 else np.zeros((0,nBins+1))
 
     def partFun(i):
         histoList[i] = _extract(index[s[i]])
+        reporter.report(i)
     #END subroutine
     
     # pool the extraction requests
@@ -299,8 +337,23 @@ def extractHistograms(volume, labels, patchSize = 64, nBins=30, intRange=(0,255)
     pool.clean()
     
     return np.vstack(histoList)
+
+from threading import Lock as ThreadLock    
+class ProgressReporter(object):
     
+    lock = None
     
+    def __init__(self, nThreads):
+        self.lock = ThreadLock()
+        self.nThreads = nThreads
+        self.status = np.zeros((nThreads,))
+        
+    def report(self,index):
+        self.lock.acquire()
+        self.status[index] = 1
+        logger.debug("Finished threads: %d/%d." % (self.status.sum(), len(self.status)))
+        self.lock.release()
+        
 
 
 ################################
@@ -377,8 +430,6 @@ class OpInterpolate(Operator):
                 maxLabel = missingLabeled.max()
                 for i in range(1,maxLabel+1):
                     self._interpolate(resultZYXCT[...,c,t], missingLabeled==i)
-        
-        
         
         return result
     
@@ -890,10 +941,10 @@ class OpDetectMissing(Operator):
         method = self.DetectionMethod.value
         
         #FIXME arbitrary
-        firstSamples = 200
+        firstSamples = 250
         maxRemovePerStep = 0
-        maxAddPerStep = 300
-        maxSamples = 1500
+        maxAddPerStep = 250
+        maxSamples = 1000
         nTrainingSteps = 4
         
         # initial choice of training samples
@@ -1073,72 +1124,206 @@ if __name__ == "__main__":
     
     import argparse
     import os.path
+    from sys import exit
+    import time
     
     from lazyflow.graph import Graph
     
     from lazyflow.operators.opInterpMissingData import _histogramIntersectionKernel, PseudoSVC
     
-    parser = argparse.ArgumentParser(description='Train a missing slice detector')
-    parser.add_argument('file', nargs='*', action='store', help="volume and labels (if omitted, '-f' must be given)")
-    parser.add_argument('-f', action='store', default=None, dest='histfile', help='pickled histograms (if not existing, histograms get calculated from volume and label files and stored there.')
-    parser.add_argument('-d', dest='detfile', action='store', default=None, help='Output file for detector (will be a temporary file if omitted)')
-    parser.add_argument('--patch', dest='patchSize', action='store', default='64', help='patch size')
-    parser.add_argument('--halo', dest='haloSize', action='store', default='64', help='halo size')
-    parser.add_argument('--bins', dest='binSize', action='store', default='30', help='number of histogram bins')
+    logging.basicConfig()
+    logger.setLevel(logging.INFO)
     
+    
+    # BEGIN ARGPARSE
+    
+    parser = argparse.ArgumentParser(description='Train a missing slice detector')
+    
+    parser.add_argument('file', nargs='*', action='store', \
+        help="volume and labels (if omitted, the working directory must contain histogram files)")
+    
+    parser.add_argument('-d', '--directory', dest='directory', action='store', default="/tmp",\
+        help='working directory, histograms and detector file will be stored there')
+    
+    parser.add_argument('-t', '--testingrange', dest='testingrange', action='store', default=None,\
+        help='the z range of the labels that are for testing (like "0-3,11,17-19" which would evaluate to [0,1,2,3,11,17,18,19])')
+    
+    parser.add_argument('-f', '--force', dest='force', action='store_true', default=False, \
+        help='force extraction of histograms, even if the directory already contains histograms')
+    
+    parser.add_argument('--patch', dest='patchSize', action='store', default='64', help='patch size (e.g.: "32,64-128")')
+    parser.add_argument('--halo', dest='haloSize', action='store', default='64', help='halo size (e.g.: "32,64-128")')
+    parser.add_argument('--bins', dest='binSize', action='store', default='30', help='number of histogram bins (e.g.: "10-15,20")')
     
     args = parser.parse_args()
-    patchSize = int(args.patchSize)
-    haloSize = int(args.haloSize)
-    binSize = int(args.binSize)
     
-    logging.basicConfig()
-    logger.setLevel(logging.DEBUG)
+    # END ARGPARSE
     
-    startFromLabels = args.histfile is None or not os.path.exists(args.histfile)
+    # BEGIN FILESYSTEM
     
-    logger.debug("Gathering histograms...")
+    workingdir = args.directory
+    assert os.path.isdir(workingdir), "Directory '{}' does not exist.".format(workingdir)
+    for f in args.file: assert os.path.isfile(f), "'{}' does not exist.".format(f)
     
-    if startFromLabels:
-        assert len(args.file) == 2, "If there are no histograms available, volume and labels must be provided."
-        logger.debug("Computing histograms (this could take a while)...")
-        volume = vigra.impex.readHDF5(args.file[0], '/volume/data').withAxes(*'zyx')
-        labels = vigra.impex.readHDF5(args.file[1], '/volume/data').withAxes(*'zyx')
-        histograms = extractHistograms(volume, labels, patchSize = patchSize+haloSize, nBins=binSize, intRange=(0,255))
-        
-        if args.histfile is not None:
-            vigra.impex.writeHDF5(histograms, args.histfile, '/volume/data')
-            logger.debug("Dumped training data with shape {} to '{}'.".format(histograms.shape, args.histfile))
-        
-    else:
-        histograms = vigra.impex.readHDF5(args.histfile, '/volume/data')
-        logger.debug("Loaded training data from '{}'.".format(args.histfile))
+    # END FILESYSTEM
     
+    # BEGIN NORMALIZE
     
+    def _expand(rangelist):
+        if rangelist is not None:
+            singleRanges = rangelist.split(',')
+            expandedRanges = []
+            for r in singleRanges:
+                r2 = r.split('-')
+                if len(r2)==1:
+                    expandedRanges.append(int(r))
+                elif len(r2) == 2:
+                    for i in range(int(r2[0]),int(r2[1])+1): expandedRanges.append(i)
+                else:
+                    logger.error("Syntax Error: '{}'".format(r))
+                    exit(33)
+            return np.asarray(expandedRanges)
+        else:
+            return np.zeros((0,))
     
-    logger.debug("Training...")
+    testrange = _expand(args.testingrange)
+    
+    patchSizes = _expand(args.patchSize)
+    haloSizes = _expand(args.haloSize)
+    binSizes = _expand(args.binSize)
+    
+    # END NORMALIZE
+    
     
     op = OpDetectMissing(graph=Graph())
+    
+    # iterate training conditions
+    for patchSize in patchSizes:
+        for haloSize in haloSizes:
+            for binSize in binSizes:
+                #FIXME optimize for already computed patch sizes ( (64,0) vs. (32,16) )
+                histfile = os.path.join(workingdir, "histograms_%d_%d_%d.h5" % (patchSize, haloSize, binSize))
+                detfile = os.path.join(workingdir, "detector_%d_%d_%d.pkl" % (patchSize, haloSize, binSize))
+                startFromLabels = args.force or not os.path.exists(histfile)
+                
+                # EXTRACT HISTOGRAMS
+                if startFromLabels:
+                    logger.info("Gathering histograms from {} patches (this could take a while) ...".format((patchSize, haloSize, binSize)))
+                    assert len(args.file) == 2, "If there are no histograms available, volume and labels must be provided."
+                    
+                    locs = ['/volume/data', '/cube']
+                    
+                    volume = None
+                    labels = None
+                    
+                    for l in locs:
+                        try:
+                            volume = vigra.impex.readHDF5(args.file[0], l).withAxes(*'zyx')
+                            break
+                        except KeyError:
+                            pass
+                    if volume is None:
+                        logger.error("Could not find a volume in {} with paths {}".format(args.file[0], locs))
+                        exit(42)
+                        
+                    for l in locs:
+                        try:
+                            labels = vigra.impex.readHDF5(args.file[1], '/volume/data').withAxes(*'zyx')
+                            break
+                        except KeyError:
+                            pass
+                    if labels is None:
+                        logger.error("Could not find a volume in {} with paths {}".format(args.file[1], locs))
+                        exit(43)
+                    
+                    # bear with me, complicated axistags stuff is for my old vigra to work
+                    trainrange = np.setdiff1d(np.arange(volume.shape[0]), testrange)
+                    
+                    trainData = vigra.taggedView(volume[trainrange,:,:], axistags=vigra.defaultAxistags('zyx'))
+                    trainLabels = vigra.taggedView(labels[trainrange,:,:], axistags=vigra.defaultAxistags('zyx'))
+                    
+                    trainHistograms = extractHistograms(trainData, trainLabels, patchSize = patchSize, haloSize=haloSize, nBins=binSize, intRange=(0,255))
+                    
+                    if len(testrange)>0:
+                        testData = vigra.taggedView(volume[testrange,:,:], axistags=vigra.defaultAxistags('zyx'))
+                        testLabels = vigra.taggedView(labels[testrange,:,:], axistags=vigra.defaultAxistags('zyx'))
+                        
+                        testHistograms = extractHistograms(testData, testLabels, patchSize = patchSize, haloSize=haloSize, nBins=binSize, intRange=(0,255))
+                    else:
+                        testHistograms = np.zeros((0,trainHistograms.shape[1]))
+                    
+                    
+                    vigra.impex.writeHDF5(trainHistograms, histfile, '/volume/train')
+                    if len(testHistograms)>0:
+                        vigra.impex.writeHDF5(testHistograms, histfile, '/volume/test')
+                    logger.info("Dumped histograms to '{}'.".format(histfile))
+                    
+                else:
+                    logger.info("Gathering histograms from file...")
+                    trainHistograms = vigra.impex.readHDF5(histfile, '/volume/train')
+                    try:
+                        testHistograms =  vigra.impex.readHDF5(histfile, '/volume/test')
+                    except KeyError:
+                        testHistograms = np.zeros((0,trainHistograms.shape[1]))
+                    logger.info("Loaded histograms from '{}'.".format(histfile))
+            
+            
+                # TRAIN
+            
+                logger.info("Training...")
+                
+                op.PatchSize.setValue(patchSize)
+                op.HaloSize.setValue(haloSize)
+                op.DetectionMethod.setValue('svm')
+                op.NHistogramBins.setValue(binSize)
+                
+                op.TrainingHistograms.setValue(trainHistograms)
+                
+                op.train(force=True)
+                
+                # save detector
+                try:
+                    if detfile is None:
+                        with tempfile.NamedTemporaryFile(suffix='.pkl', prefix='detector_', delete=False) as f:
+                            logger.info("Detector written to {}".format(f.name))
+                            f.write(op.dumps())
+                    else:
+                        with open(detfile,'w') as f:
+                            logger.info("Detector written to {}".format(f.name))
+                            f.write(op.dumps())
+                except Exception as e:
+                    print("==== BEGIN DETECTOR DUMP ====")
+                    print(op.dumps())
+                    print("==== END DETECTOR DUMP ====")
+                    logger.error(str(e))
+                    
+                
+                if len(testHistograms) == 0:
+                    # no testing required
+                    continue
+                
+                logger.info("Testing...")
+                
+                # split into histos and labels
+                hists = testHistograms[:,0:testHistograms.shape[1]-1]
+                labels = testHistograms[:,testHistograms.shape[1]-1]
+                
+                negTest = hists[np.where(labels==0)[0],...]
+                posTest = hists[np.where(labels==1)[0],...]
+                
+                predNeg = op.predict(negTest, method='svm')
+                predPos = op.predict(posTest, method='svm')
 
-    op.PatchSize.setValue(patchSize)
-    op.HaloSize.setValue(haloSize)
-    op.DetectionMethod.setValue('svm')
-    op.NHistogramBins.setValue(binSize)
+                fp = (predNeg.sum())/float(predNeg.size); 
+                fn = (predPos.size - predPos.sum())/float(predPos.size)
+
+                prec = predPos.sum()/float(predPos.sum()+predNeg.sum())
+                recall = 1-fn
+                
+                logger.info(" Predicted {} histograms with patchSize={}, haloSize={}, bins={}.".format(len(hists), patchSize, haloSize, binSize))
+                logger.info(" FPR=%.5f, FNR=%.5f (recall=%.5f, precision=%.5f)." % (fp, fn, recall, prec))
+                
+                
     
-    op.TrainingHistograms.setValue(histograms)
-    
-    op.train(force=True)
-    
-    try:
-        if args.detfile is None:
-            with tempfile.NamedTemporaryFile(suffix='.pkl', prefix='detector_', delete=False) as f:
-                logger.debug("Detector written to {}".format(f.name))
-                f.write(op.dumps())
-        else:
-            with open(args.detfile,'w') as f:
-                logger.debug("Detector written to {}".format(f.name))
-                f.write(op.dumps())
-    except Exception as e:
-        print(e)
-        print(op.dumps())
+        
     

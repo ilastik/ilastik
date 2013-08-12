@@ -224,14 +224,12 @@ class TestDetection(unittest.TestCase):
                             
                             
     def test4D(self):
-        self.op.PatchSize.setValue(64)
         vol = vigra.VigraArray( np.ones((10,64,64,3)), axistags=vigra.defaultAxistags('cxyz') )
         self.op.InputVolume.setValue(vol)
         self.op.Output[:].wait()
                             
     
     def test5D(self):
-        self.op.PatchSize.setValue(64)
         vol = vigra.VigraArray( np.ones((15,64,10,3,64)), axistags=vigra.defaultAxistags('cxzty') )
         self.op.InputVolume.setValue(vol)
         self.op.Output[:].wait()
@@ -523,6 +521,19 @@ class TestInterpMissingData(unittest.TestCase):
     def testHaloSize(self):
         #TODO implement
         pass
+    
+    def test4D(self):
+        vol = vigra.VigraArray( np.ones((10,64,64,3)), axistags=vigra.defaultAxistags('cxyz') )
+        self.op.InputVolume.setValue(vol)
+        x = self.op.Output[:].wait()
+        assert x.shape == vol.shape
+                            
+    
+    def test5D(self):
+        vol = vigra.VigraArray( np.ones((15,64,10,3,64)), axistags=vigra.defaultAxistags('cxzty') )
+        self.op.InputVolume.setValue(vol)
+        x = self.op.Output[:].wait()
+        assert x.shape == vol.shape
 
 
 
