@@ -213,6 +213,9 @@ class OpBlockwiseObjectClassification( Operator ):
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
+        prediction_tagged_shape = self.RawImage.meta.getTaggedShape()
+        prediction_tagged_shape['c'] = 1
+        self.PredictionImage.meta.shape = tuple( prediction_tagged_shape.values() )
 
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value
@@ -325,15 +328,21 @@ class OpBlockwiseObjectClassification( Operator ):
 
     
     def _getFullShape(self, spatialShapeDict):
+        # 't' should match raw input
+        # 'c' should be 1 (output image has exactly 1 channel)
+        # xyz come from spatialShapeDict
         axiskeys = self.RawImage.meta.getAxisKeys()
-        # xyz block shape comes from input slot, but other axes are as in raw data
         shape = [0] * len(axiskeys)
         for i, k in enumerate(axiskeys):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
-            else:
+            elif k == 'c':
+                shape[i] = 1
+            elif k == 't':
                 shape[i] = self.RawImage.meta.shape[i]
-            
+            else:
+                assert False,  "Unknown axis key: '{}'".format( k )
+        
         return shape
 
     
