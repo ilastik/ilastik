@@ -89,6 +89,8 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
+        self.topLevelOperatorView.MaxLabelValue.notifyUnready( bind(self.handleLabelSelectionChange) )
+        self.topLevelOperatorView.MaxLabelValue.notifyReady( bind(self.handleLabelSelectionChange) )
         
         self._initShortcuts()
 
@@ -371,6 +373,13 @@ class PixelClassificationGui(LabelingGui):
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
         
+        if not enabled:
+            self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+            self._viewerControlUi.checkShowPredictions.setChecked(False)
+            self._viewerControlUi.checkShowSegmentation.setChecked(False)
+            self.handleShowPredictionsClicked()
+            self.handleShowSegmentationClicked()
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
