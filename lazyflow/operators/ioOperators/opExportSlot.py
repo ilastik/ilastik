@@ -123,11 +123,16 @@ class OpExportSlot(Operator):
         
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
+        output_dtype = self.Input.meta.dtype
 
         if output_format == 'hdr' or output_format == 'hdr sequence':
             # HDR format supports float32 only, and must have exactly 3 channels
-            return self.Input.meta.dtype == numpy.float32 and \
+            return output_dtype == numpy.float32 and \
                    'c' in tagged_shape and tagged_shape['c'] == 3
+
+        if 'tif' in output_format and output_dtype == numpy.int8:
+            # Apparently, TIFF supports everything but signed byte
+            return False
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
