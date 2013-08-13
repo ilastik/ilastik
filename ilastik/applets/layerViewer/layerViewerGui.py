@@ -354,6 +354,13 @@ class LayerViewerGui(QWidget):
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
         
+        for layer in newGuiLayers:
+            assert not filter( lambda l: l is layer, self.layerstack ), \
+                "You are attempting to re-use a layer ({}).  " \
+                "Your setupOutputs() function may not re-use layer objects.  " \
+                "The layerstack retains ownership of the layers you provide and " \
+                "may choose to clean and delete them without your knowledge.".format( layer.name )
+
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
