@@ -12,7 +12,6 @@ for path in paths:
         HAS_CPLEX = True
     except Exception as err:
         raise err
-
     try:
         dllfile = path + dllname
         extlib = ctypes.cdll.LoadLibrary(dllfile)

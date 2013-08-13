@@ -350,7 +350,7 @@ class SVR(object):
          "req":["ilastik.applets.counting.cwrapper.gurobi"], "boxes": True},
         {"method" : "BoxedRegressionCplex", "gui":["default", "svr"], "req":["ilastik.applets.counting.cwrapper.cplex"],
          "boxes": True},
-        {"method" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
+        #{"method" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
         {"method" : "RandomForest" ,"gui":["default","rf"], "req":["sklearn"], "boxes": False},
         #{"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
         #{"method" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
@@ -458,7 +458,6 @@ class SVR(object):
         indices = np.arange(boxFeatures.shape[0])
         np.random.shuffle(indices)
         splits = np.array_split(indices, numRegressors)
-        
         boxConstraintList = []
         
         for split in splits:
@@ -553,14 +552,14 @@ class SVR(object):
             regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
             regressor.fit(img, dot, tags, self.getOldBoxConstraints(boxConstraints, numFeatures
                                                                    ))
+        #elif self._method == "svrBoxed-gurobi":
+        #    regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
+        #    regressor.fit(img, dot, tags, self.getOldBoxConstraints(boxConstraints, numFeatures
+        #                                                           ))
         elif self._method == "BoxedRegressionGurobi":
             regressor = RegressorC(C = self._C, epsilon = self._epsilon)
             regressor.fitgurobi(img, dot, tags, boxConstraints)
         
-        #elif self._method == "svr-gurobi":
-        #    regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
-        #    regressor.fit(img, dot)
-            
         elif self._method == "BoxedRegressionCplex":
             regressor = RegressorC(C = self._C, epsilon = self._epsilon)
             regressor.fitcplex(img, dot, tags, boxConstraints)
@@ -657,7 +656,7 @@ if __name__ == "__main__":
     #dot[1,1] = 2
 
     backup_image = np.copy(img)
-    sigma = [3]
+    sigma = [0]
     Counter = SVR(method = "BoxedRegressionGurobi", Sigma= sigma)
     testdot, testmapping, testtags = Counter.prepareData(dot,smooth = True)
     testimg = img.reshape((-1, img.shape[-1]))
@@ -665,11 +664,8 @@ if __name__ == "__main__":
     #print testimg
     #print testdot, np.sum(testdot)
     
-    #boxIndices = np.array([0, 25])
-    #boxFeatures = np.array(img[:5,:5],dtype=np.float64)
-    #boxValues = np.array([5])
-    boxIndices = np.array([0, 10000])
-    boxFeatures = np.array(img[:100,:100],dtype=np.float64)
+    boxIndices = np.array([0, 25])
+    boxFeatures = np.array(img[:5,:5],dtype=np.float64)
     boxValues = np.array([5])
     boxFeatures = boxFeatures.reshape((-1, boxFeatures.shape[-1]))
     
@@ -677,10 +673,10 @@ if __name__ == "__main__":
     #boxConstraints = None
 
     print testtags
-    numRegressors = 10
+    numRegressors = 1
     success = Counter.fitPrepared(testimg[testmapping,:], testdot[testmapping], testtags,
                                   boxConstraints = boxConstraints, numRegressors = numRegressors)
-    #print Counter._regressor[0].w
+    print Counter._regressor[0].w
     #3uccess = Counter.fitPrepared(testimg[indices,:], testdot[indices], testtags[:len(indices)], epsilon = 0.000)
     #print Counter.w, Counter.
     print "learning finished"

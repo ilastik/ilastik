@@ -40,6 +40,7 @@ int printfarray(const double * array, int numrows, int numcols, char * name) {
     }
     printf("\n");
   }
+  return 0;
 }
 int printiarray(const int * array, int numrows, int numcols, char * name) {
   int i,j;
@@ -50,6 +51,7 @@ int printiarray(const int * array, int numrows, int numcols, char * name) {
     printf("\n");
   }
 
+  return 0;
 }
 
 int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
@@ -60,8 +62,6 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   GRBmodel *   model = NULL;
   int status;
   char probname[] = "Testproblem";
-  status = GRBloadenv(&env, NULL);
-
 
   int numrows = postags + numSamples;
   int numcols = numFeatures + 1 + numrows;
@@ -91,6 +91,7 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   int      *hmatind = NULL;
   double   *hmatval = NULL;
   char     *hSense = NULL;
+  status = GRBloadenv(&env, NULL);
   if ( status ) {
     fprintf (stderr,
              "Failure to create CPLEX environment, error %d.\n", status);
@@ -176,7 +177,7 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
 
 
   if (numBoxConstraints > 0) {
-    numBoxSamples = boxIndices[numBoxConstraints];
+    numBoxSamples = (int) boxIndices[numBoxConstraints];
 
     dens = (double*) malloc(numBoxSamples * sizeof(double));
     boxConstraints = (double*) calloc(numBoxConstraints * (numFeatures + 2), sizeof(double));
@@ -219,7 +220,7 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
 
     for (k = 0; k < numBoxConstraints; ++k) {
       boxrmatbeg[k] = k * (numFeatures + 2);
-      for (i = boxIndices[k]; i < boxIndices[k + 1]; ++i){
+      for (i = (int) boxIndices[k]; i < boxIndices[k + 1]; ++i){
         for (j = 0; j < numFeatures; ++j){
           boxConstraints[k * (numFeatures + 2) + j]  += dens[i] * boxMatrix[i * numFeatures + j];
         }
