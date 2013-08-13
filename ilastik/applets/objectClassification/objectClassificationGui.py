@@ -9,7 +9,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 
 import os
 import numpy
-import copy
+from functools import partial
 
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
@@ -70,15 +70,20 @@ class ObjectClassificationGui(LabelingGui):
         labelingDrawer = super(ObjectClassificationGui, self).appletDrawers()[0][1]
         return [("Training", labelingDrawer)]
 
-    def reset(self):
-        # Base class first
-        super(ObjectClassificationGui, self).reset()
+    def stopAndCleanUp(self):
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
+        # Base class
+        super(ObjectClassificationGui, self).stopAndCleanUp()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
         self.labelingDrawerUi.checkShowPredictions.setChecked(False)
 
     def __init__(self, op, shellRequestSignal, guiControlSignal):
+        self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = op.LabelInputs
@@ -106,9 +111,9 @@ class ObjectClassificationGui(LabelingGui):
         self.guiControlSignal = guiControlSignal
         self.shellRequestSignal = shellRequestSignal
 
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
         self.threadRouter = ThreadRouter(self)
         op.Warnings.notifyDirty(self.handleWarnings)
+        self.__cleanup_fns.append( partial( op.Warnings.unregisterDirty, self.handleWarnings ) )
 
         # unused
         self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
@@ -161,8 +166,14 @@ class ObjectClassificationGui(LabelingGui):
 
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.__cleanup_fns.append( partial( op.ObjectFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
+
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
+        self.__cleanup_fns.append( partial( op.NumLabels.unregisterDirty, bind(self.checkEnableButtons) ) )
+        
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
+        self.__cleanup_fns.append( partial( op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
+        
         self.checkEnableButtons()
 
     @property
@@ -484,7 +495,6 @@ class ObjectClassificationGui(LabelingGui):
             layers.append(binLayer)
 
         if rawSlot.ready():
-            rawimagesrc = LazyflowSource(rawSlot)
             rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw data"
             layers.append(rawLayer)
@@ -498,12 +508,13 @@ class ObjectClassificationGui(LabelingGui):
 
     def _setPredictionColorTable(self, index1, index2):
         row = index1.row()
-        element = self._labelControlUi.labelListModel[row]
-        oldcolor = self._colorTable16_forpmaps[row+1]
-        if oldcolor != element.pmapColor().rgba():
-            self._colorTable16_forpmaps[row+1] = element.pmapColor().rgba()
-            self.predictLayer.colorTable = self._colorTable16_forpmaps
-            self.updateAllLayers()
+        if row > 0 and row < self._labelControlUi.labelListModel.rowCount():
+            element = self._labelControlUi.labelListModel[row]
+            oldcolor = self._colorTable16_forpmaps[row+1]
+            if oldcolor != element.pmapColor().rgba():
+                self._colorTable16_forpmaps[row+1] = element.pmapColor().rgba()
+                self.predictLayer.colorTable = self._colorTable16_forpmaps
+                self.updateAllLayers()
 
     @staticmethod
     def _getObject(slot, pos5d):
@@ -619,7 +630,10 @@ class ObjectClassificationGui(LabelingGui):
         super(ObjectClassificationGui, self).setVisible(visible)
 
         if visible:
-            temp = self.op.triggerTransferLabels(self.op.current_view_index())
+            subslot_index = self.op.current_view_index()
+            if subslot_index == -1:
+                return
+            temp = self.op.triggerTransferLabels(subslot_index)
         else:
             temp = None
         if temp is not None:

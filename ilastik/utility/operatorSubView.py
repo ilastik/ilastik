@@ -42,7 +42,12 @@ class OperatorSubView(object):
         """
         multislot = getattr(self.__op, self.__referenceSlotName)
         innerslot = getattr(self, self.__referenceSlotName)
-        return multislot.index( innerslot )
+        try:
+            return multislot.index( innerslot )
+        except ValueError:
+            # If this subview has expired (the corresponding subslots have 
+            #  been removed from the operator), then return -1
+            return -1
 
     def __init__(self, op, index):
         """

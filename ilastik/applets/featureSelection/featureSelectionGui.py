@@ -1,5 +1,6 @@
 #Python
 import os
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
@@ -58,9 +59,13 @@ class FeatureSelectionGui(LayerViewerGui):
     def viewerControlWidget(self):
         return self._viewerControlWidget
 
-    def reset(self):
-        super(FeatureSelectionGui, self).reset()
+    def stopAndCleanUp(self):
+        super(FeatureSelectionGui, self).stopAndCleanUp()
         self.drawer.caption.setText( "(No features selected)" )
+
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
 
         # Why is this necessary?
         # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
@@ -77,9 +82,16 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView = topLevelOperatorView
         super(FeatureSelectionGui, self).__init__(topLevelOperatorView, crosshair=False)
         self.applet = applet
+        
+        self.__cleanup_fns = []
+
         self.topLevelOperatorView.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
         self.topLevelOperatorView.FeatureListFilename.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.SelectionMatrix.unregisterDirty, bind(self.onFeaturesSelectionsChanged) ) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.FeatureListFilename.unregisterDirty, bind(self.onFeaturesSelectionsChanged) ) )
+
         self.onFeaturesSelectionsChanged()
+
 
         # Init feature dialog
         self.initFeatureDlg()

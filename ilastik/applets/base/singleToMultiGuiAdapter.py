@@ -74,6 +74,8 @@ class SingleToMultiGuiAdapter( object ):
         for gui in self._guis:
             if gui is not None:
                 gui.stopAndCleanUp()
+        # Discard all sub-guis.
+        self._guis = []
 
     def imageLaneAdded(self, laneIndex):
         """

@@ -160,6 +160,17 @@ class FeatureSelectionDialog(QDialog):
 
 class ObjectExtractionGui(LayerViewerGui):
 
+    def stopAndCleanUp(self):
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
+        super(ObjectExtractionGui, self).stopAndCleanUp()
+
+    def __init__(self, *args, **kwargs):
+        self.__cleanup_fns = []
+        super( ObjectExtractionGui, self ).__init__(*args, **kwargs)
+
     def setupLayers(self):
         mainOperator = self.topLevelOperatorView
         layers = []
@@ -204,11 +215,16 @@ class ObjectExtractionGui(LayerViewerGui):
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
+        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterReady, self._onReady ) )
+
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
+        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged ) )
 
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
+
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
+        self.__cleanup_fns.append( partial( mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged ) )
 
         return layers
 

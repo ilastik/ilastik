@@ -27,6 +27,7 @@ class ManualTrackingGui(LayerViewerGui):
         return self._drawer
 
     def reset( self ):
+        super( ManualTrackingGui, self ).stopAndCleanUp()
         print "TrackinGui.reset(): not implemented"
 
     def _loadUiFile(self):

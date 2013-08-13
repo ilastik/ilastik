@@ -41,15 +41,18 @@ class PixelClassificationGui(LabelingGui):
     def centralWidget( self ):
         return self
 
-    def reset(self):
+    def stopAndCleanUp(self):
         # Base class first
-        super(PixelClassificationGui, self).reset()
+        super(PixelClassificationGui, self).stopAndCleanUp()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.liveUpdateButton.setChecked(False)
         self._viewerControlUi.checkShowPredictions.setChecked(False)
         self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
+
+        for fn in self.__cleanup_fns:
+            fn()
 
     def viewerControlWidget(self):
         return self._viewerControlUi
@@ -68,6 +71,7 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.LabelNames = topLevelOperatorView.LabelNames
 
+        self.__cleanup_fns = []
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -89,8 +93,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        self.topLevelOperatorView.MaxLabelValue.notifyUnready( bind(self.handleLabelSelectionChange) )
-        self.topLevelOperatorView.MaxLabelValue.notifyReady( bind(self.handleLabelSelectionChange) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.MaxLabelValue.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
 
@@ -108,8 +111,8 @@ class PixelClassificationGui(LabelingGui):
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
         # listen to freezePrediction changes
-        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
-
+        self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]

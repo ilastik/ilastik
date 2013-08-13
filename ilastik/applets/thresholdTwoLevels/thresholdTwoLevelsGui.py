@@ -17,10 +17,18 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 
 class ThresholdTwoLevelsGui( LayerViewerGui ):
     
-    def __init__(self, *args, **kwargs):
-        super( self.__class__, self ).__init__(*args, **kwargs)
-        self._channelColors = self._createDefault16ColorColorTable()
+    def stopAndCleanUp(self):
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
+        super(ThresholdTwoLevelsGui, self).stopAndCleanUp()
     
+    def __init__(self, *args, **kwargs):
+        self.__cleanup_fns = []
+        super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
+        self._channelColors = self._createDefault16ColorColorTable()
+
     def initAppletDrawerUi(self):
         """
         Reimplemented from LayerViewerGui base class.
@@ -55,7 +63,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         
         self._updateGuiFromOperator()
         self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterUnready, bind(self._updateGuiFromOperator) ) )
+
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
         
         # check if the data is 2D. If so, hide the z-sigma
         if self.topLevelOperatorView.InputImage.ready():

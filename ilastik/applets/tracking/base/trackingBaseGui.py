@@ -33,7 +33,8 @@ class TrackingBaseGui( LayerViewerGui ):
     def appletDrawer( self ):
         return self._drawer
 
-    def reset( self ):
+    def stopAndCleanUp( self ):
+        super( TrackingBaseGui, self ).stopAndCleanUp()
         print "TrackinGui.reset(): not implemented"
 
     

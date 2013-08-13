@@ -89,9 +89,9 @@ class CountingGui(LabelingGui):
     def centralWidget( self ):
         return self
 
-    def reset(self):
+    def stopAndCleanUp(self):
         # Base class first
-        super(CountingGui, self).reset()
+        super(CountingGui, self).stopAndCleanUp()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.liveUpdateButton.setChecked(False)

@@ -1,5 +1,6 @@
 #Python
 import os
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -81,6 +82,10 @@ class LayerViewerGui(QWidget):
         # Remove all layers
         self.layerstack.clear()
 
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
         # Stop rendering
         for scene in self.editor.imageScenes:
             if scene._tileProvider:
@@ -107,6 +112,7 @@ class LayerViewerGui(QWidget):
 
         self._stopped = False
         self._initialized = False
+        self.__cleanup_fns = []
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
@@ -138,7 +144,11 @@ class LayerViewerGui(QWidget):
             assert slot.level == 1
             self.observedSlots.append( slot )
             slot.notifyInserted( bind(self._handleLayerInsertion) )
+            self.__cleanup_fns.append( partial( slot.unregisterInserted, bind(self._handleLayerInsertion) ) )
+
             slot.notifyRemoved( bind(self._handleLayerRemoval) )
+            self.__cleanup_fns.append( partial( slot.unregisterRemoved, bind(self._handleLayerRemoval) ) )
+
             for i in range(len(slot)):
                 self._handleLayerInsertion(slot, i)
  
@@ -185,6 +195,10 @@ class LayerViewerGui(QWidget):
         # When the slot is ready, we'll replace the blank layer with real data
         slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
         slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
+
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterReady, bind(self.updateAllLayers) ) )
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterUnready, bind(self.updateAllLayers) ) )
+
 
     def _handleLayerRemoval(self, slot, slotIndex):
         """

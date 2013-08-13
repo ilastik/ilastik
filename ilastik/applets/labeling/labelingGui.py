@@ -49,8 +49,11 @@ class LabelingGui(LayerViewerGui):
     def appletDrawer(self):
         return self._labelControlUi
 
-    def reset(self):
-        super(LabelingGui, self).reset()
+    def stopAndCleanUp(self):
+        super(LabelingGui, self).stopAndCleanUp()
+
+        for fn in self.__cleanup_fns:
+            fn()
 
         # Clear the label list GUI
         self._clearLabelListGui()
@@ -131,6 +134,8 @@ class LabelingGui(LayerViewerGui):
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert all( [v is not None for v in labelingSlots.__dict__.values()] )
 
+        self.__cleanup_fns = []
+
         self._labelingSlots = labelingSlots
         self._minLabelNumber = 0
         self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
@@ -138,9 +143,11 @@ class LabelingGui(LayerViewerGui):
         self._rawInputSlot = rawInputSlot
 
         self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
+        self.__cleanup_fns.append( partial( self._labelingSlots.maxLabelValue.unregisterDirty, bind(self._updateLabelList) ) )
+
         if self._labelingSlots.LabelNames is not None:
             self._labelingSlots.LabelNames.notifyDirty( bind(self._updateLabelList) )
-
+            self.__cleanup_fns.append( partial( self._labelingSlots.LabelNames.unregisterDirty, bind(self._updateLabelList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
