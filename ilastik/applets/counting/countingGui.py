@@ -116,7 +116,7 @@ class CountingGui(LabelingGui):
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
+        labelSlots.LabelNames = topLevelOperatorView.LabelNames
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
