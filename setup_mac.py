@@ -15,7 +15,7 @@ includes = [\
                 'vtk.vtkCommonPythonSIP',
              ]
 
-OPTIONS = {'argv_emulation': True, 'includes':includes, 'iconfile' : 'appIcon.icns' }
+OPTIONS = {'argv_emulation': False, 'includes':includes, 'iconfile' : 'appIcon.icns' }
 
 packages=find_packages(exclude=["tests", "tests.*"])
 package_data={'ilastik': ['ilastik-splash.png',
