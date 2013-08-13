@@ -1,5 +1,6 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
+from lazyflow.operators.opInterpMissingData import OpDetectMissing
 
 class FillMissingSlicesSerializer(AppletSerializer):
 
@@ -7,24 +8,26 @@ class FillMissingSlicesSerializer(AppletSerializer):
     ### reimplementation of methods ###
         
     def __init__(self, topGroupName, topLevelOperator):
-        super( FillMissingSlicesSerializer, self ).__init__(topGroupName)
+        slots = [SerialSlot(topLevelOperator.PatchSize),SerialSlot(topLevelOperator.HaloSize)]
+        super( FillMissingSlicesSerializer, self ).__init__(topGroupName, slots=slots)
         self._operator = topLevelOperator
     
+    
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        #FIXME REALLY!!! FIX THIS!!! OperatorSubView
-        for i, s in enumerate(self._operator.innerOperators):
-            self._setDataset(topGroup, 'SVM_%d'%i, s.dumps())
+        dslot = self._operator.Detector[0]
+        extractedSVM = dslot[:].wait()
+        self._setDataset(topGroup, 'SVM', extractedSVM)
+        for s in self._operator.innerOperators:
             s.resetDirty()
         
+        
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        #FIXME OperatorSubView
-        for i, s in enumerate(self._operator.innerOperators):
-            s.loads(self._getDataset(topGroup, 'SVM_%d'%i))
+        svm = self._operator.OverloadDetector.setValue(self._getDataset(topGroup, 'SVM'))
+        for s in self._operator.innerOperators:
             s.resetDirty()
         
 
     def isDirty(self):
-        #FIXME OperatorSubView
         return any([s.isDirty() for s in self._operator.innerOperators])
     
     
