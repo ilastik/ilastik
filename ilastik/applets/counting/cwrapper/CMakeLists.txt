@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 2.8)
+PROJECT(cwrapper)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "MinSizeRel" "RelWithDebInfo")
+endif()
+
+find_package(CPLEX)
+find_package(Gurobi)
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+      message(STATUS "GCC detected, adding compile flags")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c89 -pedantic -Wpedantic -fno-strict-aliasing")
+endif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+if (CPLEX_FOUND)
+  add_subdirectory(cplex)
+endif(CPLEX_FOUND)
+if(GUROBI_FOUND)
+  add_subdirectory(gurobi)
+endif(GUROBI_FOUND)

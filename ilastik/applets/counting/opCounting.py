@@ -13,7 +13,7 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
                                Op5ifyer
                                
-from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter
+from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
 #ilastik
 
@@ -57,6 +57,34 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
+class OpMean(Operator):
+
+    name = "OpVolumeOperator"
+    description = "Do Operations involving the whole volume"
+    Input = InputSlot("Input")
+    Output = OutputSlot("Output")
+
+    def setupOutputs(self):
+
+        self.Output.meta.assignFrom(self.Input.meta)
+
+        taggedShape = self.Input.meta.getTaggedShape()
+        taggedShape['c'] = 1
+        self.Output.meta.shape = taggedShape.values()
+
+
+    def execute(self, slot, subindex, roi, result):
+        chanAxis = self.Input.meta.axistags.index('c')
+        roi.stop[chanAxis] = self.Input.meta.getTaggedShape()['c']
+        key = roi.toSlice()
+        data = self.inputs["Input"][key].wait()
+        result[..., 0] = numpy.mean(data, axis = 2)
+
+    def propagateDirty(self, slot, subindex, roi):
+        print "propagateVolume"
+        key = roi.toSlice()
+        self.Output.setDirty( key[:-1] )
+
 class OpCounting( Operator ):
     """
     Top-level operator for counting
@@ -95,13 +123,14 @@ class OpCounting( Operator ):
     #HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
     #HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
 
-    #UncertaintyEstimate = OutputSlot(level=1)
+    UncertaintyEstimate = OutputSlot(level=1)
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
     Density = OutputSlot(level=1)
+    LabelPreview = OutputSlot(level=1)
     OutputSum = OutputSlot(level=1)
 
     def __init__( self, *args, **kwargs ):
@@ -141,7 +170,7 @@ class OpCounting( Operator ):
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         #self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
-        self.opTrain.inputs['fixClassifier'].setValue( False )
+        self.opTrain.inputs['fixClassifier'].setValue( True )
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
@@ -149,6 +178,9 @@ class OpCounting( Operator ):
         self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.Classifier.connect( self.classifier_cache.Output )
+        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
+        self.LabelPreviewer.Labels.connect(self.opLabelPipeline.Output)
+        self.LabelPreview.connect(self.LabelPreviewer.Output)
 
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
@@ -166,7 +198,7 @@ class OpCounting( Operator ):
         #self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
         #self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
         #self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
-        #self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
+        self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
         self.Density.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
         
 
@@ -265,9 +297,13 @@ class OpCounting( Operator ):
         numLanes = len(self.InputImages)
         assert numLanes == laneIndex, "Image lanes must be appended."        
         self.InputImages.resize(numLanes+1)
+        self.opTrain.BoxConstraintRois.resize(numLanes + 1)
+        self.opTrain.BoxConstraintValues.resize(numLanes + 1)
         
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
+        self.opTrain.BoxConstraintRois.removeSlot(laneIndex, finalLength)
+        self.opTrain.BoxConstraintValues.removeSlot(laneIndex, finalLength)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
@@ -419,6 +455,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
+    UncertaintyEstimate = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpPredictionPipeline, self).__init__( *args, **kwargs )
@@ -436,39 +473,29 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
+        self.prediction_cache_gui.blockShape.setValue(128)
+        
+        ## Also provide each prediction channel as a separate layer (for the GUI)
+        self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
+        self.opUncertaintyEstimator.Input.connect( self.prediction_cache_gui.Output )
+
+        ## Cache the uncertainty so we get zeros for uncomputed points
+        self.opUncertaintyCache = OpArrayCache( parent=self )
+        self.opUncertaintyCache.name = "opUncertaintyCache"
+        self.opUncertaintyCache.blockShape.setValue(128)
+        self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
+        self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
+        self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
+        
+        self.meaner = OpMean(parent = self)
+        self.meaner.Input.connect(self.prediction_cache_gui.Output)
 
         self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
-        self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
+        self.precomputed_predictions_gui.SlowInput.connect( self.meaner.Output )
         self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions_gui.Output)
 
-        ## Also provide each prediction channel as a separate layer (for the GUI)
-        #self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
-        #self.opPredictionSlicer.name = "opPredictionSlicer"
-        #self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
-        #self.opPredictionSlicer.AxisFlag.setValue('c')
-        #self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
-        #
-        #self.opSegmentor = OpMaxChannelIndicatorOperator( parent=self )
-        #self.opSegmentor.Input.connect( self.precomputed_predictions_gui.Output )
-
-        #self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
-        #self.opSegmentationSlicer.name = "opSegmentationSlicer"
-        #self.opSegmentationSlicer.Input.connect( self.opSegmentor.Output )
-        #self.opSegmentationSlicer.AxisFlag.setValue('c')
-        #self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
-
-        ## Create a layer for uncertainty estimate
-        #self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
-        #self.opUncertaintyEstimator.Input.connect( self.precomputed_predictions_gui.Output )
-
-        ## Cache the uncertainty so we get zeros for uncomputed points
-        #self.opUncertaintyCache = OpSlicedBlockedArrayCache( parent=self )
-        #self.opUncertaintyCache.name = "opUncertaintyCache"
-        #self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
-        #self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
-        #self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
 
     def setupOutputs(self):
         pass
@@ -561,6 +588,7 @@ class OpEnsembleMargin(Operator):
         taggedShape = self.Input.meta.getTaggedShape()
         taggedShape['c'] = 1
         self.Output.meta.shape = taggedShape.values()
+        taggedShape = self.Input.meta.getTaggedShape()
 
     def execute(self, slot, subindex, roi, result):
         roi = copy.copy(roi)
@@ -575,7 +603,7 @@ class OpEnsembleMargin(Operator):
 
         res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
         res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
-        result[...] = (1-res)
+        result[...] = res
         return result 
 
     def propagateDirty(self, inputSlot, subindex, roi):

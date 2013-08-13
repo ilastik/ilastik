@@ -3,6 +3,7 @@ import os
 import logging
 import threading
 from functools import partial
+import math
 
 # Third-party
 import numpy
@@ -28,6 +29,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
+from ilastik.applets.base.appletSerializer import SerialListSlot
 
 
 
@@ -114,6 +116,7 @@ class CountingGui(LabelingGui):
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
+        labelSlots.labelNames = topLevelOperatorView.LabelNames
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
@@ -152,6 +155,11 @@ class CountingGui(LabelingGui):
 
         
         self.initCounting()
+        try:
+            from sitecustomize import debug_trace
+        except:
+            self.labelingDrawerUi.DebugButton.setVisible(False)
+            
 
         
         
@@ -165,9 +173,9 @@ class CountingGui(LabelingGui):
         
         self.dotcrosshairController=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
         self.editor.crosshairControler=self.dotcrosshairController
-        self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
-        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler,self.dotController)
-        self.dotIntepreter=self.editor.brushingInterpreter
+        #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
+        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler)
+        self.dotInterpreter=self.editor.brushingInterpreter
         
         
         #=======================================================================
@@ -202,33 +210,6 @@ class CountingGui(LabelingGui):
 
         self.labelingDrawerUi.CountText.setReadOnly(True)
             
-#         self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
-#         self.labelingDrawerUi.CBox.setRange(0,1000)
-#         self.labelingDrawerUi.CBox.setKeyboardTracking(False)
-#         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
-#         self.labelingDrawerUi.EpsilonBox.setDecimals(6)
-#         self.labelingDrawerUi.NtreesBox.setKeyboardTracking(False)
-#         self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
-# 
-#         for option in self.op.options:
-#             if "req" in option.keys():
-#                 try:
-#                     import imp
-#                     for req in option["req"]:
-#                         imp.find_module(req)
-#                 except:
-#                     continue
-#             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
-#             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
-#         
-        
-        self._setUIParameters()
-        
-        self._connectUIParameters()
-        
-        
-                
-
         
         
         #=======================================================================
@@ -239,33 +220,32 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.boxListModel=BoxListModel()
         self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
         self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
-        self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
+        #self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
         
 #        ###FIXME: Only for debug
-        def updateSum(*args, **kw):
-            print "updatingSum"
-            density = self.op.OutputSum.value 
-            strdensity = "{0:.2f}".format(density)
-            self._labelControlUi.CountText.setText(strdensity)
-        self.op.Density.notifyDirty(updateSum)
+        #self.op.Density.notifyDirty(self.updateSum)
+        self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
         mainwin=self
-        self.density5d=Op5ifyer(graph=self.op.graph) #FIXME: Hack , get the proper reference to the graph
+        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #FIXME: Hack , get the proper reference to the graph
         self.density5d.input.connect(self.op.Density)
         self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)       
-        self.boxIntepreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
+        self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
         
         
-        self.rubberbandClickReporter = self.boxIntepreter
-        self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-        self.rubberbandClickReporter.leftClickReleased.connect(self._addNewBox)
-        self.navigationIntepreterDefault=self.editor.navInterpret
+        self.navigationInterpreterDefault=self.editor.navInterpret
 
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
-    
-    
-            
-    
+        
+        self._setUIParameters()
+        self._connectUIParameters()
+        
+
+        
+        self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
+        self.op.opTrain.fixClassifier.setValue(False)
+        self.op.Density.notifyDirty(self._normalizePrediction)
+        
 
     
     def _connectUIParameters(self):
@@ -275,9 +255,8 @@ class CountingGui(LabelingGui):
         #=======================================================================
         
         self._changedSigma = True
-        #Debug interface only available otadvanced users
+        #Debug interface only available to advanced users
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
-        #elf._updateSVROptions()
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
         self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
@@ -328,11 +307,28 @@ class CountingGui(LabelingGui):
         CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
         
         def _setoption(option):
-            ss = option["method"]
-            index=gui.SVROptions.findText(ss)
+            index=gui.SVROptions.findText(option)
             gui.SVROptions.setCurrentIndex(index)
             
         CallToGui(op.SelectedOption,_setoption)
+        idx = self.op.current_view_index()
+        op = self.op.opTrain
+        fix = op.fixClassifier.value
+        op.fixClassifier.setValue(True)
+
+        if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
+            #if fixed boxes are existent, make column visible
+            self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
+            for i, constr in enumerate(zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value)):
+                roi, val = constr
+                if type(roi) is not list or len(roi) is not 2:
+                    continue
+                self.boxController.addNewBox(roi[0], roi[1])
+                boxIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.Fix)
+                iconIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.FixIcon)
+                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+        op.fixClassifier.setValue(fix)
+        
 
         
     def _setUIParameters(self):
@@ -348,9 +344,9 @@ class CountingGui(LabelingGui):
         for option in self.op.options:
             if "req" in option.keys():
                 try:
-                    import imp
+                    import importlib
                     for req in option["req"]:
-                        imp.find_module(req)
+                        importlib.import_module(req)
                 except:
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
@@ -368,6 +364,11 @@ class CountingGui(LabelingGui):
             MaxDepth = params["maxdepth"]
             _ind = self.labelingDrawerUi.SVROptions.findText(params["method"])
         
+            #set opTrain from parameters
+            self.op.opTrain.initInputs(params) 
+
+
+
         else:
             #read parameters from opTrain Operator
             Sigma = self.op.opTrain.Sigma.value
@@ -375,7 +376,7 @@ class CountingGui(LabelingGui):
             C = self.op.opTrain.C.value
             Ntrees = self.op.opTrain.Ntrees.value
             MaxDepth = self.op.opTrain.MaxDepth.value
-            _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value["method"])
+            _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
 
         self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
@@ -383,7 +384,12 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.CBox.setValue(C)
         self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
         self.labelingDrawerUi.MaxDepthBox.setValue(MaxDepth)
-        self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
+        if _ind == -1:
+            self.labelingDrawerUi.SVROptions.setCurrentIndex(0)
+            self._updateSVROptions()
+        else:
+            self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
+
         self._hideParameters()
         
         
@@ -416,13 +422,28 @@ class CountingGui(LabelingGui):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
         if self._changedSigma:
+
+            sigma,_ = self._normalizeLayers()
+            self.editor.crosshairControler.setSigma(max(sigma))
+            #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
+            self.op.opTrain.Sigma.setValue(sigma)
+            self.op.LabelPreviewer.Sigma.setValue(sigma)
+            self._changedSigma = False
+            
+    def _normalizeLayers(self):
             sigma = [float(n) for n in
                            self._labelControlUi.SigmaLine.text().split(" ")]
-            
-            self.editor.crosshairControler.setSigma(sigma[0])
-            self.dotController.setDotsRadius(sigma[0]*2)
-            self.op.opTrain.Sigma.setValue(sigma)
-            self._changedSigma = False
+            upperBound = 3 / (2 * math.pi * max(sigma)**2)
+            self.upperBound = upperBound
+                
+            if hasattr(self, "labelPreviewLayer"):
+                self.labelPreviewLayer.set_normalize(0,(0,upperBound))
+            return sigma, upperBound
+
+
+    def _normalizePrediction(self, *args):
+        if hasattr(self, "predictionLayer") and hasattr(self, "upperBound"):
+            self.predictionLayer.set_normalize(0,(0,self.upperBound))
 
 
     def _updateEpsilon(self):
@@ -431,23 +452,24 @@ class CountingGui(LabelingGui):
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
-        self.op.opTrain.SelectedOption.setValue(option)
+        self.op.opTrain.SelectedOption.setValue(option["method"])
         
         self._hideFixable(option)
         
         self._hideParameters()        
     
     def _hideFixable(self,option):
-        if 'method' in option and option['method']=='rf-sklearn':
+        if 'boxes' in option and option['boxes'] == False:
             self.labelingDrawerUi.boxListView.allowFixIcon=False
             self.labelingDrawerUi.boxListView.allowFixValues=False
-        elif 'method' in option and option['method']=='svrBoxed-gurobi':
+        elif 'boxes' in option and option['boxes'] == True:
             self.labelingDrawerUi.boxListView.allowFixIcon=True
             
         
     
     def _handleBoxConstraints(self, constr):
-        self.op.opTrain.BoxConstraints.setValue(constr)
+        self.op.opTrain.BoxConstraintRois[self.op.current_view_index()].setValue(constr["rois"])
+        self.op.opTrain.BoxConstraintValues[self.op.current_view_index()].setValue(constr["values"])
 
         #boxes = self.boxController._currentBoxesList
 
@@ -456,6 +478,7 @@ class CountingGui(LabelingGui):
         import sitecustomize
         sitecustomize.debug_trace()
 
+    
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
@@ -524,17 +547,22 @@ class CountingGui(LabelingGui):
      
 
 
-        slots = {'Prediction' : self.op.Density}
+        slots = {'Prediction' : self.op.Density, 'LabelPreview': self.op.LabelPreview, 'Uncertainty' :
+                 self.op.UncertaintyEstimate}
 
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
-                layer = ColortableLayer(LazyflowSource(slot), colorTable = colortables.jet(), normalize = 'auto')
+                sigma,upperBound = self._normalizeLayers()
+                layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
+                                       (0,upperBound))
                 layer.name = name
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 #layer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 layers.append(layer)
 
+
+        #Set LabelPreview-layer to True
 
         boxlabelsrc = LazyflowSinkSource(self.op.BoxLabelImages,self.op.BoxLabelInputs )
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
@@ -576,6 +604,9 @@ class CountingGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
+
+
+
     @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
         """
@@ -611,6 +642,17 @@ class CountingGui(LabelingGui):
         self.interactiveModeActive = checked
         
             
+    @traceLogged(traceLogger)
+    def updateAllLayers(self, slot=None):
+        super(CountingGui, self).updateAllLayers()
+        for layer in self.layerstack:
+            if layer.name == "LabelPreview":
+                layer.visible = True
+                self.labelPreviewLayer = layer
+            if layer.name == "Prediction":
+                self.predictionLayer = layer
+
+
     
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -857,11 +899,6 @@ class CountingGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-#         if not hasattr(self, "rubberbandClickReporter"):
-#             
-#             self.rubberbandClickReporter = self.boxIntepreter
-#             self.rubberbandClickReporter.leftClickReleased.connect( self.handleBoxQuery )
-#         self.editor.setNavigationInterpreter(self.rubberbandClickReporter)
     
     def _gui_setBrushing(self):
 #         self._labelControlUi.brushSizeComboBox.setEnabled(False)
@@ -968,7 +1005,7 @@ class CountingGui(LabelingGui):
         
                 QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.editor.brushingModel.setBrushSize(0)
-                self.editor.setNavigationInterpreter(self.boxIntepreter)
+                self.editor.setNavigationInterpreter(self.boxInterpreter)
                 self._gui_setBox()
 
         self.editor.setInteractionMode( modeNames[toolId] )
@@ -992,33 +1029,7 @@ class CountingGui(LabelingGui):
     def onAddNewBoxButtonClicked(self):
 
         self._changeInteractionMode(Tool.Box)
-#         qcolor=self._getNextBoxColor()
-#         self.boxController.currentColor=qcolor
         self.labelingDrawerUi.boxListView.resetEmptyMessage("Draw the box on the image")
-        
-    
-    def _addNewBox(self):
-#         pass
-        
-        #Fixme: The functionality should maybe removed from here
-        
-        newRow = self.labelingDrawerUi.boxListModel.rowCount()-1
-        newColorIndex = self._labelControlUi.boxListModel.index(newRow, 0)
-#         qcolor=self._getNextBoxColor()
-#         self.boxController.currentColor=qcolor
-
-
-        # Call the 'changed' callbacks immediately to initialize any listeners
-        #self.onLabelNameChanged()
-        #self.onLabelColorChanged()
-        #self.onPmapColorChanged()
-
-    
-    def _removeBox(self,index):
-        #handled by the boxController
-        pass 
-        
-        #self.boxController.deleteItem(index)
         
          
     def _onBoxSelected(self, row):
@@ -1032,29 +1043,6 @@ class CountingGui(LabelingGui):
         print len(self.boxController._currentBoxesList)
         self.boxController.selectBoxItem(row)
     
-    @traceLogged(traceLogger)
-    def onBoxListDataChanged(self, topLeft, bottomRight):
-        pass
-#         """Handle changes to the label list selections."""
-#         firstRow = topLeft.row()
-#         lastRow  = bottomRight.row()
-#  
-#         firstCol = topLeft.column()
-#         lastCol  = bottomRight.column()
-#  
-#         # We only care about the color column
-#         if firstCol <= 0 <= lastCol:
-#             assert(firstRow == lastRow) # Only one data item changes at a time
-#  
-#             #in this case, the actual data (for example color) has changed
-#             color = self._labelControlUi.boxListModel[firstRow].brushColor()
-#             self._colorTable16[firstRow+1] = color.rgba()
-#             self.editor.brushingModel.setBrushColor(color)
-#  
-#             # Update the label layer colortable to match the list entry
-#             labellayer = self._getLabelLayer()
-#             if labellayer is not None:
-#                 labellayer.colorTable = self._colorTable16
     
     def _onLabelSelected(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
@@ -1088,59 +1076,523 @@ class CountingGui(LabelingGui):
             
         
         
-    def handleBoxQuery(self, position5d_start, position5d_stop):
-        #print "HANDLING BOX QUERY"
-        
-        if self._labelControlUi.arrowToolButton.isChecked():
-            self.test(position5d_start, position5d_stop)
-        #elif self._labelControlUi.boxToolButton.isChecked():
-        #    self.test2(position5d_start, position5d_stop)
+    def updateSum(self, *args, **kw):
+        print "updatingSum"
+        density = self.op.OutputSum[...].wait()
+        strdensity = "{0:.2f}".format(density[0])
+        self._labelControlUi.CountText.setText(strdensity)
 
 
-    def test2(self, position5d_start, position5d_stop):
-        print "test2"
-
-        roi = SubRegion(self.op.LabelInputs, position5d_start,
-                                       position5d_stop)
-        key = roi.toSlice()
-        #key = tuple(k for k in key if k != slice(0,0, None))
-        newKey = []
-        for k in key:
-            if k.stop < k.start:
-                k = slice(k.stop, k.start)
-            newKey.append(k)
-        newKey = tuple(newKey)
-        self.boxes[self.activeBox] = newKey
-        #self.op.BoxLabelImages[newKey] = self.activeBox + 2
-        #self.op.BoxLabelImages
-        labelShape = tuple([position5d_stop[i] + 1 - position5d_start[i] for i in range(5)])
-        labels = numpy.ones((labelShape), dtype = numpy.uint8) * (self.activeBox + 3)
-        self.boxlabelsrc.put(newKey, labels)
-
-
-    def test(self, position5d_start, position5d_stop):
-        print "test"
-        roi = SubRegion(self.op.Density, position5d_start,
-                                       position5d_stop)
-        key = roi.toSlice()
-        key = tuple(k for k in key if k != slice(0,0, None))
-        newKey = []
-        for k in key:
-            if k != slice(0,0,None):
-                if k.stop < k.start:
-                    k = slice(k.stop, k.start)
-            newKey.append(k)
-        newKey = tuple(newKey)
-        try:
-            density = numpy.sum(self.op.Density[newKey].wait())  
-            strdensity = "{0:.2f}".format(density)
-            self._labelControlUi.CountText.setText(strdensity)
-        except:
-            pass
-    
-    
-    def hideEvent(self, event):
-        #Ensure interactive is toggled of when leaving this GUI
-        self.toggleInteractive(False)
-        self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-        LabelingGui.hideEvent(self, event)
+countingColorTable = [
+    QColor(0.0,0.0,127.0,0.0).rgba(),
+    QColor(0.0,0.0,134.0,1.0).rgba(),
+    QColor(0.0,0.0,141.0,3.0).rgba(),
+    QColor(0.0,0.0,148.0,4.0).rgba(),
+    QColor(0.0,0.0,154.0,6.0).rgba(),
+    QColor(0.0,0.0,161.0,7.0).rgba(),
+    QColor(0.0,0.0,168.0,9.0).rgba(),
+    QColor(0.0,0.0,175.0,10.0).rgba(),
+    QColor(0.0,0.0,182.0,12.0).rgba(),
+    QColor(0.0,0.0,189.0,13.0).rgba(),
+    QColor(0.0,0.0,196.0,15.0).rgba(),
+    QColor(0.0,0.0,202.0,16.0).rgba(),
+    QColor(0.0,0.0,209.0,18.0).rgba(),
+    QColor(0.0,0.0,216.0,19.0).rgba(),
+    QColor(0.0,0.0,223.0,21.0).rgba(),
+    QColor(0.0,0.0,230.0,22.0).rgba(),
+    QColor(0.0,0.0,237.0,24.0).rgba(),
+    QColor(0.0,0.0,244.0,25.0).rgba(),
+    QColor(0.0,0.0,250.0,27.0).rgba(),
+    QColor(0.0,0.0,255.0,28.0).rgba(),
+    QColor(0.0,0.0,255.0,30.0).rgba(),
+    QColor(0.0,0.0,255.0,31.0).rgba(),
+    QColor(0.0,5.0,255.0,33.0).rgba(),
+    QColor(0.0,11.0,255.0,34.0).rgba(),
+    QColor(0.0,17.0,255.0,36.0).rgba(),
+    QColor(0.0,23.0,255.0,37.0).rgba(),
+    QColor(0.0,29.0,255.0,39.0).rgba(),
+    QColor(0.0,35.0,255.0,40.0).rgba(),
+    QColor(0.0,41.0,255.0,42.0).rgba(),
+    QColor(0.0,47.0,255.0,43.0).rgba(),
+    QColor(0.0,53.0,255.0,45.0).rgba(),
+    QColor(0.0,59.0,255.0,46.0).rgba(),
+    QColor(0.0,65.0,255.0,48.0).rgba(),
+    QColor(0.0,71.0,255.0,49.0).rgba(),
+    QColor(0.0,77.0,255.0,51.0).rgba(),
+    QColor(0.0,83.0,255.0,52.0).rgba(),
+    QColor(0.0,89.0,255.0,54.0).rgba(),
+    QColor(0.0,95.0,255.0,55.0).rgba(),
+    QColor(0.0,101.0,255.0,57.0).rgba(),
+    QColor(0.0,107.0,255.0,58.0).rgba(),
+    QColor(0.0,113.0,255.0,60.0).rgba(),
+    QColor(0.0,119.0,255.0,61.0).rgba(),
+    QColor(0.0,125.0,255.0,63.0).rgba(),
+    QColor(0.0,132.0,255.0,64.0).rgba(),
+    QColor(0.0,138.0,255.0,66.0).rgba(),
+    QColor(0.0,144.0,255.0,67.0).rgba(),
+    QColor(0.0,150.0,255.0,69.0).rgba(),
+    QColor(0.0,156.0,255.0,70.0).rgba(),
+    QColor(0.0,162.0,255.0,72.0).rgba(),
+    QColor(0.0,168.0,255.0,73.0).rgba(),
+    QColor(0.0,174.0,255.0,75.0).rgba(),
+    QColor(0.0,180.0,255.0,76.0).rgba(),
+    QColor(0.0,186.0,255.0,78.0).rgba(),
+    QColor(0.0,192.0,255.0,79.0).rgba(),
+    QColor(0.0,198.0,255.0,81.0).rgba(),
+    QColor(0.0,204.0,255.0,82.0).rgba(),
+    QColor(0.0,210.0,255.0,84.0).rgba(),
+    QColor(0.0,216.0,255.0,85.0).rgba(),
+    QColor(0.0,222.0,252.0,87.0).rgba(),
+    QColor(0.0,228.0,247.0,88.0).rgba(),
+    QColor(4.0,234.0,242.0,90.0).rgba(),
+    QColor(9.0,240.0,237.0,91.0).rgba(),
+    QColor(13.0,246.0,232.0,93.0).rgba(),
+    QColor(18.0,252.0,228.0,94.0).rgba(),
+    QColor(23.0,255.0,223.0,96.0).rgba(),
+    QColor(28.0,255.0,218.0,97.0).rgba(),
+    QColor(33.0,255.0,213.0,99.0).rgba(),
+    QColor(38.0,255.0,208.0,100.0).rgba(),
+    QColor(43.0,255.0,203.0,102.0).rgba(),
+    QColor(47.0,255.0,198.0,103.0).rgba(),
+    QColor(52.0,255.0,193.0,105.0).rgba(),
+    QColor(57.0,255.0,189.0,106.0).rgba(),
+    QColor(62.0,255.0,184.0,108.0).rgba(),
+    QColor(67.0,255.0,179.0,109.0).rgba(),
+    QColor(72.0,255.0,174.0,111.0).rgba(),
+    QColor(77.0,255.0,169.0,112.0).rgba(),
+    QColor(82.0,255.0,164.0,114.0).rgba(),
+    QColor(86.0,255.0,159.0,115.0).rgba(),
+    QColor(91.0,255.0,155.0,117.0).rgba(),
+    QColor(96.0,255.0,150.0,118.0).rgba(),
+    QColor(101.0,255.0,145.0,120.0).rgba(),
+    QColor(106.0,255.0,140.0,121.0).rgba(),
+    QColor(111.0,255.0,135.0,123.0).rgba(),
+    QColor(116.0,255.0,130.0,124.0).rgba(),
+    QColor(120.0,255.0,125.0,126.0).rgba(),
+    QColor(125.0,255.0,120.0,127.0).rgba(),
+    QColor(130.0,255.0,116.0,129.0).rgba(),
+    QColor(135.0,255.0,111.0,130.0).rgba(),
+    QColor(140.0,255.0,106.0,132.0).rgba(),
+    QColor(145.0,255.0,101.0,133.0).rgba(),
+    QColor(150.0,255.0,96.0,135.0).rgba(),
+    QColor(155.0,255.0,91.0,136.0).rgba(),
+    QColor(159.0,255.0,86.0,138.0).rgba(),
+    QColor(164.0,255.0,82.0,139.0).rgba(),
+    QColor(169.0,255.0,77.0,141.0).rgba(),
+    QColor(174.0,255.0,72.0,142.0).rgba(),
+    QColor(179.0,255.0,67.0,144.0).rgba(),
+    QColor(184.0,255.0,62.0,145.0).rgba(),
+    QColor(189.0,255.0,57.0,147.0).rgba(),
+    QColor(193.0,255.0,52.0,148.0).rgba(),
+    QColor(198.0,255.0,47.0,150.0).rgba(),
+    QColor(203.0,255.0,43.0,151.0).rgba(),
+    QColor(208.0,255.0,38.0,153.0).rgba(),
+    QColor(213.0,255.0,33.0,154.0).rgba(),
+    QColor(218.0,255.0,28.0,156.0).rgba(),
+    QColor(223.0,255.0,23.0,157.0).rgba(),
+    QColor(228.0,255.0,18.0,159.0).rgba(),
+    QColor(232.0,255.0,13.0,160.0).rgba(),
+    QColor(237.0,255.0,9.0,162.0).rgba(),
+    QColor(242.0,250.0,4.0,163.0).rgba(),
+    QColor(247.0,244.0,0.0,165.0).rgba(),
+    QColor(252.0,239.0,0.0,166.0).rgba(),
+    QColor(255.0,233.0,0.0,168.0).rgba(),
+    QColor(255.0,227.0,0.0,169.0).rgba(),
+    QColor(255.0,222.0,0.0,171.0).rgba(),
+    QColor(255.0,216.0,0.0,172.0).rgba(),
+    QColor(255.0,211.0,0.0,174.0).rgba(),
+    QColor(255.0,205.0,0.0,175.0).rgba(),
+    QColor(255.0,200.0,0.0,177.0).rgba(),
+    QColor(255.0,194.0,0.0,178.0).rgba(),
+    QColor(255.0,188.0,0.0,180.0).rgba(),
+    QColor(255.0,183.0,0.0,181.0).rgba(),
+    QColor(255.0,177.0,0.0,183.0).rgba(),
+    QColor(255.0,172.0,0.0,184.0).rgba(),
+    QColor(255.0,166.0,0.0,186.0).rgba(),
+    QColor(255.0,160.0,0.0,187.0).rgba(),
+    QColor(255.0,155.0,0.0,189.0).rgba(),
+    QColor(255.0,149.0,0.0,190.0).rgba(),
+    QColor(255.0,144.0,0.0,192.0).rgba(),
+    QColor(255.0,138.0,0.0,193.0).rgba(),
+    QColor(255.0,132.0,0.0,195.0).rgba(),
+    QColor(255.0,127.0,0.0,196.0).rgba(),
+    QColor(255.0,121.0,0.0,198.0).rgba(),
+    QColor(255.0,116.0,0.0,199.0).rgba(),
+    QColor(255.0,110.0,0.0,201.0).rgba(),
+    QColor(255.0,105.0,0.0,202.0).rgba(),
+    QColor(255.0,99.0,0.0,204.0).rgba(),
+    QColor(255.0,93.0,0.0,205.0).rgba(),
+    QColor(255.0,88.0,0.0,207.0).rgba(),
+    QColor(255.0,82.0,0.0,208.0).rgba(),
+    QColor(255.0,77.0,0.0,210.0).rgba(),
+    QColor(255.0,71.0,0.0,211.0).rgba(),
+    QColor(255.0,65.0,0.0,213.0).rgba(),
+    QColor(255.0,60.0,0.0,214.0).rgba(),
+    QColor(255.0,54.0,0.0,216.0).rgba(),
+    QColor(255.0,49.0,0.0,217.0).rgba(),
+    QColor(255.0,43.0,0.0,219.0).rgba(),
+    QColor(255.0,37.0,0.0,220.0).rgba(),
+    QColor(255.0,32.0,0.0,222.0).rgba(),
+    QColor(255.0,26.0,0.0,223.0).rgba(),
+    QColor(255.0,21.0,0.0,225.0).rgba(),
+    QColor(250.0,15.0,0.0,226.0).rgba(),
+    QColor(244.0,10.0,0.0,228.0).rgba(),
+    QColor(237.0,4.0,0.0,229.0).rgba(),
+    QColor(230.0,0.0,0.0,231.0).rgba(),
+    QColor(223.0,0.0,0.0,232.0).rgba(),
+    QColor(216.0,0.0,0.0,234.0).rgba(),
+    QColor(209.0,0.0,0.0,235.0).rgba(),
+    QColor(202.0,0.0,0.0,237.0).rgba(),
+    QColor(196.0,0.0,0.0,238.0).rgba(),
+    QColor(189.0,0.0,0.0,240.0).rgba(),
+    QColor(182.0,0.0,0.0,241.0).rgba(),
+    QColor(175.0,0.0,0.0,243.0).rgba(),
+    QColor(168.0,0.0,0.0,244.0).rgba(),
+    QColor(161.0,0.0,0.0,246.0).rgba(),
+    QColor(154.0,0.0,0.0,247.0).rgba(),
+    QColor(148.0,0.0,0.0,249.0).rgba(),
+    QColor(141.0,0.0,0.0,250.0).rgba(),
+    QColor(134.0,0.0,0.0,252.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba(),
+    QColor(127.0,0.0,0.0,255.0).rgba()]

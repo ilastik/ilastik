@@ -89,7 +89,7 @@ class SerialPredictionSlot(SerialSlot):
                 datasetName = self.subname.format(imageIndex)
 
                 # Use a big dataset writer to do this in chunks
-                opWriter = OpH5WriterBigDataset(graph=self.operator.graph)
+                opWriter = OpH5WriterBigDataset(graph=self.operator.graph, parent = self.operator.parent)
                 opWriter.hdf5File.setValue(predictionDir)
                 opWriter.hdf5Path.setValue(datasetName)
                 opWriter.Image.connect(slot[imageIndex])
@@ -152,10 +152,35 @@ class SerialPredictionSlot(SerialSlot):
             for slot in self.operator.PredictionsFromDisk:
                 slot.disconnect()
         for imageIndex, datasetName in enumerate(group.keys()):
-            opStreamer = OpStreamingHdf5Reader(graph=self.operator.graph)
+            opStreamer = OpStreamingHdf5Reader(graph=self.operator.graph, parent=self.operator.parent)
             opStreamer.Hdf5File.setValue(group)
             opStreamer.InternalPath.setValue(datasetName)
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
+
+class SerialBoxSlot(SerialSlot):
+    def __init__(self, slot, operator, inslot=None, name=None,
+                 subname=None, default=None, depends=None,
+                 selfdepends=True):
+        super(SerialBoxSlot, self).__init__(
+            slot, inslot, name, subname, default, depends, selfdepends
+        )
+        self.operator = operator
+        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
+
+    def _serialize(self, group, name, multislot):
+        #create subgroups, one for every imagelane
+        BoxDir = group.create_group(self.name)
+        self.deserialize(group)
+        for i, slot in enumerate(multislot):
+            g = BoxDir.create_group(self.subname.format(i))
+
+            s = SerialListSlot(slot)
+            s.serialize(g)
+
+    def _deserialize(self, group, slot):
+        for imageIndex, datasetName in enumerate(group.keys()):
+            slot[imageIndex].setValue(group[datasetName][slot.name].value.tolist())
+        #self.op.opTrain.BoxConstraints[i].setValue(res[i])
 
 
 class CountingSerializer(AppletSerializer):
@@ -182,7 +207,13 @@ class CountingSerializer(AppletSerializer):
                                       operator.classifier_cache,
                                       name="CountingWrappers",
                                       subname="wrapper{:04d}"),
-                 self.predictionSlot]
+                 self.predictionSlot, 
+                 SerialBoxSlot(operator.opTrain.BoxConstraintRois,operator.opTrain,
+                              name="Rois",
+                               subname="rois{:04d}"),
+                 SerialBoxSlot(operator.opTrain.BoxConstraintValues,operator.opTrain,
+                              name="Values",
+                               subname="values{:04d}")]
 
 
         super(CountingSerializer, self).__init__(projectFileGroupName,

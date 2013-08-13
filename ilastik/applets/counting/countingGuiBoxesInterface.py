@@ -190,6 +190,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._selected=False
         self._dbg=False
         self._setupTextItem() 
+        self._isFixed = False
         
         self.resetHandles()
         
@@ -317,7 +318,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         for h in self._resizeHandles:
             self.scene().removeItem(h)
         self._resizeHandles=[]
-        if self._hovering or self.isSelected():
+        if not self._isFixed and (self._hovering or self.isSelected()):
             for constrAxes in range(2):
                 h = ResizeHandle((self.height,self.width), constrAxes)
                 h.setParentItem(self)
@@ -338,7 +339,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     
     def dataPos(self):
         dataPos = self.scene().scene2data.map(self.scenePos())
-        pos = [dataPos.x(), dataPos.y()]
+        pos = [int(dataPos.x()), int(dataPos.y())]
         return pos 
     
     def mouseMoveEvent(self,event):
@@ -407,6 +408,13 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._normalColor.setAlpha(float*255)
         
         self.updateColor()
+
+    
+    def fixSelf(self, isFixed):
+        self._isFixed = isFixed
+        self.setFlag(QGraphicsItem.ItemIsMovable,not isFixed)
+        #self.setFlag(QGraphicsItem.ItemIsSelectable,True)
+        #self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
     
 
     
@@ -449,7 +457,7 @@ class CoupledRectangleElement(object):
         
         
         self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent)
-        self._opsub = OpSubRegion(graph=inputSlot.operator.graph) #sub region correspondig to the rectangle region
+        self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
         #self.opsum = OpSumAll(graph=inputSlot.operator.graph)
         self._graph=inputSlot.operator.graph
         self._inputSlot=inputSlot #input slot which connect to the sub array
@@ -758,7 +766,7 @@ class BoxInterpreter(QObject):
 
 class BoxController(QObject):
     
-    fixedBoxesChanged = pyqtSignal(list)
+    fixedBoxesChanged = pyqtSignal(dict)
 
     def __init__(self,scene,connectionInput,boxListModel):
         '''
@@ -839,19 +847,21 @@ class BoxController(QObject):
         box.isFixedChanged.connect(self._fixedBoxesChanged)
         
         
-        
-        
         self.boxListModel.insertRow( newRow, box )
         rect.boxLabel=box
+        box.isFixedChanged.connect(rect._rectItem.fixSelf)
         rect._updateTextWhenChanges()
         
         self.currentColor=self._getNextBoxColor()
         
     def _fixedBoxesChanged(self, *args):
-        boxes = []
+        boxes = {"rois" : [], "values" : []}
+        #import sitecustomize
+        #sitecustomize.debug_trace()
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if box.isFixed:
-                boxes.append([rect.getStart(), rect.getStop(), box._fixvalue])
+                boxes["rois"].append([rect.getStart(), rect.getStop()])
+                boxes["values"].append(float(box._fixvalue.toDouble()[0]))
 
         self.fixedBoxesChanged.emit(boxes)
          
