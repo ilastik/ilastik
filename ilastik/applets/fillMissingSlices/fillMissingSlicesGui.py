@@ -1,6 +1,7 @@
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import os.path
+import sys
 
 from PyQt4.QtGui import QWidget, QProgressDialog, \
     QMessageBox, QFileDialog
@@ -18,10 +19,18 @@ logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
 
 
+def qstring2str(s):
+    assert type(s) == QString
+    return unicode(s.toUtf8(), "utf-8").encode(sys.getfilesystemencoding())
+
+
 class FillMissingSlicesGui(LayerViewerGui):
     
     _standardPatchSizes = [1,2,4,8] + [16*i for i in range(1,6)]
     _standardHaloSizes = [8*i for i in range(7)]
+    
+    _recentDetectorDir = QDir.homePath()
+    _recentExportDir = QDir.homePath()
     
     def initAppletDrawerUi(self):
         """
@@ -38,19 +47,23 @@ class FillMissingSlicesGui(LayerViewerGui):
         
         self._drawer.patchSizeComboBox.activated.connect(self._patchSizeComboBoxActivated)
         for s in self._standardPatchSizes:
-            self._drawer.patchSizeComboBox.addItem(str(s))
+            self._drawer.patchSizeComboBox.addItem(QString(str(s)), userData = s)
         
         self._drawer.haloSizeComboBox.activated.connect(self._haloSizeComboBoxActivated)
         for s in self._standardHaloSizes:
-            self._drawer.haloSizeComboBox.addItem(str(s))
+            self._drawer.haloSizeComboBox.addItem(QString(str(s)), userData = s)
             
-        self._setInitialComboBoxValues()
+        self.patchSizeChanged(update=True)
+        self.haloSizeChanged(update=True)
+    
+        self.topLevelOperatorView.PatchSize.notifyValueChanged(self.patchSizeChanged, update=True)
+        self.topLevelOperatorView.HaloSize.notifyValueChanged(self.haloSizeChanged, update=True)
         
         
     def _loadDetectorButtonPressed(self):
         fname = QFileDialog.getOpenFileName(self, caption='Open Detector File', 
                                             filter="Pickled Objects (*.pkl);;All Files (*)",
-                                            directory=QDir.homePath(),
+                                            directory=self._recentDetectorDir,
                                             )
         if len(fname)>0: #not cancelled
             with open(fname, 'r') as f:
@@ -61,6 +74,7 @@ class FillMissingSlicesGui(LayerViewerGui):
             
             self.topLevelOperatorView.OverloadDetector.setValue(pkl)
             logger.debug("Loaded detectors from file '{}'".format(fname))
+            self._recentDetectorDir = os.path.dirname(qstring2str(fname))
     
     def _loadHistogramsButtonPressed(self):
         fname = QFileDialog.getOpenFileName(self, caption='Open Histogram File', 
@@ -68,7 +82,7 @@ class FillMissingSlicesGui(LayerViewerGui):
                                             directory=QDir.homePath(),
                                             )
         if len(fname)>0: #not cancelled
-            #FIXME where do we get the real h5 path form???
+            #FIXME where do we get the real h5 path from???
             h5path = 'volume/data'
             
             # no try-catch because we want to propagate errors to the GUI
@@ -80,7 +94,7 @@ class FillMissingSlicesGui(LayerViewerGui):
     def _exportDetectorButtonPressed(self):
         fname = QFileDialog.getSaveFileName(self, caption='Export Trained Detector', 
                                             filter="Pickled Objects (*.pkl);;All Files (*)",
-                                            directory=QDir.homePath(),
+                                            directory=_recentExportDir,
                                             )
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
@@ -88,37 +102,67 @@ class FillMissingSlicesGui(LayerViewerGui):
             
             
             logger.debug("Exported detectors to file '{}'".format(fname))
+            self._recentExportDir = os.path.dirname(qstring2str(fname))
+            
             
     def _trainButtonPressed(self):
         self.topLevelOperatorView.train()
         
     def _patchSizeComboBoxActivated(self, i):
-        desiredPatchSize = self._standardPatchSizes[i]
+        (desiredPatchSize,ok) = self._drawer.patchSizeComboBox.itemData(i).toInt()
+        if not ok:
+            return
         self.topLevelOperatorView.PatchSize.setValue(desiredPatchSize)
         
     def _haloSizeComboBoxActivated(self, i):
-        desiredHaloSize = self._standardHaloSizes[i]
+        (desiredHaloSize, ok) = self._drawer.haloSizeComboBox.itemData(i).toInt()
+        if not ok:
+            return 
         self.topLevelOperatorView.HaloSize.setValue(desiredHaloSize)
         
-    def _setInitialComboBoxValues(self):
+    
+    @staticmethod
+    def _insertIntoComboBox(cb, n):
+        
+        i = cb.findData(n)
+        if i < 0:
+            j = 0
+            for i in range(cb.count()):
+                qvar = cb.itemData(i)
+                print(qvar)
+                (k,ok) = qvar.toInt()
+                print((k,ok))
+                if ok and k==n:
+                    return i
+                elif ok and k>n:
+                    j = i
+                    break
+                else:
+                    j+=1
+                    
+            cb.insertItem(j, str(n), userData=n)
+            return j
+        else:
+            return i
+    
+        
+        
+    def patchSizeChanged(self,update=False):
         patchSize = self.topLevelOperatorView.PatchSize.value
+        pos = self._insertIntoComboBox(self._drawer.patchSizeComboBox, patchSize)
+        self._patchSizeComboBoxActivated(pos)
+        
+        if update:
+            self._drawer.patchSizeComboBox.setCurrentIndex(pos)
+        
+        
+    def haloSizeChanged(self,update=False):
         haloSize = self.topLevelOperatorView.HaloSize.value
+        pos = self._insertIntoComboBox(self._drawer.haloSizeComboBox, haloSize)
+        self._haloSizeComboBoxActivated(pos)
         
-        index = -1
-        for i in range(len(self._standardPatchSizes)):
-            if patchSize==self._standardPatchSizes[i]:
-                index = i
-        self._patchSizeComboBoxActivated(0 if index < -1 else index)
-        
-        index = -1
-        for i in range(len(self._standardHaloSizes)):
-            if haloSize==self._standardHaloSizes[i]:
-                index = i
-        self._haloSizeComboBoxActivated(0 if index < -1 else index)
-        
-        
-        
-        
+        if update:
+            self._drawer.haloSizeComboBox.setCurrentIndex(pos)
         
         
         
