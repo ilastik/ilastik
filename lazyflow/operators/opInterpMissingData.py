@@ -170,11 +170,14 @@ class OpInterpMissingData(Operator):
     
     
     def propagateDirty(self, slot, subindex, roi):
-        # TODO: This implementation of propagateDirty() isn't correct.
+        # 
         if slot == self.InputVolume:
             self.Output.setDirty(roi)
         
         if slot == self.OverloadDetector:
+            self._dirty = True
+        
+        if slot == self.PatchSize or slot == self.HaloSize:
             self._dirty = True
 
    
@@ -494,7 +497,7 @@ class OpInterpolate(Operator):
         minY, maxY = (black_y_ind.min(), black_y_ind.max())
         minX, maxX = (black_x_ind.min(), black_x_ind.max())
         
-        if method == 'linear':
+        if method == 'linear' or method == 'cubic' and n > 1:
             # do a convex combination of the slices to the left and to the right
             xs = np.linspace(0,1,n+2)
             left = volume[minZ,minY:maxY+1,minX:maxX+1]
@@ -639,14 +642,30 @@ def _patchify(data, patchSize, haloSize):
     
     for y in range(nPatchesY):
         for x in range(nPatchesX):
-            
-            left = max(x*patchSize - haloSize, 0)
-            top = max(y*patchSize - haloSize, 0)
             right = min((x+1)*patchSize + haloSize, data.shape[1])
             bottom = min((y+1)*patchSize + haloSize, data.shape[0])
+            
+            rightIsIncomplete = (x+1)*patchSize>data.shape[1]
+            bottomIsIncomplete = (y+1)*patchSize>data.shape[0]
+            
+            left = max(x*patchSize - haloSize, 0) if not rightIsIncomplete \
+                else max(0, right-patchSize-haloSize)
+            top = max(y*patchSize - haloSize, 0) if not bottomIsIncomplete \
+                else max(0, bottom - patchSize - haloSize)
+            
             patches.append(data[top:bottom, left:right])
-            slices.append( (slice(patchSize*y, min( patchSize*(y+1), data.shape[0] )), \
-                slice(patchSize*x, min( patchSize*(x+1), data.shape[1] ))) )
+            
+            if rightIsIncomplete:
+                horzSlice = slice( max(data.shape[1]-patchSize, 0), data.shape[1])
+            else:
+                horzSlice = slice(patchSize*x, patchSize*(x+1))
+                    
+            if bottomIsIncomplete:
+                vertSlice = slice( max(data.shape[0]-patchSize, 0), data.shape[0])
+            else:
+                vertSlice = slice(patchSize*y, patchSize*(y+1))
+                
+            slices.append( (vertSlice, horzSlice) )
             
     return (patches, slices)
 
@@ -764,7 +783,7 @@ class OpDetectMissing(Operator):
             "Unknown detection method '{}'".format(self.DetectionMethod.value)
         
         # prefill result
-        result[:] = 0
+        #result[:] = 0
         resultZYXCT = vigra.taggedView(result,self.InputVolume.meta.axistags).withAxes(*'zyxct')
             
         # acquire data
@@ -824,6 +843,7 @@ class OpDetectMissing(Operator):
             hists = np.vstack(hists)
             
             pred = self.predict(hists, method=self.DetectionMethod.value)
+
             
             for i, p in enumerate(pred):
                 if p > 0: 
@@ -1071,7 +1091,12 @@ class OpDetectMissing(Operator):
         if method == 'classic' or not havesklearn:
             svm = PseudoSVC()
         else:
-            svm = cls._manager.get(nBins)
+            try:
+                svm = cls._manager.get(nBins)
+            except NotTrainedError:
+                # fail gracefully if not trained => responsibility of user!
+                #logger.error("Detector is not trained yet, falling back to default detector.")
+                svm = PseudoSVC()
             
         y = np.zeros((len(X),))*np.nan
         
@@ -1116,8 +1141,15 @@ class OpDetectMissing(Operator):
     
     @classmethod
     def loads(cls, s):
-        cls._manager.overload(pickle.loads(s))
-        logger.debug("Loaded detector: {}".format(str(cls._manager)))
+        if len(s) > 0:
+            try:
+                d = pickle.loads(s)
+            except Exception as err:
+                logger.error("Failed overlaoding detector due to an error: {}".format(str(err)))
+                return
+            
+            cls._manager.overload(d)
+            logger.debug("Loaded detector: {}".format(str(cls._manager)))
         
 
 if __name__ == "__main__":
@@ -1150,7 +1182,7 @@ if __name__ == "__main__":
     
     parser.add_argument('-f', '--force', dest='force', action='store_true', default=False, \
         help='force extraction of histograms, even if the directory already contains histograms')
-    
+
     parser.add_argument('--patch', dest='patchSize', action='store', default='64', help='patch size (e.g.: "32,64-128")')
     parser.add_argument('--halo', dest='haloSize', action='store', default='64', help='halo size (e.g.: "32,64-128")')
     parser.add_argument('--bins', dest='binSize', action='store', default='30', help='number of histogram bins (e.g.: "10-15,20")')
