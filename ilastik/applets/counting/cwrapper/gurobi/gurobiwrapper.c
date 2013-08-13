@@ -9,8 +9,9 @@
 /* Include declaration for function at end of program */
 #include <gurobi_c.h>
 
-
-
+#if (defined(WIN32) || defined(_WIN32))
+#define EXPORT __declspec(dllexport)
+#endif
 static void
 free_and_null (char **ptr);
 
@@ -54,7 +55,7 @@ int printiarray(const int * array, int numrows, int numcols, char * name) {
   return 0;
 }
 
-int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
+EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
         int numBoxConstraints, double * boxValues, const int64_t * boxIndices, const double * boxMatrix)
 {
   int i,j,k;
