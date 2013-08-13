@@ -125,8 +125,9 @@ class OpExportSlot(Operator):
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
 
         if output_format == 'hdr' or output_format == 'hdr sequence':
-            # HDR format supports float32 only.
-            return self.Input.meta.dtype == numpy.float32
+            # HDR format supports float32 only, and must have exactly 3 channels
+            return self.Input.meta.dtype == numpy.float32 and \
+                   'c' in tagged_shape and tagged_shape['c'] == 3
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
@@ -147,7 +148,7 @@ class OpExportSlot(Operator):
         # (singleton/channel axes excepted, unless channel is the 'step' axis)
         if filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats)\
            or output_format == 'multipage tiff':
-            if output_format == 'jpg' or output_format == 'jpeg':
+            if output_format == 'jpg sequence' or output_format == 'jpeg sequence':
                 if axes[0] != 'c' and 'c' in tagged_shape:
                     # JPEG supports 1 or 3 channels, not 2 or 4 (or 5,6..)
                     return tagged_shape['c'] == 1 or tagged_shape['c'] == 3
