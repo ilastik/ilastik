@@ -17,6 +17,7 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.applets.base.applet import ControlCommand
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 try:
@@ -85,6 +86,9 @@ class PixelClassificationGui(LabelingGui):
         self.predictionSerializer = predictionSerializer
 
         self.interactiveModeActive = False
+        # Immediately update our interactive state
+        self.toggleInteractive( not self.topLevelOperatorView.FreezePredictions.value )
+
         self._currentlySavingPredictions = False
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
@@ -301,22 +305,24 @@ class PixelClassificationGui(LabelingGui):
                 mexBox.exec_()
                 return
 
+        # If we're changing modes, enable/disable our controls and other applets accordingly
+        if self.interactiveModeActive != checked:
+            if checked:
+                self.labelingDrawerUi.labelListView.allowDelete = False
+                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
+            else:
+                self.labelingDrawerUi.labelListView.allowDelete = True
+                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+                self.guiControlSignal.emit( ControlCommand.Pop )
+        self.interactiveModeActive = checked
+
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
         self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
             self.handleShowPredictionsClicked()
-
-        # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.interactiveModeActive != checked:
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-            else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
