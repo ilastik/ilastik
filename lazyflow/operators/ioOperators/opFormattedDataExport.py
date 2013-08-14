@@ -91,13 +91,6 @@ class OpFormattedDataExport(Operator):
         self.progressSignal = self._opExportSlot.progressSignal
 
     def setupOutputs(self):
-        # Use user-provided axis order if specified
-        if self.OutputAxisOrder.ready():
-            self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
-        else:
-            axistags = self.Input.meta.axistags
-            self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
-
         # Prepare subregion operator
         total_roi = roiFromShape( self.Input.meta.shape )
         total_roi = map( tuple, total_roi )
@@ -175,6 +168,13 @@ class OpFormattedDataExport(Operator):
 
             # No normalization: just identity function with dtype conversion
             self._opNormalizeAndConvert.Function.setValue( lambda a: numpy.asarray(a, export_dtype) )
+
+        # Use user-provided axis order if specified
+        if self.OutputAxisOrder.ready():
+            self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
+        else:
+            axistags = self.Input.meta.axistags
+            self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
 
         # Obtain values for possible name fields
         roi = [ tuple(self._opSubRegion.Start.value), tuple(self._opSubRegion.Stop.value) ]
