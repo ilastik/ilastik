@@ -138,7 +138,8 @@ class OpExportSlot(Operator):
         if 'tif' in output_format and output_dtype == numpy.int8:
             return False
 
-        # These formats support everything except uint32
+        # Apparently, these formats support everything except uint32
+        # See http://github.com/ukoethe/vigra/issues/153
         if output_dtype == numpy.uint32 and \
            ( 'pbm' in output_format or \
              'pgm' in output_format or \
