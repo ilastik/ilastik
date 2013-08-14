@@ -125,21 +125,36 @@ class OpExportSlot(Operator):
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
         output_dtype = self.Input.meta.dtype
 
+        # None of the remaining formats support more than 4 channels.
+        if tagged_shape['c'] > 4:
+            return False
+
+        # HDR format supports float32 only, and must have exactly 3 channels
         if output_format == 'hdr' or output_format == 'hdr sequence':
-            # HDR format supports float32 only, and must have exactly 3 channels
             return output_dtype == numpy.float32 and \
                    'c' in tagged_shape and tagged_shape['c'] == 3
 
+        # Apparently, TIFF supports everything but signed byte
         if 'tif' in output_format and output_dtype == numpy.int8:
-            # Apparently, TIFF supports everything but signed byte
             return False
+
+        # These formats support everything except uint32
+        if output_dtype == numpy.uint32 and \
+           ( 'pbm' in output_format or \
+             'pgm' in output_format or \
+             'pnm' in output_format or \
+             'ppm' in output_format ):
+            return False
+
+        # These formats don't support 2 channels (must be either 1 or 3)
+        non_dualband_formats = ['bmp', 'gif', 'jpg', 'jpeg', 'ras']
+        for fmt in non_dualband_formats:
+            if fmt in output_format and axes[0] != 'c' and 'c' in tagged_shape:
+                if tagged_shape['c'] != 1 and tagged_shape['c'] != 3:
+                    return False
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
-            if output_format == 'jpg' or output_format == 'jpeg':
-                if axes[0] != 'c' and 'c' in tagged_shape:
-                    # JPEG supports 1 or 3 channels, not 2 or 4 (or 5,6..)
-                    return tagged_shape['c'] == 1 or tagged_shape['c'] == 3
             # Examples:
             # OK: 'xy', 'xyc'
             # NOT OK: 'xc', 'xyz'
@@ -153,10 +168,6 @@ class OpExportSlot(Operator):
         # (singleton/channel axes excepted, unless channel is the 'step' axis)
         if filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats)\
            or output_format == 'multipage tiff':
-            if output_format == 'jpg sequence' or output_format == 'jpeg sequence':
-                if axes[0] != 'c' and 'c' in tagged_shape:
-                    # JPEG supports 1 or 3 channels, not 2 or 4 (or 5,6..)
-                    return tagged_shape['c'] == 1 or tagged_shape['c'] == 3
             # Examples:
             # OK: 'xyz', 'xyzc', 'cxy'
             # NOT OK: 'cxyz'
