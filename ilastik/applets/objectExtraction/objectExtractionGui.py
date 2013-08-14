@@ -27,6 +27,7 @@ from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
 
 import sys
+import cPickle as pickle
 
 import logging
 logger = logging.getLogger(__name__)
@@ -255,6 +256,7 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
         
         slot = self.topLevelOperatorView.Features
         if slot.ready():
@@ -370,6 +372,25 @@ class ObjectExtractionGui(LayerViewerGui):
         traceback.print_tb(exc_info[2])
         msg = "Feature computation failed due to the following error:\n{}".format( exc )
         QMessageBox.critical(self, "Feature computation failed", msg)
+
+    def _exportFeaturesButtonPressed(self):
+        mainOperator = self.topLevelOperatorView
+        if not mainOperator.RegionFeatures.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("No features have been computed yet. Nothing to save.")
+            mexBox.exec_()
+            return
+            
+        fname = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
+                                        filter="Pickled Objects (*.pkl);;All Files (*)")
+        
+        if len(fname)>0: #not cancelled
+            with open(fname, 'w') as f:
+                pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)
+        
+        
+        logger.debug("Exported object features to file '{}'".format(fname))
+
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def _selectFeaturesButtonPressed(self):
