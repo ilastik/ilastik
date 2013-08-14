@@ -340,7 +340,7 @@ class OpRegionFeatures3d(Operator):
                     raise Exception('feature {} does not have enough rows'.format(key))
 
                 # because object classification operator expects nobj to
-                # include background. we should change that assumption.
+                # include background. FIXME: we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
 

@@ -337,7 +337,7 @@ class OpBlockwiseObjectClassification( Operator ):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
             elif k == 'c':
-                shape[i] = 1
+                shape[i] = self.RawImage.meta.shape[i]
             elif k == 't':
                 shape[i] = self.RawImage.meta.shape[i]
             else:
