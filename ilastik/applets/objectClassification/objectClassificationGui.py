@@ -9,6 +9,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 
 import os
 import numpy
+import weakref
 from functools import partial
 
 from ilastik.utility import bind
@@ -115,6 +116,8 @@ class ObjectClassificationGui(LabelingGui):
         op.Warnings.notifyDirty(self.handleWarnings)
         self.__cleanup_fns.append( partial( op.Warnings.unregisterDirty, self.handleWarnings ) )
 
+        self._retained_weakrefs = []
+
         # unused
         self.labelingDrawerUi.savePredictionsButton.setEnabled(False)
         self.labelingDrawerUi.savePredictionsButton.setVisible(False)
@@ -127,9 +130,6 @@ class ObjectClassificationGui(LabelingGui):
         self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
         
-        #layers
-        self.predictLayer = None
-
         # button handlers
         self._interactiveMode = False
         self._showPredictions = False
@@ -448,18 +448,30 @@ class ObjectClassificationGui(LabelingGui):
             self._colorTable16_forpmaps[0] = 0
             predictLayer = ColortableLayer(predictsrc,
                                            colorTable=self._colorTable16_forpmaps)
-            
-            
-            
+
             predictLayer.name = "Prediction"
             predictLayer.ref_object = None
             predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             predictLayer.opacity = 0.5
             predictLayer.setToolTip("Classification results, assigning a label to each object")
-            self._labelControlUi.labelListModel.dataChanged.connect(self._setPredictionColorTable)
+            
+            # This weakref stuff is a little more fancy than strictly necessary.
+            # The idea is to use the weakref's callback to determine when this layer instance is destroyed by the garbage collector,
+            #  and then we disconnect the signal that updates that layer.
+            weak_predictLayer = weakref.ref( predictLayer )
+            colortable_changed_callback = bind( self._setPredictionColorTable, weak_predictLayer )
+            self._labelControlUi.labelListModel.dataChanged.connect( colortable_changed_callback )
+            weak_predictLayer2 = weakref.ref( predictLayer, partial(self._disconnect_dataChange_callback, colortable_changed_callback) )
+            # We have to make sure the weakref isn't destroyed because it is responsible for calling the callback.
+            # Therefore, we retain it by adding it to a list.
+            self._retained_weakrefs.append( weak_predictLayer2 )
+
+            # Ensure we're up-to-date (in case this is the first time the prediction layer is being added.
+            for row in range( self._labelControlUi.labelListModel.rowCount() ):
+                self._setPredictionColorTableForRow( predictLayer, row )
+
             # put right after Labels, so that it is visible after hitting "live
             # predict".
-            self.predictLayer = predictLayer
             layers.insert(1, predictLayer)
 
         badObjectsSlot = self.op.BadObjectImages
@@ -506,15 +518,27 @@ class ObjectClassificationGui(LabelingGui):
 
         return layers
 
-    def _setPredictionColorTable(self, index1, index2):
+    def _disconnect_dataChange_callback(self, colortable_changed_callback, *args ):
+        """
+        When instances of the prediction layer are garbage collected, we no longer want the list model to call them back.
+        This function disconnects the signal that was connected in setupLayers, above.
+        """
+        self._labelControlUi.labelListModel.dataChanged.disconnect( colortable_changed_callback )
+
+    def _setPredictionColorTable(self, weak_predictLayer, index1, index2):
+        predictLayer = weak_predictLayer()
+        if predictLayer is None:
+            return
         row = index1.row()
-        if row > 0 and row < self._labelControlUi.labelListModel.rowCount():
+        self._setPredictionColorTableForRow(predictLayer, row)
+
+    def _setPredictionColorTableForRow(self, predictLayer, row):
+        if row >= 0 and row < self._labelControlUi.labelListModel.rowCount():
             element = self._labelControlUi.labelListModel[row]
             oldcolor = self._colorTable16_forpmaps[row+1]
             if oldcolor != element.pmapColor().rgba():
                 self._colorTable16_forpmaps[row+1] = element.pmapColor().rgba()
-                self.predictLayer.colorTable = self._colorTable16_forpmaps
-                self.updateAllLayers()
+                predictLayer.colorTable = self._colorTable16_forpmaps
 
     @staticmethod
     def _getObject(slot, pos5d):
