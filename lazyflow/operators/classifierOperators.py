@@ -184,6 +184,7 @@ class OpTrainRandomForestBlocked(Operator):
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             # If there was no actual data for the random forest to train with, we return None
             result[:] = None
+            self.progressSignal(100)
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
@@ -253,7 +254,7 @@ class OpPredictRandomForest(Operator):
         traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
         forests=self.inputs["Classifier"][:].wait()
 
-        if forests is None:
+        if forests is None or any(x is None for x in forests):
             # Training operator may return 'None' if there was no data to train with
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
 
