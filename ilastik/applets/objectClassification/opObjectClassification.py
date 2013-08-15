@@ -622,8 +622,13 @@ class OpObjectTrain(Operator):
         all_bad_feats = set()
 
         selected = self.SelectedFeatures([]).wait()
-
+        if len(selected)==0:
+            # no features - no predictions
+            self.Classifier.setValue(None)
+            return
+        
         for i in range(len(self.Labels)):
+            # FIXME: we should only compute the features if there are nonzero labels in this image
             feats = self.Features[i]([]).wait()
 
             # TODO: we should be able to use self.Labels[i].value,
@@ -843,6 +848,7 @@ class OpObjectPredict(Operator):
                     prob_sum = numpy.sum(self.prob_cache[t], axis=1)
                     labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
                     labels[t][0] = 0 # Background gets the zero label
+                
                 return labels
 
             elif slot == self.ProbabilityChannels:
