@@ -61,21 +61,19 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
             self._drawer.blockSpinBox_Z.setVisible(False)
             self._drawer.haloSpinBox_Z.setVisible(False)
             
-        self.predictLayer = None
-
 
     def setupLayers(self):
         layers = []
         
         predictionSlot = self.topLevelOperatorView.PredictionImage
         if predictionSlot.ready():
-            if self.predictLayer is None:
-                self.predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
-                                                     colorTable=self._colorTable16 )
-                self.predictLayer.name = "Blockwise prediction"
-                self.predictLayer.visible = False
             
-            layers.append(self.predictLayer)
+            predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
+                                                 colorTable=self._colorTable16 )
+            predictLayer.name = "Blockwise prediction"
+            predictLayer.visible = False
+            
+            layers.append(predictLayer)
 
         
         binarySlot = self.topLevelOperatorView.BinaryImage
