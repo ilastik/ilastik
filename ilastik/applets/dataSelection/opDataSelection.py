@@ -97,6 +97,9 @@ class OpDataSelection(Operator):
         def __init__(self, message ):
             super( OpDataSelection.InvalidDimensionalityError, self ).__init__()
             self.message = message
+        
+        def __str__(self):
+            return self.message
 
     def __init__(self, force5d=False, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
