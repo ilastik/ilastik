@@ -128,6 +128,9 @@ class OpParseAnnotations(Operator):
             super(OpParseAnnotations.AnnotationParsingException, self).__init__()
             self.original_exc = original_exc
             self.msg = msg
+        
+        def __str__(self):
+            return self.msg + "  Caused by: {}".format( self.original_exc )
 
     @classmethod
     def _parseAnnotationFile(cls, annotation_filepath, body_label_img_slot):
