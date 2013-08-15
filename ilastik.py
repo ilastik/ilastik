@@ -157,11 +157,11 @@ if parsed_args.exit_on_failure:
 # Show uncaught exceptions to the user (default behavior)
 elif not ilastik_config.getboolean('ilastik', 'debug') and not parsed_args.headless:
     old_excepthook = sys.excepthook
-    def exception_dialog(*args):
-        old_excepthook(*args)
+    def exception_dialog(*exc_info):
+        old_excepthook(*exc_info)
         try:
             from ilastik.shell.gui.startShellGui import shell
-            shell.postErrorMessage(args[0].__name__, args[1].message)
+            shell.postErrorMessage( exc_info[0].__name__, str(exc_info[1]) )
         except:
             pass
     sys.excepthook = exception_dialog
