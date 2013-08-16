@@ -240,9 +240,14 @@ class TestDetection(unittest.TestCase):
         self.op.loads(dumpedString)
         
     def testPatchify(self):
-        from lazyflow.operators.opInterpMissingData import _patchify as patchify
+        from lazyflow.operators.opDetectMissingData import _patchify as patchify
         
         X = np.vander(np.arange(2,5))
+        ''' results in 
+        X = array([[ 4,  2,  1],
+                   [ 9,  3,  1],
+                   [16,  4,  1]])
+        '''
         (patches,slices) = patchify(X,1,1)
         
         expected = [np.array([[4,2],[9,3]]), \
@@ -254,17 +259,48 @@ class TestDetection(unittest.TestCase):
                     np.array([[9,3],[16,4]]), \
                     np.array([[9,3,1],[16,4,1]]), \
                     np.array([[3,1],[4,1]])]
+
+        expSlices = [(slice(0,1),slice(0,1)), \
+                  (slice(0,1), slice(1,2)), \
+                  (slice(0,1), slice(2,3)), \
+                  (slice(1,2), slice(0,1)), \
+                  (slice(1,2), slice(1,2)), \
+                  (slice(1,2), slice(2,3)), \
+                  (slice(2,3), slice(0,1)), \
+                  (slice(2,3), slice(1,2)), \
+                  (slice(2,3), slice(2,3))]
                 
-        for ep in expected:
+        for ep, s in zip(expected,expSlices):
+            #check if patch is in the result
             has = False
-            for p in patches:
+            for i,p in enumerate(patches):
                 if np.all(p == ep):
                     has = True
+                    # check if slice is ok
+                    self.assertEqual(s, slices[i])
             
             assert has, "Mising patch {}".format(ep)
+            pass
         
-        # FIXME missing slice comparison
-                    
+    def testPatchDetection(self):
+        vol = vigra.taggedView(np.ones((5,5), dtype=np.uint8)*128, axistags=vigra.defaultAxistags('xy'))
+        vol[2:5,2:5] = 0
+        expected = np.zeros((5,5))
+        expected[3:5,3:5] = 1
+
+        self.op.PatchSize.setValue(2)
+        self.op.HaloSize.setValue(1)
+        self.op.DetectionMethod.setValue('classic')
+        self.op.InputVolume.setValue(vol)
+
+        out = self.op.Output[:].wait()
+        
+        assert_array_equal(expected[3:5,3:5], out[3:5,3:5])
+        
+
+
+
+
         
     
 class TestInterpolation(unittest.TestCase):
@@ -399,16 +435,16 @@ class TestInterpMissingData(unittest.TestCase):
     '''
     tests for the whole detection/interpolation workflow
     '''
-    
-    
+
     def setUp(self):
-        g=Graph()
-        op = OpInterpMissingData(graph = g)
+        g = Graph()
+        op = OpInterpMissingData(graph=g)
         op.DetectionMethod.setValue('svm')
         op.train(force=True)
+        assert op.detector.has(op.detector.NHistogramBins.value,
+                               method='svm'), "Detector not trained."
         self.op = op
-        
-        
+
     def testDetectorPropagation(self):
         if not havesklearn:
             return
@@ -417,15 +453,18 @@ class TestInterpMissingData(unittest.TestCase):
         v = _volume()
         self.op.InputVolume.setValue(v)
         s = self.op.Detector[:].wait()
-        self.op.detector.reset()
-        assert not self.op.detector.has(self.op.detector.NHistogramBins.value, method=method), "Detector not reset."
-        self.op.OverloadDetector.setValue(s)
-        assert self.op.detector.has(self.op.detector.NHistogramBins.value,method=method), "Detector not loaded."
 
-        
+        self.op.detector.reset()
+        assert not self.op.detector.has(self.op.detector.NHistogramBins.value,
+                                        method=method), "Detector not reset."
+
+        self.op.OverloadDetector.setValue(s)
+        assert self.op.detector.has(self.op.detector.NHistogramBins.value,
+                                    method=method), "Detector not loaded."
+
     def testLinearBasics(self):
         self.op.InputSearchDepth.setValue(0)
-        
+
         interpolationMethod = 'linear'
         self.op.InterpolationMethod.setValue(interpolationMethod)
 
