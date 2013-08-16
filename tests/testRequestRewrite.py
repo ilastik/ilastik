@@ -576,6 +576,91 @@ class TestRequest(object):
         logger.debug( "consumed: {}".format(consumed) )
         assert set(consumed) == set( range(N_ELEMENTS) ), "Expected set(range(N_ELEMENTS)), got {}".format( consumed )
 
+    def testRequestLockSemantics(self):
+        """
+        To be used with threading.Condition, RequestLock objects MUST NOT have RLock semantics.
+        It is important that the RequestLock is NOT re-entrant.
+        """
+        with RequestLock() as lock:
+            assert not lock.acquire(0)
+
+    def testMemoryLeaks(self):
+        """
+        As requests become inaccessible, they should be freed immediately, along with any data they held.
+        
+        Note that objects within greenlet stack frames are not considered by the cyclical garbage collector,
+        so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
+        are broken.  Preferably, requests should be deleted early as possible.
+        """
+        def getMemoryUsageMb():
+            # Collect garbage first
+            gc.collect()
+            vmem = psutil.virtual_memory()
+            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
+            return mem_usage_mb
+        
+        starting_usage_mb = getMemoryUsageMb()
+        def getMemoryIncreaseMb():
+            return getMemoryUsageMb() - starting_usage_mb
+
+        resultShape = (500,1000,1000)
+        resultSize = numpy.prod(resultShape)
+        def getBigArray(directExecute, recursionDepth):
+            """
+            Simulate the memory footprint of a series of computation steps.
+            """
+            logger.debug( "Usage delta before depth {}: {} MB".format(recursionDepth, getMemoryIncreaseMb() ) )
+
+            if recursionDepth == 0:
+                # A 500GB result
+                result = numpy.zeros(shape=resultShape, dtype=numpy.uint8)
+            else:
+                req = Request( partial(getBigArray, directExecute=directExecute, recursionDepth=recursionDepth-1) )
+                if not directExecute:
+                    # Force this request to be submitted to the thread pool,
+                    # not executed synchronously in this thread.
+                    req.submit()
+                result = req.wait() + 1
+            
+            # Note that we expect there to be 2X memory usage here:
+            #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
+            memory_increase_mb = getMemoryIncreaseMb()
+            logger.debug( "Usage delta after depth {}: {} MB".format(recursionDepth, memory_increase_mb ) )
+            assert memory_increase_mb < 2.5*resultSize, "Memory from finished requests didn't get freed!"
+            
+            return result
+
+        # Run tests via a separate function so its stack is cleaned up
+        def test_impl(directExecute):
+            rootReq = Request( partial( getBigArray, directExecute, recursionDepth=5 ) )
+            result = rootReq.wait()
+            assert (result == 5).all()
+
+        test_impl(True)
+        test_impl(False)
+
+        memory_increase_mb = getMemoryIncreaseMb()
+        logger.debug( "Finished test with memory usage delta at: {} MB".format( memory_increase_mb ) )
+        assert memory_increase_mb < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
+
+    def testThreadPoolReset(self):
+        Request.reset_thread_pool(num_workers=1)
+        
+        lock = threading.Lock()
+        def check_for_contention():
+            assert lock.acquire(False), "Should not be contention for this lock!"
+            time.sleep(0.1)
+            lock.release()
+        
+        reqs = map( lambda x: Request( check_for_contention ), range(10) )
+        for req in reqs:
+            req.submit()
+        for req in reqs:
+            req.wait()
+        
+        # Set it back to what it was
+        Request.reset_thread_pool()
+
 
 class TestRequestExceptions(object):
     """
@@ -672,83 +757,6 @@ class TestRequestExceptions(object):
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
         
-    def testMemoryLeaks(self):
-        """
-        As requests become inaccessible, they should be freed immediately, along with any data they held.
-        
-        Note that objects within greenlet stack frames are not considered by the cyclical garbage collector,
-        so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
-        are broken.  Preferably, requests should be deleted early as possible.
-        """
-        def getMemoryUsageMb():
-            # Collect garbage first
-            gc.collect()
-            vmem = psutil.virtual_memory()
-            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-            return mem_usage_mb
-        
-        starting_usage_mb = getMemoryUsageMb()
-        def getMemoryIncreaseMb():
-            return getMemoryUsageMb() - starting_usage_mb
-
-        resultShape = (500,1000,1000)
-        resultSize = numpy.prod(resultShape)
-        def getBigArray(directExecute, recursionDepth):
-            """
-            Simulate the memory footprint of a series of computation steps.
-            """
-            logger.debug( "Usage delta before depth {}: {} MB".format(recursionDepth, getMemoryIncreaseMb() ) )
-
-            if recursionDepth == 0:
-                # A 500GB result
-                result = numpy.zeros(shape=resultShape, dtype=numpy.uint8)
-            else:
-                req = Request( partial(getBigArray, directExecute=directExecute, recursionDepth=recursionDepth-1) )
-                if not directExecute:
-                    # Force this request to be submitted to the thread pool,
-                    # not executed synchronously in this thread.
-                    req.submit()
-                result = req.wait() + 1
-            
-            # Note that we expect there to be 2X memory usage here:
-            #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
-            memory_increase_mb = getMemoryIncreaseMb()
-            logger.debug( "Usage delta after depth {}: {} MB".format(recursionDepth, memory_increase_mb ) )
-            assert memory_increase_mb < 2.5*resultSize, "Memory from finished requests didn't get freed!"
-            
-            return result
-
-        # Run tests via a separate function so its stack is cleaned up
-        def test_impl(directExecute):
-            rootReq = Request( partial( getBigArray, directExecute, recursionDepth=5 ) )
-            result = rootReq.wait()
-            assert (result == 5).all()
-
-        test_impl(True)
-        test_impl(False)
-
-        memory_increase_mb = getMemoryIncreaseMb()
-        logger.debug( "Finished test with memory usage delta at: {} MB".format( memory_increase_mb ) )
-        assert memory_increase_mb < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
-
-    def testThreadPoolReset(self):
-        Request.reset_thread_pool(num_workers=1)
-        
-        lock = threading.Lock()
-        def check_for_contention():
-            assert lock.acquire(False), "Should not be contention for this lock!"
-            time.sleep(0.1)
-            lock.release()
-        
-        reqs = map( lambda x: Request( check_for_contention ), range(10) )
-        for req in reqs:
-            req.submit()
-        for req in reqs:
-            req.wait()
-        
-        # Set it back to what it was
-        Request.reset_thread_pool()
-
 if __name__ == "__main__":
 
     # Logging is OFF by default when running from command-line nose, i.e.:

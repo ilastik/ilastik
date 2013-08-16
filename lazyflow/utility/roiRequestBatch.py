@@ -103,6 +103,3 @@ class RoiRequestBatch( object ):
         #self._activeRequests.append( (roi, req) )
         req.notify_finished( partial( self._handleCompletedRequest, roi ) )
         req.submit()
-
-# At module load time, run this quick test to make sure that RequestLock does NOT have RLock semantics
-# We require that for 
