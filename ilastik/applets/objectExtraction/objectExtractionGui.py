@@ -314,6 +314,19 @@ class ObjectExtractionGui(LayerViewerGui):
         fakeimg = np.empty(fakeimgshp, dtype=np.float32)
         fakelabels = np.empty(fakelabelsshp, dtype=np.uint32)
         
+        if ndim==3:
+            fakelabels = vigra.taggedView(fakelabels, 'xyz')
+            if len(fakeimgshp)==4:
+                fakeimg = vigra.taggedView(fakeimg, 'xyzc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xyz')
+        if ndim==2:
+            fakelabels = vigra.taggedView(fakelabels, 'xy')
+            if len(fakeimgshp)==3:
+                fakeimg = vigra.taggedView(fakeimg, 'xyc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xy')
+        
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
         dlg = FeatureSelectionDialog(featureDict=featureDict,
