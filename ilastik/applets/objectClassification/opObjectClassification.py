@@ -248,6 +248,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def removeLabel(self, label):
         #remove this label from the inputs
         for islot, label_slot in enumerate(self.LabelInputs):
+            if not label_slot.ready() or islot>= len(self.RawImages) or \
+                not self.RawImages[islot].ready():
+            
+                continue
+                
             cur_labels = label_slot.value
             nTimes = self.RawImages[islot].meta.shape[0]
             nLabels = len(self.LabelNames.value)
