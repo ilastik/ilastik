@@ -107,8 +107,8 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
         
     def setupOutputs(self):
-        input_shape = self.RawImage.meta.shape
-        self._halo_roi = self.computeHaloRoi( input_shape, self._halo_padding, self.block_roi ) # In global coordinates
+        tagged_input_shape = self.RawImage.meta.getTaggedShape()
+        self._halo_roi = self.computeHaloRoi( tagged_input_shape, self._halo_padding, self.block_roi ) # In global coordinates
         
         # Output roi in our own coordinates (i.e. relative to the halo start)
         self._output_roi = self.block_roi - self._halo_roi[0]
@@ -165,15 +165,20 @@ class OpSingleBlockObjectPrediction( Operator ):
             self.PredictionImage.setDirty( *adjusted_roi )
 
     @classmethod
-    def computeHaloRoi(cls, dataset_shape, halo_padding, block_roi):
+    def computeHaloRoi(cls, tagged_dataset_shape, halo_padding, block_roi):
         block_roi = numpy.array(block_roi)
         block_start, block_stop = block_roi
+        
+        channel_index = tagged_dataset_shape.keys().index('c')
+        block_start[ channel_index ] = 0
+        block_stop[ channel_index ] = tagged_dataset_shape['c']
+        
         # Compute halo and clip to dataset bounds
         halo_start = block_start - halo_padding
-        halo_start = numpy.maximum( halo_start, (0,)*len(dataset_shape) )
+        halo_start = numpy.maximum( halo_start, (0,)*len(halo_start) )
 
         halo_stop = block_stop + halo_padding
-        halo_stop = numpy.minimum( halo_stop, dataset_shape )
+        halo_stop = numpy.minimum( halo_stop, tagged_dataset_shape.values() )
         
         halo_roi = (halo_start, halo_stop)
         return halo_roi
@@ -337,7 +342,7 @@ class OpBlockwiseObjectClassification( Operator ):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
             elif k == 'c':
-                shape[i] = self.RawImage.meta.shape[i]
+                shape[i] = 1
             elif k == 't':
                 shape[i] = self.RawImage.meta.shape[i]
             else:
