@@ -1,26 +1,13 @@
+import threading
+#import collections
 from functools import partial
-import collections
+
 import numpy
-from lazyflow.utility import OrderedSignal
+
 import lazyflow.stype
+from lazyflow.utility import OrderedSignal
 
 from lazyflow.request import Request, RequestLock
-
-class FakeLock(object):
-    def do_nothing(self, *args, **kwargs):
-        pass
-
-    def __init__(self):
-        self.acquire = self.do_nothing
-        self.release = self.do_nothing
-        self.__enter__ = self.do_nothing
-        self.__exit__ = self.do_nothing
-
-    acquire = do_nothing
-    release = do_nothing
-    __enter__ = do_nothing
-    __exit__ = do_nothing
-
 
 class RoiRequestBatch( object ):
     """
@@ -46,51 +33,47 @@ class RoiRequestBatch( object ):
         self._outputSlot = outputSlot
         self._roiIter = roiIterator
         self._batchSize = batchSize
-
-        self._activeRequests = collections.deque()
         
-        self._lock = RequestLock()
+        # Combine threading.Condition + RequestLock:
+        # ==> Request-aware condition variable!
+        self._condition = threading.Condition( RequestLock() )
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
         self._processedVolume = 0
+        
+        self._activated_count = 0
+        self._completed_count = 0
     
     def execute(self):
-        # Starting...
         self.progressSignal( 0 )
 
         # Start with a batch of N requests
-        for _ in range(self._batchSize):
-            self._activateNewRequest()
+        with self._condition:
+            for _ in range(self._batchSize):
+                self._activateNewRequest()
+                self._activated_count += 1
 
-        # Wait for each request in FIFO order.  
-        roi, next_request = self._popOldestActiveRequest()
-        while next_request is not None:
-            next_request.block()
+            try:
+                while True: # Loop until StopIteration
+                    while (self._activated_count - self._completed_count) == self._batchSize:
+                        self._condition.wait()
 
-            # Get next request to wait for
-            roi, next_request = self._popOldestActiveRequest()
+                    while self._activated_count - self._completed_count < self._batchSize:
+                        self._activateNewRequest() # Eventually raises StopIteration
+                        self._activated_count += 1
+            except StopIteration:
+                pass
+
+            # Wait for last N requests to complete
+            while self._completed_count < self._activated_count:
+                self._condition.wait()
 
         # All finished
         self.progressSignal( 100 )
 
-    def _popOldestActiveRequest(self):
-        """
-        If the active request queue is not empty, return a roi and its request (in FIFO order).
-        Otherwise, return (None,None)
-        """
-        with self._lock:
-            if len(self._activeRequests) > 0:
-                return self._activeRequests.popleft()
-            else:
-                return (None, None)
-
-    def _handleCompletedRequest(self, roi, req, result):
-        # Clean it now to free up any child request data.
-        #  We already have a handle to the result, which is all we need.
-        req.clean()
-
-        with self._lock:
+    def _handleCompletedRequest(self, roi, result):
+        with self._condition:
             # Signal the user with the result
             self.resultSignal(roi, result)
             
@@ -100,32 +83,26 @@ class RoiRequestBatch( object ):
                 progress =  100 * self._processedVolume / self._totalVolume
                 self.progressSignal( progress )
 
-        # Add a new request to the batch to replace this finished one.
-        # We activate the new request AFTER we signaled the result,
-        #  to avoid letting lots of requests pile up if the result processing 
-        #  is temporarily slower than the actual request executions.
-        self._activateNewRequest()
+            self._completed_count += 1
+            self._condition.notify()
 
     def _activateNewRequest(self):
         """
-        Creates and activates a new request if there are more rois to process.  Otherwise, does nothing.
+        Creates and activates a new request if there are more rois to process.  Otherwise, raises StopIteration
         """
-        with self._lock:
-            try:
-                roi = self._roiIter.next()
-            except StopIteration:
-                pass
-            else:
-                req = self._outputSlot( roi[0], roi[1] )
-                
-                # We have to make sure that we didn't get a so-called "ValueRequest"
-                # because those don't work the same way.
-                # (This can happen if array data was given to a slot via setValue().)
-                assert isinstance( req, Request ), \
-                    "Can't use RoiRequestBatch with non-standard requests.  See comment above."
-                
-                self._activeRequests.append( (roi, req) )
-                req.notify_finished( partial( self._handleCompletedRequest, roi, req ) )
-                req.submit()
+        # This could raise StopIteration
+        roi = self._roiIter.next()
+        req = self._outputSlot( roi[0], roi[1] )
+        
+        # We have to make sure that we didn't get a so-called "ValueRequest"
+        # because those don't work the same way.
+        # (This can happen if array data was given to a slot via setValue().)
+        assert isinstance( req, Request ), \
+            "Can't use RoiRequestBatch with non-standard requests.  See comment above."
+        
+        #self._activeRequests.append( (roi, req) )
+        req.notify_finished( partial( self._handleCompletedRequest, roi ) )
+        req.submit()
 
-
+# At module load time, run this quick test to make sure that RequestLock does NOT have RLock semantics
+# We require that for 
