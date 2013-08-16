@@ -3,8 +3,11 @@
 #include <math.h>
 
 /* Bring in the declarations for the string functions */
-#include <inttypes.h>
+#include <stdint.h>
 #include <string.h>
+#if (defined(WIN32) || defined(_WIN32))
+#define EXPORT __declspec(dllexport)
+#endif
 
 /* Include declaration for function at end of program */
 
@@ -39,6 +42,7 @@ int printfarray(const double * array, int numrows, int numcols, char * name) {
     }
     printf("\n");
   }
+  return 0;
 }
 int printiarray(const int * array, int numrows, int numcols, char * name) {
   printf("%s\n", name);
@@ -49,10 +53,10 @@ int printiarray(const int * array, int numrows, int numcols, char * name) {
     }
     printf("\n");
   }
-
+  return 0;
 }
 
-int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
+EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
         int numBoxConstraints, const double * boxValues, const int64_t * boxIndices, const double * boxMatrix)//, double * density)
 {
   int i,j,k;
@@ -60,15 +64,6 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   CPXLPptr      lp = NULL;
   int status;
   char probname[] = "Testproblem";
-  env = CPXopenCPLEX (&status);
-  lp = CPXcreateprob (env, &status, probname);
-  status = CPXsetintparam (env, CPX_PARAM_SCRIND, CPX_ON);
-  status = CPXsetintparam (env, CPX_PARAM_BARCOLNZ, 2);
-  if ( status ) {
-    fprintf (stderr,
-             "Failure to create CPLEX environment, error %d.\n", status);
-    goto TERMINATE;
-  }
 
   int numrows = postags + numSamples;
   int numcols = numFeatures + 1 + numrows;
@@ -88,6 +83,7 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   double   *matval = (double* ) malloc(numEntries * sizeof(double));
   double   *qsepvec = (double*) malloc((numcols + 2 * numBoxConstraints) * sizeof(double));
 
+  int       numBoxSamples = 0;
   double   *dens = NULL;
   double   *boxConstraints = NULL;
   int      *boxrmatbeg = NULL;
@@ -97,6 +93,15 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   int      *hmatind = NULL;
   double   *hmatval = NULL;
   char     *hSense = NULL;
+  env = CPXopenCPLEX (&status);
+  lp = CPXcreateprob (env, &status, probname);
+  status = CPXsetintparam (env, CPX_PARAM_SCRIND, CPX_ON);
+  status = CPXsetintparam (env, CPX_PARAM_BARCOLNZ, 2);
+  if ( status ) {
+    fprintf (stderr,
+             "Failure to create CPLEX environment, error %d.\n", status);
+    goto TERMINATE;
+  }
 
   if (sense == NULL || lb == NULL || ub == NULL || obj == NULL 
       || rhs == NULL || tagarray == NULL || qsepvec == NULL) {
@@ -176,7 +181,7 @@ int fit(const double * X_p, const double * Yl_p, double* w, int postags, int num
   status = CPXgetx (env, lp, w, 0, numFeatures);
 
   if (numBoxConstraints > 0) {
-    int numBoxSamples = boxIndices[numBoxConstraints];
+    numBoxSamples = boxIndices[numBoxConstraints];
 
     dens = (double*) malloc(numBoxSamples * sizeof(double));
     boxConstraints = (double*) calloc(numBoxConstraints * (numFeatures + 2), sizeof(double));
