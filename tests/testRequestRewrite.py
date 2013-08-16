@@ -541,6 +541,42 @@ class TestRequest(object):
 
         assert l == list(range(100)), "Requests and/or threads finished in the wrong order!"
 
+    def testRequestLockWithCondition(self):
+        """
+        RequestLock can be used with threading.Condition to create a request-aware condition variable!
+        This test demonstrates it.
+        """
+        N_ELEMENTS = 100
+        cond = threading.Condition( RequestLock() )
+        
+        produced = []
+        def f(i):
+            time.sleep(0.1*random.random())
+            with cond:
+                produced.append(i)
+                cond.notify()
+        
+        reqs = []
+        for i in range(N_ELEMENTS):
+            req = Request( partial(f, i) )
+            reqs.append( req )
+
+        for req in reqs:
+            req.submit()
+         
+        consumed = []
+        with cond:
+            while len(consumed) < N_ELEMENTS:
+                while len(consumed) == len(produced):
+                    cond.wait()
+                logger.debug( "copying {} elements".format( len(produced) - len(consumed) ) )
+                consumed += produced[len(consumed):]
+
+        logger.debug( "produced: {}".format(produced) )
+        logger.debug( "consumed: {}".format(consumed) )
+        assert set(consumed) == set( range(N_ELEMENTS) ), "Expected set(range(N_ELEMENTS)), got {}".format( consumed )
+
+
 class TestRequestExceptions(object):
     """
     Check for proper behavior when an exception is generated within a request:
@@ -728,50 +764,4 @@ if __name__ == "__main__":
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     if not ret: sys.exit(1)
