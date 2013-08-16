@@ -1,12 +1,10 @@
 import threading
-#import collections
 from functools import partial
 
 import numpy
 
 import lazyflow.stype
 from lazyflow.utility import OrderedSignal
-
 from lazyflow.request import Request, RequestLock
 
 class RoiRequestBatch( object ):
@@ -21,15 +19,19 @@ class RoiRequestBatch( object ):
 
         :param outputSlot: The slot to request data from.
         :param roiIterator: An iterator providing new rois.
-        :param totalVolume: The total volume to be processed.  Used to provide the progress reporting signal.  If not provided, then no intermediate progress will be signaled.
+        :param totalVolume: The total volume to be processed.  
+                            Used to provide the progress reporting signal. 
+                            If not provided, then no intermediate progress will be signaled.
         :param batchSize: The maximum number of requests to launch in parallel.
         """
-        #: Results signal. Signature: ``f(roi, result)``.  Guaranteed not to be called from multiple threads in parallel.
+        #: Results signal. Signature: ``f(roi, result)``.
+        #: Guaranteed not to be called from multiple threads in parallel.
         self.resultSignal = OrderedSignal()
         #: Progress Signal Signature: ``f(progress_percent)``
         self.progressSignal = OrderedSignal()
 
-        assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), "Only Array-like slots supported." # Because progress reporting depends on the roi shape
+        assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), \
+            "Only Array-like slots supported." # Because progress reporting depends on the roi shape
         self._outputSlot = outputSlot
         self._roiIter = roiIterator
         self._batchSize = batchSize
@@ -38,57 +40,45 @@ class RoiRequestBatch( object ):
         # ==> Request-aware condition variable!
         self._condition = threading.Condition( RequestLock() )
 
+        self._activated_count = 0
+        self._completed_count = 0
+
         # Progress bookkeeping
         self._totalVolume = totalVolume
         self._processedVolume = 0
         
-        self._activated_count = 0
-        self._completed_count = 0
-    
     def execute(self):
         self.progressSignal( 0 )
 
-        # Start with a batch of N requests
         with self._condition:
+            # Start by activating a batch of N requests
             for _ in range(self._batchSize):
                 self._activateNewRequest()
                 self._activated_count += 1
 
             try:
-                while True: # Loop until StopIteration
+                # Loop until StopIteration
+                while True:
+                    # Wait for at least one active request to finish
                     while (self._activated_count - self._completed_count) == self._batchSize:
                         self._condition.wait()
 
+                    # Launch new requests until we have the correct number of active requests
                     while self._activated_count - self._completed_count < self._batchSize:
                         self._activateNewRequest() # Eventually raises StopIteration
                         self._activated_count += 1
             except StopIteration:
-                pass
+                # We've run out of requests to launch.
+                # Wait for the remaining active requests to finish.
+                while self._completed_count < self._activated_count:
+                    self._condition.wait()
 
-            # Wait for last N requests to complete
-            while self._completed_count < self._activated_count:
-                self._condition.wait()
-
-        # All finished
         self.progressSignal( 100 )
-
-    def _handleCompletedRequest(self, roi, result):
-        with self._condition:
-            # Signal the user with the result
-            self.resultSignal(roi, result)
-            
-            # Report progress (if possible)
-            if self._totalVolume is not None:
-                self._processedVolume += numpy.prod( roi[1] - roi[0] )
-                progress =  100 * self._processedVolume / self._totalVolume
-                self.progressSignal( progress )
-
-            self._completed_count += 1
-            self._condition.notify()
 
     def _activateNewRequest(self):
         """
-        Creates and activates a new request if there are more rois to process.  Otherwise, raises StopIteration
+        Creates and activates a new request if there are more rois to process.
+        Otherwise, raises StopIteration
         """
         # This could raise StopIteration
         roi = self._roiIter.next()
@@ -100,6 +90,19 @@ class RoiRequestBatch( object ):
         assert isinstance( req, Request ), \
             "Can't use RoiRequestBatch with non-standard requests.  See comment above."
         
-        #self._activeRequests.append( (roi, req) )
         req.notify_finished( partial( self._handleCompletedRequest, roi ) )
         req.submit()
+
+    def _handleCompletedRequest(self, roi, result):
+        with self._condition:
+            # Signal the user with the result
+            self.resultSignal(roi, result)
+            
+            # Report progress (if possible)
+            if self._totalVolume is not None:
+                self._processedVolume += numpy.prod( roi[1] - roi[0] )
+                progress = 100 * self._processedVolume / self._totalVolume
+                self.progressSignal( progress )
+
+            self._completed_count += 1
+            self._condition.notify()
