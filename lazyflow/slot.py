@@ -530,7 +530,8 @@ class Slot(object):
         Arguments:
           size    : the desired number of subslots
         """
-        assert isinstance(size, int) or isinstance(size, long)
+        assert numpy.issubdtype(type(size), numpy.integer), \
+            "Bug: 'size' must be int, not {}".format( type(size) )
 
         if self._resizing:
             return
