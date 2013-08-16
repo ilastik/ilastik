@@ -563,6 +563,22 @@ class Request( object ):
             # It must be a regular (foreign) thread.
             return None
 
+    @classmethod
+    def current_request_is_cancelled(cls):
+        """
+        Return True if called from within the context of a cancelled request.
+        """
+        current_request = Request._current_request()
+        return current_request and current_request.cancelled
+    
+    @classmethod
+    def raise_if_cancelled(cls):
+        """
+        If called from the context of a cancelled request, raise a CancellationException immediately.
+        """
+        if Request.current_request_is_cancelled():
+            raise Request.CancellationException()
+
     ##########################################
     #### Backwards-compatible API support ####
     ##########################################
