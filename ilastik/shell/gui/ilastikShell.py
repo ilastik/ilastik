@@ -947,11 +947,8 @@ class IlastikShell( QMainWindow ):
         if importedFilePath is not None and newProjectFilePath is not None:
             if not self.ensureNoCurrentProject():
                 return
-            self.importProject( importedFilePath, newProjectFilePath )
-
-    def importProject(self, originalPath, newProjectFilePath):
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-        self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=originalPath)
+            newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+            self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath)
         
     def getProjectPathToOpen(self, defaultDirectory):
         """
