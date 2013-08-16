@@ -4,7 +4,7 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDatas
 import os
 import vigra
 from ilastik.utility import bind, PathComponents
-from ilastik.utility.pathHelpers import areOnSameDrive,getPathVariants
+from ilastik.utility.pathHelpers import getPathVariants
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -212,20 +212,19 @@ class DataSelectionSerializer( AppletSerializer ):
         infoDir = topGroup['infos']
         localDataGroup = topGroup['local_data']
         
-        try:
-            roleNames = list(topGroup['Role Names'][...])
-            backwards_compatibility_mode = False
-            assert self.topLevelOperator.DatasetRoles.ready(), "Expected dataset roles to be hard-coded by the workflow."
-            assert roleNames == self.topLevelOperator.DatasetRoles.value, \
-                "Role names in project file ({}) don't match those given in workflow definition ({})".format( roleNames, self.topLevelOperator.DatasetRoles.value )
-        except KeyError:
-            roleNames = ['Raw Data']
-            backwards_compatibility_mode = True
-            pass
+        assert self.topLevelOperator.DatasetRoles.ready(), \
+            "Expected dataset roles to be hard-coded by the workflow."
+        workflow_role_names = self.topLevelOperator.DatasetRoles.value
 
+        # If the project file doesn't provide any role names, then we assume this is an old pixel classification project
         force_dirty = False
+        backwards_compatibility_mode = ('Role Names' not in topGroup)
         self.topLevelOperator.DatasetGroup.resize( len(infoDir) )
-        
+
+        # The role names MAY be different than those that we have loaded in the workflow 
+        #   because we might be importing from a project file made with a different workflow.
+        # Therefore, we don't assert here.
+        # assert workflow_role_names == list(topGroup['Role Names'][...])
         
         # Use the WorkingDirectory slot as a 'transaction' guard.
         # To prevent setupOutputs() from being called a LOT of times during this loop,
@@ -247,7 +246,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
             else:
                 for roleName, infoGroup in sorted(laneGroup.items()):
-                    roleIndex = roleNames.index( roleName )
+                    roleIndex = workflow_role_names.index( roleName )
                     datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
                     force_dirty |= dirty
     
