@@ -42,7 +42,7 @@
         "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },
         "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
-        "ilastik.applets.splitBodyCarving":                         { "level":"DEBUG" },
+        "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
         "ilastik.shell":                                            { "level":"INFO" },
         "ilastik.workflows":                                        { "level":"INFO" },
         "ilastik.widgets":                                          { "level":"INFO" },
