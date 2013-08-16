@@ -718,6 +718,56 @@ class RequestLock(object):
     def __exit__(self, *args):
         self.release()
 
+class SimpleRequestCondition(object):
+    """
+    A Request-compatible condition variable that supports a limited
+    subset of the features implemented by the standard threading.Condition.
+    
+    - Only one request may call `wait()` at a time.
+    - Likewise, `notify()` doesn't support the `n` arg.
+    - Likewise, there is no `notify_all()` method.
+    - `wait()` doesn't support the `timeout` arg.
+    """
+    def __init__(self):
+        self._ownership_lock = RequestLock()
+        self._waiter_lock = RequestLock()
+    
+        # Export the acquire/release methods of the ownership lock
+        self.acquire = self._ownership_lock.acquire
+        self.release = self._ownership_lock.release
+
+    def __enter__(self):
+        self._ownership_lock.__enter__()
+        
+    def __exit__(self, *args):
+        self._ownership_lock.__exit__(*args)
+
+    def wait(self):
+        # Should start out in the non-waiting state
+        assert not self._waiter_lock.locked()
+        self._waiter_lock.acquire()
+        
+        # Temporarily release the ownership lock while we wait for someone to release the waiter.
+        self._ownership_lock.release()
+        
+        # Try to acquire the lock AGAIN.
+        # This isn't possible until someone releases it via notify()
+        # (Note that RequestLock does NOT have RLock semantics.)
+        self._waiter_lock.acquire()
+        
+        # Re-acquire
+        self._ownership_lock.acquire()
+
+        # Reset for next wait()
+        # Must check release status here in case someone called notify() in between the previous two lines
+        if self._waiter_lock.locked():
+            self._waiter_lock.release()
+
+    def notify(self):
+        # Release the waiter for anyone currently waiting
+        if self._waiter_lock.locked():
+            self._waiter_lock.release()
+
 class RequestPool(object):
     """
     Convenience class for submitting a batch of requests and waiting until they are all complete.

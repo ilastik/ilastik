@@ -1,4 +1,4 @@
-from lazyflow.request.request import Request, RequestLock
+from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
 import time
 import random
 import nose
@@ -712,6 +712,40 @@ class TestRequestExceptions(object):
         
         # Set it back to what it was
         Request.reset_thread_pool()
+
+class TestSimpleRequestCondition(object):
+    
+    def testBasic(self):
+        N_ELEMENTS = 100
+        cond = SimpleRequestCondition()
+        
+        produced = []
+        def f(i):
+            time.sleep(0.1*random.random())
+            with cond:
+                produced.append(i)
+                cond.notify()
+        
+        reqs = []
+        for i in range(N_ELEMENTS):
+            req = Request( partial(f, i) )
+            reqs.append( req )
+
+        for req in reqs:
+            req.submit()
+         
+        consumed = []
+        with cond:
+            while len(consumed) < N_ELEMENTS:
+                while len(consumed) == len(produced):
+                    cond.wait()
+                logger.debug( "copying {} elements".format( len(produced) - len(consumed) ) )
+                consumed += produced[len(consumed):]
+
+        logger.debug( "produced: {}".format(produced) )
+        logger.debug( "consumed: {}".format(consumed) )
+        assert set(consumed) == set( range(N_ELEMENTS) ), "Expected set(range(10)), got {}".format( consumed )
+                
 
 if __name__ == "__main__":
 
