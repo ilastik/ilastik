@@ -30,9 +30,6 @@ class OpCompressedCache(OpCache):
     CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
     OutputHdf5 = OutputSlot() # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
     
-    loggerName = __name__ + ".OpCompressedCache"
-    logger = logging.getLogger(loggerName)
-    
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
         self._blockshape = None
@@ -110,7 +107,7 @@ class OpCompressedCache(OpCache):
             # Copy from block to destination
             dataset = self._getBlockDataset( entire_block_roi )
             destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
-        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
+        logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
         return destination
 
 
