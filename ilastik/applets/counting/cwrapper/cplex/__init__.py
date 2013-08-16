@@ -10,8 +10,9 @@ for path in paths:
         sofile = path + libraryname
         extlib = ctypes.cdll.LoadLibrary(sofile)
         HAS_CPLEX = True
-    except Exception as err:
-        raise err
+    except:
+        pass
+
     try:
         dllfile = path + dllname
         extlib = ctypes.cdll.LoadLibrary(dllfile)

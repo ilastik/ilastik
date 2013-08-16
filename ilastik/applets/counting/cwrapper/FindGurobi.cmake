@@ -1,8 +1,15 @@
 SET(Gurobi_ROOT_DIR "$ENV{GUROBI_ROOT_DIR}" CACHE PATH "Gurobi root directory")
+IF (WIN32)
+execute_process(COMMAND where gurobi.bat
+	OUTPUT_VARIABLE GUROBI_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+FILE(TO_CMAKE_PATH ${GUROBI_BIN_PATH} GUROBI_BIN_PATH)
+SET(Gurobi_HINT_DIR "${GUROBI_BIN_PATH}/../../" CACHE PATH "Gurobi root directory2")
+ENDIF(WIN32)
 
 FIND_PATH(Gurobi_INCLUDE_DIR
   gurobi_c.h
   HINTS ${Gurobi_ROOT_DIR}/include
+  HINTS ${Gurobi_HINT_DIR}/include
   )
 
 IF(Gurobi_INCLUDE_DIR)
@@ -22,6 +29,7 @@ ENDIF(RUN_RESULT_VAR)
 FIND_LIBRARY(Gurobi_LIBRARY
   NAMES gurobi${Gurobi_VERSION}
   HINTS ${Gurobi_ROOT_DIR}/lib
+  HINTS ${Gurobi_HINT_DIR}/lib
   PATHS ENV LIBRARY_PATH
         ENV LD_LIBRARY_PATH
 )

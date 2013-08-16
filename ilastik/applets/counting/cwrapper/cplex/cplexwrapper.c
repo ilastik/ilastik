@@ -34,8 +34,8 @@ free_and_null (char **ptr)
    6 nonzeros, and 7 nonzeros in the quadratic coefficient matrix. */
 
 int printfarray(const double * array, int numrows, int numcols, char * name) {
-  printf("%s\n", name);
   int i,j;
+  printf("%s\n", name);
   for (i = 0; i < numrows; ++i) {
     for (j = 0; j < numcols; ++j) {
       printf("%f\t", array[i * numcols + j]);
@@ -45,8 +45,8 @@ int printfarray(const double * array, int numrows, int numcols, char * name) {
   return 0;
 }
 int printiarray(const int * array, int numrows, int numcols, char * name) {
-  printf("%s\n", name);
   int i,j;
+  printf("%s\n", name);
   for (i = 0; i < numrows; ++i) {
     for (j = 0; j < numcols; ++j) {
       printf("%d\t", array[i * numcols + j]);
@@ -72,7 +72,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
 
   char *sense = (char*) malloc((numrows) * sizeof(char));
   double *lb = (double*) malloc(numcols * sizeof(double));
-  double *ub = (double*) malloc(numcols * sizeof(double));;
+  double *ub = (double*) malloc(numcols * sizeof(double));
   double *obj = (double*) malloc(numcols * sizeof(double));
   double *rhs = (double*) malloc(numrows * sizeof(double));
   double *tagarray = (double*) malloc(numrows * sizeof(double));
@@ -181,7 +181,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
   status = CPXgetx (env, lp, w, 0, numFeatures);
 
   if (numBoxConstraints > 0) {
-    numBoxSamples = boxIndices[numBoxConstraints];
+    numBoxSamples = (int) boxIndices[numBoxConstraints];
 
     dens = (double*) malloc(numBoxSamples * sizeof(double));
     boxConstraints = (double*) calloc(numBoxConstraints * (numFeatures + 2), sizeof(double));
@@ -229,7 +229,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     //printfarray(boxConstraints, numBoxConstraints, numFeatures + 2, "boxConstraints"); 
     for (k = 0; k < numBoxConstraints; ++k) {
       boxrmatbeg[k] = k * (numFeatures + 2);
-      for (i = boxIndices[k]; i < boxIndices[k + 1]; ++i){
+      for (i = (int) boxIndices[k]; i < boxIndices[k + 1]; ++i){
         for (j = 0; j < numFeatures; ++j){
           boxConstraints[k * (numFeatures + 2) + j]  += dens[i] * boxMatrix[i * numFeatures + j];
         }
@@ -313,8 +313,6 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       } */
   }
 
-  double sol = 0;
-  status = CPXgetobjval(env, lp, &sol);
   //printf("Objective value: %f\n", sol);
   /*double * slack = malloc((numcols + 2 * numBoxConstraints) * sizeof(double));
     status = CPXgetx (env, lp, slack, 0, numcols + 2 * numBoxConstraints - 1);

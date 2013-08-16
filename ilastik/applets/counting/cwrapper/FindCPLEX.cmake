@@ -11,10 +11,36 @@
 set(CPLEX_ROOT_DIR "$ENV{CPLEX_ROOT_DIR}" CACHE PATH "CPLEX root directory")
 
 if(WIN32)
-  if(NOT CPLEX_WIN_VERSION)
-    set(CPLEX_WIN_VERSION 125 CACHE STRING "Cplex version integer code. Necessary on Windows to guess root dir and to determine the library name, i.e. cplex125.lib")
-  endif(NOT CPLEX_WIN_VERSION)
+execute_process(COMMAND where cplex
+	OUTPUT_VARIABLE CPLEX_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+FILE(TO_CMAKE_PATH ${CPLEX_BIN_PATH} CPLEX_BIN_PATH)
+SET(CPLEX_HINT_DIR "${CPLEX_BIN_PATH}/../../../" CACHE PATH "Cplex root directory2")
+endif(WIN32)
 
+
+FIND_PATH(CPLEX_INCLUDE_DIR
+  ilcplex/cplex.h
+  HINTS ${CPLEX_ROOT_DIR}/cplex/include
+        ${CPLEX_ROOT_DIR}/include
+  ${CPLEX_HINT_DIR}/include
+  PATHS ENV C_INCLUDE_PATH
+        ENV C_PLUS_INCLUDE_PATH
+        ENV INCLUDE_PATH
+  )
+
+IF(CPLEX_INCLUDE_DIR)
+TRY_RUN(
+  RUN_RESULT_VAR COMPILE_RESULT_VAR
+  ${CMAKE_BINARY_DIR} 
+  ${CMAKE_CURRENT_SOURCE_DIR}/findcplexversion.c
+  CMAKE_FLAGS
+  -DINCLUDE_DIRECTORIES:STRING=${CPLEX_INCLUDE_DIR}
+  RUN_OUTPUT_VARIABLE CPLEX_WIN_VERSION
+  )
+SET (CPLEX_WIN_VERSION ${CPLEX_WIN_VERSION} CACHE STRING "Cplex version integer code. Necessary on Windows to determine the library name")
+ENDIF(CPLEX_INCLUDE_DIR)
+MESSAGE("-- Found Cplex Version = ${CPLEX_WIN_VERSION}")
+if(WIN32)
   if(NOT CPLEX_WIN_VS_VERSION)
     set(CPLEX_WIN_VS_VERSION 2010 CACHE STRING "Cplex Visual Studio version, for instance 2008 or 2010.")
   endif(NOT CPLEX_WIN_VS_VERSION)
@@ -37,32 +63,11 @@ endif(WIN32)
 ## cplex root dir guessing
 # windows: trying to guess the root dir from a 
 # env variable set by the cplex installer
-set(WIN_ROOT_GUESS $ENV{CPLEX_STUDIO_DIR${CPLEX_WIN_VERSION}})
-
-FIND_PATH(CPLEX_INCLUDE_DIR
-  ilcplex/cplex.h
-  HINTS ${CPLEX_ROOT_DIR}/cplex/include
-        ${CPLEX_ROOT_DIR}/include
-  ${WIN_ROOT_GUESS}/cplex/include
-  PATHS ENV C_INCLUDE_PATH
-        ENV C_PLUS_INCLUDE_PATH
-        ENV INCLUDE_PATH
-  )
-
-FIND_PATH(CONCERT_INCLUDE_DIR
-  ilconcert/iloenv.h 
-  HINTS ${CPLEX_ROOT_DIR}/concert/include
-        ${CPLEX_ROOT_DIR}/include
-        ${WIN_ROOT_GUESS}/concert/include
-  PATHS ENV C_INCLUDE_PATH
-        ENV C_PLUS_INCLUDE_PATH
-        ENV INCLUDE_PATH
-  )
-
 FIND_LIBRARY(CPLEX_LIBRARY
   NAMES cplex cplex${CPLEX_WIN_VERSION}
   HINTS ${CPLEX_ROOT_DIR}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows
         ${WIN_ROOT_GUESS}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows
+  	${CPLEX_HINT_DIR}/lib/${CPLEX_WIN_PLATFORM} #windows
         ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_debian4.0_4.1/static_pic #unix
         ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_sles10_4.1/static_pic #unix 
   PATHS ENV LIBRARY_PATH #unix
@@ -70,56 +75,17 @@ FIND_LIBRARY(CPLEX_LIBRARY
   )
 message(STATUS "CPLEX Library: ${CPLEX_LIBRARY}")
 
-FIND_LIBRARY(ILOCPLEX_LIBRARY
-  ilocplex
-  HINTS ${CPLEX_ROOT_DIR}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows
-        ${WIN_ROOT_GUESS}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows 
-        ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_debian4.0_4.1/static_pic #unix 
-        ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_sles10_4.1/static_pic #unix 
-  PATHS ENV LIBRARY_PATH
-        ENV LD_LIBRARY_PATH
-  )
-message(STATUS "ILOCPLEX Library: ${ILOCPLEX_LIBRARY}")
-
-FIND_LIBRARY(CONCERT_LIBRARY
-  concert
-  HINTS ${CPLEX_ROOT_DIR}/concert/lib/${CPLEX_WIN_PLATFORM} #windows
-        ${WIN_ROOT_GUESS}/concert/lib/${CPLEX_WIN_PLATFORM} #windows 
-        ${CPLEX_ROOT_DIR}/concert/lib/x86-64_debian4.0_4.1/static_pic #unix 
-        ${CPLEX_ROOT_DIR}/concert/lib/x86-64_sles10_4.1/static_pic #unix 
-  PATHS ENV LIBRARY_PATH
-        ENV LD_LIBRARY_PATH
-  )
-message(STATUS "CONCERT Library: ${CONCERT_LIBRARY}")
-
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(CPLEX DEFAULT_MSG 
- CPLEX_LIBRARY CPLEX_INCLUDE_DIR ILOCPLEX_LIBRARY CONCERT_LIBRARY CONCERT_INCLUDE_DIR)
+ CPLEX_LIBRARY CPLEX_INCLUDE_DIR )
 
-if(WIN32)
-  FIND_PATH(CPLEX_BIN_DIR
-    cplex121.dll
-          HINTS ${CPLEX_ROOT_DIR}/bin/${CPLEX_WIN_PLATFORM} #windows
-                ${WIN_ROOT_GUESS}/bin/${CPLEX_WIN_PLATFORM} #windows 
-    PATHS "C:/ILOG/CPLEX91/bin/x86_win32"
-    )
-else()
-  FIND_PATH(CPLEX_BIN_DIR
-    cplex 
-          HINTS ${CPLEX_ROOT_DIR}/cplex/bin/x86-64_sles10_4.1 #unix 
-                ${CPLEX_ROOT_DIR}/cplex/bin/x86-64_debian4.0_4.1 #unix 
-    ENV LIBRARY_PATH
-          ENV LD_LIBRARY_PATH
-    )
-endif()
-message(STATUS "CPLEX Bin Dir: ${CPLEX_BIN_DIR}")
 
 IF(CPLEX_FOUND)
-  SET(CPLEX_INCLUDE_DIRS ${CPLEX_INCLUDE_DIR} ${CONCERT_INCLUDE_DIR})
-  SET(CPLEX_LIBRARIES ${CONCERT_LIBRARY} ${ILOCPLEX_LIBRARY} ${CPLEX_LIBRARY} )
+  SET(CPLEX_INCLUDE_DIRS ${CPLEX_INCLUDE_DIR} )
+  SET(CPLEX_LIBRARIES ${CPLEX_LIBRARY} )
   IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     SET(CPLEX_LIBRARIES "${CPLEX_LIBRARIES};m;pthread")
   ENDIF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 ENDIF(CPLEX_FOUND)
 
-MARK_AS_ADVANCED(CPLEX_LIBRARY CPLEX_INCLUDE_DIR ILOCPLEX_LIBRARY CONCERT_INCLUDE_DIR CONCERT_LIBRARY CPLEX_BIN_DIR)
+MARK_AS_ADVANCED(CPLEX_LIBRARY CPLEX_INCLUDE_DIR )
