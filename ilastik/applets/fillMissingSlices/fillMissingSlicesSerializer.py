@@ -2,37 +2,33 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
 from lazyflow.operators.opInterpMissingData import OpDetectMissing
 
+
 class FillMissingSlicesSerializer(AppletSerializer):
 
-
-    ### reimplementation of methods ###
-        
     def __init__(self, topGroupName, topLevelOperator):
-        slots = [SerialSlot(topLevelOperator.PatchSize),SerialSlot(topLevelOperator.HaloSize)]
-        super( FillMissingSlicesSerializer, self ).__init__(topGroupName, slots=slots)
+        slots = [SerialSlot(topLevelOperator.PatchSize),
+                 SerialSlot(topLevelOperator.HaloSize)]
+        super(FillMissingSlicesSerializer, self).__init__(topGroupName,
+                                                          slots=slots)
         self._operator = topLevelOperator
-    
-    
+
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         dslot = self._operator.Detector[0]
         extractedSVM = dslot[:].wait()
         self._setDataset(topGroup, 'SVM', extractedSVM)
         for s in self._operator.innerOperators:
             s.resetDirty()
-        
-        
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        svm = self._operator.OverloadDetector.setValue(self._getDataset(topGroup, 'SVM'))
+
+    def _deserializeFromHdf5(self, topGroup, version, h5file, projectFilePath):
+        svm = self._operator.OverloadDetector.setValue(
+            self._getDataset(topGroup, 'SVM'))
         for s in self._operator.innerOperators:
             s.resetDirty()
-        
 
     def isDirty(self):
         return any([s.isDirty() for s in self._operator.innerOperators])
-    
-    
-    ### internal ###
 
+    ### internal ###
     def _setDataset(self, group, dataName, dataValue):
         if dataName not in group.keys():
             # Create and assign
@@ -46,4 +42,4 @@ class FillMissingSlicesSerializer(AppletSerializer):
             result = group[dataName].value
         except KeyError:
             result = ''
-        return result 
+        return result
