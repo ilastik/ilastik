@@ -662,6 +662,9 @@ class Slot(object):
             return self.partner.get(roi)
         else:
             if not self.ready():
+                # Something is wrong.  Are we cancelled?
+                Request.raise_if_cancelled()
+
                 msg = "Can't get data from slot {}.{} yet."\
                       " It isn't ready."\
                       "First upstream problem slot is: {}"
@@ -670,7 +673,10 @@ class Slot(object):
 
             # If someone is asking for data from an inputslot that has
             #  no value and no partner, then something is wrong.
-            assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
+            if self._type == "input":
+                # Something is wrong.  Are we cancelled?
+                Request.raise_if_cancelled()
+                assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
@@ -840,6 +846,8 @@ class Slot(object):
             return self._subSlots[key]
         else:
             if self.meta.shape is None:
+                # Something is wrong.  Are we cancelled?
+                Request.raise_if_cancelled()
                 if not self.ready():
                     msg = "This slot ({}.{}) isn't ready yet, which means " \
                           "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
@@ -849,7 +857,7 @@ class Slot(object):
                                   "First upstream problem slot is: {}"\
                                   "".format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
                     self.logger.error(slotInfoMsg)
-                    assert False, "Slot isn't ready.  See error log."
+                    assert self.ready(), "Slot isn't ready.  See error log."
                 assert self.meta.shape is not None, \
                     ("Can't ask for slices of this slot yet:"
                      " self.meta.shape is None!"
