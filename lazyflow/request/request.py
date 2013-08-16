@@ -661,6 +661,11 @@ class RequestLock(object):
                 # When it is woken, it owns the _modelLock.
                 current_request._suspend()
 
+                # Now we're back (no longer suspended)
+                # Was the current request cancelled while it was waiting for the lock?
+                if current_request.cancelled:
+                    raise Request.CancellationException()
+
             # Guaranteed to own _modelLock now (see release()).
             return True
         
