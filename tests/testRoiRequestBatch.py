@@ -8,11 +8,7 @@ from lazyflow.operators import OpArrayPiper
 from lazyflow.utility import RoiRequestBatch
 
 import logging
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
-
-logger.setLevel(logging.INFO)
-#logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("tests.testRoiRequestBatch")
 
 class TestRoiRequestBatch(object):
     
@@ -61,6 +57,10 @@ class TestRoiRequestBatch(object):
         logger.debug( "FINISHED" )
 
 if __name__ == "__main__":
+    # Run this file independently to see debug output.
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
     import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
