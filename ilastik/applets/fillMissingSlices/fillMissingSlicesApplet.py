@@ -5,17 +5,19 @@ from fillMissingSlicesSerializer import FillMissingSlicesSerializer
 
 from lazyflow.operatorWrapper import OperatorWrapper
 
-class FillMissingSlicesApplet( StandardApplet ):
+
+class FillMissingSlicesApplet(StandardApplet):
     """
     TODO: write some documentation
     """
-    def __init__( self, workflow, guiName, projectFileGroupName, detectionMethod):
+    def __init__(self, workflow, guiName, projFileGroupName, detectionMethod):
         super(FillMissingSlicesApplet, self).__init__(guiName, workflow)
         self._operator = self.topLevelOperator
         self._operator.DetectionMethod.setValue(detectionMethod)
-        self._serializableItems = [FillMissingSlicesSerializer("FillMissingSlices", self._operator)]
-        
-    
+        self._serializableItems = \
+            [FillMissingSlicesSerializer("FillMissingSlices", self._operator)]
+        return
+
     @property
     def singleLaneOperatorClass(self):
         return OpFillMissingSlices
@@ -23,13 +25,11 @@ class FillMissingSlicesApplet( StandardApplet ):
     @property
     def broadcastingSlots(self):
         return ["DetectionMethod", "OverloadDetector", "PatchSize", "HaloSize"]
-    
-    
+
     @property
     def singleLaneGuiClass(self):
         from fillMissingSlicesGui import FillMissingSlicesGui
         return FillMissingSlicesGui
-    
 
     @property
     def dataSerializers(self):
