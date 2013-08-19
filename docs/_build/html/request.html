@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +13,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -637,7 +635,6 @@ encountered if newer requests were to &#8220;cut in line&#8221; in front of olde
 <li><tt class="docutils literal"><span class="pre">Request.getResult()</span></tt> (now replaced with <tt class="docutils literal"><span class="pre">Request.result</span></tt>)</li>
 <li><tt class="docutils literal"><span class="pre">Request.writeInto()</span></tt> (This member is specific to the Lazyflow Graph Framework.  It will soon be implemented there, in a special subclass of <tt class="docutils literal"><span class="pre">Request</span></tt>.)</li>
 </ul>
-<p>Additionally, the old and new implementations of the old API can be quickly switched without even checking out a new branch in git.  Just edit lazyflow/request/__init__.py.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Backwards-compatibility support will be removed soon.
@@ -719,8 +716,24 @@ No request will be cancelled if other non-cancelled requests are waiting for its
 
 <dl class="method">
 <dt id="lazyflow.request.Request.clean">
-<tt class="descclassname">Request.</tt><tt class="descname">clean</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.clean" title="Permalink to this definition">¶</a></dt>
-<dd><p>Delete all state from the request, for cleanup purposes.  Removes references to callbacks, children, and the result.</p>
+<tt class="descclassname">Request.</tt><tt class="descname">clean</tt><big>(</big><em>_fullClean=True</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.clean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all state from the request, for cleanup purposes.
+Removes references to callbacks, children, and the result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>_fullClean</strong> &#8211; Internal use only.  If False, only clean internal bookkeeping members.
+Otherwise, delete everything, including the result.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="lazyflow.request.Request.current_request_is_cancelled">
+<em class="property">classmethod </em><tt class="descclassname">Request.</tt><tt class="descname">current_request_is_cancelled</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.current_request_is_cancelled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if called from within the context of a cancelled request.</p>
 </dd></dl>
 
 <dl class="method">
@@ -747,10 +760,12 @@ If we&#8217;re already failed, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception, exception_info)</td>
 </tr>
 </tbody>
 </table>
+<p>exception_info is a tuple of (type, value, traceback). see python documentation on sys.exc_info() for
+more documentation.</p>
 </dd></dl>
 
 <dl class="method">
@@ -766,6 +781,23 @@ If we&#8217;re already finished, call it now.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="lazyflow.request.Request.raise_if_cancelled">
+<em class="property">classmethod </em><tt class="descclassname">Request.</tt><tt class="descname">raise_if_cancelled</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.Request.raise_if_cancelled" title="Permalink to this definition">¶</a></dt>
+<dd><p>If called from the context of a cancelled request, raise a CancellationException immediately.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="lazyflow.request.Request.reset_thread_pool">
+<em class="property">classmethod </em><tt class="descclassname">Request.</tt><tt class="descname">reset_thread_pool</tt><big>(</big><em>num_workers=24</em><big>)</big><a class="headerlink" href="#lazyflow.request.Request.reset_thread_pool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change the number of threads allocated to the request system.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is only valid to call this during startup.
+Any existing requests will be dropped from the pool.</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -1046,7 +1078,7 @@ If it has no assigned worker yet, assign it to the first worker that becomes ava
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
     </div>
   </body>
 </html>

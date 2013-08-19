@@ -1,7 +1,4 @@
 
-
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -17,7 +14,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -96,6 +93,10 @@
   </dt>
 
         
+  <dt><a href="utilities.html#lazyflow.utility.bigRequestStreamer.BigRequestStreamer.__init__">(lazyflow.utility.bigRequestStreamer.BigRequestStreamer method)</a>
+  </dt>
+
+        
   <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.__init__">(lazyflow.utility.fileLock.FileLock method)</a>
   </dt>
 
@@ -113,6 +114,10 @@
 
         
   <dt><a href="utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.__init__">(lazyflow.utility.jsonConfig.JsonConfigParser method)</a>
+  </dt>
+
+        
+  <dt><a href="utilities.html#lazyflow.utility.roiRequestBatch.RoiRequestBatch.__init__">(lazyflow.utility.roiRequestBatch.RoiRequestBatch method)</a>
   </dt>
 
       </dl></dd>
@@ -153,15 +158,19 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="request.html#lazyflow.request.Request.block">block() (lazyflow.request.Request method)</a>
+  <dt><a href="utilities.html#lazyflow.utility.bigRequestStreamer.BigRequestStreamer">BigRequestStreamer (class in lazyflow.utility.bigRequestStreamer)</a>
   </dt>
 
       
-  <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset">BlockwiseFileset (class in lazyflow.utility.io)</a>
+  <dt><a href="request.html#lazyflow.request.Request.block">block() (lazyflow.request.Request method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset">BlockwiseFileset (class in lazyflow.utility.io)</a>
+  </dt>
+
       
   <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.BlockNotReadyError">BlockwiseFileset.BlockNotReadyError</a>
   </dt>
@@ -196,6 +205,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.close">close() (lazyflow.utility.io.BlockwiseFileset method)</a>
+  </dt>
+
+      
+  <dt><a href="request.html#lazyflow.request.Request.current_request_is_cancelled">current_request_is_cancelled() (lazyflow.request.Request class method)</a>
   </dt>
 
   </dl></td>
@@ -239,6 +252,26 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="utilities.html#lazyflow.utility.bigRequestStreamer.BigRequestStreamer.execute">execute() (lazyflow.utility.bigRequestStreamer.BigRequestStreamer method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="utilities.html#lazyflow.utility.roiRequestBatch.RoiRequestBatch.execute">(lazyflow.utility.roiRequestBatch.RoiRequestBatch method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.exportRoiToHdf5">exportRoiToHdf5() (lazyflow.utility.io.BlockwiseFileset method)</a>
+  </dt>
+
+      
+  <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.exportSubset">exportSubset() (lazyflow.utility.io.BlockwiseFileset method)</a>
+  </dt>
+
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
   <dt><a href="utilities.html#lazyflow.utility.PathComponents.extension">extension (lazyflow.utility.PathComponents attribute)</a>
   </dt>
 
@@ -246,8 +279,6 @@
   <dt><a href="utilities.html#lazyflow.utility.PathComponents.externalDirectory">externalDirectory (lazyflow.utility.PathComponents attribute)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="utilities.html#lazyflow.utility.PathComponents.externalPath">externalPath (lazyflow.utility.PathComponents attribute)</a>
   </dt>
@@ -326,6 +357,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="utilities.html#lazyflow.utility.PathComponents.internalPath">internalPath (lazyflow.utility.PathComponents attribute)</a>
+  </dt>
+
+      
+  <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.isBlockLocked">isBlockLocked() (lazyflow.utility.io.BlockwiseFileset method)</a>
   </dt>
 
   </dl></td>
@@ -419,6 +454,16 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="utilities.html#lazyflow.utility.bigRequestStreamer.BigRequestStreamer.progressSignal">progressSignal (lazyflow.utility.bigRequestStreamer.BigRequestStreamer attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="utilities.html#lazyflow.utility.roiRequestBatch.RoiRequestBatch.progressSignal">(lazyflow.utility.roiRequestBatch.RoiRequestBatch attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="utilities.html#lazyflow.utility.fileLock.FileLock.purge">purge() (lazyflow.utility.fileLock.FileLock method)</a>
   </dt>
 
@@ -432,6 +477,10 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="request.html#lazyflow.request.Request.raise_if_cancelled">raise_if_cancelled() (lazyflow.request.Request class method)</a>
+  </dt>
+
       
   <dt><a href="utilities.html#lazyflow.utility.io.BlockwiseFileset.readData">readData() (lazyflow.utility.io.BlockwiseFileset method)</a>
   </dt>
@@ -482,12 +531,12 @@
   <dt><a href="request.html#lazyflow.request.Request.CircularWaitException">Request.CircularWaitException</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="request.html#lazyflow.request.Request.InvalidRequestException">Request.InvalidRequestException</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="request.html#lazyflow.request.Request.TimeoutException">Request.TimeoutException</a>
   </dt>
@@ -505,11 +554,29 @@
   </dt>
 
       
+  <dt><a href="request.html#lazyflow.request.Request.reset_thread_pool">reset_thread_pool() (lazyflow.request.Request class method)</a>
+  </dt>
+
+      
   <dt><a href="utilities.html#lazyflow.utility.io.RESTfulBlockwiseFileset">RESTfulBlockwiseFileset (class in lazyflow.utility.io)</a>
   </dt>
 
       
   <dt><a href="utilities.html#lazyflow.utility.io.RESTfulVolume">RESTfulVolume (class in lazyflow.utility.io)</a>
+  </dt>
+
+      
+  <dt><a href="utilities.html#lazyflow.utility.bigRequestStreamer.BigRequestStreamer.resultSignal">resultSignal (lazyflow.utility.bigRequestStreamer.BigRequestStreamer attribute)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="utilities.html#lazyflow.utility.roiRequestBatch.RoiRequestBatch.resultSignal">(lazyflow.utility.roiRequestBatch.RoiRequestBatch attribute)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="utilities.html#lazyflow.utility.roiRequestBatch.RoiRequestBatch">RoiRequestBatch (class in lazyflow.utility.roiRequestBatch)</a>
   </dt>
 
   </dl></td>
@@ -670,7 +737,7 @@
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
     </div>
   </body>
 </html>
