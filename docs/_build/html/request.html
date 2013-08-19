@@ -73,7 +73,7 @@
 <li><a class="reference internal" href="#callback-timing-guarantee" id="id13">Callback Timing Guarantee</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#requestlock-objects" id="id14">RequestLock Objects</a></li>
+<li><a class="reference internal" href="#synchronization-primitives" id="id14">Synchronization Primitives</a></li>
 <li><a class="reference internal" href="#implementation-details" id="id15">Implementation Details</a><ul>
 <li><a class="reference internal" href="#threadpool" id="id16">ThreadPool</a></li>
 <li><a class="reference internal" href="#thread-context-consistency-guarantee" id="id17">Thread Context Consistency Guarantee</a></li>
@@ -87,8 +87,9 @@
 <li><a class="reference internal" href="#class-reference" id="id23">Class Reference</a><ul>
 <li><a class="reference internal" href="#request" id="id24">Request</a></li>
 <li><a class="reference internal" href="#requestlock" id="id25">RequestLock</a></li>
-<li><a class="reference internal" href="#requestpool" id="id26">RequestPool</a></li>
-<li><a class="reference internal" href="#id3" id="id27">ThreadPool</a></li>
+<li><a class="reference internal" href="#simplerequestcondition" id="id26">SimpleRequestCondition</a></li>
+<li><a class="reference internal" href="#requestpool" id="id27">RequestPool</a></li>
+<li><a class="reference internal" href="#id3" id="id28">ThreadPool</a></li>
 </ul>
 </li>
 </ul>
@@ -414,17 +415,21 @@ but the timing of the notification is <strong>not</strong> guaranteed to be befo
 </ul>
 </div>
 </div>
-<div class="section" id="requestlock-objects">
-<h2><a class="toc-backref" href="#id14">RequestLock Objects</a><a class="headerlink" href="#requestlock-objects" title="Permalink to this headline">¶</a></h2>
-<p>&#8220;Simultaneous&#8221; requests share the same pool of OS threads.
-The usual <tt class="docutils literal"><span class="pre">Lock</span></tt> and <tt class="docutils literal"><span class="pre">RLock</span></tt> objects from the python standard threading module will <strong>not</strong> function as intended within the context of a Request.**
-The Request Framework provides an alternative lock, which <strong>can</strong> be used within a Request.  The <tt class="docutils literal"><span class="pre">request.RequestLock</span></tt> class has the same API as
-<tt class="docutils literal"><span class="pre">threading.Lock</span></tt>, and can be used as a drop-in replacement.  See the <tt class="docutils literal"><span class="pre">RequestLock</span></tt> documentation for further details.</p>
+<div class="section" id="synchronization-primitives">
+<h2><a class="toc-backref" href="#id14">Synchronization Primitives</a><a class="headerlink" href="#synchronization-primitives" title="Permalink to this headline">¶</a></h2>
+<p>Concurrent requests share the same pool of OS threads.
+The usual <tt class="docutils literal"><span class="pre">Lock</span></tt> and <tt class="docutils literal"><span class="pre">RLock</span></tt> objects from the python standard <tt class="docutils literal"><span class="pre">threading</span></tt> module
+will <strong>not</strong> function as intended within the context of a Request.**
+The Request Framework provides an alternative lock, which <strong>can</strong> be used within a Request.
+The <a class="reference internal" href="#lazyflow.request.RequestLock" title="lazyflow.request.RequestLock"><tt class="xref py py-class docutils literal"><span class="pre">RequestLock</span></tt></a> class has the same API as
+<tt class="docutils literal"><span class="pre">threading.Lock</span></tt>, and can be used as a drop-in replacement.
+See the <a class="reference internal" href="#lazyflow.request.RequestLock" title="lazyflow.request.RequestLock"><tt class="xref py py-class docutils literal"><span class="pre">RequestLock</span></tt></a> documentation for further details.
+Also see the <a class="reference internal" href="#lazyflow.request.SimpleRequestCondition" title="lazyflow.request.SimpleRequestCondition"><tt class="xref py py-class docutils literal"><span class="pre">SimpleRequestCondition</span></tt></a> documentation for a <tt class="docutils literal"><span class="pre">threading.Condition</span></tt>-like class.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">**Actually, <tt class="docutils literal"><span class="pre">threading.Lock</span></tt> <em>can</em> be used within a Request if used carefully.
+<p class="last">**Actually, <tt class="docutils literal"><span class="pre">threading.Lock</span></tt> <em>can</em> be used within a Request if used very carefully.
 As long as <tt class="docutils literal"><span class="pre">wait()</span></tt> is not called while the lock is held, there is no increased risk of deadlock or unexpected race conditions.
-The <tt class="docutils literal"><span class="pre">ResultLock</span></tt> class relieves the developer of this constraint.</p>
+The <tt class="docutils literal"><span class="pre">ResultLock</span></tt> class relieves the developer of this constraint, so it should be favored over <tt class="docutils literal"><span class="pre">threading.Lock</span></tt>.</p>
 </div>
 </div>
 <div class="section" id="implementation-details">
@@ -760,12 +765,12 @@ If we&#8217;re already failed, call it now.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: fn(exception, exception_info)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; The callback to call if the request fails.  Signature: <tt class="docutils literal"><span class="pre">fn(exception,</span> <span class="pre">exception_info)</span></tt>
+exception_info is a tuple of (type, value, traceback). See Python documentation on
+<tt class="docutils literal"><span class="pre">sys.exc_info()</span></tt> for more documentation.</td>
 </tr>
 </tbody>
 </table>
-<p>exception_info is a tuple of (type, value, traceback). see python documentation on sys.exc_info() for
-more documentation.</p>
 </dd></dl>
 
 <dl class="method">
@@ -868,8 +873,91 @@ If <cite>blocking</cite> is False, don&#8217;t wait and return False if the lock
 </dd></dl>
 
 </div>
+<div class="section" id="simplerequestcondition">
+<h3><a class="toc-backref" href="#id26">SimpleRequestCondition</a><a class="headerlink" href="#simplerequestcondition" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="lazyflow.request.SimpleRequestCondition">
+<em class="property">class </em><tt class="descclassname">lazyflow.request.</tt><tt class="descname">SimpleRequestCondition</tt><a class="headerlink" href="#lazyflow.request.SimpleRequestCondition" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <tt class="docutils literal"><span class="pre">Request</span></tt>-compatible condition variable that supports a limited
+subset of the features implemented by the standard <tt class="docutils literal"><span class="pre">threading.Condition</span></tt>.</p>
+<p><strong>Limitations:</strong></p>
+<ul class="simple">
+<li>Only one request may call <a class="reference internal" href="#lazyflow.request.SimpleRequestCondition.wait" title="lazyflow.request.SimpleRequestCondition.wait"><tt class="xref py py-meth docutils literal"><span class="pre">wait()</span></tt></a> at a time.</li>
+<li>Likewise, <a class="reference internal" href="#lazyflow.request.SimpleRequestCondition.notify" title="lazyflow.request.SimpleRequestCondition.notify"><tt class="xref py py-meth docutils literal"><span class="pre">notify()</span></tt></a> doesn&#8217;t accept the <tt class="docutils literal"><span class="pre">n</span></tt> arg.</li>
+<li>Likewise, there is no <tt class="docutils literal"><span class="pre">notify_all()</span></tt> method.</li>
+<li><a class="reference internal" href="#lazyflow.request.SimpleRequestCondition.wait" title="lazyflow.request.SimpleRequestCondition.wait"><tt class="xref py py-meth docutils literal"><span class="pre">wait()</span></tt></a> doesn&#8217;t support the <tt class="docutils literal"><span class="pre">timeout</span></tt> arg.</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It would be nice if we could simply use <tt class="docutils literal"><span class="pre">threading.Condition(</span> <span class="pre">RequestLock()</span> <span class="pre">)</span></tt> instead of rolling 
+our own custom condition variable class, but that doesn&#8217;t quite work in cases where we need to call 
+<tt class="docutils literal"><span class="pre">wait()</span></tt> from a worker thread (a non-foreign thread).
+(<tt class="docutils literal"><span class="pre">threading.Condition</span></tt> uses <tt class="docutils literal"><span class="pre">threading.Lock()</span></tt> as it&#8217;s &#8216;waiter&#8217; lock, which blocks the entire worker.)</p>
+</div>
+<p><strong>Example:</strong></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">cond</span> <span class="o">=</span> <span class="n">SimpleRequestCondition</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">process_all_data</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">cond</span><span class="p">:</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">all_finished</span><span class="p">:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">is_data_chunk_ready</span><span class="p">():</span>
+                <span class="n">cond</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">all_finished</span> <span class="o">=</span> <span class="n">process_available_data</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">retrieve_some_data</span><span class="p">():</span>
+    <span class="n">get_some_data</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">cond</span><span class="p">:</span>
+        <span class="n">cond</span><span class="o">.</span><span class="n">notify</span><span class="p">()</span>
+
+<span class="n">req1</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">retrieve_some_data</span> <span class="p">)</span>
+<span class="n">req2</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">retrieve_some_data</span> <span class="p">)</span>
+<span class="n">req3</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span> <span class="n">retrieve_some_data</span> <span class="p">)</span>
+
+<span class="n">req1</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+<span class="n">req2</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+<span class="n">req3</span><span class="o">.</span><span class="n">submit</span><span class="p">()</span>
+
+<span class="c"># Wait for them all to finish...</span>
+<span class="n">process_all_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="lazyflow.request.SimpleRequestCondition.notify">
+<tt class="descname">notify</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.SimpleRequestCondition.notify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Notify the condition that it can stop <tt class="docutils literal"><span class="pre">wait()</span></tt>-ing.
+The called <strong>must</strong> own (acquire) the condition before calling this method.
+Also, the waiting request cannot return from <tt class="docutils literal"><span class="pre">wait()</span></tt> until the condition is released, 
+so the caller should generally release the condition shortly after calling this method.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is okay to call this from more than one request in parallel.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="lazyflow.request.SimpleRequestCondition.wait">
+<tt class="descname">wait</tt><big>(</big><big>)</big><a class="headerlink" href="#lazyflow.request.SimpleRequestCondition.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for another request to call py:meth:<tt class="docutils literal"><span class="pre">notify()</span></tt>.  
+The caller <strong>must</strong> own (acquire) the condition before calling this method.
+The condition is automatically <tt class="docutils literal"><span class="pre">released()</span></tt> while this method waits for 
+<tt class="docutils literal"><span class="pre">notify()</span></tt> to be called, and automatically <tt class="docutils literal"><span class="pre">acquired()</span></tt> again before returning.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Unlike <tt class="docutils literal"><span class="pre">threading.Condition</span></tt>, it is <strong>NOT</strong> valid to call <tt class="docutils literal"><span class="pre">wait()</span></tt> 
+from multiple requests in parallel.  That is, this class supports only 
+one &#8216;consumer&#8217; thread.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Unlike <tt class="docutils literal"><span class="pre">threading.Condition</span></tt>, no <tt class="docutils literal"><span class="pre">timeout</span></tt> parameter is accepted here.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
 <div class="section" id="requestpool">
-<h3><a class="toc-backref" href="#id26">RequestPool</a><a class="headerlink" href="#requestpool" title="Permalink to this headline">¶</a></h3>
+<h3><a class="toc-backref" href="#id27">RequestPool</a><a class="headerlink" href="#requestpool" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.request.RequestPool">
 <em class="property">class </em><tt class="descclassname">lazyflow.request.</tt><tt class="descname">RequestPool</tt><a class="headerlink" href="#lazyflow.request.RequestPool" title="Permalink to this definition">¶</a></dt>
@@ -922,7 +1010,7 @@ Not threadsafe (don&#8217;t add requests from more than one thread).</p>
 
 </div>
 <div class="section" id="id3">
-<h3><a class="toc-backref" href="#id27">ThreadPool</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<h3><a class="toc-backref" href="#id28">ThreadPool</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.request.threadPool.ThreadPool">
 <em class="property">class </em><tt class="descclassname">lazyflow.request.threadPool.</tt><tt class="descname">ThreadPool</tt><big>(</big><em>num_workers</em>, <em>queue_type=&lt;class 'lazyflow.request.threadPool.PriorityQueue'&gt;</em><big>)</big><a class="reference internal" href="_modules/lazyflow/request/threadPool.html#ThreadPool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#lazyflow.request.threadPool.ThreadPool" title="Permalink to this definition">¶</a></dt>
@@ -1008,7 +1096,7 @@ If it has no assigned worker yet, assign it to the first worker that becomes ava
 <li><a class="reference internal" href="#callback-timing-guarantee">Callback Timing Guarantee</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#requestlock-objects">RequestLock Objects</a></li>
+<li><a class="reference internal" href="#synchronization-primitives">Synchronization Primitives</a></li>
 <li><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
 <li><a class="reference internal" href="#threadpool">ThreadPool</a></li>
 <li><a class="reference internal" href="#thread-context-consistency-guarantee">Thread Context Consistency Guarantee</a></li>
@@ -1022,6 +1110,7 @@ If it has no assigned worker yet, assign it to the first worker that becomes ava
 <li><a class="reference internal" href="#class-reference">Class Reference</a><ul>
 <li><a class="reference internal" href="#request">Request</a></li>
 <li><a class="reference internal" href="#requestlock">RequestLock</a></li>
+<li><a class="reference internal" href="#simplerequestcondition">SimpleRequestCondition</a></li>
 <li><a class="reference internal" href="#requestpool">RequestPool</a></li>
 <li><a class="reference internal" href="#id3">ThreadPool</a></li>
 </ul>

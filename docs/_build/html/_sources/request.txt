@@ -1,6 +1,8 @@
 
 .. _request-framework:
 
+.. currentmodule:: lazyflow.request
+
 ==========================
 Lazyflow Request Framework
 ==========================
@@ -368,17 +370,21 @@ Answer:
 - Callbacks that are subscribed *after* you call ``Request.wait()`` will eventually be called, 
   but the timing of the notification is **not** guaranteed to be before ``Request.wait()`` returns.
 
-RequestLock Objects
-===================
+Synchronization Primitives
+==========================
 
-"Simultaneous" requests share the same pool of OS threads.
-The usual ``Lock`` and ``RLock`` objects from the python standard threading module will **not** function as intended within the context of a Request.\*\*
-The Request Framework provides an alternative lock, which **can** be used within a Request.  The ``request.RequestLock`` class has the same API as 
-``threading.Lock``, and can be used as a drop-in replacement.  See the ``RequestLock`` documentation for further details.
+Concurrent requests share the same pool of OS threads.
+The usual ``Lock`` and ``RLock`` objects from the python standard ``threading`` module 
+will **not** function as intended within the context of a Request.\*\*
+The Request Framework provides an alternative lock, which **can** be used within a Request.  
+The :py:class:`RequestLock` class has the same API as 
+``threading.Lock``, and can be used as a drop-in replacement.
+See the :py:class:`RequestLock` documentation for further details.
+Also see the :py:class:`SimpleRequestCondition` documentation for a ``threading.Condition``-like class.
 
-.. note:: \*\*Actually, ``threading.Lock`` *can* be used within a Request if used carefully.
+.. note:: \*\*Actually, ``threading.Lock`` *can* be used within a Request if used very carefully.
           As long as ``wait()`` is not called while the lock is held, there is no increased risk of deadlock or unexpected race conditions.
-          The ``ResultLock`` class relieves the developer of this constraint.
+          The ``ResultLock`` class relieves the developer of this constraint, so it should be favored over ``threading.Lock``.
 
 Implementation Details
 ======================
@@ -681,6 +687,12 @@ RequestLock
 -----------
 
 .. autoclass:: RequestLock
+   :members:
+    
+SimpleRequestCondition
+-----------
+
+.. autoclass:: SimpleRequestCondition
    :members:
     
 RequestPool
