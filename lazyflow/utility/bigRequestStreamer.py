@@ -52,8 +52,6 @@ class BigRequestStreamer(object):
     >>> # Execute the batch of requests, and block for the result.
     >>> streamer.execute()
     Progress: 0 16 33 50 66 83 100 100 
-    >>> sys.stdout.write( "\\n" )
-    <BLANKLINE>
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 6 result blocks with a total sum of: 68400
     """

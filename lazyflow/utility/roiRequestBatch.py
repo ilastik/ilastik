@@ -61,8 +61,6 @@ class RoiRequestBatch( object ):
     >>> # Execute the batch of requests, and block for the result.
     >>> batch_requester.execute()
     Progress: 0 20 40 60 80 100 100 
-    >>> sys.stdout.write( "\\n" )
-    <BLANKLINE>
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 5 result blocks with a total sum of: 14500
     """
