@@ -62,6 +62,42 @@ Some lazyflow components rely on a special JSON config file format.  The `JsonCo
 
 .. autoclass:: Namespace
 
+
+Request Batching Utilities
+==========================
+
+These utilities provide convenient mechanisms for issuing a set of requests with 
+controlled (specifically limited) parallelism and handling the result of each 
+request in a serial callback.
+
+
+BigRequestStreamer
+------------------
+
+.. currentmodule:: lazyflow.utility.bigRequestStreamer
+
+Use the :py:class:`BigRequestStreamer` if you want to retrieve a single large chunk of 
+output data, but you want that big request broken up into many smaller blocks.
+
+
+.. autoclass:: BigRequestStreamer
+    :members:
+    
+     .. automethod:: __init__
+
+RoiRequestBatch
+---------------
+
+.. currentmodule:: lazyflow.utility.roiRequestBatch
+
+If you have an image-like slot and a set of rois you're interested in retrieving, 
+use :py:class:`RoiRequestBatch` to request the whole set with a custom level of parallelism.
+
+.. autoclass:: RoiRequestBatch
+    :members:
+    
+     .. automethod:: __init__
+
 IO Utilities
 ============
 

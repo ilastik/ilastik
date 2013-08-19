@@ -12,6 +12,59 @@ class RoiRequestBatch( object ):
     A simple utility for requesting a list of rois from an output slot.
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
     The result of each requested roi is provided as a signal, which the user should subscribe() to.
+
+    Example usage:
+    
+    >>> import sys
+    >>> import vigra
+    >>> from lazyflow.graph import Graph
+    >>> from lazyflow.operators.operators import OpArrayCache
+
+    >>> # Example data
+    >>> data = numpy.indices( (100,100) ).sum(0)
+    >>> data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
+
+    >>> op = OpArrayCache( graph=Graph() )
+    >>> op.Input.setValue( data )
+
+    >>> # Create a list of rois to iterate through.
+    >>> # Typically you'll want to automate this
+    >>> #  with e.g. lazyflow.roi.getIntersectingBlocks
+    >>> rois = []
+    >>> rois.append( ( (0, 0), (10,10) ) )
+    >>> rois.append( ( (0,10), (10,20) ) )
+    >>> rois.append( ( (0,20), (10,30) ) )
+    >>> rois.append( ( (0,30), (10,40) ) )
+    >>> rois.append( ( (0,40), (10,50) ) )
+
+    >>> # Init with our output slot and list of rois to request.
+    >>> # `batchSize` indicates the number of requests to spawn in parallel.
+    >>> # Provide `totalVolume` if you want progress reporting.
+    >>> batch_requester = RoiRequestBatch( op.Output, iter(rois), totalVolume=500, batchSize=2 )
+
+    >>> # Use a callback to handle sub-results one at a time.
+    >>> result_count = [0]
+    >>> result_total_sum = [0]
+    >>> def handle_block_result(roi, result):
+    ...     # No need for locking here.
+    ...     result_count[0] += 1
+    ...     result_total_sum[0] += result.sum()
+    >>> batch_requester.resultSignal.subscribe( handle_block_result )
+
+    >>> # Optional: Subscribe to progress updates
+    >>> def handle_progress(progress):
+    ...     if progress == 0:
+    ...         sys.stdout.write("Progress: ")
+    ...     sys.stdout.write( "{} ".format( progress ) )
+    >>> batch_requester.progressSignal.subscribe( handle_progress )
+
+    >>> # Execute the batch of requests, and block for the result.
+    >>> batch_requester.execute()
+    Progress: 0 20 40 60 80 100 100 
+    >>> sys.stdout.write( "\\n" )
+    <BLANKLINE>
+    >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
+    Processed 5 result blocks with a total sum of: 14500
     """
     def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=2 ):
         """
@@ -24,11 +77,8 @@ class RoiRequestBatch( object ):
                             If not provided, then no intermediate progress will be signaled.
         :param batchSize: The maximum number of requests to launch in parallel.
         """
-        #: Results signal. Signature: ``f(roi, result)``.
-        #: Guaranteed not to be called from multiple threads in parallel.
-        self.resultSignal = OrderedSignal()
-        #: Progress Signal Signature: ``f(progress_percent)``
-        self.progressSignal = OrderedSignal()
+        self._resultSignal = OrderedSignal()
+        self._progressSignal = OrderedSignal()
 
         assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), \
             "Only Array-like slots supported." # Because progress reporting depends on the roi shape
@@ -46,8 +96,32 @@ class RoiRequestBatch( object ):
         # Progress bookkeeping
         self._totalVolume = totalVolume
         self._processedVolume = 0
-        
+    
+    @property
+    def resultSignal(self):
+        """
+        Results signal. Signature: ``f(roi, result)``.
+        Guaranteed not to be called from multiple threads in parallel.
+        """
+        return self._resultSignal
+    
+    @property
+    def progressSignal(self):
+        """
+        Progress Signal Signature: ``f(progress_percent)``
+        """
+        return self._progressSignal
+    
     def execute(self):
+        """
+        Execute the batch of requests and wait for all of them to complete.
+        A batch of N requests is launched, and subsequent requests are 
+        launched one-by-one as the earlier requests complete.  Thus, there 
+        will be N requests executing in parallel at all times.
+
+        This method returns ``None``.  All results must be handled via the 
+        :py:obj:`resultSignal`.
+        """
         self.progressSignal( 0 )
 
         with self._condition:
@@ -100,9 +174,13 @@ class RoiRequestBatch( object ):
             
             # Report progress (if possible)
             if self._totalVolume is not None:
-                self._processedVolume += numpy.prod( roi[1] - roi[0] )
+                self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
                 progress = 100 * self._processedVolume / self._totalVolume
                 self.progressSignal( progress )
 
             self._completed_count += 1
             self._condition.notify()
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
