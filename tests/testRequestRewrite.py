@@ -1,4 +1,4 @@
-from lazyflow.request.request import Request, RequestLock
+from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
 import time
 import random
 import nose
@@ -541,36 +541,52 @@ class TestRequest(object):
 
         assert l == list(range(100)), "Requests and/or threads finished in the wrong order!"
 
-    def testRequestLockWithCondition(self):
+    def testSimpleRequestCondition(self):
         """
-        RequestLock can be used with threading.Condition to create a request-aware condition variable!
-        This test demonstrates it.
+        Test the SimpleRequestCondition, which is like threading.Condition, but with a subset of the functionality.
+        (See the docs for details.)
         """
-        N_ELEMENTS = 100
-        cond = threading.Condition( RequestLock() )
+        Request.reset_thread_pool(num_workers=1)
+        N_ELEMENTS = 10
+
+        # It's tempting to simply use threading.Condition here,
+        #  but that doesn't quite work if the thread calling wait() is also a worker thread.
+        # (threading.Condition uses threading.Lock() as it's 'waiter' lock, which blocks the entire worker.)
+        # cond = threading.Condition( RequestLock() )
+        cond = SimpleRequestCondition()
         
         produced = []
-        def f(i):
-            time.sleep(0.1*random.random())
-            with cond:
-                produced.append(i)
-                cond.notify()
-        
-        reqs = []
-        for i in range(N_ELEMENTS):
-            req = Request( partial(f, i) )
-            reqs.append( req )
-
-        for req in reqs:
-            req.submit()
-         
         consumed = []
-        with cond:
-            while len(consumed) < N_ELEMENTS:
-                while len(consumed) == len(produced):
-                    cond.wait()
-                logger.debug( "copying {} elements".format( len(produced) - len(consumed) ) )
-                consumed += produced[len(consumed):]
+        def wait_for_all():
+            def f(i):
+                time.sleep(0.2*random.random())
+                with cond:
+                    produced.append(i)
+                    cond.notify()
+            
+            reqs = []
+            for i in range(N_ELEMENTS):
+                req = Request( partial(f, i) )
+                reqs.append( req )
+    
+            for req in reqs:
+                req.submit()
+
+            _consumed = consumed
+            with cond:
+                while len(_consumed) < N_ELEMENTS:
+                    while len(_consumed) == len(produced):
+                        cond.wait()
+                    logger.debug( "copying {} elements".format( len(produced) - len(consumed) ) )
+                    _consumed += produced[len(_consumed):]
+
+        # Force the request to run in a worker thread.
+        # This should catch failures that can occur if the Condition's "waiter" lock isn't a request lock.
+        req = Request( wait_for_all )
+        req.submit()
+        
+        # Now block for completion
+        req.wait()
 
         logger.debug( "produced: {}".format(produced) )
         logger.debug( "consumed: {}".format(consumed) )

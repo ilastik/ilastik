@@ -507,9 +507,9 @@ class Request( object ):
         Register a callback function to be called when this request is finished due to failure (an exception was raised).
         If we're already failed, call it now.
 
-        :param fn: The callback to call if the request fails.  Signature: fn(exception, exception_info)
-        exception_info is a tuple of (type, value, traceback). see python documentation on sys.exc_info() for
-        more documentation.
+        :param fn: The callback to call if the request fails.  Signature: ``fn(exception, exception_info)``
+                   exception_info is a tuple of (type, value, traceback). See Python documentation on
+                   ``sys.exc_info()`` for more documentation.
         """
         assert not self._cleaned, "This request has been cleaned() already."
         with self._lock:
@@ -717,6 +717,115 @@ class RequestLock(object):
     
     def __exit__(self, *args):
         self.release()
+
+class SimpleRequestCondition(object):
+    """
+    A ``Request``-compatible condition variable that supports a limited
+    subset of the features implemented by the standard ``threading.Condition``.
+
+    **Limitations:**
+    
+    - Only one request may call :py:meth:`wait()` at a time.
+    - Likewise, :py:meth:`notify()` doesn't accept the ``n`` arg.
+    - Likewise, there is no ``notify_all()`` method.
+    - :py:meth:`wait()` doesn't support the ``timeout`` arg.
+    
+    .. note:: It would be nice if we could simply use ``threading.Condition( RequestLock() )`` instead of rolling 
+             our own custom condition variable class, but that doesn't quite work in cases where we need to call 
+             ``wait()`` from a worker thread (a non-foreign thread).
+             (``threading.Condition`` uses ``threading.Lock()`` as it's 'waiter' lock, which blocks the entire worker.)
+
+    **Example:**
+    
+    .. code-block:: python
+        
+        cond = SimpleRequestCondition()
+
+        def process_all_data():
+            with cond:
+                while not all_finished:
+                    while not is_data_chunk_ready():
+                        cond.wait()
+                    all_finished = process_available_data()
+
+        def retrieve_some_data():
+            get_some_data()
+            with cond:
+                cond.notify()
+        
+        req1 = Request( retrieve_some_data )
+        req2 = Request( retrieve_some_data )
+        req3 = Request( retrieve_some_data )
+
+        req1.submit()
+        req2.submit()
+        req3.submit()
+
+        # Wait for them all to finish...
+        process_all_data()
+        
+    """
+    def __init__(self):
+        self._ownership_lock = RequestLock()
+        self._waiter_lock = RequestLock()   # Only one "waiter".  
+                                            # Used to block the current request while we wait to be notify()ed.
+    
+        # Export the acquire/release methods of the ownership lock
+        self.acquire = self._ownership_lock.acquire
+        self.release = self._ownership_lock.release
+
+    def __enter__(self):
+        self._ownership_lock.__enter__()
+        
+    def __exit__(self, *args):
+        self._ownership_lock.__exit__(*args)
+
+    def wait(self):
+        """
+        Wait for another request to call py:meth:``notify()``.  
+        The caller **must** own (acquire) the condition before calling this method.
+        The condition is automatically ``released()`` while this method waits for 
+        ``notify()`` to be called, and automatically ``acquired()`` again before returning.
+
+        .. note:: Unlike ``threading.Condition``, it is **NOT** valid to call ``wait()`` 
+                  from multiple requests in parallel.  That is, this class supports only 
+                  one 'consumer' thread.
+
+        .. note:: Unlike ``threading.Condition``, no ``timeout`` parameter is accepted here.
+        """
+        # Should start out in the non-waiting state
+        assert not self._waiter_lock.locked()
+        self._waiter_lock.acquire()
+        
+        # Temporarily release the ownership lock while we wait for someone to release the waiter.
+        self._ownership_lock.release()
+        
+        # Try to acquire the lock AGAIN.
+        # This isn't possible until someone releases it via notify()
+        # (Note that RequestLock does NOT have RLock semantics.)
+        self._waiter_lock.acquire()
+        
+        # Re-acquire
+        self._ownership_lock.acquire()
+
+        # Reset for next wait()
+        # Must check release status here in case someone called notify() in between the previous two lines
+        if self._waiter_lock.locked():
+            self._waiter_lock.release()
+
+    def notify(self):
+        """
+        Notify the condition that it can stop ``wait()``-ing.
+        The called **must** own (acquire) the condition before calling this method.
+        Also, the waiting request cannot return from ``wait()`` until the condition is released, 
+        so the caller should generally release the condition shortly after calling this method.
+        
+        .. note:: It is okay to call this from more than one request in parallel.
+        """
+        # Release the waiter for anyone currently waiting
+        if self._waiter_lock.locked():
+            self._waiter_lock.release()
+
 
 class RequestPool(object):
     """
