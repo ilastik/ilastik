@@ -413,6 +413,7 @@ class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
     def initAppletDrawerUi(self):
         super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
         self._drawer.selectFeaturesButton.setText('Calculate features')
-        self._drawer.label.setText('')
-        self._drawer.featuresSelected.setText('')
+        self._drawer.label.hide()
+        self._drawer.featuresSelected.hide()
+        self._drawer.exportButton.hide()
         
