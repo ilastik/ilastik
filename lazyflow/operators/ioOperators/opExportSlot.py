@@ -126,7 +126,7 @@ class OpExportSlot(Operator):
         output_dtype = self.Input.meta.dtype
 
         # None of the remaining formats support more than 4 channels.
-        if tagged_shape['c'] > 4:
+        if 'c' in tagged_shape and tagged_shape['c'] > 4:
             return False
 
         # HDR format supports float32 only, and must have exactly 3 channels
@@ -151,7 +151,7 @@ class OpExportSlot(Operator):
         non_dualband_formats = ['bmp', 'gif', 'jpg', 'jpeg', 'ras']
         for fmt in non_dualband_formats:
             if fmt in output_format and axes[0] != 'c' and 'c' in tagged_shape:
-                if tagged_shape['c'] != 1 and tagged_shape['c'] != 3:
+                if 'c' in tagged_shape and tagged_shape['c'] != 1 and tagged_shape['c'] != 3:
                     return False
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
