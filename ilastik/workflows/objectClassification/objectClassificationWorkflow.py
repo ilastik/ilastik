@@ -251,8 +251,8 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         data_instructions = 'Use the "Raw Data" tab on the right to load your intensity image(s).'
         
         self.dataSelectionApplet = DataSelectionApplet( self, 
-                                                        "Data Selection", 
-                                                        "DataSelection", 
+                                                        "Input Data", 
+                                                        "Input Data", 
                                                         batchDataGui=False,
                                                         force5d=False, 
                                                         instructionText=data_instructions )
