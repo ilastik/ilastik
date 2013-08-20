@@ -403,7 +403,7 @@ class ManualTrackingGui(LayerViewerGui):
             delLabel[text] = l
             menu.addAction(text)
             
-            if activeTrack != self.misdetIdx:
+            if l != self.misdetIdx:
                 text = "remove label " + str(l) + " from here to end"
                 delSubtrackToEnd[text] = l
                 menu.addAction(text)
