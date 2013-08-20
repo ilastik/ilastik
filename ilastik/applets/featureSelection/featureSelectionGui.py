@@ -1,22 +1,25 @@
-#Python
+# Python
 import os
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
-#SciPy
+# SciPy
 import numpy
 import h5py
-import threading
 
-#PyQt
-from PyQt4.QtGui import *
+# PyQt
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QApplication, QAbstractItemView, QFileDialog, QMessageBox, QCursor
 from PyQt4 import uic
 
-#lazyflow
-from lazyflow.operators import OpSubRegion
+# lazyflow
+from lazyflow.operators.generic import OpSubRegion
 
-#ilastik
+# volumina
+from volumina.utility import PreferencesManager
+
+# ilastik
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
@@ -24,7 +27,6 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import ControlCommand
 from ilastik.config import cfg as ilastik_config
 
-from volumina.utility import PreferencesManager
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -329,11 +331,12 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
-                self.applet.guiControlSignal.emit(ControlCommand.DisableUpstream)
-                self.applet.guiControlSignal.emit(ControlCommand.DisableDownstream)
+                self.applet.guiControlSignal.emit(ControlCommand.DisableAll)
+                QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
+                QApplication.instance().processEvents()
                 opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
                 self.applet.guiControlSignal.emit(ControlCommand.Pop)
-                self.applet.guiControlSignal.emit(ControlCommand.Pop)
+                QApplication.instance().restoreOverrideCursor()
                 self.topLevelOperatorView._setupOutputs()
                 
             else:
