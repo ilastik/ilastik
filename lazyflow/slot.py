@@ -56,6 +56,10 @@ class Slot(object):
     # output and diagramming purposes.
     _global_counter = itertools.count()
 
+
+    class SlotNotReadyError(Exception):
+        pass
+
     @property
     def graph(self):
         return self.operator.graph
@@ -670,7 +674,7 @@ class Slot(object):
                       " It isn't ready."\
                       "First upstream problem slot is: {}"
                 msg = msg.format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
-                assert self.ready(), msg
+                raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
             #  no value and no partner, then something is wrong.
@@ -858,7 +862,7 @@ class Slot(object):
                                   "First upstream problem slot is: {}"\
                                   "".format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
                     self.logger.error(slotInfoMsg)
-                    assert self.ready(), "Slot isn't ready.  See error log."
+                    raise Slot.SlotNotReadyError("Slot isn't ready.  See error log.")
                 assert self.meta.shape is not None, \
                     ("Can't ask for slices of this slot yet:"
                      " self.meta.shape is None!"
