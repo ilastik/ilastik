@@ -5,6 +5,8 @@ from functools import partial
 from PyQt4 import uic
 from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
 
+from lazyflow.graph import Slot
+
 import ilastik.applets.base.applet
 from ilastik.utility import bind, PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
@@ -232,8 +234,14 @@ class DataExportGui(QWidget):
            not self.topLevelOperator.RawDatasetInfo[row].ready():
             return
         
-        nickname = self.topLevelOperator.RawDatasetInfo[row].value.nickname
-        exportPath = self.topLevelOperator.ExportPath[row].value
+        try:
+            nickname = self.topLevelOperator.RawDatasetInfo[row].value.nickname
+            exportPath = self.topLevelOperator.ExportPath[row].value
+        except Slot.SlotNotReadyError:
+            # Sadly, it is possible to get here even though we checked for .ready() immediately beforehand.
+            # That's because the graph has a diamond-shaped DAG of connections, but the graph has no transaction mechanism
+            # (It's therefore possible for RawDatasetInfo[row] to be ready() even though it's upstream partner is NOT ready.
+            return
                 
         self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(nickname) )
         self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( exportPath ) )
