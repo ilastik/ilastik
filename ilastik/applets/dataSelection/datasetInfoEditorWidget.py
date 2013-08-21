@@ -1,6 +1,7 @@
 import os
 import traceback
 import copy
+import collections
 
 import h5py
 import numpy
@@ -54,7 +55,7 @@ class DatasetInfoEditorWidget(QDialog):
         # which we will use to experiment with the user's selections
         # This way, we can read e.g. the image shape without touching the "real"
         # operator until the user hits "OK".
-        self.tempOps = {}
+        self.tempOps = collections.OrderedDict()
         for laneIndex in laneIndexes:
             tmpOp = OpDataSelection(parent=topLevelOperator.parent)
             origOp = self._op.innerOperators[laneIndex]._opDatasets[roleIndex]
@@ -190,7 +191,6 @@ class DatasetInfoEditorWidget(QDialog):
             else:
                 originalInfos[laneIndex] = None
 
-        currentLane = self._laneIndexes[0]
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
@@ -215,10 +215,6 @@ class DatasetInfoEditorWidget(QDialog):
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                 if realSlot is not None:
                     realSlot.setValue( info )
-                if laneIndex == currentLane:
-                    # Only need to revert the lanes we actually changed.
-                    # Everything else wasn't touched
-                    break
 
     def _cleanUpTempOperators(self):
         for laneIndex, op in self.tempOps.items():
@@ -252,7 +248,6 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
-            currentLane = self.tempOps.keys()[0]
             try:
                 for laneIndex, op in self.tempOps.items():
                     info = copy.copy( op.Dataset.value )
@@ -264,10 +259,6 @@ class DatasetInfoEditorWidget(QDialog):
                 # Revert everything back to the previous state
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
-                    if laneIndex == currentLane:
-                        # Only need to revert the lanes we actually changed.
-                        # Everything else wasn't touched
-                        break
                 
                 traceback.print_exc()
                 msg = "Could not set new nickname due to an exception:\n"
@@ -408,7 +399,6 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
-            currentLane = self.tempOps.keys()[0]
             try:
                 for laneIndex, op in self.tempOps.items():
                     info = copy.copy( op.Dataset.value )
@@ -427,10 +417,6 @@ class DatasetInfoEditorWidget(QDialog):
                 # Revert everything back to the previous state
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
-                    if laneIndex == currentLane:
-                        # Only need to revert the lanes we actually changed.
-                        # Everything else wasn't touched
-                        break
                 
                 traceback.print_exc()
                 msg = "Could not apply axis settings due to an exception:\n"
@@ -466,7 +452,6 @@ class DatasetInfoEditorWidget(QDialog):
         for laneIndex, op in self.tempOps.items():
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
 
-        currentLane = self.tempOps.keys()[0]
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
@@ -478,10 +463,6 @@ class DatasetInfoEditorWidget(QDialog):
             # Revert everything back to the previous state
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
-                if laneIndex == currentLane:
-                    # Only need to revert the lanes we actually changed.
-                    # Everything else wasn't touched
-                    break
             
             traceback.print_exc()
             msg = "Could not apply normalization settings due to an exception:\n"
@@ -532,7 +513,6 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
-            currentLane = self.tempOps.keys()[0]
             try:
                 for laneIndex, op in self.tempOps.items():
                     info = copy.copy( op.Dataset.value )
@@ -548,10 +528,6 @@ class DatasetInfoEditorWidget(QDialog):
                 # Revert everything back to the previous state
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
-                    if laneIndex == currentLane:
-                        # Only need to revert the lanes we actually changed.
-                        # Everything else wasn't touched
-                        break
                 
                 traceback.print_exc()
                 msg = "Could not apply data range settings due to an exception:\n"
@@ -666,7 +642,6 @@ class DatasetInfoEditorWidget(QDialog):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
-        currentLane = self.tempOps.keys()[0]
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
@@ -681,10 +656,6 @@ class DatasetInfoEditorWidget(QDialog):
             # Revert everything back to the previous state
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
-                if laneIndex == currentLane:
-                    # Only need to revert the lanes we actually changed.
-                    # Everything else wasn't touched
-                    break
             
             traceback.print_exc()
             msg = "Could not set new internal path settings due to an exception:\n"
@@ -776,7 +747,6 @@ class DatasetInfoEditorWidget(QDialog):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
-        currentLane = self.tempOps.keys()[0]
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
@@ -811,10 +781,6 @@ class DatasetInfoEditorWidget(QDialog):
             # Revert everything back to the previous state
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
-                if laneIndex == currentLane:
-                    # Only need to revert the lanes we actually changed.
-                    # Everything else wasn't touched
-                    break
             
             traceback.print_exc()
             msg = "Could not set new storage location settings due to an exception:\n"
@@ -877,7 +843,6 @@ class DatasetInfoEditorWidget(QDialog):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
-        currentLane = self.tempOps.keys()[0]
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
@@ -896,10 +861,6 @@ class DatasetInfoEditorWidget(QDialog):
             # Revert everything back to the previous state
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
-                if laneIndex == currentLane:
-                    # Only need to revert the lanes we actually changed.
-                    # Everything else wasn't touched
-                    break
             
             traceback.print_exc()
             msg = "Could not set new channel display settings due to an exception:\n"
