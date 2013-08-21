@@ -24,7 +24,7 @@ class DatasetInfo(object):
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
         self.drange = None
-        self.normalizeDisplay = False
+        self.normalizeDisplay = True
         self.fromstack = False
         self.nickname = ""
         self.axistags = None

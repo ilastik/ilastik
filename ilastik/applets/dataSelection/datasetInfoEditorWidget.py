@@ -333,7 +333,7 @@ class DatasetInfoEditorWidget(QDialog):
         elif norm is False:
             self.normalizeDisplayComboBox.setCurrentIndex(2)
         else:
-            self.normalizeDisplayComboBox.setCurrentIndex(0)
+            self.normalizeDisplayComboBox.setCurrentIndex(1)
             
     def _updateAxes(self):
         # If all images have the same axis keys,
@@ -453,7 +453,15 @@ class DatasetInfoEditorWidget(QDialog):
     def _applyNormalizeDisplayToTempOps(self):
          # Save a copy of our settings
         oldInfos = {}
-        new_norm = {"True":True,"False":False,"Default":None}[str(self.normalizeDisplayComboBox.currentText())]
+        new_norm = {"True":True,"False":False,"Default":None}[str(self.normalizeDisplayComboBox.currentText())]        
+        
+        new_drange = ( self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value() )
+        if new_norm is False and (new_drange[0] == self.rangeMinSpinBox.minimum() \
+        or new_drange[1] == self.rangeMaxSpinBox.minimum()):
+            # no drange given, autonormalization cannot be switched off !
+            QMessageBox.warning(None, "Warning", "Normalization cannot be switched off without specifying the data range !")
+            self.normalizeDisplayComboBox.setCurrentIndex(1)
+        
         
         for laneIndex, op in self.tempOps.items():
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
@@ -827,7 +835,8 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.addItem("Default", userData="default")
         self.normalizeDisplayComboBox.addItem("True", userData="True")
         self.normalizeDisplayComboBox.addItem("False", userData="False")
-    
+        self.normalizeDisplayComboBox.setCurrentIndex(1)
+        
     def _updateChannelDisplayCombo(self):
         channel_description = None
         for laneIndex, op in self.tempOps.items():
