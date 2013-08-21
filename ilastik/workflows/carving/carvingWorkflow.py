@@ -45,7 +45,8 @@ class CarvingWorkflow(Workflow):
                                                         "Input Data",
                                                         supportIlastik05Import=True,
                                                         batchDataGui=False,
-                                                        instructionText=data_instructions )
+                                                        instructionText=data_instructions,
+                                                        max_lanes=1 )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
         

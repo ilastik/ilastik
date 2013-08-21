@@ -98,10 +98,19 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, title="Input Selection"):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+        """
+        Constructor.
+        
+        :param dataSelectionOperator: The top-level operator.  Must be of type :py:class:`OpMultiLaneDataSelectionGroup`.
+        :param serializer: The applet's serializer.  Must be of type :py:class:`DataSelectionSerializer`
+        :param instructionText: A string to display in the applet drawer.
+        :param guiMode: Either ``GuiMode.Normal`` or ``GuiMode.Batch``.  Currently, there is no difference between normal and batch mode.
+        :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
+        """
         super(DataSelectionGui, self).__init__()
 
-        self.title = title
+        self._max_lanes = max_lanes
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -156,6 +165,16 @@ class DataSelectionGui(QWidget):
         self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
+        # These two helper functions enable/disable an 'add files' button for a given role  
+        #  based on the the max lane index for that role and the overall permitted max_lanes
+        def _update_button_status(button, role_index):
+            if self._max_lanes:
+                button.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
+
+        def _handle_lane_added( button, role_index, slot, lane_index ):
+            slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
+            slot[lane_index][role_index].notifyUnready( bind(_update_button_status, button, role_index) )
+
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
@@ -170,6 +189,14 @@ class DataSelectionGui(QWidget):
             menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
             detailViewer.appendButton.setMenu( menu )
             self._retained.append(menu)
+
+            # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer.appendButton, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer.appendButton, roleIndex ) )
+            
+            # While we're at it, do the same for the buttons in the summary table, too
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             
             # Context menu            
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
@@ -379,6 +406,11 @@ class DataSelectionGui(QWidget):
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
             endingLane = startingLane+len(fileNames)-1
+            
+        if self._max_lanes and endingLane >= self._max_lanes:
+            msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
+            QMessageBox.critical( self, "Too many files", msg )
+            return
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes

@@ -25,7 +25,8 @@ class DataLaneSummaryTableView(QTableView):
         self.setSelectionBehavior( QTableView.SelectRows )
         self.setContextMenuPolicy( Qt.CustomContextMenu )
         self.customContextMenuRequested.connect( self.handleCustomContextMenuRequested )
-        
+
+        self.addFilesButtons = {}
 
     def setModel(self, model):
         super( DataLaneSummaryTableView, self ).setModel(model)
@@ -42,6 +43,7 @@ class DataLaneSummaryTableView(QTableView):
             
             button = QPushButton("Add File(s)...", self)
             button.setMenu( menu )
+            self.addFilesButtons[roleIndex] = button
 
             lastRow = self.model().rowCount()-1
             modelIndex = self.model().index( lastRow, column )
