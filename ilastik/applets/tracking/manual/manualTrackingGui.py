@@ -146,64 +146,69 @@ class ManualTrackingGui(LayerViewerGui):
     
     def setupLayers( self ):        
         layers = []
-                        
+        
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
         self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
         self.ct[-1] = QColor(0,0,0,255).rgba()
-        self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
-        trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
-        trackingLayer.name = "Manual Tracking"
-        trackingLayer.visible = True
-        trackingLayer.opacity = 0.8
+        
+        if self.topLevelOperatorView.TrackImage.ready():
+            self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
+            trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
+            trackingLayer.name = "Manual Tracking"
+            trackingLayer.visible = True
+            trackingLayer.opacity = 0.8
 
-        def toggleTrackingVisibility():
-            trackingLayer.visible = not trackingLayer.visible
-            
-        trackingLayer.shortcutRegistration = (
-                "Layer Visibilities",
-                "Toggle Manual Tracking Layer Visibility",
-                QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
-                trackingLayer )
-        layers.append(trackingLayer)
+            def toggleTrackingVisibility():
+                trackingLayer.visible = not trackingLayer.visible
+                
+            trackingLayer.shortcutRegistration = (
+                    "Layer Visibilities",
+                    "Toggle Manual Tracking Layer Visibility",
+                    QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
+                    trackingLayer )
+            layers.append(trackingLayer)
         
         
         ct = colortables.create_random_16bit()
         ct[1] = QColor(230,0,0,150).rgba()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
-        untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
-        untrackedLayer.name = "Untracked Objects"
-        untrackedLayer.visible = False
-        untrackedLayer.opacity = 0.8
-        layers.append(untrackedLayer)
         
-        self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
-        ct = colortables.create_random_16bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[1] = QColor(255,255,0,100).rgba() 
-        objLayer = ColortableLayer( self.objectssrc, ct )
-        objLayer.name = "Objects"
-        objLayer.opacity = 0.8
-        objLayer.visible = True
+        if self.topLevelOperatorView.UntrackedImage.ready():
+            self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
+            untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
+            untrackedLayer.name = "Untracked Objects"
+            untrackedLayer.visible = False
+            untrackedLayer.opacity = 0.8
+            layers.append(untrackedLayer)
         
-        def toggleObjectVisibility():
-            objLayer.visible = not objLayer.visible
+        if self.topLevelOperatorView.BinaryImage.ready():
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
+            ct = colortables.create_random_16bit()
+            ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+            ct[1] = QColor(255,255,0,100).rgba() 
+            objLayer = ColortableLayer( self.objectssrc, ct )
+            objLayer.name = "Objects"
+            objLayer.opacity = 0.8
+            objLayer.visible = True
             
-        objLayer.shortcutRegistration = (
-                "Layer Visibilities",
-                "Toggle Objects Layer Visibility",
-                QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
-                objLayer )
-        
-        layers.append(objLayer)
+            def toggleObjectVisibility():
+                objLayer.visible = not objLayer.visible
+                
+            objLayer.shortcutRegistration = (
+                    "Layer Visibilities",
+                    "Toggle Objects Layer Visibility",
+                    QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
+                    objLayer )
+            
+            layers.append(objLayer)
 
 
-        ## raw data layer
-        self.rawsrc = None
-        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-        rawLayer = GrayscaleLayer( self.rawsrc )
-        rawLayer.name = "Raw"        
-        layers.insert( len(layers), rawLayer )   
+        if self.mainOperator.RawImage.ready():
+            ## raw data layer
+            self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+            rawLayer = GrayscaleLayer( self.rawsrc )
+            rawLayer.name = "Raw"        
+            layers.insert( len(layers), rawLayer )   
         
         
         if self.topLevelOperatorView.LabelImage.meta.shape:
