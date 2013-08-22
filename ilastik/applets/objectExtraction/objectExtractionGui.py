@@ -406,8 +406,21 @@ class ObjectExtractionGui(LayerViewerGui):
 
 
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
-    def _selectFeaturesButtonPressed(self):
-        self.topLevelOperatorView.Features.setValue({})        
+    def _selectFeaturesButtonPressed(self):        
+        mainOperator = self.topLevelOperatorView
+        if not mainOperator.RawImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add the raw data before calculating features.")
+            mexBox.exec_()
+            return
+        
+        if not mainOperator.BinaryImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add binary (segmentation) data before calculating features.")
+            mexBox.exec_()
+            return
+        
+        self.topLevelOperatorView.Features.setValue({})
         self._calculateFeatures(interactive=False)
 
     def initAppletDrawerUi(self):
