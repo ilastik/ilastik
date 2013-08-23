@@ -14,9 +14,7 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
-
-from lazyflow.operators.generic import OpSelectSubslot
+from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
 
 class PixelClassificationWorkflow(Workflow):
@@ -156,10 +154,6 @@ class PixelClassificationWorkflow(Workflow):
         opTranspose = OpTransposeSlots( parent=self )
         opTranspose.OutputLength.setValue(1)
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
-        
-#        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
-#        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
-#        opFilePathProvider.AttributeName.setValue( 'filePath' )
         
         # Provide dataset paths from data selection applet to the batch export applet
         opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )

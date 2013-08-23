@@ -21,10 +21,6 @@ class PixelClassificationDataExportApplet( DataExportApplet ):
         # Base class init
         super(PixelClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
         
-        # Cmdline configuration functions are taken directly from DataExportApplet
-        self.parse_known_cmdline_args = partial(DataExportApplet.parse_known_cmdline_args, self)
-        self.configure_operator_with_parsed_args = partial(DataExportApplet.configure_operator_with_parsed_args, self)        
-        
     @property
     def dataSerializers(self):
         return self._serializers
