@@ -6,13 +6,16 @@ import h5py
 import unittest
 import tempfile
 
+from lazyflow.graph import Graph
+from lazyflow.operators.ioOperators import OpStackLoader
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+
 import ilastik
 from ilastik.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-#import ilastik.workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
 import logging
 logger = logging.getLogger(__name__)
@@ -112,7 +115,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         del shell
         
     @timeLogged(logger)
-    def test(self):
+    def testBasic(self):
         # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -138,6 +141,54 @@ class TestPixelClassificationHeadless(unittest.TestCase):
             assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
             assert f["/volume/pred_volume"].shape[-1] == 2
         
+    @timeLogged(logger)
+    def testLotsOfOptions(self):
+        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
+        #       See if __name__ == __main__ section, below.
+        args = []
+        args.append( "--project=" + self.PROJECT_FILE )
+        args.append( "--headless" )
+        args.append( "--sys_tmp_dir=/tmp" )
+
+        # Batch export options
+        args.append( '--output_format' )
+        args.append( 'png sequence' )
+        args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
+        args.append( "--export_dtype=uint8" )
+        args.append( "--output_axis_order=zxyc" )
+        
+        args.append( "--pipeline_result_drange=(0.0,1.0)" )
+        args.append( "--export_drange=(0,255)" )
+
+        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
+        args.append( self.SAMPLE_DATA )
+
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        # This will execute the batch mode script
+        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
+        imp.load_source( 'main', ilastik_entry_file_path )
+
+        output_path = self.SAMPLE_DATA[:-4] + "_prediction_z{slice_index}.png"
+        globstring = output_path.format( slice_index=999 )
+        globstring = globstring.replace('999', '*')
+
+        opReader = OpStackLoader( graph=Graph() )
+        opReader.globstring.setValue( globstring )
+
+        # (The OpStackLoader produces txyzc order.)
+        opReorderAxes = OpReorderAxes( graph=Graph() )
+        opReorderAxes.AxisOrder.setValue( 'txyzc' )
+        opReorderAxes.Input.connect( opReader.stack )
+        
+        readData = opReorderAxes.Output[:].wait()
+
+        # Check basic attributes
+        assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
+        assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
+
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
