@@ -1,10 +1,36 @@
 import sys
+import logging
+logger = logging.getLogger(__name__)
+
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
 class DataConversionWorkflow(Workflow):
+    """
+    Simple workflow for converting data between formats.  Has only two applets: Data Selection and Data Export.
+    
+    Also supports a command-line interface for headless mode.
+    
+    For example:
+    
+    .. code-block:: bash
+
+        python ilastik.py --headless --new_project=NewTemporaryProject.ilp --workflow=DataConversionWorkflow --output_format="png sequence" ~/input1.h5 ~/input2.h5
+    
+    Or if you have an existing project with input files already selected and configured:
+
+    .. code-block:: bash
+
+        python ilastik.py --headless --project=MyProject.ilp --output_format=jpeg
+    
+    .. note:: Beware of issues related to absolute vs. relative paths.  Relative links are stored relative to the project file.
+              To avoid this issue entirely, either 
+                 (1) use only absolute filepaths
+              or (2) cd into your project file's directory before launching ilastik.
+    
+    """
     def __init__(self, headless, workflow_cmdline_args, *args, **kwargs):
         
         # Create a graph to be shared by all operators
@@ -31,16 +57,49 @@ class DataConversionWorkflow(Workflow):
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.dataExportApplet )
 
+        # Parse command-line arguments
+        # Command-line args are applied in onProjectLoaded(), below.
         self._workflow_cmdline_args = workflow_cmdline_args
+        self._data_input_args = None
+        self._data_export_args = None
+        if workflow_cmdline_args:
+            self._data_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+            if unused_args:
+                logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow inputs and output settings.
         """
-        print "DataConversionWorkflow Project was opened with the following args: "
-        print self._workflow_cmdline_args
-        if self._workflow_cmdline_args:
-            sys.stderr.write('Command-line interface not supported yet.')
+        # Configure the batch data selection operator.
+        if self._data_input_args and self._data_input_args.input_files:
+            self.dataSelectionApplet.configure_operator_with_parsed_args( self._data_input_args )
+        
+        # Configure the data export operator.
+        if self._data_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+
+        if self._headless and self._data_input_args and self._data_export_args:
+            # Now run the export and report progress....
+            opDataExport = self.dataExportApplet.topLevelOperator
+            for i, opExportDataLaneView in enumerate(opDataExport):
+                print "Exporting file #{} to {}".format(i, opExportDataLaneView.ExportPath.value)
+    
+                sys.stdout.write( "Result #{}/{} Progress: ".format( i, len( opDataExport ) ) )
+                def print_progress( progress ):
+                    sys.stdout.write( "{} ".format( progress ) )
+    
+                # If the operator provides a progress signal, use it.
+                slotProgressSignal = opExportDataLaneView.progressSignal
+                slotProgressSignal.subscribe( print_progress )
+                opExportDataLaneView.run_export()
+                
+                # Finished.
+                sys.stdout.write("\n")
 
     def connectLane(self, laneIndex):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -59,4 +118,3 @@ class DataConversionWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
-
