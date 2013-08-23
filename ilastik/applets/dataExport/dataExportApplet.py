@@ -28,7 +28,7 @@ class DataExportApplet( Applet ):
         # If the user provided his own serializer, don't create one here.
         self.__serializers = None
         if self.dataSerializers is None:
-            self.__serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+            self.__serializers = [ DataExportSerializer(self.topLevelOperator, title) ]
         
     @property
     def dataSerializers(self):
@@ -36,12 +36,12 @@ class DataExportApplet( Applet ):
 
     @property
     def topLevelOperator(self):
-        return self._topLevelOperator
+        return self.__topLevelOperator
 
     def getMultiLaneGui(self):
         if self._gui is None:
             from dataExportGui import DataExportGui
-            self._gui = DataExportGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
+            self._gui = DataExportGui( self.topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
         return self._gui
 
     def parse_known_cmdline_args(self, cmdline_args):
@@ -62,7 +62,7 @@ class DataExportApplet( Applet ):
 
         arg_parser.add_argument( '--export_dtype', help='Export data type', choices=all_dtypes, required=False )
         arg_parser.add_argument( '--output_axis_order', help='Axis indexing order of exported data, e.g. tzyxc', required=False )
-        arg_parser.add_argument( '--output_format', help='Export file format', default='hdf5', choices=all_format_names )
+        arg_parser.add_argument( '--output_format', help='Export file format', choices=all_format_names, required=False )
         arg_parser.add_argument( '--output_filename_format', help='Output file path, including special placeholders, e.g. /tmp/results_t{t_start}-t{t_stop}.h5', required=False )
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
         
@@ -136,13 +136,6 @@ class DataExportApplet( Applet ):
         #  settings from triggering many calls to setupOutputs.
         opDataExport.TransactionSlot.disconnect()
 
-        # By default, most workflows consider the project directory to be the 'working directory'
-        #  for transforming relative paths (e.g. export locations) into absolute locations.
-        # A user would probably expect paths to be relative to his cwd when he launches 
-        #  ilastik from the command line.
-        opDataExport.WorkingDirectory.disconnect()
-        opDataExport.WorkingDirectory.setValue( os.getcwd() )
-
         if parsed_args.cutout_subregion:
             opDataExport.RegionStart.setValue( parsed_args.cutout_subregion[0] )
             opDataExport.RegionStop.setValue( parsed_args.cutout_subregion[1] )
@@ -160,12 +153,20 @@ class DataExportApplet( Applet ):
             opDataExport.OutputAxisOrder.setValue( parsed_args.output_axis_order )
             
         if parsed_args.output_filename_format:
+            # By default, most workflows consider the project directory to be the 'working directory'
+            #  for transforming relative paths (e.g. export locations) into absolute locations.
+            # A user would probably expect paths to be relative to his cwd when he launches 
+            #  ilastik from the command line.
+            opDataExport.WorkingDirectory.disconnect()
+            opDataExport.WorkingDirectory.setValue( os.getcwd() )
+    
             opDataExport.OutputFilenameFormat.setValue( parsed_args.output_filename_format )
             
         if parsed_args.output_internal_path:
             opDataExport.OutputInternalPath.setValue( parsed_args.output_internal_path )
 
-        opDataExport.OutputFormat.setValue( parsed_args.output_format )
+        if parsed_args.output_format:
+            opDataExport.OutputFormat.setValue( parsed_args.output_format )
 
         # Re-connect the 'transaction' slot to apply all settings at once.
         opDataExport.TransactionSlot.setValue(True)
