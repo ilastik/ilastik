@@ -51,6 +51,7 @@ class OpDataExport(Operator):
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
     FormatSelectionIsValid = OutputSlot()
 
+    ALL_FORMATS = OpFormattedDataExport.ALL_FORMATS
 
     ####
     # Simplified block diagram for actual export data and 'live preview' display:

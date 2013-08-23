@@ -1,4 +1,7 @@
+import sys
 import argparse
+import logging
+logger = logging.getLogger(__name__)
 
 from ilastik.workflow import Workflow
 
@@ -14,6 +17,7 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
 from lazyflow.operators.generic import OpSelectSubslot
+
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -34,6 +38,7 @@ class PixelClassificationWorkflow(Workflow):
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( headless, graph=graph, *args, **kwargs )
         self._applets = []
+        self._workflow_cmdline_args = workflow_cmdline_args
 
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
 
@@ -83,6 +88,15 @@ class PixelClassificationWorkflow(Workflow):
     
             # Connect batch workflow (NOT lane-based)
             self._initBatchWorkflow()
+
+        self._batch_input_args = None
+        self._batch_export_args = None
+        if unused_args:
+            self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._batch_export_args, unused_args = self.batchResultsApplet.parse_known_cmdline_args( unused_args )
+
+            if unused_args:
+                logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
@@ -193,3 +207,37 @@ class PixelClassificationWorkflow(Workflow):
         
         raise Exception("Unknown headless output slot")
     
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow for batch mode and export all results.
+        (This workflow's headless mode supports only batch mode for now.)
+        """
+        # Configure the batch data selection operator.
+        if self._batch_input_args: 
+            self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
+        
+        # Configure the data export operator.
+        if self._batch_export_args:
+            self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
+
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            # Now run the batch export and report progress....
+            opBatchDataExport = self.batchResultsApplet.topLevelOperator
+            for i, opExportDataLaneView in enumerate(opBatchDataExport):
+                print "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value)
+    
+                sys.stdout.write( "Result {}/{} Progress: ".format( i, len( opBatchDataExport ) ) )
+                def print_progress( progress ):
+                    sys.stdout.write( "{} ".format( progress ) )
+    
+                # If the operator provides a progress signal, use it.
+                slotProgressSignal = opExportDataLaneView.progressSignal
+                slotProgressSignal.subscribe( print_progress )
+                opExportDataLaneView.run_export()
+                
+                # Finished.
+                sys.stdout.write("\n")
+

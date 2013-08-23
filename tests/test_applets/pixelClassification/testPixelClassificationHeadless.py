@@ -1,32 +1,22 @@
 import os
+import sys
+import imp
 import numpy
 import h5py
 import unittest
 import tempfile
 
+import ilastik
 from ilastik.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-import ilastik.workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
+#import ilastik.workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
 import logging
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
-
-
-#
-#
-#
-# THIS TEST IS BROKEN.
-#
-#
-# The 'headless' driver for pixel classification is obsolete.
-# The pixel classification workflow needs to be updated so it can be used in headless mode from the ilastik.py entry point.
-#
-# For now, we simply skip this test.
-
 
 class TestPixelClassificationHeadless(unittest.TestCase):
     dir = tempfile.mkdtemp()
@@ -35,12 +25,6 @@ class TestPixelClassificationHeadless(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        ##
-        ## Skip this test, per comment above.
-        ##
-        import nose
-        raise nose.SkipTest
-        
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -129,26 +113,31 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         
     @timeLogged(logger)
     def test(self):
-        args = "ilastik_headless"
-        args += " --project=" + self.PROJECT_FILE
-        args += " --batch_output_dataset_name=/volume/pred_volume"
+        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
+        #       See if __name__ == __main__ section, below.
+        args = "--project=" + self.PROJECT_FILE
+        args += " --headless"
         args += " --sys_tmp_dir=/tmp"
+
+        # Batch export options
+        args += " --output_format=hdf5"
+        args += " --output_filename_format={dataset_dir}/{nickname}_prediction.h5"
+        args += " --output_internal_path=volume/pred_volume"
         args += " " + self.SAMPLE_DATA
 
-        argv = args.split()
-        return_code = pcMainHeadless.main(argv)
-        assert return_code == 0
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        sys.argv += args.split()
+        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
+        imp.load_source( 'main', ilastik_entry_file_path )
         
         # Examine the output for basic attributes
-        outputFilePath = self.SAMPLE_DATA[:-4] + "_prediction.h5"
-        with h5py.File(outputFilePath, 'r') as f:
+        output_path = self.SAMPLE_DATA[:-4] + "_prediction.h5"
+        with h5py.File(output_path, 'r') as f:
             assert "/volume/pred_volume" in f
             assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
             assert f["/volume/pred_volume"].shape[-1] == 2
         
-#if __name__ == "__main__":
-#    unittest.main()
-
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
