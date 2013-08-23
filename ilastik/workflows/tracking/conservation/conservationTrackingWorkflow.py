@@ -26,7 +26,8 @@ class ConservationTrackingWorkflow( Workflow ):
                                                        "Input Data", 
                                                        batchDataGui=False,
                                                        force5d=True,
-                                                       instructionText=data_instructions
+                                                       instructionText=data_instructions,
+                                                       max_lanes=1
                                                        )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
