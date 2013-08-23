@@ -75,6 +75,8 @@ class PixelClassificationWorkflow(Workflow):
         self._applets.append(self.pcApplet)
         self._applets.append(self.dataExportApplet)
 
+        self._batch_input_args = None
+        self._batch_export_args = None
         if appendBatchOperators:
             # Create applets for batch workflow
             self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
@@ -87,14 +89,12 @@ class PixelClassificationWorkflow(Workflow):
             # Connect batch workflow (NOT lane-based)
             self._initBatchWorkflow()
 
-        self._batch_input_args = None
-        self._batch_export_args = None
-        if unused_args:
-            self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._batch_export_args, unused_args = self.batchResultsApplet.parse_known_cmdline_args( unused_args )
-
             if unused_args:
-                logger.warn("Unused command-line args: {}".format( unused_args ))
+                self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( workflow_cmdline_args )
+                self._batch_export_args, unused_args = self.batchResultsApplet.parse_known_cmdline_args( unused_args )
+    
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
