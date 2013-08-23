@@ -1,17 +1,15 @@
 # Built-in
 import os
 import logging
-import threading
 from functools import partial
 
 # Third-party
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
 
 # HCI
-from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 
@@ -19,9 +17,8 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling.labelingGui import LabelingGui, Tool
-from ilastik.applets.base.applet import ShellRequest, ControlCommand
-from lazyflow.operators.generic import OpSubRegion
+from ilastik.applets.base.applet import ControlCommand
+from ilastik.applets.labeling.labelingGui import LabelingGui
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -30,7 +27,6 @@ except:
 
 # Loggers
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -46,9 +42,9 @@ class PixelClassificationGui(LabelingGui):
     def centralWidget( self ):
         return self
 
-    def reset(self):
+    def stopAndCleanUp(self):
         # Base class first
-        super(PixelClassificationGui, self).reset()
+        super(PixelClassificationGui, self).stopAndCleanUp()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.liveUpdateButton.setChecked(False)
@@ -56,13 +52,15 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
 
+        for fn in self.__cleanup_fns:
+            fn()
+
     def viewerControlWidget(self):
         return self._viewerControlUi
 
     ###########################################
     ###########################################
 
-    @traceLogged(traceLogger)
     def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -74,6 +72,7 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.LabelNames = topLevelOperatorView.LabelNames
 
+        self.__cleanup_fns = []
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -87,17 +86,18 @@ class PixelClassificationGui(LabelingGui):
         self.predictionSerializer = predictionSerializer
 
         self.interactiveModeActive = False
+        # Immediately update our interactive state
+        self.toggleInteractive( not self.topLevelOperatorView.FreezePredictions.value )
+
         self._currentlySavingPredictions = False
 
-        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
-        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
-        
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.MaxLabelValue.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
 
@@ -115,10 +115,9 @@ class PixelClassificationGui(LabelingGui):
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
         # listen to freezePrediction changes
-        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+        self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
 
-
-    @traceLogged(traceLogger)
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
@@ -173,7 +172,6 @@ class PixelClassificationGui(LabelingGui):
         if self.render:
             layer.contexts.append(('Toggle 3D rendering', callback))
 
-    @traceLogged(traceLogger)
     def setupLayers(self):
         """
         Called by our base class when one of our data slots has changed.
@@ -295,11 +293,7 @@ class PixelClassificationGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
-    @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
-        """
-        If enable
-        """
         logger.debug("toggling interactive mode to '%r'" % checked)
 
         if checked==True:
@@ -311,7 +305,18 @@ class PixelClassificationGui(LabelingGui):
                 mexBox.exec_()
                 return
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
+        # If we're changing modes, enable/disable our controls and other applets accordingly
+        if self.interactiveModeActive != checked:
+            if checked:
+                self.labelingDrawerUi.labelListView.allowDelete = False
+                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
+            else:
+                self.labelingDrawerUi.labelListView.allowDelete = True
+                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+                self.guiControlSignal.emit( ControlCommand.Pop )
+        self.interactiveModeActive = checked
+
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
         self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
@@ -319,18 +324,7 @@ class PixelClassificationGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setChecked( True )
             self.handleShowPredictionsClicked()
 
-        # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.interactiveModeActive != checked:
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-            else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked
-
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
@@ -338,7 +332,6 @@ class PixelClassificationGui(LabelingGui):
                 layer.visible = checked
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def handleShowSegmentationClicked(self):
         checked = self._viewerControlUi.checkShowSegmentation.isChecked()
         for layer in self.layerstack:
@@ -346,7 +339,6 @@ class PixelClassificationGui(LabelingGui):
                 layer.visible = checked
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def updateShowPredictionCheckbox(self):
         predictLayerCount = 0
         visibleCount = 0
@@ -364,7 +356,6 @@ class PixelClassificationGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def updateShowSegmentationCheckbox(self):
         segLayerCount = 0
         visibleCount = 0
@@ -383,7 +374,6 @@ class PixelClassificationGui(LabelingGui):
 
     @pyqtSlot()
     @threadRouted
-    @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
         if self.topLevelOperatorView.MaxLabelValue.ready():
@@ -392,84 +382,16 @@ class PixelClassificationGui(LabelingGui):
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
         
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
+        if not enabled:
+            self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+            self._viewerControlUi.checkShowPredictions.setChecked(False)
+            self._viewerControlUi.checkShowSegmentation.setChecked(False)
+            self.handleShowPredictionsClicked()
+            self.handleShowSegmentationClicked()
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
-
-    @pyqtSlot()
-    @traceLogged(traceLogger)
-    def onSavePredictionsButtonClicked(self):
-        """
-        The user clicked "Train and Predict".
-        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
-        """
-        # The button does double-duty as a cancel button while predictions are being stored
-        if self._currentlySavingPredictions:
-            self.predictionSerializer.cancel()
-        else:
-            # Compute new predictions as needed
-            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
-            self.topLevelOperatorView.FreezePredictions.setValue(False)
-            self._currentlySavingPredictions = True
-
-            originalButtonText = "Full Volume Predict and Save"
-            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
-            
-            # Make sure the user can't paint anything while the computation is in progress.
-            self._changeInteractionMode(Tool.Navigation)
-
-            @traceLogged(traceLogger)
-            def saveThreadFunc():
-                logger.info("Starting full volume save...")
-                # Disable all other applets
-                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
-                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
-
-                def disableAllInWidgetButName(widget, exceptName):
-                    for child in widget.children():
-                        if child.findChild( QPushButton, exceptName) is None:
-                            child.setEnabled(False)
-                        else:
-                            disableAllInWidgetButName(child, exceptName)
-
-                # Disable everything in our drawer *except* the cancel button
-                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
-
-                # But allow the user to cancel the save
-                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
-
-                # First, do a regular save.
-                # During a regular save, predictions are not saved to the project file.
-                # (It takes too much time if the user only needs the classifier.)
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-
-                # Enable prediction storage and ask the shell to save the project again.
-                # (This way the second save will occupy the whole progress bar.)
-                self.predictionSerializer.predictionStorageEnabled = True
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                self.predictionSerializer.predictionStorageEnabled = False
-
-                # Restore original states (must use events for UI calls)
-                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
-                self._currentlySavingPredictions = False
-
-                # Re-enable our controls
-                def enableAll(widget):
-                    for child in widget.children():
-                        if isinstance( child, QWidget ):
-                            child.setEnabled(True)
-                            enableAll(child)
-                enableAll(self.labelingDrawerUi)
-
-                # Re-enable all other applets
-                self.guiControlSignal.emit( ControlCommand.Pop )
-                self.guiControlSignal.emit( ControlCommand.Pop )
-                logger.info("Finished full volume save.")
-
-            saveThread = threading.Thread(target=saveThreadFunc)
-            saveThread.start()
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
@@ -489,12 +411,17 @@ class PixelClassificationGui(LabelingGui):
         slot.setValue(_listReplace(old, new))
 
     def _onLabelRemoved(self, parent, start, end):
-        super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
+        # Update the label names/colors BEFORE calling the base class,
+        #  which will update the operator and expects the 
+        #  label names list to be correct.
         op = self.topLevelOperatorView
         for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
             value = slot.value
             value.pop(start)
             slot.setValue(value)
+        
+        # Call the base class to update the operator.
+        super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,

@@ -8,7 +8,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 class ChaingraphTrackingWorkflow( Workflow ):
-    workflowName = "Tracking Workflow (Chaingraph)"
+    workflowName = "Automatic Tracking Workflow (Chaingraph)"
 
     def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -22,8 +22,8 @@ class ChaingraphTrackingWorkflow( Workflow ):
                                                        "Input Data",
                                                        batchDataGui=False,
                                                        force5d=True,
-                                                       instructionText=data_instructions
-                                                      )
+                                                       instructionText=data_instructions,
+                                                       max_lanes=1 )
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )

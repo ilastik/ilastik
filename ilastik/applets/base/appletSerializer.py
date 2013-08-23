@@ -177,7 +177,8 @@ class SerialSlot(object):
         if not self.shouldSerialize(group):
             return
         deleteIfPresent(group, self.name)
-        self._serialize(group, self.name, self.slot)
+        if self.slot.ready():
+            self._serialize(group, self.name, self.slot)
         self.dirty = False
 
     @staticmethod
@@ -242,10 +243,26 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            #slot.resize(len(subgroup))
-            for i, key in enumerate(subgroup):
-                assert key == self.subname.format(i)
-                self._deserialize(subgroup[key], slot[i])
+            # Pair stored indexes with their keys,
+            # e.g. [(0,'0'), (2, '2'), (3, '3')]
+            # Note that in some cases an index might be intentionally skipped.
+            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+            
+            # Ensure the slot is at least big enough to deserialize into.
+            max_index = max( indexes_to_keys.keys() )
+            if len(slot) < max_index+1:
+                slot.resize(max_index+1)
+
+            # Now retrieve the data
+            for i, subslot in enumerate(slot):
+                if i in indexes_to_keys:
+                    key = indexes_to_keys[i]
+                    assert key == self.subname.format(i)
+                    self._deserialize(subgroup[key], subslot)
+                else:
+                    # Since there was no data for this subslot in the project file,
+                    # we disconnect the subslot.
+                    subslot.disconnect()
 
     def unload(self):
         """see AppletSerializer.unload()"""
@@ -274,7 +291,7 @@ class SerialListSlot(SerialSlot):
 
     """
     def __init__(self, slot, inslot=None, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, transform=None):
+                 default=None, depends=None, selfdepends=True, transform=None, store_transform=None, iterable=list):
         """
         :param transform: function applied to members on deserialization.
 
@@ -289,13 +306,20 @@ class SerialListSlot(SerialSlot):
         if transform is None:
             transform = lambda x: x
         self.transform = transform
+        
+        self._iterable = iterable
+        self._store_transform = store_transform
+        if store_transform is None:
+            self._store_transform = lambda x:x
 
-    @staticmethod
-    def _saveValue(group, name, value):
+    def _saveValue(self, group, name, value):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        sg = group.create_dataset(name, data=value)
+        try:
+            sg = group.create_dataset(name, data=map(self._store_transform, value))
+        except:
+            raise
         sg.attrs['isEmpty'] = isempty
 
     def deserialize(self, group):
@@ -305,10 +329,10 @@ class SerialListSlot(SerialSlot):
             self.unload()
         else:
             if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
-                self.unload()
+                self.inslot.setValue( self._iterable([]) )
             else:
                 try:
-                    self.inslot.setValue(list(map(self.transform, subgroup[()])))
+                    self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
                 except:
                     self.unload()
         finally:
@@ -316,7 +340,7 @@ class SerialListSlot(SerialSlot):
 
     def unload(self):
         if self.slot.level == 0:
-            self.inslot.setValue([])
+            self.inslot.disconnect()
         else:
             self.slot.resize(0)
         self.dirty = False

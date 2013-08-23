@@ -1,162 +1,4 @@
-from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, deleteIfPresent, SerialSlot, SerialClassifierSlot, \
-    SerialBlockSlot, SerialListSlot
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
-import threading
-from ilastik.utility.simpleSignal import SimpleSignal
-
-import logging
-logger = logging.getLogger(__name__)
-
-class SerialPredictionSlot(SerialSlot):
-
-    def __init__(self, slot, operator, inslot=None, name=None,
-                 subname=None, default=None, depends=None,
-                 selfdepends=True):
-        super(SerialPredictionSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
-        self.operator = operator
-        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
-
-        self._predictionStorageEnabled = False
-        self._predictionStorageRequest = None
-        self._predictionsPresent = False
-
-    def setDirty(self, *args, **kwargs):
-        self.dirty = True
-        self._predictionsPresent = False
-
-    @property
-    def predictionStorageEnabled(self):
-        return self._predictionStorageEnabled
-
-    @predictionStorageEnabled.setter
-    def predictionStorageEnabled(self, value):
-        self._predictionStorageEnabled = value
-        if not self._predictionsPresent:
-            self.dirty = True
-
-    def cancel(self):
-        if self._predictionStorageRequest is not None:
-            self.predictionStorageEnabled = False
-            self._predictionStorageRequest.cancel()
-
-    def shouldSerialize(self, group):
-        result = super(SerialPredictionSlot,self).shouldSerialize(group)
-        result &= self.predictionStorageEnabled
-        return result
-
-    def _disconnect(self):
-        for i,slot in enumerate(self.operator.PredictionsFromDisk):
-            slot.disconnect()
-
-    def serialize(self, group):
-        if not self.shouldSerialize(group):
-            return
-
-        self._disconnect()
-        super(SerialPredictionSlot, self).serialize(group)
-        self.deserialize(group)
-
-    def _serialize(self, group, name, slot):
-        """Called when the currently stored predictions are dirty. If
-        prediction storage is currently enabled, store them to the
-        file. Otherwise, just delete them/
-
-        (Avoid inconsistent project states, e.g. don't allow old
-        predictions to be stored with a new classifier.)
-
-        """
-        predictionDir = group.create_group(self.name)
-
-        # Disconnect the operators that might be using the old data.
-        self.deserialize(group)
-        
-        failedToSave = False
-        opWriter = None
-        try:
-            num = len(slot)
-            if num > 0:
-                increment = 100 / float(num)
-
-            progress = 0
-            for imageIndex in range(num):
-                # Have we been cancelled?
-                if not self.predictionStorageEnabled:
-                    break
-
-                datasetName = self.subname.format(imageIndex)
-
-                # Use a big dataset writer to do this in chunks
-                opWriter = OpH5WriterBigDataset(parent=self.operator.parent, graph=self.operator.graph)
-                opWriter.hdf5File.setValue(predictionDir)
-                opWriter.hdf5Path.setValue(datasetName)
-                opWriter.Image.connect(slot[imageIndex])
-
-                def handleProgress(percent):
-                    # Stop sending progress if we were cancelled
-                    if self.predictionStorageEnabled:
-                        curprogress = progress + percent * (increment / 100.0)
-                        self.progressSignal.emit(curprogress)
-                opWriter.progressSignal.subscribe(handleProgress)
-
-                # Create the request
-                self._predictionStorageRequest = opWriter.WriteImage[...]
-
-                # Must use a threading event here because if we wait on the 
-                # request from within a "real" thread, it refuses to be cancelled.
-                finishedEvent = threading.Event()
-                def handleFinish(result):
-                    finishedEvent.set()
-
-                def handleCancel():
-                    logger.info("Full volume prediction save CANCELLED.")
-                    self._predictionStorageRequest = None
-                    finishedEvent.set()
-
-                # Trigger the write and wait for it to complete or cancel.
-                self._predictionStorageRequest.notify_finished(handleFinish)
-                self._predictionStorageRequest.notify_cancelled(handleCancel)
-                self._predictionStorageRequest.submit() # Can't call wait().  See note above.
-                finishedEvent.wait()
-                progress += increment
-                opWriter.cleanUp()
-                opWriter = None
-        except:
-            failedToSave = True
-            raise
-        finally:
-            if opWriter is not None:
-                opWriter.cleanUp()
-
-            # If we were cancelled, delete the predictions we just started
-            if not self.predictionStorageEnabled or failedToSave:
-                deleteIfPresent(group, name)
-
-    def deserialize(self, group):
-        # override because we need to set self._predictionsPresent
-        self._predictionsPresent = self.name in group.keys()
-        super(SerialPredictionSlot, self).deserialize(group)
-
-    def _deserialize(self, group, slot):
-        # Flush the GUI cache of any saved up dirty rois
-        if self.operator.FreezePredictions.value == True:
-            self.operator.FreezePredictions.setValue(False)
-            self.operator.FreezePredictions.setValue(True)
-
-        #self.operator.PredictionsFromDisk.resize(len(group))
-        if len(group.keys()) > 0:
-            assert len(group.keys()) == len(self.operator.PredictionsFromDisk), "Expected to find the same number of on-disk predications as there are images loaded."
-        else:
-            for slot in self.operator.PredictionsFromDisk:
-                slot.disconnect()
-        for imageIndex, datasetName in enumerate(group.keys()):
-            opStreamer = OpStreamingHdf5Reader(parent=self.operator.parent, graph=self.operator.graph)
-            opStreamer.Hdf5File.setValue(group)
-            opStreamer.InternalPath.setValue(datasetName)
-            self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
-
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot
 
 class PixelClassificationSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
@@ -164,10 +6,6 @@ class PixelClassificationSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
-        self.predictionSlot = SerialPredictionSlot(operator.PredictionProbabilities,
-                                                   operator,
-                                                   name='Predictions',
-                                                   subname='predictions{:04d}',)
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -181,36 +19,10 @@ class PixelClassificationSerializer(AppletSerializer):
                  SerialClassifierSlot(operator.Classifier,
                                       operator.classifier_cache,
                                       name="ClassifierForests",
-                                      subname="Forest{:04d}"),
-                 self.predictionSlot]
-
+                                      subname="Forest{:04d}") ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName,
                                                             slots=slots)
-
-        self.predictionSlot.progressSignal.connect(self.progressSignal.emit)
-
-    @property
-    def predictionStorageEnabled(self):
-        return self.predictionSlot.predictionStorageEnabled
-
-    @predictionStorageEnabled.setter
-    def predictionStorageEnabled(self, value):
-        self.predictionSlot.predictionStorageEnabled = value
-
-    def cancel(self):
-        self.predictionSlot.cancel()
-
-    def isDirty(self):
-        # Check all slots except the prediction slot
-        serialSlots = set(self.serialSlots)
-        serialSlots -= set([self.predictionSlot])
-        result = any(list(ss.dirty for ss in serialSlots))
-        
-        # Check the prediction slot, but only if prediction storage is enabled
-        result |= (self.predictionSlot.dirty and self.predictionSlot.predictionStorageEnabled)
-        
-        return result
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """

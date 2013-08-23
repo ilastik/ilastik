@@ -45,6 +45,7 @@ class DotCrosshairController(QObject):
     
     def setSigma(self,s):
         self._sigma=s
+        self._setBrushSize(None)
     
     def _setBrushSize(self, size):
         if self._brushingModel.drawnNumber==1:
@@ -142,7 +143,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
 
 class DotInterpreter(BrushingInterpreter):
     
-    def __init__( self, navigationControler, brushingControler,dotsController ):
+    def __init__( self, navigationControler, brushingControler):
         '''
         This class inherit for the brushing interpreter because
         when putting a dot we place a graphic item on top of an actual 
@@ -158,7 +159,7 @@ class DotInterpreter(BrushingInterpreter):
         super(DotInterpreter,self).__init__(navigationControler,brushingControler)
         self._posModel=navigationControler._model
         self._brushingModel=self._brushingCtrl._brushingModel
-        self._dotsController=dotsController
+        #self._dotsController=dotsController
         
 
     def getColor(self):
@@ -192,35 +193,13 @@ class DotInterpreter(BrushingInterpreter):
                     
                     pos = [int(i) for i in self._posModel.cursorPos]
                     pos = [self._posModel.time] + pos + [self._posModel.channel]
-                    self._dotsController.addNewDot(pos)
+                    #self._dotsController.addNewDot(pos)
                     
                     return True   
         
         return super(DotInterpreter,self).eventFilter(watched,event)
 
-    def onMouseMove_draw( self, imageview, event ):
-        self._navIntr.onMouseMove_default( imageview, event )
 
-        o = imageview.scene().data2scene.map(QPointF(imageview.oldX,imageview.oldY))
-        n = imageview.scene().data2scene.map(QPointF(imageview.x,imageview.y))
-        
-        # Draw temporary line for the brush stroke so the user gets feedback before the data is really updated.
-        pen = QPen( QBrush(self._brushingCtrl._brushingModel.drawColor), self._brushingCtrl._brushingModel.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-        line = imageview.scene().addLine(o.x(), o.y(), n.x(), n.y(), pen)
-        
-        #if line collide with a dot delete the dot
-        items=imageview.scene().collidingItems(line)
-        items=filter(lambda el: isinstance(el, QDot),items)
-        
-        for dot in items:
-            eraseN=self._brushingModel.erasingNumber
-            mask=np.ones((3,3),np.uint8)*eraseN
-            self._brushingCtrl._writeIntoSink(QPointF(dot.y-1.5,dot.x-1.5),mask)
-            self._dotsController.deleteDot(dot)
-            
-            
-        self._lineItems.append(line)
-        self._brushingCtrl._brushingModel.moveTo(imageview.mousePos)
 
 
 

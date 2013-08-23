@@ -182,7 +182,7 @@ class ProjectManager(object):
                     dirtyAppletNames.append(applet.name)
         return dirtyAppletNames
 
-    def saveProject(self):
+    def saveProject(self, force_all_save=False):
         """
         Update the project file with the state of the current workflow settings.
         Must not be called if the project file was opened in read-only mode.
@@ -203,7 +203,7 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    if item.isDirty():
+                    if force_all_save or item.isDirty():
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
             
             #save the current workflow as standard workflow
@@ -408,7 +408,7 @@ class ProjectManager(object):
         self.currentProjectFile = newProjectFile
         self.currentProjectPath = newProjectFilePath
         self.currentProjectIsReadOnly = False
-        self.saveProject()
+        self.saveProject(force_all_save=True)
         self.currentProjectFile = origProjectFile
 
         # Close the original project

@@ -40,15 +40,16 @@ class AutocontextClassificationGui(LabelingGui):
     def centralWidget( self ):
         return self
 
-    def reset(self):
+    def stopAndCleanUp(self):
         # Base class first
-        super(AutocontextClassificationGui, self).reset()
+        super(AutocontextClassificationGui, self).stopAndCleanUp()
 
         # Ensure that we are NOT in interactive mode
         self._viewerControlUi.liveUpdateButton.setChecked(False)
         self._viewerControlUi.checkShowPredictions.setChecked(False)
         self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
+        
 
     def viewerControlWidget(self):
         return self._viewerControlUi

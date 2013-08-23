@@ -27,6 +27,7 @@ from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
 from PyQt4 import uic
 
 import sys
+import cPickle as pickle
 
 import logging
 logger = logging.getLogger(__name__)
@@ -160,6 +161,17 @@ class FeatureSelectionDialog(QDialog):
 
 class ObjectExtractionGui(LayerViewerGui):
 
+    def stopAndCleanUp(self):
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
+        super(ObjectExtractionGui, self).stopAndCleanUp()
+
+    def __init__(self, *args, **kwargs):
+        self.__cleanup_fns = []
+        super( ObjectExtractionGui, self ).__init__(*args, **kwargs)
+
     def setupLayers(self):
         mainOperator = self.topLevelOperatorView
         layers = []
@@ -204,11 +216,16 @@ class ObjectExtractionGui(LayerViewerGui):
         layers.insert(len(layers), layerraw)
 
         mainOperator.RawImage.notifyReady(self._onReady)
+        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterReady, self._onReady ) )
+
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
+        self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged ) )
 
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
+
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
+        self.__cleanup_fns.append( partial( mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged ) )
 
         return layers
 
@@ -238,6 +255,7 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
         
         slot = self.topLevelOperatorView.Features
         if slot.ready():
@@ -294,6 +312,19 @@ class ObjectExtractionGui(LayerViewerGui):
         
         fakeimg = np.empty(fakeimgshp, dtype=np.float32)
         fakelabels = np.empty(fakelabelsshp, dtype=np.uint32)
+        
+        if ndim==3:
+            fakelabels = vigra.taggedView(fakelabels, 'xyz')
+            if len(fakeimgshp)==4:
+                fakeimg = vigra.taggedView(fakeimg, 'xyzc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xyz')
+        if ndim==2:
+            fakelabels = vigra.taggedView(fakelabels, 'xy')
+            if len(fakeimgshp)==3:
+                fakeimg = vigra.taggedView(fakeimg, 'xyc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xy')
         
         for pluginInfo in plugins:
             featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
@@ -354,14 +385,47 @@ class ObjectExtractionGui(LayerViewerGui):
         msg = "Feature computation failed due to the following error:\n{}".format( exc )
         QMessageBox.critical(self, "Feature computation failed", msg)
 
+    def _exportFeaturesButtonPressed(self):
+        mainOperator = self.topLevelOperatorView
+        if not mainOperator.RegionFeatures.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("No features have been computed yet. Nothing to save.")
+            mexBox.exec_()
+            return
+            
+        fname = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
+                                        filter="Pickled Objects (*.pkl);;All Files (*)")
+        
+        if len(fname)>0: #not cancelled
+            with open(fname, 'w') as f:
+                pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)
+        
+        
+        logger.debug("Exported object features to file '{}'".format(fname))
+
+
 class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
-    def _selectFeaturesButtonPressed(self):
-        self.topLevelOperatorView.Features.setValue({})        
+    def _selectFeaturesButtonPressed(self):        
+        mainOperator = self.topLevelOperatorView
+        if not mainOperator.RawImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add the raw data before calculating features.")
+            mexBox.exec_()
+            return
+        
+        if not mainOperator.BinaryImage.ready():
+            mexBox=QMessageBox()
+            mexBox.setText("Please add binary (segmentation) data before calculating features.")
+            mexBox.exec_()
+            return
+        
+        self.topLevelOperatorView.Features.setValue({})
         self._calculateFeatures(interactive=False)
 
     def initAppletDrawerUi(self):
         super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
         self._drawer.selectFeaturesButton.setText('Calculate features')
-        self._drawer.label.setText('')
-        self._drawer.featuresSelected.setText('')
+        self._drawer.label.hide()
+        self._drawer.featuresSelected.hide()
+        self._drawer.exportButton.hide()
         

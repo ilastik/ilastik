@@ -32,17 +32,18 @@ class StackFileSelectionWidget(QDialog):
         self.okButton.clicked.connect( self.accept )
         self.cancelButton.clicked.connect( self.reject )
 
-        self.directoryRadioButton.clicked.connect( partial( self._configureGui, 'directory' ) )
         self.selectFilesRadioButton.clicked.connect( partial( self._configureGui, 'files' ) )
+        self.directoryRadioButton.clicked.connect( partial( self._configureGui, 'directory' ) )
         self.patternRadioButton.clicked.connect( partial( self._configureGui, 'pattern' ) )
 
-        self.directoryChooseButton.clicked.connect( self._chooseDirectory )
         self.selectFilesChooseButton.clicked.connect( self._selectFiles )
+        self.directoryChooseButton.clicked.connect( self._chooseDirectory )
         self.patternApplyButton.clicked.connect( self._applyPattern )
         self.patternEdit.installEventFilter( self )
     
         # Default to "select files" option, since it's most generic
         self.selectFilesRadioButton.setChecked(True)
+        self._configureGui("files")
 
     def accept(self):
         self.patternEdit.removeEventFilter(self)
@@ -83,9 +84,11 @@ class StackFileSelectionWidget(QDialog):
         directory = QFileDialog.getExistingDirectory( 
                      self, "Image Stack Directory", defaultDirectory, options=options )
 
-        # If the user didn't cancel
-        if not directory.isNull():
-            PreferencesManager().set('DataSelection', 'recent stack directory', str(directory))
+        if directory.isNull():
+            # User cancelled
+            return
+        
+        PreferencesManager().set('DataSelection', 'recent stack directory', str(directory))
 
         self.directoryEdit.setText( directory )
         directory = str(directory)
@@ -183,29 +186,18 @@ class StackFileSelectionWidget(QDialog):
 
     def _filterPatternEditEvent(self, event):
         # If the user presses "enter" while editing the pattern, auto-click "Apply".
-        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Enter:
+        if  event.type() == QEvent.KeyPress and\
+          ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
             self.patternApplyButton.click()
             return True
         return False
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    from PyQt4.QtGui import QApplication
+    
+    app = QApplication([])
+    w = StackFileSelectionWidget(None)
+    w.show()
+    app.exec_()
 
 

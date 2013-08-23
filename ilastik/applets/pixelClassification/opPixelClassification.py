@@ -10,7 +10,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator
+                               OpPixelOperator, OpMaxChannelIndicatorOperator
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -354,20 +354,15 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
         self.CachedPredictionProbabilities.connect(self.prediction_cache_gui.Output )
 
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
-        self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
-        self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
-        self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
-
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
         self.opPredictionSlicer.name = "opPredictionSlicer"
-        self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
+        self.opPredictionSlicer.Input.connect( self.prediction_cache_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
         self.opSegmentor = OpMaxChannelIndicatorOperator( parent=self )
-        self.opSegmentor.Input.connect( self.precomputed_predictions_gui.Output )
+        self.opSegmentor.Input.connect( self.prediction_cache_gui.Output )
 
         self.opSegmentationSlicer = OpMultiArraySlicer2( parent=self )
         self.opSegmentationSlicer.name = "opSegmentationSlicer"
@@ -377,7 +372,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         # Create a layer for uncertainty estimate
         self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
-        self.opUncertaintyEstimator.Input.connect( self.precomputed_predictions_gui.Output )
+        self.opUncertaintyEstimator.Input.connect( self.prediction_cache_gui.Output )
 
         # Cache the uncertainty so we get zeros for uncomputed points
         self.opUncertaintyCache = OpSlicedBlockedArrayCache( parent=self )

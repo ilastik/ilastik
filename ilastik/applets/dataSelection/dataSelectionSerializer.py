@@ -4,7 +4,7 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDatas
 import os
 import vigra
 from ilastik.utility import bind, PathComponents
-from ilastik.utility.pathHelpers import areOnSameDrive,getPathVariants
+from ilastik.utility.pathHelpers import getPathVariants
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -212,19 +212,27 @@ class DataSelectionSerializer( AppletSerializer ):
         infoDir = topGroup['infos']
         localDataGroup = topGroup['local_data']
         
-        try:
-            roleNames = list(topGroup['Role Names'][...])
-            backwards_compatibility_mode = False
-            assert self.topLevelOperator.DatasetRoles.ready(), "Expected dataset roles to be hard-coded by the workflow."
-            assert roleNames == self.topLevelOperator.DatasetRoles.value, \
-                "Role names in project file ({}) don't match those given in workflow definition ({})".format( roleNames, self.topLevelOperator.DatasetRoles.value )
-        except KeyError:
-            roleNames = ['Raw Data']
-            backwards_compatibility_mode = True
-            pass
+        assert self.topLevelOperator.DatasetRoles.ready(), \
+            "Expected dataset roles to be hard-coded by the workflow."
+        workflow_role_names = self.topLevelOperator.DatasetRoles.value
 
+        # If the project file doesn't provide any role names, then we assume this is an old pixel classification project
         force_dirty = False
+        backwards_compatibility_mode = ('Role Names' not in topGroup)
         self.topLevelOperator.DatasetGroup.resize( len(infoDir) )
+
+        # The role names MAY be different than those that we have loaded in the workflow 
+        #   because we might be importing from a project file made with a different workflow.
+        # Therefore, we don't assert here.
+        # assert workflow_role_names == list(topGroup['Role Names'][...])
+        
+        # Use the WorkingDirectory slot as a 'transaction' guard.
+        # To prevent setupOutputs() from being called a LOT of times during this loop,
+        # We'll disconnect it so the operator is not 'configured' while we do this work.
+        # We'll reconnect it after we're done so the configure step happens all at once.
+        working_dir = self.topLevelOperator.WorkingDirectory.value
+        self.topLevelOperator.WorkingDirectory.disconnect()
+        
         for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
             # BACKWARDS COMPATIBILITY:
@@ -238,13 +246,16 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
             else:
                 for roleName, infoGroup in sorted(laneGroup.items()):
-                    roleIndex = roleNames.index( roleName )
+                    roleIndex = workflow_role_names.index( roleName )
                     datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
                     force_dirty |= dirty
     
                     # Give the new info to the operator
                     if datasetInfo is not None:
                         self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+
+        # Finish the 'transaction' as described above.
+        self.topLevelOperator.WorkingDirectory.setValue( working_dir )
         
         self._dirty = force_dirty
     
@@ -313,20 +324,27 @@ class DataSelectionSerializer( AppletSerializer ):
                 
     
     def updateWorkingDirectory(self,newpath,oldpath):
+        newdir = PathComponents(newpath).externalDirectory
+        olddir = PathComponents(oldpath).externalDirectory
         
-        newpath,oldpath = PathComponents(newpath).externalDirectory,PathComponents(oldpath).externalDirectory
-        
-        if newpath==oldpath:
+        if newdir==olddir:
             return
+ 
+        # Disconnect the working directory while we make these changes.
+        # All the changes will take effect when we set the new working directory.
+        self.topLevelOperator.WorkingDirectory.disconnect()
         
         for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
             for roleIndex, slot in enumerate(multislot):
+                if not slot.ready():
+                    # Skip if there is no dataset in this lane/role combination yet.
+                    continue
                 datasetInfo = slot.value
                 if datasetInfo.location == DatasetInfo.Location.FileSystem:
                     
                     #construct absolute path and recreate relative to the new path
-                    fp = PathComponents(datasetInfo.filePath,oldpath).totalPath()
-                    abspath,relpath = getPathVariants(fp,newpath)
+                    fp = PathComponents(datasetInfo.filePath,olddir).totalPath()
+                    abspath,relpath = getPathVariants(fp,newdir)
                     
                     # Same convention as in dataSelectionGui:
                     # Relative by default, unless the file is in a totally different tree from the working directory.
@@ -337,12 +355,9 @@ class DataSelectionSerializer( AppletSerializer ):
                     
                     slot.setValue(datasetInfo, check_changed=False)
         
-        self.topLevelOperator.WorkingDirectory.setValue(newpath)
-        self._projectFilePath = newpath
+        self.topLevelOperator.WorkingDirectory.setValue(newdir)
+        self._projectFilePath = newdir
         
-        for slot in self.topLevelOperator.Dataset:
-            self.topLevelOperator.applet._gui.updateTableForSlot(slot = slot)
-    
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.

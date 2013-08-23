@@ -19,8 +19,6 @@ from volumina.slicingtools import index2slice
 
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import traceLogged
 
 class VigraWatershedViewerGui(LayerViewerGui):
     """
@@ -38,7 +36,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    @traceLogged(traceLogger)
     def __init__(self, topLevelOperatorView):
         """
         """
@@ -80,7 +77,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
 
         self.thunkEventHandler = ThunkEventHandler(self)
     
-    @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -131,7 +127,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 prefsMgr.set( 'vigra watershed viewer', 'block padding', self.topLevelOperatorView.WatershedPadding.value )
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
-    @traceLogged(traceLogger)
     def setupLayers(self):
         layers = []
 
@@ -212,9 +207,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         return layers
 
     @pyqtSlot()
-    @traceLogged(traceLogger)
     def onUpdateWatershedsButton(self):        
-        @traceLogged(traceLogger)
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.

@@ -107,7 +107,6 @@ class TestThresholdOneLevel(object):
         tIndex= oper5d.Output.meta.axistags.index('t')
         slicing = 5*[slice(None, None, None)]
         slicing[tIndex]= slice(0, 1, None)
-        #print out5d.axistags, output.shape.axistags
         assert numpy.all(output5d[slicing].squeeze()==output[:].squeeze())
 
 
@@ -127,7 +126,7 @@ class TestThresholdTwoLevels(object):
         
         self.dataChannels = numpy.zeros((self.nx, self.ny, self.nz, self.nc))
         self.dataChannels[:, :, :, 2] = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
-        self.data5d = self.dataChannels.reshape((1,)+self.dataChannels.shape)
+        
         self.dataChannels = self.dataChannels.view(vigra.VigraArray)
         self.dataChannels.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         
@@ -135,10 +134,6 @@ class TestThresholdTwoLevels(object):
         self.dataRandom = self.dataRandom.reshape(self.dataRandom.shape+(1,))
         self.dataRandom = self.dataRandom.view(vigra.VigraArray)
         self.dataRandom.axistags = vigra.VigraArray.defaultAxistags("xyzc")
-        
-        
-        self.data5d = self.data5d.view(vigra.VigraArray)
-        self.data5d.axistags = vigra.VigraArray.defaultAxistags("txyzc")
         
         self.minSize = 5 #first cluster doesn't pass this
         self.maxSize = 30 #fourth cluster doesn't pass this
@@ -149,6 +144,10 @@ class TestThresholdTwoLevels(object):
         #pre-smooth all 3d and 4d data
         self.data = vigra.filters.gaussianSmoothing(self.data.astype(numpy.float32), 0.3)
         self.dataChannels = vigra.filters.gaussianSmoothing(self.dataChannels[..., 2:3].astype(numpy.float32), 0.3)
+
+        self.data5d = numpy.concatenate(3*(self.dataChannels[numpy.newaxis],), axis=0) # Duplicate the 4d data for multiple time slices
+        self.data5d = self.data5d.view(vigra.VigraArray)
+        self.data5d.axistags = vigra.VigraArray.defaultAxistags("txyzc")
         
     def test4dAnd5d(self):
         g = Graph()
@@ -179,14 +178,14 @@ class TestThresholdTwoLevels(object):
         
         oper.InputImage.setValue(self.dataChannels)
         output = oper.Output[:].wait()
-        output = output.reshape((self.nx, self.ny, self.nz))
-        cluster1 = numpy.logical_and(output, clusters[0])
+        output3d = output.reshape((self.nx, self.ny, self.nz))
+        cluster1 = numpy.logical_and(output3d, clusters[0])
         assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output, clusters[1])
+        cluster2 = numpy.logical_and(output3d, clusters[1])
         assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output, clusters[2])
+        cluster3 = numpy.logical_and(output3d, clusters[2])
         assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output, clusters[3])
+        cluster4 = numpy.logical_and(output3d, clusters[3])
         assert numpy.any(cluster4!=0)==False
         
         
@@ -201,12 +200,9 @@ class TestThresholdTwoLevels(object):
         oper5d.CurOperator.setValue(1)
         
         out5d = oper5d.Output[:].wait()
-        
-        tIndex= oper5d.Output.meta.axistags.index('t')
-        slicing = 5*[slice(None, None, None)]
-        slicing[tIndex]= slice(0, 1, None)
-        #print out5d.axistags, output.shape.axistags
-        assert numpy.all(out5d[slicing].squeeze()==output[:].squeeze())
+
+        # output is 4d (xyzc), out5d is 5d (xyzct).        
+        assert numpy.all(out5d == output[...,numpy.newaxis])
         
     def thresholdTwoLevels(self, data):
         #this function is the same as the operator, but without any lazyflow stuff

@@ -40,26 +40,32 @@ class OpManualTracking(Operator):
 
     
     def _checkConstraints(self, *args):
-        if not self.RawImage.ready() or not self.BinaryImage.ready():
-            return
-        
-        rawTaggedShape = self.RawImage.meta.getTaggedShape()
-        if rawTaggedShape['t'] < 2:
-            raise DatasetConstraintError(
-                 "Tracking",
-                 "For tracking, the dataset must have a time axis with at least 2 images.   "\
-                 "Please load time-series data instead. See user documentation for details." )        
-        
-        segmentationTaggedShape = self.BinaryImage.meta.getTaggedShape()        
-        rawTaggedShape['c'] = None
-        segmentationTaggedShape['c'] = None
-        if dict(rawTaggedShape) != dict(segmentationTaggedShape):
-            raise DatasetConstraintError("Tracking",
-                 "For tracking, the raw data and the prediction maps must contain the same "\
-                 "number of timesteps and the same shape.   "\
-                 "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "\
-                 "shape of (t, x, y, z, c) = {}"\
-                 .format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ) )
+        if self.RawImage.ready():
+            rawTaggedShape = self.RawImage.meta.getTaggedShape()
+            if rawTaggedShape['t'] < 2:
+                raise DatasetConstraintError(
+                     "Tracking",
+                     "For tracking, the dataset must have a time axis with at least 2 images.   "\
+                     "Please load time-series data instead. See user documentation for details." )
+
+        if self.LabelImage.ready():
+            segmentationTaggedShape = self.LabelImage.meta.getTaggedShape()        
+            if segmentationTaggedShape['t'] < 2:
+                raise DatasetConstraintError(
+                     "Tracking",
+                     "For tracking, the dataset must have a time axis with at least 2 images.   "\
+                     "Please load time-series data instead. See user documentation for details." )
+
+        if self.RawImage.ready() and self.LabelImage.ready():
+            rawTaggedShape['c'] = None
+            segmentationTaggedShape['c'] = None
+            if dict(rawTaggedShape) != dict(segmentationTaggedShape):
+                raise DatasetConstraintError("Tracking",
+                     "For tracking, the raw data and the prediction maps must contain the same "\
+                     "number of timesteps and the same shape.   "\
+                     "Your raw image has a shape of (t, x, y, z, c) = {}, whereas your prediction image has a "\
+                     "shape of (t, x, y, z, c) = {}"\
+                     .format( self.RawImage.meta.shape, self.BinaryImage.meta.shape ) )
             
             
     def execute(self, slot, subindex, roi, result):

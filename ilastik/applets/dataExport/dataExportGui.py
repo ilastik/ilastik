@@ -1,14 +1,15 @@
-import sys
 import os
 import threading
 from functools import partial
 
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton
+from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+
+from lazyflow.graph import Slot
 
 import ilastik.applets.base.applet
 from ilastik.utility import bind, PathComponents
-from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -71,6 +72,7 @@ class DataExportGui(QWidget):
         self.topLevelOperator = topLevelOperator
 
         self.threadRouter = ThreadRouter(self)
+        self._thunkEventHandler = ThunkEventHandler(self)
         
         self._initAppletDrawerUic()
         self.initCentralUic()
@@ -88,6 +90,9 @@ class DataExportGui(QWidget):
             multislot[index].notifyReady( bind( self.updateTableForSlot ) )
             if multislot[index].ready():
                 self.updateTableForSlot( multislot[index] )
+
+            multislot[index].notifyUnready( self._updateExportButtons )
+            multislot[index].notifyReady( self._updateExportButtons )
 
         self.topLevelOperator.ExportPath.notifyInserted( bind( handleNewDataset ) )
         
@@ -163,7 +168,14 @@ class DataExportGui(QWidget):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
     def _chooseSettings(self):
-        opExportModelOp = get_model_op( self.topLevelOperator )
+        opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
+        if opExportModelOp is None:
+            QMessageBox.information( self, 
+                                     "Image not ready for export", 
+                                     "Export isn't possible yet: No images are ready for export.  "
+                                     "Please configure upstream pipeline with valid settings and try again." )
+            return
+        
         settingsDlg = DataExportOptionsDlg(self, opExportModelOp)
         if settingsDlg.exec_() == DataExportOptionsDlg.Accepted:
             # Copy the settings from our 'model op' into the real op
@@ -187,12 +199,15 @@ class DataExportGui(QWidget):
                 real_inslot = getattr(self.topLevelOperator, model_slot.name)
                 if model_slot.ready():
                     real_inslot.setValue( model_slot.value )
+                else:
+                    real_inslot.disconnect()
 
             # Re-connect the 'transaction' slot to apply all settings at once.
             self.topLevelOperator.TransactionSlot.setValue(True)
 
             # Discard the temporary model op
             opExportModelOp.cleanUp()
+            opSubRegion.cleanUp()
 
             print "configured shape is: {}".format( self.topLevelOperator.getLane(0).ImageToExport.meta.shape )
 
@@ -219,8 +234,14 @@ class DataExportGui(QWidget):
            not self.topLevelOperator.RawDatasetInfo[row].ready():
             return
         
-        nickname = self.topLevelOperator.RawDatasetInfo[row].value.nickname
-        exportPath = self.topLevelOperator.ExportPath[row].value
+        try:
+            nickname = self.topLevelOperator.RawDatasetInfo[row].value.nickname
+            exportPath = self.topLevelOperator.ExportPath[row].value
+        except Slot.SlotNotReadyError:
+            # Sadly, it is possible to get here even though we checked for .ready() immediately beforehand.
+            # That's because the graph has a diamond-shaped DAG of connections, but the graph has no transaction mechanism
+            # (It's therefore possible for RawDatasetInfo[row] to be ready() even though it's upstream partner is NOT ready.
+            return
                 
         self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(nickname) )
         self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( exportPath ) )
@@ -234,6 +255,22 @@ class DataExportGui(QWidget):
         selectedRanges = self.batchOutputTableWidget.selectedRanges()
         if len(selectedRanges) == 0:
             self.batchOutputTableWidget.selectRow(0)
+
+    def _updateExportButtons(self, *args):
+        """Called when at least one dataset became 'unready', so we have to disable the export button."""
+        all_ready = True
+        # Enable/disable the appropriate export buttons in the table.
+        # Use ThunkEvents to ensure that this happens in the Gui thread.
+        for row, slot in enumerate( self.topLevelOperator.ImageToExport ):
+            all_ready &= slot.ready()
+            export_button = self.batchOutputTableWidget.cellWidget( row, Column.Action )
+            if export_button is not None:
+                executable_event = ThunkEvent( partial(export_button.setEnabled, slot.ready()) )
+                QApplication.instance().postEvent( self, executable_event )
+
+        # Disable the "Export all" button unless all slots are ready.
+        executable_event = ThunkEvent( partial(self.drawer.exportAllButton.setEnabled, all_ready) )
+        QApplication.instance().postEvent( self, executable_event )
 
     def handleTableSelectionChange(self):
         """
@@ -283,8 +320,13 @@ class DataExportGui(QWidget):
 
                 try:
                     opLaneView.run_export()
-                except:
-                    logger.error( "Failed to export a result" )
+                except Exception as ex:
+                    msg = "Failed to generate export file: \n"
+                    msg += opLaneView.ExportPath.value
+                    msg += "\n{}".format( ex )
+                    self.showExportError(msg)
+                    
+                    logger.error( msg )
                     import traceback
                     traceback.print_exc()
 
@@ -302,6 +344,10 @@ class DataExportGui(QWidget):
             self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
             self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
 
+    @threadRouted
+    def showExportError(self, msg):
+        QMessageBox.critical(self, msg, "Failed to export", msg )
+
     def exportResultsForSlot(self, opLane):
         # Do this in a separate thread so the UI remains responsive
         exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="BatchIOExportThread")
@@ -316,8 +362,9 @@ class DataExportGui(QWidget):
         for innerOp in self.topLevelOperator:
             operatorView = innerOp
             operatorView.cleanupOnDiskView()
-            pathComp = PathComponents(operatorView.OutputDataPath.value, operatorView.WorkingDirectory.value)
-            os.remove(pathComp.externalPath)
+            pathComp = PathComponents(operatorView.ExportPath.value, operatorView.WorkingDirectory.value)
+            if os.path.exists(pathComp.externalPath):
+                os.remove(pathComp.externalPath)
             operatorView.setupOnDiskView()
             # we need to toggle the dirts state in order to enforce a frech dirty signal
             operatorView.Dirty.setValue( False )

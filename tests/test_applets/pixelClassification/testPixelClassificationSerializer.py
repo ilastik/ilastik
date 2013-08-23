@@ -185,18 +185,9 @@ class TestPixelClassificationSerializer(object):
             # Simulate the predictions changing by setting the prediction output dirty
             op.PredictionProbabilities[0].setDirty(slice(None))
     
-            # Enable prediction storage
-            serializer.predictionStorageEnabled = True
-                
             # Serialize!
             serializer.serializeToHdf5(testProject, testProjectName)
-    
-            # Check that the prediction data was written to the file
-            calculated = op.PredictionProbabilities[0][...].wait()
-            saved = testProject['PixelClassificationTest/Predictions/predictions0000'][...]
-            #print (saved - calculated).max()
-            assert (saved == calculated).all()
-            
+                
             # Deserialize into a fresh operator
             operatorToLoad = OpMockPixelClassifier(graph=g)
             deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassificationTest')

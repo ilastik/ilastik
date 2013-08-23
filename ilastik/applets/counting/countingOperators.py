@@ -13,6 +13,37 @@ from lazyflow.utility import traceLogged
 
 from ilastik.applets.counting.countingsvr import SVR
 
+class OpLabelPreviewer(Operator):
+    name = "LabelPreviewer"
+    description = "Provides a Preview of the labels after gaussian smoothing"
+
+    inputSlots = [InputSlot("Labels"),
+                 InputSlot("Sigma", stype = "object")]
+    outputSlots = [OutputSlot("Output")]
+
+    def __init__(self, *args, **kwargs):
+        super(OpLabelPreviewer, self).__init__(*args, **kwargs)
+        self._svr = SVR()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Labels.meta)
+        self.Output.meta.dtype = np.float32
+        self.Output.meta.drange = (0.0, 1.0)
+
+    @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
+    def execute(self, slot, subindex, roi, result):
+        progress = 0
+        
+        key = roi.toSlice()
+        dot=self.Labels[key].wait()
+        self._svr.set_params(Sigma = self.Sigma.value)
+
+        result[...] = self._svr.smoothLabels(dot)[0]
+        return result
+    
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty((slice(None)))
+
 class OpTrainCounter(Operator):
     name = "TrainCounter"
     description = "Train a random forest on multiple images"
@@ -20,32 +51,51 @@ class OpTrainCounter(Operator):
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", value = [2.5], stype = "object"), 
-                  InputSlot("Epsilon", value = 1E-3, stype = "float"), 
-                  #InputSlot("UnderMult", value = 100, stype = "float"),
-                  #InputSlot("OverMult", value = 100, stype = "float"), 
-                  InputSlot("C", value = 1, stype = "float"), 
-                  InputSlot("SelectedOption", 
-                            value = SVR.options[0],
-                            stype = "object"),
-                  InputSlot("Ntrees", value = 10, stype = "int"), #RF parameter
-                  InputSlot("MaxDepth", value =50, stype = "object"), #RF parameter, None means grow until purity
-                  InputSlot("BoxConstraints", stype = "list", optional = True)
+                  InputSlot("Sigma", stype = "object"), 
+                  InputSlot("Epsilon",  stype = "float"), 
+                  InputSlot("C",  stype = "float"), 
+                  InputSlot("SelectedOption", stype = "object"),
+                  InputSlot("Ntrees", stype = "int"), #RF parameter
+                  InputSlot("MaxDepth", stype = "object"), #RF parameter, None means grow until purity
+                  InputSlot("BoxConstraintRois", level = 1, stype = "list", value = []),
+                  InputSlot("BoxConstraintValues", level = 1, stype = "list", value = [])
                  ]
     outputSlots = [OutputSlot("Classifier")]
     options = SVR.options
+    numRegressors = 4
 
     def __init__(self, *args, **kwargs):
         super(OpTrainCounter, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self._svr = SVR()
+        params = self._svr.get_params()
+        self.initInputs(params)
         self.Classifier.meta.dtype = object
-        self.Classifier.meta.shape = (1,)
-        self.progressSignal = OrderedSignal()
+        self.Classifier.meta.shape = (self.numRegressors,)
+
+    def initInputs(self, params):
+        fix = False
+        if self.fixClassifier.ready():
+            fix = self.fixClassifier.value
+        self.fixClassifier.setValue(True)
+        self.Sigma.setValue(params["Sigma"])
+        self.Epsilon.setValue(params["epsilon"])
+        self.C.setValue(params["C"])
+        self.Ntrees.setValue(params["ntrees"])
+        self.MaxDepth.setValue(params["maxdepth"])
+        self.SelectedOption.setValue(params["method"])
+
+        self.fixClassifier.setValue(fix)
+
+
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
-            params = {"method" : self.SelectedOption.value["method"],
+            method = self.SelectedOption.value
+            if type(method) is dict:
+                method = method["method"]
+            
+            params = {"method" : method,
                       "Sigma": self.Sigma.value,
                       "epsilon" : self.Epsilon.value,
                       "C" : self.C.value,
@@ -58,97 +108,188 @@ class OpTrainCounter(Operator):
             #self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
 
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
+
+    #@traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
     def execute(self, slot, subindex, roi, result):
-        progress = 0
-        self.progressSignal(progress)
-        featMatrix=[]
-        labelsMatrix=[]
-        tagList = []
-        
-        result[0] = self._svr
+        if slot == self.Classifier:
+            progress = 0
+            numImages = len(self.Images)
+            self.progressSignal(progress)
+            featMatrix=[]
+            labelsMatrix=[]
+            tagList = []
 
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.meta.shape is not None:
-                labels=labels[:].wait()
+            
+            #result[0] = self._svr
 
-                #Fixme: Maybe later request only part of the region?
+            for i,labels in enumerate(self.inputs["Labels"]):
+                if labels.meta.shape is not None:
+                    blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
+                    
+                    reqlistlabels = []
+                    reqlistfeat = []
+                    progress += 10 / numImages
+                    self.progressSignal(progress)
+                    
+                    for b in blocks[0]:
+                        request = labels[b]
+                        featurekey = list(b)
+                        featurekey[-1] = slice(None, None, None)
+                        request2 = self.Images[i][featurekey]
+                        reqlistlabels.append(request)
+                        reqlistfeat.append(request2)
 
-                image=self.inputs["Images"][i][:].wait()
+                    traceLogger.debug("Requests prepared")
 
-                newImg, newDot, mapping, tags = \
-                result[0].prepareData(image, labels, smooth = True, normalize = False)
-                features=newImg[mapping]
-                labels=newDot[mapping]
+                    numLabelBlocks = len(reqlistlabels)
+                    progress_outer = [progress]
+                    if numLabelBlocks > 0:
+                        progressInc = (80 - 10)/(numLabelBlocks * numImages)
 
-                featMatrix.append(features)
-                labelsMatrix.append(labels)
-                tagList.append(tags)
-                #tagsMatrix.append(tags)
+                    def progressNotify(req):
+                        progress_outer[0] += progressInc/2
+                        self.progressSignal(progress_outer[0])
+
+                    for ir, req in enumerate(reqlistfeat):
+                        image = req.notify_finished(progressNotify)
+
+                    for ir, req in enumerate(reqlistlabels):
+                        labblock = req.notify_finished(progressNotify)
+
+                    traceLogger.debug("Requests fired")
+                    
+
+                    #Fixme: Maybe later request only part of the region?
+
+                    #image=self.inputs["Images"][i][:].wait()
+                    for ir, req in enumerate(reqlistlabels):
+                        
+                        labblock = req.wait()
+                        if len(self.Sigma.value) > 1:
+                            labblock = labblock.reshape(labblock.shape[0:len(self.Sigma.value)])
+                        image = reqlistfeat[ir].wait()
+                        labblock = labblock.reshape((image.shape[:-1]))
+                        image = image.reshape((-1, image.shape[-1]))
+                        
+                        newDot, mapping, tags = \
+                        self._svr.prepareData(labblock, smooth = True)
+
+                        labels   = newDot[mapping]
+                        features = image[mapping]
+
+                        featMatrix.append(features)
+                        labelsMatrix.append(labels)
+                        tagList.append(tags)
+                    
+                    progress = progress_outer[0]
+
+                    traceLogger.debug("Requests processed")
+
+
+            self.progressSignal(80 / numImages)
+            if len(featMatrix) == 0 or len(labelsMatrix) == 0:
+                result[:] = None
+
+            else:
+                posTags = [tag[0] for tag in tagList]
+                negTags = [tag[1] for tag in tagList]
+                numPosTags = np.sum(posTags)
+                numTags = np.sum(posTags) + np.sum(negTags)
+                fullFeatMatrix = np.ndarray((numTags, self.Images[0].meta.shape[-1]), dtype = np.float64)
+                fullLabelsMatrix = np.ndarray((numTags), dtype = np.float64)
+                fullFeatMatrix[:] = np.NAN
+                fullLabelsMatrix[:] = np.NAN
+                currPosCount = 0
+                currNegCount = numPosTags
+                for i, posCount in enumerate(posTags):
+                    fullFeatMatrix[currPosCount:currPosCount + posTags[i],:] = featMatrix[i][:posCount,:]
+                    fullLabelsMatrix[currPosCount:currPosCount + posTags[i]] = labelsMatrix[i][:posCount]
+                    fullFeatMatrix[currNegCount:currNegCount + negTags[i],:] = featMatrix[i][posCount:,:]
+                    fullLabelsMatrix[currNegCount:currNegCount + negTags[i]] = labelsMatrix[i][posCount:]
+                    currPosCount += posTags[i]
+                    currNegCount += negTags[i]
+
+
+                assert(not np.isnan(np.sum(fullFeatMatrix)))
+
+                fullTags = [np.sum(posTags), np.sum(negTags)]
+                #pool = RequestPool()
 
 
 
-        posTags = [tag[0] for tag in tagList]
-        negTags = [tag[1] for tag in tagList]
-        numPosTags = np.sum(posTags)
-        numTags = np.sum(posTags) + np.sum(negTags)
-        fullFeatMatrix = np.ndarray((numTags, self.Images[0].meta.shape[-1]))
-        fullLabelsMatrix = np.ndarray((numTags))
-        fullFeatMatrix[:] = np.NAN
-        fullLabelsMatrix[:] = np.NAN
-        currPosCount = 0
-        currNegCount = numPosTags
-        for i, posCount in enumerate(posTags):
-            fullFeatMatrix[currPosCount:currPosCount + posTags[i],:] = featMatrix[i][:posCount,:]
-            fullLabelsMatrix[currPosCount:currPosCount + posTags[i]] = labelsMatrix[i][:posCount]
-            fullFeatMatrix[currNegCount:currNegCount + negTags[i],:] = featMatrix[i][posCount:,:]
-            fullLabelsMatrix[currNegCount:currNegCount + negTags[i]] = labelsMatrix[i][posCount:]
-            currPosCount += posTags[i]
-            currNegCount += negTags[i]
+                boxConstraintList = []
+                boxConstraints = None
+                if self.BoxConstraintRois.ready() and self.BoxConstraintValues.ready():
+                    for i, slot in enumerate(zip(self.BoxConstraintRois,self.BoxConstraintValues)):
+                        for constr, val in zip(slot[0].value, slot[1].value):
+                            boxConstraintList.append((i, constr, val))
+                    if len(boxConstraintList) > 0:
+                        boxConstraints = self.constructBoxConstraints(boxConstraintList)
 
+                params = self._svr.get_params() 
+                try:
+                    pool = RequestPool()
+                    def train_and_store(i):
+                        result[i] = SVR(**params)
+                        result[i].fitPrepared(fullFeatMatrix, fullLabelsMatrix, tags = fullTags, boxConstraints = boxConstraints, numRegressors
+                             = self.numRegressors, trainAll = False)
+                    for i in range(self.numRegressors):
+                        req = pool.request(partial(train_and_store, i))
+                    
+                    pool.wait()
+                    pool.clean()
+                
+                except:
+                    logger.error("ERROR: could not learn regressor")
+                    logger.error("fullFeatMatrix shape = {}, dtype = {}".format(fullFeatMatrix.shape, fullFeatMatrix.dtype) )
+                    logger.error("fullLabelsMatrix shape = {}, dtype = {}".format(fullLabelsMatrix.shape, fullLabelsMatrix.dtype) )
+                finally:
+                    self.progressSignal(100) 
 
-        if np.isnan(np.sum(fullFeatMatrix)):
-            raise Exception("NAN NAN NAN NAN BATMAN")
-        #featMatrix=np.concatenate(featMatrix,axis=0)
-        #labelsMatrix=np.concatenate(labelsMatrix,axis=0)
-        #tagsMatrix=np.concatenate(tagsMatrix,axis=0)
-
-        # train and store self._forest_count forests in parallel
-
-        fullTags = [np.sum(posTags), np.sum(negTags)]
-        #pool = RequestPool()
-
-        self.progressSignal(30)
-        boxConstraints = []
-        if self.BoxConstraints.ready():
-            constraints = self.BoxConstraints.value
-            for constr in constraints:
-
-                value = float(constr[2].toDouble()[0])
-                slicing = [slice(start,stop) for start, stop in zip(constr[0][1:-2], constr[1][1:-2])]
-                slicing.append(slice(None)) 
-                slicing = tuple(slicing)
-                features = self.Images[0][slicing].wait() 
-                features = features.reshape((-1, features.shape[-1]))
-                constraint = (value, features)
-                boxConstraints.append(constraint)
-
-        self.progressSignal(50)
-        try:
-            result[0].fitPrepared(fullFeatMatrix, fullLabelsMatrix, tags = fullTags, boxConstraints = boxConstraints)
-        #req = pool.request(partial(result[0].fitPrepared, featMatrix, labelsMatrix, tagsMatrix, self.Epsilon.value))
-        #pool.wait()
-        #pool.clean()
-        except:
-            logger.error("ERROR: could not learn regressor")
-            logger.error("fullFeatMatrix shape = {}, dtype = {}".format(fullFeatMatrix.shape, fullFeatMatrix.dtype) )
-            logger.error("fullLabelsMatrix shape = {}, dtype = {}".format(fullLabelsMatrix.shape, fullLabelsMatrix.dtype) )
-        self.progressSignal(100) 
-        return result
+            return result
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(None),))
+    
+    def constructBoxConstraints(self, constraints):
+        
+
+        
+        try:
+            shape = np.array([[stop - start for start, stop in zip(constr[0][1:-2], constr[1][1:-2])] for _, constr,_ in
+                       constraints])
+            taggedShape = self.Images[0].meta.getTaggedShape()
+            numcols = taggedShape['c']
+            shape = shape[:,0] * shape[:,1]
+            shape = np.sum(shape,axis = 0)
+            constraintmatrix = np.ndarray(shape = (shape, numcols))
+            constraintindices = []
+            constraintvalues =  []
+            offset = 0
+            for imagenumber, constr, value in constraints:
+                    slicing = [slice(start,stop) for start, stop in zip(constr[0][1:-2], constr[1][1:-2])]
+                    numrows = (slicing[0].stop - slicing[0].start) * (slicing[1].stop - slicing[1].start)
+                    slicing.append(slice(None)) 
+                    slicing = tuple(slicing)
+
+                    constraintmatrix[offset:offset + numrows,:] = self.Images[imagenumber][slicing].wait().reshape((numrows,
+                                                                                                          -1))
+                    constraintindices.append(offset)
+                    constraintvalues.append(value)
+                    offset = offset + numrows
+            constraintindices.append(offset)
+
+            constraintvalues = np.array(constraintvalues, np.float64)
+            constraintindices = np.array(constraintindices, np.int)
+
+            boxConstraints = {"boxFeatures" : constraintmatrix, "boxValues" : constraintvalues, "boxIndices" :
+                              constraintindices}
+        except:
+            boxConstraints = None
+            logger.error("An error has occured with the box Constraints: {} ".format(constraints))
+        
+        return boxConstraints
 
 
 
@@ -165,7 +306,7 @@ class OpPredictCounter(Operator):
         nlabels=self.inputs["LabelsCount"].value
         self.PMaps.meta.dtype = np.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
-        self.PMaps.meta.shape = self.Image.meta.shape[:-1] + (1,) # FIXME: This assumes that channel is the last axis
+        self.PMaps.meta.shape = self.Image.meta.shape[:-1] + (OpTrainCounter.numRegressors,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self, slot, subindex, roi, result):
@@ -197,39 +338,23 @@ class OpPredictCounter(Operator):
 
         t2 = time.time()
 
-        ## predict the data with all the forests in parallel
-        #pool = RequestPool()
-
-        #for i,f in enumerate(forests):
-        #    req = pool.request(partial(predict_forest, i))
-
-        #def predictCounter(number):
-        #    predictions[number] = forests[number].predict(np.asarray(features, dtype = np.float32), normalize = False)
-        #    predictions[number] = predictions[number].reshape(result.shape)
-        ##req = pool.request(partial(forests[0].predict, np.asarray(features, dtype=np.float32), normalize = False))
-        #for i,f in enumerate(forests):
-        #    req = pool.request(partial(predictCounter, i))
-
-        #pool.wait()
-        #pool.clean()
-
-        #prediction=np.dstack(predictions)
-        #prediction = np.average(prediction, axis=2)
-        #prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
-        #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
+        pool = RequestPool()
         
-        #import sitecustomize
-        #sitecustomize.debug_trace()
+        def predict_forest(i):
+            predictions[i] = forests[i].predict(np.asarray(features, dtype = np.float32))
+            predictions[i] = predictions[i].reshape(result.shape[:-1])
 
-        #result[...] = 0
-        #for i,p in enumerate(predictions):
-        #    result[...] += p
-        #result[...] /= len(predictions)
-        
 
-        predictions[0] = forests[0].predict(np.asarray(features, dtype = np.float32), normalize = False)
-        predictions[0] = predictions[0].reshape(result.shape)
-        result[...] = predictions[0]
+        for i,f in enumerate(forests):
+            req = pool.request(partial(predict_forest,i))
+
+        pool.wait()
+        pool.clean()
+        #predictions[0] = forests[0].predict(np.asarray(features, dtype = np.float32), normalize = False)
+        #predictions[0] = predictions[0].reshape(result.shape)
+        prediction=np.dstack(predictions)
+        result[...] = prediction
+
         # If our LabelsCount is higher than the number of labels in the training set,
         # then our results aren't really valid.  FIXME !!!
         # Duplicate the last label's predictions

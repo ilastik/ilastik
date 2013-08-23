@@ -20,8 +20,6 @@ from ilastik.config import cfg as ilastik_config
 
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.utility import Tracer
 
 from opBatchIo import SupportedFormats
 
@@ -71,89 +69,87 @@ class BatchIoGui(QWidget):
     ###########################################
     
     def __init__(self, topLevelOperator, guiControlSignal, progressSignal, title):
-        with Tracer(traceLogger):
-            super(BatchIoGui, self).__init__()
-    
-            self.title = title
-            self.drawer = None
-            self.topLevelOperator = topLevelOperator
+        super(BatchIoGui, self).__init__()
 
-            self.threadRouter = ThreadRouter(self)
-            
-            self.initAppletDrawerUic()
-            self.initCentralUic()
-            self.chosenExportDirectory = '/'
-            self.initViewerControls()
-            
-            self.guiControlSignal = guiControlSignal
-            self.progressSignal = progressSignal
-            
-            def handleNewDataset( multislot, index ):
-                # Make room in the GUI table
-                self.batchOutputTableWidget.insertRow( index )
-                
-                # Update the table row data when this slot has new data
-                # We can't bind in the row here because the row may change in the meantime.
-                multislot[index].notifyReady( bind( self.updateTableForSlot ) )
-                if multislot[index].ready():
-                    self.updateTableForSlot( multislot[index] )
-    
-            self.topLevelOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
-            
-            # For each dataset that already exists, update the GUI
-            for i, subslot in enumerate(self.topLevelOperator.OutputDataPath):
-                handleNewDataset( self.topLevelOperator.OutputDataPath, i )
-                if subslot.ready():
-                    self.updateTableForSlot(subslot)
+        self.title = title
+        self.drawer = None
+        self.topLevelOperator = topLevelOperator
+
+        self.threadRouter = ThreadRouter(self)
         
-            def handleImageRemoved( multislot, index, finalLength ):
-                if self.batchOutputTableWidget.rowCount() <= finalLength:
-                    return
-
-                # Remove the row we don't need any more
-                self.batchOutputTableWidget.removeRow( index )
-
-                # Remove the viewer for this dataset
-                imageSlot = self.topLevelOperator.ImageToExport[index]
-                if imageSlot in self.layerViewerGuis.keys():
-                    layerViewerGui = self.layerViewerGuis[imageSlot]
-                    self.viewerStack.removeWidget( layerViewerGui )
-                    self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
-                    layerViewerGui.stopAndCleanUp()
-
-            self.topLevelOperator.ImageToExport.notifyRemove( bind( handleImageRemoved ) )
+        self.initAppletDrawerUic()
+        self.initCentralUic()
+        self.chosenExportDirectory = '/'
+        self.initViewerControls()
+        
+        self.guiControlSignal = guiControlSignal
+        self.progressSignal = progressSignal
+        
+        def handleNewDataset( multislot, index ):
+            # Make room in the GUI table
+            self.batchOutputTableWidget.insertRow( index )
             
-            self.topLevelOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
-            self.topLevelOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
-            self.topLevelOperator.Format.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
-            self.updateDrawerGuiFromOperatorSettings()
+            # Update the table row data when this slot has new data
+            # We can't bind in the row here because the row may change in the meantime.
+            multislot[index].notifyReady( bind( self.updateTableForSlot ) )
+            if multislot[index].ready():
+                self.updateTableForSlot( multislot[index] )
+
+        self.topLevelOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
+        
+        # For each dataset that already exists, update the GUI
+        for i, subslot in enumerate(self.topLevelOperator.OutputDataPath):
+            handleNewDataset( self.topLevelOperator.OutputDataPath, i )
+            if subslot.ready():
+                self.updateTableForSlot(subslot)
+    
+        def handleImageRemoved( multislot, index, finalLength ):
+            if self.batchOutputTableWidget.rowCount() <= finalLength:
+                return
+
+            # Remove the row we don't need any more
+            self.batchOutputTableWidget.removeRow( index )
+
+            # Remove the viewer for this dataset
+            imageSlot = self.topLevelOperator.ImageToExport[index]
+            if imageSlot in self.layerViewerGuis.keys():
+                layerViewerGui = self.layerViewerGuis[imageSlot]
+                self.viewerStack.removeWidget( layerViewerGui )
+                self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
+                layerViewerGui.stopAndCleanUp()
+
+        self.topLevelOperator.ImageToExport.notifyRemove( bind( handleImageRemoved ) )
+        
+        self.topLevelOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+        self.topLevelOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+        self.topLevelOperator.Format.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+        self.updateDrawerGuiFromOperatorSettings()
         
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        with Tracer(traceLogger):
-            # Load the ui file (find it in our own directory)
-            localDir = os.path.split(__file__)[0]+'/'
-            # (We don't pass self here because we keep the drawer ui in a separate object.)
-            self.drawer = uic.loadUi(localDir+"/batchIoDrawer.ui")
-    
-            # Set up our handlers
-            self.drawer.saveWithInputButton.toggled.connect( self.handleExportLocationOptionChanged )
-            self.drawer.saveToDirButton.toggled.connect( self.handleExportLocationOptionChanged )
-            
-            self.drawer.outputDirChooseButton.clicked.connect( self.chooseNewExportDirectory )        
-            self.drawer.outputSuffixEdit.textEdited.connect( self.handleNewOutputSuffix )
-            
-            self.drawer.exportAllButton.clicked.connect( self.exportAllResults )
-            self.drawer.exportAllButton.setIcon( QIcon(ilastikIcons.Save) )
-            self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
-            self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]+'/'
+        # (We don't pass self here because we keep the drawer ui in a separate object.)
+        self.drawer = uic.loadUi(localDir+"/batchIoDrawer.ui")
 
-            
-            for i, formatInfo in sorted(SupportedFormats.items()):
-                self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (' + formatInfo.extension + ')' )
-            self.drawer.exportFormatCombo.currentIndexChanged.connect( partial(self.handleExportFormatChanged) )
+        # Set up our handlers
+        self.drawer.saveWithInputButton.toggled.connect( self.handleExportLocationOptionChanged )
+        self.drawer.saveToDirButton.toggled.connect( self.handleExportLocationOptionChanged )
+        
+        self.drawer.outputDirChooseButton.clicked.connect( self.chooseNewExportDirectory )        
+        self.drawer.outputSuffixEdit.textEdited.connect( self.handleNewOutputSuffix )
+        
+        self.drawer.exportAllButton.clicked.connect( self.exportAllResults )
+        self.drawer.exportAllButton.setIcon( QIcon(ilastikIcons.Save) )
+        self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
+        self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
+
+        
+        for i, formatInfo in sorted(SupportedFormats.items()):
+            self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (' + formatInfo.extension + ')' )
+        self.drawer.exportFormatCombo.currentIndexChanged.connect( partial(self.handleExportFormatChanged) )
 
     def initCentralUic(self):
         """
@@ -204,52 +200,48 @@ class BatchIoGui(QWidget):
             self.updateTableForSlot(slot)
     
     def handleExportFormatChanged(self, index):
-        with Tracer(traceLogger):
-            self.topLevelOperator.Format.setValue( index )
+        self.topLevelOperator.Format.setValue( index )
     
     def chooseNewExportDirectory(self):
         """
         The user wants to choose a new export directory.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            options = QFileDialog.Options()
-            if ilastik_config.getboolean("ilastik", "debug"):
-                options |= QFileDialog.DontUseNativeDialog
-            
-            defaultpath = self.topLevelOperator.WorkingDirectory.value
-            directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", defaultpath, options=options)
-    
-            # Stop now if the user canceled
-            if directoryName.isNull():
-                return
-            
-            self.chosenExportDirectory = str( directoryName )
-            self.drawer.outputDirEdit.setText( directoryName )
-    
-            # Auto-check the radio button for this option if necessary
-            if not self.drawer.saveToDirButton.isChecked():
-                self.drawer.saveToDirButton.setChecked(True)
-            else:
-                self.handleExportLocationOptionChanged()
-    
+        # Launch the "Open File" dialog
+        options = QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QFileDialog.DontUseNativeDialog
+        
+        defaultpath = self.topLevelOperator.WorkingDirectory.value
+        directoryName = QFileDialog.getExistingDirectory(self, "Export Directory", defaultpath, options=options)
+
+        # Stop now if the user canceled
+        if directoryName.isNull():
+            return
+        
+        self.chosenExportDirectory = str( directoryName )
+        self.drawer.outputDirEdit.setText( directoryName )
+
+        # Auto-check the radio button for this option if necessary
+        if not self.drawer.saveToDirButton.isChecked():
+            self.drawer.saveToDirButton.setChecked(True)
+        else:
+            self.handleExportLocationOptionChanged()
+
     def handleNewOutputSuffix(self):
-        with Tracer(traceLogger):
-            suffix = str( self.drawer.outputSuffixEdit.text() )
-            
-            self.topLevelOperator.Suffix.setValue( suffix )
-    
-            # Update every row of the GUI        
-            for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
-                self.updateTableForSlot(slot)
+        suffix = str( self.drawer.outputSuffixEdit.text() )
+        
+        self.topLevelOperator.Suffix.setValue( suffix )
+
+        # Update every row of the GUI        
+        for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
+            self.updateTableForSlot(slot)
 
     def getSlotIndex(self, multislot, subslot ):
-        with Tracer(traceLogger):
-            # Which index is this slot?
-            for index, slot in enumerate(multislot):
-                if slot == subslot:
-                    return index
-            return -1
+        # Which index is this slot?
+        for index, slot in enumerate(multislot):
+            if slot == subslot:
+                return index
+        return -1
 
     @threadRouted
     def updateTableForSlot(self, slot):
@@ -280,20 +272,19 @@ class BatchIoGui(QWidget):
 
 
     def updateDrawerGuiFromOperatorSettings(self, *args):
-        with Tracer(traceLogger):
-            if self.topLevelOperator.Suffix.ready():
-                self.drawer.outputSuffixEdit.setText( self.topLevelOperator.Suffix.value )
-            
-            if self.topLevelOperator.ExportDirectory.ready():
-                self.drawer.outputDirEdit.setText( self.topLevelOperator.ExportDirectory.value )
-                self.drawer.saveToDirButton.setChecked( self.topLevelOperator.ExportDirectory.value != '' )
-                self.drawer.saveWithInputButton.setChecked( self.topLevelOperator.ExportDirectory.value == '' )
-                self.drawer.outputDirChooseButton.setEnabled( self.drawer.saveToDirButton.isChecked() )
-                self.drawer.outputDirEdit.setEnabled( self.drawer.saveToDirButton.isChecked() )
-            
-            if self.topLevelOperator.Format.ready():
-                formatId = self.topLevelOperator.Format.value
-                self.drawer.exportFormatCombo.setCurrentIndex( formatId )
+        if self.topLevelOperator.Suffix.ready():
+            self.drawer.outputSuffixEdit.setText( self.topLevelOperator.Suffix.value )
+        
+        if self.topLevelOperator.ExportDirectory.ready():
+            self.drawer.outputDirEdit.setText( self.topLevelOperator.ExportDirectory.value )
+            self.drawer.saveToDirButton.setChecked( self.topLevelOperator.ExportDirectory.value != '' )
+            self.drawer.saveWithInputButton.setChecked( self.topLevelOperator.ExportDirectory.value == '' )
+            self.drawer.outputDirChooseButton.setEnabled( self.drawer.saveToDirButton.isChecked() )
+            self.drawer.outputDirEdit.setEnabled( self.drawer.saveToDirButton.isChecked() )
+        
+        if self.topLevelOperator.Format.ready():
+            formatId = self.topLevelOperator.Format.value
+            self.drawer.exportFormatCombo.setCurrentIndex( formatId )
 
     def handleTableSelectionChange(self):
         """
@@ -319,69 +310,65 @@ class BatchIoGui(QWidget):
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
     def exportSlots(self, slotList, progressSignalSlotList ):
-        with Tracer(traceLogger):
-            try:
-                # Don't let anyone change the classifier while we're exporting...
-                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableUpstream )
+        try:
+            # Don't let anyone change the classifier while we're exporting...
+            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableUpstream )
+            
+            # Also disable this applet's controls
+            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
+
+            # Start with 1% so the progress bar shows up
+            self.progressSignal.emit(0)
+            self.progressSignal.emit(1)
+
+            def signalFileProgress(slotIndex, percent):
+                self.progressSignal.emit( (100*slotIndex + percent) / len(slotList) ) 
+
+            for i, slot in enumerate(slotList):
+                logger.debug("Exporting result {}".format(i))
+
+                # If the operator provides a progress signal, use it.
+                slotProgressSignal = progressSignalSlotList[i].value
+                slotProgressSignal.subscribe( partial(signalFileProgress, i) )
                 
-                # Also disable this applet's controls
-                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
+                result = slot.value
+                if not result:
+                    logger.error("Failed to export an image.")
 
-                # Start with 1% so the progress bar shows up
-                self.progressSignal.emit(0)
-                self.progressSignal.emit(1)
-
-                def signalFileProgress(slotIndex, percent):
-                    self.progressSignal.emit( (100*slotIndex + percent) / len(slotList) ) 
-
-                for i, slot in enumerate(slotList):
-                    logger.debug("Exporting result {}".format(i))
-
-                    # If the operator provides a progress signal, use it.
-                    slotProgressSignal = progressSignalSlotList[i].value
-                    slotProgressSignal.subscribe( partial(signalFileProgress, i) )
-                    
-                    result = slot.value
-                    if not result:
-                        logger.error("Failed to export an image.")
-    
-                    # We're finished with this file. 
-                    self.progressSignal.emit( 100*(i+1)/float(len(slotList)) )
-                    
-                # Ensure the shell knows we're really done.
-                self.progressSignal.emit(100)
-            except:
-                # Cancel our progress.
-                self.progressSignal.emit(0, True)
-                raise
-            finally:            
-                # Now that we're finished, it's okay to use the other applets again.
-                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
-                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
+                # We're finished with this file. 
+                self.progressSignal.emit( 100*(i+1)/float(len(slotList)) )
+                
+            # Ensure the shell knows we're really done.
+            self.progressSignal.emit(100)
+        except:
+            # Cancel our progress.
+            self.progressSignal.emit(0, True)
+            raise
+        finally:            
+            # Now that we're finished, it's okay to use the other applets again.
+            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
+            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
 
     def exportResultsForSlot(self, slot, progressSlot):
-        with Tracer(traceLogger):
-            # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=bind(self.exportSlots, [slot], [progressSlot]), name="BatchIOExportThread")
-            exportThread.start()
+        # Do this in a separate thread so the UI remains responsive
+        exportThread = threading.Thread(target=bind(self.exportSlots, [slot], [progressSlot]), name="BatchIOExportThread")
+        exportThread.start()
     
     def exportAllResults(self):
-        with Tracer(traceLogger):
-            # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator.ExportResult, self.topLevelOperator.ProgressSignal), name="BatchIOExportThread")
-            exportThread.start()
+        # Do this in a separate thread so the UI remains responsive
+        exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator.ExportResult, self.topLevelOperator.ProgressSignal), name="BatchIOExportThread")
+        exportThread.start()
 
     def deleteAllResults(self):
-        with Tracer(traceLogger):
-            for k in xrange(len(self.topLevelOperator)):
-                operatorView = self.topLevelOperator.getLane(k)
-                operatorView.cleanupPreview()
-                pathComp = PathComponents(operatorView.OutputDataPath.value, operatorView.WorkingDirectory.value)
-                os.remove(pathComp.externalPath)
-                operatorView.setupPreview()
-                # we need to toggle the dirts state in order to enforce a frech dirty signal
-                operatorView.Dirty.setValue( False )
-                operatorView.Dirty.setValue( True )
+        for k in xrange(len(self.topLevelOperator)):
+            operatorView = self.topLevelOperator.getLane(k)
+            operatorView.cleanupPreview()
+            pathComp = PathComponents(operatorView.OutputDataPath.value, operatorView.WorkingDirectory.value)
+            os.remove(pathComp.externalPath)
+            operatorView.setupPreview()
+            # we need to toggle the dirts state in order to enforce a frech dirty signal
+            operatorView.Dirty.setValue( False )
+            operatorView.Dirty.setValue( True )
     
     def showSelectedDataset(self):
         """

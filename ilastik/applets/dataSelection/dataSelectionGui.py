@@ -5,14 +5,12 @@ import threading
 import h5py
 import logging
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtGui import QWidget, QStackedWidget, QMenu, QMessageBox, QFileDialog, QDialog
 
 #lazyflow
-from lazyflow.utility import Tracer
 from lazyflow.request import Request
 
 #volumina
@@ -100,34 +98,42 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, title="Input Selection"):
-        with Tracer(traceLogger):
-            super(DataSelectionGui, self).__init__()
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+        """
+        Constructor.
+        
+        :param dataSelectionOperator: The top-level operator.  Must be of type :py:class:`OpMultiLaneDataSelectionGroup`.
+        :param serializer: The applet's serializer.  Must be of type :py:class:`DataSelectionSerializer`
+        :param instructionText: A string to display in the applet drawer.
+        :param guiMode: Either ``GuiMode.Normal`` or ``GuiMode.Batch``.  Currently, there is no difference between normal and batch mode.
+        :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
+        """
+        super(DataSelectionGui, self).__init__()
 
-            self.title = title
+        self._max_lanes = max_lanes
 
-            self._viewerControls = QWidget()
-            self.topLevelOperator = dataSelectionOperator
-            self.guiMode = guiMode
-            self.serializer = serializer
-            self.guiControlSignal = guiControlSignal
-            self.threadRouter = ThreadRouter(self)
+        self._viewerControls = QWidget()
+        self.topLevelOperator = dataSelectionOperator
+        self.guiMode = guiMode
+        self.serializer = serializer
+        self.guiControlSignal = guiControlSignal
+        self.threadRouter = ThreadRouter(self)
 
-            self._initCentralUic()
-            self._initAppletDrawerUic(instructionText)
-            
-            self._viewerControlWidgetStack = QStackedWidget(self)
+        self._initCentralUic()
+        self._initAppletDrawerUic(instructionText)
+        
+        self._viewerControlWidgetStack = QStackedWidget(self)
 
-            def handleImageRemoved(multislot, index, finalLength):
-                # Remove the viewer for this dataset
-                imageSlot = self.topLevelOperator.Image[index]
-                if imageSlot in self.volumeEditors.keys():
-                    editor = self.volumeEditors[imageSlot]
-                    self.viewerStack.removeWidget( editor )
-                    self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
-                    editor.stopAndCleanUp()
+        def handleImageRemoved(multislot, index, finalLength):
+            # Remove the viewer for this dataset
+            imageSlot = self.topLevelOperator.Image[index]
+            if imageSlot in self.volumeEditors.keys():
+                editor = self.volumeEditors[imageSlot]
+                self.viewerStack.removeWidget( editor )
+                self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
+                editor.stopAndCleanUp()
 
-            self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
 
     def _initCentralUic(self):
         """
@@ -159,6 +165,16 @@ class DataSelectionGui(QWidget):
         self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
+        # These two helper functions enable/disable an 'add files' button for a given role  
+        #  based on the the max lane index for that role and the overall permitted max_lanes
+        def _update_button_status(button, role_index):
+            if self._max_lanes:
+                button.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
+
+        def _handle_lane_added( button, role_index, slot, lane_index ):
+            slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
+            slot[lane_index][role_index].notifyUnready( bind(_update_button_status, button, role_index) )
+
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
@@ -173,6 +189,14 @@ class DataSelectionGui(QWidget):
             menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
             detailViewer.appendButton.setMenu( menu )
             self._retained.append(menu)
+
+            # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer.appendButton, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer.appendButton, roleIndex ) )
+            
+            # While we're at it, do the same for the buttons in the summary table, too
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             
             # Context menu            
             detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
@@ -216,7 +240,9 @@ class DataSelectionGui(QWidget):
         rows = set()
         for modelIndex in selectedIndexes:
             rows.add( modelIndex.row() )
-        rows.discard( self.laneSummaryTableView.model().rowCount() )
+
+        # Don't remove the last row, which is just buttons.
+        rows.discard( self.laneSummaryTableView.model().rowCount()-1 )
 
         # Remove in reverse order so row numbers remain consistent
         for row in reversed(sorted(rows)):
@@ -226,7 +252,7 @@ class DataSelectionGui(QWidget):
             finalSize = len(self.topLevelOperator.DatasetGroup) - 1
             self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
     
-            # The gui and the operator should be in sync
+            # The gui and the operator should be in sync (model has one extra row for the button row)
             assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
     def showDataset(self, laneIndex, roleIndex=None):
@@ -246,6 +272,8 @@ class DataSelectionGui(QWidget):
                     if not opLaneView.DatasetRoles.ready():
                         return
                     datasetRoles = opLaneView.DatasetRoles.value
+                    if roleIndex >= len(datasetRoles):
+                        return
                     roleName = datasetRoles[roleIndex]
                     try:
                         layerIndex = [l.name for l in self.layerstack].index(roleName)
@@ -378,6 +406,11 @@ class DataSelectionGui(QWidget):
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
             endingLane = startingLane+len(fileNames)-1
+            
+        if self._max_lanes and endingLane >= self._max_lanes:
+            msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
+            QMessageBox.critical( self, "Too many files", msg )
+            return
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
@@ -421,9 +454,16 @@ class DataSelectionGui(QWidget):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
             except DatasetConstraintError as ex:
+                return_val = [False]
                 # Give the user a chance to fix the problem
-                if not self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex):
+                self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
+                if not return_val[0]:
+                    # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
+                    break
+            except OpDataSelection.InvalidDimensionalityError as ex:
+                    opTop.DatasetGroup.resize( originalSize )
+                    QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     break
             except:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
@@ -432,7 +472,7 @@ class DataSelectionGui(QWidget):
         self.updateInternalPathVisiblity()
 
     @threadRouted
-    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex):
+    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
         msg = "Can't use default properties for dataset:\n\n" + \
               filename + "\n\n" + \
               "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
@@ -440,13 +480,18 @@ class DataSelectionGui(QWidget):
               "Please enter valid dataset properties to continue."
         QMessageBox.warning( self, "Dataset Needs Correction", msg )
         
-        return self.repairDatasetInfo( info, roleIndex, laneIndex )
+        # The success of this is 'returned' via our special out-param
+        # (We can't return a value from this func because it is @threadRouted.
+        successfully_repaired = self.repairDatasetInfo( info, roleIndex, laneIndex )
+        return_val[0] = successfully_repaired
 
     def repairDatasetInfo(self, info, roleIndex, laneIndex):
+        """Open the dataset properties editor and return True if the new properties are acceptable."""
         defaultInfos = {}
         defaultInfos[laneIndex] = info
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos)
-        return ( editorDlg.exec_() == QDialog.Accepted )
+        dlg_state = editorDlg.exec_()
+        return ( dlg_state == QDialog.Accepted )
 
     def getPossibleInternalPaths(self, absPath):
         datasetNames = []
@@ -478,7 +523,10 @@ class DataSelectionGui(QWidget):
         info = DatasetInfo()
         info.filePath = "//".join( files )
         prefix = os.path.commonprefix(files)
-        info.nickname = PathComponents(prefix).filenameBase + "..."
+        info.nickname = PathComponents(prefix).filenameBase
+        # Add an underscore for each wildcard digit
+        num_wildcards = len(files[-1]) - len(prefix) - len( os.path.splitext(files[-1])[1] )
+        info.nickname += "_"*num_wildcards
 
         # Allow labels by default if this gui isn't being used for batch data.
         info.allowLabels = ( self.guiMode == GuiMode.Normal )
@@ -501,7 +549,10 @@ class DataSelectionGui(QWidget):
                 except DatasetConstraintError as ex:
                     # Give the user a chance to repair the problem.
                     filename = files[0] + "\n...\n" + files[-1]
-                    if not self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex ):
+                    return_val = [False]
+                    self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex, return_val )
+                    if not return_val[0]:
+                        # Not successfully repaired.  Roll back the changes and give up.
                         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             finally:
                 self.guiControlSignal.emit( ControlCommand.Pop )

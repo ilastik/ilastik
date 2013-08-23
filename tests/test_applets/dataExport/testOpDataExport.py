@@ -24,6 +24,7 @@ class TestOpDataExport(object):
     def testBasic(self):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
+        opExport.TransactionSlot.setValue(True)        
         opExport.WorkingDirectory.setValue( self._tmpdir )
         
         # Simulate the important fields of a DatasetInfo object
@@ -46,16 +47,16 @@ class TestOpDataExport(object):
         opExport.OutputFormat.setValue( 'hdf5' )
         opExport.OutputFilenameFormat.setValue( '{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.OutputInternalPath.setValue('volume/data')
-        
+
         assert opExport.ImageToExport.ready()
         assert opExport.ExportPath.ready()
         
         #print "exporting data to: {}".format( opExport.ExportPath.value )
-        assert opExport.ExportPath.value == self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5'
+        assert opExport.ExportPath.value == self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value + '/volume/data' )
+        opRead.FilePath.setValue( opExport.ExportPath.value )
 
         # Compare with the correct subregion and convert dtype.
         expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]

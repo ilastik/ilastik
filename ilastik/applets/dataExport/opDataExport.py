@@ -5,6 +5,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.valueProviders import OpMetadataInjector
 
 class OpDataExport(Operator):
     """
@@ -50,6 +51,35 @@ class OpDataExport(Operator):
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
     FormatSelectionIsValid = OutputSlot()
 
+
+    ####
+    # Simplified block diagram for actual export data and 'live preview' display:
+    # 
+    #                            --> ExportPath
+    #                           /
+    # Input -> opFormattedExport --> ImageToExport (live preview)
+    #                          |\
+    #                          \ --> ConvertedImage
+    #                           \
+    #                            --> FormatSeletionIsValid
+
+    ####
+    # Simplified block diagram for Raw data display:
+    #
+    # RegionStart --
+    #               \
+    # RegionStop --> OpRawSubRegionHelper.RawStart -
+    #               /                    .RawStop --\
+    #              /                                 \
+    # RawData ---->---------------------------------> opFormatRaw --> FormattedRawData
+
+    ####
+    # Simplified block diagram for "on-disk view" of the exported results file:
+    #
+    # opFormattedExport.ImageToExport (for metadata only) -->
+    #                                                        \
+    # opFormattedExport.ExportPath -------------------------> opImageOnDiskProvider --> ImageOnDisk
+
     def __init__(self, *args, **kwargs):
         super( OpDataExport, self ).__init__(*args, **kwargs)
         
@@ -93,11 +123,12 @@ class OpDataExport(Operator):
         opFormatRaw.Input.connect( self.RawData )
         opFormatRaw.RegionStart.connect( opHelper.RawStart )
         opFormatRaw.RegionStop.connect( opHelper.RawStop )
-        opFormatRaw.InputMin.connect( self.InputMin )
-        opFormatRaw.InputMax.connect( self.InputMax )
-        opFormatRaw.ExportMin.connect( self.ExportMin )
-        opFormatRaw.ExportMax.connect( self.ExportMax )
-        opFormatRaw.ExportDtype.connect( self.ExportDtype )
+        # Don't normalize the raw data.
+        #opFormatRaw.InputMin.connect( self.InputMin )
+        #opFormatRaw.InputMax.connect( self.InputMax )
+        #opFormatRaw.ExportMin.connect( self.ExportMin )
+        #opFormatRaw.ExportMax.connect( self.ExportMax )
+        #opFormatRaw.ExportDtype.connect( self.ExportDtype )
         opFormatRaw.OutputAxisOrder.connect( self.OutputAxisOrder )
         opFormatRaw.OutputFormat.connect( self.OutputFormat )
         self._opFormatRaw = opFormatRaw
@@ -113,7 +144,7 @@ class OpDataExport(Operator):
         # Set up the output that let's us view the exported file
         self._opImageOnDiskProvider = OpImageOnDiskProvider( parent=self )
         self._opImageOnDiskProvider.TransactionSlot.connect( self.TransactionSlot )
-        self._opImageOnDiskProvider.Input.connect( self.ImageToExport )
+        self._opImageOnDiskProvider.Input.connect( self._opFormattedExport.ImageToExport )
         self._opImageOnDiskProvider.WorkingDirectory.connect( self.WorkingDirectory )
         self._opImageOnDiskProvider.DatasetPath.connect( self._opFormattedExport.ExportPath )
         self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
@@ -122,7 +153,22 @@ class OpDataExport(Operator):
     def setupOutputs(self):
         self.cleanupOnDiskView()        
 
-        rawInfo = self.RawDatasetInfo.value
+        # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then 
+        #          we have no guarantees about which one will trigger setupOutputs() first.
+        #        It is therefore possible for 'RawDatasetInfo' to appear ready() to us, 
+        #          even though it's upstream partner is UNready.  We are about to get the 
+        #          unready() notification, but it will come too late to prevent our 
+        #          setupOutputs method from being called.
+        #        Without proper graph setup transaction semantics, we have to use this 
+        #          hack as a workaround.
+        try:
+            rawInfo = self.RawDatasetInfo.value
+        except:
+            for oslot in self.outputs.values():
+                if oslot.partner is None:
+                    oslot.meta.NOTREADY = True
+            return
+
         dataset_dir = PathComponents(rawInfo.filePath).externalDirectory
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
@@ -174,6 +220,14 @@ class OpDataExport(Operator):
             self.setupOnDiskView()
 
 class OpRawSubRegionHelper(Operator):
+    """
+    We display the raw data underneath the export data.
+    To do that, we need to show the SAME subregion of the raw data that the user selected to export.
+    However, it's possible that the exported data has a different number of channels than the raw data has.
+    Therefore, the subregion for the raw layer should be the same in all dimensions EXCEPT for the number of channels.
+    
+    This simple helper operator produces the correct subregion settings to be used with the raw data formatting operator.
+    """
     RawImage = InputSlot()
     ExportStart = InputSlot(optional=True)
     ExportStop = InputSlot(optional=True)
@@ -205,7 +259,9 @@ class OpRawSubRegionHelper(Operator):
 
 class OpImageOnDiskProvider(Operator):
     """
-    This simply wraps a lazyflow OpInputDataReader, but provides a default output if the file doesn't exist yet.
+    This simply wraps a lazyflow OpInputDataReader, but ensures that the metadata 
+    (axistags, drange) on the output matches the metadata from the original data 
+    (even if the output file format doesn't support metadata fields).
     """
     TransactionSlot = InputSlot()
     Input = InputSlot() # Used for dtype and shape only. Data is always provided directly from the file.
@@ -219,10 +275,22 @@ class OpImageOnDiskProvider(Operator):
     def __init__(self, *args, **kwargs):
         super( OpImageOnDiskProvider, self ).__init__(*args, **kwargs)
         self._opReader = None
+        self._opMetadataInjector = None
+    
+    # Block diagram:
+    #
+    # (Input.axistags, Input.drange)
+    #                               \  
+    # DatasetPath ---> opReader ---> opMetadataInjector --> Output
+    #                 /
+    # WorkingDirectory
     
     def setupOutputs( self ):
         if self._opReader is not None:
             self.Output.disconnect()
+            if self._opMetadataInjector:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
             self._opReader.cleanUp()
             self._opReader = None
 
@@ -233,11 +301,26 @@ class OpImageOnDiskProvider(Operator):
             self._opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
             self._opReader.FilePath.setValue( self.DatasetPath.value )
 
-            dataReady &= self._opReader.Output.meta.shape == self.Input.meta.shape
-            dataReady &= self._opReader.Output.meta.dtype == self.Input.meta.dtype
+            # Since most file formats don't save meta-info,
+            # The reader output's axis order may be incorrect.
+            # (For example, if we export in npy format with zxy order, 
+            #  the Npy reader op will simply assume xyz order when it reads the data.)
+
+            # Force the metadata back to the correct state by copying select items from Input.meta
+            metadata = {}
+            metadata['axistags'] = self.Input.meta.axistags
+            metadata['drange'] = self.Input.meta.drange
+            self._opMetadataInjector = OpMetadataInjector( parent=self )
+            self._opMetadataInjector.Input.connect( self._opReader.Output )
+            self._opMetadataInjector.Metadata.setValue( metadata )
+
+            dataReady &= self._opMetadataInjector.Output.meta.shape == self.Input.meta.shape
+            dataReady &= self._opMetadataInjector.Output.meta.dtype == self.Input.meta.dtype
             if dataReady:
-                self.Output.connect( self._opReader.Output )
+                self.Output.connect( self._opMetadataInjector.Output )
             else:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
                 self._opReader.cleanUp()
                 self._opReader = None
                 self.Output.meta.NOTREADY = True
@@ -246,6 +329,9 @@ class OpImageOnDiskProvider(Operator):
             # Note: If the data is exported as a 'sequence', then this will always be NOTREADY
             #       because the 'path' (e.g. 'myfile_{slice_index}.png' will be nonexistent.
             #       That's okay because a stack is probably too slow to be of use for a preview anyway.
+            if self._opMetadataInjector:
+                self._opMetadataInjector.cleanUp()
+                self._opMetadataInjector = None
             self._opReader.cleanUp()
             self._opReader = None
             # The dataset doesn't exist yet.
@@ -269,7 +355,7 @@ def get_model_op(wrappedOp):
     be copied over to the 'real' (wrapped) operator slots. 
     """
     if len( wrappedOp ) == 0:
-        return
+        return None, None
 
     # These are the slots the export settings gui will manipulate.
     setting_slots = [ wrappedOp.RegionStart,
@@ -295,15 +381,19 @@ def get_model_op(wrappedOp):
     shape = None
     axes = None
     for slot in wrappedOp.Input:
-        assert slot.ready()
-        if shape is None:
-            shape = slot.meta.shape
-            axes = slot.meta.getAxisKeys()
-            dtype = slot.meta.dtype
-        else:
-            assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
-            assert slot.meta.dtype == dtype
-            shape = numpy.minimum( slot.meta.shape, shape )
+        if slot.ready():
+            if shape is None:
+                shape = slot.meta.shape
+                axes = slot.meta.getAxisKeys()
+                dtype = slot.meta.dtype
+            else:
+                assert slot.meta.getAxisKeys() == axes, "Can't export multiple slots with different axes."
+                assert slot.meta.dtype == dtype
+                shape = numpy.minimum( slot.meta.shape, shape )
+
+    # If NO slots were ready, then we can't do anything here.
+    if shape is None:
+        return None, None
 
     # Must provide a 'ready' slot for the gui
     # Use a subregion operator to provide a slot with the meta data we chose.
@@ -316,7 +406,7 @@ def get_model_op(wrappedOp):
     #  It only cares about the metadata.)
     model_op.Input.connect( opSubRegion.Output )
 
-    return model_op
+    return model_op, opSubRegion # We return the subregion op, too, so the caller can clean it up.
 
 
 

@@ -5,7 +5,6 @@ import volumina.colortables as colortables
 
 from lazyflow.operators.generic import axisTagsToString
 from lazyflow.rtype import SubRegion
-from lazyflow.utility import Tracer
 
 import logging
 import os
@@ -20,7 +19,6 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 class TrackingBaseGui( LayerViewerGui ):
     """
@@ -35,7 +33,8 @@ class TrackingBaseGui( LayerViewerGui ):
     def appletDrawer( self ):
         return self._drawer
 
-    def reset( self ):
+    def stopAndCleanUp( self ):
+        super( TrackingBaseGui, self ).stopAndCleanUp()
         print "TrackinGui.reset(): not implemented"
 
     
@@ -452,9 +451,8 @@ class TrackingBaseGui( LayerViewerGui ):
         
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
-        with Tracer(traceLogger):
-            self.mainOperator.MinValue.setValue(minVal)
-            self.mainOperator.MaxValue.setValue(maxVal)
+        self.mainOperator.MinValue.setValue(minVal)
+        self.mainOperator.MaxValue.setValue(maxVal)
     
     
     def _setLayerVisible(self, name, visible):

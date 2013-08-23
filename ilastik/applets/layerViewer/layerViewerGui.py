@@ -1,5 +1,6 @@
 #Python
 import os
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -15,7 +16,6 @@ from PyQt4 import uic
 #lazyflow
 from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
-from lazyflow.utility import traceLogged
 
 #volumina
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
@@ -82,6 +82,10 @@ class LayerViewerGui(QWidget):
         # Remove all layers
         self.layerstack.clear()
 
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
         # Stop rendering
         for scene in self.editor.imageScenes:
             if scene._tileProvider:
@@ -94,7 +98,6 @@ class LayerViewerGui(QWidget):
     ###########################################
     ###########################################
 
-    @traceLogged(traceLogger)
     def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
@@ -109,6 +112,7 @@ class LayerViewerGui(QWidget):
 
         self._stopped = False
         self._initialized = False
+        self.__cleanup_fns = []
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
@@ -140,7 +144,11 @@ class LayerViewerGui(QWidget):
             assert slot.level == 1
             self.observedSlots.append( slot )
             slot.notifyInserted( bind(self._handleLayerInsertion) )
+            self.__cleanup_fns.append( partial( slot.unregisterInserted, bind(self._handleLayerInsertion) ) )
+
             slot.notifyRemoved( bind(self._handleLayerRemoval) )
+            self.__cleanup_fns.append( partial( slot.unregisterRemoved, bind(self._handleLayerRemoval) ) )
+
             for i in range(len(slot)):
                 self._handleLayerInsertion(slot, i)
  
@@ -179,7 +187,6 @@ class LayerViewerGui(QWidget):
                     layers.append(layer)
         return layers
 
-    @traceLogged(traceLogger)
     def _handleLayerInsertion(self, slot, slotIndex):
         """
         The multislot providing our layers has a new item.
@@ -189,7 +196,10 @@ class LayerViewerGui(QWidget):
         slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
         slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
 
-    @traceLogged(traceLogger)
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterReady, bind(self.updateAllLayers) ) )
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterUnready, bind(self.updateAllLayers) ) )
+
+
     def _handleLayerRemoval(self, slot, slotIndex):
         """
         An item is about to be removed from the multislot that is providing our layers.
@@ -347,7 +357,6 @@ class LayerViewerGui(QWidget):
 
         return layer
 
-    @traceLogged(traceLogger)
     @threadRouted
     def updateAllLayers(self, slot=None):
         if self._stopped or not self._initialized:
@@ -359,6 +368,13 @@ class LayerViewerGui(QWidget):
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
         
+        for layer in newGuiLayers:
+            assert not filter( lambda l: l is layer, self.layerstack ), \
+                "You are attempting to re-use a layer ({}).  " \
+                "Your setupOutputs() function may not re-use layer objects.  " \
+                "The layerstack retains ownership of the layers you provide and " \
+                "may choose to clean and delete them without your knowledge.".format( layer.name )
+
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
@@ -428,7 +444,6 @@ class LayerViewerGui(QWidget):
                     self.layerstack.moveSelectedDown()
                     stackIndex += 1
 
-    @traceLogged(traceLogger)
     def determineDatashape(self):
         newDataShape = None
         for provider in self.observedSlots:
@@ -452,7 +467,6 @@ class LayerViewerGui(QWidget):
             op5.cleanUp()
         return shape
 
-    @traceLogged(traceLogger)
     def initViewerControlUi(self):
         """
         Load the viewer controls GUI, which appears below the applet bar.
@@ -468,7 +482,6 @@ class LayerViewerGui(QWidget):
         if self.__viewerControlWidget is not None:
             self.__viewerControlWidget.setupConnections(model)
 
-    @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
         """
         By default, this base class provides a blank applet drawer.
@@ -481,7 +494,6 @@ class LayerViewerGui(QWidget):
     def getAppletDrawerUi(self):
         return self._drawer
 
-    @traceLogged(traceLogger)
     def _initCentralUic(self):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
@@ -490,7 +502,6 @@ class LayerViewerGui(QWidget):
         localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir+"/centralWidget.ui", self)
 
-    @traceLogged(traceLogger)
     def _initEditor(self, crosshair):
         """
         Initialize the Volume Editor GUI.
@@ -516,7 +527,6 @@ class LayerViewerGui(QWidget):
         for view in self.editor.imageViews:
             view.doScaleTo(1)
 
-    @traceLogged(traceLogger)
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
 

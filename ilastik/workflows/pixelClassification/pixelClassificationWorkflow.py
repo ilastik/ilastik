@@ -1,3 +1,5 @@
+import argparse
+
 from ilastik.workflow import Workflow
 
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
@@ -35,6 +37,12 @@ class PixelClassificationWorkflow(Workflow):
 
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
 
+        # Parse workflow-specific command-line args
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
+        parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        self.filter_implementation = parsed_args.filter
+        
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet( self,
@@ -46,7 +54,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
-        self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
+        self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
         self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
         opClassify = self.pcApplet.topLevelOperator
@@ -66,7 +74,7 @@ class PixelClassificationWorkflow(Workflow):
 
         if appendBatchOperators:
             # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
             self.batchResultsApplet = PixelClassificationDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
     
             # Expose in shell        
@@ -127,7 +135,7 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation': self.filter_implementation}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
         
         ## Connect Operators ##

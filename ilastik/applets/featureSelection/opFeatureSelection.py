@@ -1,5 +1,6 @@
 #Python
 import os
+import logging
 
 #SciPy
 import numpy
@@ -12,6 +13,8 @@ from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
+
+logger = logging.getLogger(__name__)
 
 class OpFeatureSelectionNoCache(Operator):
     """
@@ -55,6 +58,7 @@ class OpFeatureSelectionNoCache(Operator):
         elif filter_implementation == 'Interpolated':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
             self.opPixelFeatures.InterpolationScaleZ.setValue(2)
+            logger.info("Using interpolated filters")
         else:
             raise RuntimeError("Unknown filter implementation option: {}".format( filter_implementation ))
 

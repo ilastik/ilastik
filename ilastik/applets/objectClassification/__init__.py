@@ -1,1 +1,2 @@
 from objectClassificationApplet import ObjectClassificationApplet
+from objectClassificationDataExportApplet import ObjectClassificationDataExportApplet

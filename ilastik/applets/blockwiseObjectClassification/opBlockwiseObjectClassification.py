@@ -107,20 +107,26 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
         
     def setupOutputs(self):
-        input_shape = self.RawImage.meta.shape
-        self._halo_roi = self.computeHaloRoi( input_shape, self._halo_padding, self.block_roi ) # In global coordinates
+        tagged_input_shape = self.RawImage.meta.getTaggedShape()
+        self._halo_roi = self.computeHaloRoi( tagged_input_shape, self._halo_padding, self.block_roi ) # In global coordinates
         
         # Output roi in our own coordinates (i.e. relative to the halo start)
         self._output_roi = self.block_roi - self._halo_roi[0]
         
-        halo_start = tuple(self._halo_roi[0])
-        halo_stop = tuple(self._halo_roi[1])
+        halo_start, halo_stop = map(tuple, self._halo_roi)
         
-        self._opBinarySubRegion.Start.setValue( halo_start )
-        self._opBinarySubRegion.Stop.setValue( halo_stop )
-
         self._opRawSubRegion.Start.setValue( halo_start )
         self._opRawSubRegion.Stop.setValue( halo_stop )
+
+        # Binary image has only 1 channel.  Adjust halo subregion.
+        assert self.BinaryImage.meta.getTaggedShape()['c'] == 1
+        c_index = self.BinaryImage.meta.axistags.channelIndex
+        binary_halo_roi = numpy.array(self._halo_roi)
+        binary_halo_roi[:, c_index] = (0,1) # Binary has only 1 channel.
+        binary_halo_start, binary_halo_stop = map(tuple, binary_halo_roi)
+        
+        self._opBinarySubRegion.Start.setValue( binary_halo_start )
+        self._opBinarySubRegion.Stop.setValue( binary_halo_stop )
 
         self.PredictionImage.meta.assignFrom( self._opPredictionImage.Output.meta )
         self.PredictionImage.meta.shape = tuple( numpy.subtract( self.block_roi[1], self.block_roi[0] ) )
@@ -159,15 +165,20 @@ class OpSingleBlockObjectPrediction( Operator ):
             self.PredictionImage.setDirty( *adjusted_roi )
 
     @classmethod
-    def computeHaloRoi(cls, dataset_shape, halo_padding, block_roi):
+    def computeHaloRoi(cls, tagged_dataset_shape, halo_padding, block_roi):
         block_roi = numpy.array(block_roi)
         block_start, block_stop = block_roi
+        
+        channel_index = tagged_dataset_shape.keys().index('c')
+        block_start[ channel_index ] = 0
+        block_stop[ channel_index ] = tagged_dataset_shape['c']
+        
         # Compute halo and clip to dataset bounds
         halo_start = block_start - halo_padding
-        halo_start = numpy.maximum( halo_start, (0,)*len(dataset_shape) )
+        halo_start = numpy.maximum( halo_start, (0,)*len(halo_start) )
 
         halo_stop = block_stop + halo_padding
-        halo_stop = numpy.minimum( halo_stop, dataset_shape )
+        halo_stop = numpy.minimum( halo_stop, tagged_dataset_shape.values() )
         
         halo_roi = (halo_start, halo_stop)
         return halo_roi
@@ -207,6 +218,9 @@ class OpBlockwiseObjectClassification( Operator ):
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
+        prediction_tagged_shape = self.RawImage.meta.getTaggedShape()
+        prediction_tagged_shape['c'] = 1
+        self.PredictionImage.meta.shape = tuple( prediction_tagged_shape.values() )
 
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value
@@ -319,15 +333,21 @@ class OpBlockwiseObjectClassification( Operator ):
 
     
     def _getFullShape(self, spatialShapeDict):
+        # 't' should match raw input
+        # 'c' should be 1 (output image has exactly 1 channel)
+        # xyz come from spatialShapeDict
         axiskeys = self.RawImage.meta.getAxisKeys()
-        # xyz block shape comes from input slot, but other axes are as in raw data
         shape = [0] * len(axiskeys)
         for i, k in enumerate(axiskeys):
             if k in 'xyz':
                 shape[i] = spatialShapeDict[k]
-            else:
+            elif k == 'c':
+                shape[i] = 1
+            elif k == 't':
                 shape[i] = self.RawImage.meta.shape[i]
-            
+            else:
+                assert False,  "Unknown axis key: '{}'".format( k )
+        
         return shape
 
     

@@ -4,7 +4,7 @@ import numpy
 import unittest
 import shutil
 import tempfile
-from lazyflow.graph import Graph, Operator, InputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, Slot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 
 from ilastik.applets.base.appletSerializer import \
@@ -99,7 +99,13 @@ class TestSerializer(unittest.TestCase):
         self.serializer.deserializeFromHdf5(self.projectFile, self.projectFilePath)
         for subslot, value in zip(mslot, values):
             self.assertTrue(numpy.all(subslot.value == value))
-        self.assertEquals(len(mss.slot), len(values))
+
+        # If the multi-slot started with MORE subslots than were stored in the project file,
+        #  the extra subslots are NOT removed.  Instead, they are simply disconnected.
+        # Verify that the the number of ready() slots matches the number we attempted to save.
+        ready_subslots = filter(Slot.ready, mss.slot)
+        self.assertEquals(len(ready_subslots), len(values))
+
         self.assertFalse(mss.dirty)
 
     def _testList(self, slot, ss, value, rvalue):

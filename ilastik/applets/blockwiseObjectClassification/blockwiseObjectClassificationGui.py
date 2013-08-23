@@ -8,13 +8,11 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
-from lazyflow.utility import traceLogged
 from ilastik.utility.gui import threadRouted
 from volumina.api import LazyflowSource, ColortableLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 class BlockwiseObjectClassificationGui( LayerViewerGui ):
     
@@ -63,22 +61,19 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
             self._drawer.blockSpinBox_Z.setVisible(False)
             self._drawer.haloSpinBox_Z.setVisible(False)
             
-        self.predictLayer = None
 
-
-    @traceLogged(traceLogger)
     def setupLayers(self):
         layers = []
         
         predictionSlot = self.topLevelOperatorView.PredictionImage
         if predictionSlot.ready():
-            if self.predictLayer is None:
-                self.predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
-                                                     colorTable=self._colorTable16 )
-                self.predictLayer.name = "Blockwise prediction"
-                self.predictLayer.visible = False
             
-            layers.append(self.predictLayer)
+            predictLayer = ColortableLayer( LazyflowSource(predictionSlot),
+                                                 colorTable=self._colorTable16 )
+            predictLayer.name = "Blockwise prediction"
+            predictLayer.visible = False
+            
+            layers.append(predictLayer)
 
         
         binarySlot = self.topLevelOperatorView.BinaryImage
@@ -103,7 +98,8 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
         """
         if watched in self._blockSpinBoxes.values() or self._haloSpinBoxes.values():
-            if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Enter:
+            if  event.type() == QEvent.KeyPress and\
+              ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
                 self._drawer.applyButton.click()
                 return True
         return False

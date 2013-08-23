@@ -94,13 +94,11 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         
         return result
 
-    def _do_4d(self, image, labels, features, axes):        
-        image = np.asarray(image, dtype=np.float32)
-        labels = np.asarray(labels, dtype=np.uint32)
+    def _do_4d(self, image, labels, features, axes):
         if self.ndim==2:
-            result = vigra.analysis.extractRegionFeatures(image.squeeze(), labels.squeeze(), features, ignoreLabel=0)
+            result = vigra.analysis.extractRegionFeatures(image.squeeze().astype(np.float32), labels.squeeze().astype(np.uint32), features, ignoreLabel=0)
         else:
-            result = vigra.analysis.extractRegionFeatures(image, labels, features, ignoreLabel=0)
+            result = vigra.analysis.extractRegionFeatures(image.astype(np.float32), labels.astype(np.uint32), features, ignoreLabel=0)
         #NOTE: this removes the background object!!!
         return cleanup(result, 0 in labels, True, features)
 
@@ -132,8 +130,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         #FIXME: this is done globally as if all the features have the same margin
         #we should group features by their margins
         passed, excl = ilastik.applets.objectExtraction.opObjectExtraction.make_bboxes(binary_bbox, margin)
-        assert np.all(passed==excl)==False
-        assert np.all(binary_bbox+excl==passed)
+        #assert np.all(passed==excl)==False
+        #assert np.all(binary_bbox+excl==passed)
         for label, suffix in zip([excl, passed],
                                  self.local_out_suffixes):
             result = self._do_4d(image, label, featurenames, axes)

@@ -12,7 +12,6 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 
 # HCI
-from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -26,7 +25,6 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 # Loggers
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -51,8 +49,11 @@ class LabelingGui(LayerViewerGui):
     def appletDrawer(self):
         return self._labelControlUi
 
-    def reset(self):
-        super(LabelingGui, self).reset()
+    def stopAndCleanUp(self):
+        super(LabelingGui, self).stopAndCleanUp()
+
+        for fn in self.__cleanup_fns:
+            fn()
 
         # Clear the label list GUI
         self._clearLabelListGui()
@@ -117,7 +118,6 @@ class LabelingGui(LayerViewerGui):
             self.LabelNames = None
       
 
-    @traceLogged(traceLogger)
     def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
         Constructor.
@@ -134,6 +134,8 @@ class LabelingGui(LayerViewerGui):
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert all( [v is not None for v in labelingSlots.__dict__.values()] )
 
+        self.__cleanup_fns = []
+
         self._labelingSlots = labelingSlots
         self._minLabelNumber = 0
         self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
@@ -141,9 +143,11 @@ class LabelingGui(LayerViewerGui):
         self._rawInputSlot = rawInputSlot
 
         self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
+        self.__cleanup_fns.append( partial( self._labelingSlots.maxLabelValue.unregisterDirty, bind(self._updateLabelList) ) )
+
         if self._labelingSlots.LabelNames is not None:
             self._labelingSlots.LabelNames.notifyDirty( bind(self._updateLabelList) )
-
+            self.__cleanup_fns.append( partial( self._labelingSlots.LabelNames.unregisterDirty, bind(self._updateLabelList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
@@ -165,7 +169,6 @@ class LabelingGui(LayerViewerGui):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
 
-    @traceLogged(traceLogger)
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
 
@@ -221,7 +224,6 @@ class LabelingGui(LayerViewerGui):
         self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
         self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
 
-    @traceLogged(traceLogger)
     def onLabelListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the label list selections."""
         firstRow = topLeft.row()
@@ -312,7 +314,6 @@ class LabelingGui(LayerViewerGui):
             prefsMgr.set('labeling', 'eraser brush size', self.eraserSizeIndex)
         super(LabelingGui, self).hideEvent(event)
 
-    @traceLogged(traceLogger)
     def _handleToolButtonClicked(self, checked, toolId):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
@@ -326,7 +327,6 @@ class LabelingGui(LayerViewerGui):
             self._changeInteractionMode( toolId )
 
     @threadRouted
-    @traceLogged(traceLogger)
     def _changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
@@ -419,7 +419,6 @@ class LabelingGui(LayerViewerGui):
     
 
 
-    @traceLogged(traceLogger)
     def _onBrushSizeChange(self, index):
         """
         Handle the user's new brush size selection.
@@ -436,7 +435,6 @@ class LabelingGui(LayerViewerGui):
             self.paintBrushSizeIndex = index
             self.editor.brushingModel.setBrushSize(newSize)
 
-    @traceLogged(traceLogger)
     def _onLabelSelected(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
@@ -449,7 +447,6 @@ class LabelingGui(LayerViewerGui):
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
 
-    @traceLogged(traceLogger)
     def _resetLabelSelection(self):
         logger.debug("Resetting label selection")
         if len(self._labelControlUi.labelListModel) > 0:
@@ -458,7 +455,6 @@ class LabelingGui(LayerViewerGui):
             self._changeInteractionMode(Tool.Navigation)
         return True
 
-    @traceLogged(traceLogger)
     def _updateLabelList(self):
         """
         This function is called when the number of labels has changed without our knowledge.
@@ -487,7 +483,6 @@ class LabelingGui(LayerViewerGui):
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
-    @traceLogged(traceLogger)
     def _addNewLabel(self):
         """
         Add a new label to the label list GUI control.
@@ -572,7 +567,6 @@ class LabelingGui(LayerViewerGui):
         """
         pass
 
-    @traceLogged(traceLogger)
     def _removeLastLabel(self):
         """
         Programmatically (i.e. not from the GUI) reduce the size of the label list by one.
@@ -585,13 +579,11 @@ class LabelingGui(LayerViewerGui):
 
         self._programmaticallyRemovingLabels = False
 
-    @traceLogged(traceLogger)
     def _clearLabelListGui(self):
         # Remove rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() > 0:
             self._removeLastLabel()
 
-    @traceLogged(traceLogger)
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
@@ -643,7 +635,6 @@ class LabelingGui(LayerViewerGui):
     def _getLabelLayer(self):
         return self.getLayer('Labels')
 
-    @traceLogged(traceLogger)
     def createLabelLayer(self, direct=False):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
@@ -653,7 +644,6 @@ class LabelingGui(LayerViewerGui):
         if not labelOutput.ready():
             return (None, None)
         else:
-            traceLogger.debug("Setting up labels" )
             # Add the layer to draw the labels, but don't add any labels
             labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput,
                                            self._labelingSlots.labelInput)
@@ -664,7 +654,6 @@ class LabelingGui(LayerViewerGui):
 
             return labellayer, labelsrc
 
-    @traceLogged(traceLogger)
     def setupLayers(self):
         """
         Sets up the label layer for display by our base class (LayerViewerGui).
@@ -702,7 +691,6 @@ class LabelingGui(LayerViewerGui):
 
         return layers
 
-    @traceLogged(traceLogger)
     def _createDefault16ColorColorTable(self):
         colors = []
         # Transparent for the zero label

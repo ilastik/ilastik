@@ -93,7 +93,7 @@ def make_bboxes(binary_bbox, margin):
     passed = np.asarray(dt < max_margin).astype(np.bool)
 
     # context only
-    context = (passed - binary_bbox).astype(np.bool)
+    context = np.asarray(passed) - np.asarray(binary_bbox).astype(np.bool)
     return passed, context
 
 
@@ -223,14 +223,10 @@ class OpRegionFeatures3d(Operator):
             c = image.axistags.index('c')
         axes = Axes()
 
-        image = np.asarray(image, dtype=np.float32)
-        labels = np.asarray(labels, dtype=np.uint32)
-
         slc3d = [slice(None)] * 4 # FIXME: do not hardcode
         slc3d[axes.c] = 0
 
         labels = labels[slc3d]
-
         
         logger.debug("Computing default features")
 
@@ -264,7 +260,7 @@ class OpRegionFeatures3d(Operator):
                 extrafeats[feat_key] = feature
         else:
             logger.debug("default features not computed, computing separately")
-            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze(), labels.squeeze(),
+            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze().astype(np.float32), labels.squeeze(),
                                                         default_features.keys(),
                                                         ignoreLabel=0)
             #remove the 0th object, we'll add it again later
@@ -338,10 +334,10 @@ class OpRegionFeatures3d(Operator):
         for pfeats in all_features.itervalues():
             for key, value in pfeats.iteritems():
                 if value.shape[0] != nobj:
-                    raise Exception('feature {} does not have enough rows'.format(key))
+                    raise Exception('feature {} does not have enough rows, {} instead of {}'.format(key, value.shape[0], nobj))
 
                 # because object classification operator expects nobj to
-                # include background. we should change that assumption.
+                # include background. FIXME: we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
                 if key == 'Coord<ValueList>' or key == 'Coord<ValueList >':
@@ -474,9 +470,10 @@ class OpCachedRegionFeatures(Operator):
 
         if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
                            for k in "txyz")):
-            raise Exception("shapes do not match. label volume shape: {}."
-                            " raw data shape: {}".format(self.LabelVolume.meta.shape,
-                                                         self.RawVolume.meta.shape))
+            raise DatasetConstraintError( "Object Extraction",
+                                          "Raw Image and Label Image shapes do not match.\n"\
+                                          "Label Image shape: {}. Raw Image shape: {}"\
+                                          "".format(self.LabelImage.meta.shape, self.RawVolume.meta.shape))
 
 
         # Every value in the regionfeatures output is cached seperately as it's own "block"

@@ -84,7 +84,9 @@ class DatasetConstraintError(Exception):
         super( DatasetConstraintError, self ).__init__()
         self.appletName = appletName
         self.message = message
-        
+    
+    def __str__(self):
+        return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
 
 class ControlCommand(object):
     """
@@ -113,25 +115,3 @@ class ShellRequest(object):
     """
     #: Request that the shell perform a "save project" action.
     RequestSave = 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
