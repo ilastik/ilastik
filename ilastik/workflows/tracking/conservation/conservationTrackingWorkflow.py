@@ -11,7 +11,7 @@ from ilastik.applets.objectExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class ConservationTrackingWorkflow( Workflow ):
-    workflowName = "Tracking Workflow (Conservation Tracking)"
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking)"
 
     def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
