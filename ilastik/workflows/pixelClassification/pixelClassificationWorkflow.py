@@ -210,7 +210,7 @@ class PixelClassificationWorkflow(Workflow):
         (This workflow's headless mode supports only batch mode for now.)
         """
         # Configure the batch data selection operator.
-        if self._batch_input_args: 
+        if self._batch_input_args and self._batch_input_args.input_files: 
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.
