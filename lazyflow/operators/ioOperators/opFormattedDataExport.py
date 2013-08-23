@@ -47,6 +47,8 @@ class OpFormattedDataExport(Operator):
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     FormatSelectionIsValid = OutputSlot() # True or False depending on whether or not the currently selected format can support the current export data.
     
+    ALL_FORMATS = OpExportSlot.ALL_FORMATS
+    
     # Simplified block diagram:                                          -> ConvertedImage                -> FormatSelectionIsValid
     #                                                                   /                                /
     # Input -> opSubRegion -> opDrangeInjection -> opNormalizeAndConvert -> opReorderAxes -> opExportSlot -> ExportPath
