@@ -256,6 +256,9 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            self._drawer.exportButton.setVisible(False)
+            
         self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
         
         slot = self.topLevelOperatorView.Features
