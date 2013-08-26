@@ -99,7 +99,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         else:
             result = vigra.analysis.extractRegionFeatures(image.astype(np.float32), labels.astype(np.uint32), features, ignoreLabel=0)
         #NOTE: this removes the background object!!!
-        return cleanup(result, 0 in labels, True, features)
+        #The background object is always present (even if there is no 0 label) and is always removed here
+        return cleanup(result, True, True, features)
 
     def compute_global(self, image, labels, features, axes):
         features = features.keys()
