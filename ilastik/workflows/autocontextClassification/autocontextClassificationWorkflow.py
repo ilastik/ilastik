@@ -4,7 +4,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.batchIo import BatchIoApplet
+#from ilastik.applets.batchIo import BatchIoApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 #from context.applets.featureSelection.opFeatureSelection import OpFeatureSelection
