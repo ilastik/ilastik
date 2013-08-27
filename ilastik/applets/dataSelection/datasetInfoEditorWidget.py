@@ -447,7 +447,7 @@ class DatasetInfoEditorWidget(QDialog):
             # no drange given, autonormalization cannot be switched off !
             QMessageBox.warning(None, "Warning", "Normalization cannot be switched off without specifying the data range !")
             self.normalizeDisplayComboBox.setCurrentIndex(1)
-        
+            return 
         
         for laneIndex, op in self.tempOps.items():
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
