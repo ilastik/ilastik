@@ -117,12 +117,9 @@ class CountingWorkflow(Workflow):
         opTranspose.OutputLength.setValue(1)
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
         
-        opFilePathProvider = OperatorWrapper(OpAttributeSelector, parent=self)
-        opFilePathProvider.InputObject.connect( opTranspose.Outputs[0] )
-        opFilePathProvider.AttributeName.setValue( 'filePath' )
-        
         # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.DatasetPath.connect( opFilePathProvider.Result )
+        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )
+        opBatchResults.WorkingDirectory.connect( opBatchInputs.WorkingDirectory )
         
         # Connect (clone) the feature operator inputs from 
         #  the interactive workflow's features operator (which gets them from the GUI)
@@ -136,7 +133,7 @@ class CountingWorkflow(Workflow):
         opBatchPredictionPipeline.FreezePredictions.setValue( False )
         
         # Provide these for the gui
-        opBatchResults.RawImage.connect( opBatchInputs.Image )
+        opBatchResults.RawData.connect( opBatchInputs.Image )
         opBatchResults.PmapColors.connect( opClassify.PmapColors )
         opBatchResults.LabelNames.connect( opClassify.LabelNames )
         
@@ -144,7 +141,7 @@ class CountingWorkflow(Workflow):
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        opBatchResults.ImageToExport.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+        opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
