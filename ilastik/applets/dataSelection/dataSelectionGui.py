@@ -22,7 +22,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.base.applet import ControlCommand, DatasetConstraintError
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
@@ -98,7 +98,7 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
         """
         Constructor.
         
@@ -110,13 +110,13 @@ class DataSelectionGui(QWidget):
         """
         super(DataSelectionGui, self).__init__()
 
+        self.parentApplet = parentApplet
         self._max_lanes = max_lanes
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
         self.guiMode = guiMode
         self.serializer = serializer
-        self.guiControlSignal = guiControlSignal
         self.threadRouter = ThreadRouter(self)
 
         self._initCentralUic()
@@ -298,7 +298,7 @@ class DataSelectionGui(QWidget):
                     return layers
 
             opLaneView = self.topLevelOperator.getLane(laneIndex)
-            layerViewer = DatasetViewer(opLaneView, crosshair=False)
+            layerViewer = DatasetViewer(self.parentApplet, opLaneView, crosshair=False)
             
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
@@ -469,6 +469,10 @@ class DataSelectionGui(QWidget):
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 raise
+
+        # Notify the workflow that something that could affect applet readyness has occurred.
+        self.parentApplet.appletStateUpdateRequested.emit()
+
         self.updateInternalPathVisiblity()
 
     @threadRouted
@@ -540,7 +544,9 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
 
         def importStack():
-            self.guiControlSignal.emit( ControlCommand.DisableAll )
+            self.parentApplet.busy = True
+            self.parentApplet.appletStateUpdateRequested.emit()
+
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
                 self.serializer.importStackAsLocalDataset( info )
@@ -555,7 +561,8 @@ class DataSelectionGui(QWidget):
                         # Not successfully repaired.  Roll back the changes and give up.
                         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             finally:
-                self.guiControlSignal.emit( ControlCommand.Pop )
+                self.parentApplet.busy = False
+                self.parentApplet.appletStateUpdateRequested.emit()
 
         req = Request( importStack )
         req.notify_failed( partial(self.handleFailedStackLoad, files, originalNumLanes ) )
@@ -597,6 +604,9 @@ class DataSelectionGui(QWidget):
                 any_ready |= slot.ready()
             if not any_ready:
                 self.topLevelOperator.DatasetGroup.removeSlot( laneIndex, len(self.topLevelOperator.DatasetGroup)-1 )
+
+        # Notify the workflow that something that could affect applet readyness has occurred.
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)

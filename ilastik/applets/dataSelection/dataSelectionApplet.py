@@ -23,6 +23,7 @@ class DataSelectionApplet( Applet ):
         self._batchDataGui = batchDataGui
         self._title = title
         self._max_lanes = max_lanes
+        self.busy = False
 
     #
     # GUI
@@ -31,9 +32,9 @@ class DataSelectionApplet( Applet ):
         if self._gui is None:
             from dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self._batchDataGui]
-            self._gui = DataSelectionGui( self.topLevelOperator,
+            self._gui = DataSelectionGui( self,
+                                          self.topLevelOperator,
                                           self._serializableItems[0],
-                                          self.guiControlSignal,
                                           self._instructionText,
                                           guiMode,
                                           self._max_lanes )
