@@ -33,4 +33,4 @@ class AutocontextClassificationApplet( StandardApplet ):
     def createSingleLaneGui(self, imageLaneIndex):
         from autocontextClassificationGui import AutocontextClassificationGui
         singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
-        return AutocontextClassificationGui( singleImageOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        
+        return AutocontextClassificationGui( singleImageOperator, self.shellRequestSignal, self.predictionSerializer )        

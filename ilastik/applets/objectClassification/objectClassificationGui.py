@@ -83,7 +83,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.setChecked(False)
         self.labelingDrawerUi.checkShowPredictions.setChecked(False)
 
-    def __init__(self, op, shellRequestSignal, guiControlSignal):
+    def __init__(self, parentApplet, op):
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -104,13 +104,11 @@ class ObjectClassificationGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(ObjectClassificationGui, self).__init__(labelSlots, op,
+        super(ObjectClassificationGui, self).__init__(parentApplet, labelSlots, op,
                                                       labelingDrawerUiPath,
                                                       crosshair=False)
 
         self.op = op
-        self.guiControlSignal = guiControlSignal
-        self.shellRequestSignal = shellRequestSignal
 
         self.threadRouter = ThreadRouter(self)
         op.Warnings.notifyDirty(self.handleWarnings)

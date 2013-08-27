@@ -29,6 +29,9 @@ class DataExportApplet( Applet ):
         self.__serializers = None
         if self.dataSerializers is None:
             self.__serializers = [ DataExportSerializer(self.topLevelOperator, title) ]
+
+        # This flag is set by the gui and checked by the workflow        
+        self.busy = False
         
     @property
     def dataSerializers(self):
@@ -41,7 +44,7 @@ class DataExportApplet( Applet ):
     def getMultiLaneGui(self):
         if self._gui is None:
             from dataExportGui import DataExportGui
-            self._gui = DataExportGui( self.topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
+            self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 
     def parse_known_cmdline_args(self, cmdline_args):

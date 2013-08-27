@@ -26,7 +26,7 @@ class CarvingWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
         if hintoverlayFile is not None:
             assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
         if pmapoverlayFile is not None:
@@ -34,7 +34,7 @@ class CarvingWorkflow(Workflow):
 
         graph = Graph()
         
-        super(CarvingWorkflow, self).__init__(headless, graph=graph, *args, **kwargs)
+        super(CarvingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
         
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
         
@@ -93,3 +93,16 @@ class CarvingWorkflow(Workflow):
         opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
         
         self.preprocessingApplet.enableDownstream(False)
+
+    def handleAppletStateUpdateRequested(self):
+        # If no data, nothing else is ready.
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        input_ready = len(opDataSelection.ImageGroup) > 0
+
+        # If preprocessing isn't configured yet, don't allow carving
+        preprocessed_data_ready = input_ready and self.preprocessingApplet._enabledDS
+        
+        # Enable each applet as appropriate
+        self._shell.setAppletEnabled(self.preprocessingApplet, input_ready)
+        self._shell.setAppletEnabled(self.carvingApplet, preprocessed_data_ready)
+        

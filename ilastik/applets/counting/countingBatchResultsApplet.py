@@ -33,8 +33,7 @@ class CountingBatchResultsApplet( Applet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from countingBatchResultsGui import CountingBatchResultsGui
-            self._gui = CountingBatchResultsGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
-
+            self._gui = CountingBatchResultsGui( self, self._topLevelOperator )
         return self._gui
 
 

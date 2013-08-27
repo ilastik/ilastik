@@ -26,7 +26,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 #===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
-    def __init__(self, topLevelOperatorView, drawerUiPath=None ):
+    def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
 
         #members
@@ -52,7 +52,7 @@ class CarvingGui(LabelingGui):
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
         rawInputSlot = topLevelOperatorView.RawData        
-        super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
+        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
         
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 

@@ -10,7 +10,7 @@ class ObjectClassificationDataExportApplet( DataExportApplet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from objectClassificationDataExportGui import ObjectClassificationDataExportGui
-            self._gui = ObjectClassificationDataExportGui( self.topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
+            self._gui = ObjectClassificationDataExportGui( self, self.topLevelOperator )
         return self._gui
 
 

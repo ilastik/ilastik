@@ -23,10 +23,10 @@ from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 class CountingWorkflow(Workflow):
     name = "Counting Workflow"
 
-    def __init__(self, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super( CountingWorkflow, self ).__init__( headless, graph=graph, *args, **kwargs )
+        super( CountingWorkflow, self ).__init__( shell, headless, graph=graph, *args, **kwargs )
 
         ######################
         # Interactive workflow

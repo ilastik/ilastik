@@ -7,7 +7,6 @@ from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidge
 
 from lazyflow.graph import Slot
 
-import ilastik.applets.base.applet
 from ilastik.utility import bind, PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -64,10 +63,9 @@ class DataExportGui(QWidget):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperator, guiControlSignal, progressSignal, title):
+    def __init__(self, parentApplet, topLevelOperator):
         super(DataExportGui, self).__init__()
 
-        self.title = title
         self.drawer = None
         self.topLevelOperator = topLevelOperator
 
@@ -78,8 +76,8 @@ class DataExportGui(QWidget):
         self.initCentralUic()
         self.initViewerControls()
         
-        self.guiControlSignal = guiControlSignal
-        self.progressSignal = progressSignal
+        self.parentApplet = parentApplet
+        self.progressSignal = parentApplet.progressSignal
         
         def handleNewDataset( multislot, index ):
             # Make room in the GUI table
@@ -298,12 +296,11 @@ class DataExportGui(QWidget):
         
     def exportSlots(self, laneViewList ):
         try:
-            # Don't let anyone change the classifier while we're exporting...
-            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableUpstream )
+            # Set the busy flag so the workflow knows not to allow 
+            #  upstream changes or shell changes while we're exporting
+            self.parentApplet.busy = True
+            self.parentApplet.appletStateUpdateRequested.emit()
             
-            # Also disable this applet's controls
-            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
-
             # Start with 1% so the progress bar shows up
             self.progressSignal.emit(0)
             self.progressSignal.emit(1)
@@ -339,10 +336,10 @@ class DataExportGui(QWidget):
             # Cancel our progress.
             self.progressSignal.emit(0, True)
             raise
-        finally:            
-            # Now that we're finished, it's okay to use the other applets again.
-            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
-            self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
+        finally:
+            # We're not busy any more.  Tell the workflow.
+            self.parentApplet.busy = False
+            self.parentApplet.appletStateUpdateRequested.emit()
 
     @threadRouted
     def showExportError(self, msg):
@@ -405,7 +402,7 @@ class DataExportGui(QWidget):
         If this GUI class is subclassed, this method can be reimplemented to provide 
         custom layer types for the exported layers.
         """
-        return DataExportLayerViewerGui(opLane)
+        return DataExportLayerViewerGui(self.parentApplet, opLane)
 
 class DataExportLayerViewerGui(LayerViewerGui):
     """

@@ -34,7 +34,7 @@ from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutMan
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
-from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
@@ -67,7 +67,8 @@ class ShellActions(object):
         self.saveProjectAsAction = None
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
-        self.QuitAction = None
+        self.closeAction = None
+        self.quitAction = None
  
 #===----------------------------------------------------------------------------------------------------------------===
 #=== MemoryWidget                                                                                                   ===
@@ -546,7 +547,6 @@ class IlastikShell( QMainWindow ):
         """
         super(IlastikShell, self).show()
         self.enableWorkflow = (self.projectManager is not None)
-        self.updateAppletControlStates()
         self.updateShellProjectDisplay()
         # Default to a 50-50 split
         totalSplitterHeight = sum(self.sideSplitter.sizes())
@@ -791,7 +791,6 @@ class IlastikShell( QMainWindow ):
         self.appletBar.addItem( stackedWidget, controlName )
 
         # Set up handling of GUI commands from this applet
-        app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
         self._disableCounts.append(0)
         self._controlCmds.append( [] )
 
@@ -803,7 +802,6 @@ class IlastikShell( QMainWindow ):
     def removeAllAppletWidgets(self):
         for app in self._applets:
             app.shellRequestSignal.disconnectAll()
-            app.guiControlSignal.disconnectAll()
             app.progressSignal.disconnectAll()
         
         self._clearStackedWidget(self.appletStack)
@@ -817,33 +815,6 @@ class IlastikShell( QMainWindow ):
         for i in reversed( range( stackedWidget.count() ) ):
             lastWidget = stackedWidget.widget(i)
             stackedWidget.removeWidget(lastWidget)
-
-    def handleAppletGuiControlSignal(self, applet_index, command=ControlCommand.DisableAll):
-        """
-        Applets fire a signal when they want other applet GUIs to be disabled.
-        This function handles the signal.
-        Each signal is treated as a command to disable other applets.
-        A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
-        If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
-        """
-        
-        if command == ControlCommand.Pop:
-            command = self._controlCmds[applet_index].pop()
-            step = -1 # Since we're popping this command, we'll subtract from the disable counts
-        else:
-            step = 1
-            self._controlCmds[applet_index].append( command ) # Push command onto the stack so we can pop it off when the applet isn't busy any more
-
-        # Increase the disable count for each applet that is affected by this command.
-        for index, count in enumerate(self._disableCounts):
-            if (command == ControlCommand.DisableAll) \
-            or (command == ControlCommand.DisableDownstream and index > applet_index) \
-            or (command == ControlCommand.DisableUpstream and index < applet_index) \
-            or (command == ControlCommand.DisableSelf and index == applet_index):
-                self._disableCounts[index] += step
-
-        # Update the control states in the GUI thread
-        self.thunkEventHandler.post( self.updateAppletControlStates )
 
     def handleShellRequest(self, applet_index, requestAction):
         """
@@ -1028,7 +999,8 @@ class IlastikShell( QMainWindow ):
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( workflow_class,
+            self.projectManager = ProjectManager( self,
+                                                  workflow_class,
                                                   workflow_cmdline_args=workflow_cmdline_args)
             
         except Exception, e:
@@ -1089,7 +1061,6 @@ class IlastikShell( QMainWindow ):
 
             # Enable all the applet controls
             self.enableWorkflow = True
-            self.updateAppletControlStates()
 
             if "currentApplet" in hdf5File.keys():
                 appletName = hdf5File["currentApplet"].value
@@ -1133,7 +1104,6 @@ class IlastikShell( QMainWindow ):
         self.enableWorkflow = False
         self._controlCmds = []
         self._disableCounts = []
-        self.updateAppletControlStates()
         self.updateShellProjectDisplay()
         
     def ensureNoCurrentProject(self, assertClean=False):
@@ -1165,12 +1135,13 @@ class IlastikShell( QMainWindow ):
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
         def save():
-            self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
+            self.setAllAppletsEnabled(False)
             try:
                 self.projectManager.saveProject()
             except ProjectManager.SaveError, err:
                 self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
-            self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
+            # Ask the workflow to re-enable the appropriate applets
+            self.workflow.handleAppletStateUpdateRequested()
         
         saveThread = threading.Thread( target=save )
         saveThread.start()
@@ -1198,14 +1169,15 @@ class IlastikShell( QMainWindow ):
             self.onSaveProjectActionTriggered()
         elif newPath is not None:
             def saveAs():
-                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
+                self.setAllAppletsEnabled(False)
                 
                 try:
                     self.projectManager.saveProjectAs( newPath )
                 except ProjectManager.SaveError, err:
                     self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
                 self.updateShellProjectDisplay()
-                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
+                # Ask the workflow to re-enable the appropriate applets
+                self.workflow.handleAppletStateUpdateRequested()
 
             saveThread = threading.Thread( target=saveAs )
             saveThread.start()
@@ -1274,24 +1246,40 @@ class IlastikShell( QMainWindow ):
         if quitApp:
             qApp.quit()
 
-    def updateAppletControlStates(self):
-        """
-        Enable or disable all controls of all applets according to their disable count.
-        """
-        for applet_index, applet in enumerate(self._applets):
-            enabled = self._disableCounts[applet_index] == 0
+    def setAllAppletsEnabled(self, enabled):
+        for applet in self._applets:
+            self.setAppletEnabled( applet, enabled )
 
-            applet.getMultiLaneGui().setEnabled( enabled and self.enableWorkflow )
-        
-            # Apply to the applet bar drawer headings, too
-            if applet_index < self.appletBar.count():
-                enable_applet = (enabled and self.enableWorkflow)
-                
-                # Unfortunately, Qt will auto-select a different drawer if 
-                #  we try to disable the currently selected drawer.
-                # That can cause lots of problems for us (e.g. it trigger's the
-                #  creation of applet guis that haven't been created yet.)
-                # Therefore, only disable the title button of a drawer if it isn't already selected.
-                if enable_applet or self.appletBar.currentIndex() != applet_index:
-                    self.appletBar.setItemEnabled(applet_index, enable_applet)
+    def setAppletEnabled(self, applet, enabled):
+        # Post this to the gui thread
+        self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
+
+    def enableProjectChanges(self, enabled):
+        # Post this to the gui thread
+        self.thunkEventHandler.post(self._enableProjectChanges, enabled)
+
+    def _enableProjectChanges(self, enabled):
+        """
+        Enable or disable the shell actions that could affect the project state.
+        (Basically anything that would cause the project to be closed.)
+        """
+        self._shellActions.openProjectAction.setEnabled( enabled )
+        self._shellActions.importProjectAction.setEnabled( enabled )
+        self._shellActions.closeAction.setEnabled( enabled )
+        self._shellActions.quitAction.setEnabled( enabled )
+
+    def _setAppletEnabled(self, applet, enabled):
+        applet_index = self._applets.index(applet)
+        applet.getMultiLaneGui().setEnabled( enabled )
+
+        # Apply to the applet bar drawer heading, too.
+        if applet_index < self.appletBar.count():
+            # Unfortunately, Qt will auto-select a different drawer if 
+            #  we try to disable the currently selected drawer.
+            # That can cause lots of problems for us (e.g. it trigger's the
+            #  creation of applet guis that haven't been created yet.)
+            # Therefore, only disable the title button of a drawer if it isn't already selected.
+            if enabled or self.appletBar.currentIndex() != applet_index:
+                self.appletBar.setItemEnabled(applet_index, enabled)
+
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"

@@ -38,4 +38,4 @@ class LabelingSingleLaneApplet( StandardApplet ):
         # Normally, it is strange to connect two same-operator input slots together like this.
         opLabeling.LabelInput.connect( opLabeling.InputImage )
 
-        return LabelingGui( labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImage )
+        return LabelingGui( self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImage )
