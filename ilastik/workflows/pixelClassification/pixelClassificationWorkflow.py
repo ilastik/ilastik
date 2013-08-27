@@ -95,8 +95,9 @@ class PixelClassificationWorkflow(Workflow):
             self._initBatchWorkflow()
 
             if unused_args:
-                self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( workflow_cmdline_args )
+                # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.batchResultsApplet.parse_known_cmdline_args( unused_args )
+                self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( unused_args )
     
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
