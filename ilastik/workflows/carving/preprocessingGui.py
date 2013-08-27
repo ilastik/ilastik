@@ -5,24 +5,26 @@ import traceback
 logger = logging.getLogger(__name__)
 
 #PyQt
-from PyQt4.QtGui import *
 from PyQt4 import uic
+from PyQt4.QtGui import QMainWindow, QIcon, QMessageBox
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from preprocessingViewerGui import PreprocessingViewerGui
 
 class PreprocessingGui(QMainWindow):
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         super(PreprocessingGui,self).__init__()
         
+        self.parentApplet = parentApplet
         self.drawer = None
         self.threadRouter = ThreadRouter(self)
         self.guiMode = 1
         self.topLevelOperatorView = topLevelOperatorView
         self.initAppletDrawerUic()
-        self.centralGui = PreprocessingViewerGui(self.topLevelOperatorView)
+        self.centralGui = PreprocessingViewerGui(parentApplet, self.topLevelOperatorView)
         
     def initAppletDrawerUic(self):
         """
@@ -102,6 +104,7 @@ class PreprocessingGui(QMainWindow):
         self.setWriteprotect()
         r = self.topLevelOperatorView.PreprocessedData[:]
         r.notify_failed(self.onFailed)
+        r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested.emit) )
         r.submit()
         
     def handleWriterprotectStateChanged(self):
