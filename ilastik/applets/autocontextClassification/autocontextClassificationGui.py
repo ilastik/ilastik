@@ -20,7 +20,7 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.base.applet import ShellRequest, ControlCommand
+from ilastik.applets.base.applet import ShellRequest
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -58,7 +58,7 @@ class AutocontextClassificationGui(LabelingGui):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
+    def __init__(self, topLevelOperatorView, shellRequestSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -76,7 +76,6 @@ class AutocontextClassificationGui(LabelingGui):
         
         self.topLevelOperatorView = topLevelOperatorView
         self.shellRequestSignal = shellRequestSignal
-        self.guiControlSignal = guiControlSignal
         self.predictionSerializer = predictionSerializer
 
         self.interactiveModeActive = False
@@ -317,10 +316,6 @@ class AutocontextClassificationGui(LabelingGui):
 
             @traceLogged(traceLogger)
             def saveThreadFunc():
-                # Disable all other applets
-                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
-                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
-
                 def disableAllInWidgetButName(widget, exceptName):
                     for child in widget.children():
                         if child.findChild( QPushButton, exceptName) is None:
@@ -357,10 +352,6 @@ class AutocontextClassificationGui(LabelingGui):
                             child.setEnabled(True)
                             enableAll(child)
                 enableAll(self.labelingDrawerUi)
-
-                # Re-enable all other applets
-                self.guiControlSignal.emit( ControlCommand.Pop )
-                self.guiControlSignal.emit( ControlCommand.Pop )
 
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()

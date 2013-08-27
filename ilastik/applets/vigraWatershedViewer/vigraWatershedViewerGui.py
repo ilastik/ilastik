@@ -36,10 +36,10 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
-        super(VigraWatershedViewerGui, self).__init__( topLevelOperatorView )
+        super(VigraWatershedViewerGui, self).__init__( parentApplet, topLevelOperatorView )
         self.topLevelOperatorView = topLevelOperatorView
         
         self.topLevelOperatorView.FreezeCache.setValue(True)
