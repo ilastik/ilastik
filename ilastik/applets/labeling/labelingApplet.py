@@ -41,4 +41,4 @@ class LabelingApplet( StandardApplet ):
         labelingSlots.maxLabelValue = opLabeling.MaxLabelValue
         labelingSlots.labelsAllowed = opLabeling.LabelsAllowedFlags
 
-        return LabelingGui( labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImages )
+        return LabelingGui( self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImages )
