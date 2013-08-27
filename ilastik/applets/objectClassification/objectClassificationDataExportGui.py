@@ -9,7 +9,7 @@ class ObjectClassificationDataExportGui( DataExportGui ):
     A subclass of the generic data export gui that creates custom layer viewers.
     """
     def createLayerViewer(self, opLane):
-        return ObjectClassificationResultsViewer(opLane)
+        return ObjectClassificationResultsViewer(self.parentApplet, opLane)
         
 
 def _createDefault16ColorColorTable():

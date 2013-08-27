@@ -24,13 +24,13 @@ class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 1 # show DataSelection by default
 
-    def __init__(self, headless,
+    def __init__(self, shell, headless,
                  workflow_cmdline_args,
                  *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs:
             del kwargs['graph']
-        super(ObjectClassificationWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(ObjectClassificationWorkflow, self).__init__(shell, headless=headless, graph=graph, *args, **kwargs)
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
