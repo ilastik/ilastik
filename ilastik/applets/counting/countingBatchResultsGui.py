@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QColor
-from ilastik.applets.batchIo.batchIoGui import BatchIoGui
+from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.utility import bind
@@ -8,12 +8,12 @@ from lazyflow.operators import OpMultiArraySlicer2
 
 from volumina.api import LazyflowSource,ColortableLayer 
 
-class CountingBatchResultsGui( BatchIoGui ):
+class CountingBatchResultsGui( DataExportGui ):
     """
     A subclass of the generic Batch gui that creates custom layer viewers.
     """
     def createLayerViewer(self, opLane):
-        return CountingResultsViewer(opLane)
+        return CountingResultsViewer(self.parentApplet, opLane)
         
 class CountingResultsViewer(LayerViewerGui):
     

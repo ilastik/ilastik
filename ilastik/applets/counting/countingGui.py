@@ -26,7 +26,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.base.applet import ShellRequest, ControlCommand
+from ilastik.applets.base.applet import ShellRequest
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
 from ilastik.applets.base.appletSerializer import SerialListSlot
@@ -106,7 +106,7 @@ class CountingGui(LabelingGui):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
+    def __init__(self, parentApplet, topLevelOperatorView):
 
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -122,14 +122,13 @@ class CountingGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
-        super(CountingGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
         self.op = topLevelOperatorView
 
         self.topLevelOperatorView = topLevelOperatorView
-        self.shellRequestSignal = shellRequestSignal
-        self.guiControlSignal = guiControlSignal
-        self.predictionSerializer = predictionSerializer
+        self.shellRequestSignal = parentApplet.shellRequestSignal
+        self.predictionSerializer = parentApplet.predictionSerializer
 
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
@@ -729,6 +728,8 @@ class CountingGui(LabelingGui):
         The user clicked "Train and Predict".
         Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
         """
+        import warnings
+        warnings.warn("FIXME: Remove this function and just use the data export applet.")
         # The button does double-duty as a cancel button while predictions are being stored
         if self._currentlySavingPredictions:
             self.predictionSerializer.cancel()
@@ -745,9 +746,6 @@ class CountingGui(LabelingGui):
             def saveThreadFunc():
                 logger.info("Starting full volume save...")
                 # Disable all other applets
-                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
-                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
-
                 def disableAllInWidgetButName(widget, exceptName):
                     for child in widget.children():
                         if child.findChild( QPushButton, exceptName) is None:
@@ -786,8 +784,6 @@ class CountingGui(LabelingGui):
                 enableAll(self.labelingDrawerUi)
 
                 # Re-enable all other applets
-                self.guiControlSignal.emit( ControlCommand.Pop )
-                self.guiControlSignal.emit( ControlCommand.Pop )
                 logger.info("Finished full volume save.")
 
             saveThread = threading.Thread(target=saveThreadFunc)
