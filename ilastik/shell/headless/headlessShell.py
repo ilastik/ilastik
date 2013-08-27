@@ -21,7 +21,8 @@ class HeadlessShell(object):
     def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
         hdf5File = ProjectManager.createBlankProjectFile(newProjectFilePath)
         readOnly = False
-        self.projectManager = ProjectManager( workflow_class,
+        self.projectManager = ProjectManager( self,
+                                              workflow_class,
                                               headless=True,
                                               workflow_cmdline_args=self._workflow_cmdline_args  )
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
@@ -36,7 +37,8 @@ class HeadlessShell(object):
             
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
-            self.projectManager = ProjectManager( workflow_class,
+            self.projectManager = ProjectManager( self,
+                                                  workflow_class,
                                                   headless=True,
                                                   workflow_cmdline_args=self._workflow_cmdline_args )
             self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
@@ -57,10 +59,25 @@ class HeadlessShell(object):
 
             # Create the project manager.
             # Here, we provide an additional parameter: the path of the project we're importing from. 
-            self.projectManager = ProjectManager( default_workflow,
+            self.projectManager = ProjectManager( self,
+                                                  default_workflow,
                                                   importFromPath=oldProjectFilePath,
                                                   headless=True )
             self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath,readOnly = False)
+
+    def setAppletEnabled(self, applet, enabled):
+        """
+        Provided here to satisfy the ShellABC.
+        For now, HeadlessShell has no concept of "enabled" or "disabled" applets.
+        """
+        pass
+
+    def enableProjectChanges(self, enabled):
+        """
+        Provided here to satisfy the ShellABC.
+        For now, HeadlessShell has no mechanism for closing projects.
+        """
+        pass
 
     def closeCurrentProject(self):
         self.projectManager._closeCurrentProject()

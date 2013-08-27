@@ -127,7 +127,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, headless=False, workflow_cmdline_args=None):
+    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None):
         """
         Constructor.
         
@@ -140,6 +140,7 @@ class ProjectManager(object):
             workflow_cmdline_args = []
 
         # Init
+        self._shell = shell
         self.workflow = None
         self.currentProjectFile = None
         self.currentProjectPath = None
@@ -152,7 +153,7 @@ class ProjectManager(object):
         
         #the workflow class has to be specified at this point
         assert workflowClass is not None
-        self.workflow = workflowClass(headless, workflow_cmdline_args)
+        self.workflow = workflowClass(shell, headless, workflow_cmdline_args)
     
     
     def cleanUp(self):
@@ -363,6 +364,8 @@ class ProjectManager(object):
             # Call the workflow's custom post-load initialization (if any)
             self.workflow.onProjectLoaded( self )
 
+            self.workflow.handleAppletStateUpdateRequested()
+            
         except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()
@@ -415,7 +418,7 @@ class ProjectManager(object):
         self._closeCurrentProject()
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(self._headless, self._workflow_cmdline_args)
+        self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)
