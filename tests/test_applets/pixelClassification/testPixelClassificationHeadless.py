@@ -129,8 +129,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args += " --output_internal_path=volume/pred_volume"
         args += " " + self.SAMPLE_DATA
 
-        # Start up the ilastik.py entry script as if we had launched it from the command line
+        sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
         ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
         imp.load_source( 'main', ilastik_entry_file_path )
         
@@ -152,8 +154,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args.append( "--sys_tmp_dir=/tmp" )
 
         # Batch export options
-        args.append( '--output_format' )
-        args.append( 'png sequence' )
+        args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
         args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
@@ -164,6 +165,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
         args.append( self.SAMPLE_DATA )
 
+        sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
