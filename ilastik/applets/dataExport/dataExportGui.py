@@ -347,12 +347,12 @@ class DataExportGui(QWidget):
 
     def exportResultsForSlot(self, opLane):
         # Do this in a separate thread so the UI remains responsive
-        exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="BatchIOExportThread")
+        exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="DataExportThread")
         exportThread.start()
     
     def exportAllResults(self):
         # Do this in a separate thread so the UI remains responsive
-        exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator), name="BatchIOExportThread")
+        exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator), name="DataExportThread")
         exportThread.start()
 
     def deleteAllResults(self):
