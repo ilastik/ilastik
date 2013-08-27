@@ -55,9 +55,6 @@ class LabelingGui(LayerViewerGui):
         for fn in self.__cleanup_fns:
             fn()
 
-        # Clear the label list GUI
-        self._clearLabelListGui()
-
         # Start in navigation mode (not painting)
         self._changeInteractionMode(Tool.Navigation)
 
