@@ -41,11 +41,11 @@ class TrackingBaseGui( LayerViewerGui ):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
-        super(TrackingBaseGui, self).__init__(topLevelOperatorView)
+        super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
 
         self._initColors()

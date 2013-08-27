@@ -91,9 +91,9 @@ class ManualTrackingGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
-        super(ManualTrackingGui, self).__init__(topLevelOperatorView)
+        super(ManualTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
         
