@@ -1,5 +1,7 @@
 import argparse
 
+import numpy
+
 from ilastik.workflow import Workflow
 
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
@@ -10,9 +12,9 @@ from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
 
+from lazyflow.roi import TinyVector
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
-
 from lazyflow.operators.generic import OpSelectSubslot
 
 class PixelClassificationWorkflow(Workflow):
@@ -29,10 +31,10 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super( PixelClassificationWorkflow, self ).__init__( headless, graph=graph, *args, **kwargs )
+        super( PixelClassificationWorkflow, self ).__init__( shell, headless, graph=graph, *args, **kwargs )
         self._applets = []
 
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
@@ -72,6 +74,9 @@ class PixelClassificationWorkflow(Workflow):
         self._applets.append(self.pcApplet)
         self._applets.append(self.dataExportApplet)
 
+
+        self.batchInputApplet = None
+        self.batchResultsApplet = None
         if appendBatchOperators:
             # Create applets for batch workflow
             self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
@@ -178,6 +183,48 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        """
+        # If no data, nothing else is ready.
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        input_ready = len(opDataSelection.ImageGroup) > 0
+
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator
+        featureOutput = opFeatureSelection.OutputImage
+        features_ready = input_ready and \
+                         len(featureOutput) > 0 and  \
+                         featureOutput[0].ready() and \
+                         (TinyVector(featureOutput[0].meta.shape) > 0).all()
+
+        opDataExport = self.dataExportApplet.topLevelOperator
+        predictions_ready = features_ready and \
+                            len(opDataExport.Input) > 0 and \
+                            opDataExport.Input[0].ready() and \
+                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+
+        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
+        self._shell.setAppletEnabled(self.pcApplet, features_ready)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
+        
+        # Training workflow must be fully configured before batch can be used
+        self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
+
+        opBatchDataSelection = self.batchInputApplet.topLevelOperator
+        batch_input_ready = predictions_ready and \
+                            len(opBatchDataSelection.ImageGroup) > 0
+        self._shell.setAppletEnabled(self.batchResultsApplet, batch_input_ready)
+        
+        # Lastly, check for certain "busy" conditions, during which we 
+        #  should prevent the shell from closing the project.
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.featureSelectionApplet.busy
+        busy |= self.dataExportApplet.busy
+        self._shell.enableProjectChanges( not busy )
 
     def getHeadlessOutputSlot(self, slotId):
         # "Regular" (i.e. with the images that the user selected as input data)

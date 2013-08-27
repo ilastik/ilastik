@@ -24,7 +24,6 @@ from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.base.applet import ControlCommand
 from ilastik.config import cfg as ilastik_config
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -78,12 +77,12 @@ class FeatureSelectionGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView, applet):
+    def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
-        super(FeatureSelectionGui, self).__init__(topLevelOperatorView, crosshair=False)
-        self.applet = applet
+        super(FeatureSelectionGui, self).__init__(parentApplet, topLevelOperatorView, crosshair=False)
+        self.parentApplet = parentApplet
         
         self.__cleanup_fns = []
 
@@ -299,6 +298,11 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView._setupOutputs()
         self.onFeaturesSelectionsChanged()
 
+        # Notify the workflow that some applets may have changed state now.
+        # (For example, the downstream pixel classification applet can 
+        #  be used now that there are features selected)
+        self.parentApplet.appletStateUpdateRequested.emit()
+
     def onFeatureButtonClicked(self):
         self.topLevelOperatorView.FeatureListFilename.setValue("")
         
@@ -331,19 +335,29 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
-                self.applet.guiControlSignal.emit(ControlCommand.DisableAll)
+                # Disable gui
+                self.parentApplet.busy = True
+                self.parentApplet.appletStateUpdateRequested.emit()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
                 QApplication.instance().processEvents()
+
                 opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
-                self.applet.guiControlSignal.emit(ControlCommand.Pop)
-                QApplication.instance().restoreOverrideCursor()
-                self.topLevelOperatorView._setupOutputs()
+                #self.topLevelOperatorView._setupOutputs()
                 
+                # Re-enable gui
+                QApplication.instance().restoreOverrideCursor()
+                self.parentApplet.busy = False
+                self.parentApplet.appletStateUpdateRequested.emit()
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
                 opFeatureSelection.SelectionMatrix.disconnect()
-    
+
+                # Notify the workflow that some applets may have changed state now.
+                # (For example, the downstream pixel classification applet can 
+                #  be used now that there are features selected)
+                self.parentApplet.appletStateUpdateRequested.emit()
+
     def onFeaturesSelectionsChanged(self):
         """
         Handles changes to our top-level operator's matrix of feature selections.

@@ -17,7 +17,6 @@ from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.base.applet import ControlCommand
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 try:
@@ -61,7 +60,8 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
+    def __init__(self, parentApplet, topLevelOperatorView ):
+        self.parentApplet = parentApplet
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -78,12 +78,9 @@ class PixelClassificationGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(PixelClassificationGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
         self.topLevelOperatorView = topLevelOperatorView
-        self.shellRequestSignal = shellRequestSignal
-        self.guiControlSignal = guiControlSignal
-        self.predictionSerializer = predictionSerializer
 
         self.interactiveModeActive = False
         # Immediately update our interactive state
@@ -310,11 +307,9 @@ class PixelClassificationGui(LabelingGui):
             if checked:
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
             else:
                 self.labelingDrawerUi.labelListView.allowDelete = True
                 self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-                self.guiControlSignal.emit( ControlCommand.Pop )
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
@@ -323,6 +318,11 @@ class PixelClassificationGui(LabelingGui):
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
             self.handleShowPredictionsClicked()
+
+        # Notify the workflow that some applets may have changed state now.
+        # (For example, the downstream pixel classification applet can 
+        #  be used now that there are features selected)
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):

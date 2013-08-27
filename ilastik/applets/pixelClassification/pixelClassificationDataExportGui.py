@@ -12,7 +12,7 @@ class PixelClassificationDataExportGui( DataExportGui ):
     A subclass of the generic data export gui that creates custom layer viewers.
     """
     def createLayerViewer(self, opLane):
-        return PixelClassificationResultsViewer(opLane)
+        return PixelClassificationResultsViewer(self.parentApplet, opLane)
         
 class PixelClassificationResultsViewer(DataExportLayerViewerGui):
     

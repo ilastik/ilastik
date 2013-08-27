@@ -22,6 +22,7 @@ class PixelClassificationDataExportApplet( Applet ):
         self._gui = None
         self._title = title
         self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+        self.busy = False
         
     @property
     def dataSerializers(self):
@@ -35,7 +36,7 @@ class PixelClassificationDataExportApplet( Applet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from pixelClassificationDataExportGui import PixelClassificationDataExportGui
-            self._gui = PixelClassificationDataExportGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
+            self._gui = PixelClassificationDataExportGui( self, self._topLevelOperator )
         return self._gui
 
 
