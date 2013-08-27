@@ -131,7 +131,7 @@
        <item>
         <widget class="QDoubleSpinBox" name="sigmaSpin">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Lager sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Larger sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="locale">
           <locale language="English" country="UnitedStates"/>
