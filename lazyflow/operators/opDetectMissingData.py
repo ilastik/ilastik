@@ -470,7 +470,7 @@ class OpDetectMissing(Operator):
                 d = pickle.loads(s)
             except Exception as err:
                 logger.error(
-                    "Failed overlaoding detector due to an error: {}".format(
+                    "Failed overloading detector due to an error: {}".format(
                         str(err)))
                 return
             cls._manager.overload(d)
@@ -810,6 +810,8 @@ if __name__ == "__main__":
 
     from lazyflow.graph import Graph
 
+    from lazyflow.operators.opDetectMissingData import _histogramIntersectionKernel
+
     logging.basicConfig()
     logger.setLevel(logging.INFO)
 
@@ -983,7 +985,7 @@ if __name__ == "__main__":
                         csvfile.close()
                         exit(43)
 
-                    volShape = volume.shape
+                    volShape = volume.withAxes(*'xyz').shape
 
                     # bear with me, complicated axistags stuff is neccessary
                     # for my old vigra to work
