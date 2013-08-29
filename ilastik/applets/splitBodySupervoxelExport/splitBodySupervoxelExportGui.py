@@ -7,7 +7,7 @@ from PyQt4.QtGui import QColor, QFileDialog
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 
-from ilastik.utility import bind
+from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class SplitBodySupervoxelExportGui(LayerViewerGui):
@@ -39,7 +39,7 @@ class SplitBodySupervoxelExportGui(LayerViewerGui):
             print "Export progress: {}%".format( progress )
 
         op = self.topLevelOperatorView
-        req = op.exportFinalSupervoxels( str(exportPath), 
+        req = op.exportFinalSupervoxels( encode_from_qstring( exportPath ), 
                                           "zyx",
                                           handleProgress )
         self._drawer.exportButton.setEnabled(False)

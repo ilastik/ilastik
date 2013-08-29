@@ -11,6 +11,8 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent, QVariant, QString
 from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
+from volumina.utility import encode_from_qstring, decode_to_qstring
+
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import getPathVariants, PathComponents
 from opDataSelection import OpDataSelection, DatasetInfo
@@ -231,10 +233,10 @@ class DatasetInfoEditorWidget(QDialog):
         if nickname is None:
             self.nicknameEdit.setText("<multiple>")
         else:
-            self.nicknameEdit.setText(nickname)
+            self.nicknameEdit.setText( decode_to_qstring(nickname) )
 
     def _applyNicknameToTempOps(self):
-        newNickname = str(self.nicknameEdit.text())
+        newNickname = encode_from_qstring(self.nicknameEdit.text())
         if "<multiple>" in newNickname:
             return
 
@@ -677,8 +679,8 @@ class DatasetInfoEditorWidget(QDialog):
 
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
-            self.storageComboBox.addItem( "Absolute Link: " + absPath, userData=StorageLocation.AbsoluteLink )
-            self.storageComboBox.addItem( "Relative Link: " + relPath, userData=StorageLocation.RelativeLink )
+            self.storageComboBox.addItem( decode_to_qstring("Absolute Link: " + absPath), userData=StorageLocation.AbsoluteLink )
+            self.storageComboBox.addItem( decode_to_qstring("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )

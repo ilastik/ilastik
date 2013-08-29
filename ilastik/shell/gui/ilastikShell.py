@@ -28,7 +28,7 @@ import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -535,7 +535,8 @@ class IlastikShell( QMainWindow ):
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         if not svgPath.isNull():
-            PreferencesManager().set( 'shell', 'recent debug diagram', str(svgPath) )
+            svgPath = encode_from_qstring( svgPath )
+            PreferencesManager().set( 'shell', 'recent debug diagram', svgPath )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
 
     def _openRecorderControls(self):
@@ -567,7 +568,7 @@ class IlastikShell( QMainWindow ):
             if readOnly:
                 windowTitle += " [Read Only]"
             
-        self.setWindowTitle(windowTitle)        
+        self.setWindowTitle( decode_to_qstring(windowTitle) )        
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None
@@ -872,7 +873,7 @@ class IlastikShell( QMainWindow ):
             # If the user cancelled, stop now
             if projectFilePath.isEmpty():
                 return None
-            projectFilePath = str(projectFilePath)
+            projectFilePath = encode_from_qstring( projectFilePath )
             fileSelected = True
             
             # Add extension if necessary
@@ -936,7 +937,7 @@ class IlastikShell( QMainWindow ):
         if projectFilePath.isNull():
             return None
 
-        return str(projectFilePath)
+        return encode_from_qstring( projectFilePath )
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")

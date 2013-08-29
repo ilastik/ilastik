@@ -5,6 +5,7 @@ import glob
 from PyQt4.QtGui import QDialog, QFileDialog
 from PyQt4 import uic
 from ilastik.config import cfg as ilastik_config
+from volumina.utility import encode_from_qstring
 
 class MassFileLoader(QDialog):
 
@@ -22,7 +23,7 @@ class MassFileLoader(QDialog):
     def accept(self):
         QDialog.accept(self)
         pattern = str(self.ui.patternInput.text())
-        directory = os.path.expanduser(str(self.ui.directoryInput.text()))
+        directory = os.path.expanduser( encode_from_qstring(self.ui.directoryInput.text()) )
         recursive = self.ui.recursiveBox.isChecked()
         if recursive:
             self.filenames = []
@@ -42,4 +43,4 @@ class MassFileLoader(QDialog):
                                                          "Base Directory",
                                                          self.defaultDirectory,
                                                          options=options)
-        self.ui.directoryInput.setText(directoryName)
+        self.ui.directoryInput.setText( directoryName )

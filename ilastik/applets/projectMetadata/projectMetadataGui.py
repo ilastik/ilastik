@@ -1,10 +1,11 @@
-from PyQt4.QtGui import *
-
-from PyQt4 import uic
 import os
-
 import logging
 logger = logging.getLogger(__name__)
+
+from PyQt4 import uic
+from PyQt4.QtGui import QWidget
+
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 class ProjectMetadataGui( QWidget ):
     """
@@ -55,27 +56,27 @@ class ProjectMetadataGui( QWidget ):
         
         # Handle changes to the project widget
         def handleProjectNameWidgetChanged(newText):
-            self._projectMetadata.projectName = str(newText)
+            self._projectMetadata.projectName = encode_from_qstring(newText)
         self.projectNameEdit.textChanged.connect( handleProjectNameWidgetChanged )
 
         # Handle changes to the labeler widget
         def handleLabelerWidgetChanged(newText):
-            self._projectMetadata.labeler = str(newText)
+            self._projectMetadata.labeler = encode_from_qstring(newText)
         self.labelerEdit.textChanged.connect( handleLabelerWidgetChanged )
 
         # Handle changes to the description widget
         def handleDescriptionWidgetChanged():
-            self._projectMetadata.description = str(self.descriptionEdit.toPlainText())
+            self._projectMetadata.description = encode_from_qstring(self.descriptionEdit.toPlainText())
         self.descriptionEdit.textChanged.connect( handleDescriptionWidgetChanged )
 
         # Update the GUI with new values if someone else modifies our metadata externally
         def handleMetadataChanged():
             if self.projectNameEdit.text() != self._projectMetadata.projectName:
-                self.projectNameEdit.setText( self._projectMetadata.projectName )
+                self.projectNameEdit.setText( decode_to_qstring(self._projectMetadata.projectName) )
             if self.labelerEdit.text() != self._projectMetadata.labeler:
-                self.labelerEdit.setText( self._projectMetadata.labeler )
+                self.labelerEdit.setText( decode_to_qstring(self._projectMetadata.labeler) )
             if self.descriptionEdit.toPlainText() != self._projectMetadata.description:
-                self.descriptionEdit.setText( self._projectMetadata.description )
+                self.descriptionEdit.setText( decode_to_qstring(self._projectMetadata.description) )
         self._projectMetadata.changedSignal.connect(handleMetadataChanged)
                 
         

@@ -23,6 +23,7 @@ from volumina.utility import PreferencesManager
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
+from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
@@ -270,6 +271,7 @@ class FeatureSelectionGui(LayerViewerGui):
             options |= QFileDialog.DontUseNativeDialog
 
         filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
+        filename = encode_from_qstring(filename)
         
         #sanity checks on the given file
         if not filename:

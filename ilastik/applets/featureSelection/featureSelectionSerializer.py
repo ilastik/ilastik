@@ -47,7 +47,7 @@ class FeatureSelectionSerializer(AppletSerializer):
             topGroup.create_dataset('SelectionMatrix', data=self.topLevelOperator.SelectionMatrix.value)
             
         if self.topLevelOperator.FeatureListFilename.ready():
-            fname = str(self.topLevelOperator.FeatureListFilename.value) 
+            fname = self.topLevelOperator.FeatureListFilename.value
             if fname:
                 topGroup.create_dataset('FeatureListFilename', data=fname)
             
