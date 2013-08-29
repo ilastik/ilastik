@@ -221,6 +221,9 @@ class IlastikShell( QMainWindow ):
         
         self._loaduifile()
         
+        # show a nice window icon
+        self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
+        
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
         
         #self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
