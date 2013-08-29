@@ -34,7 +34,6 @@ class OpSlicedBlockedArrayCache(OpCache):
     def __init__(self, *args, **kwargs):
         super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
         self._innerOps = []
-        self._somethingIsDirty = False
         
     def generateReport(self, report):
         report.name = self.name
@@ -135,12 +134,6 @@ class OpSlicedBlockedArrayCache(OpCache):
             elif slot == self.outerBlockShape or slot == self.innerBlockShape:
                 self.Output.setDirty( slice(None) )
             elif slot == self.fixAtCurrent:
-                # Special case: If *nothing* has become dirty since we became 'fixed',
-                #  then there's no reason to send out a big dirty notification.
-                if self._somethingIsDirty:
-                    self.Output.setDirty( slice(None) )
-                    self._somethingIsDirty = False
+                self.Output.setDirty( slice(None) )
             else:
                 assert False, "Unknown dirty input slot"
-        elif slot != self.fixAtCurrent:
-            self._somethingIsDirty = True
