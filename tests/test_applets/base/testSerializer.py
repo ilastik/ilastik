@@ -1,14 +1,15 @@
 import os
 import h5py
 import numpy
+import vigra
 import unittest
 import shutil
 import tempfile
-from lazyflow.graph import Graph, Operator, InputSlot, Slot
-from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
+from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
+from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache, OpBlockedSparseLabelArray
 
 from ilastik.applets.base.appletSerializer import \
-    SerialSlot, SerialListSlot, AppletSerializer, SerialDictSlot
+    SerialSlot, SerialListSlot, AppletSerializer, SerialDictSlot, SerialBlockSlot
 
 class OpMock(Operator):
     """A simple operator for testing serializers."""
@@ -253,6 +254,49 @@ class TestSerialDictSlot(unittest.TestCase):
         self.assertTrue( d2_read['b'] == 'B' )
         self.assertTrue( d2_read['c'] == 'C' )
 
+class TestSerialBlockSlot(unittest.TestCase):
+    
+    def _init_objects(self):
+        raw_data = numpy.zeros((100,100,100), dtype=numpy.uint32)
+        raw_data = vigra.taggedView(raw_data, 'zyx')
+    
+        opLabelArrays = OperatorWrapper( OpBlockedSparseLabelArray, graph=Graph() )
+        opLabelArrays.Input.resize(1)
+        opLabelArrays.Input[0].setValue( raw_data )
+        opLabelArrays.shape.setValue( raw_data.shape )
+        opLabelArrays.eraser.setValue( 255 )
+        opLabelArrays.deleteLabel.setValue( -1 )
+        opLabelArrays.blockShape.setValue( (10,10,10) )
+        
+        # This will serialize/deserialize data to the h5 file.
+        slotSerializer = SerialBlockSlot( opLabelArrays.Output, opLabelArrays.Input, opLabelArrays.nonzeroBlocks )
+        return opLabelArrays, slotSerializer
+
+    def testBasic(self):
+        h5_filepath = os.path.join( tempfile.mkdtemp(), 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+    
+        # Give it some data.
+        opLabelArrays.Input[0][10:11, 10:20, 10:20] = 1*numpy.ones((1,10,10), dtype=numpy.uint8)
+        opLabelArrays.Input[0][11:12, 10:20, 10:20] = 2*numpy.ones((1,10,10), dtype=numpy.uint8)
+        
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+    
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+    
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        assert ( opLabelArrays.Output[0][10:11, 10:20, 10:20].wait() == 1 ).all()
+        assert ( opLabelArrays.Output[0][11:12, 10:20, 10:20].wait() == 2 ).all()
 
 if __name__ == "__main__":
     unittest.main()
