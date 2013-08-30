@@ -287,6 +287,43 @@ class TestOpSlicedBlockedArrayCache(object):
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
 
+    def testFixAtCurrent2(self):
+        opCache = self.opCache
+
+        # Track dirty notifications
+        gotDirtyKeys = []
+        def handleDirty(slot, roi):
+            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
+        opCache.Output.notifyDirty(handleDirty)
+
+        def _requestFrozenAndUnfrozen(slicing):
+            opCache.fixAtCurrent.setValue(True)
+
+            # Request (no access to provider because fixAtCurrent)
+            data = opCache.Output( slicing ).wait()
+    
+            # We haven't accessed this data yet,
+            #  but fixAtCurrent is True so the cache gives us zeros
+            assert (data == 0).all()
+
+            dirty_notifications_received_before = len(gotDirtyKeys)
+            opCache.fixAtCurrent.setValue(False)
+            
+            # This assertion verifies the fix to ilastik Issue #546
+            assert len(gotDirtyKeys) == dirty_notifications_received_before+1, \
+                "Expected to receive a dirty notification because the zeros we received " \
+                "while the cache was fixed are no longer valid now that it's unfixed."
+    
+            # Request again.  Data should match this time.
+            data = opCache.Output( slicing ).wait()
+            data = data.view(vigra.VigraArray)
+            data.axistags = opCache.Output.meta.axistags
+            assert (data == self.data[slicing]).all()
+
+        _requestFrozenAndUnfrozen(make_key[:, 0:50, 15:45, 0:1, :])
+        _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
+
+
 if __name__ == "__main__":
     import sys
     import nose
