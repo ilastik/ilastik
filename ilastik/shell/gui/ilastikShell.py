@@ -1144,7 +1144,12 @@ class IlastikShell( QMainWindow ):
                 self.projectManager.saveProject()
             except ProjectManager.SaveError, err:
                 self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
-            # Ask the workflow to re-enable the appropriate applets
+            
+            # First, re-enable all applets
+            # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
+            #  then everything is re-enabled.)
+            self.setAllAppletsEnabled(True)
+            # Next, tell the workflow to re-disable any applets that aren't really ready.
             self.workflow.handleAppletStateUpdateRequested()
         
         saveThread = threading.Thread( target=save )
@@ -1180,7 +1185,12 @@ class IlastikShell( QMainWindow ):
                 except ProjectManager.SaveError, err:
                     self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
                 self.updateShellProjectDisplay()
-                # Ask the workflow to re-enable the appropriate applets
+                
+                # First, re-enable all applets
+                # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
+                #  then everything is re-enabled.)
+                self.setAllAppletsEnabled(True)
+                # Next, tell the workflow to re-disable any applets that aren't really ready.
                 self.workflow.handleAppletStateUpdateRequested()
 
             saveThread = threading.Thread( target=saveAs )
