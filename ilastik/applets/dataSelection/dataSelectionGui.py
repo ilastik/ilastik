@@ -459,7 +459,27 @@ class DataSelectionGui(QWidget):
                 self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
                 if not return_val[0]:
                     # Not successfully repaired.  Roll back the changes and give up.
+
+                    # save dataset infos
+                    temp = []
+                    for lane in range(len(opTop.DatasetGroup)):
+                        temp.append([])
+                        for role in range(len(opTop.DatasetGroup[lane])):
+                            if lane >= startingLane and role == roleIndex:
+                                temp[lane].append(None)
+                            else:
+                                temp[lane].append(opTop.DatasetGroup[lane][role].value)
+
+                    # reset DatasetGroup
+                    opTop.DatasetGroup.resize(0)
+
+                    # restore dataset infos
                     opTop.DatasetGroup.resize( originalSize )
+                    for lane in range(len(opTop.DatasetGroup)):
+                        for role in range(len(opTop.DatasetGroup[lane])):
+                            if lane < startingLane or role != roleIndex:
+                                opTop.DatasetGroup[lane][role].setValue(temp[lane][role])
+
                     break
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
