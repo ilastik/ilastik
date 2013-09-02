@@ -517,12 +517,21 @@ class IlastikShell( QMainWindow ):
 
         return menu
 
-    def exportCurrentOperatorDiagram(self, detail):        
+    def exportCurrentOperatorDiagram(self, detail):
+        if len(self._applets) == 0:
+            QMessageBox.critical(self, "Export Error", "There are no operators to export.")
+            return
+        elif len(self._applets)<=self.currentAppletIndex:
+            QMessageBox.critical(self, "Export Error", "The current applet does not exist.")
+            return
         op = self._applets[self.currentAppletIndex].topLevelOperator
         assert isinstance(op, Operator), "Top-level operator of your applet must be a lazyflow.Operator if you want to export it!"
         self.exportOperatorDiagram(op, detail)
         
     def exportWorkflowDiagram(self, detail):
+        if self.projectManager is None:
+            QMessageBox.critical(self, "Export Error", "You have to start a project before you can export workflow diagrams.")
+            return
         assert isinstance(self.projectManager.workflow, Operator), "Workflow must be an operator if you want to export it!"
         self.exportOperatorDiagram(self.projectManager.workflow, detail)
     
