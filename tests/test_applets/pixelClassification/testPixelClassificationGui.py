@@ -6,7 +6,7 @@ from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from ilastik.utility.timer import Timer
+from ilastik.utility.timer import Timer, timeLogged
 
 from tests.helpers import ShellGuiTestCaseBase
 
@@ -136,6 +136,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_ERASE_START = (-10,-10)
     LABEL_ERASE_STOP = (10,10)
 
+    @timeLogged(logger, logging.INFO)
     def test_4_AddLabels(self):
         """
         Add labels and draw them in the volume editor.
@@ -205,6 +206,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    @timeLogged(logger, logging.INFO)
     def test_5_DeleteLabel(self):
         """
         Delete a label from the label list.
@@ -276,6 +278,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    @timeLogged(logger, logging.INFO)
     def test_6_EraseSome(self):
         """
         Erase a few of the previously drawn labels from the volume editor using the eraser.
@@ -323,6 +326,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
+
+    @timeLogged(logger, logging.INFO)
     def test_7_EraseCompleteLabel(self):
         """
         Erase all of the labels of a particular color using the eraser.
