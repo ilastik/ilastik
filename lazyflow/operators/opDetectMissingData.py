@@ -3,6 +3,7 @@ from functools import partial
 import cPickle as pickle
 import tempfile
 from threading import Lock as ThreadLock
+import re
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -20,12 +21,27 @@ import vigra
 logger = logging.getLogger(__name__)
 
 
+class VersionError(Exception):
+    pass
+
+
+def extractVersion(s):
+    # assuming a string with a decimal number inside
+    # e.g. "0.11-ubuntu", "haiku_os-sklearn-0.9"
+    reInt = re.compile("\d+")
+    m = reInt.findall(s)
+    if m is None or len(m)<1:
+        raise VersionError("Cannot determine sklearn version")
+    else:
+        return int(m[1])
+
+
 try:
     from sklearn.svm import SVC
     havesklearn = True
     from sklearn import __version__ as sklearnVersion
-    svcTakesScaleC = int(sklearnVersion.split('.')[1]) < 11
-except ImportError:
+    svcTakesScaleC = extractVersion(sklearnVersion) < 11
+except ImportError, VersionError:
     logger.warning("Could not import dependency 'sklearn' for SVMs")
     havesklearn = False
 

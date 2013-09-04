@@ -115,6 +115,14 @@ def _singleMissingLayer(layer=30, nx=64,ny=64,nz=100,method='linear'):
     return (volume, missing, expected_output)
 
 
+class TestBasics(unittest.TestCase):
+    def testVersionDetection(self):
+        from lazyflow.operators.opDetectMissingData import extractVersion
+        assert extractVersion("0.11") == 11
+        assert extractVersion("haiku_os-0.9") == 9
+        assert extractVersion("0.21-git") == 21
+
+
 class TestDetection(unittest.TestCase):
     def setUp(self):
         v = _volume()
@@ -124,7 +132,7 @@ class TestDetection(unittest.TestCase):
         self.op.HaloSize.setValue(0)
         self.op.DetectionMethod.setValue('svm')
         self.op.train(force=True)
-        
+
     def testDetectorOmnipresence(self):
         if not havesklearn:
             return
