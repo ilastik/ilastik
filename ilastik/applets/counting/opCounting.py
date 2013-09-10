@@ -30,7 +30,7 @@ class OpVolumeOperator(Operator):
     description = "Do Operations involving the whole volume"
     inputSlots = [InputSlot("Input"), InputSlot("Function")]
     outputSlots = [OutputSlot("Output")]
-    DefaultBlockSize = 64
+    DefaultBlockSize = 128
     blockShape = InputSlot(value = DefaultBlockSize)
 
     def setupOutputs(self):
@@ -56,7 +56,7 @@ class OpVolumeOperator(Operator):
                 #split up requests into blocks
                 shape = self.Input.meta.shape
                 numBlocks = numpy.ceil(shape/(1.0*fullBlockShape)).astype("int")
-                blockCache = numpy.ndarray(shape = numBlocks, dtype=self.Output.meta.dtype)
+                blockCache = numpy.ndarray(shape = numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 #blocks holds the different roi keys for each of the blocks
                 blocks = itertools.product(*[range(i) for i in numBlocks])
