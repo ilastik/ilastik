@@ -1,6 +1,7 @@
 #Python
 import copy
 from functools import partial
+import itertools
 
 #SciPy
 import numpy
@@ -12,6 +13,8 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
                                Op5ifyer
+from lazyflow.request import Request, RequestPool
+from lazyflow.roi     import roiToSlice, sliceToRoi
                                
 from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
@@ -27,6 +30,8 @@ class OpVolumeOperator(Operator):
     description = "Do Operations involving the whole volume"
     inputSlots = [InputSlot("Input"), InputSlot("Function")]
     outputSlots = [OutputSlot("Output")]
+    DefaultBlockSize = 64
+    blockShape = InputSlot(value = DefaultBlockSize)
 
     def setupOutputs(self):
         print "setupOutputsVolume"
@@ -45,9 +50,35 @@ class OpVolumeOperator(Operator):
         print "ExecuteVolume"
         with self._lock:
             if self.cache is None:
+                fullBlockShape = numpy.array([self.blockShape.value for i in self.Input.meta.shape])
                 fun = self.inputs["Function"].value
-                data = self.inputs["Input"][:].wait()
-                self.cache = [fun(data)]
+                #data = self.inputs["Input"][:].wait()
+                #split up requests into blocks
+                shape = self.Input.meta.shape
+                numBlocks = numpy.ceil(shape/(1.0*fullBlockShape)).astype("int")
+                blockCache = numpy.ndarray(shape = numBlocks, dtype=self.Output.meta.dtype)
+                pool = RequestPool()
+                #blocks holds the different roi keys for each of the blocks
+                blocks = itertools.product(*[range(i) for i in numBlocks])
+                blockKeys = []
+                for b in blocks:
+                    start = b * fullBlockShape
+                    stop = b * fullBlockShape + fullBlockShape
+                    stop = numpy.min(numpy.vstack((stop, shape)), axis=0)
+                    blockKey = roiToSlice(start, stop)
+                    blockKeys.append(blockKey)
+                
+                def predict_block(i):
+                    data = self.Input[blockKeys[i]].wait()
+                    blockCache[i] = fun(data)
+                    
+                for i,f in enumerate(blockCache):
+                    req = pool.request(partial(predict_block,i))
+
+                pool.wait()
+                pool.clean()
+
+                self.cache = [fun(blockCache)]
             return self.cache
 
     def propagateDirty(self, slot, subindex, roi):
@@ -59,8 +90,8 @@ class OpVolumeOperator(Operator):
 
 class OpMean(Operator):
 
-    name = "OpVolumeOperator"
-    description = "Do Operations involving the whole volume"
+    name = "OpMean"
+    description = "Calculate the mean of the Input"
     Input = InputSlot("Input")
     Output = OutputSlot("Output")
 
