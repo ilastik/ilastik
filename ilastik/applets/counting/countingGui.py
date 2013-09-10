@@ -355,7 +355,7 @@ class CountingGui(LabelingGui):
         
         if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = self.op.classifier_cache.Output.value.get_params() 
+            params = self.op.classifier_cache.Output.value[0].get_params() 
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
