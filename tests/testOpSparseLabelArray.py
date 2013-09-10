@@ -1,11 +1,16 @@
+import logging
+logger = logging.getLogger('tests.testOpSparseLabelArray')
+
 import numpy
 from lazyflow.graph import Graph
 from lazyflow.operators import OpSparseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
+from lazyflow.utility import timeLogged
 
 class TestOpSparseLabelArray(object):
     
+    @timeLogged(logger)
     def setup(self):
         graph = Graph()
         op = OpSparseLabelArray(graph=graph)
@@ -25,6 +30,7 @@ class TestOpSparseLabelArray(object):
         self.inData = inputData
         self.data = data
     
+    @timeLogged(logger)
     def testOutput(self):
         op = self.op
         slicing = self.slicing
@@ -93,6 +99,9 @@ class TestOpSparseLabelArray(object):
 
 if __name__ == "__main__":
     import sys
+    logger.addHandler( logging.StreamHandler( sys.stdout ) )
+    logger.setLevel( logging.DEBUG )
+    
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
