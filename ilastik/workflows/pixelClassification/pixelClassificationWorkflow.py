@@ -265,6 +265,10 @@ class PixelClassificationWorkflow(Workflow):
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
         if self._headless and self._batch_input_args and self._batch_export_args:
+            
+            # Make sure we're using the up-to-date classifier.
+            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+        
             # Now run the batch export and report progress....
             opBatchDataExport = self.batchResultsApplet.topLevelOperator
             for i, opExportDataLaneView in enumerate(opBatchDataExport):
