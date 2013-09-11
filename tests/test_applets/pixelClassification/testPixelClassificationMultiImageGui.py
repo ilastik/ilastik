@@ -175,7 +175,8 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
                 # Make sure the labels were added to the label array operator
-                assert opPix.MaxLabelValue.value == i+1
+                labelData = opPix.LabelImages[0][:].wait()
+                assert labelData.max() == i+1, "Max label value was {}".format( labelData.max() )
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
