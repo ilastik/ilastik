@@ -111,6 +111,7 @@ class OpTrainRandomForestBlocked(Operator):
 
         featMatrix=[]
         labelsMatrix=[]
+        maxLabel = 0
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
                 #labels=labels[:].wait()
@@ -156,7 +157,6 @@ class OpTrainRandomForestBlocked(Operator):
 
                 traceLogger.debug("Requests fired")
 
-                maxLabel = 0
                 for ir, req in enumerate(reqlistlabels):
                     traceLogger.debug("Waiting for a label block...")
                     labblock = req.wait()
