@@ -181,6 +181,7 @@ class OpValueCache(Operator):
     category = "Cache"
     
     Input = InputSlot()
+    fixAtCurrent = InputSlot(value=False)
     Output = OutputSlot()
     
     loggerName = __name__ + ".OpValueCache"
@@ -189,16 +190,19 @@ class OpValueCache(Operator):
     
     def __init__(self, *args, **kwargs):
         super(OpValueCache, self).__init__(*args, **kwargs)
-        self._dirty = False
+        self._dirty = True
         self._value = None
         self._lock = threading.Lock()
         self._request = None
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        self._dirty = True
     
     def execute(self, slot, subindex, roi, result):
+        if self.fixAtCurrent.value is True or self._dirty is False:
+            result[:] = self._value
+            return result
+        
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
         # If some other caller has already requested the value, we'll just wait for the request he already made.
         class State():
@@ -217,7 +221,9 @@ class OpValueCache(Operator):
             else:
                 state = State.Dirty
 
-            self.traceLogger.debug("State is: {}".format( {State.Dirty : 'Dirty', State.Waiting : 'Waiting', State.Clean : 'Clean'}[state]) )
+            self.traceLogger.debug("State is: {}".format( {State.Dirty : 'Dirty',
+                                                           State.Waiting : 'Waiting',
+                                                           State.Clean : 'Clean'}[state]) )
             
             # Obtain the request to wait for (create it if necessary)
             if state == State.Dirty:
@@ -257,9 +263,17 @@ class OpValueCache(Operator):
                 self._request = None
                 self._dirty = False
 
-    def propagateDirty(self, islot, subindex, roi):
-        self._dirty = True
-        self.Output.setDirty(roi)
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is self.Input:
+            self._dirty = True
+            if not self.fixAtCurrent.value:
+                self.Output.setDirty(roi)
+        elif slot is self.fixAtCurrent:
+            if self.fixAtCurrent.value is False and self._dirty:
+                self.Output.setDirty()
+
 
     def forceValue(self, value):
         """
@@ -269,7 +283,7 @@ class OpValueCache(Operator):
         with self._lock:
             self._value = value
             self._dirty = False
-            self.Output.setDirty(slice(None))
+        self.Output.setDirty()
         
 class OpPrecomputedInput(Operator):
     """
