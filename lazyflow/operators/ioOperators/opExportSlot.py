@@ -286,6 +286,7 @@ class OpExportSlot(Operator):
             opExport = OpExportMultipageTiff( parent=self )
             opExport.Filepath.setValue( export_path )
             opExport.Input.connect( self.Input )
+            opExport.progressSignal.subscribe( self.progressSignal )
             
             # Run the export
             opExport.run_export()
