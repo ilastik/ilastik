@@ -85,7 +85,7 @@ class OpTrainRandomForestBlocked(Operator):
     category = "Learning"
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"), \
-                  InputSlot("nonzeroLabelBlocks", level=1), InputSlot("MaxLabel", value=0)]
+                  InputSlot("nonzeroLabelBlocks", level=1)]
     outputSlots = [OutputSlot("Classifier")]
 
     WarningEmitted = False
@@ -98,19 +98,25 @@ class OpTrainRandomForestBlocked(Operator):
         self._forest_count = 10
         # TODO: Make treecount configurable via an InputSlot
         self._tree_count = 10
+        self._forests = (None,) * self._forest_count
+        self._dirty = True
 
     def setupOutputs(self):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].meta.dtype = object
-            self.outputs["Classifier"].meta.shape = (self._forest_count,)
+        self.outputs["Classifier"].meta.dtype = object
+        self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
-            # No need to set dirty here: notifyDirty handles it.
-            #self.outputs["Classifier"].setDirty((slice(0,1,None),))
+        # No need to set dirty here: notifyDirty handles it.
+        #self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
     #FIXME: It is not possible to access the class variable logger here.
     #
     #@traceLogged(OpTrainRandomForestBlocked.logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, subindex, roi, result):
+        if self.fixClassifier.value == True:
+            result[:] = self._forests[:]
+            return result
+
+        self._dirty = False        
         progress = 0
         self.progressSignal(progress)
         numImages = len(self.Images)
@@ -163,6 +169,7 @@ class OpTrainRandomForestBlocked(Operator):
 
                 traceLogger.debug("Requests fired")
 
+                maxLabel = 0
                 for ir, req in enumerate(reqlistlabels):
                     traceLogger.debug("Waiting for a label block...")
                     labblock = req.wait()
@@ -171,11 +178,17 @@ class OpTrainRandomForestBlocked(Operator):
                     image = reqlistfeat[ir].wait()
 
                     indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-                    features=image[indexes]
-                    labbla=labblock[indexes]
-
-                    featMatrix.append(features)
-                    labelsMatrix.append(labbla)
+                    
+                    # Even though our input is supposed to be "nonzeroLabelBlocks"
+                    #  users are allowed to give some all-zero blocks.
+                    # If this block all zero, discard and continue with next block.
+                    if len(indexes[0]) > 0:
+                        features=image[indexes]
+                        labbla=labblock[indexes]
+                        maxLabel = max(labbla.max(), maxLabel)
+    
+                        featMatrix.append(features)
+                        labelsMatrix.append(labbla)
 
                 progress = progress_outer[0]
 
@@ -190,7 +203,6 @@ class OpTrainRandomForestBlocked(Operator):
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-            maxLabel = self.inputs["MaxLabel"].value
             labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
             try:
@@ -219,29 +231,45 @@ class OpTrainRandomForestBlocked(Operator):
             finally:
                 self.progressSignal(100)
 
+        self._forests = result
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.fixClassifier and self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
+        if slot != self.fixClassifier:
+            self._dirty = True
+            if self.fixClassifier.value is False:
+                self.outputs["Classifier"].setDirty()
+        if (slot == self.fixClassifier and
+            self.fixClassifier.value is False and
+            self._dirty):
+                self.outputs["Classifier"].setDirty()
 
 class OpPredictRandomForest(Operator):
     name = "PredictRandomForest"
     description = "Predict on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
+    inputSlots = [InputSlot("Image"),InputSlot("Classifier")]
     outputSlots = [OutputSlot("PMaps")]
     
     logger = logging.getLogger(__name__+".OpPredictRandomForestBlocked")
 
+    def __init__(self, *args, **kwargs):
+        super( OpPredictRandomForest, self ).__init__(*args, **kwargs)
+        def handleDirtyClassifier(*args):
+            if self.configured():
+                self._setupOutputs()
+        self.Classifier.notifyDirty( handleDirtyClassifier )
+
     def setupOutputs(self):
-        
-        nlabels = max(self.inputs["LabelsCount"].value, 1) #we'll have at least 2 labels once we actually predict something
-                                                           #not setting it to 0 here is friendlier to possible downstream
-                                                           #ilastik operators, setting it to 2 causes errors in pixel classification
-                                                           #(live prediction doesn't work when only two labels are present)
+        label_count = 1
+        forests = self.Classifier.value
+        if forests[0]:
+            label_count = forests[0].labelCount()
+        nlabels = max(label_count, 1) #we'll have at least 2 labels once we actually predict something
+                                      #not setting it to 0 here is friendlier to possible downstream
+                                      #ilastik operators, setting it to 2 causes errors in pixel classification
+                                      #(live prediction doesn't work when only two labels are present)
         
         self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
@@ -251,7 +279,6 @@ class OpPredictRandomForest(Operator):
     def execute(self, slot, subindex, roi, result):
         t1 = time.time()
         key = roi.toSlice()
-        nlabels=self.inputs["LabelsCount"].value
 
         traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
         forests=self.inputs["Classifier"][:].wait()
@@ -261,7 +288,6 @@ class OpPredictRandomForest(Operator):
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
 
         traceLogger.debug("OpPredictRandomForest: Got classifier")
-        #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
         newKey = key[:-1]
         newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
@@ -284,7 +310,7 @@ class OpPredictRandomForest(Operator):
         pool = RequestPool()
 
         for i,f in enumerate(forests):
-            req = pool.request(partial(predict_forest, i))
+            pool.add( Request(partial(predict_forest, i)) )
 
         pool.wait()
         pool.clean()
@@ -307,23 +333,11 @@ class OpPredictRandomForest(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
         if slot == self.inputs["Classifier"]:
             self.logger.debug("classifier changed, setting dirty")
-            if self.LabelsCount.ready() and self.LabelsCount.value > 0:
-                self.outputs["PMaps"].setDirty(slice(None,None,None))
+            self.outputs["PMaps"].setDirty()
         elif slot == self.inputs["Image"]:
-            nlabels=self.inputs["LabelsCount"].value
-            if nlabels > 0:
-                self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
-        elif slot == self.inputs["LabelsCount"]:
-            # When the labels count changes, we must resize the output
-            if self.configured():
-                # FIXME: It's ugly that we call the 'private' _setupOutputs() function here,
-                #  but the output shape needs to change when this input becomes dirty,
-                #  and the output change needs to be propagated to the rest of the graph.
-                self._setupOutputs()
-            self.outputs["PMaps"].setDirty(slice(None,None,None))
+            self.outputs["PMaps"].setDirty()
 
 
 class OpSegmentation(Operator):
