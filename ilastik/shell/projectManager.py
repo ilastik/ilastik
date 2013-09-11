@@ -1,4 +1,5 @@
 import os
+import gc
 import copy
 import h5py
 import logging
@@ -336,6 +337,10 @@ class ProjectManager(object):
         :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
         :param readOnly: Set to True if the project file should NOT be modified.
         """
+        # We are about to create a LOT of tiny objects.
+        # Temporarily disable garbage collection while we do this.
+        gc.disable()
+        
         assert self.currentProjectFile is None
 
         # Minor GUI nicety: Pre-activate the progress signals for all applets so
@@ -373,8 +378,10 @@ class ProjectManager(object):
             self._closeCurrentProject()
             raise
         finally:
+            gc.enable()
             for aplt in self._applets:
                 aplt.progressSignal.emit(100)
+                
 
     def _takeSnapshotAndLoadIt(self, newPath):
         """
