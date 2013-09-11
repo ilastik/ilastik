@@ -84,7 +84,7 @@ class OpTrainRandomForestBlocked(Operator):
     description = "Train a random forest on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"), \
+    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), \
                   InputSlot("nonzeroLabelBlocks", level=1)]
     outputSlots = [OutputSlot("Classifier")]
 
@@ -99,29 +99,16 @@ class OpTrainRandomForestBlocked(Operator):
         # TODO: Make treecount configurable via an InputSlot
         self._tree_count = 10
         self._forests = (None,) * self._forest_count
-        self._dirty = True
 
     def setupOutputs(self):
         self.outputs["Classifier"].meta.dtype = object
         self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
-        # No need to set dirty here: notifyDirty handles it.
-        #self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-    #FIXME: It is not possible to access the class variable logger here.
-    #
-    #@traceLogged(OpTrainRandomForestBlocked.logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, subindex, roi, result):
-        if self.fixClassifier.value == True:
-            result[:] = self._forests[:]
-            return result
-
-        self._dirty = False        
         progress = 0
         self.progressSignal(progress)
         numImages = len(self.Images)
 
-        key = roi.toSlice()
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
@@ -235,14 +222,7 @@ class OpTrainRandomForestBlocked(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot != self.fixClassifier:
-            self._dirty = True
-            if self.fixClassifier.value is False:
-                self.outputs["Classifier"].setDirty()
-        if (slot == self.fixClassifier and
-            self.fixClassifier.value is False and
-            self._dirty):
-                self.outputs["Classifier"].setDirty()
+        self.Classifier.setDirty()
 
 class OpPredictRandomForest(Operator):
     name = "PredictRandomForest"

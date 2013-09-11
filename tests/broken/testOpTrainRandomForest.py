@@ -63,7 +63,6 @@ class TestOpTrainRandomForest(object):
         opFeatures.Matrix.setValue(selections)
         
         opTrain = OpTrainRandomForestBlocked(graph=graph)
-        opTrain.fixClassifier.setValue(False)
         opTrain.Images.resize(1)        
         opTrain.Images[0].connect(opFeatures.Output)
         opTrain.Labels.resize(1)
