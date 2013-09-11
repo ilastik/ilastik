@@ -173,7 +173,6 @@ class PixelClassificationWorkflow(Workflow):
         
         # Classifier and LabelsCount are provided by the interactive workflow
         opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
-        opBatchPredictionPipeline.MaxLabel.connect( opClassify.MaxLabelValue )
         opBatchPredictionPipeline.FreezePredictions.setValue( False )
         
         # Provide these for the gui
