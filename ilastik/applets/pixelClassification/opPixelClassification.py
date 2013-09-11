@@ -95,13 +95,13 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
-        self.opTrain.inputs['fixClassifier'].connect( self.FreezePredictions )
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
         self.classifier_cache = OpValueCache( parent=self )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
+        self.classifier_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.Classifier.connect( self.classifier_cache.Output )
 
         # Hook up the prediction pipeline inputs
