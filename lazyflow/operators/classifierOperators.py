@@ -25,8 +25,8 @@ class OpTrainRandomForest(Operator):
     
     logger = logging.getLogger(__name__+".OpTrainRandomForest")
 
-    def __init__(self, parent = None):
-        Operator.__init__(self, parent)
+    def __init__(self, parent = None, graph=None):
+        Operator.__init__(self, parent=parent, graph=graph)
         self._forest_count = 4
         # TODO: Make treecount configurable via an InputSlot
         self._tree_count = 25
@@ -268,7 +268,7 @@ class OpPredictRandomForest(Operator):
 
         shape=res.shape
         prod = numpy.prod(shape[:-1])
-        res.shape = (prod, shape[-1])
+        res = res.reshape((prod, shape[-1]))
         features=res
 
         predictions = [0]*len(forests)
