@@ -88,7 +88,6 @@ class OpStackLoader(Operator):
             
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
-        print "ASSIGNED AXISTAGS:", axistags
         self.stack.meta.dtype = self.info.getDtype()
 
     def propagateDirty(self, slot, subindex, roi):
