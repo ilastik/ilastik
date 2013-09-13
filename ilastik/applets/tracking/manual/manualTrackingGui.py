@@ -674,13 +674,13 @@ class ManualTrackingGui(LayerViewerGui):
         req.submit()
         
     @threadRouted
-    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):
-        if time:
-            self.editor.posModel.time = time
+    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):        
         if slicingPos:
             self.editor.posModel.slicingPos = slicingPos
         if cursorPos:
             self.editor.posModel.cursorPos = cursorPos
+        if time is not None:
+            self.editor.posModel.time = time
             
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
@@ -1083,8 +1083,8 @@ class ManualTrackingGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
-        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
+        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
 
 
     def _onGotoLabel(self):
