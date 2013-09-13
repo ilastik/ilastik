@@ -12,6 +12,7 @@ import numpy as np
 import vigra
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
+from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.config import cfg as ilastik_config
@@ -278,7 +279,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
+        directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
         if directory is None or len(str(directory)) == 0:
             print "cancelled."
@@ -361,7 +362,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
+        directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
                 
         if directory is None or len(str(directory)) == 0:
             print "cancelled."
