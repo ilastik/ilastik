@@ -146,10 +146,10 @@ class ManualTrackingGui(LayerViewerGui):
     
     def setupLayers( self ):        
         layers = []
-        
+ 
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
         self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
-        self.ct[-1] = QColor(0,0,0,255).rgba()
+        self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
@@ -169,11 +169,11 @@ class ManualTrackingGui(LayerViewerGui):
             layers.append(trackingLayer)
         
         
-        ct = colortables.create_random_16bit()
-        ct[1] = QColor(230,0,0,150).rgba()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        
         if self.topLevelOperatorView.UntrackedImage.ready():
+            ct = colortables.create_random_16bit()
+            for i in range(len(ct)):
+                ct[i] = QColor(230,0,0,150).rgba() 
+            ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
             self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
             untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
             untrackedLayer.name = "Untracked Objects"
@@ -182,10 +182,11 @@ class ManualTrackingGui(LayerViewerGui):
             layers.append(untrackedLayer)
         
         if self.topLevelOperatorView.BinaryImage.ready():
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
             ct = colortables.create_random_16bit()
+            for i in range(len(ct)):
+                ct[i] = QColor(255,255,0,100).rgba()
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            ct[1] = QColor(255,255,0,100).rgba() 
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )             
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 0.8
