@@ -5,7 +5,7 @@ import numpy
 
 import lazyflow.stype
 from lazyflow.utility import OrderedSignal
-from lazyflow.request import Request, RequestLock
+from lazyflow.request import Request, SimpleRequestCondition
 
 class RoiRequestBatch( object ):
     """
@@ -84,9 +84,7 @@ class RoiRequestBatch( object ):
         self._roiIter = roiIterator
         self._batchSize = batchSize
         
-        # Combine threading.Condition + RequestLock:
-        # ==> Request-aware condition variable!
-        self._condition = threading.Condition( RequestLock() )
+        self._condition = SimpleRequestCondition()
 
         self._activated_count = 0
         self._completed_count = 0
