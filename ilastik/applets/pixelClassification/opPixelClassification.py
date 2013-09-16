@@ -58,6 +58,8 @@ class OpPixelClassification( Operator ):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+
+    NumClasses = OutputSlot()
     
     def setupOutputs(self):
         self.LabelNames.meta.dtype = object
@@ -111,6 +113,12 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.Classifier.connect( self.classifier_cache.Output )
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
+        
+        def _updateNumClasses(*args):
+            numClasses = len(self.LabelNames.value)
+            self.opPredictionPipeline.NumClasses.setValue( numClasses )
+            self.NumClasses.setValue( numClasses )
+        self.LabelNames.notifyDirty( _updateNumClasses )
 
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
@@ -316,6 +324,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     (It uses caches for these outputs, and has an extra input for cached features.)
     """        
     CachedFeatureImages = InputSlot()
+    NumClasses = InputSlot()
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
@@ -331,6 +340,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.name = "OpPredictRandomForest"
         self.predict.inputs['Classifier'].connect(self.Classifier) 
         self.predict.inputs['Image'].connect(self.CachedFeatureImages)
+        self.predict.LabelsCount.connect( self.NumClasses )
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
         # Prediction cache for the GUI

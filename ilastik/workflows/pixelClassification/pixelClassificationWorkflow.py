@@ -171,9 +171,10 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
         opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
         
-        # Classifier and LabelsCount are provided by the interactive workflow
+        # Classifier and NumClasses are provided by the interactive workflow
         opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
         opBatchPredictionPipeline.FreezePredictions.setValue( False )
+        opBatchPredictionPipeline.NumClasses.connect( opClassify.NumClasses )
         
         # Provide these for the gui
         opBatchResults.RawData.connect( opBatchInputs.Image )
