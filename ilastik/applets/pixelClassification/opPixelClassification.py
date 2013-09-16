@@ -116,6 +116,7 @@ class OpPixelClassification( Operator ):
         
         def _updateNumClasses(*args):
             numClasses = len(self.LabelNames.value)
+            self.opTrain.MaxLabel.setValue( numClasses )
             self.opPredictionPipeline.NumClasses.setValue( numClasses )
             self.NumClasses.setValue( numClasses )
         self.LabelNames.notifyDirty( _updateNumClasses )
