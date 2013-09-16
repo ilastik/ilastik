@@ -85,7 +85,7 @@ class OpTrainRandomForestBlocked(Operator):
     category = "Learning"
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), \
-                  InputSlot("nonzeroLabelBlocks", level=1)]
+                  InputSlot("nonzeroLabelBlocks", level=1), InputSlot("MaxLabel")]
     outputSlots = [OutputSlot("Classifier")]
 
     WarningEmitted = False
@@ -111,7 +111,6 @@ class OpTrainRandomForestBlocked(Operator):
 
         featMatrix=[]
         labelsMatrix=[]
-        maxLabel = 0
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.meta.shape is not None:
                 #labels=labels[:].wait()
@@ -172,7 +171,6 @@ class OpTrainRandomForestBlocked(Operator):
                     if len(indexes[0]) > 0:
                         features=image[indexes]
                         labbla=labblock[indexes]
-                        maxLabel = max(labbla.max(), maxLabel)
     
                         featMatrix.append(features)
                         labelsMatrix.append(labbla)
@@ -190,6 +188,7 @@ class OpTrainRandomForestBlocked(Operator):
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+            maxLabel = self.MaxLabel.value
             labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
             try:
@@ -289,15 +288,11 @@ class OpPredictRandomForest(Operator):
 
         prediction=numpy.dstack(predictions)
         prediction = numpy.average(prediction, axis=2)
-        prediction.shape =  shape[:-1] + (self.LabelsCount.value,)
-        #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
+        prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
 
-        # If our LabelsCount is higher than the number of labels in the training set,
-        # then our results aren't really valid.  FIXME !!!
-        # Duplicate the last label's predictions
-        for c in range(result.shape[-1]):
-            result[...,c] = prediction[...,min(c+key[-1].start, prediction.shape[-1]-1)]
-
+        # Copy only the prediction channels the client requested.
+        result[...] = prediction[...,roi.start[-1]:roi.stop[-1]]
+        
         t3 = time.time()
 
         self.logger.debug("predict roi=%r took %fseconds, actual RF time was %fs, feature time was %fs" % (key, t3-t1, t3-t2, t2-t1))
