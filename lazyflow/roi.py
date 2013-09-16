@@ -261,7 +261,7 @@ def getIntersection( roiA, roiB, assertIntersect=True ):
 
     if numpy.prod(stop - start) <= 0:
         if assertIntersect:
-            assert numpy.prod(stop - start) > 0, "Rois do not intersect!"
+            assert ((stop - start) > 0).all(), "Rois do not intersect!"
         else:
             return None    
     return (start, stop)
@@ -311,11 +311,11 @@ def block_view(A, block= (3, 3)):
     strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
     return ast(A, shape= shape, strides= strides)
 
-def getIntersectingBlocks( blockshape, roi, asmatrix=False ):
+def getIntersectingBlocks( blockshape, roi, asarray=False ):
     """
     Returns the start coordinate of each block that the given roi intersects.
     By default, returned as an array of shape (N,M) (N indexes with M coordinates each).
-    If asmatrix=True, then the blocks are returned as an array of shape (D1,D2,D3,...DN,M)
+    If asarray=True, then the blocks are returned as an array of shape (D1,D2,D3,...DN,M)
     such that coordinates of spatially adjacent blocks are returned in adjacent entries of the array.
 
     For example:
@@ -336,9 +336,9 @@ def getIntersectingBlocks( blockshape, roi, asmatrix=False ):
      [20 20]
      [20 40]]
 
-    Now the same two examples, with asmatrix=True.  Note the shape of the result.
+    Now the same two examples, with asarray=True.  Note the shape of the result.
     
-    >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)], asmatrix=True )
+    >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)], asarray=True )
     >>> block_start_matrix.shape
     (2, 1, 2)
     >>> print block_start_matrix
@@ -346,7 +346,7 @@ def getIntersectingBlocks( blockshape, roi, asmatrix=False ):
     <BLANKLINE>
      [[20 20]]]
 
-    >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)], asmatrix=True )
+    >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)], asarray=True )
     >>> block_start_matrix.shape
     (2, 2, 2)
     >>> print block_start_matrix
@@ -373,7 +373,7 @@ def getIntersectingBlocks( blockshape, roi, asmatrix=False ):
     # Multiply by blockshape to get the list of start coordinates
     block_indices *= blockshape
 
-    if asmatrix:
+    if asarray:
         return block_indices
     else:
         # Reshape into N*M matrix for easy iteration
