@@ -229,27 +229,19 @@ class OpPredictRandomForest(Operator):
     description = "Predict on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Image"),InputSlot("Classifier")]
+    inputSlots = [InputSlot("Image"),InputSlot("Classifier"), InputSlot("LabelsCount")]
     outputSlots = [OutputSlot("PMaps")]
     
     logger = logging.getLogger(__name__+".OpPredictRandomForestBlocked")
 
     def __init__(self, *args, **kwargs):
         super( OpPredictRandomForest, self ).__init__(*args, **kwargs)
-        def handleDirtyClassifier(*args):
-            if self.configured():
-                self._setupOutputs()
-        self.Classifier.notifyDirty( handleDirtyClassifier )
 
     def setupOutputs(self):
-        label_count = 1
-        forests = self.Classifier.value
-        if forests[0]:
-            label_count = forests[0].labelCount()
-        nlabels = max(label_count, 1) #we'll have at least 2 labels once we actually predict something
-                                      #not setting it to 0 here is friendlier to possible downstream
-                                      #ilastik operators, setting it to 2 causes errors in pixel classification
-                                      #(live prediction doesn't work when only two labels are present)
+        nlabels = max(self.LabelsCount.value, 1) #we'll have at least 2 labels once we actually predict something
+                                                #not setting it to 0 here is friendlier to possible downstream
+                                                #ilastik operators, setting it to 2 causes errors in pixel classification
+                                                #(live prediction doesn't work when only two labels are present)
         
         self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
@@ -297,7 +289,7 @@ class OpPredictRandomForest(Operator):
 
         prediction=numpy.dstack(predictions)
         prediction = numpy.average(prediction, axis=2)
-        prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
+        prediction.shape =  shape[:-1] + (self.LabelsCount.value,)
         #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
 
         # If our LabelsCount is higher than the number of labels in the training set,
