@@ -873,7 +873,7 @@ class RequestPool(object):
         if not self._started:
             self.submit()
         for req in self._requests:
-            req.wait()
+            req.block()
 
     def cancel(self):
         """
