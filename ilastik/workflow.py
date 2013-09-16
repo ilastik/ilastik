@@ -1,6 +1,7 @@
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
+from ilastik.shell.shellAbc import ShellABC
 
 class Workflow( Operator ):
     """
@@ -91,6 +92,8 @@ class Workflow( Operator ):
 
         """
         
+        assert isinstance(shell, ShellABC), \
+            "Expected an instance of IlastikShell or HeadlessShell.  Got {}".format( shell )
         if not(parent or graph):
             graph = Graph()
         super(Workflow, self).__init__(parent=parent, graph=graph)
