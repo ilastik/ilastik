@@ -451,8 +451,18 @@ class CountingGui(LabelingGui):
         
     
     def _handleBoxConstraints(self, constr):
-        self.op.opTrain.BoxConstraintRois[self.op.current_view_index()].setValue(constr["rois"])
-        self.op.opTrain.BoxConstraintValues[self.op.current_view_index()].setValue(constr["values"])
+        opTrain = self.op.opTrain
+        id = self.op.current_view_index()
+        vals = constr["values"]
+        rois = constr["rois"]
+        fixedClassifier = opTrain.fixClassifier.value
+        assert len(vals) == len(rois)
+        if opTrain.BoxConstraintRois.ready() and opTrain.BoxConstraintValues.ready():
+            if opTrain.BoxConstraintValues[id].value != vals and opTrain.BoxConstraintRois[id].value != rois:
+                opTrain.fixClassifier.setValue(True)
+                opTrain.BoxConstraintRois[id].setValue(rois)
+                opTrain.fixClassifier.setValue(fixedClassifier)
+                opTrain.BoxConstraintValues[id].setValue(vals)
 
         #boxes = self.boxController._currentBoxesList
 
