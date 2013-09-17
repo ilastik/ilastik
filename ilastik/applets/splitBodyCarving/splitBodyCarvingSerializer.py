@@ -32,7 +32,7 @@ class SplitBodyCarvingSerializer(CarvingSerializer):
                 opLaneView = self._topLevelOperator.getLane(laneIndex)
                 lane_grp = split_settings_grp[grp_name]
                 try:
-                    annotation_filepath = str(lane_grp["annotation_filepath"].value)
+                    annotation_filepath = lane_grp["annotation_filepath"].value
                 except KeyError:
                     pass
                 else:

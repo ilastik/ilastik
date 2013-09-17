@@ -2,6 +2,8 @@ import os
 
 from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
 
+from volumina.utility import decode_to_qstring
+
 from ilastik.utility import bind, PathComponents
 from opDataSelection import DatasetInfo
 
@@ -140,15 +142,17 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Name
         if index.column() == DatasetDetailedInfoColumn.Nickname:
-            return datasetInfo.nickname
+            return decode_to_qstring( datasetInfo.nickname )
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                 if os.path.isabs(datasetInfo.filePath):
-                    return "Absolute Link: {}".format( filePathComponents.externalPath )
+                    text = "Absolute Link: {}".format( filePathComponents.externalPath )
+                    return decode_to_qstring(text)
                 else:
-                    return "Relative Link: {}".format( filePathComponents.externalPath )
+                    text = "Relative Link: {}".format( filePathComponents.externalPath )
+                    return decode_to_qstring(text)
             else:
                 return "Project File"
 

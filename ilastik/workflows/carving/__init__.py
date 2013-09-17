@@ -1,4 +1,9 @@
 from carvingWorkflow import CarvingWorkflow
-from carvingFromPixelPredictionsWorkflow import CarvingFromPixelPredictionsWorkflow
-from splitBodyCarvingWorkflow import SplitBodyCarvingWorkflow
-
+try:
+    from carvingFromPixelPredictionsWorkflow import CarvingFromPixelPredictionsWorkflow
+except:
+    pass
+try:
+    from splitBodyCarvingWorkflow import SplitBodyCarvingWorkflow
+except:
+    pass

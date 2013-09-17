@@ -456,6 +456,7 @@ class SVR(object):
         boxValues = boxConstraints["boxValues"]
         boxFeatures = boxConstraints["boxFeatures"]
         indices = np.arange(boxFeatures.shape[0])
+        assert(boxFeatures.shape[0] == boxIndices[-1])
         np.random.shuffle(indices)
         splits = np.array_split(indices, numRegressors)
         boxConstraintList = []
@@ -463,7 +464,7 @@ class SVR(object):
         for split in splits:
             subBoxIndices = [0]
             subBoxValues = []
-            np.sort(split)
+            split = np.sort(split)
             j = 1
             limit = boxIndices[j]
             for count, index in enumerate(split):

@@ -27,9 +27,7 @@ class ObjectClassificationApplet(StandardApplet):
     def dataSerializers(self):
         return self._serializableItems
 
-    def createSingleLaneGui(self, imageLaneIndex):
+    @property
+    def singleLaneGuiClass(self):
         from objectClassificationGui import ObjectClassificationGui
-        singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
-        return ObjectClassificationGui(singleImageOperator,
-                                       self.shellRequestSignal,
-                                       self.guiControlSignal)
+        return ObjectClassificationGui

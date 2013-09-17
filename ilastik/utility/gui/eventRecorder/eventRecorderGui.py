@@ -5,6 +5,7 @@ from PyQt4 import uic
 from PyQt4.QtCore import Qt, QSettings, QEvent
 from PyQt4.QtGui import QWidget, QIcon, QFileDialog, QMessageBox, QApplication
 
+from volumina.utility.qstring_codec import encode_from_qstring
 from eventRecorder import EventRecorder
 
 class EventRecorderGui(QWidget):
@@ -121,7 +122,7 @@ class EventRecorderGui(QWidget):
         if dlg.result() == QFileDialog.Rejected:
             return
     
-        script_path = str(dlg.selectedFiles()[0])
+        script_path = encode_from_qstring( dlg.selectedFiles()[0] )
         
         # Remember the directory as our new default
         default_dir = os.path.split(script_path)[0]

@@ -29,8 +29,14 @@ class ShellABC(object):
         """
         raise NotImplementedError
 
+    def setAppletEnabled(self, applet, enabled):
+        pass
+
+    def enableProjectChanges(self, enabled):
+        pass
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is ShellABC:
-            return _has_attributes(C, ['workflow', 'createAndLoadNewProject', 'openProjectFile'])
+            return _has_attributes(C, ['workflow', 'createAndLoadNewProject', 'openProjectFile', 'setAppletEnabled'])
         return NotImplemented

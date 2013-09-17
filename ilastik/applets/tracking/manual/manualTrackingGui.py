@@ -19,6 +19,8 @@ from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
 
 from ilastik.config import cfg as ilastik_config
+
+from volumina.utility import encode_from_qstring
     
 
 class ManualTrackingGui(LayerViewerGui):
@@ -91,9 +93,9 @@ class ManualTrackingGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
-        super(ManualTrackingGui, self).__init__(topLevelOperatorView)
+        super(ManualTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
         
@@ -146,10 +148,10 @@ class ManualTrackingGui(LayerViewerGui):
     
     def setupLayers( self ):        
         layers = []
-        
+ 
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
         self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
-        self.ct[-1] = QColor(0,0,0,255).rgba()
+        self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
@@ -169,11 +171,11 @@ class ManualTrackingGui(LayerViewerGui):
             layers.append(trackingLayer)
         
         
-        ct = colortables.create_random_16bit()
-        ct[1] = QColor(230,0,0,150).rgba()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        
         if self.topLevelOperatorView.UntrackedImage.ready():
+            ct = colortables.create_random_16bit()
+            for i in range(len(ct)):
+                ct[i] = QColor(230,0,0,150).rgba() 
+            ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
             self.untrackedsrc = LazyflowSource( self.topLevelOperatorView.UntrackedImage )
             untrackedLayer = ColortableLayer( self.untrackedsrc, ct )
             untrackedLayer.name = "Untracked Objects"
@@ -182,10 +184,11 @@ class ManualTrackingGui(LayerViewerGui):
             layers.append(untrackedLayer)
         
         if self.topLevelOperatorView.BinaryImage.ready():
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )
             ct = colortables.create_random_16bit()
+            for i in range(len(ct)):
+                ct[i] = QColor(255,255,0,100).rgba()
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            ct[1] = QColor(255,255,0,100).rgba() 
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )             
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 0.8
@@ -671,13 +674,13 @@ class ManualTrackingGui(LayerViewerGui):
         req.submit()
         
     @threadRouted
-    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):
-        if time:
-            self.editor.posModel.time = time
+    def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):        
         if slicingPos:
             self.editor.posModel.slicingPos = slicingPos
         if cursorPos:
             self.editor.posModel.cursorPos = cursorPos
+        if time is not None:
+            self.editor.posModel.time = time
             
     def _onDivEventPressed(self):
         if self._getActiveTrack() == self.misdetIdx:
@@ -875,7 +878,7 @@ class ManualTrackingGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)      
+        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
         if directory is None or str(directory) == '':
             self._drawer.exportButton.setEnabled(True)
@@ -999,7 +1002,7 @@ class ManualTrackingGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'), options=options)    
+        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
         if directory is None or len(str(directory)) == 0:
             self._drawer.exportTifButton.setEnabled(True)
             return
@@ -1080,8 +1083,8 @@ class ManualTrackingGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
-        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
+        self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
 
 
     def _onGotoLabel(self):

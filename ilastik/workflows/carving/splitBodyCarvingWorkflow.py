@@ -55,10 +55,10 @@ class SplitBodyCarvingWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
         graph = Graph()
         
-        super(SplitBodyCarvingWorkflow, self).__init__(headless, *args, graph=graph, **kwargs)
+        super(SplitBodyCarvingWorkflow, self).__init__(shell, headless, *args, graph=graph, **kwargs)
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()

@@ -21,11 +21,11 @@ class DeviationFromMeanGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
-        super(DeviationFromMeanGui, self).__init__(topLevelOperatorView)
+        super(DeviationFromMeanGui, self).__init__(parentApplet, topLevelOperatorView)
             
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)

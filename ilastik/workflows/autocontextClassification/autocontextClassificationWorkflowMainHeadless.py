@@ -15,7 +15,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 # ilastik
-import ilastik.utility.monkey_patches
+import ilastik.monkey_patches
 from ilastik.shell.headless.startShellHeadless import startShellHeadless
 #from pixelClassificationWorkflow import PixelClassificationWorkflow
 from autocontextClassificationWorkflow import AutocontextClassificationWorkflow
@@ -29,7 +29,7 @@ def main(argv):
     parser = getArgParser()
     parsed_args = parser.parse_args(argv[1:])
 
-    ilastik.utility.monkey_patches.init_with_args(parsed_args)
+    ilastik.monkey_patches.init_with_args(parsed_args)
 
     try:
         runWorkflow(parsed_args)

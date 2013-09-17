@@ -7,8 +7,8 @@ import threading
 import logging
 from functools import partial
 
-# Third-party
 from ilastik.config import cfg as ilastik_config
+import ilastik.monkey_patches
 
 # Initialize logging before anything else
 from ilastik.ilastik_logging import default_config
@@ -49,6 +49,10 @@ parser.add_argument('--workflow', help='When used with --new_project, specifies 
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 parser.add_argument('--headless', help="Don't start the ilastik gui.", action='store_true', default=False)
+
+# Special command-line control over default tmp dir
+ilastik.monkey_patches.extend_arg_parser(parser)
+
 
 # Example:
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py

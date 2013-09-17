@@ -1,10 +1,10 @@
-from ilastik.applets.base.applet import Applet
 from opPixelClassificationDataExport import OpPixelClassificationDataExport
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
 from ilastik.utility import OpMultiLaneWrapper
 
-class PixelClassificationDataExportApplet( Applet ):
+class PixelClassificationDataExportApplet( DataExportApplet ):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for pixel classification predictions.
@@ -13,15 +13,12 @@ class PixelClassificationDataExportApplet( Applet ):
         # Our operator is a subclass of the generic data export operator
         self._topLevelOperator = OpMultiLaneWrapper( OpPixelClassificationDataExport, parent=workflow,
                                      promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo', 'ConstraintDataset']) )
-        # Users can temporarily disconnect the 'transaction' 
-        #  slot to force all slots to be applied atomically.
-        self._topLevelOperator.TransactionSlot.setValue(True)
-
-        super(PixelClassificationDataExportApplet, self).__init__(title, syncWithImageIndex=not isBatch)
-
         self._gui = None
         self._title = title
         self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+
+        # Base class init
+        super(PixelClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
         
     @property
     def dataSerializers(self):
@@ -35,7 +32,7 @@ class PixelClassificationDataExportApplet( Applet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from pixelClassificationDataExportGui import PixelClassificationDataExportGui
-            self._gui = PixelClassificationDataExportGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
+            self._gui = PixelClassificationDataExportGui( self, self.topLevelOperator )
         return self._gui
 
 

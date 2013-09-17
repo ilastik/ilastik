@@ -10,10 +10,10 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 class ChaingraphTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Chaingraph)"
 
-    def __init__( self, headless, workflow_cmdline_args, *args, **kwargs ):
+    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(ChaingraphTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(ChaingraphTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
                             'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
         ## Create applets 

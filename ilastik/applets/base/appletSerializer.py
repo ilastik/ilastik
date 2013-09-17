@@ -7,6 +7,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik import isVersionCompatible
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
+from volumina.utility import encode_from_qstring
 import os
 import tempfile
 import vigra
@@ -838,7 +839,7 @@ class AppletSerializer(object):
         if fileName.isEmpty():
             raise RuntimeError("Could not find external data: " + path)
         else:
-            return str(fileName)
+            return encode_from_qstring(fileName)
         
     #######################
     # Optional methods    #

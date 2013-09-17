@@ -10,7 +10,7 @@ class Applet( object ):
     __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
 
     _base_initialized = False
-    
+
     def __init__( self, name, syncWithImageIndex=True ):
         """
         Constructor.
@@ -32,17 +32,18 @@ class Applet( object ):
         #:           That is: 
         #:           ``self.progressSignal.emit(0)`` ... more updates ... ``self.progressSignal.emit(100)``
         self.progressSignal = SimpleSignal()
-        
-        #: GUI control signal
-        #: See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)
-        #: Signature: ``emit(command=ControlCommand.DisableAll)`` 
-        self.guiControlSignal = SimpleSignal()
 
         #: Shell request signal is used to trigger certain shell actions.
         #: Signature: ``emit(request)``
-        #: where ``request`` is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the :py:class:`ShellRequest` class.
+        #:  where ``request`` is an integer corresponding to the action the shell should take.  
+        #: The allowable actions are enumerated in the :py:class:`ShellRequest` class.
         #: Example invocation: ``self.shellRequest.emit(ShellRequest.RequestSave)``
         self.shellRequestSignal = SimpleSignal()
+
+        #: This signal informs the workflow that something has changed that might
+        #:  affect the usability of various applets in the workflow.
+        #: Signature: ``emit()``
+        self.appletStateUpdateRequested = SimpleSignal()
 
         self._base_initialized = True
 
@@ -72,7 +73,7 @@ class Applet( object ):
         Subclasses should override this property.  By default, returns [].
         """ 
         return []
-    
+
     @property
     def base_initialized(self):
         # Do not override this property.
@@ -87,26 +88,6 @@ class DatasetConstraintError(Exception):
     
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
-
-class ControlCommand(object):
-    """
-    This class enumerates the GUI control commands that applets can ask the shell to perform via :py:attr:`Applet.guiControlSignal`.
-    Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.
-    """
-    #: Undo the most recent command that the issuing applet sent
-    Pop = 0
-
-    #: Disable all applets in the workflow
-    DisableAll = 1
-    
-    #: Disable applets that come before the applet that is issuing the command
-    DisableUpstream = 2
-    
-    #: Disable applets that come after the applet that is issuing the command
-    DisableDownstream = 3
-    
-    #: Disable the applet that is issuing the command
-    DisableSelf = 4
 
 class ShellRequest(object):
     """

@@ -116,9 +116,15 @@
    </item>
    <item>
     <widget class="BoxListView" name="boxListView">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="minimumSize">
       <size>
-       <width>347</width>
+       <width>200</width>
        <height>0</height>
       </size>
      </property>

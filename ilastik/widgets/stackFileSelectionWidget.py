@@ -11,6 +11,7 @@ import vigra
 from volumina.utility import PreferencesManager
 
 import ilastik.config
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 class StackFileSelectionWidget(QDialog):
     
@@ -87,18 +88,18 @@ class StackFileSelectionWidget(QDialog):
         if directory.isNull():
             # User cancelled
             return
-        
-        PreferencesManager().set('DataSelection', 'recent stack directory', str(directory))
 
-        self.directoryEdit.setText( directory )
-        directory = str(directory)
+        directory = encode_from_qstring( directory )
+        PreferencesManager().set('DataSelection', 'recent stack directory', directory)
+
+        self.directoryEdit.setText( decode_to_qstring(directory) )
         globstring = self._getGlobString(directory)
         if globstring is not None:
             filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
             self._updateFileList( sorted(filenames) )
         
             # As a convenience, also show the glob string in the pattern field
-            self.patternEdit.setText( globstring )
+            self.patternEdit.setText( decode_to_qstring(globstring) )
 
     def _getGlobString(self, directory):
         exts = vigra.impex.listExtensions().split()
@@ -149,7 +150,8 @@ class StackFileSelectionWidget(QDialog):
             options |=  QFileDialog.DontUseNativeDialog
         fileNames = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
-        fileNames = map(str, fileNames)
+        
+        fileNames = map(encode_from_qstring, fileNames)
 
         if len(fileNames) == 0:
             return
@@ -161,7 +163,7 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        directory = os.path.split(fileNames[0])[0]        
+        directory = os.path.split(fileNames[0])[0]
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
         self._updateFileList( fileNames )

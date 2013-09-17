@@ -55,9 +55,6 @@ class LabelingGui(LayerViewerGui):
         for fn in self.__cleanup_fns:
             fn()
 
-        # Clear the label list GUI
-        self._clearLabelListGui()
-
         # Start in navigation mode (not painting)
         self._changeInteractionMode(Tool.Navigation)
 
@@ -118,7 +115,7 @@ class LabelingGui(LayerViewerGui):
             self.LabelNames = None
       
 
-    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
+    def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
         Constructor.
 
@@ -132,7 +129,12 @@ class LabelingGui(LayerViewerGui):
 
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
-        assert all( [v is not None for v in labelingSlots.__dict__.values()] )
+        assert labelingSlots.labelInput is not None, "Missing a required slot."
+        assert labelingSlots.labelOutput is not None, "Missing a required slot."
+        assert labelingSlots.labelEraserValue is not None, "Missing a required slot."
+        assert labelingSlots.labelDelete is not None, "Missing a required slot."
+        assert labelingSlots.maxLabelValue is not None, "Missing a required slot."
+        assert labelingSlots.labelsAllowed is not None, "Missing a required slot."
 
         self.__cleanup_fns = []
 
@@ -158,7 +160,8 @@ class LabelingGui(LayerViewerGui):
         self._initLabelUic(drawerUiPath)
 
         # Init base class
-        super(LabelingGui, self).__init__(topLevelOperatorView,
+        super(LabelingGui, self).__init__(parentApplet,
+                                          topLevelOperatorView,
                                           [labelingSlots.labelInput, labelingSlots.labelOutput],
                                           crosshair=crosshair)
 

@@ -1,10 +1,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from opCounting import OpCounting
-from countingGui import CountingGui
 from countingSerializer import CountingSerializer
-
-from lazyflow.graph import OperatorWrapper
 
 class CountingApplet(StandardApplet):
     def __init__(self,
@@ -30,9 +27,7 @@ class CountingApplet(StandardApplet):
     def dataSerializers(self):
         return self._serializableItems
 
-    def createSingleLaneGui(self, imageLaneIndex):
-        singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
-        return CountingGui(singleImageOperator,
-                                       self.shellRequestSignal,
-                                       self.guiControlSignal, self.predictionSerializer)
-        
+    @property
+    def singleLaneGuiClass(self):
+        from countingGui import CountingGui
+        return CountingGui

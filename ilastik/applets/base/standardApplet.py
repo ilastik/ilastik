@@ -119,7 +119,7 @@ class StandardApplet( Applet ):
             message += "singleLaneGuiClass, createSingleLaneGui, or getMultiLaneGui"
             raise NotImplementedError(message)
         singleLaneOperator = self.topLevelOperator.getLane( imageLaneIndex )
-        return self.singleLaneGuiClass( singleLaneOperator )
+        return self.singleLaneGuiClass( self, singleLaneOperator )
 
     def __createMultiLaneGui(self):
         """
@@ -131,10 +131,10 @@ class StandardApplet( Applet ):
             if 'createMultiLaneGui' in cls.__dict__:
                 return self.createMultiLaneGui()
             if 'createSingleLaneGui' in cls.__dict__:
-                return SingleToMultiGuiAdapter( self.createSingleLaneGui, self.topLevelOperator )
+                return SingleToMultiGuiAdapter( self, self.createSingleLaneGui, self.topLevelOperator )
             if 'singleLaneGuiClass' in cls.__dict__:
                 assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement createMultiLaneGui yourself."
-                return SingleToMultiGuiAdapter( self.__createSingleLaneGui, self.topLevelOperator )
+                return SingleToMultiGuiAdapter( self, self.__createSingleLaneGui, self.topLevelOperator )
         raise Exception("Your applet must override one of the GUI creation methods.  See StandardApplet docs for details.")
 
     def __createTopLevelOperator(self):

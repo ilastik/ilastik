@@ -270,8 +270,8 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
         
         # Write to the 'private' members to avoid resetting the dataset id
-        datasetInfo._filePath = str(infoGroup['filePath'].value)
-        datasetInfo._datasetId = str(infoGroup['datasetId'].value)
+        datasetInfo._filePath = infoGroup['filePath'].value
+        datasetInfo._datasetId = infoGroup['datasetId'].value
 
         try:
             datasetInfo.allowLabels = infoGroup['allowLabels'].value
@@ -284,7 +284,7 @@ class DataSelectionSerializer( AppletSerializer ):
             pass
         
         try:
-            datasetInfo.nickname = str( infoGroup['nickname'].value )
+            datasetInfo.nickname = infoGroup['nickname'].value
         except KeyError:
             datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
         
@@ -427,7 +427,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
-            datasetInfo._filePath = str(totalDatasetPath)
+            datasetInfo._filePath = totalDatasetPath
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
             datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )
             

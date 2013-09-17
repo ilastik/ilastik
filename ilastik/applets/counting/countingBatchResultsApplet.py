@@ -1,29 +1,28 @@
-from ilastik.applets.base.applet import Applet
-from ilastik.applets.batchIo.batchIoSerializer import BatchIoSerializer
 from opCountingBatchResults import OpCountingBatchResults
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
 from ilastik.utility import OpMultiLaneWrapper
 
-class CountingBatchResultsApplet( Applet ):
+class CountingBatchResultsApplet( DataExportApplet ):
     """
     This a specialization of the generic batch results applet that
     provides a special viewer for counting predictions.
     """
-    def __init__( self, workflow, title ):
-        # Operator is a subclass of the generic batch operator.
+    def __init__( self, workflow, title, isBatch=True):
+        # Our operator is a subclass of the generic data export operator
         self._topLevelOperator = OpMultiLaneWrapper( OpCountingBatchResults, parent=workflow,
-                                     promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase', 'RawImage']) )
-        super(CountingBatchResultsApplet, self).__init__(title, syncWithImageIndex=False)
-
-        # Serializer is the same as the batch io
-        self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
-
+                                     promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo']) )
         self._gui = None
         self._title = title
+        self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+
+        # Base class init
+        super(CountingBatchResultsApplet, self).__init__(workflow, title, isBatch)
         
     @property
     def dataSerializers(self):
-        return self._serializableItems
+        return self._serializers
 
     @property
     def topLevelOperator(self):
@@ -33,8 +32,7 @@ class CountingBatchResultsApplet( Applet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from countingBatchResultsGui import CountingBatchResultsGui
-            self._gui = CountingBatchResultsGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
-
+            self._gui = CountingBatchResultsGui( self, self.topLevelOperator )
         return self._gui
 
 

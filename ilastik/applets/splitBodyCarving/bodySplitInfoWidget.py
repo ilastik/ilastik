@@ -7,6 +7,7 @@ from PyQt4.QtCore import Qt, pyqtSignal
 from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, \
                         QPushButton, QTableView, QHeaderView, QIcon, QProgressBar
 
+from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from opParseAnnotations import OpParseAnnotations
@@ -100,7 +101,7 @@ class BodySplitInfoWidget( QWidget ):
         if selected_file.isNull():
             return
 
-        self._loadAnnotationFile( str( selected_file ) )
+        self._loadAnnotationFile( encode_from_qstring( selected_file ) )
     
     def _loadAnnotationFile(self, annotation_filepath):
         """
@@ -116,7 +117,7 @@ class BodySplitInfoWidget( QWidget ):
 
             # Update gui
             self._reloadInfoWidgets()
-            self.annotationFilepathEdit.setText( annotation_filepath )
+            self.annotationFilepathEdit.setText( decode_to_qstring(annotation_filepath) )
             
         except OpParseAnnotations.AnnotationParsingException as ex :
             import traceback

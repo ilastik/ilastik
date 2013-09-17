@@ -24,7 +24,7 @@ import lazyflow.request
 from lazyflow.graph import OperatorWrapper
 
 # ilastik
-import ilastik.utility.monkey_patches
+import ilastik.monkey_patches
 from ilastik.utility.timer import timeLogged
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
@@ -40,9 +40,9 @@ def main(argv):
     logger.info( "Launching with sys.argv: {}".format(sys.argv) )
     parser = getArgParser()
 
-    ilastik.utility.monkey_patches.extend_arg_parser(parser)
+    ilastik.monkey_patches.extend_arg_parser(parser)
     parsed_args = parser.parse_args(argv[1:])
-    ilastik.utility.monkey_patches.apply_setting_dict( parsed_args.__dict__ )
+    ilastik.monkey_patches.apply_setting_dict( parsed_args.__dict__ )
 
     try:
         runWorkflow(parsed_args)
@@ -112,7 +112,7 @@ def runWorkflow(parsed_args):
         logger.info( "Launched with sys.argv: {}".format( sys.argv ) )
 
     # Update the monkey_patch settings
-    ilastik.utility.monkey_patches.apply_setting_dict( config.__dict__ )
+    ilastik.monkey_patches.apply_setting_dict( config.__dict__ )
 
     # If we're running a node job, set the threadpool size if the user specified one.
     # Note that the main thread does not count toward the threadpool total.

@@ -18,6 +18,7 @@ from ilastik.config import cfg as ilastik_config
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
+from volumina.utility import encode_from_qstring
 from ilastik.widgets.viewerControls import ViewerControls
 
 import vigra
@@ -255,6 +256,9 @@ class ObjectExtractionGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.selectFeaturesButton.pressed.connect(self._selectFeaturesButtonPressed)
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            self._drawer.exportButton.setVisible(False)
+            
         self._drawer.exportButton.pressed.connect(self._exportFeaturesButtonPressed)
         
         slot = self.topLevelOperatorView.Features
@@ -396,6 +400,7 @@ class ObjectExtractionGui(LayerViewerGui):
         fname = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
                                         filter="Pickled Objects (*.pkl);;All Files (*)")
         
+        fname = encode_from_qstring( fname )
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)
