@@ -253,7 +253,6 @@ class CountingGui(LabelingGui):
         # Gui to operator connections
         #=======================================================================
         
-        self._changedSigma = True
         #Debug interface only available to advanced users
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
@@ -261,12 +260,7 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
         
 
-        def _editingSigma(text):
-            self._changedSigma =True
-        self.labelingDrawerUi.SigmaLine.textChanged.connect(_editingSigma)
-        
-        
-        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
+        self.labelingDrawerUi.SigmaBox.valueChanged.connect(self._updateSigma)
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
         self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
         self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
@@ -292,17 +286,8 @@ class CountingGui(LabelingGui):
         
         CallToGui(op.Ntrees,gui.NtreesBox.setValue)
         CallToGui(op.MaxDepth,gui.MaxDepthBox.setValue)
-
         CallToGui(op.C,gui.CBox.setValue)
-        
-        def _setsigma(floatList):
-            ss=""
-            for el in floatList:
-                ss+="%.1f "%el
-            ss=ss[:-1]
-            gui.SigmaLine.setText(QString(ss))
-        
-        CallToGui(op.Sigma,_setsigma)
+        CallToGui(op.Sigma,gui.SigmaBox.setValue)
         CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
         
         def _setoption(option):
@@ -332,7 +317,7 @@ class CountingGui(LabelingGui):
         
     def _setUIParameters(self):
         
-        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+        self.labelingDrawerUi.SigmaBox.setKeyboardTracking(False)
         self.labelingDrawerUi.CBox.setRange(0,1000)
         self.labelingDrawerUi.CBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
@@ -378,7 +363,7 @@ class CountingGui(LabelingGui):
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
 
-        self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
+        self.labelingDrawerUi.SigmaBox.setValue(Sigma)
         self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
         self.labelingDrawerUi.CBox.setValue(C)
         self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
@@ -420,19 +405,18 @@ class CountingGui(LabelingGui):
     def _updateC(self):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
-        if self._changedSigma:
+        #if self._changedSigma:
 
-            sigma,_ = self._normalizeLayers()
-            self.editor.crosshairControler.setSigma(max(sigma))
-            #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
-            self.op.opTrain.Sigma.setValue(sigma)
-            self.op.LabelPreviewer.Sigma.setValue(sigma)
-            self._changedSigma = False
+        sigma,_ = self._normalizeLayers()
+        self.editor.crosshairControler.setSigma(sigma)
+        #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
+        self.op.opTrain.Sigma.setValue(sigma)
+        self.op.LabelPreviewer.Sigma.setValue(sigma)
+        #    self._changedSigma = False
             
     def _normalizeLayers(self):
-            sigma = [float(n) for n in
-                           self._labelControlUi.SigmaLine.text().split(" ")]
-            upperBound = 3 / (2 * math.pi * max(sigma)**2)
+            sigma = self._labelControlUi.SigmaBox.value()
+            upperBound = 3 / (2 * math.pi * sigma**2)
             self.upperBound = upperBound
                 
             if hasattr(self, "labelPreviewLayer"):

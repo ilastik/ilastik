@@ -196,8 +196,8 @@
     </spacer>
    </item>
    <item>
-    <layout class="QGridLayout" name="gridLayout_7" columnminimumwidth="100,0">
-     <item row="0" column="1">
+    <layout class="QGridLayout" name="gridLayout_7" columnminimumwidth="100,0,0">
+     <item row="0" column="2">
       <widget class="QComboBox" name="SVROptions"/>
      </item>
      <item row="0" column="0">
@@ -214,10 +214,19 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="SigmaLine">
-       <property name="text">
-        <string>1.0</string>
+     <item row="1" column="2">
+      <widget class="QDoubleSpinBox" name="SigmaBox">
+       <property name="minimum">
+        <double>1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>20.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>2.000000000000000</double>
        </property>
       </widget>
      </item>
