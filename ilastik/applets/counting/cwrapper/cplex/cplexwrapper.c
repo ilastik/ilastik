@@ -59,7 +59,7 @@ int printiarray(const int * array, int numrows, int numcols, char * name) {
 }
 
 EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
-        int numBoxConstraints, const double * boxValues, const int64_t * boxIndices, const double * boxMatrix)//, double * density)
+        int numBoxConstraints, const double * boxValues, const int64_t * boxIndices, const double * boxMatrix)
 {
   int i,j,k;
   CPXENVptr     env = NULL;
@@ -206,12 +206,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       goto TERMINATE;
     }
 
-
-    //double   *boxrmatval = (double* ) malloc( * sizeof(double));
-
-
-    //for every entry in the box features, check if it's background or
-    //foreground
+    /*for every entry in the box features, check if it's background or
+    foreground */
     for (i = 0; i < numBoxSamples; ++i) {
       dens[i] = w[numFeatures];
       for (j = 0; j < numFeatures; ++j) {
@@ -225,10 +221,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       else {
         dens[i] = 0;
       }
-      // printf("Density: %f\n", dens[i]);
     }
 
-    //printfarray(boxConstraints, numBoxConstraints, numFeatures + 2, "boxConstraints"); 
     for (k = 0; k < numBoxConstraints; ++k) {
       boxrmatbeg[k] = k * (numFeatures + 2);
       for (i = (int) boxIndices[k]; i < boxIndices[k + 1]; ++i){
@@ -269,11 +263,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     for (i = 0; i < numBoxConstraints; ++i) {
       qsepvec[numcols + i] = 2 * C / (boxIndices[i + 1] - boxIndices[i]);
       qsepvec[numcols + i + numBoxConstraints] = 2 * C / (boxIndices[i + 1] - boxIndices[i]);
-    //  printf("%d, %d\n",boxIndices[i], boxIndices[i + 1]);
-    //  printf("%f, %f\n", qsepvec[numcols+i], qsepvec[numcols + i + numBoxConstraints]);
     }
 
-    //adding hard constraints:
 
 
 
@@ -293,13 +284,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
         hSense[i] = 'G';
       }
     }
-    // printf("Density: %f\n", dens[i]);
-    //    printf("Close, but no cigar\n");
-    //printiarray(hmatind, backgroundcount, numFeatures + 1, "");
-    //    printf("Close, but no cigar\n");
     status = CPXaddrows(env, lp, 0, numBoxSamples, numBoxSamples* (numFeatures + 1), NULL,
                         hSense, hmatbeg, hmatind, hmatval, NULL, NULL);
-    //    printf("WHY IS NOTHING HAPPENING\n")
     printf ("Number of Columns in Problem: %d\n", CPXgetnumcols(env, lp));
     printf("%d\n", numcols + (2 * numBoxConstraints));
     status = CPXcopyqpsep (env, lp, qsepvec);
@@ -315,7 +301,6 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       } */
   }
 
-  //printf("Objective value: %f\n", sol);
   /*double * slack = malloc((numcols + 2 * numBoxConstraints) * sizeof(double));
     status = CPXgetx (env, lp, slack, 0, numcols + 2 * numBoxConstraints - 1);
     printfarray(slack, numcols + 2 * numBoxConstraints, 1, "Slack");
@@ -343,7 +328,6 @@ TERMINATE:;
   free_and_null ((char **) &hmatind);
   free_and_null ((char **) &hmatval);
   free_and_null ((char **) &hSense);
-  //free_and_null ((char **) &slack);
   return (status);
 
 }
