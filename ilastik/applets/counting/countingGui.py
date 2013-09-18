@@ -999,7 +999,7 @@ class CountingGui(LabelingGui):
                 self._gui_setErasing()
 
             elif toolId == Tool.Box:
-                self._labelControlUi.clearSelectionModel()
+                self._labelControlUi.labelListModel.clearSelectionModel()
                 for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=False
 
