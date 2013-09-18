@@ -78,18 +78,13 @@ class OpStackLoader(Operator):
             # If this is a stack of 2D images, we assume xy slices stacked along z
             Z = num_files
             shape = (X, Y, Z, C)
-            
-            axistags = copy.copy( self.info.getAxisTags() )
-            axistags.insert( 2, vigra.defaultAxistags('z')['z'] )
+            axistags = vigra.defaultAxistags('xyzc')
         else:
             # If it's a stack of 3D volumes, we assume xyz blocks stacked along t
             T = num_files
             Z = self.slices_per_file
             shape = (T, X, Y, Z, C)
-            
-            axistags = copy.copy( self.info.getAxisTags() )
-            axistags.insert( 0, vigra.defaultAxistags('t')['t'] )
-            axistags.insert( 3, vigra.defaultAxistags('z')['z'] )
+            axistags = vigra.defaultAxistags('txyzc')
             
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
