@@ -9,11 +9,11 @@ _XSTART = 8
 
 class ListElement(QObject):
     nameChanged  = pyqtSignal(object)
-     
+
     def __init__(self,name, parent = None):
         QObject.__init__(self, parent)
         self._name       = name
-        
+
     @property
     def name(self):
         return self._name
@@ -26,17 +26,17 @@ class ListElement(QObject):
             self._name = n
             self.nameChanged.emit(n)
 
-    
-        
+
+
 class ListModel(QAbstractTableModel):
     orderChanged = pyqtSignal()
     elementSelected = pyqtSignal(int)
-    
-    
+
+
     class ColumnID():
         '''
         Define how many column the model holds and their type
-        
+
         '''
         ncols=2
         Name=0
@@ -46,7 +46,7 @@ class ListModel(QAbstractTableModel):
         '''
         Common interface for the labelListModel and the boxListModel
         see concrete implementations for details
-        
+
         :param elements:
         :param parent:
         '''
@@ -58,6 +58,8 @@ class ListModel(QAbstractTableModel):
         self._selectionModel = QItemSelectionModel(self)
 
         def onSelectionChanged(selected, deselected):
+
+
             if selected:
                 ind = selected[0].indexes()
                 if len(ind)>0:
@@ -67,8 +69,8 @@ class ListModel(QAbstractTableModel):
 
         self._allowRemove = True
         self._toolTipSuffixes = {}
-        
-        self.unremovable_rows=[] #rows in this list cannot be removed from the gui, 
+
+        self.unremovable_rows=[] #rows in this list cannot be removed from the gui,
                                  # to add to this list call self.makeRowPermanent(int)
                                  # to remove make the self.makeRowRemovable(int)
     def makeRowPermanent(self,rowindex):
@@ -76,9 +78,9 @@ class ListModel(QAbstractTableModel):
         The rowindex cannot be removed from gui
         to remove this index use self.makeRowRemovable
         """
-        
+
         self.unremovable_rows.append(rowindex)
-    
+
     def makeRowRemovable(self,rowindex):
         self.unremovable_rows.pop(rowindex)
 
@@ -152,7 +154,7 @@ class ListModel(QAbstractTableModel):
     def removeRow(self, position, parent=QModelIndex()):
         if position in self.unremovable_rows:
             return False
-        
+
         self.beginRemoveRows(parent, position, position)
         value = self._elements[position]
         logger.debug("removing row: " + str(value))
@@ -172,14 +174,14 @@ class ListModel(QAbstractTableModel):
         :param index:
         :param role:
         '''
-        
+
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             return self._elements[index.row()].name
 
-        
+
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
             return "Delete {}".format(self._elements[index.row()].name)
-        
+
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
             return "{}\nDouble click to rename {}".format(
@@ -188,11 +190,11 @@ class ListModel(QAbstractTableModel):
             row = index.row()
             value = self._elements[row]
             return value.name
-        
-        
+
+
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
-            
+
             row = index.row()
             pixmap = QPixmap(_NPIXELS, _NPIXELS)
             pixmap.fill(Qt.transparent)
@@ -213,7 +215,7 @@ class ListModel(QAbstractTableModel):
             painter.end()
             icon = QIcon(pixmap)
             return icon
-                
+
     def flags(self, index):
         '''
         Reimplement, see labelListModel or boxListModel for concrete example
@@ -238,7 +240,7 @@ class ListModel(QAbstractTableModel):
             self._elements[row].name = str(name.toString())
             self.dataChanged.emit(index, index)
             return True
-        
+
         return False
 
     def select(self, row):
@@ -250,5 +252,6 @@ class ListModel(QAbstractTableModel):
         self._selectionModel.select(self.index(row, self.ColumnID.Name),
                                     QItemSelectionModel.Select)
 
-        
-     
+    def clearSelectionModel(self):
+        self._selectionModel.clear()
+

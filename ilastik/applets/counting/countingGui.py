@@ -79,7 +79,8 @@ class CallToGui:
             self.val=self.opslot.value
 
         if self.val!=None:
-            #FXIME: workaround for recently introduced bug
+            #FXIME: workaround for recently introduced bug when setting
+            #sigma box as spindoublebox
             if type(self.val)==list:
                 val=self.val[0]
             else:
@@ -998,6 +999,7 @@ class CountingGui(LabelingGui):
                 self._gui_setErasing()
 
             elif toolId == Tool.Box:
+                self._labelControlUi.clearSelectionModel()
                 for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=False
 
@@ -1051,18 +1053,22 @@ class CountingGui(LabelingGui):
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
-        #+1 because first is transparent
-        #FIXME: shouldn't be just row+1 here
+
 
         self.toolButtons[Tool.Paint].setEnabled(True)
         #elf.toolButtons[Tool.Box].setEnabled(False)
         self.toolButtons[Tool.Paint].click()
 
+        #+1 because first is transparent
+        #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
 
+
+
         if row==0: #foreground
+
             self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
