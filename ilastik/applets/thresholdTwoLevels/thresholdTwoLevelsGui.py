@@ -10,7 +10,8 @@ from PyQt4.QtGui import QMessageBox
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted
+from ilastik.utility.gui import threadRouted 
+from lazyflow.operators.generic import OpSingleChannelSelector
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -203,7 +204,26 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.opacity = 1.0
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
-
+            
+        if op.InputImage.ready():
+            numChannels = op.InputImage.meta.getTaggedShape()['c']
+            
+            for channel in range(numChannels):
+                channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
+                channelProvider.Input.connect(op.InputImage)
+                channelProvider.Index.setValue( channel )
+                channelSrc = LazyflowSource( channelProvider.Output )
+                inputChannelLayer = AlphaModulatedLayer( channelSrc,
+                                                    tintColor=QColor(self._channelColors[channel]),
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0, 1.0) )
+                inputChannelLayer.opacity = 0.5
+                inputChannelLayer.visible = True
+                inputChannelLayer.name = "Input Channel " + str(channel)
+                inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
+                                             " if this prediction image contains the objects of interest.")                    
+                layers.append(inputChannelLayer)
+                
         if self._showDebug:
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
             curIndex = self._drawer.tabWidget.currentIndex()
@@ -252,25 +272,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 smoothedLayer.opacity = 1.0
                 smoothedLayer.setToolTip("Selected channel data, smoothed with a Gaussian with user-defined sigma")
                 layers.append(smoothedLayer)
-        
-        # Show the selected channel
-        if op.InputChannel.ready():
-            drange = op.InputChannel.meta.drange
-            if drange is None:
-                drange = (0.0, 1.0)
-            channelSrc = LazyflowSource(op.InputChannel)
-            
-            #channelLayer = AlphaModulatedLayer( channelSrc,
-            #                                    tintColor=QColor(self._channelColors[op.Channel.value]),
-            #                                    range=drange,
-            #                                    normalize=drange )
-            #it used to be set to the label color, but people found it confusing
-            channelLayer = AlphaModulatedLayer( channelSrc, tintColor = QColor(Qt.white), range = drange, normalize=drange)
-            channelLayer.name = "Selected input channel"
-            channelLayer.opacity = 1.0
-            channelLayer.setToolTip("The selected channel of the prediction images")
-            #channelLayer.visible = channelIndex == op.Channel.value # By default, only the selected input channel is visible.    
-            layers.append(channelLayer)
+                
         
         # Show the raw input data
         rawSlot = self.topLevelOperatorView.RawInput
@@ -283,6 +285,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         return layers
 
+            
     def _createDefault16ColorColorTable(self):
         colors = []
 
