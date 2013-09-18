@@ -3,7 +3,6 @@ import os
 import logging
 import threading
 from functools import partial
-import math
 
 # Third-party
 import numpy
@@ -417,23 +416,22 @@ class CountingGui(LabelingGui):
     def _updateSigma(self):
         #if self._changedSigma:
 
-        sigma,upperBound = self._normalizeLayers()
-        self.op.UpperBound.setValue(upperBound)
+        sigma = self._labelControlUi.SigmaBox.value()
 
         self.editor.crosshairControler.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
         self.op.LabelPreviewer.Sigma.setValue(sigma)
         #    self._changedSigma = False
+        self._normalizeLayers()
 
     def _normalizeLayers(self):
-            sigma = self._labelControlUi.SigmaBox.value()
-            upperBound = 3 / (2 * math.pi * sigma**2)
+            upperBound = self.op.UpperBound.value
             self.upperBound = upperBound
 
             if hasattr(self, "labelPreviewLayer"):
                 self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return sigma, upperBound
+            return 
 
 
     def _normalizePrediction(self, *args):
@@ -558,9 +556,8 @@ class CountingGui(LabelingGui):
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
-                sigma,upperBound = self._normalizeLayers()
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
-                                       (0,upperBound))
+                                       (0,self.upperBound))
                 layer.name = name
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 layers.append(layer)

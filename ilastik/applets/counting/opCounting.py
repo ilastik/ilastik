@@ -176,7 +176,6 @@ class OpCounting( Operator ):
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
-        self.UpperBound.setValue( 1.0 )
 
         # SPECIAL connection: The LabelInputs slot doesn't get it's data  
         #  from the InputImages slot, but it's shape must match.
@@ -204,6 +203,7 @@ class OpCounting( Operator ):
         #self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
+        self.UpperBound.connect(self.opTrain.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
