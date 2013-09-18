@@ -191,7 +191,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         layers = []        
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
-        binct[0] = 0
         ct = self._createDefault16ColorColorTable()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
