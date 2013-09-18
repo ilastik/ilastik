@@ -179,7 +179,10 @@ class SerialBoxSlot(SerialSlot):
 
     def _deserialize(self, group, slot):
         for imageIndex, datasetName in enumerate(group.keys()):
-            slot[imageIndex].setValue(group[datasetName][slot.name].value.tolist())
+            subgroup = group[datasetName]
+            subslot = subgroup[slot.name]
+            if "isEmpty" in subslot.attrs and not subslot.attrs["isEmpty"]:
+                slot[imageIndex].setValue(group[datasetName][slot.name].value.tolist())
         #self.op.opTrain.BoxConstraints[i].setValue(res[i])
 
 
