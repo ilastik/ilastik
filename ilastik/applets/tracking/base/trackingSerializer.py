@@ -8,7 +8,7 @@ class TrackingSerializer(AppletSerializer):
 #                  SerialSlot(mainOperator.Output, selfdepends=True),
                  SerialHdf5BlockSlot(mainOperator.OutputHdf5,
                                      mainOperator.InputHdf5,
-                                     mainOperator.CleanBlocks,
+                                     mainOperator.AllBlocks,
                                      name="CachedOutput"),
                  ]
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )

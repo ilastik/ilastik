@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion, List
+from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 import numpy as np
@@ -9,6 +9,8 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
+
+from lazyflow.roi import sliceToRoi
 
 
 class OpTrackingBase(Operator):
@@ -22,7 +24,8 @@ class OpTrackingBase(Operator):
 
     # for serialization
     InputHdf5 = InputSlot(optional=True)
-    CleanBlocks = OutputSlot()    
+    CleanBlocks = OutputSlot()
+    AllBlocks = OutputSlot() 
     OutputHdf5 = OutputSlot()
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
         
@@ -31,7 +34,17 @@ class OpTrackingBase(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []    
+    
+        self._opCache = OpCompressedCache( parent=self )        
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
+        self._opCache.Input.connect( self.Output )                
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
+        self.CachedOutput.connect(self._opCache.Output)
         
+        self.zeroProvider = OpZeroDefault( parent=self )
+        self.zeroProvider.MetaInput.connect( self.LabelImage )
+            
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.LabelImage.notifyReady( self._checkConstraints )
@@ -42,18 +55,13 @@ class OpTrackingBase(Operator):
         #cache our own output, don't propagate from internal operator
         chunks = list(self.LabelImage.meta.shape)
         # FIXME: assumes t,x,y,z,c
-        chunks[0] = 1  # 't'
+        chunks[0] = 1  # 't'        
+        self._blockshape = tuple(chunks)
+        self._opCache.BlockShape.setValue( self._blockshape )
         
-        self._opCache = OpCompressedCache( parent=self )        
-        self._opCache.InputHdf5.connect( self.InputHdf5 )
-        self._opCache.Input.connect( self.Output )        
-        self._opCache.BlockShape.setValue( tuple(chunks) )
-        self.CleanBlocks.connect( self._opCache.CleanBlocks )
-        self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
-        self.CachedOutput.connect(self._opCache.Output)
+        self.AllBlocks.meta.shape = (1,)
+        self.AllBlocks.meta.dtype = object
         
-        self.zeroProvider = OpZeroDefault( parent=self )
-        self.zeroProvider.MetaInput.connect( self.LabelImage )
     
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -98,6 +106,23 @@ class OpTrackingBase(Operator):
                 else:
                     result[t-t_start,...] = 0
             return result         
+        elif slot == self.AllBlocks:            
+            # if nothing was computed, return empty list
+            if len(self.label2color) == 0:
+                result[0] = []
+                return result 
+            
+            all_block_rois = []
+            shape = self.Output.meta.shape            
+            # assumes t,x,y,z,c
+            slicing = [ slice(None), ] * 5
+            for t in range(shape[0]): 
+                slicing[0] = slice(t,t+1)
+                all_block_rois.append(sliceToRoi(slicing, shape))
+            
+            result[0] = all_block_rois
+            return result
+            
         
     def propagateDirty(self, inputSlot, subindex, roi):     
         if inputSlot is self.LabelImage:
