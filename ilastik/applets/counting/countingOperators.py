@@ -18,7 +18,7 @@ class OpLabelPreviewer(Operator):
     description = "Provides a Preview of the labels after gaussian smoothing"
 
     inputSlots = [InputSlot("Labels"),
-                 InputSlot("Sigma", stype = "object")]
+                 InputSlot("Sigma", stype = "float")]
     outputSlots = [OutputSlot("Output")]
 
     def __init__(self, *args, **kwargs):
@@ -51,7 +51,7 @@ class OpTrainCounter(Operator):
 
     inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "object"), 
+                  InputSlot("Sigma", stype = "float"), 
                   InputSlot("Epsilon",  stype = "float"), 
                   InputSlot("C",  stype = "float"), 
                   InputSlot("SelectedOption", stype = "object"),
@@ -165,8 +165,6 @@ class OpTrainCounter(Operator):
                     for ir, req in enumerate(reqlistlabels):
                         
                         labblock = req.wait()
-                        if len(self.Sigma.value) > 1:
-                            labblock = labblock.reshape(labblock.shape[0:len(self.Sigma.value)])
                         image = reqlistfeat[ir].wait()
                         labblock = labblock.reshape((image.shape[:-1]))
                         image = image.reshape((-1, image.shape[-1]))

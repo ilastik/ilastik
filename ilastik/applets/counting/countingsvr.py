@@ -366,7 +366,7 @@ class SVR(object):
     ]
 
 
-    def __init__(self, method = options[0]["method"], Sigma = [2.5], C = 1, epsilon = 0.000, \
+    def __init__(self, method = options[0]["method"], Sigma = 2.5, C = 1, epsilon = 0.000, \
                   ntrees=10, maxdepth=50, #RF parameters, maxdepth=None means grows until purity
                  **kwargs
                  ):
@@ -402,9 +402,6 @@ class SVR(object):
         sigma = self._Sigma
         
         
-        if len(sigma) == 1 or len(sigma) < len(dot.shape):
-            sigma = sigma[0]
-
         oldShape = dot.shape
         if sigma > 0:
             dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
@@ -657,7 +654,7 @@ if __name__ == "__main__":
     #dot[1,1] = 2
 
     backup_image = np.copy(img)
-    sigma = [0]
+    sigma = 0
     Counter = SVR(method = "BoxedRegressionGurobi", Sigma= sigma)
     testdot, testmapping, testtags = Counter.prepareData(dot,smooth = True)
     testimg = img.reshape((-1, img.shape[-1]))

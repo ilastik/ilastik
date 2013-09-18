@@ -21,7 +21,8 @@ from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
 
 
 class CountingWorkflow(Workflow):
-    name = "Counting Workflow"
+    workfloName = "Counting Workflow Base"
+    defaultAppletIndex = 1 # show DataSelection by default
 
     def __init__(self, shell, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()

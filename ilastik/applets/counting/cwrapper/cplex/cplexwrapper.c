@@ -206,13 +206,10 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       goto TERMINATE;
     }
 
-
-    /*double   *boxrmatval = (double* ) malloc( * sizeof(double));
-
-
-    for every entry in the box features, check if it's background or
-    foreground */
-
+    /*for every entry in the box features, check if it's background or
+    foreground
+    double   *boxrmatval = (double* ) malloc( * sizeof(double));*/
+    
     for (i = 0; i < numBoxSamples; ++i) {
       dens[i] = w[numFeatures];
       for (j = 0; j < numFeatures; ++j) {
