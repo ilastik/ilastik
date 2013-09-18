@@ -79,7 +79,12 @@ class CallToGui:
             self.val=self.opslot.value
 
         if self.val!=None:
-            self.setfun(self.val)
+            #FXIME: workaround for recently introduced bug
+            if type(self.val)==list:
+                val=self.val[0]
+            else:
+                val=self.val
+            self.setfun(val)
 
 class CountingGui(LabelingGui):
 
@@ -362,7 +367,10 @@ class CountingGui(LabelingGui):
             MaxDepth = self.op.opTrain.MaxDepth.value
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
+        #FIXME: quick fix recently introduced bug
 
+        if type(Sigma)==list:
+            Sigma=Sigma[0]
         self.labelingDrawerUi.SigmaBox.setValue(Sigma)
         self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
         self.labelingDrawerUi.CBox.setValue(C)
