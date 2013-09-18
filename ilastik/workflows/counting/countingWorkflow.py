@@ -6,14 +6,11 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
-#    PixelClassificationApplet, PixelClassificationBatchResultsApplet
-#from ilastik.applets.objectExtraction import ObjectExtractionApplet
-#from ilastik.applets.objectClassification import ObjectClassificationApplet
-#from ilastik.applets.objectViewer import ObjectViewerApplet
-from ilastik.applets.counting import CountingApplet, CountingBatchResultsApplet
+from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.applets.counting.opCounting import OpPredictionPipeline
 
+from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader 
@@ -50,18 +47,29 @@ class CountingWorkflow(Workflow):
 
         #self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
         self.countingApplet = CountingApplet(workflow=self)
+        opCounting = self.countingApplet.topLevelOperator
+
+        self.dataExportApplet = CountingDataExportApplet(self, "Density Export")
+        
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.PmapColors.connect(opCounting.PmapColors)
+        opDataExport.LabelNames.connect(opCounting.LabelNames)
+        opDataExport.UpperBound.connect(opCounting.UpperBound)
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+
 
         self._applets = []
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.countingApplet)
+        self._applets.append(self.dataExportApplet)
 
 
         if appendBatchOperators:
             # Create applets for batch workflow
             self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = CountingBatchResultsApplet(self, "Batch Prediction Output Locations")
+            self.batchResultsApplet = CountingDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
     
             # Expose in shell        
             self._applets.append(self.batchInputApplet)
@@ -83,6 +91,8 @@ class CountingWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opCounting = self.countingApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+
 
         #### connect input image
         opTrainingFeatures.InputImage.connect(opData.Image)
@@ -93,6 +103,10 @@ class CountingWorkflow(Workflow):
         opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         #opCounting.UserLabels.connect(opClassify.LabelImages)
         #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)
+        opDataExport.RawData.connect( opData.ImageGroup[0] )
+        opDataExport.Input.connect( opCounting.HeadlessPredictionProbabilities )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
     def _initBatchWorkflow(self):
         """
@@ -150,17 +164,45 @@ class CountingWorkflow(Workflow):
 
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
-    def getHeadlessOutputSlot(self, slotId):
-        # "Regular" (i.e. with the images that the user selected as input data)
-        if slotId == "Predictions":
-            return self.countingApplet.topLevelOperator.HeadlessPredictionProbabilities
-        elif slotId == "PredictionsUint8":
-            return self.countingApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
-        # "Batch" (i.e. with the images that the user selected as batch inputs).
-        elif slotId == "BatchPredictions":
-            return self.opBatchPredictionPipeline.HeadlessPredictionProbabilities
-        if slotId == "BatchPredictionsUint8":
-            return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        """
+        # If no data, nothing else is ready.
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        input_ready = len(opDataSelection.ImageGroup) > 0
+
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator
+        featureOutput = opFeatureSelection.OutputImage
+        features_ready = input_ready and \
+                         len(featureOutput) > 0 and  \
+                         featureOutput[0].ready() and \
+                         (TinyVector(featureOutput[0].meta.shape) > 0).all()
+
+        opDataExport = self.dataExportApplet.topLevelOperator
+        predictions_ready = features_ready and \
+                            len(opDataExport.Input) > 0 and \
+                            opDataExport.Input[0].ready() and \
+                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+
+        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
+        self._shell.setAppletEnabled(self.countingApplet, features_ready)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
         
-        raise Exception("Unknown headless output slot")
-    
+        # Training workflow must be fully configured before batch can be used
+        self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
+
+        opBatchDataSelection = self.batchInputApplet.topLevelOperator
+        batch_input_ready = predictions_ready and \
+                            len(opBatchDataSelection.ImageGroup) > 0
+        self._shell.setAppletEnabled(self.batchResultsApplet, batch_input_ready)
+        
+        # Lastly, check for certain "busy" conditions, during which we 
+        #  should prevent the shell from closing the project.
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.featureSelectionApplet.busy
+        busy |= self.dataExportApplet.busy
+        self._shell.enableProjectChanges( not busy )
