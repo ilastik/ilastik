@@ -31,41 +31,71 @@ def relabelMergers(volume, merger):
                 mp[label] = 1
     return mp[volume]
 
+def get_dict_value(dic, key, default=[]):
+    if key not in dic:
+        return default
+    else:
+        return dic[key]
 
-def write_events(events, directory, t, labelImage, mergers=None):
+def write_dict_value(dic, key, value):
+    if len(value) == 0:
+        return
+    else:
+        dic[key] = value
+    return dic
+
+def get_events(eventsVector):
+    events = {}
+    for t in range(len(eventsVector)):
+        events[str(t)] = get_events_at(eventsVector, t)
+    return events
+
+def get_events_at(eventsVector, t):  
+    dis = []
+    app = []
+    div = []
+    mov = []
+    merger = []
+                
+    for event in eventsVector[t]:
+        if event.type == pgmlink.EventType.Appearance:
+            app.append((event.traxel_ids[0], event.energy))
+        if event.type == pgmlink.EventType.Disappearance:
+            dis.append((event.traxel_ids[0], event.energy))
+        if event.type == pgmlink.EventType.Division:
+            div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
+        if event.type == pgmlink.EventType.Move:
+            mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+        if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
+            merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+
+    # convert to ndarray for better indexing
+    events_at = {}
+    write_dict_value(events_at, "dis", np.asarray(dis))
+    write_dict_value(events_at, "app", np.asarray(app))
+    write_dict_value(events_at, "div", np.asarray(div))
+    write_dict_value(events_at, "mov", np.asarray(mov))
+    write_dict_value(events_at, "merger", np.asarray(merger))
+
+    return events_at
+
+
+def write_events(events_at, directory, t, labelImage, mergers=None):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         
-        dis = []
-        app = []
-        div = []
-        mov = []
-        merger = []
-        
-        print "-- Writing results to " + path.basename(fn)
-        if mergers is not None:
-            for m in mergers[t].keys():
-                merger.append((m,mergers[t][m],0.0))
-                
-        for event in events:
-            if event.type == pgmlink.EventType.Appearance:
-                app.append((event.traxel_ids[0], event.energy))
-            if event.type == pgmlink.EventType.Disappearance:
-                dis.append((event.traxel_ids[0], event.energy))
-            if event.type == pgmlink.EventType.Division:
-                div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-            if event.type == pgmlink.EventType.Move:
-                mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-#            if event.type == pgmlink.EventType.Merger:
-#                merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-    
-        # convert to ndarray for better indexing
-        dis = np.asarray(dis)
-        app = np.asarray(app)
-        div = np.asarray(div)
-        mov = np.asarray(mov)
-        merger = np.asarray(merger)
-    
-        
+        print "-- Writing results to " + path.basename(fn) 
+        if len(events_at) == 0:
+            dis = []
+            app = []
+            mov = []
+            div = []
+            merger = []
+        else:        
+            dis = get_dict_value(events_at, "dis", [])
+            app = get_dict_value(events_at, "app", [])
+            mov = get_dict_value(events_at, "mov", [])
+            div = get_dict_value(events_at, "div", [])
+            merger = get_dict_value(events_at, "merger", [])
         
         try:
             with LineageH5(fn, 'w-') as f_curr:
@@ -115,6 +145,8 @@ def write_events(events, directory, t, labelImage, mergers=None):
     
         print "-> results successfully written"
 
+
+    
 
 class LineageTrees():
 
