@@ -3,8 +3,6 @@
 #TODO: test remove the box
 #TODO: test switch to a new image
 #TODO: test load a referecence project
-#TODO: test train
-#TODO: test predict
 
 
 import os
@@ -27,7 +25,7 @@ logger.addHandler( logging.StreamHandler(sys.stdout) )
 #logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
 
-class TestPixelClassificationGui(ShellGuiTestCaseBase):
+class TestObjectCountingGui(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the object counting workflow.
     
@@ -45,7 +43,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     @classmethod
     def setupClass(cls):
         # Base class first
-        super(TestPixelClassificationGui, cls).setupClass()
+        super(TestObjectCountingGui, cls).setupClass()
         
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -66,12 +64,12 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!
-        super(TestPixelClassificationGui, cls).teardownClass()
+        super(TestObjectCountingGui, cls).teardownClass()
 
         # Clean up: Delete any test files we generated
-        removeFiles = [ TestPixelClassificationGui.PROJECT_FILE ]
+        removeFiles = [ TestObjectCountingGui.PROJECT_FILE ]
         if cls.using_random_data:
-            removeFiles += [ TestPixelClassificationGui.SAMPLE_DATA ]
+            removeFiles += [ TestObjectCountingGui.SAMPLE_DATA ]
 
         for f in removeFiles:        
             try:
