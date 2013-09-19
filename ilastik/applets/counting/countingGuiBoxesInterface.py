@@ -30,6 +30,11 @@ from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 import warnings
 import threading
 
+import time
+
+DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the 
+         #user shuffling the boxes
+
 def mainthreadonly(func):
     '''
     Helper decorator to declare a function which can be called only from the main thread
@@ -490,7 +495,8 @@ class CoupledRectangleElement(object):
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized
         '''
-
+        
+        time.sleep(DELAY*0.001)
         subarray=self.getSubRegion()
 
         #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
