@@ -183,22 +183,15 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionToggleAllHuds.trigger()
   
-            ## Turn off the slicing position lines
-            ## FIXME: This disables the lines without unchecking the position  
-            ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
-            #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
   
             # Do our tests at position 0,0,0
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
   
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
-             
-              
+                          
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
-  
- 
   
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
@@ -305,10 +298,6 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             for start,stop in zip(dot_start_list,dot_stop_list):
                 self.strokeMouseFromCenter( imgView, start,stop )
   
-            
-            
-  
-            
             
             # Set the brush size
             gui.currentGui()._labelControlUi.labelListModel.select(1)
@@ -469,239 +458,6 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
         
-#
-# 
-#     @timeLogged(logger, logging.INFO)
-#     def test_5_DeleteLabel(self):
-#         """
-#         Delete a label from the label list.
-#         """
-#         def impl():
-#             workflow = self.shell.projectManager.workflow
-#             countingClassApplet = workflow.pcApplet
-#             gui = countingClassApplet.getMultiLaneGui()
-#             opPix = countingClassApplet.topLevelOperator
-# 
-#             originalLabelColors = gui.currentGui()._colorTable16[1:4]
-#             originalLabelNames = [label.name for label in gui.currentGui().labelListData]
-# 
-#             # We assume that there are three labels to start with (see previous test)
-#             labelData = opPix.LabelImages[0][:].wait()
-#             assert labelData.max() == 3, "Max label value was {}".format( labelData.max() )
-#             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
-#                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
-# 
-#             # Make sure that it's okay to delete a row even if the deleted label is selected.
-#             gui.currentGui()._labelControlUi.labelListModel.select(1)
-#             gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
-# 
-#             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
-#                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
-# 
-#             # Let the GUI catch up: Process all events
-#             QApplication.processEvents()
-#             
-#             # Selection should auto-reset back to the first row.
-#             assert gui.currentGui()._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui.currentGui()._labelControlUi.labelListModel.selectedRow())
-#             
-#             # Did the label get removed from the label array?
-#             labelData = opPix.LabelImages[0][:].wait()
-#             assert labelData.max() == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( labelData.max() )
-# 
-#             self.waitForViews(gui.currentGui().editor.imageViews)
-# 
-#             # Check the actual rendering of the two views with remaining labels
-#             for i in [0,2]:
-#                 imgView = gui.currentGui().editor.imageViews[i]
-#                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#                 expectedColor = originalLabelColors[i]
-#                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
-# 
-#             # Make sure we actually deleted the middle label (it should no longer be visible)
-#             for i in [1]:
-#                 imgView = gui.currentGui().editor.imageViews[i]
-#                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#                 oldColor = originalLabelColors[i]
-#                 assert observedColor != oldColor, "Label was not deleted."
-#             
-#             # Original layer should not be anywhere in the layerstack.
-#             for layer in gui.currentGui().layerstack:
-#                 assert layer.name is not originalLabelNames[1], "Layer {} was still present in the stack.".format(layer.name)
-#             
-#         # Run this test from within the shell event loop
-#         self.exec_in_shell(impl)
-# 
-#     @timeLogged(logger, logging.INFO)
-#     def test_6_EraseSome(self):
-#         """
-#         Erase a few of the previously drawn labels from the volume editor using the eraser.
-#         """
-#         def impl():
-#             workflow = self.shell.projectManager.workflow
-#             countingClassApplet = workflow.pcApplet
-#             gui = countingClassApplet.getMultiLaneGui()
-# 
-#             # Select the labeling drawer
-#             self.shell.setSelectedAppletDrawer(3)
-# 
-#             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-#             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
-#             
-#             # Use the first view for this test
-#             imgView = gui.currentGui().editor.imageViews[0]
-# 
-#             # Sanity check: There should be labels in the view that we can erase
-#             self.waitForViews([imgView])
-#             observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             labelColor = gui.currentGui()._colorTable16[1]
-#             assert observedColor == labelColor, "Can't run erase test.  Missing the expected label.  Expected {}, got {}".format( hex(labelColor), hex(observedColor) )
-# 
-#             # Hide labels and sample raw data
-#             labelLayer = gui.currentGui().layerstack[0]
-#             assert labelLayer.name == "Labels", "Layer name was wrong: {}".labelLayer.name
-#             labelLayer.visible = False            
-#             self.waitForViews([imgView])
-#             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
-#             
-#             # Show labels
-#             labelLayer.visible = True
-#             # Select the eraser and brush size
-#             gui.currentGui()._labelControlUi.eraserToolButton.click()
-#             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
-#             self.waitForViews([imgView])
-#             
-#             # Erase and verify
-#             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START, self.LABEL_ERASE_STOP )
-#             self.waitForViews([imgView])
-#             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             assert erasedColor == rawDataColor, "Pixel color was not correct after label was erased.  Expected {}, got {}".format(hex(rawDataColor), hex(erasedColor))
-#         
-#         # Run this test from within the shell event loop
-#         self.exec_in_shell(impl)
-# 
-#     @timeLogged(logger, logging.INFO)
-#     def test_7_EraseCompleteLabel(self):
-#         """
-#         Erase all of the labels of a particular color using the eraser.
-#         """
-#         def impl():
-#             workflow = self.shell.projectManager.workflow
-#             countingClassApplet = workflow.pcApplet
-#             gui = countingClassApplet.getMultiLaneGui()
-#             opPix = countingClassApplet.topLevelOperator
-# 
-#             # Select the labeling drawer
-#             self.shell.setSelectedAppletDrawer(3)
-# 
-#             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-#             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
-# 
-#             labelData = opPix.LabelImages[0][:].wait()            
-#             assert labelData.max() == 2, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
-#             
-#             # Use the third view for this test (which has the max label value)
-#             imgView = gui.currentGui().editor.imageViews[2]
-# 
-#             # Sanity check: There should be labels in the view that we can erase
-#             self.waitForViews([imgView])
-#             observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             labelColor = gui.currentGui()._colorTable16[2]
-#             assert observedColor == labelColor, "Can't run erase test.  Missing the expected label.  Expected {}, got {}".format( hex(labelColor), hex(observedColor) )
-# 
-#             # Hide labels and sample raw data
-#             labelLayer = gui.currentGui().layerstack[0]
-#             assert labelLayer.name == "Labels"
-#             labelLayer.visible = False            
-#             self.waitForViews([imgView])
-#             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
-#             
-#             # Show labels
-#             labelLayer.visible = True
-#             # Select the eraser and brush size
-#             gui.currentGui()._labelControlUi.eraserToolButton.click()
-#             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
-#             self.waitForViews([imgView])
-#             
-#             # Erase and verify
-#             self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
-#             self.waitForViews([imgView])
-#             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-#             assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
-# 
-#             # We just erased all the labels of value 2, so the max label value should be reduced.
-#             labelData = opPix.LabelImages[0][:].wait()            
-#             assert labelData.max() == 1, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
-# 
-#             # Now stroke the eraser once more.
-#             # The new stroke should make NO DIFFERENCE to the image.
-#             rawDataColor = self.getPixelColor(imgView, (5,-5))
-#             self.strokeMouseFromCenter( imgView, (10,-10), (0,0) )
-#             
-#             # Move the cursor out of the way so we can sample the image
-#             self.moveMouseFromCenter(imgView, (20,20))
-# 
-#             self.waitForViews([imgView])
-#             erasedColor = self.getPixelColor(imgView, (5,-5))
-#             assert erasedColor == rawDataColor, "Erasing blank pixels generated non-zero labels. Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
-# 
-#         # Run this test from within the shell event loop
-#         self.exec_in_shell(impl)
-# 
-#     def test_8_InteractiveMode(self):
-#         """
-#         Click the "interactive mode" checkbox and see if any errors occur.
-#         """
-#         def impl():
-#             workflow = self.shell.projectManager.workflow
-#             countingClassApplet = workflow.pcApplet
-#             gui = countingClassApplet.getMultiLaneGui()
-# 
-#             # Clear all the labels
-#             while len(gui.currentGui()._labelControlUi.labelListModel) > 0:
-#                 gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
-#                 
-#             # Re-add all labels
-#             self.test_4_AddLabels()
-#             
-#             # Make sure the entire slice is visible
-#             viewMenu = gui.currentGui().menus()[0]
-#             viewMenu.actionFitToScreen.trigger()
-# 
-#             with Timer() as timer:
-#                 # Enable interactive mode            
-#                 assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-#                 gui.currentGui()._labelControlUi.liveUpdateButton.click()
-#     
-#                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
-#                 self.waitForViews(gui.currentGui().editor.imageViews)
-# 
-#             logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
-# 
-#             # There should be a prediction layer for each label
-#             labelNames = [label.name for label in gui.currentGui().labelListData]
-#             labelColors = gui.currentGui()._colorTable16[1:4]
-#             for i, labelName in enumerate(labelNames):
-#                 try:
-#                     index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
-#                     layer = gui.currentGui().layerstack[index]
-#                     
-#                     # Check the color
-#                     assert isinstance(layer, AlphaModulatedLayer), "layer is {}".format( layer )
-#                     assert layer.tintColor.rgba() == labelColors[i], "Expected {}, got {}".format( hex(labelColors[i]), hex(layer.tintColor.rgba()) )
-#                 except ValueError:
-#                     assert False, "Could not find layer for label with name: {}".format(labelName)
-# 
-# 
-#             # Disable iteractive mode.
-#             gui.currentGui()._labelControlUi.liveUpdateButton.click()
-# 
-#             self.waitForViews(gui.currentGui().editor.imageViews)
-# 
-#         # Run this test from within the shell event loop
-#         self.exec_in_shell(impl)
-#     
 
 
 

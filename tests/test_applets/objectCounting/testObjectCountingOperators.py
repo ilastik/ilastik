@@ -1,3 +1,7 @@
+#TODO: refactor
+#TODO: test many more operators
+
+
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
