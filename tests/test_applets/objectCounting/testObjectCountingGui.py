@@ -1,3 +1,12 @@
+#TODO: refactor
+#TODO: test erase dots and brush strokes
+#TODO: test remove the box
+#TODO: test switch to a new image
+#TODO: test load a referecence project
+#TODO: test train
+#TODO: test predict
+
+
 import os
 import sys
 import numpy
@@ -236,7 +245,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_ERASE_STOP = (10,10)
  
     @timeLogged(logger, logging.INFO)
-    def test_4_AddDotsAndBackground(self):
+    def test_5_AddDotsAndBackground(self):
         """
         Add labels and draw them in the volume editor.
         """
@@ -327,6 +336,80 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
   
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
+        
+        
+    @timeLogged(logger, logging.INFO)
+    def test_6_AddBox(self):
+        """
+        Add labels and draw them in the volume editor.
+        """
+        def impl():
+ 
+             
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+  
+            opPix = countingClassApplet.topLevelOperator
+            # Select the labeling drawer
+            self.shell.setSelectedAppletDrawer(3)
+              
+            # Turn off the huds and so we can capture the raw image
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
+             
+             
+  
+            # Select the labeling drawer
+            self.shell.setSelectedAppletDrawer(3)
+              
+            # Turn off the huds and so we can capture the raw image
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
+  
+            ## Turn off the slicing position lines
+            ## FIXME: This disables the lines without unchecking the position  
+            ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
+            #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
+  
+            # Do our tests at position 0,0,0
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+  
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+             
+              
+            # Select the brush
+            gui.currentGui()._labelControlUi.paintToolButton.click()
+  
+ 
+  
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
+  
+            # Draw some arbitrary labels in the view using mouse events.
+            gui.currentGui()._labelControlUi.AddBoxButton.click()
+            
+            imgView = gui.currentGui().editor.imageViews[2]
+            
+            start_box_list=[(-100,-100),(-22,-1),(0,1)]
+            stop_box_list=[(100,100),(0,10),(50,20)]
+            
+            for start,stop in zip(start_box_list,stop_box_list):
+                self.strokeMouseFromCenter( imgView, start,stop)
+            
+            added_boxes=len(gui.currentGui()._labelControlUi.boxListModel._elements)
+            assert added_boxes==3," Not all boxes added to the model curr = %d"%added_boxes
+            self.waitForViews([imgView])
+            
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+            
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+
 #
 # 
 #     @timeLogged(logger, logging.INFO)
