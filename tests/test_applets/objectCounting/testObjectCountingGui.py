@@ -341,7 +341,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     @timeLogged(logger, logging.INFO)
     def test_6_AddBox(self):
         """
-        Add labels and draw them in the volume editor.
+        Add boxes and draw them in the volume editor.
         """
         def impl():
  
@@ -410,6 +410,67 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
 
+        
+
+    def test_7_InteractiveMode(self):
+        """
+        Click the "interactive mode" to see if anything crashes for each of the available counting modalities.
+        
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+            
+            
+            clicked=False
+            def toggle(clicked):
+                clicked= not clicked
+                gui.currentGui()._labelControlUi.liveUpdateButton.click()
+                return clicked
+            
+            SVROptions=gui.currentGui()._labelControlUi.SVROptions
+            
+            #Test each one of the counting modality which is registered
+            for el in range(SVROptions.count()):
+                if clicked: 
+                    clicked=toggle(clicked)
+            
+                SVROptions.setCurrentIndex(el)
+                clicked=toggle(clicked)
+                imgView = gui.currentGui().editor.imageViews[2]
+                                
+            
+                self.waitForViews([imgView])
+            if clicked: 
+                clicked=toggle(clicked)
+            
+            
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+        
+    def test_8_changeSigmaValue(self):
+        """
+        Change the sigma value and check that works
+         
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+             
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
+            
+            gui.currentGui()._labelControlUi.SigmaBox.setValue(6)
+            
+            imgView = gui.currentGui().editor.imageViews[2]
+            self.waitForViews([imgView])
+             
+             
+             
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+        
 #
 # 
 #     @timeLogged(logger, logging.INFO)
