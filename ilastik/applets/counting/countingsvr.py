@@ -404,8 +404,15 @@ class SVR(object):
         
         oldShape = dot.shape
         if sigma > 0:
-            dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
-
+            try:
+                dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
+            except Exception,e:
+                print "HHHHHHHH",dot.shape,dot.dtype
+                print e
+                raise Exception
+            
+        
+        
         dot = dot.reshape(oldShape)
         dot[backupindices] = 0
         
