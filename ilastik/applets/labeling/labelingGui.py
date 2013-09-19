@@ -111,9 +111,6 @@ class LabelingGui(LayerViewerGui):
 
             # Slot to specify which images the user is allowed to label.
             self.labelsAllowed = None # labelsAllowed.value == True
-            
-            self.LabelNames = None
-      
 
     def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
@@ -146,10 +143,6 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
-
-        if self._labelingSlots.LabelNames is not None:
-            self._labelingSlots.LabelNames.notifyDirty( bind(self._updateLabelList) )
-            self.__cleanup_fns.append( partial( self._labelingSlots.LabelNames.unregisterDirty, bind(self._updateLabelList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
@@ -467,7 +460,6 @@ class LabelingGui(LayerViewerGui):
         # (Or the number of the labels the user has added.)
         names = self._labelingSlots.labelNames.value
         numLabels = len(self._labelingSlots.labelNames.value)
-        #numLabels = max(len(self._labelingSlots.labelNames.value), self._labelControlUi.labelListModel.rowCount(), len(names))
 
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < numLabels:

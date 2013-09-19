@@ -95,7 +95,7 @@ class ObjectClassificationGui(LabelingGui):
 
         labelSlots.maxLabelValue = op.NumLabels
         labelSlots.labelsAllowed = op.LabelsAllowedFlags
-        labelSlots.LabelNames = op.LabelNames
+        labelSlots.labelNames = op.LabelNames
         
         # We provide our own UI file (which adds an extra control for
         # interactive mode) This UI file is copied from
