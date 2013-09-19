@@ -9,7 +9,7 @@ mainThreadPauseEvent = threading.Event()
 mainFunc = None
 
 def run_nosetests_in_separate_thread(filename):
-    assert threading.current_thread() == threading.enumerate()[0]
+    assert threading.current_thread().getName() == "MainThread"
 
     def emptyFunc():
         pass
@@ -41,8 +41,7 @@ def run_in_main_thread( f ):
 
 def wait_for_main_func():
     # Must be called from main thread
-    mainThread = threading.enumerate()[0]
-    assert threading.current_thread() == mainThread
+    assert threading.current_thread().getName() == "MainThread"
     
     # Wait until someone has given us a function to run.
     mainThreadPauseEvent.wait()
