@@ -277,14 +277,14 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             h,w = size, self.rect().width()
         else:
             h,w = self.rect().height(), size
+        self.width=w
+        self.height=h
+        self.shape=(h,w)
 
         #FIXME: ensure rect in the scene after resizing
         newrect=QtCore.QRectF(0, 0, w, h)
 
         self.setRect(newrect)
-        self.width=w
-        self.height=h
-        self.shape=(h,w)
 
         if self._dbg:
             self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
@@ -497,19 +497,22 @@ class CoupledRectangleElement(object):
         '''
         
         time.sleep(DELAY*0.001)
-        subarray=self.getSubRegion()
+        try:
+            subarray=self.getSubRegion()
 
-        #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-        value=np.sum(subarray)
+            #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
+            value=np.sum(subarray)
 
-        #print "Resetting to a new value ",value,self.boxLabel
+            #print "Resetting to a new value ",value,self.boxLabel
 
-        self._rectItem.updateText("%.1f"%(value))
+            self._rectItem.updateText("%.1f"%(value))
 
-        if self.boxLabel!=None:
-            from PyQt4.QtCore import QString
-            self.boxLabel.density=QString("%.1f"%value)
-
+            if self.boxLabel!=None:
+                from PyQt4.QtCore import QString
+                self.boxLabel.density=QString("%.1f"%value)
+        except:
+            pass
+            
     def getOpsub(self):
         return self._opsub
 
@@ -537,7 +540,7 @@ class CoupledRectangleElement(object):
 
         rect=self._rectItem
         newstart=self._rectItem.dataPos()
-
+    
         stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
         return stop
 
@@ -559,7 +562,8 @@ class CoupledRectangleElement(object):
         self._opsub.Start.disconnect()
         self._opsub.Start.setValue(tuple(start))
         self._opsub.Stop.setValue(tuple(stop))
-
+        
+        
         return self._opsub.outputs["Output"][:].wait()
 
     @property
