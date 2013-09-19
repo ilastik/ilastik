@@ -5,6 +5,7 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 import numpy as np
 import time
 import copy
+import math
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
@@ -29,17 +30,20 @@ class OpLabelPreviewer(Operator):
         self.Output.meta.assignFrom(self.Labels.meta)
         self.Output.meta.dtype = np.float32
         self.Output.meta.drange = (0.0, 1.0)
+        
 
     @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
     def execute(self, slot, subindex, roi, result):
-        progress = 0
-        
-        key = roi.toSlice()
-        dot=self.Labels[key].wait()
-        self._svr.set_params(Sigma = self.Sigma.value)
+        if slot == self.Output:
+            progress = 0
+            
+            key = roi.toSlice()
+            dot=self.Labels[key].wait()
+            self._svr.set_params(Sigma = self.Sigma.value)
 
-        result[...] = self._svr.smoothLabels(dot)[0]
-        return result
+            result[...] = self._svr.smoothLabels(dot)[0]
+            return result
+        
     
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty((slice(None)))
@@ -60,7 +64,7 @@ class OpTrainCounter(Operator):
                   InputSlot("BoxConstraintRois", level = 1, stype = "list", value = []),
                   InputSlot("BoxConstraintValues", level = 1, stype = "list", value = [])
                  ]
-    outputSlots = [OutputSlot("Classifier")]
+    outputSlots = [OutputSlot("Classifier"), OutputSlot("UpperBound")]
     options = SVR.options
     numRegressors = 4
 
@@ -90,6 +94,8 @@ class OpTrainCounter(Operator):
 
 
     def setupOutputs(self):
+        self.UpperBound.meta.dtype = np.float32
+        self.UpperBound.meta.shape = (1,)
         if self.inputs["fixClassifier"].value == False:
             method = self.SelectedOption.value
             if type(method) is dict:
@@ -111,7 +117,11 @@ class OpTrainCounter(Operator):
 
     #@traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
     def execute(self, slot, subindex, roi, result):
-        if slot == self.Classifier:
+        if slot != self.Classifier:
+            sigma = self.Sigma.value
+            result[...] = 3 / (2 * math.pi * sigma**2)
+            return result
+        else:
             progress = 0
             numImages = len(self.Images)
             self.progressSignal(progress)

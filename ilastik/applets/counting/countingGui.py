@@ -3,7 +3,6 @@ import os
 import logging
 import threading
 from functools import partial
-import math
 
 # Third-party
 import numpy
@@ -113,6 +112,7 @@ class CountingGui(LabelingGui):
 
     @traceLogged(traceLogger)
     def __init__(self, parentApplet, topLevelOperatorView):
+        self.parentApplet = parentApplet
 
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -139,8 +139,8 @@ class CountingGui(LabelingGui):
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
-        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
-        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
+#        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
+#        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
@@ -343,11 +343,11 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
 
 
-
-        #if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
-        if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
+        cache = self.op.classifier_cache
+        if type(cache._value) is list and len(self.op.classifier_cache._value) > 0:
+        #if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = self.op.classifier_cache.Output.value[0].get_params()
+            params = cache.Output.value[0].get_params()
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
@@ -417,21 +417,22 @@ class CountingGui(LabelingGui):
     def _updateSigma(self):
         #if self._changedSigma:
 
-        sigma,_ = self._normalizeLayers()
+        sigma = self._labelControlUi.SigmaBox.value()
+
         self.editor.crosshairControler.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
         self.op.LabelPreviewer.Sigma.setValue(sigma)
         #    self._changedSigma = False
+        self._normalizeLayers()
 
     def _normalizeLayers(self):
-            sigma = self._labelControlUi.SigmaBox.value()
-            upperBound = 3 / (2 * math.pi * sigma**2)
+            upperBound = self.op.UpperBound.value
             self.upperBound = upperBound
 
             if hasattr(self, "labelPreviewLayer"):
                 self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return sigma, upperBound
+            return 
 
 
     def _normalizePrediction(self, *args):
@@ -556,12 +557,10 @@ class CountingGui(LabelingGui):
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
-                sigma,upperBound = self._normalizeLayers()
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
-                                       (0,upperBound))
+                                       (0,self.upperBound))
                 layer.name = name
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
-                #layer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 layers.append(layer)
 
 
@@ -573,9 +572,6 @@ class CountingGui(LabelingGui):
         boxlabellayer.opacity = 1.0
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
-
-
-
 
 
         layers.append(boxlabellayer)
@@ -626,8 +622,17 @@ class CountingGui(LabelingGui):
                 mexBox.exec_()
                 return
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
+        if self.interactiveModeActive != checked:
+            if checked:
+                self.labelingDrawerUi.labelListView.allowDelete = False
+        #        self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+            else:
+                self.labelingDrawerUi.labelListView.allowDelete = True
+        #        self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+        self.interactiveModeActive = checked
+#        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
+        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -635,14 +640,7 @@ class CountingGui(LabelingGui):
             self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.interactiveModeActive != checked:
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                #self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-            else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                #self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked
+        self.parentApplet.appletStateUpdateRequested.emit()
 
 
     @traceLogged(traceLogger)
@@ -720,78 +718,78 @@ class CountingGui(LabelingGui):
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
+        #self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
-    @pyqtSlot()
-    @traceLogged(traceLogger)
-    def onSavePredictionsButtonClicked(self):
-        """
-        The user clicked "Train and Predict".
-        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
-        """
-        import warnings
-        warnings.warn("FIXME: Remove this function and just use the data export applet.")
-        # The button does double-duty as a cancel button while predictions are being stored
-        if self._currentlySavingPredictions:
-            self.predictionSerializer.cancel()
-        else:
-            # Compute new predictions as needed
-            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
-            self.topLevelOperatorView.FreezePredictions.setValue(False)
-            self._currentlySavingPredictions = True
-
-            originalButtonText = "Full Volume Predict and Save"
-            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
-
-            @traceLogged(traceLogger)
-            def saveThreadFunc():
-                logger.info("Starting full volume save...")
-                # Disable all other applets
-                def disableAllInWidgetButName(widget, exceptName):
-                    for child in widget.children():
-                        if child.findChild( QPushButton, exceptName) is None:
-                            child.setEnabled(False)
-                        else:
-                            disableAllInWidgetButName(child, exceptName)
-
-                # Disable everything in our drawer *except* the cancel button
-                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
-
-                # But allow the user to cancel the save
-                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
-
-                # First, do a regular save.
-                # During a regular save, predictions are not saved to the project file.
-                # (It takes too much time if the user only needs the classifier.)
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-
-                # Enable prediction storage and ask the shell to save the project again.
-                # (This way the second save will occupy the whole progress bar.)
-                self.predictionSerializer.predictionStorageEnabled = True
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                self.predictionSerializer.predictionStorageEnabled = False
-
-                # Restore original states (must use events for UI calls)
-                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
-                self._currentlySavingPredictions = False
-
-                # Re-enable our controls
-                def enableAll(widget):
-                    for child in widget.children():
-                        if isinstance( child, QWidget ):
-                            child.setEnabled(True)
-                            enableAll(child)
-                enableAll(self.labelingDrawerUi)
-
-                # Re-enable all other applets
-                logger.info("Finished full volume save.")
-
-            saveThread = threading.Thread(target=saveThreadFunc)
-            saveThread.start()
+#    @pyqtSlot()
+#    @traceLogged(traceLogger)
+#    def onSavePredictionsButtonClicked(self):
+#        """
+#        The user clicked "Train and Predict".
+#        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
+#        """
+#        import warnings
+#        warnings.warn("FIXME: Remove this function and just use the data export applet.")
+#        # The button does double-duty as a cancel button while predictions are being stored
+#        if self._currentlySavingPredictions:
+#            self.predictionSerializer.cancel()
+#        else:
+#            # Compute new predictions as needed
+#            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
+#            self.topLevelOperatorView.FreezePredictions.setValue(False)
+#            self._currentlySavingPredictions = True
+#
+#            originalButtonText = "Full Volume Predict and Save"
+#            #self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
+#
+#            @traceLogged(traceLogger)
+#            def saveThreadFunc():
+#                logger.info("Starting full volume save...")
+#                # Disable all other applets
+#                def disableAllInWidgetButName(widget, exceptName):
+#                    for child in widget.children():
+#                        if child.findChild( QPushButton, exceptName) is None:
+#                            child.setEnabled(False)
+#                        else:
+#                            disableAllInWidgetButName(child, exceptName)
+#
+#                # Disable everything in our drawer *except* the cancel button
+#                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
+#
+#                # But allow the user to cancel the save
+#                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
+#
+#                # First, do a regular save.
+#                # During a regular save, predictions are not saved to the project file.
+#                # (It takes too much time if the user only needs the classifier.)
+#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#
+#                # Enable prediction storage and ask the shell to save the project again.
+#                # (This way the second save will occupy the whole progress bar.)
+#                self.predictionSerializer.predictionStorageEnabled = True
+#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#                self.predictionSerializer.predictionStorageEnabled = False
+#
+#                # Restore original states (must use events for UI calls)
+#                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
+#                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
+#                self._currentlySavingPredictions = False
+#
+#                # Re-enable our controls
+#                def enableAll(widget):
+#                    for child in widget.children():
+#                        if isinstance( child, QWidget ):
+#                            child.setEnabled(True)
+#                            enableAll(child)
+#                enableAll(self.labelingDrawerUi)
+#
+#                # Re-enable all other applets
+#                logger.info("Finished full volume save.")
+#
+#            saveThread = threading.Thread(target=saveThreadFunc)
+#            saveThread.start()
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()

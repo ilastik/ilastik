@@ -161,10 +161,22 @@ class LayerViewerGui(QWidget):
             self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
             #self._drawer = QWidget( self )
             self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
+
+        self._up_to_date = False
         
     def _after_init(self):
         self._initialized = True
         self.updateAllLayers()
+
+    def setNeedUpdate(self, slot=None):
+        self._need_update = True
+        if self.isVisible():
+            self.updateAllLayers()
+
+    def showEvent(self, event):
+        if self._need_update:
+            self.updateAllLayers()
+        super( LayerViewerGui, self ).showEvent(event)
 
     def setupLayers( self ):
         """
@@ -193,11 +205,11 @@ class LayerViewerGui(QWidget):
         Make room for it in the layer GUI and subscribe to updates.
         """
         # When the slot is ready, we'll replace the blank layer with real data
-        slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
-        slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
+        slot[slotIndex].notifyReady( bind(self.setNeedUpdate) )
+        slot[slotIndex].notifyUnready( bind(self.setNeedUpdate) )
 
-        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterReady, bind(self.updateAllLayers) ) )
-        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterUnready, bind(self.updateAllLayers) ) )
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterReady, bind(self.setNeedUpdate) ) )
+        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterUnready, bind(self.setNeedUpdate) ) )
 
 
     def _handleLayerRemoval(self, slot, slotIndex):
@@ -205,7 +217,7 @@ class LayerViewerGui(QWidget):
         An item is about to be removed from the multislot that is providing our layers.
         Remove the layer from the GUI.
         """
-        self.updateAllLayers(slot)
+        self.setNeedUpdate(slot)
 
     def generateAlphaModulatedLayersFromChannels(self, slot):
         # TODO
@@ -364,6 +376,8 @@ class LayerViewerGui(QWidget):
         if slot is not None and slot.ready() and slot.meta.axistags is None:
             # Don't update in response to value slots.
             return
+
+        self._need_update = False
 
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()

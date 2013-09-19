@@ -151,12 +151,13 @@ class OpCounting( Operator ):
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache AND prediction cache)
 
-    #HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
+    HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
     #HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
 
     UncertaintyEstimate = OutputSlot(level=1)
 
     # GUI-only (not part of the pipeline, but saved to the project)
+    UpperBound = OutputSlot()
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
@@ -202,6 +203,7 @@ class OpCounting( Operator ):
         #self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
+        self.UpperBound.connect(self.opTrain.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
@@ -225,7 +227,7 @@ class OpCounting( Operator ):
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
         self.CachedPredictionProbabilities.connect( self.opPredictionPipeline.CachedPredictionProbabilities )
-        #self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
+        self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
         #self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
         #self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
         #self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
@@ -445,7 +447,7 @@ class OpPredictionPipelineNoCache(Operator):
     PredictionsFromDisk = InputSlot( optional=True )
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
-    HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
+    #HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
 
     def __init__(self, *args, **kwargs):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
@@ -458,14 +460,17 @@ class OpPredictionPipelineNoCache(Operator):
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.inputs['LabelsCount'].connect(self.MaxLabel)
-        self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
+        self.meaner = OpMean(parent = self)
+        self.meaner.Input.connect(self.cacheless_predict.PMaps)
+        self.HeadlessPredictionProbabilities.connect(self.meaner.Output)
+
 
         # Alternate headless output: uint8 instead of float.
         # Note that drange is automatically updated.        
-        self.opConvertToUint8 = OpPixelOperator( parent=self )
-        self.opConvertToUint8.Input.connect( self.cacheless_predict.PMaps )
-        self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
-        self.HeadlessUint8PredictionProbabilities.connect( self.opConvertToUint8.Output )
+        #self.opConvertToUint8 = OpPixelOperator( parent=self )
+        #self.opConvertToUint8.Input.connect( self.cacheless_predict.PMaps )
+        #self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
+        #self.HeadlessUint8PredictionProbabilities.connect( self.opConvertToUint8.Output )
 
     def setupOutputs(self):
         pass

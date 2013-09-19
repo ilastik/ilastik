@@ -171,10 +171,10 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
         opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
         
-        # Classifier and LabelsCount are provided by the interactive workflow
+        # Classifier and NumClasses are provided by the interactive workflow
         opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
-        opBatchPredictionPipeline.MaxLabel.connect( opClassify.MaxLabelValue )
         opBatchPredictionPipeline.FreezePredictions.setValue( False )
+        opBatchPredictionPipeline.NumClasses.connect( opClassify.NumClasses )
         
         # Provide these for the gui
         opBatchResults.RawData.connect( opBatchInputs.Image )
@@ -266,6 +266,10 @@ class PixelClassificationWorkflow(Workflow):
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
         if self._headless and self._batch_input_args and self._batch_export_args:
+            
+            # Make sure we're using the up-to-date classifier.
+            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+        
             # Now run the batch export and report progress....
             opBatchDataExport = self.batchResultsApplet.topLevelOperator
             for i, opExportDataLaneView in enumerate(opBatchDataExport):

@@ -1,14 +1,17 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion, List
+from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 import numpy as np
 import pgmlink
-from ilastik.applets.tracking.base.trackingUtilities import relabel
+from ilastik.applets.tracking.base.trackingUtilities import relabel,\
+    get_dict_value
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
+
+from lazyflow.roi import sliceToRoi
 
 
 class OpTrackingBase(Operator):
@@ -16,13 +19,16 @@ class OpTrackingBase(Operator):
     category = "other"
 
     LabelImage = InputSlot()
-    ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
+    ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    EventsVector = InputSlot(value={})    
+    FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
     Parameters = InputSlot( value={} ) 
 
     # for serialization
     InputHdf5 = InputSlot(optional=True)
-    CleanBlocks = OutputSlot()    
+    CleanBlocks = OutputSlot()
+    AllBlocks = OutputSlot() 
     OutputHdf5 = OutputSlot()
     CachedOutput = OutputSlot() # For the GUI (blockwise-access)
         
@@ -31,7 +37,17 @@ class OpTrackingBase(Operator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []    
+    
+        self._opCache = OpCompressedCache( parent=self )        
+        self._opCache.InputHdf5.connect( self.InputHdf5 )
+        self._opCache.Input.connect( self.Output )                
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
+        self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
+        self.CachedOutput.connect(self._opCache.Output)
         
+        self.zeroProvider = OpZeroDefault( parent=self )
+        self.zeroProvider.MetaInput.connect( self.LabelImage )
+            
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.LabelImage.notifyReady( self._checkConstraints )
@@ -42,18 +58,13 @@ class OpTrackingBase(Operator):
         #cache our own output, don't propagate from internal operator
         chunks = list(self.LabelImage.meta.shape)
         # FIXME: assumes t,x,y,z,c
-        chunks[0] = 1  # 't'
+        chunks[0] = 1  # 't'        
+        self._blockshape = tuple(chunks)
+        self._opCache.BlockShape.setValue( self._blockshape )
         
-        self._opCache = OpCompressedCache( parent=self )        
-        self._opCache.InputHdf5.connect( self.InputHdf5 )
-        self._opCache.Input.connect( self.Output )        
-        self._opCache.BlockShape.setValue( tuple(chunks) )
-        self.CleanBlocks.connect( self._opCache.CleanBlocks )
-        self.OutputHdf5.connect( self._opCache.OutputHdf5 )        
-        self.CachedOutput.connect(self._opCache.Output)
+        self.AllBlocks.meta.shape = (1,)
+        self.AllBlocks.meta.dtype = object
         
-        self.zeroProvider = OpZeroDefault( parent=self )
-        self.zeroProvider.MetaInput.connect( self.LabelImage )
     
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -98,50 +109,73 @@ class OpTrackingBase(Operator):
                 else:
                     result[t-t_start,...] = 0
             return result         
+        elif slot == self.AllBlocks:            
+            # if nothing was computed, return empty list
+            if len(self.label2color) == 0:
+                result[0] = []
+                return result 
+            
+            all_block_rois = []
+            shape = self.Output.meta.shape            
+            # assumes t,x,y,z,c
+            slicing = [ slice(None), ] * 5
+            for t in range(shape[0]): 
+                slicing[0] = slice(t,t+1)
+                all_block_rois.append(sliceToRoi(slicing, shape))
+            
+            result[0] = all_block_rois
+            return result
+            
         
     def propagateDirty(self, inputSlot, subindex, roi):     
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
+        elif inputSlot is self.EventsVector:
+            self._setLabel2Color()
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
         
-    def _setLabel2Color(self, events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True):        
+    def _setLabel2Color(self, successive_ids=True):
+        if not self.EventsVector.ready() or not self.Parameters.ready() \
+            or not self.FilteredLabels.ready():            
+            return
+        
+        events = self.EventsVector.value
+        parameters = self.Parameters.value
+        time_min, time_max = parameters['time_range']
+        time_range = range(time_min, time_max)
+        
+#         x_range = parameters['x_range']
+#         y_range = parameters['y_range']
+#         z_range = parameters['z_range']
+#         
+        filtered_labels = self.FilteredLabels.value
+                                                    
         label2color = []
         label2color.append({})
         mergers = []
         mergers.append({})
         
         maxId = 1 #  misdetections have id 1
-
+        
         # handle start time offsets
         for i in range(time_range[0]):            
             label2color.append({})
             mergers.append({})
-
-        for i, events_at in enumerate(self.events):
-            dis = []
-            app = []
-            div = []
-            mov = []
-            merger = []            
-            for event in events_at:
-                if event.type == pgmlink.EventType.Appearance:
-                    app.append((event.traxel_ids[0], event.energy))
-                if event.type == pgmlink.EventType.Disappearance:
-                    dis.append((event.traxel_ids[0], event.energy))
-                if event.type == pgmlink.EventType.Division:
-                    div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-                if event.type == pgmlink.EventType.Move:
-                    mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-                if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
-                    merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))                              
-
-            print len(dis), "dis at", i + time_range[0]
-            print len(app), "app at", i + time_range[0]
-            print len(div), "div at", i + time_range[0]
-            print len(mov), "mov at", i + time_range[0]
-            print len(merger), "merger at", i + time_range[0]
+        
+        for i in time_range:
+            dis = get_dict_value(events[str(i-time_range[0])], "dis", [])            
+            app = get_dict_value(events[str(i-time_range[0])], "app", [])
+            div = get_dict_value(events[str(i-time_range[0])], "div", [])
+            mov = get_dict_value(events[str(i-time_range[0])], "mov", [])
+            merger = get_dict_value(events[str(i-time_range[0])], "merger", [])
+            
+            print len(dis), "dis at", i
+            print len(app), "app at", i
+            print len(div), "div at", i
+            print len(mov), "mov at", i
+            print len(merger), "merger at", i
             print
             
             label2color.append({})
@@ -178,11 +212,13 @@ class OpTrackingBase(Operator):
                 mergers[-1][e[0]] = e[1]
                 
         # mark the filtered objects
-        for t in filtered_labels.keys():
-            fl_at = filtered_labels[t]
+        for i in filtered_labels.keys():
+            if int(i)+time_range[0] >= len(label2color):
+                continue
+            fl_at = filtered_labels[i]
             for l in fl_at:
-                assert(l not in label2color[int(t)])
-                label2color[int(t)][l] = 0                
+                assert l not in label2color[int(i)+time_range[0]]
+                label2color[int(i)+time_range[0]][l] = 0                
 
         self.label2color = label2color
         self.mergers = mergers        
@@ -245,7 +281,7 @@ class OpTrackingBase(Operator):
             
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
-            filtered_labels[t] = []
+            filtered_labels_at = []
             for idx in range(rc.shape[0]):
                 # for 2d data, set z-coordinate to 0:
                 if len(rc[idx]) == 2:
@@ -260,7 +296,7 @@ class OpTrackingBase(Operator):
                     y < y_range[0] or y >= y_range[1] or
                     z < z_range[0] or z >= z_range[1] or
                     size < size_range[0] or size >= size_range[1]):
-                    filtered_labels[t].append(int(idx + 1))
+                    filtered_labels_at.append(int(idx + 1))
                     continue
                 else:
                     count += 1
@@ -296,7 +332,9 @@ class OpTrackingBase(Operator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
                 ts.add(tr)   
-                         
+            
+            if len(filtered_labels_at) > 0:
+                filtered_labels[str(int(t)-time_range[0])] = filtered_labels_at
             print "at timestep ", t, count, "traxels passed filter"
             max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
@@ -308,4 +346,8 @@ class OpTrackingBase(Operator):
             median_object_size[0] = np.median(np.array(obj_sizes),overwrite_input=True)
             print 'median object size = ' + str(median_object_size[0])
         
-        return ts, filtered_labels, empty_frame
+        self.FilteredLabels.setValue(filtered_labels, check_changed=False)
+        
+        return ts, empty_frame
+
+    

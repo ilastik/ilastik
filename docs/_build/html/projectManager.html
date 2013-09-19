@@ -55,7 +55,7 @@
 <h1>Project Manager<a class="headerlink" href="#project-manager" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ilastik.shell.projectManager.ProjectManager">
-<em class="property">class </em><tt class="descclassname">ilastik.shell.projectManager.</tt><tt class="descname">ProjectManager</tt><big>(</big><em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.shell.projectManager.</tt><tt class="descname">ProjectManager</tt><big>(</big><em>shell</em>, <em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager" title="Permalink to this definition">¶</a></dt>
 <dd><p>This class manages creating, opening, importing, saving, and closing project files.
 It instantiates a workflow object and loads its applets with the settings from the 
 project file by using the applets&#8217; serializer objects.</p>
@@ -65,7 +65,7 @@ To close the project file, delete the ProjectManager object.</p>
 member for direct access to its applets and their top-level operators.</p>
 <dl class="method">
 <dt id="ilastik.shell.projectManager.ProjectManager.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>shell</em>, <em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructor.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -104,10 +104,28 @@ The project file will be in an UNKNOWN and potentially inconsistent state!</p>
 
 <dl class="classmethod">
 <dt id="ilastik.shell.projectManager.ProjectManager.createBlankProjectFile">
-<em class="property">classmethod </em><tt class="descclassname">ProjectManager.</tt><tt class="descname">createBlankProjectFile</tt><big>(</big><em>projectFilePath</em>, <em>workflow_class=None</em>, <em>workflow_cmdline_args=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.createBlankProjectFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.createBlankProjectFile" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class method.
-Create a new ilp file at the given path and initialize it with a project version.
-If a file already existed at that location, it will be overwritten with a blank project.</p>
+<em class="property">classmethod </em><tt class="descclassname">ProjectManager.</tt><tt class="descname">createBlankProjectFile</tt><big>(</big><em>projectFilePath</em>, <em>workflow_class=None</em>, <em>workflow_cmdline_args=None</em>, <em>h5_file_kwargs={}</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.createBlankProjectFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.createBlankProjectFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new ilp file at the given path and initialize it with a project version.</p>
+<p>Class method. If a file already exists at the location, it
+will be overwritten with a blank project (i.e. the mode is
+fixed to &#8216;w&#8217;).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>projectFilePath</strong> &#8211; Full path of the new project (for instance &#8216;/tmp/MyProject.ilp&#8217;).</li>
+<li><strong>workflow_class</strong> &#8211; If not None, add dataset containing the name of the workflow_class.</li>
+<li><strong>workflow_cmdline_args</strong> &#8211; If not None, add dataset containing the commandline arguments.</li>
+<li><strong>h5_file_kwargs</strong> &#8211; Passed directly to h5py.File.__init__(); all standard params except &#8216;mode&#8217; are allowed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">h5py.File</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="classmethod">
@@ -135,7 +153,7 @@ then the applet&#8217;s name is appended to the resulting list.</p>
 
 <dl class="method">
 <dt id="ilastik.shell.projectManager.ProjectManager.saveProject">
-<tt class="descclassname">ProjectManager.</tt><tt class="descname">saveProject</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProject" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">ProjectManager.</tt><tt class="descname">saveProject</tt><big>(</big><em>force_all_save=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update the project file with the state of the current workflow settings.
 Must not be called if the project file was opened in read-only mode.</p>
 </dd></dl>

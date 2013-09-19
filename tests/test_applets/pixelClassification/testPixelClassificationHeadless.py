@@ -140,8 +140,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         output_path = self.SAMPLE_DATA[:-4] + "_prediction.h5"
         with h5py.File(output_path, 'r') as f:
             assert "/volume/pred_volume" in f
-            assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
-            assert f["/volume/pred_volume"].shape[-1] == 2
+            pred_shape = f["/volume/pred_volume"].shape
+            # Assume channel is last axis
+            assert pred_shape[:-1] == self.data.shape[:-1], "Prediction volume has wrong shape: {}".format( pred_shape )
+            assert pred_shape[-1] == 2, "Prediction volume has wrong shape: {}".format( pred_shape )
         
     @timeLogged(logger)
     def testLotsOfOptions(self):

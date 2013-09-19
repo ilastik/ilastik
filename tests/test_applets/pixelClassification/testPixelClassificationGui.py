@@ -6,7 +6,7 @@ from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from ilastik.utility.timer import Timer
+from ilastik.utility.timer import Timer, timeLogged
 
 from tests.helpers import ShellGuiTestCaseBase
 
@@ -136,6 +136,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_ERASE_START = (-10,-10)
     LABEL_ERASE_STOP = (10,10)
 
+    @timeLogged(logger, logging.INFO)
     def test_4_AddLabels(self):
         """
         Add labels and draw them in the volume editor.
@@ -187,7 +188,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
                 # Make sure the labels were added to the label array operator
-                assert opPix.MaxLabelValue.value == i+1, "Max label value was {}".format( opPix.MaxLabelValue.value )
+                labelData = opPix.LabelImages[0][:].wait()
+                assert labelData.max() == i+1, "Max label value was {}".format( labelData.max() )
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -205,6 +207,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    @timeLogged(logger, logging.INFO)
     def test_5_DeleteLabel(self):
         """
         Delete a label from the label list.
@@ -219,7 +222,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             originalLabelNames = [label.name for label in gui.currentGui().labelListData]
 
             # We assume that there are three labels to start with (see previous test)
-            assert opPix.MaxLabelValue.value == 3, "Max label value was {}".format( opPix.MaxLabelValue.value )
+            labelData = opPix.LabelImages[0][:].wait()
+            assert labelData.max() == 3, "Max label value was {}".format( labelData.max() )
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
@@ -237,8 +241,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui.currentGui()._labelControlUi.labelListModel.selectedRow())
             
             # Did the label get removed from the label array?
-            assert opPix.MaxLabelValue.ready(), "Expected max label value to be available"
-            assert opPix.MaxLabelValue.value == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( opPix.MaxLabelValue.value  )
+            labelData = opPix.LabelImages[0][:].wait()
+            assert labelData.max() == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( labelData.max() )
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -260,22 +264,10 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             for layer in gui.currentGui().layerstack:
                 assert layer.name is not originalLabelNames[1], "Layer {} was still present in the stack.".format(layer.name)
             
-            # All the other layers should be in the layerstack.
-            for i in [0,2]:
-                labelName = originalLabelNames[i]
-                try:
-                    index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
-                    layer = gui.currentGui().layerstack[index]
-                    
-                    # Check the color
-                    assert isinstance(layer, AlphaModulatedLayer), "layer is {}".format( layer )
-                    assert layer.tintColor.rgba() == originalLabelColors[i], "Expected {}, got {}".format( hex(originalLabelColors[i]), hex(layer.tintColor.rgba()) )
-                except ValueError:
-                    assert False, "Could not find layer for label with name: {}".format(labelName)
-
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    @timeLogged(logger, logging.INFO)
     def test_6_EraseSome(self):
         """
         Erase a few of the previously drawn labels from the volume editor using the eraser.
@@ -323,6 +315,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
+
+    @timeLogged(logger, logging.INFO)
     def test_7_EraseCompleteLabel(self):
         """
         Erase all of the labels of a particular color using the eraser.
@@ -339,7 +333,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
-            assert opPix.MaxLabelValue.value == 2, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
+            labelData = opPix.LabelImages[0][:].wait()            
+            assert labelData.max() == 2, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
             
             # Use the third view for this test (which has the max label value)
             imgView = gui.currentGui().editor.imageViews[2]
@@ -372,7 +367,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
 
             # We just erased all the labels of value 2, so the max label value should be reduced.
-            assert opPix.MaxLabelValue.value == 1, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
+            labelData = opPix.LabelImages[0][:].wait()            
+            assert labelData.max() == 1, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
 
             # Now stroke the eraser once more.
             # The new stroke should make NO DIFFERENCE to the image.
@@ -419,7 +415,22 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
-            # Disable iteractive mode.            
+            # There should be a prediction layer for each label
+            labelNames = [label.name for label in gui.currentGui().labelListData]
+            labelColors = gui.currentGui()._colorTable16[1:4]
+            for i, labelName in enumerate(labelNames):
+                try:
+                    index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
+                    layer = gui.currentGui().layerstack[index]
+                    
+                    # Check the color
+                    assert isinstance(layer, AlphaModulatedLayer), "layer is {}".format( layer )
+                    assert layer.tintColor.rgba() == labelColors[i], "Expected {}, got {}".format( hex(labelColors[i]), hex(layer.tintColor.rgba()) )
+                except ValueError:
+                    assert False, "Could not find layer for label with name: {}".format(labelName)
+
+
+            # Disable iteractive mode.
             gui.currentGui()._labelControlUi.liveUpdateButton.click()
 
             self.waitForViews(gui.currentGui().editor.imageViews)

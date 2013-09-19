@@ -10,6 +10,8 @@ class TrackingSerializer(AppletSerializer):
                                      mainOperator.InputHdf5,
                                      mainOperator.CleanBlocks,
                                      name="CachedOutput"),
+                 SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
+                 SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
                  ]
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )
         
