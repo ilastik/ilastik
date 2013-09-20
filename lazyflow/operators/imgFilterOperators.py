@@ -73,7 +73,7 @@ class OpBaseVigraFilter(Operator):
         outputSlot.setShapeAtAxisTo('c', channelNum)
         
     def execute(self, slot, subindex, roi, result):
-        
+        roi = roi.copy() 
         #request,set or compute the necessary parameters
         axistags = self.Input.meta.axistags
         inputShape  = self.Input.meta.shape
