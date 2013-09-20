@@ -286,6 +286,7 @@ class OpPredictionPipelineNoCache(Operator):
     Classifier = InputSlot()
     FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
+    NumClasses = InputSlot()
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
@@ -300,6 +301,7 @@ class OpPredictionPipelineNoCache(Operator):
         self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
+        self.cacheless_predict.inputs['LabelsCount'].connect(self.NumClasses)
         self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
 
         # Alternate headless output: uint8 instead of float.
@@ -325,7 +327,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     (It uses caches for these outputs, and has an extra input for cached features.)
     """        
     CachedFeatureImages = InputSlot()
-    NumClasses = InputSlot()
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
