@@ -211,8 +211,14 @@ class OpCounting( Operator ):
         self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.Classifier.connect( self.classifier_cache.Output )
+        def conv(arr):
+            arr[numpy.where(arr == 2)] = 0
+            return arr.astype(numpy.float)
+        self.ConvLabelToFloat = OpMultiLaneWrapper(OpPixelOperator, parent = self)
+        self.ConvLabelToFloat.Input.connect(self.opLabelPipeline.Output)
+        self.ConvLabelToFloat.Function.setValue(conv)
         self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
-        self.LabelPreviewer.Labels.connect(self.opLabelPipeline.Output)
+        self.LabelPreviewer.Input.connect(self.ConvLabelToFloat.Output)
         self.LabelPreview.connect(self.LabelPreviewer.Output)
 
         # Hook up the prediction pipeline inputs

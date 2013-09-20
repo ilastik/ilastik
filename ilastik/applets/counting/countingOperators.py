@@ -14,39 +14,12 @@ from lazyflow.utility import traceLogged
 
 from ilastik.applets.counting.countingsvr import SVR
 
-class OpLabelPreviewer(Operator):
+from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
+
+class OpLabelPreviewer(OpGaussianSmoothing):
     name = "LabelPreviewer"
-    description = "Provides a Preview of the labels after gaussian smoothing"
 
-    inputSlots = [InputSlot("Labels"),
-                 InputSlot("Sigma", stype = "float")]
-    outputSlots = [OutputSlot("Output")]
 
-    def __init__(self, *args, **kwargs):
-        super(OpLabelPreviewer, self).__init__(*args, **kwargs)
-        self._svr = SVR()
-
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Labels.meta)
-        self.Output.meta.dtype = np.float32
-        self.Output.meta.drange = (0.0, 1.0)
-        
-
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
-    def execute(self, slot, subindex, roi, result):
-        if slot == self.Output:
-            progress = 0
-            
-            key = roi.toSlice()
-            dot=self.Labels[key].wait()
-            self._svr.set_params(Sigma = self.Sigma.value)
-
-            result[...] = self._svr.smoothLabels(dot)[0]
-            return result
-        
-    
-    def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty((slice(None)))
 
 class OpTrainCounter(Operator):
     name = "TrainCounter"
