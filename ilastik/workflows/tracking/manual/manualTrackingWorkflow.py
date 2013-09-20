@@ -5,6 +5,7 @@ from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingA
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
 class ManualTrackingWorkflow( Workflow ):
     workflowName = "Manual Tracking Workflow"
@@ -45,18 +46,21 @@ class ManualTrackingWorkflow( Workflow ):
                                                              workflow=self, interactive=False)
         
         self.trackingApplet = ManualTrackingApplet( workflow=self )
+        self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
         self._applets = []        
         self._applets.append(self.dataSelectionApplet)        
         self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)        
         self._applets.append(self.trackingApplet)
+        self._applets.append(self.dataExportApplet)
             
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)    
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
                         
         ## Connect operators ##
         op5Raw = OpReorderAxes(parent=self)
@@ -78,4 +82,9 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
+        
+        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+        opDataExport.RawData.connect( op5Raw.Output )
+        opDataExport.Input.connect( opTracking.TrackImage )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
         
