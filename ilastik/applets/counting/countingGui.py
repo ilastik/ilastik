@@ -971,7 +971,7 @@ class CountingGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI
-                #self.editor.brushingModel.setBrushSize(0)
+                self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
 
@@ -1072,12 +1072,14 @@ class CountingGui(LabelingGui):
         if row==0: #foreground
 
             self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._labelControlUi.SigmaBox.setEnabled(True)
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
         else:
             if not hasattr(self, "_cachedBrushSizeIndex"):
                 self._cachedBrushSizeIndex=0
 
+            self._labelControlUi.SigmaBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
 
 
