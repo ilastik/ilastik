@@ -497,6 +497,10 @@ class CoupledRectangleElement(object):
         '''
         
         time.sleep(DELAY*0.001)
+        
+        
+        #FIXME: Workaround: when the array is resized over the border of the image scene the 
+        # region get a wrong size
         try:
             subarray=self.getSubRegion()
 

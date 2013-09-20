@@ -123,10 +123,10 @@ class CountingGui(LabelingGui):
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames
-        
-        
-        
-        
+
+
+
+
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
@@ -435,7 +435,7 @@ class CountingGui(LabelingGui):
 
             if hasattr(self, "labelPreviewLayer"):
                 self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return 
+            return
 
 
     def _normalizePrediction(self, *args):
@@ -971,7 +971,7 @@ class CountingGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI
-                self.editor.brushingModel.setBrushSize(0)
+                #self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
 
