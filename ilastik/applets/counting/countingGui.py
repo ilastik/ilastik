@@ -1035,8 +1035,6 @@ class CountingGui(LabelingGui):
 
 
     def _onBoxSelected(self, row):
-        print "switching to box=%r" % (self._labelControlUi.boxListModel[row])
-        print "row = ",row
         logger.debug("switching to label=%r" % (self._labelControlUi.boxListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
@@ -1047,7 +1045,6 @@ class CountingGui(LabelingGui):
 
 
     def _onLabelSelected(self, row):
-        print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
 

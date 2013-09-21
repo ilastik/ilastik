@@ -34,7 +34,6 @@ class OpVolumeOperator(Operator):
     blockShape = InputSlot(value = DefaultBlockSize)
 
     def setupOutputs(self):
-        print "setupOutputsVolume"
         testInput = numpy.ones((3,3))
         testFun = self.Function.value
         testOutput = testFun(testInput)
@@ -47,7 +46,6 @@ class OpVolumeOperator(Operator):
 
 
     def execute(self, slot, subindex, roi, result):
-        print "ExecuteVolume"
         with self._lock:
             if self.cache is None:
                 fullBlockShape = numpy.array([self.blockShape.value for i in self.Input.meta.shape])
@@ -82,7 +80,6 @@ class OpVolumeOperator(Operator):
             return self.cache
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateVolume"
         key = roi.toSlice()
         if slot == self.Input or slot == self.Function:
             self.outputs["Output"].setDirty( slice(None) )
@@ -112,7 +109,6 @@ class OpMean(Operator):
         result[..., 0] = numpy.mean(data, axis = 2)
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateVolume"
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
 
@@ -196,11 +192,24 @@ class OpCounting( Operator ):
         self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
+        self.GetFore= OpMultiLaneWrapper(OpPixelOperator,parent = self)
+        def conv(arr):
+            numpy.place(arr, arr ==2, 0)
+            return arr.astype(numpy.float)
+        self.GetFore.Function.setValue(conv)
+        self.GetFore.Input.connect(self.opLabelPipeline.Output)
+
+        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
+        self.LabelPreviewer.Input.connect(self.GetFore.Output)
+
+        self.LabelPreview.connect(self.LabelPreviewer.Output)
+
+
         # Hook up the Training operator
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
-        self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
+        self.opTrain.inputs['ForegroundLabels'].connect( self.LabelPreviewer.Output)
+        self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
-        #self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
         self.UpperBound.connect(self.opTrain.UpperBound)
@@ -211,15 +220,6 @@ class OpCounting( Operator ):
         self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.Classifier.connect( self.classifier_cache.Output )
-        def conv(arr):
-            arr[numpy.where(arr == 2)] = 0
-            return arr.astype(numpy.float)
-        self.ConvLabelToFloat = OpMultiLaneWrapper(OpPixelOperator, parent = self)
-        self.ConvLabelToFloat.Input.connect(self.opLabelPipeline.Output)
-        self.ConvLabelToFloat.Function.setValue(conv)
-        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
-        self.LabelPreviewer.Input.connect(self.ConvLabelToFloat.Output)
-        self.LabelPreview.connect(self.LabelPreviewer.Output)
 
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
