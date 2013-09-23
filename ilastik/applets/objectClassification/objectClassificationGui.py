@@ -496,8 +496,12 @@ class ObjectClassificationGui(LabelingGui):
         if binarySlot.ready():
             ct_binary = [0,
                          QColor(255, 255, 255, 255).rgba()]
+            
+            # white foreground on transparent background, even for labeled images
+            binct = [QColor(255, 255, 255, 255).rgba()]*65536
+            binct[0] = 0
             binaryimagesrc = LazyflowSource(binarySlot)
-            binLayer = ColortableLayer(binaryimagesrc, ct_binary)
+            binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
             binLayer.visible = True
             binLayer.opacity = 1.0

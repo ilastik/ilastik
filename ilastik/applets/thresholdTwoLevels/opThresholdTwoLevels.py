@@ -464,7 +464,7 @@ class OpThresholdTwoLevels4d(Operator):
         self._opFinalLabelSizeFilter.Input.connect(self._opSelectLabels.Output )
         self._opFinalLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
-        self._opFinalLabelSizeFilter.BinaryOut.setValue(True)
+        self._opFinalLabelSizeFilter.BinaryOut.setValue(False)
 
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.InputHdf5.connect( self.InputHdf5 )
@@ -567,7 +567,7 @@ class OpThresholdOneLevel(Operator):
         self._opFilter.Input.connect(self._opLabelCache.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
-        self._opFilter.BinaryOut.setValue(True)
+        self._opFilter.BinaryOut.setValue(False)
         
         self.Output.connect(self._opFilter.Output)
         

@@ -8,6 +8,7 @@ from PyQt4.QtGui import QColor
 from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
@@ -191,13 +192,14 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         layers = []        
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
-        ct = self._createDefault16ColorColorTable()
+        binct[0] = 0
+        ct = create_default_16bit()
         ct[0]=0
         # Show the cached output, since it goes through a blocked cache
         
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
-            outputLayer = ColortableLayer(outputSrc, binct)
+            outputLayer = ColortableLayer(outputSrc, ct)
             outputLayer.name = "Final output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
@@ -284,7 +286,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         return layers
 
-            
+    #FIXME: why do we do it here? why not take the one from volumina?
     def _createDefault16ColorColorTable(self):
         colors = []
 
