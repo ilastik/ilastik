@@ -9,6 +9,7 @@ from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.objectExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
 class ConservationTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking)"
@@ -51,6 +52,8 @@ class ConservationTrackingWorkflow( Workflow ):
                                                                      projectFileGroupName="CellClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
+
+        self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
@@ -60,6 +63,7 @@ class ConservationTrackingWorkflow( Workflow ):
         self._applets.append(self.divisionDetectionApplet)
         self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.trackingApplet)
+        self._applets.append(self.dataExportApplet)
         
     @property
     def applets(self):
@@ -77,6 +81,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
         opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")
@@ -135,3 +140,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )        
 #        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
     
+        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+        opDataExport.RawData.connect( op5Raw.Output )
+        opDataExport.Input.connect( opTracking.Output )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )

@@ -4,6 +4,7 @@ from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
+from ilastik.applets.tracking.base.trackingUtilities import get_events
 
 
 class OpConservationTracking(OpTrackingBase):
@@ -87,7 +88,7 @@ class OpConservationTracking(OpTrackingBase):
         
         median_obj_size = [0]
                 
-        ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
@@ -154,13 +155,14 @@ class OpConservationTracking(OpTrackingBase):
                                          )
         
         try:
-            self.events = tracker(ts)
+            eventsVector = tracker(ts)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
-        if len(self.events) == 0:
+        if len(eventsVector) == 0:
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
+        events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
-        self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range)
+        self.EventsVector.setValue(events, check_changed=False)
         

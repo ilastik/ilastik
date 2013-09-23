@@ -20,11 +20,11 @@ class OpticalTranslationGui( LayerViewerGui ):
     def reset( self ):
         print "OpticalTranslationGui.reset(): not implemented"
 
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         """
         """        
         self.topLevelOperatorView = topLevelOperatorView
-        super(OpticalTranslationGui, self).__init__(topLevelOperatorView)
+        super(OpticalTranslationGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
         
