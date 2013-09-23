@@ -7,22 +7,6 @@ except:
     pass
 
 import h5py, cPickle
-
-#!/usr/bin/python
-
-# Copyright 2013, Gurobi Optimization, Inc.
-
-# This example formulates and solves the following simple QP model:
-#
-#    minimize    x + y + x^2 + x*y + y^2 + y*z + z^2
-#    subject to  x + 2 y + 3 z >= 4
-#                x +   y       >= 1
-#
-# The example illustrates the use of dense matrices to store A and Q
-# (and dense vectors for the other relevant data).  We don't recommend
-# that you use dense matrices, but this example may be helpful if you
-# already have your data in this format.
-
 import sys
 
 class RegressorC(object):
@@ -366,7 +350,7 @@ class SVR(object):
     ]
 
 
-    def __init__(self, method = options[0]["method"], Sigma = [2.5], C = 1, epsilon = 0.000, \
+    def __init__(self, method = options[0]["method"], Sigma = 2.5, C = 1, epsilon = 0.000, \
                   ntrees=10, maxdepth=50, #RF parameters, maxdepth=None means grows until purity
                  **kwargs
                  ):
@@ -402,17 +386,42 @@ class SVR(object):
         sigma = self._Sigma
         
         
-        if len(sigma) == 1 or len(sigma) < len(dot.shape):
-            sigma = sigma[0]
-
         oldShape = dot.shape
         if sigma > 0:
-            dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
-
+            try:
+                dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
+            except Exception,e:
+                print "HHHHHHHH",dot.shape,dot.dtype
+                print e
+                raise Exception
+            
+        
+        
         dot = dot.reshape(oldShape)
         dot[backupindices] = 0
         
         return dot,backupindices
+
+    def prepareDataRefactored(self, dot, nindices):
+
+        dot = dot.reshape(-1)
+        pindices = np.where(dot > 0.0001)[0]
+        #pindices = pindices[:250]
+        lindices = None
+        #if self.DENSITYBOUND:
+        #    lindices = np.concatenate((nindices, pindices))
+        #else:
+        lindices = nindices
+
+        #lindices = np.concatenate((pindices, nindices))
+        numVariables = len(pindices) + len(lindices) 
+
+        mapping = np.concatenate((pindices, lindices))
+
+        tags = [len(pindices), len(lindices)]
+        #print dot
+
+        return dot, mapping, tags
 
 
     def prepareData(self, dot, smooth = True):
@@ -657,7 +666,7 @@ if __name__ == "__main__":
     #dot[1,1] = 2
 
     backup_image = np.copy(img)
-    sigma = [0]
+    sigma = 0
     Counter = SVR(method = "BoxedRegressionGurobi", Sigma= sigma)
     testdot, testmapping, testtags = Counter.prepareData(dot,smooth = True)
     testimg = img.reshape((-1, img.shape[-1]))

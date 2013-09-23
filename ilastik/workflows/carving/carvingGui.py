@@ -39,7 +39,7 @@ class CarvingGui(LabelingGui):
         labelingSlots.labelInput       = topLevelOperatorView.WriteSeeds
         labelingSlots.labelOutput      = topLevelOperatorView.opLabelArray.Output
         labelingSlots.labelEraserValue = topLevelOperatorView.opLabelArray.EraserLabelValue
-        labelingSlots.LabelNames       = topLevelOperatorView.LabelNames
+        labelingSlots.labelNames       = topLevelOperatorView.LabelNames
         labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
         labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
@@ -581,17 +581,14 @@ class CarvingGui(LabelingGui):
         #done seg
         doneSeg = self.topLevelOperatorView.DoneSegmentation
         if doneSeg.ready():
-            if self._doneSegmentationLayer is None:
-                layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
-                layer.name = "Completed segments (one color per object)"
-                layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
-                                 "shows <b>all completed object</b>, each with a random color.</html>")
-                layer.visible = False
-                layer.opacity = 0.5
-                self._doneSegmentationLayer = layer
-                layers.append(layer)
-            else:
-                layers.append(self._doneSegmentationLayer)
+            layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
+            layer.name = "Completed segments (one color per object)"
+            layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
+                             "shows <b>all completed object</b>, each with a random color.</html>")
+            layer.visible = False
+            layer.opacity = 0.5
+            self._doneSegmentationLayer = layer
+            layers.append(layer)
 
         #supervoxel
         sv = self.topLevelOperatorView.Supervoxels

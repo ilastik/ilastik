@@ -68,9 +68,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
-        labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
+        labelSlots.labelNames = topLevelOperatorView.LabelNames
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
-        labelSlots.LabelNames = topLevelOperatorView.LabelNames
 
         self.__cleanup_fns = []
 
@@ -93,8 +92,8 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
-        self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.MaxLabelValue.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
+        self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
 
@@ -376,9 +375,9 @@ class PixelClassificationGui(LabelingGui):
     @threadRouted
     def handleLabelSelectionChange(self):
         enabled = False
-        if self.topLevelOperatorView.MaxLabelValue.ready():
+        if self.topLevelOperatorView.LabelNames.ready():
             enabled = True
-            enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
+            enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 2
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
         
@@ -411,17 +410,18 @@ class PixelClassificationGui(LabelingGui):
         slot.setValue(_listReplace(old, new))
 
     def _onLabelRemoved(self, parent, start, end):
-        # Update the label names/colors BEFORE calling the base class,
-        #  which will update the operator and expects the 
-        #  label names list to be correct.
-        op = self.topLevelOperatorView
-        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
-            value = slot.value
-            value.pop(start)
-            slot.setValue(value)
-        
         # Call the base class to update the operator.
         super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
+
+        # Keep colors in sync with names
+        # (If we deleted a name, delete its corresponding colors, too.)
+        op = self.topLevelOperatorView
+        if len(op.PmapColors.value) > len(op.LabelNames.value):
+            for slot in (op.LabelColors, op.PmapColors):
+                value = slot.value
+                value.pop(start)
+                # Force dirty propagation even though the list id is unchanged.
+                slot.setValue(value, check_changed=False)
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,

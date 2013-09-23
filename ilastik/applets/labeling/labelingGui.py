@@ -106,14 +106,11 @@ class LabelingGui(LayerViewerGui):
             self.labelEraserValue = None # labelEraserValue.setValue(xxx)
             # Slot that is used to request wholesale label deletion
             self.labelDelete = None # labelDelete.setValue(xxx)
-            # Slot that contains the maximum label value (for all images)
-            self.maxLabelValue = None # maxLabelValue.value
+            # Slot that gives a list of label names
+            self.labelNames = None # labelNames.value
 
             # Slot to specify which images the user is allowed to label.
             self.labelsAllowed = None # labelsAllowed.value == True
-            
-            self.LabelNames = None
-      
 
     def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
@@ -133,7 +130,7 @@ class LabelingGui(LayerViewerGui):
         assert labelingSlots.labelOutput is not None, "Missing a required slot."
         assert labelingSlots.labelEraserValue is not None, "Missing a required slot."
         assert labelingSlots.labelDelete is not None, "Missing a required slot."
-        assert labelingSlots.maxLabelValue is not None, "Missing a required slot."
+        assert labelingSlots.labelNames is not None, "Missing a required slot."
         assert labelingSlots.labelsAllowed is not None, "Missing a required slot."
 
         self.__cleanup_fns = []
@@ -144,12 +141,8 @@ class LabelingGui(LayerViewerGui):
 
         self._rawInputSlot = rawInputSlot
 
-        self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
-        self.__cleanup_fns.append( partial( self._labelingSlots.maxLabelValue.unregisterDirty, bind(self._updateLabelList) ) )
-
-        if self._labelingSlots.LabelNames is not None:
-            self._labelingSlots.LabelNames.notifyDirty( bind(self._updateLabelList) )
-            self.__cleanup_fns.append( partial( self._labelingSlots.LabelNames.unregisterDirty, bind(self._updateLabelList) ) )
+        self._labelingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
+        self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
@@ -465,19 +458,22 @@ class LabelingGui(LayerViewerGui):
         """
         # Get the number of labels in the label data
         # (Or the number of the labels the user has added.)
-        numLabels = None
-        names = []
-        if self._labelingSlots.LabelNames is not None:
-            names = self._labelingSlots.LabelNames.value
-            
-        if self._labelingSlots.maxLabelValue.ready():
-            numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount(), len(names))
-        if numLabels is None:
-            numLabels = 0
+        names = self._labelingSlots.labelNames.value
+        numLabels = len(self._labelingSlots.labelNames.value)
 
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self._addNewLabel()
+
+        # If we have too many rows, remove the rows that aren't in the list of names.
+        if self._labelControlUi.labelListModel.rowCount() > len(names):
+            indices_to_remove = []
+            for i in range(self._labelControlUi.labelListModel.rowCount()):
+                if self._labelControlUi.labelListModel[i].name not in names:
+                    indices_to_remove.append( i )
+        
+            for i in reversed(indices_to_remove):
+                self._labelControlUi.labelListModel.removeRow(i)
 
         # synchronize labelNames
         for i,n in enumerate(names):
@@ -503,6 +499,12 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.insertRow( newRow, label )
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+
+        # Update operator with new name
+        operator_names = self._labelingSlots.labelNames.value
+        if len(operator_names) < self._labelControlUi.labelListModel.rowCount():
+            operator_names.append( label.name )
+            self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onLabelNameChanged()
@@ -614,18 +616,24 @@ class LabelingGui(LayerViewerGui):
             # If we're deleting the currently selected row, then switch to a different row
             self.thunkEventHandler.post( self._resetLabelSelection )
 
-        # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
-        #  to search through the entire list of labels and delete the entries for the matching label.
-        self._labelingSlots.labelDelete.setValue(row+1)
-
-        # We need to "reset" the deleteLabel input to -1 when we're finished.
-        #  Otherwise, you can never delete the same label twice in a row.
-        #  (Only *changes* to the input are acted upon.)
-        self._labelingSlots.labelDelete.setValue(-1)
-       
-        e =  self._labelControlUi.labelListModel.rowCount() > 0
+        e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
 
+        # If the gui list model isn't in sync with the operator, update the operator.
+        if len(self._labelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
+            # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
+            #  to search through the entire list of labels and delete the entries for the matching label.
+            self._labelingSlots.labelDelete.setValue(row+1)
+    
+            # We need to "reset" the deleteLabel input to -1 when we're finished.
+            #  Otherwise, you can never delete the same label twice in a row.
+            #  (Only *changes* to the input are acted upon.)
+            self._labelingSlots.labelDelete.setValue(-1)
+            
+            labelNames = self._labelingSlots.labelNames.value
+            labelNames.pop(start)
+            self._labelingSlots.labelNames.setValue(labelNames, check_changed=False)
+       
     def getLayer(self, name):
         """find a layer by name"""
         try:

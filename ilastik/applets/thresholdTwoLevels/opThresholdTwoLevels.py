@@ -227,7 +227,7 @@ class OpThresholdTwoLevels(Operator):
     RawInput = InputSlot(optional=True) # Display only
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int', value=0)
+    MinSize = InputSlot(stype='int', value=10)
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)

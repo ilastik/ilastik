@@ -43,7 +43,6 @@ class OpPixelClassification( Operator ):
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     
-    MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
@@ -59,6 +58,8 @@ class OpPixelClassification( Operator ):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+
+    NumClasses = OutputSlot()
     
     def setupOutputs(self):
         self.LabelNames.meta.dtype = object
@@ -90,35 +91,35 @@ class OpPixelClassification( Operator ):
         self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
-                
-        # Find the highest label in all the label images
-        self.opMaxLabel = OpMaxValue( parent=self )
-        self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
-        self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
         # Hook up the Training operator
         self.opTrain = OpTrainRandomForestBlocked( parent=self )
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
-        self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
-        self.opTrain.inputs['fixClassifier'].setValue( False )
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
         self.classifier_cache = OpValueCache( parent=self )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
+        self.classifier_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.Classifier.connect( self.classifier_cache.Output )
 
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
         self.opPredictionPipeline.FeatureImages.connect( self.FeatureImages )
         self.opPredictionPipeline.CachedFeatureImages.connect( self.CachedFeatureImages )
-        self.opPredictionPipeline.MaxLabel.connect( self.opMaxLabel.Output )
         self.opPredictionPipeline.Classifier.connect( self.classifier_cache.Output )
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
+        
+        def _updateNumClasses(*args):
+            numClasses = len(self.LabelNames.value)
+            self.opTrain.MaxLabel.setValue( numClasses )
+            self.opPredictionPipeline.NumClasses.setValue( numClasses )
+            self.NumClasses.setValue( numClasses )
+        self.LabelNames.notifyDirty( _updateNumClasses )
 
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
@@ -138,7 +139,6 @@ class OpPixelClassification( Operator ):
         self.InputImages.notifyResized( inputResizeHandler )
 
         # Debug assertions: Check to make sure the non-wrapped operators stayed that way.
-        assert self.opMaxLabel.Inputs.operator == self.opMaxLabel
         assert self.opTrain.Images.operator == self.opTrain
 
         def handleNewInputImage( multislot, index, *args ):
@@ -239,7 +239,6 @@ class OpLabelPipeline( Operator ):
     
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
-    MaxLabel = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( OpLabelPipeline, self ).__init__( *args, **kwargs )
@@ -259,7 +258,6 @@ class OpLabelPipeline( Operator ):
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-        self.MaxLabel.connect( self.opLabelArray.maxLabel )
     
     def setupOutputs(self):
         taggedShape = self.RawImage.meta.getTaggedShape()
@@ -285,10 +283,10 @@ class OpPredictionPipelineNoCache(Operator):
     This contains only the cacheless parts of the prediction pipeline, for easy use in headless workflows.
     """
     FeatureImages = InputSlot()
-    MaxLabel = InputSlot()
     Classifier = InputSlot()
     FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
+    NumClasses = InputSlot()
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
@@ -303,7 +301,7 @@ class OpPredictionPipelineNoCache(Operator):
         self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
-        self.cacheless_predict.inputs['LabelsCount'].connect(self.MaxLabel)
+        self.cacheless_predict.inputs['LabelsCount'].connect(self.NumClasses)
         self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
 
         # Alternate headless output: uint8 instead of float.
@@ -344,7 +342,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.name = "OpPredictRandomForest"
         self.predict.inputs['Classifier'].connect(self.Classifier) 
         self.predict.inputs['Image'].connect(self.CachedFeatureImages)
-        self.predict.inputs['LabelsCount'].connect(self.MaxLabel)
+        self.predict.LabelsCount.connect( self.NumClasses )
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
         # Prediction cache for the GUI
@@ -452,44 +450,6 @@ class OpShapeReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
-
-class OpMaxValue(Operator):
-    """
-    Accepts a list of non-array values as an input and outputs the max of the list.
-    """
-    Inputs = InputSlot(level=1) # A list of non-array values
-    Output = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super(OpMaxValue, self).__init__(*args, **kwargs)
-        self.Output.meta.shape = (1,)
-        self.Output.meta.dtype = object
-        self._output = 0
-        
-    def setupOutputs(self):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def execute(self, slot, subindex, roi, result):
-        result[0] = self._output
-        return result
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def updateOutput(self):
-        # Return the max value of all our inputs
-        maxValue = None
-        for i, inputSubSlot in enumerate(self.Inputs):
-            # Only use inputs that are actually configured
-            if inputSubSlot.ready():
-                if maxValue is None:
-                    maxValue = inputSubSlot.value
-                else:
-                    maxValue = max(maxValue, inputSubSlot.value)
-
-        self._output = maxValue
 
 class OpEnsembleMargin(Operator):
     """

@@ -7,6 +7,8 @@
 #include <string.h>
 #if (defined(WIN32) || defined(_WIN32))
 #define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
 #endif
 
 /* Include declaration for function at end of program */
@@ -57,7 +59,7 @@ int printiarray(const int * array, int numrows, int numcols, char * name) {
 }
 
 EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, int numSamples, int numFeatures, double C, double epsilon,
-        int numBoxConstraints, const double * boxValues, const int64_t * boxIndices, const double * boxMatrix)//, double * density)
+        int numBoxConstraints, const double * boxValues, const int64_t * boxIndices, const double * boxMatrix)
 {
   int i,j,k;
   CPXENVptr     env = NULL;
@@ -103,7 +105,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     goto TERMINATE;
   }
 
-  if (sense == NULL || lb == NULL || ub == NULL || obj == NULL 
+  if (sense == NULL || lb == NULL || ub == NULL || obj == NULL
       || rhs == NULL || tagarray == NULL || qsepvec == NULL) {
     status = 1;
     goto TERMINATE;
@@ -188,7 +190,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     boxrmatbeg = (int*) malloc(numBoxConstraints * sizeof(int));
     boxrmatind = (int*) malloc(numBoxConstraints * (numFeatures + 2) * sizeof(int));
     boxSense = (char*) malloc(numBoxConstraints * sizeof(char));
-   
+
     hmatbeg = (int*) malloc(numBoxSamples * sizeof(int));
     hmatind = (int*) malloc(numBoxSamples * (numFeatures + 1) * sizeof(int));
     hmatval = (double* ) malloc(numBoxSamples * (numFeatures + 1) * sizeof(double));
@@ -204,18 +206,16 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       goto TERMINATE;
     }
 
-
-    //double   *boxrmatval = (double* ) malloc( * sizeof(double));
-
-
-    //for every entry in the box features, check if it's background or
-    //foreground
+    /*for every entry in the box features, check if it's background or
+    foreground
+    double   *boxrmatval = (double* ) malloc( * sizeof(double));*/
+    
     for (i = 0; i < numBoxSamples; ++i) {
       dens[i] = w[numFeatures];
       for (j = 0; j < numFeatures; ++j) {
         dens[i] += boxMatrix[i * numFeatures + j] * w[j];
       }
-    } 
+    }
     for (i = 0; i < numBoxSamples; ++i) {
       if (dens[i] > 0){
         dens[i] = 1;
@@ -223,10 +223,11 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       else {
         dens[i] = 0;
       }
-      // printf("Density: %f\n", dens[i]);
+      /* printf("Density: %f\n", dens[i]); */
     }
 
-    //printfarray(boxConstraints, numBoxConstraints, numFeatures + 2, "boxConstraints"); 
+    /*printfarray(boxConstraints, numBoxConstraints, numFeatures + 2, "boxConstraints"); */
+
     for (k = 0; k < numBoxConstraints; ++k) {
       boxrmatbeg[k] = k * (numFeatures + 2);
       for (i = (int) boxIndices[k]; i < boxIndices[k + 1]; ++i){
@@ -239,11 +240,11 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     for (i = 0; i < numBoxConstraints; ++i) {
       for (j = 0; j < numFeatures + 1; ++j) {
         boxrmatind[i * (numFeatures + 2) + j] = j;
-      } 
+      }
       boxrmatind[i * (numFeatures + 2) + numFeatures + 1] = numcols + i;
     }
 
-    for (i = 0; i < numBoxConstraints; ++i) { 
+    for (i = 0; i < numBoxConstraints; ++i) {
       boxSense[i] = 'L';
     }
     for (i = 0; i < numBoxConstraints; ++i) {
@@ -255,7 +256,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       boxrmatind[i * (numFeatures + 2) + numFeatures + 1] = numcols + numBoxConstraints + i;
     }
 
-    for (i = 0; i < numBoxConstraints; ++i) { 
+    for (i = 0; i < numBoxConstraints; ++i) {
       boxSense[i] = 'G';
     }
     for (i = 0; i < numBoxConstraints; ++i) {
@@ -267,11 +268,12 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     for (i = 0; i < numBoxConstraints; ++i) {
       qsepvec[numcols + i] = 2 * C / (boxIndices[i + 1] - boxIndices[i]);
       qsepvec[numcols + i + numBoxConstraints] = 2 * C / (boxIndices[i + 1] - boxIndices[i]);
-    //  printf("%d, %d\n",boxIndices[i], boxIndices[i + 1]);
-    //  printf("%f, %f\n", qsepvec[numcols+i], qsepvec[numcols + i + numBoxConstraints]);
+    /*  printf("%d, %d\n",boxIndices[i], boxIndices[i + 1]);
+      printf("%f, %f\n", qsepvec[numcols+i], qsepvec[numcols + i + numBoxConstraints]);
+      */
     }
 
-    //adding hard constraints:
+    /*adding hard constraints:*/
 
 
 
@@ -291,13 +293,14 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
         hSense[i] = 'G';
       }
     }
-    // printf("Density: %f\n", dens[i]);
-    //    printf("Close, but no cigar\n");
-    //printiarray(hmatind, backgroundcount, numFeatures + 1, "");
-    //    printf("Close, but no cigar\n");
+    /* printf("Density: %f\n", dens[i]);
+        printf("Close, but no cigar\n");
+    printiarray(hmatind, backgroundcount, numFeatures + 1, "");
+        printf("Close, but no cigar\n"); */
+
     status = CPXaddrows(env, lp, 0, numBoxSamples, numBoxSamples* (numFeatures + 1), NULL,
                         hSense, hmatbeg, hmatind, hmatval, NULL, NULL);
-    //    printf("WHY IS NOTHING HAPPENING\n")
+    /*    printf("WHY IS NOTHING HAPPENING\n") */
     printf ("Number of Columns in Problem: %d\n", CPXgetnumcols(env, lp));
     printf("%d\n", numcols + (2 * numBoxConstraints));
     status = CPXcopyqpsep (env, lp, qsepvec);
@@ -313,8 +316,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
       } */
   }
 
-  //printf("Objective value: %f\n", sol);
-  /*double * slack = malloc((numcols + 2 * numBoxConstraints) * sizeof(double));
+  /*printf("Objective value: %f\n", sol);
+    double * slack = malloc((numcols + 2 * numBoxConstraints) * sizeof(double));
     status = CPXgetx (env, lp, slack, 0, numcols + 2 * numBoxConstraints - 1);
     printfarray(slack, numcols + 2 * numBoxConstraints, 1, "Slack");
     */
@@ -341,7 +344,7 @@ TERMINATE:;
   free_and_null ((char **) &hmatind);
   free_and_null ((char **) &hmatval);
   free_and_null ((char **) &hSense);
-  //free_and_null ((char **) &slack);
+  /*free_and_null ((char **) &slack); */
   return (status);
 
 }

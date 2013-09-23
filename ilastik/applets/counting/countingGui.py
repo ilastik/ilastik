@@ -3,7 +3,6 @@ import os
 import logging
 import threading
 from functools import partial
-import math
 
 # Third-party
 import numpy
@@ -60,26 +59,32 @@ from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 class CallToGui:
     def __init__(self,opslot,setfun):
         '''
-        Helper class which registers a simple callback between an operator and a gui 
+        Helper class which registers a simple callback between an operator and a gui
         element so that gui elements can be kept in sync across different images
         :param opslot:
         :param setfun:
         :param defaultval:
-        
+
         '''
-        
+
         self.val=None
         self.opslot=opslot
         self.setfun=setfun
         self._exec()
         self.opslot.notifyDirty(bind(self._exec))
-    
+
     def _exec(self):
         if self.opslot.ready():
             self.val=self.opslot.value
-            
+
         if self.val!=None:
-            self.setfun(self.val)        
+            #FXIME: workaround for recently introduced bug when setting
+            #sigma box as spindoublebox
+            if type(self.val)==list:
+                val=self.val[0]
+            else:
+                val=self.val
+            self.setfun(val)
 
 class CountingGui(LabelingGui):
 
@@ -107,6 +112,7 @@ class CountingGui(LabelingGui):
 
     @traceLogged(traceLogger)
     def __init__(self, parentApplet, topLevelOperatorView):
+        self.parentApplet = parentApplet
 
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -116,14 +122,17 @@ class CountingGui(LabelingGui):
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
-        labelSlots.LabelNames = topLevelOperatorView.LabelNames
+        labelSlots.labelNames = topLevelOperatorView.LabelNames
+
+
+
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
         super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
-        
+
         self.op = topLevelOperatorView
 
         self.topLevelOperatorView = topLevelOperatorView
@@ -133,9 +142,9 @@ class CountingGui(LabelingGui):
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
-        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
-        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
-        
+#        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
+#        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
@@ -152,54 +161,54 @@ class CountingGui(LabelingGui):
         except:
             self.render = False
 
-        
+
         self.initCounting()
         try:
             from sitecustomize import debug_trace
         except:
             self.labelingDrawerUi.DebugButton.setVisible(False)
-            
 
-        
-        
-        
+
+
+
+
     def initCounting(self):
-        
+
         #=======================================================================
         # Init Dotting interface
         #=======================================================================
-        
-        
+
+
         self.dotcrosshairController=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
         self.editor.crosshairControler=self.dotcrosshairController
         #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
         self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler)
         self.dotInterpreter=self.editor.brushingInterpreter
-        
-        
+
+
         #=======================================================================
         # Init Label Control Ui Custom  setup
         #=======================================================================
-        
+
         self._viewerControlUi.label.setVisible(False)
         self._viewerControlUi.checkShowPredictions.setVisible(False)
         self._viewerControlUi.checkShowSegmentation.setVisible(False)
-        
-        
-        
+
+
+
         self._addNewLabel()
         self._addNewLabel()
-        self._labelControlUi.brushSizeComboBox.setEnabled(False) 
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self.selectLabel(0)
-        
-        
-        
+
+
+
         #=======================================================================
         # Init labeling Drawer Ui Custom  setup
         #=======================================================================
-        
-        
+
+
         #labels for foreground and background
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
@@ -208,19 +217,19 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         self.labelingDrawerUi.CountText.setReadOnly(True)
-            
-        
-        
+
+
+
         #=======================================================================
         # Init Boxes Interface
         #=======================================================================
-        
+
         #if not hasattr(self._labelControlUi, "boxListModel"):
         self.labelingDrawerUi.boxListModel=BoxListModel()
         self.labelingDrawerUi.boxListView.setModel(self.labelingDrawerUi.boxListModel)
         self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
         #self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
-        
+
 #        ###FIXME: Only for debug
         #self.op.Density.notifyDirty(self.updateSum)
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
@@ -228,55 +237,49 @@ class CountingGui(LabelingGui):
         mainwin=self
         self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #FIXME: Hack , get the proper reference to the graph
         self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)       
+        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
-        
-        
+
+
         self.navigationInterpreterDefault=self.editor.navInterpret
 
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
-        
+
         self._setUIParameters()
         self._connectUIParameters()
-        
 
-        
+
+
         self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
-        
 
-    
+
+
     def _connectUIParameters(self):
-                
+
         #=======================================================================
         # Gui to operator connections
         #=======================================================================
-        
-        self._changedSigma = True
+
         #Debug interface only available to advanced users
         self.labelingDrawerUi.DebugButton.pressed.connect(self._debug)
         self.labelingDrawerUi.boxListView.resetEmptyMessage("no boxes defined yet")
         self.labelingDrawerUi.SVROptions.currentIndexChanged.connect(self._updateSVROptions)
         self.labelingDrawerUi.CBox.valueChanged.connect(self._updateC)
-        
 
-        def _editingSigma(text):
-            self._changedSigma =True
-        self.labelingDrawerUi.SigmaLine.textChanged.connect(_editingSigma)
-        
-        
-        self.labelingDrawerUi.SigmaLine.editingFinished.connect(self._updateSigma)
+
+        self.labelingDrawerUi.SigmaBox.valueChanged.connect(self._updateSigma)
         self.labelingDrawerUi.EpsilonBox.valueChanged.connect(self._updateEpsilon)
         self.labelingDrawerUi.MaxDepthBox.valueChanged.connect(self._updateMaxDepth)
         self.labelingDrawerUi.NtreesBox.valueChanged.connect(self._updateNtrees)
-        
+
         #=======================================================================
         # Operators to Gui connections
         #=======================================================================
 
-        self._registerOperatorsToGuiCallbacks() 
-    
+        self._registerOperatorsToGuiCallbacks()
+
         #=======================================================================
         # Initialize Values
         #=======================================================================
@@ -286,29 +289,20 @@ class CountingGui(LabelingGui):
         self._updateMaxDepth()
 
     def _registerOperatorsToGuiCallbacks(self):
-                
+
         op=self.op.opTrain
         gui=self.labelingDrawerUi
-        
+
         CallToGui(op.Ntrees,gui.NtreesBox.setValue)
         CallToGui(op.MaxDepth,gui.MaxDepthBox.setValue)
-
         CallToGui(op.C,gui.CBox.setValue)
-        
-        def _setsigma(floatList):
-            ss=""
-            for el in floatList:
-                ss+="%.1f "%el
-            ss=ss[:-1]
-            gui.SigmaLine.setText(QString(ss))
-        
-        CallToGui(op.Sigma,_setsigma)
+        CallToGui(op.Sigma,gui.SigmaBox.setValue)
         CallToGui(op.Epsilon,gui.EpsilonBox.setValue)
-        
+
         def _setoption(option):
             index=gui.SVROptions.findText(option)
             gui.SVROptions.setCurrentIndex(index)
-            
+
         CallToGui(op.SelectedOption,_setoption)
         idx = self.op.current_view_index()
         op = self.op.opTrain
@@ -327,12 +321,12 @@ class CountingGui(LabelingGui):
                 iconIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.FixIcon)
                 self.boxController.boxListModel.setData(boxIndex,QVariant(val))
         op.fixClassifier.setValue(fix)
-        
 
-        
+
+
     def _setUIParameters(self):
-        
-        self.labelingDrawerUi.SigmaLine.setText(str(self.op.opTrain.Sigma.value))
+
+        self.labelingDrawerUi.SigmaBox.setKeyboardTracking(False)
         self.labelingDrawerUi.CBox.setRange(0,1000)
         self.labelingDrawerUi.CBox.setKeyboardTracking(False)
         self.labelingDrawerUi.EpsilonBox.setKeyboardTracking(False)
@@ -350,21 +344,22 @@ class CountingGui(LabelingGui):
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
-        
-        
-        
-        if self.op.classifier_cache._value and len(self.op.classifier_cache._value) > 0:
+
+
+        cache = self.op.classifier_cache
+        if type(cache._value) is list and len(self.op.classifier_cache._value) > 0:
+        #if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = self.op.classifier_cache.Output.value[0].get_params() 
+            params = cache.Output.value[0].get_params()
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
             Ntrees = params["ntrees"]
             MaxDepth = params["maxdepth"]
             _ind = self.labelingDrawerUi.SVROptions.findText(params["method"])
-        
+
             #set opTrain from parameters
-            self.op.opTrain.initInputs(params) 
+            self.op.opTrain.initInputs(params)
 
 
 
@@ -377,8 +372,11 @@ class CountingGui(LabelingGui):
             MaxDepth = self.op.opTrain.MaxDepth.value
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
+        #FIXME: quick fix recently introduced bug
 
-        self.labelingDrawerUi.SigmaLine.setText(" ".join(str(s) for s in Sigma))
+        if type(Sigma)==list:
+            Sigma=Sigma[0]
+        self.labelingDrawerUi.SigmaBox.setValue(Sigma)
         self.labelingDrawerUi.EpsilonBox.setValue(Epsilon)
         self.labelingDrawerUi.CBox.setValue(C)
         self.labelingDrawerUi.NtreesBox.setValue(Ntrees)
@@ -390,14 +388,14 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
 
         self._hideParameters()
-        
-        
-        
+
+
+
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
     def _updateNtrees(self):
         self.op.opTrain.Ntrees.setValue(self.labelingDrawerUi.NtreesBox.value())
-    
+
     def _hideParameters(self):
         _ind = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(_ind).toPyObject()[0]
@@ -405,14 +403,14 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.gridLayout_2.setVisible(False)
         else:
             self.labelingDrawerUi.gridLayout_2.setVisible(True)
-            
- 
+
+
         if "rf" not in option["gui"]:
             self.labelingDrawerUi.rf_panel.setVisible(False)
         else:
             self.labelingDrawerUi.rf_panel.setVisible(True)
-            
-        
+
+
     #def _updateOverMult(self):
     #    self.op.opTrain.OverMult.setValue(self.labelingDrawerUi.OverBox.value())
     #def _updateUnderMult(self):
@@ -420,24 +418,24 @@ class CountingGui(LabelingGui):
     def _updateC(self):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
     def _updateSigma(self):
-        if self._changedSigma:
+        #if self._changedSigma:
 
-            sigma,_ = self._normalizeLayers()
-            self.editor.crosshairControler.setSigma(max(sigma))
-            #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
-            self.op.opTrain.Sigma.setValue(sigma)
-            self.op.LabelPreviewer.Sigma.setValue(sigma)
-            self._changedSigma = False
-            
+        sigma = self._labelControlUi.SigmaBox.value()
+
+        self.editor.crosshairControler.setSigma(sigma)
+        #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
+        self.op.opTrain.Sigma.setValue(sigma)
+        self.op.LabelPreviewer.Sigma.setValue(sigma)
+        #    self._changedSigma = False
+        self._normalizeLayers()
+
     def _normalizeLayers(self):
-            sigma = [float(n) for n in
-                           self._labelControlUi.SigmaLine.text().split(" ")]
-            upperBound = 3 / (2 * math.pi * max(sigma)**2)
+            upperBound = self.op.UpperBound.value
             self.upperBound = upperBound
-                
+
             if hasattr(self, "labelPreviewLayer"):
                 self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return sigma, upperBound
+            return
 
 
     def _normalizePrediction(self, *args):
@@ -452,23 +450,33 @@ class CountingGui(LabelingGui):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
         option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
         self.op.opTrain.SelectedOption.setValue(option["method"])
-        
+
         self._hideFixable(option)
-        
-        self._hideParameters()        
-    
+
+        self._hideParameters()
+
     def _hideFixable(self,option):
         if 'boxes' in option and option['boxes'] == False:
             self.labelingDrawerUi.boxListView.allowFixIcon=False
             self.labelingDrawerUi.boxListView.allowFixValues=False
         elif 'boxes' in option and option['boxes'] == True:
             self.labelingDrawerUi.boxListView.allowFixIcon=True
-            
-        
-    
+
+
+
     def _handleBoxConstraints(self, constr):
-        self.op.opTrain.BoxConstraintRois[self.op.current_view_index()].setValue(constr["rois"])
-        self.op.opTrain.BoxConstraintValues[self.op.current_view_index()].setValue(constr["values"])
+        opTrain = self.op.opTrain
+        id = self.op.current_view_index()
+        vals = constr["values"]
+        rois = constr["rois"]
+        fixedClassifier = opTrain.fixClassifier.value
+        assert len(vals) == len(rois)
+        if opTrain.BoxConstraintRois.ready() and opTrain.BoxConstraintValues.ready():
+            if opTrain.BoxConstraintValues[id].value != vals and opTrain.BoxConstraintRois[id].value != rois:
+                opTrain.fixClassifier.setValue(True)
+                opTrain.BoxConstraintRois[id].setValue(rois)
+                opTrain.fixClassifier.setValue(fixedClassifier)
+                opTrain.BoxConstraintValues[id].setValue(vals)
 
         #boxes = self.boxController._currentBoxesList
 
@@ -477,13 +485,13 @@ class CountingGui(LabelingGui):
         import sitecustomize
         sitecustomize.debug_trace()
 
-    
+
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
-        
+
         # Connect checkboxes
         def nextCheckState(checkbox):
             checkbox.setChecked( not checkbox.isChecked() )
@@ -494,7 +502,7 @@ class CountingGui(LabelingGui):
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
-       
+
     def _initShortcuts(self):
         mgr = ShortcutManager()
         shortcutGroupName = "Predictions"
@@ -543,7 +551,7 @@ class CountingGui(LabelingGui):
 
         # Add each of the predictions
         labels = self.labelListData
-     
+
 
 
         slots = {'Prediction' : self.op.Density, 'LabelPreview': self.op.LabelPreview, 'Uncertainty' :
@@ -552,12 +560,10 @@ class CountingGui(LabelingGui):
         for name, slot in slots.items():
             if slot.ready():
                 from volumina import colortables
-                sigma,upperBound = self._normalizeLayers()
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
-                                       (0,upperBound))
+                                       (0,self.upperBound))
                 layer.name = name
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
-                #layer.visibleChanged.connect(self.updateShowPredictionCheckbox)
                 layers.append(layer)
 
 
@@ -565,15 +571,12 @@ class CountingGui(LabelingGui):
 
         boxlabelsrc = LazyflowSinkSource(self.op.BoxLabelImages,self.op.BoxLabelInputs )
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
-        boxlabellayer.name = "boxLabels"
+        boxlabellayer.name = "Boxes"
         boxlabellayer.opacity = 1.0
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
-        
-        
-        
-        
-        
+
+
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
 
@@ -599,7 +602,7 @@ class CountingGui(LabelingGui):
                 QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
                 inputLayer )
             layers.append(inputLayer)
-        
+
         self.handleLabelSelectionChange()
         return layers
 
@@ -622,8 +625,17 @@ class CountingGui(LabelingGui):
                 mexBox.exec_()
                 return
 
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
+        if self.interactiveModeActive != checked:
+            if checked:
+                self.labelingDrawerUi.labelListView.allowDelete = False
+        #        self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+            else:
+                self.labelingDrawerUi.labelListView.allowDelete = True
+        #        self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+        self.interactiveModeActive = checked
+#        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
+        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -631,16 +643,9 @@ class CountingGui(LabelingGui):
             self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.interactiveModeActive != checked:
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                #self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-            else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                #self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked
-        
-            
+        self.parentApplet.appletStateUpdateRequested.emit()
+
+
     @traceLogged(traceLogger)
     def updateAllLayers(self, slot=None):
         super(CountingGui, self).updateAllLayers()
@@ -652,7 +657,7 @@ class CountingGui(LabelingGui):
                 self.predictionLayer = layer
 
 
-    
+
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
@@ -715,79 +720,79 @@ class CountingGui(LabelingGui):
             enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
-        
-        self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
+
+        #self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
-    @pyqtSlot()
-    @traceLogged(traceLogger)
-    def onSavePredictionsButtonClicked(self):
-        """
-        The user clicked "Train and Predict".
-        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
-        """
-        import warnings
-        warnings.warn("FIXME: Remove this function and just use the data export applet.")
-        # The button does double-duty as a cancel button while predictions are being stored
-        if self._currentlySavingPredictions:
-            self.predictionSerializer.cancel()
-        else:
-            # Compute new predictions as needed
-            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
-            self.topLevelOperatorView.FreezePredictions.setValue(False)
-            self._currentlySavingPredictions = True
-
-            originalButtonText = "Full Volume Predict and Save"
-            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
-
-            @traceLogged(traceLogger)
-            def saveThreadFunc():
-                logger.info("Starting full volume save...")
-                # Disable all other applets
-                def disableAllInWidgetButName(widget, exceptName):
-                    for child in widget.children():
-                        if child.findChild( QPushButton, exceptName) is None:
-                            child.setEnabled(False)
-                        else:
-                            disableAllInWidgetButName(child, exceptName)
-
-                # Disable everything in our drawer *except* the cancel button
-                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
-
-                # But allow the user to cancel the save
-                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
-
-                # First, do a regular save.
-                # During a regular save, predictions are not saved to the project file.
-                # (It takes too much time if the user only needs the classifier.)
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-
-                # Enable prediction storage and ask the shell to save the project again.
-                # (This way the second save will occupy the whole progress bar.)
-                self.predictionSerializer.predictionStorageEnabled = True
-                self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                self.predictionSerializer.predictionStorageEnabled = False
-
-                # Restore original states (must use events for UI calls)
-                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
-                self._currentlySavingPredictions = False
-
-                # Re-enable our controls
-                def enableAll(widget):
-                    for child in widget.children():
-                        if isinstance( child, QWidget ):
-                            child.setEnabled(True)
-                            enableAll(child)
-                enableAll(self.labelingDrawerUi)
-
-                # Re-enable all other applets
-                logger.info("Finished full volume save.")
-
-            saveThread = threading.Thread(target=saveThreadFunc)
-            saveThread.start()
+#    @pyqtSlot()
+#    @traceLogged(traceLogger)
+#    def onSavePredictionsButtonClicked(self):
+#        """
+#        The user clicked "Train and Predict".
+#        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
+#        """
+#        import warnings
+#        warnings.warn("FIXME: Remove this function and just use the data export applet.")
+#        # The button does double-duty as a cancel button while predictions are being stored
+#        if self._currentlySavingPredictions:
+#            self.predictionSerializer.cancel()
+#        else:
+#            # Compute new predictions as needed
+#            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
+#            self.topLevelOperatorView.FreezePredictions.setValue(False)
+#            self._currentlySavingPredictions = True
+#
+#            originalButtonText = "Full Volume Predict and Save"
+#            #self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
+#
+#            @traceLogged(traceLogger)
+#            def saveThreadFunc():
+#                logger.info("Starting full volume save...")
+#                # Disable all other applets
+#                def disableAllInWidgetButName(widget, exceptName):
+#                    for child in widget.children():
+#                        if child.findChild( QPushButton, exceptName) is None:
+#                            child.setEnabled(False)
+#                        else:
+#                            disableAllInWidgetButName(child, exceptName)
+#
+#                # Disable everything in our drawer *except* the cancel button
+#                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
+#
+#                # But allow the user to cancel the save
+#                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
+#
+#                # First, do a regular save.
+#                # During a regular save, predictions are not saved to the project file.
+#                # (It takes too much time if the user only needs the classifier.)
+#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#
+#                # Enable prediction storage and ask the shell to save the project again.
+#                # (This way the second save will occupy the whole progress bar.)
+#                self.predictionSerializer.predictionStorageEnabled = True
+#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#                self.predictionSerializer.predictionStorageEnabled = False
+#
+#                # Restore original states (must use events for UI calls)
+#                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
+#                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
+#                self._currentlySavingPredictions = False
+#
+#                # Re-enable our controls
+#                def enableAll(widget):
+#                    for child in widget.children():
+#                        if isinstance( child, QWidget ):
+#                            child.setEnabled(True)
+#                            enableAll(child)
+#                enableAll(self.labelingDrawerUi)
+#
+#                # Re-enable all other applets
+#                logger.info("Finished full volume save.")
+#
+#            saveThread = threading.Thread(target=saveThreadFunc)
+#            saveThread.start()
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
@@ -895,7 +900,7 @@ class CountingGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-    
+
     def _gui_setBrushing(self):
 #         self._labelControlUi.brushSizeComboBox.setEnabled(False)
 #         self._labelControlUi.brushSizeCaption.setEnabled(False)
@@ -910,16 +915,16 @@ class CountingGui(LabelingGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(False)
-        
+
         #self._labelControlUi.boxToolButton.setChecked(True)
-        
-    
+
+
     def _onBoxChanged(self,parentFun, mapf):
-        
+
         parentFun()
         new = map(mapf, self.labelListData)
-    
-    
+
+
     def _changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
@@ -927,8 +932,8 @@ class CountingGui(LabelingGui):
         QApplication.restoreOverrideCursor()
         for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=True
-        
-         
+
+
         # Uncheck all the other buttons
         for tool, button in self.toolButtons.items():
             if tool != toolId:
@@ -961,44 +966,45 @@ class CountingGui(LabelingGui):
 
         e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
         self._gui_enableLabeling(e)
-        
+
         if labelsAllowed:
             # Update the applet bar caption
             if toolId == Tool.Navigation:
-                # update GUI 
+                # update GUI
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
-                
+
             elif toolId == Tool.Paint:
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-                
+
                 if self.editor.brushingModel.drawnNumber==1:
                     brushSize = 1
                     self.editor.brushingModel.setBrushSize(brushSize)
-                
-                # update GUI 
+
+                # update GUI
                 self._gui_setBrushing()
 
 
             elif toolId == Tool.Erase:
-                
+
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
                 # Set the brushing size
                 eraserSize = self.brushSizes[self.eraserSizeIndex]
                 self.editor.brushingModel.setBrushSize(eraserSize)
-                # update GUI 
+                # update GUI
                 self._gui_setErasing()
-            
+
             elif toolId == Tool.Box:
+                self._labelControlUi.labelListModel.clearSelectionModel()
                 for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=False
-        
+
                 QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(self.boxInterpreter)
@@ -1019,18 +1025,16 @@ class CountingGui(LabelingGui):
 
             self._labelControlUi.AddBoxButton.setIcon( QIcon(ilastikIcons.AddSel) )
             self._labelControlUi.AddBoxButton.clicked.connect( bind(self.onAddNewBoxButtonClicked) )
-        
-        
-    
+
+
+
     def onAddNewBoxButtonClicked(self):
 
         self._changeInteractionMode(Tool.Box)
         self.labelingDrawerUi.boxListView.resetEmptyMessage("Draw the box on the image")
-        
-         
+
+
     def _onBoxSelected(self, row):
-        print "switching to box=%r" % (self._labelControlUi.boxListModel[row])
-        print "row = ",row
         logger.debug("switching to label=%r" % (self._labelControlUi.boxListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
@@ -1038,40 +1042,45 @@ class CountingGui(LabelingGui):
 
         print len(self.boxController._currentBoxesList)
         self.boxController.selectBoxItem(row)
-    
-    
+
+
     def _onLabelSelected(self, row):
-        print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
-        
-        
-        
+
+
+
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
-        #+1 because first is transparent
-        #FIXME: shouldn't be just row+1 here
-  
+
+
         self.toolButtons[Tool.Paint].setEnabled(True)
         #elf.toolButtons[Tool.Box].setEnabled(False)
         self.toolButtons[Tool.Paint].click()
 
+        #+1 because first is transparent
+        #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
-        
+
+
+
         if row==0: #foreground
+
             self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._labelControlUi.SigmaBox.setEnabled(True)
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
         else:
             if not hasattr(self, "_cachedBrushSizeIndex"):
                 self._cachedBrushSizeIndex=0
-                
+
+            self._labelControlUi.SigmaBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
-            
-        
-        
+
+
+
     def updateSum(self, *args, **kw):
         print "updatingSum"
         density = self.op.OutputSum[...].wait()

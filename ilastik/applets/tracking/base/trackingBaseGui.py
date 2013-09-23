@@ -256,6 +256,11 @@ class TrackingBaseGui( LayerViewerGui ):
     def initAppletDrawerUi(self):        
         self._drawer = self._loadUiFile()
         
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            self._drawer.exportLabel.hide()
+            self._drawer.exportButton.hide()
+            self._drawer.exportTifButton.hide()
+            
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
@@ -320,12 +325,13 @@ class TrackingBaseGui( LayerViewerGui ):
             try:
                 write_events([], str(directory), t_from, labelImage)
                 
-                events = self.mainOperator.events
+                events = self.mainOperator.EventsVector.value
                 print "Saving events..."
                 print "Length of events " + str(len(events))
                 
                 num_files = float(len(events))
-                for i, events_at in enumerate(events):
+                for i in events.keys():
+                    events_at = events[i]
                     t = t_from + i            
                     key[0] = slice(t+1,t+2)
                     roi = SubRegion(self.mainOperator.LabelImage, key)

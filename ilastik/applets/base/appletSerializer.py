@@ -15,9 +15,10 @@ import h5py
 import numpy
 import warnings
 
-from lazyflow.roi import TinyVector, roiToSlice
+from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.rtype import SubRegion
 from lazyflow.slot import OutputSlot
+from lazyflow.utility import Timer, timeLogged
 
 #######################
 # Convenience methods #
@@ -350,9 +351,11 @@ class SerialListSlot(SerialSlot):
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
     def __init__(self, slot, inslot, blockslot, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True):
+                 default=None, depends=None, selfdepends=True, shrink_to_bb=False):
         """
         :param blockslot: provides non-zero blocks.
+        :param shrink_to_bb: If true, reduce each block of data from the slot to  
+                             its nonzero bounding box before feeding saving it.
 
         """
         super(SerialBlockSlot, self).__init__(
@@ -360,7 +363,9 @@ class SerialBlockSlot(SerialSlot):
         )
         self.blockslot = blockslot
         self._bind(slot)
+        self._shrink_to_bb = shrink_to_bb
 
+    @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
         mygroup = group.create_group(name)
         num = len(self.blockslot)
@@ -371,6 +376,21 @@ class SerialBlockSlot(SerialSlot):
             for blockIndex, slicing in enumerate(nonZeroBlocks):
                 block = self.slot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
+
+                if self._shrink_to_bb:
+                    nonzero_coords = numpy.nonzero(block)
+                    if len(nonzero_coords[0]) > 0:
+                        block_start = sliceToRoi( slicing, (0,)*len(slicing) )[0]
+                        block_bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
+                        block_bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
+                        block_slicing = roiToSlice( block_bounding_box_start, block_bounding_box_stop )
+                        bounding_box_roi = numpy.array([block_bounding_box_start, block_bounding_box_stop])
+                        bounding_box_roi += block_start
+                        
+                        # Overwrite the vars that are written to the file
+                        slicing = roiToSlice(*bounding_box_roi)
+                        block = block[block_slicing]
+
                 subgroup.create_dataset(blockName, data=block)
                 subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 

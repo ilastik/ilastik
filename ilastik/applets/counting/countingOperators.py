@@ -5,53 +5,34 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 import numpy as np
 import time
 import copy
+import math
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.request import Request, RequestPool
 from lazyflow.utility import traceLogged
+from lazyflow.operators import OpPixelOperator
 
 from ilastik.applets.counting.countingsvr import SVR
 
-class OpLabelPreviewer(Operator):
+from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
+
+class OpLabelPreviewer(OpGaussianSmoothing):
     name = "LabelPreviewer"
-    description = "Provides a Preview of the labels after gaussian smoothing"
 
-    inputSlots = [InputSlot("Labels"),
-                 InputSlot("Sigma", stype = "object")]
-    outputSlots = [OutputSlot("Output")]
 
-    def __init__(self, *args, **kwargs):
-        super(OpLabelPreviewer, self).__init__(*args, **kwargs)
-        self._svr = SVR()
-
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Labels.meta)
-        self.Output.meta.dtype = np.float32
-        self.Output.meta.drange = (0.0, 1.0)
-
-    @traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
-    def execute(self, slot, subindex, roi, result):
-        progress = 0
-        
-        key = roi.toSlice()
-        dot=self.Labels[key].wait()
-        self._svr.set_params(Sigma = self.Sigma.value)
-
-        result[...] = self._svr.smoothLabels(dot)[0]
-        return result
-    
-    def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty((slice(None)))
 
 class OpTrainCounter(Operator):
     name = "TrainCounter"
     description = "Train a random forest on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"),
+    inputSlots = [InputSlot("Images", level=1),
+                  InputSlot("ForegroundLabels", level=1), 
+                  InputSlot("BackgroundLabels", level=1),
+                  InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "object"), 
+                  InputSlot("Sigma", stype = "float"), 
                   InputSlot("Epsilon",  stype = "float"), 
                   InputSlot("C",  stype = "float"), 
                   InputSlot("SelectedOption", stype = "object"),
@@ -60,7 +41,7 @@ class OpTrainCounter(Operator):
                   InputSlot("BoxConstraintRois", level = 1, stype = "list", value = []),
                   InputSlot("BoxConstraintValues", level = 1, stype = "list", value = [])
                  ]
-    outputSlots = [OutputSlot("Classifier")]
+    outputSlots = [OutputSlot("Classifier"), OutputSlot("UpperBound")]
     options = SVR.options
     numRegressors = 4
 
@@ -87,9 +68,9 @@ class OpTrainCounter(Operator):
 
         self.fixClassifier.setValue(fix)
 
-
-
     def setupOutputs(self):
+        self.UpperBound.meta.dtype = np.float32
+        self.UpperBound.meta.shape = (1,)
         if self.inputs["fixClassifier"].value == False:
             method = self.SelectedOption.value
             if type(method) is dict:
@@ -111,7 +92,15 @@ class OpTrainCounter(Operator):
 
     #@traceLogged(logger, level=logging.INFO, msg="OpTrainCounter: Training Counting Regressor")
     def execute(self, slot, subindex, roi, result):
-        if slot == self.Classifier:
+
+        if slot != self.Classifier:
+                
+                sigma = self.Sigma.value
+                result[...] = 3 / (2 * math.pi * sigma**2)
+                return result
+
+        else:
+
             progress = 0
             numImages = len(self.Images)
             self.progressSignal(progress)
@@ -122,22 +111,26 @@ class OpTrainCounter(Operator):
             
             #result[0] = self._svr
 
-            for i,labels in enumerate(self.inputs["Labels"]):
+            for i,labels in enumerate(self.inputs["ForegroundLabels"]):
                 if labels.meta.shape is not None:
                     blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
                     
                     reqlistlabels = []
+                    reqlistbg = []
                     reqlistfeat = []
                     progress += 10 / numImages
                     self.progressSignal(progress)
                     
                     for b in blocks[0]:
+
                         request = labels[b]
                         featurekey = list(b)
                         featurekey[-1] = slice(None, None, None)
                         request2 = self.Images[i][featurekey]
+                        request3 = self.inputs["BackgroundLabels"][i][b]
                         reqlistlabels.append(request)
                         reqlistfeat.append(request2)
+                        reqlistbg.append(request3)
 
                     traceLogger.debug("Requests prepared")
 
@@ -156,6 +149,9 @@ class OpTrainCounter(Operator):
                     for ir, req in enumerate(reqlistlabels):
                         labblock = req.notify_finished(progressNotify)
 
+                    for ir, req in enumerate(reqlistbg):
+                        labbgblock = req.notify_finished(progressNotify)
+                    
                     traceLogger.debug("Requests fired")
                     
 
@@ -165,14 +161,17 @@ class OpTrainCounter(Operator):
                     for ir, req in enumerate(reqlistlabels):
                         
                         labblock = req.wait()
-                        if len(self.Sigma.value) > 1:
-                            labblock = labblock.reshape(labblock.shape[0:len(self.Sigma.value)])
+                        
                         image = reqlistfeat[ir].wait()
+                        labbgblock = reqlistbg[ir].wait()
                         labblock = labblock.reshape((image.shape[:-1]))
                         image = image.reshape((-1, image.shape[-1]))
+                        labbgindices = np.where(labbgblock == 2)            
+                        labbgindices = np.ravel_multi_index(labbgindices, labbgblock.shape)
                         
                         newDot, mapping, tags = \
-                        self._svr.prepareData(labblock, smooth = True)
+                        self._svr.prepareDataRefactored(labblock, labbgindices)
+                        #self._svr.prepareData(labblock, smooth = True)
 
                         labels   = newDot[mapping]
                         features = image[mapping]

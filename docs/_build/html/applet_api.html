@@ -99,11 +99,11 @@ In that case, the GUI is provided with an object that looks like this:</p>
 <h2>The Workflow Base Class<a class="headerlink" href="#the-workflow-base-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.workflow.Workflow">
-<em class="property">class </em><tt class="descclassname">ilastik.workflow.</tt><tt class="descname">Workflow</tt><big>(</big><em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.workflow.</tt><tt class="descname">Workflow</tt><big>(</big><em>shell</em>, <em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for all workflows.</p>
 <dl class="method">
 <dt id="ilastik.workflow.Workflow.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>shell</em>, <em>headless=False</em>, <em>workflow_cmdline_args=()</em>, <em>parent=None</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Constructor.  Subclasses MUST call this in their own <tt class="docutils literal"><span class="pre">__init__</span></tt> functions.
 The parent and graph parameters will be passed directly to the Operator base class. If both are None,
 a new Graph is instantiated internally.</p>
@@ -154,6 +154,13 @@ This slot is typically provided by the DataSelection applet via its ImageName sl
 <tt class="descname">onProjectLoaded</tt><big>(</big><em>projectManager</em><big>)</big><a class="headerlink" href="#ilastik.workflow.Workflow.onProjectLoaded" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called by the project manager after the project is loaded (deserialized).
 Extra workflow initialization be done here.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.workflow.Workflow.handleAppletStateUpdateRequested">
+<tt class="descname">handleAppletStateUpdateRequested</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.workflow.Workflow.handleAppletStateUpdateRequested" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when an applet has fired the <tt class="xref py py-attr docutils literal"><span class="pre">Applet.statusUpdateSignal</span></tt>
+Workflow subclasses should reimplement this method to enable/disable applet gui&#8217;s</p>
 </dd></dl>
 
 <dl class="method">
@@ -221,20 +228,24 @@ That is:
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.base.applet.Applet.guiControlSignal">
-<tt class="descname">guiControlSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="Permalink to this definition">¶</a></dt>
-<dd><p>GUI control signal
-See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)
-Signature: <tt class="docutils literal"><span class="pre">emit(command=ControlCommand.DisableAll)</span></tt></p>
-</dd></dl>
-
-<dl class="attribute">
 <dt id="ilastik.applets.base.applet.Applet.shellRequestSignal">
 <tt class="descname">shellRequestSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.shellRequestSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Shell request signal is used to trigger certain shell actions.
-Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt>
-where <tt class="docutils literal"><span class="pre">request</span></tt> is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the <a class="reference internal" href="#ilastik.applets.base.applet.ShellRequest" title="ilastik.applets.base.applet.ShellRequest"><tt class="xref py py-class docutils literal"><span class="pre">ShellRequest</span></tt></a> class.
+Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt></p>
+<blockquote>
+<div>where <tt class="docutils literal"><span class="pre">request</span></tt> is an integer corresponding to the action the shell should take.</div></blockquote>
+<p>The allowable actions are enumerated in the <a class="reference internal" href="#ilastik.applets.base.applet.ShellRequest" title="ilastik.applets.base.applet.ShellRequest"><tt class="xref py py-class docutils literal"><span class="pre">ShellRequest</span></tt></a> class.
 Example invocation: <tt class="docutils literal"><span class="pre">self.shellRequest.emit(ShellRequest.RequestSave)</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.appletStateUpdateRequested">
+<tt class="descname">appletStateUpdateRequested</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.appletStateUpdateRequested" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>This signal informs the workflow that something has changed that might</dt>
+<dd>affect the usability of various applets in the workflow.</dd>
+</dl>
+<p>Signature: <tt class="docutils literal"><span class="pre">emit()</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
@@ -259,43 +270,6 @@ Provides the applet&#8217;s GUI, which must be an instance of <a class="referenc
 <dd><p>A list of dataSerializer objects for loading/saving any project data the applet is responsible for.
 Each serializer must be an instance of <a class="reference internal" href="#ilastik.applets.base.appletSerializer.AppletSerializer" title="ilastik.applets.base.appletSerializer.AppletSerializer"><tt class="xref py py-class docutils literal"><span class="pre">AppletSerializer</span></tt></a>
 Subclasses should override this property.  By default, returns [].</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ilastik.applets.base.applet.ControlCommand">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.base.applet.</tt><tt class="descname">ControlCommand</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#ControlCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand" title="Permalink to this definition">¶</a></dt>
-<dd><p>This class enumerates the GUI control commands that applets can ask the shell to perform via <a class="reference internal" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="ilastik.applets.base.applet.Applet.guiControlSignal"><tt class="xref py py-attr docutils literal"><span class="pre">Applet.guiControlSignal</span></tt></a>.
-Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.</p>
-<dl class="attribute">
-<dt id="ilastik.applets.base.applet.ControlCommand.Pop">
-<tt class="descname">Pop</tt><em class="property"> = 0</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.Pop" title="Permalink to this definition">¶</a></dt>
-<dd><p>Undo the most recent command that the issuing applet sent</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.base.applet.ControlCommand.DisableAll">
-<tt class="descname">DisableAll</tt><em class="property"> = 1</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableAll" title="Permalink to this definition">¶</a></dt>
-<dd><p>Disable all applets in the workflow</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.base.applet.ControlCommand.DisableUpstream">
-<tt class="descname">DisableUpstream</tt><em class="property"> = 2</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableUpstream" title="Permalink to this definition">¶</a></dt>
-<dd><p>Disable applets that come before the applet that is issuing the command</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.base.applet.ControlCommand.DisableDownstream">
-<tt class="descname">DisableDownstream</tt><em class="property"> = 3</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableDownstream" title="Permalink to this definition">¶</a></dt>
-<dd><p>Disable applets that come after the applet that is issuing the command</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.base.applet.ControlCommand.DisableSelf">
-<tt class="descname">DisableSelf</tt><em class="property"> = 4</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableSelf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Disable the applet that is issuing the command</p>
 </dd></dl>
 
 </dd></dl>
@@ -511,6 +485,13 @@ Typically this consists of a layer list control.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setEnabled">
+<tt class="descname">setEnabled</tt><big>(</big><em>enabled</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setEnabled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.
+Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex">
 <tt class="descname">setImageIndex</tt><big>(</big><em>imageIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.setImageIndex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex" title="Permalink to this definition">¶</a></dt>
 <dd><p>Abstract method.
@@ -520,16 +501,16 @@ Note: Single-image GUIs do not need to provide this function.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneAdded">
-<tt class="descname">laneAdded</tt><big>(</big><em>laneIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.laneAdded"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneAdded" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.imageLaneAdded">
+<tt class="descname">imageLaneAdded</tt><big>(</big><em>laneIndex</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.imageLaneAdded" title="Permalink to this definition">¶</a></dt>
 <dd><p>Abstract method.
 Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
 Note: The default GUI provided by StandardApplet overrides this for you.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneRemoved">
-<tt class="descname">laneRemoved</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.laneRemoved"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneRemoved" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.imageLaneRemoved">
+<tt class="descname">imageLaneRemoved</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.imageLaneRemoved" title="Permalink to this definition">¶</a></dt>
 <dd><p>Abstract method.
 Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
 The GUI should clean up any resourecs it owns.
@@ -807,7 +788,7 @@ group.</td>
 
 <dl class="class">
 <dt id="ilastik.applets.base.appletSerializer.SerialListSlot">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialListSlot</tt><big>(</big><em>slot</em>, <em>inslot=None</em>, <em>name=None</em>, <em>subname=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>selfdepends=True</em>, <em>transform=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#SerialListSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialListSlot</tt><big>(</big><em>slot</em>, <em>inslot=None</em>, <em>name=None</em>, <em>subname=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>selfdepends=True</em>, <em>transform=None</em>, <em>store_transform=None</em>, <em>iterable=&lt;type 'list'&gt;</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#SerialListSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot" title="Permalink to this definition">¶</a></dt>
 <dd><p>As the name implies: used for serializing a list.</p>
 <p>The only differences from the base class are:</p>
 <ul class="simple">
@@ -817,7 +798,7 @@ group.</td>
 </ul>
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.SerialListSlot.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>slot</em>, <em>inslot=None</em>, <em>name=None</em>, <em>subname=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>selfdepends=True</em>, <em>transform=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#SerialListSlot.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>slot</em>, <em>inslot=None</em>, <em>name=None</em>, <em>subname=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>selfdepends=True</em>, <em>transform=None</em>, <em>store_transform=None</em>, <em>iterable=&lt;type 'list'&gt;</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#SerialListSlot.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

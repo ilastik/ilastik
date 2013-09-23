@@ -1,6 +1,7 @@
 import pgmlink
 import math
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
+from ilastik.applets.tracking.base.trackingUtilities import get_events
 
 class OpChaingraphTracking(OpTrackingBase): 
         
@@ -50,7 +51,7 @@ class OpChaingraphTracking(OpTrackingBase):
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
         
-        ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
+        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         
         if empty_frame:
             raise Exception, 'Cannot track frames with 0 objects, abort.'
@@ -76,13 +77,16 @@ class OpChaingraphTracking(OpTrackingBase):
             tracker.set_cplex_timeout(cplex_timeout)
             
         try:
-            self.events = tracker(ts)
+            eventsVector = tracker(ts)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
-        if len(self.events) == 0:
+        if len(eventsVector) == 0:
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
-        self.Parameters.setValue(parameters, check_changed=False)        
-        self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range, successive_ids=True)
+        events = get_events(eventsVector)
+        
+        self.Parameters.setValue(parameters, check_changed=False)
+        self.EventsVector.setValue(events, check_changed=False)
+#         self._setLabel2Color()
         

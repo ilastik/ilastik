@@ -16,8 +16,8 @@ def extend_arg_parser(parser):
     """
     Add all monkey_patch options to the given arg parser.
     """
-    for option, help in monkey_patch_options.items():
-        parser.add_argument('--' + option, help=help, required=False)
+    for option, optact in monkey_patch_options.items():
+        parser.add_argument('--' + option, help=optact.help, required=False)
 
 def apply_args(args):
     """

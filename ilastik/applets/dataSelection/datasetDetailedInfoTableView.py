@@ -6,7 +6,7 @@ from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
 
-    replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex)
+    replaceWithFileRequested = pyqtSignal(int) # Signature: (laneIndex), or (-1) to indicate "append requested"
     replaceWithStackRequested = pyqtSignal(int) # Signature: (laneIndex)
     editRequested = pyqtSignal(object) # Signature: (lane_index_list)
     resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
@@ -104,6 +104,13 @@ class DatasetDetailedInfoTableView(QTableView):
     def mouseDoubleClickEvent(self, event):
         col = self.columnAt( event.pos().x() )
         row = self.rowAt( event.pos().y() )
+
+        # If the user double-clicked an empty table,
+        #  we behave as if she clicked the "add file" button.
+        if self.model().rowCount() == 0:
+            # In this case -1 means "append a row"
+            self.replaceWithFileRequested.emit(-1)
+            return
 
         if not ( 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() ):
             return

@@ -24,7 +24,7 @@ def run_shell_nosetest(filename):
     Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
     """
     # This only works from the main thread.
-    assert threading.current_thread() == threading.enumerate()[0]
+    assert threading.current_thread().getName() == "MainThread"
 
     def run_nose():
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
@@ -63,7 +63,7 @@ class ShellGuiTestCaseBase(object):
         def createApp():
             # Create the application in the current thread.
             # The current thread is now the application main thread.
-            assert threading.current_thread() == threading.enumerate()[0], "Error: app must be created in the main thread."
+            assert threading.current_thread().getName() == "MainThread", "Error: app must be created in the main thread."
             ShellGuiTestCaseBase.app = QApplication([])
             app = ShellGuiTestCaseBase.app
             

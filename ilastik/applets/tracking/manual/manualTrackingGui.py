@@ -40,6 +40,10 @@ class ManualTrackingGui(LayerViewerGui):
     
     def initAppletDrawerUi(self):        
         self._drawer = self._loadUiFile()
+        
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            self._drawer.exportTifButton.hide()            
+            
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)

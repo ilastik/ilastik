@@ -400,7 +400,7 @@ class DataSelectionGui(QWidget):
         """
         infos = []
 
-        if startingLane is None:        
+        if startingLane is None or startingLane == -1:
             startingLane = self._findFirstEmptyLane(roleIndex)
             endingLane = startingLane+len(fileNames)-1
         else:

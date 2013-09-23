@@ -353,7 +353,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         
         # Classifier and LabelsCount are provided by the interactive workflow
         opBatchPixelPredictionPipeline.Classifier.connect( opPixelClassify.Classifier )
-        opBatchPixelPredictionPipeline.MaxLabel.connect( opPixelClassify.MaxLabelValue )
+        opBatchPixelPredictionPipeline.NumClasses.connect( opPixelClassify.NumClasses )
         opBatchPixelPredictionPipeline.FreezePredictions.setValue( False )
                 
         # Connect Image pathway:
