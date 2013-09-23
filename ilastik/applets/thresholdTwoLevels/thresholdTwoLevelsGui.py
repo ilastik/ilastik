@@ -122,6 +122,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
         block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
+        if (block_shape_dict['x']<0.1) != (block_shape_dict['y']<0.1):
+            mexBox = QMessageBox()
+            mexBox.setText("One of the smoothing sigma values is 0. Reset it to a value > 0.1 or set all sigmas to 0 for no smoothing.")
+            mexBox.exec_()
+            return
 
         # Read Thresholds
         singleThreshold = self._drawer.thresholdSpinBox.value()

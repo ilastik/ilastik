@@ -85,6 +85,11 @@ class OpAnisotropicGaussianSmoothing(Operator):
             spatialkeys = filter( lambda k: k in 'xy', axiskeys )
                 
         sigma = map( self._sigmas.get, spatialkeys )
+        #Check if we need to smooth
+        if any([x<0.1 for x in sigma]):
+            result[tuple(reskey)]=data
+            return result
+            
         # Smooth the input data
         smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[tuple(reskey)]) # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
