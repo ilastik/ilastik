@@ -30,6 +30,9 @@ class ValueRequest(object):
     def wait(self):
         return self.result
 
+    def block(self):
+        pass
+
     def submit(self):
         pass
 
