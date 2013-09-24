@@ -135,7 +135,6 @@ class TestOpValueCache(object):
     def test_basic(self):
         graph = lazyflow.graph.Graph()
         op = OpValueCache(graph=graph)
-        assert not op._dirty
         op.Input.setValue('Hello')
         assert op._dirty
         assert op.Output.value == 'Hello'
