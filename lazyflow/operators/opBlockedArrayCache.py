@@ -12,6 +12,7 @@ import numpy
 from lazyflow.roi import roiToSlice
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
+from lazyflow.request import RequestPool
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
@@ -153,7 +154,7 @@ class OpBlockedArrayCache(OpCache):
         blockKey = roiToSlice(blockStart,blockStop)
         innerBlocks = self._blockNumbers[blockKey]
 
-        requests = []
+        pool = RequestPool()
         for b_ind in innerBlocks.flat:
             #which part of the original key does this block fill?
             offset = self._blockShape*self._flatBlockIndices[b_ind]
@@ -197,9 +198,7 @@ class OpBlockedArrayCache(OpCache):
                 smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
                 req = op.Output(smallroi.start, smallroi.stop)
                 req.writeInto(result[bigkey])
-                # FIXME: These requests are not being executed in parallel!
-                #        This wait() should be moved outside the loop.
-                req.wait()
+                pool.add( req )
                 #op.execute(op.outputs["Output"], (), smallroi, result[bigkey])
 
                 ####op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
@@ -215,8 +214,7 @@ class OpBlockedArrayCache(OpCache):
                     # Otherwise, downstream operators won't know when there's valid data in this block.
                     self._fixed_dirty_blocks.add(b_ind)
 
-        for r in requests:
-            r.wait()
+        pool.wait()
             
         self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
 
