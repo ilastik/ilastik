@@ -125,6 +125,8 @@ class TestBasics(unittest.TestCase):
 
 class TestDetection(unittest.TestCase):
     def setUp(self):
+        import nose
+        raise nose.SkipTest
         v = _volume()
         self.op = OpDetectMissing(graph=Graph())
         self.op.InputVolume.setValue(v)
@@ -445,6 +447,8 @@ class TestInterpMissingData(unittest.TestCase):
     '''
 
     def setUp(self):
+        import nose
+        raise nose.SkipTest
         g = Graph()
         op = OpInterpMissingData(graph=g)
         op.DetectionMethod.setValue('svm')
