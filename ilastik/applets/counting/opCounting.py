@@ -359,8 +359,16 @@ class OpCounting( Operator ):
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
-                "Your new image has {} has z dimension"\
+                "Your new image has {} z dimension"\
                 .format( thisLaneTaggedShape['z']))
+                # Find a different lane and use it for comparison
+        
+        if thisLaneTaggedShape.has_key('t'):
+            raise DatasetConstraintError(
+                "Objects Counting Workflow",
+                "All input images must be 2D (they cannot contain the t dimension).  "\
+                "Your new image has {} t dimension"\
+                .format( thisLaneTaggedShape['t']))
                 # Find a different lane and use it for comparison
         
         validShape = thisLaneTaggedShape
