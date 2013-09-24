@@ -6,6 +6,7 @@ import numpy as np
 import time
 import copy
 import math
+import importlib
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
@@ -15,10 +16,20 @@ from lazyflow.operators import OpPixelOperator
 
 from ilastik.applets.counting.countingsvr import SVR
 
+
+
 from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
 
 class OpLabelPreviewer(OpGaussianSmoothing):
     name = "LabelPreviewer"
+
+def checkOption(reqlist):
+    for req in reqlist:
+        try:
+            importlib.import_module(req)
+        except:
+            return False
+    return True
 
 
 
@@ -43,6 +54,7 @@ class OpTrainCounter(Operator):
                  ]
     outputSlots = [OutputSlot("Classifier"), OutputSlot("UpperBound")]
     options = SVR.options
+    availableOptions = [checkOption(option["req"]) for option in SVR.options]
     numRegressors = 4
 
     def __init__(self, *args, **kwargs):
@@ -290,6 +302,8 @@ class OpTrainCounter(Operator):
         
         return boxConstraints
 
+if not any(OpTrainCounter.availableOptions):
+    raise ImportError("None of the implemented methods are available")
 
 
 

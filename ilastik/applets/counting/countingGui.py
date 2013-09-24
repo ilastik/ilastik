@@ -3,6 +3,7 @@ import os
 import logging
 import threading
 from functools import partial
+import importlib
 
 # Third-party
 import numpy
@@ -337,7 +338,6 @@ class CountingGui(LabelingGui):
         for option in self.op.options:
             if "req" in option.keys():
                 try:
-                    import importlib
                     for req in option["req"]:
                         importlib.import_module(req)
                 except:
