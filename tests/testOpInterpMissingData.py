@@ -3,10 +3,12 @@ from lazyflow.graph import Graph
 import numpy as np
 import vigra
 from lazyflow.operators.opInterpMissingData import OpInterpMissingData, \
-        OpInterpolate, OpDetectMissing
+        OpInterpolate, OpDetectMissing, havesklearn
 
 import unittest
 from numpy.testing import assert_array_almost_equal, assert_array_equal
+
+from nose import SkipTest
 
 try:
     from scipy.interpolate import UnivariateSpline
@@ -14,19 +16,13 @@ try:
 except ImportError:
     haveScipy = False
 
-try:
-    import sklearn
-    havesklearn = True
-except ImportError:
-    havesklearn = False
-
 np.set_printoptions(precision=3, linewidth=80)
 
-_testDescriptions = ['large block empty', 'single layer empty', 'last layer empty', 'first block empty', \
-                    'second to last layer empty', 'second layer empty', 'first layer empty', \
-                    'multiple blocks empty', 'all layers empty', \
-                    'different regions empty', \
-                    ]
+_testDescriptions = ['large block empty', 'single layer empty',
+                     'last layer empty', 'first block empty',
+                     'second to last layer empty', 'second layer empty',
+                     'first layer empty', 'multiple blocks empty',
+                     'all layers empty', 'different regions empty']
 
 
 def _getTestVolume(description, method):
@@ -119,14 +115,13 @@ class TestBasics(unittest.TestCase):
     def testVersionDetection(self):
         from lazyflow.operators.opDetectMissingData import extractVersion
         assert extractVersion("0.11") == 11
+        assert extractVersion("0.14.1") == 14
         assert extractVersion("haiku_os-0.9") == 9
         assert extractVersion("0.21-git") == 21
 
 
 class TestDetection(unittest.TestCase):
     def setUp(self):
-        import nose
-        raise nose.SkipTest
         v = _volume()
         self.op = OpDetectMissing(graph=Graph())
         self.op.InputVolume.setValue(v)
@@ -137,7 +132,7 @@ class TestDetection(unittest.TestCase):
 
     def testDetectorOmnipresence(self):
         if not havesklearn:
-            return
+            raise SkipTest
         assert self.op.has(self.op.NHistogramBins.value, method='svm'), "Detector is untrained after call to train()"
         assert not self.op.has(self.op.NHistogramBins.value+2, method='svm'), "Wrong bin size trained."
         
@@ -152,7 +147,7 @@ class TestDetection(unittest.TestCase):
     
     def testDetectorPropagation(self):
         if not havesklearn:
-            return
+            raise SkipTest
         s = self.op.Detector[:].wait()
         self.op.reset()
         assert not self.op.has(self.op.NHistogramBins.value, method='svm'), "Detector not reset."
@@ -174,7 +169,7 @@ class TestDetection(unittest.TestCase):
                             
     def testSVMDetection(self):
         if not havesklearn:
-            return
+            raise SkipTest
         self.op.DetectionMethod.setValue('svm')
         self.op.PatchSize.setValue(1)
         self.op.HaloSize.setValue(0)
@@ -189,7 +184,7 @@ class TestDetection(unittest.TestCase):
     def testSVMDetectionWithHalo(self):
         nBlack = 15
         if not havesklearn:
-            return
+            raise SkipTest
         self.op.DetectionMethod.setValue('svm')
         self.op.PatchSize.setValue(5)
         self.op.HaloSize.setValue(2)
@@ -203,7 +198,7 @@ class TestDetection(unittest.TestCase):
                             
     def testSVMWithHalo(self):
         if not havesklearn:
-            return
+            raise SkipTest
         self.op.DetectionMethod.setValue('svm')
         self.op.PatchSize.setValue(2)
         self.op.HaloSize.setValue(1)
@@ -447,8 +442,6 @@ class TestInterpMissingData(unittest.TestCase):
     '''
 
     def setUp(self):
-        import nose
-        raise nose.SkipTest
         g = Graph()
         op = OpInterpMissingData(graph=g)
         op.DetectionMethod.setValue('svm')
@@ -459,7 +452,7 @@ class TestInterpMissingData(unittest.TestCase):
 
     def testDetectorPropagation(self):
         if not havesklearn:
-            return
+            raise SkipTest
         method = 'svm'
         self.op.DetectionMethod.setValue(method)
         v = _volume()
@@ -567,11 +560,11 @@ class TestInterpMissingData(unittest.TestCase):
     
     def testBadImageSize(self):
         #TODO implement
-        pass
+        raise SkipTest
     
     def testHaloSize(self):
         #TODO implement
-        pass
+        raise SkipTest
     
     def test4D(self):
         vol = vigra.VigraArray( np.ones((10,64,64,3)), axistags=vigra.defaultAxistags('cxyz') )
