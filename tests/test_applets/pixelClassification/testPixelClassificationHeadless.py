@@ -102,6 +102,8 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         # Add some labels directly to the operator
         opPixelClass = workflow.pcApplet.topLevelOperator
 
+        opPixelClass.LabelNames.setValue(['Label 1', 'Label 2'])
+
         slicing1 = sl[0:1,0:10,0:10,0:1,0:1]
         labels1 = 1 * numpy.ones(slicing2shape(slicing1), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing1] = labels1
