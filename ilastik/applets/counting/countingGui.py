@@ -425,6 +425,7 @@ class CountingGui(LabelingGui):
         self.editor.crosshairControler.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
+        self.op.opUpperBound.Sigma.setValue(sigma)
         self.op.LabelPreviewer.Sigma.setValue(sigma)
         #    self._changedSigma = False
         self._normalizeLayers()
@@ -441,6 +442,8 @@ class CountingGui(LabelingGui):
     def _normalizePrediction(self, *args):
         if hasattr(self, "predictionLayer") and hasattr(self, "upperBound"):
             self.predictionLayer.set_normalize(0,(0,self.upperBound))
+        if hasattr(self, "uncertaintyLayer") and hasattr(self, "upperBound"):
+            self.uncertaintyLayer.set_normalize(0,(0,self.upperBound))
 
 
     def _updateEpsilon(self):
@@ -655,6 +658,8 @@ class CountingGui(LabelingGui):
                 self.labelPreviewLayer = layer
             if layer.name == "Prediction":
                 self.predictionLayer = layer
+            if layer.name == "Uncertainty":
+                self.uncertaintyLayer = layer
 
 
 
