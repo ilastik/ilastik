@@ -32,7 +32,7 @@ import threading
 
 import time
 
-DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the 
+DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
 def mainthreadonly(func):
@@ -434,7 +434,7 @@ class RedRubberBand(QRubberBand):
 
     def paintEvent(self,pe):
         painter=QtGui.QStylePainter(self)
-        pen=QPen(QColor("red"),50)
+        pen=QPen(QColor("red"),4)
         painter.setPen(pen)
         painter.drawRect(pe.rect())
 
@@ -495,11 +495,11 @@ class CoupledRectangleElement(object):
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized
         '''
-        
+
         time.sleep(DELAY*0.001)
-        
-        
-        #FIXME: Workaround: when the array is resized over the border of the image scene the 
+
+
+        #FIXME: Workaround: when the array is resized over the border of the image scene the
         # region get a wrong size
         try:
             subarray=self.getSubRegion()
@@ -516,7 +516,7 @@ class CoupledRectangleElement(object):
                 self.boxLabel.density=QString("%.1f"%value)
         except:
             pass
-            
+
     def getOpsub(self):
         return self._opsub
 
@@ -544,7 +544,7 @@ class CoupledRectangleElement(object):
 
         rect=self._rectItem
         newstart=self._rectItem.dataPos()
-    
+
         stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
         return stop
 
@@ -566,8 +566,8 @@ class CoupledRectangleElement(object):
         self._opsub.Start.disconnect()
         self._opsub.Start.setValue(tuple(start))
         self._opsub.Stop.setValue(tuple(stop))
-        
-        
+
+
         return self._opsub.outputs["Output"][:].wait()
 
     @property
