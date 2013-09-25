@@ -81,7 +81,7 @@ class ShellGuiTestCaseBase(object):
         
         # If nose was run from the main thread, exit now.
         # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
-        if threading.current_thread() == threading.enumerate()[0]:
+        if threading.current_thread().getName() == "MainThread":
             # Don't run GUI tests in the main thread.
             sys.stderr.write( "NOSE WAS RUN FROM THE MAIN THREAD.  SKIPPING GUI TEST\n" )
             raise nose.SkipTest
