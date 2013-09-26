@@ -15,6 +15,9 @@ class Timer(object):
         """
         Creates a paused timer.  Call `unpause()` to start the timer.
         """
+        self.reset()
+    
+    def reset(self):
         self.paused = True
         self.start_time = None
         self.stop_time = None
@@ -77,8 +80,9 @@ def timed(func):
     prev_run_timer = Timer()
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        prev_run_timer.reset()
         with prev_run_timer:
-            return func(*args, **kwargs)    
+            return func(*args, **kwargs)
 
     wrapper.prev_run_timer = prev_run_timer
     wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
@@ -139,6 +143,7 @@ if __name__ == "__main__":
 
     print "Calling..."
     
+    myfunc(2)
     myfunc(2)
     print "Finished."
     
