@@ -11,7 +11,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 import ilastik
-from ilastik.utility.timer import timeLogged
+from lazyflow.utility.timer import timeLogged
 from ilastik.utility.slicingtools import sl, slicing2shape
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell

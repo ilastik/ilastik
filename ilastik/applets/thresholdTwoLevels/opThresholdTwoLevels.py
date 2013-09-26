@@ -17,7 +17,7 @@ from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabe
 from lazyflow.roi import extendSlice, TinyVector
 
 # ilastik
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from PyQt4.QtGui import QApplication
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 
-from ilastik.utility.timer import Timer, timeLogged
+from lazyflow.utility.timer import Timer, timeLogged
 
 from tests.helpers import ShellGuiTestCaseBase
 
