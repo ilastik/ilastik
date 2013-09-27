@@ -275,14 +275,24 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         if constrainAxis == 0:
             h,w = size, self.rect().width()
+
+
         else:
             h,w = self.rect().height(), size
         self.width=w
         self.height=h
         self.shape=(h,w)
 
-        #FIXME: ensure rect in the scene after resizing
+
         newrect=QtCore.QRectF(0, 0, w, h)
+
+
+        #Ensures that the text is in the upper left corner
+        a=0
+        b=0
+        if w<=0: a=w
+        if h<=0: b=h
+        self.textItem.setPos(QtCore.QPointF(a,b))
 
         self.setRect(newrect)
 
@@ -291,6 +301,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         for el in self._resizeHandles:
             el.resetOffset(el._constrainAxis,newshape=self.shape)
+
 
         self.Signaller.signalHasResized.emit()
 
@@ -1145,7 +1156,7 @@ if __name__=="__main__":
 
 
     BoxContr=BoxController(mainwin.editor.imageScenes[2],op.Output,boxListModel)
-    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor._posModel,BoxContr,mainwin.centralWidget())
+    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,BoxContr,mainwin.centralWidget())
 
 
     mainwin.editor.setNavigationInterpreter(BoxInt)
