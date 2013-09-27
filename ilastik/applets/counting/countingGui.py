@@ -979,6 +979,7 @@ class CountingGui(LabelingGui):
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Paint:
                 # If necessary, tell the brushing model to stop erasing
@@ -992,7 +993,7 @@ class CountingGui(LabelingGui):
 
                 # update GUI
                 self._gui_setBrushing()
-
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Erase:
 
@@ -1004,13 +1005,17 @@ class CountingGui(LabelingGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI
                 self._gui_setErasing()
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Box:
+
+                self.setCursor(Qt.CrossCursor)
                 self._labelControlUi.labelListModel.clearSelectionModel()
                 for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=False
 
-                QApplication.setOverrideCursor(Qt.CrossCursor)
+                #self.setOverrideCursor(Qt.CrossCursor)
+                #QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(self.boxInterpreter)
                 self._gui_setBox()
