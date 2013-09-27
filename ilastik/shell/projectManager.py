@@ -3,6 +3,7 @@ import gc
 import copy
 import h5py
 import logging
+import time
 logger = logging.getLogger(__name__)
 
 import traceback
@@ -74,6 +75,7 @@ class ProjectManager(object):
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
         h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
+        h5File.create_dataset("time", data = time.ctime())
         if workflow_class is not None:
             h5File.create_dataset("workflowName", data=workflow_class.__name__)
         if workflow_cmdline_args is not None and len(workflow_cmdline_args) > 0:
@@ -223,6 +225,12 @@ class ProjectManager(object):
             traceback.print_exc()
             raise ProjectManager.SaveError( str(err) )
         finally:
+            # save current time
+            try:
+                del self.currentProjectFile["time"]
+            except:
+                pass
+            self.currentProjectFile.create_dataset("time", data = time.ctime())
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
             
@@ -262,6 +270,13 @@ class ProjectManager(object):
                 traceback.print_exc()
                 raise ProjectManager.SaveError(str(err))
             finally:
+                 # save current time
+                try:
+                    del snapshotFile["time"]
+                except:
+                    pass
+                snapshotFile.create_dataset("time", data = time.ctime())
+
                 # Flush any changes we made to disk, but don't close the file.
                 snapshotFile.flush()
                 
