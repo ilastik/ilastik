@@ -155,7 +155,8 @@ class OpRegionFeatures3d(Operator):
     def execute(self, slot, subindex, roi, result):
         assert len(roi.start) == len(roi.stop) == len(self.Output.meta.shape)
         assert slot == self.Output
-
+        import time
+        start = time.time()
         # Process ENTIRE volume
         rawVolume = self.RawVolume[:].wait()
         labelVolume = self.LabelVolume[:].wait()
@@ -175,6 +176,8 @@ class OpRegionFeatures3d(Operator):
         assert np.prod(roi.stop - roi.start) == 1
         acc = self._extract(rawVolume4d, labelVolume4d)
         result[tuple(roi.start)] = acc
+        stop = time.time()
+        print "TIMING: computing features took:", stop-start
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):

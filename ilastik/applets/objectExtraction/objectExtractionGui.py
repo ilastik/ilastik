@@ -198,8 +198,9 @@ class ObjectExtractionGui(LayerViewerGui):
             layer.opacity = 0.5
             layers.append(layer)
 
-        # white foreground on transparent background
-        binct = [0, QColor(255, 255, 255, 255).rgba()]
+        # white foreground on transparent background, even for labeled images
+        binct = [QColor(255, 255, 255, 255).rgba()]*65536
+        binct[0] = 0
         if mainOperator.BinaryImage.ready():
             self.binaryimagesrc = LazyflowSource(mainOperator.BinaryImage)
             self.binaryimagesrc.setObjectName("Binary LazyflowSrc")

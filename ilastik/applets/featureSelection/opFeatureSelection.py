@@ -53,12 +53,13 @@ class OpFeatureSelectionNoCache(Operator):
         # Create the operator that actually generates the features
         if filter_implementation == 'Original':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Original(parent=self)
+            logger.info("Using ORIGINAL filters")
         elif filter_implementation == 'Refactored':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Refactored(parent=self)
         elif filter_implementation == 'Interpolated':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
             self.opPixelFeatures.InterpolationScaleZ.setValue(2)
-            logger.info("Using interpolated filters")
+            logger.info("Using INTERPOLATED filters")
         else:
             raise RuntimeError("Unknown filter implementation option: {}".format( filter_implementation ))
 

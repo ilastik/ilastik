@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>292</width>
+    <width>307</width>
     <height>325</height>
    </rect>
   </property>
@@ -68,7 +68,7 @@
         <number>1</number>
        </property>
        <property name="minimum">
-        <double>0.100000000000000</double>
+        <double>0.000000000000000</double>
        </property>
        <property name="maximum">
         <double>100.000000000000000</double>
@@ -90,7 +90,7 @@
         <number>1</number>
        </property>
        <property name="minimum">
-        <double>0.100000000000000</double>
+        <double>0.000000000000000</double>
        </property>
        <property name="maximum">
         <double>100.000000000000000</double>
@@ -112,7 +112,7 @@
         <number>1</number>
        </property>
        <property name="minimum">
-        <double>0.100000000000000</double>
+        <double>0.000000000000000</double>
        </property>
        <property name="maximum">
         <double>100.000000000000000</double>
@@ -259,28 +259,6 @@
     </layout>
    </item>
    <item>
-    <widget class="QCheckBox" name="showDebugCheckbox">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show intermediate computation results, such as the segmented objects after thresholding, but before size filter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Show intermediate results</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_4">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reason for the recomputation is that objects change shape if you change the settings of this applet. The object features have to be recalculated accordingly. Besides, if you have already annotated objects in one of the downstream applets, their labels have to be transfered to the new objects.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>If you already have something computed,
-changing the settings here will cause
-recomputation and might take a while </string>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QPushButton" name="applyButton">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply all the settings and compute results. If you want to see the final filtering results, don't forget to enable the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Final output&amp;quot;&lt;/span&gt; layer in the layer selection widget.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -290,13 +268,54 @@ recomputation and might take a while </string>
      </property>
     </widget>
    </item>
+   <item>
+    <widget class="QLabel" name="label_4">
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reason for the recomputation is that objects change shape if you change the settings of this applet. The object features have to be recalculated accordingly. Besides, if you have already annotated objects in one of the downstream applets, their labels have to be transfered to the new objects.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>If you already have something computed,
+changing the settings here will cause
+recomputation and might take a while.</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="showDebugCheckbox">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show intermediate computation results, such as the segmented objects after thresholding, but before size filter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Show intermediate results</string>
+     </property>
+    </widget>
+   </item>
   </layout>
-  <zorder>label_4</zorder>
-  <zorder>applyButton</zorder>
   <zorder>tabWidget</zorder>
   <zorder></zorder>
   <zorder>showDebugCheckbox</zorder>
+  <zorder>applyButton</zorder>
+  <zorder>label_4</zorder>
  </widget>
+ <tabstops>
+  <tabstop>inputChannelSpinBox</tabstop>
+  <tabstop>sigmaSpinBox_X</tabstop>
+  <tabstop>sigmaSpinBox_Y</tabstop>
+  <tabstop>sigmaSpinBox_Z</tabstop>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>thresholdSpinBox</tabstop>
+  <tabstop>lowThresholdSpinBox</tabstop>
+  <tabstop>highThresholdSpinBox</tabstop>
+  <tabstop>minSizeSpinBox</tabstop>
+  <tabstop>maxSizeSpinBox</tabstop>
+  <tabstop>showDebugCheckbox</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

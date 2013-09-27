@@ -3,6 +3,7 @@ import os
 import logging
 import threading
 from functools import partial
+import importlib
 
 # Third-party
 import numpy
@@ -123,10 +124,10 @@ class CountingGui(LabelingGui):
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames
-        
-        
-        
-        
+
+
+
+
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
@@ -337,7 +338,6 @@ class CountingGui(LabelingGui):
         for option in self.op.options:
             if "req" in option.keys():
                 try:
-                    import importlib
                     for req in option["req"]:
                         importlib.import_module(req)
                 except:
@@ -425,6 +425,7 @@ class CountingGui(LabelingGui):
         self.editor.crosshairControler.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
+        self.op.opUpperBound.Sigma.setValue(sigma)
         self.op.LabelPreviewer.Sigma.setValue(sigma)
         #    self._changedSigma = False
         self._normalizeLayers()
@@ -435,12 +436,14 @@ class CountingGui(LabelingGui):
 
             if hasattr(self, "labelPreviewLayer"):
                 self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return 
+            return
 
 
     def _normalizePrediction(self, *args):
         if hasattr(self, "predictionLayer") and hasattr(self, "upperBound"):
             self.predictionLayer.set_normalize(0,(0,self.upperBound))
+        if hasattr(self, "uncertaintyLayer") and hasattr(self, "upperBound"):
+            self.uncertaintyLayer.set_normalize(0,(0,self.upperBound))
 
 
     def _updateEpsilon(self):
@@ -655,6 +658,8 @@ class CountingGui(LabelingGui):
                 self.labelPreviewLayer = layer
             if layer.name == "Prediction":
                 self.predictionLayer = layer
+            if layer.name == "Uncertainty":
+                self.uncertaintyLayer = layer
 
 
 
@@ -1035,8 +1040,6 @@ class CountingGui(LabelingGui):
 
 
     def _onBoxSelected(self, row):
-        print "switching to box=%r" % (self._labelControlUi.boxListModel[row])
-        print "row = ",row
         logger.debug("switching to label=%r" % (self._labelControlUi.boxListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
@@ -1047,7 +1050,6 @@ class CountingGui(LabelingGui):
 
 
     def _onLabelSelected(self, row):
-        print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
 
@@ -1072,12 +1074,14 @@ class CountingGui(LabelingGui):
         if row==0: #foreground
 
             self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._labelControlUi.SigmaBox.setEnabled(True)
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
         else:
             if not hasattr(self, "_cachedBrushSizeIndex"):
                 self._cachedBrushSizeIndex=0
 
+            self._labelControlUi.SigmaBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(self._cachedBrushSizeIndex)
 
 

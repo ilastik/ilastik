@@ -6,7 +6,7 @@ from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
-from ilastik.utility.timer import Timer, timeLogged
+from lazyflow.utility.timer import Timer, timeLogged
 
 from tests.helpers import ShellGuiTestCaseBase
 

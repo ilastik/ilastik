@@ -13,7 +13,7 @@ from lazyflow.utility import BigRequestStreamer
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 
 from ilastik.clusterConfig import parseClusterConfigFile
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 from ilastik.utility.pathHelpers import getPathVariants
 
 import logging

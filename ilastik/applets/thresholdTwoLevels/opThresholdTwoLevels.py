@@ -17,7 +17,7 @@ from lazyflow.operators import OpMultiArraySlicer2, OpPixelOperator, OpVigraLabe
 from lazyflow.roi import extendSlice, TinyVector
 
 # ilastik
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,11 @@ class OpAnisotropicGaussianSmoothing(Operator):
             spatialkeys = filter( lambda k: k in 'xy', axiskeys )
                 
         sigma = map( self._sigmas.get, spatialkeys )
+        #Check if we need to smooth
+        if any([x<0.1 for x in sigma]):
+            result[tuple(reskey)]=data
+            return result
+            
         # Smooth the input data
         smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[tuple(reskey)]) # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
@@ -227,7 +232,7 @@ class OpThresholdTwoLevels(Operator):
     RawInput = InputSlot(optional=True) # Display only
     
     InputImage = InputSlot()
-    MinSize = InputSlot(stype='int', value=0)
+    MinSize = InputSlot(stype='int', value=10)
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
@@ -464,7 +469,7 @@ class OpThresholdTwoLevels4d(Operator):
         self._opFinalLabelSizeFilter.Input.connect(self._opSelectLabels.Output )
         self._opFinalLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
-        self._opFinalLabelSizeFilter.BinaryOut.setValue(True)
+        self._opFinalLabelSizeFilter.BinaryOut.setValue(False)
 
         self._opCache = OpCompressedCache( parent=self )
         self._opCache.InputHdf5.connect( self.InputHdf5 )
@@ -567,7 +572,7 @@ class OpThresholdOneLevel(Operator):
         self._opFilter.Input.connect(self._opLabelCache.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
-        self._opFilter.BinaryOut.setValue(True)
+        self._opFilter.BinaryOut.setValue(False)
         
         self.Output.connect(self._opFilter.Output)
         

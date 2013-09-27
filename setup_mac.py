@@ -13,9 +13,14 @@ includes = [\
                 'site', 'os',
                 'vtk',
                 'vtk.vtkCommonPythonSIP',
+                'sklearn', 'sklearn.utils',
              ]
 
-OPTIONS = {'argv_emulation': False, 'includes':includes, 'iconfile' : 'appIcon.icns' }
+# The py2app dependency walker finds this code, which is intended only for Python3.
+# Exclude it!
+excludes= ['PyQt4.uic.port_v3']
+
+OPTIONS = {'argv_emulation': False, 'includes':includes, 'excludes':excludes, 'iconfile' : 'appIcon.icns' }
 
 packages=find_packages(exclude=["tests", "tests.*"])
 package_data={'ilastik': ['ilastik-splash.png',
@@ -50,6 +55,17 @@ class volumina_recipe(object):
             packages=['volumina']
         )
 
+class lazyflow_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('lazyflow')
+        if m is None:
+            return None
+
+        # Don't put lazyflow in the site-packages.zip file
+        return dict(
+            packages=['lazyflow']
+        )
+
 class vtk_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('vtk')
@@ -61,10 +77,23 @@ class vtk_recipe(object):
             packages=['vtk']
         )
 
+class sklearn_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('sklearn')
+        if m is None:
+            return None
+
+        # Don't put sklearn in the site-packages.zip file
+        return dict(
+            packages=['sklearn']
+        )
+
 import py2app.recipes
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
+py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
+py2app.recipes.sklearn = sklearn_recipe()
 
 setup(
     app=APP,

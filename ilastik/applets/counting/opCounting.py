@@ -2,6 +2,7 @@
 import copy
 from functools import partial
 import itertools
+import math
 
 #SciPy
 import numpy
@@ -34,7 +35,6 @@ class OpVolumeOperator(Operator):
     blockShape = InputSlot(value = DefaultBlockSize)
 
     def setupOutputs(self):
-        print "setupOutputsVolume"
         testInput = numpy.ones((3,3))
         testFun = self.Function.value
         testOutput = testFun(testInput)
@@ -47,7 +47,6 @@ class OpVolumeOperator(Operator):
 
 
     def execute(self, slot, subindex, roi, result):
-        print "ExecuteVolume"
         with self._lock:
             if self.cache is None:
                 fullBlockShape = numpy.array([self.blockShape.value for i in self.Input.meta.shape])
@@ -82,11 +81,31 @@ class OpVolumeOperator(Operator):
             return self.cache
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateVolume"
         key = roi.toSlice()
         if slot == self.Input or slot == self.Function:
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
+
+class OpUpperBound(Operator):
+    name = "OpUpperBound"
+    description = "Calculate the upper bound of the data for correct normalization of the output"
+    inputSlots = [InputSlot("Sigma", stype = "float")]
+    outputSlots = [OutputSlot("UpperBound")]
+
+    def setupOutputs(self):
+        self.UpperBound.meta.dtype = numpy.float32
+        self.UpperBound.meta.shape = (1,)
+
+    def execute(self, slot, subindex, roi, result):
+            
+        sigma = self.Sigma.value
+        result[...] = 3 / (2 * math.pi * sigma**2)
+        return result
+    
+    def propagateDirty(self, slot, subindex, roi):
+        key = roi.toSlice()
+        self.UpperBound.setDirty( key[:-1] )
+
 
 class OpMean(Operator):
 
@@ -112,7 +131,6 @@ class OpMean(Operator):
         result[..., 0] = numpy.mean(data, axis = 2)
 
     def propagateDirty(self, slot, subindex, roi):
-        print "propagateVolume"
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
 
@@ -196,14 +214,28 @@ class OpCounting( Operator ):
         self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
+        self.GetFore= OpMultiLaneWrapper(OpPixelOperator,parent = self)
+        def conv(arr):
+            numpy.place(arr, arr ==2, 0)
+            return arr.astype(numpy.float)
+        self.GetFore.Function.setValue(conv)
+        self.GetFore.Input.connect(self.opLabelPipeline.Output)
+
+        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
+        self.LabelPreviewer.Input.connect(self.GetFore.Output)
+
+        self.LabelPreview.connect(self.LabelPreviewer.Output)
+
+
         # Hook up the Training operator
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
-        self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
+        self.opTrain.inputs['ForegroundLabels'].connect( self.GetFore.Output)
+        self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
-        #self.opTrain.inputs['MaxLabel'].connect( self.opMaxLabel.Output )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
-        self.UpperBound.connect(self.opTrain.UpperBound)
+        self.opUpperBound = OpUpperBound( parent= self, graph= self.graph )
+        self.UpperBound.connect(self.opUpperBound.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
@@ -211,15 +243,6 @@ class OpCounting( Operator ):
         self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.Classifier.connect( self.classifier_cache.Output )
-        def conv(arr):
-            arr[numpy.where(arr == 2)] = 0
-            return arr.astype(numpy.float)
-        self.ConvLabelToFloat = OpMultiLaneWrapper(OpPixelOperator, parent = self)
-        self.ConvLabelToFloat.Input.connect(self.opLabelPipeline.Output)
-        self.ConvLabelToFloat.Function.setValue(conv)
-        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
-        self.LabelPreviewer.Input.connect(self.ConvLabelToFloat.Output)
-        self.LabelPreview.connect(self.LabelPreviewer.Output)
 
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
@@ -359,8 +382,16 @@ class OpCounting( Operator ):
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
-                "Your new image has {} has z dimension"\
+                "Your new image has {} z dimension"\
                 .format( thisLaneTaggedShape['z']))
+                # Find a different lane and use it for comparison
+        
+        if thisLaneTaggedShape.has_key('t'):
+            raise DatasetConstraintError(
+                "Objects Counting Workflow",
+                "All input images must be 2D (they cannot contain the t dimension).  "\
+                "Your new image has {} t dimension"\
+                .format( thisLaneTaggedShape['t']))
                 # Find a different lane and use it for comparison
         
         validShape = thisLaneTaggedShape

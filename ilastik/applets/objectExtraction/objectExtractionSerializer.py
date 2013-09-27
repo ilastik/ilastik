@@ -11,8 +11,6 @@ from lazyflow.request import Request, RequestLock, RequestPool
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot, SerialHdf5BlockSlot, SerialDictSlot
 
-from ilastik.utility.timer import timeLogged
-
 logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):

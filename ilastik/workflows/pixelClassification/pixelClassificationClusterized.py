@@ -25,7 +25,7 @@ from lazyflow.graph import OperatorWrapper
 
 # ilastik
 import ilastik.monkey_patches
-from ilastik.utility.timer import timeLogged
+from lazyflow.utility.timer import timeLogged
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from ilastik.shell.headless.headlessShell import HeadlessShell
