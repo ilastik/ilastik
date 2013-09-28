@@ -75,8 +75,8 @@ class ArrayCacheMemoryMgr(threading.Thread):
     def run(self):
         while True:
             vmem = psutil.virtual_memory()
-            mem_usage = vmem.percent
-            mem_usage_gb = (vmem.total - vmem.available) / (1e9)
+            mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
+            mem_usage_gb = (vmem.total - vmem.free) / (1e9)
             delta = abs(self._last_usage - mem_usage)
             if delta > 10 or self.logger.level == logging.DEBUG:
                 cpu_usages = psutil.cpu_percent(interval=1, percpu=True)
@@ -116,7 +116,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                             
                         freed = last_cache._freeMemory(refcheck = True)
                         self.traceLogger.debug("Freed: {}".format(freed))
-                        mem_usage = psutil.phymem_usage().percent
+                        mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
                         count += 1
                         if freed == 0:
                             # store the caches which could not be freed
