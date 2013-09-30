@@ -171,7 +171,10 @@ class LayerViewerGui(QWidget):
     def setNeedUpdate(self, slot=None):
         self._need_update = True
         if self.isVisible():
-            slot.graph.call_when_setup_finished( self.updateAllLayers )
+            if slot.graph:
+                slot.graph.call_when_setup_finished( self.updateAllLayers )
+            else:
+                self.updateAllLayers()
 
     def showEvent(self, event):
         if self._need_update:

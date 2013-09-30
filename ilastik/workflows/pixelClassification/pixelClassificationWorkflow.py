@@ -196,7 +196,7 @@ class PixelClassificationWorkflow(Workflow):
     def handleAppletStateUpdateRequested(self):
         """
         Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
