@@ -126,7 +126,7 @@ class ResizeHandle(QGraphicsRectItem):
         rect=self._rect
         flip=False
         if self._constrainAxis == 0:
-            print (rect.left()+rect.right())/2.0,self.pos().y()
+
 
             if (rect.left()+rect.right())/2.0<0:
                 flip=True
@@ -140,7 +140,6 @@ class ResizeHandle(QGraphicsRectItem):
             self.setPos(QPointF(self.pos().x(),(rect.top()+rect.bottom())/2.0))
             self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().x(),flip=flip)
 
-
     def _updateColor(self):
 
         color=Qt.white
@@ -151,6 +150,22 @@ class ResizeHandle(QGraphicsRectItem):
         else:
             self.setBrush(QBrush(color))
             self.setPen(color)
+
+    def itemChange(self, change,value):
+
+        if change==QGraphicsRectItem.ItemPositionChange:
+            newPos=value.toPointF() #new position in rectangle coordinates
+            nPosScene=self.parentItem().mapToScene(newPos)
+            rect=self.parentItem().scene().sceneRect()
+            if not rect.contains(nPosScene):
+                nPosScene.setX(min(rect.right(), max(nPosScene.x(),rect.left())))
+                nPosScene.setY(min(rect.bottom(), max(nPosScene.y(), rect.top())))
+                return self.parentItem().mapFromScene(nPosScene)
+
+        return QGraphicsRectItem.itemChange(self, change,value)
+
+
+
 
 class QGraphicsResizableRectSignaller(QObject):
     """
@@ -284,6 +299,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         else:
             h,w = self.rect().height(), size
+
 
         if flip and constrainAxis ==0:
             w=-w
@@ -424,8 +440,8 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             ntl=topLeftRectCoords+newPos
             nbr=bottomRightRectCoords+newPos
 
-            w=(topLeftRectCoords-bottomRightRectCoords).x()
-            h=(topLeftRectCoords-bottomRightRectCoords).y()
+
+
             if not rect.contains(ntl) or not rect.contains(nbr):
                 ntl.setX(min(rect.right()-self.rect().width(), max(ntl.x(),rect.left())))
                 ntl.setY(min(rect.bottom()-self.rect().height(), max(ntl.y(), rect.top())));
@@ -544,8 +560,8 @@ class CoupledRectangleElement(object):
             if self.boxLabel!=None:
                 from PyQt4.QtCore import QString
                 self.boxLabel.density=QString("%.1f"%value)
-        except:
-            pass
+        except Exception,e:
+            print "Warning: invalid subregion",e
 
     def getOpsub(self):
         return self._opsub
@@ -609,7 +625,7 @@ class CoupledRectangleElement(object):
         oldstart=self.getStart()
         oldstop=self.getStop()
 
-        # print "Start = %s , Stop = %s"%(oldstart,oldstop)
+        print "Start = %s , Stop = %s"%(oldstart,oldstop)
 
         start=[]
         stop=[]
