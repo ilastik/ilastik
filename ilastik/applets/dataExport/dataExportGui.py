@@ -166,6 +166,19 @@ class DataExportGui(QWidget):
     def initViewerControls(self):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
+    def showEvent(self, event):
+        print "Showing..."
+        super( DataExportGui, self ).showEvent(event)
+        for opLaneView in self.topLevelOperator:
+            opLaneView.setupOnDiskView()
+    
+    def hideEvent(self, event):
+        print "Hiding..."
+        super( DataExportGui, self ).hideEvent(event)
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+    
+
     def _chooseSettings(self):
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
         if opExportModelOp is None:
