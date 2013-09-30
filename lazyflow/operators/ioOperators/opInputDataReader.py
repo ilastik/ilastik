@@ -49,6 +49,7 @@ class OpInputDataReader(Operator):
         super(OpInputDataReader, self).cleanUp()
         if self._file is not None:
             self._file.close()
+            self._file = None
 
     def setupOutputs(self):
         """

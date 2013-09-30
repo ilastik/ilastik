@@ -211,6 +211,12 @@ class OpExportSlot(Operator):
 
         # Create and open the hdf5 file
         export_components = PathComponents(self.ExportPath.value)
+        try:
+            os.remove(export_components.externalPath)
+        except OSError as ex:
+            # It's okay if the file isn't there.
+            if ex.errno != 2:
+                raise
         with h5py.File(export_components.externalPath, 'w') as hdf5File:
             # Create a temporary operator to do the work for us
             opH5Writer = OpH5WriterBigDataset(parent=self)
