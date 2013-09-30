@@ -976,7 +976,7 @@ class CountingGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI
-                self.editor.brushingModel.setBrushSize(0)
+                #self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
                 self.setCursor(Qt.ArrowCursor)
