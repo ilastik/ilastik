@@ -152,6 +152,10 @@ class ResizeHandle(QGraphicsRectItem):
             self.setPen(color)
 
     def itemChange(self, change,value):
+        """
+        Enforce that the hadle stays in the region of the scene
+
+        """
 
         if change==QGraphicsRectItem.ItemPositionChange:
             newPos=value.toPointF() #new position in rectangle coordinates
@@ -551,7 +555,9 @@ class CoupledRectangleElement(object):
             subarray=self.getSubRegion()
 
             #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-            value=np.sum(subarray)
+            value=0
+            if subarray!=None:
+                value=np.sum(subarray)
 
             #print "Resetting to a new value ",value,self.boxLabel
 
@@ -630,6 +636,9 @@ class CoupledRectangleElement(object):
         start=[]
         stop=[]
         for s1,s2 in zip(oldstart,oldstop):
+            if s1*s2 == 0: #means that the region is squeezed to zero
+                           # thus return None
+                return None
             start.append(int(np.minimum(s1,s2)))
             stop.append(int(np.maximum(s1,s2)))
 
