@@ -103,7 +103,7 @@ class ResizeHandle(QGraphicsRectItem):
 
 
             #self._offset = ( sel, self.shape[0] )
-        print "Resetting ",self._offset
+        #print "Resetting ",self._offset
         self.setPos(QPointF(*self._offset))
         self._rect=rect
 
@@ -168,9 +168,6 @@ class QGraphicsResizableRectSignaller(QObject):
 class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor    = QColor(255, 0, 0) #_hovering and selection color
 
-
-
-
     def __init__(self,x,y,h,w,scene=None,parent=None):
         """"
         This class implements the resizable rectangle item which is dispalied on the scene
@@ -187,15 +184,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._fontSize=10
         self._lineWidth=1
 
-
-
-
         ##Note: need to do like this because the x,y of the graphics item fix the position
         # of the zero relative to the scene
         self.moveBy(x,y)
-        self.width=w
-        self.height=h
-        self.shape=(h,w)
 
         #Flags
         self.setFlag(QGraphicsItem.ItemIsMovable,True  )
@@ -220,9 +211,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._isFixed = False
 
         self.resetHandles()
-
-
-
 
     @property
     def fontColor(self):
@@ -285,23 +273,17 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
             self._updateTextBottom("shape " +str(self.shape))
 
-
     @mainthreadonly
     def _updateTextBottom(self,string):
         self.textItemBottom.setPlainText(QtCore.QString(string))
 
-
     def setNewSize(self, constrainAxis, size, flip=False):
-
-
 
         if constrainAxis == 0:
             h,w = size, self.rect().width()
 
-
         else:
             h,w = self.rect().height(), size
-
 
         if flip and constrainAxis ==0:
             w=-w
@@ -319,7 +301,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         if w<=0: a=w
         if h<=0: b=h
         self.textItem.setPos(QtCore.QPointF(a,b))
-
 
         if self._dbg:
             self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
@@ -380,14 +361,25 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.setBrush(QBrush(color, QtCore.Qt.NoBrush))
 
     def dataPos(self):
-        dataPos = self.scene().scene2data.map(self.scenePos())
+        dataPos = self.scenePos()
+        pos = [int(dataPos.x()), int(dataPos.y())]
+
+        return pos
+
+    def topLeftDataPos(self):
+        dataPos = self.rect().topLeft()+self.scene().scene2data.map(self.scenePos())
+        pos = [int(dataPos.x()), int(dataPos.y())]
+
+        return pos
+
+    def bottomRightDataPos(self):
+        dataPos = self.rect().bottomRight()+self.scene().scene2data.map(self.scenePos())
         pos = [int(dataPos.x()), int(dataPos.y())]
         return pos
 
+
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
-
-        #print self.isSelected(),"HSJAHJHSJAHSJH"
 
         modifiers=QApplication.queryKeyboardModifiers()
         if modifiers == Qt.ControlModifier:
@@ -424,22 +416,23 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF()
-            rect = self.scene().sceneRect()
+            newPos=value.toPointF() #new position in scene coordinates
+            rect=self.scene().sceneRect()
+            topLeftRectCoords=self.rect().topLeft()
+            bottomRightRectCoords=self.rect().bottomRight()
 
-#             if not rect.contains(newPos):
-#                 newPos.setX(min(rect.right(), max(newPos.x(), rect.left())))
-#                 newPos.setY(min(rect.bottom(), max(newPos.y(), rect.top())))
-#                 return newPos
-#
-            #if not rect.contains(newPos2):
-            #    newPos.setX(min(rect.right()-self.width, max(newPos.x()-self.width, rect.left())));
-            #    newPos.setY(min(rect.bottom()-self.height, max(newPos.y()-self.height, rect.top())));
-            #    return newPos
-            if not rect.contains(value.toRectF()) :
-                newPos.setX(min(rect.right()-self.width, max(newPos.x(), rect.left())));
-                newPos.setY(min(rect.bottom()-self.height, max(newPos.y(), rect.top())));
-                return newPos
+            ntl=topLeftRectCoords+newPos
+            nbr=bottomRightRectCoords+newPos
+
+            w=(topLeftRectCoords-bottomRightRectCoords).x()
+            h=(topLeftRectCoords-bottomRightRectCoords).y()
+            if not rect.contains(ntl) or not rect.contains(nbr):
+                ntl.setX(min(rect.right()-self.rect().width(), max(ntl.x(),rect.left())))
+                ntl.setY(min(rect.bottom()-self.rect().height(), max(ntl.y(), rect.top())));
+                return ntl-topLeftRectCoords
+
+
+
 
         return QGraphicsRectItem.itemChange(self, change,value)
 
@@ -564,12 +557,22 @@ class CoupledRectangleElement(object):
         self._inputSlot.unregisterDirty(self._updateTextWhenChanges)
         self._opsub.Input.disconnect()
 
+    # def getStart(self):
+    #     '''
+    #      5D coordinates of the start position of the subregion
+    #     '''
+    #     rect=self._rectItem
+    #     newstart=self._rectItem.dataPos()
+
+    #     start=(0,newstart[0],newstart[1],0,0)
+    #     return start
+
     def getStart(self):
         '''
          5D coordinates of the start position of the subregion
         '''
         rect=self._rectItem
-        newstart=self._rectItem.dataPos()
+        newstart=self._rectItem.topLeftDataPos()
 
         start=(0,newstart[0],newstart[1],0,0)
         return start
@@ -578,12 +581,24 @@ class CoupledRectangleElement(object):
         '''
          5D coordinates of the start position of the subregion
         '''
-
         rect=self._rectItem
-        newstart=self._rectItem.dataPos()
+        newstart=self._rectItem.bottomRightDataPos()
 
-        stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
-        return stop
+        start=(1,newstart[0],newstart[1],1,1)
+        return start
+
+
+
+    # def getStop(self):
+    #     '''
+    #      5D coordinates of the start position of the subregion
+    #     '''
+
+    #     rect=self._rectItem
+    #     newstart=self._rectItem.dataPos()
+
+    #     stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
+    #     return stop
 
 
     def getSubRegion(self):
@@ -593,6 +608,9 @@ class CoupledRectangleElement(object):
         '''
         oldstart=self.getStart()
         oldstop=self.getStop()
+
+        # print "Start = %s , Stop = %s"%(oldstart,oldstop)
+
         start=[]
         stop=[]
         for s1,s2 in zip(oldstart,oldstop):
