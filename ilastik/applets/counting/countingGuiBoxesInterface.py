@@ -567,7 +567,10 @@ class CoupledRectangleElement(object):
                 from PyQt4.QtCore import QString
                 self.boxLabel.density=QString("%.1f"%value)
         except Exception,e:
-            print "Warning: invalid subregion",e
+            import warnings
+            warnings.warn("Warning: invalid subregion", RuntimeWarning)
+
+
 
     def getOpsub(self):
         return self._opsub
@@ -578,16 +581,6 @@ class CoupledRectangleElement(object):
     def disconnectInput(self):
         self._inputSlot.unregisterDirty(self._updateTextWhenChanges)
         self._opsub.Input.disconnect()
-
-    # def getStart(self):
-    #     '''
-    #      5D coordinates of the start position of the subregion
-    #     '''
-    #     rect=self._rectItem
-    #     newstart=self._rectItem.dataPos()
-
-    #     start=(0,newstart[0],newstart[1],0,0)
-    #     return start
 
     def getStart(self):
         '''
@@ -601,27 +594,12 @@ class CoupledRectangleElement(object):
 
     def getStop(self):
         '''
-         5D coordinates of the start position of the subregion
+         5D coordinates of the stop position of the subregion
         '''
         rect=self._rectItem
-        newstart=self._rectItem.bottomRightDataPos()
-
-        start=(1,newstart[0],newstart[1],1,1)
-        return start
-
-
-
-    # def getStop(self):
-    #     '''
-    #      5D coordinates of the start position of the subregion
-    #     '''
-
-    #     rect=self._rectItem
-    #     newstart=self._rectItem.dataPos()
-
-    #     stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
-    #     return stop
-
+        newstop=self._rectItem.bottomRightDataPos()
+        stop=(1,newstop[0],newstop[1],1,1)
+        return stop
 
     def getSubRegion(self):
         '''
@@ -631,12 +609,12 @@ class CoupledRectangleElement(object):
         oldstart=self.getStart()
         oldstop=self.getStop()
 
-        print "Start = %s , Stop = %s"%(oldstart,oldstop)
+        # print "Start = %s , Stop = %s"%(oldstart,oldstop)
 
         start=[]
         stop=[]
         for s1,s2 in zip(oldstart,oldstop):
-            if s1*s2 == 0: #means that the region is squeezed to zero
+            if (s1-s2) == 0: #means that the region is squeezed to zero
                            # thus return None
                 return None
             start.append(int(np.minimum(s1,s2)))
