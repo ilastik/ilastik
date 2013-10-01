@@ -971,16 +971,17 @@ class Slot(object):
         else:
             # _value case
             return self._value
-        if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
-            return temp
-        else:
-            try:
+        if isinstance(temp, numpy.ndarray):
+            if temp.shape == (1,):
                 return temp[0]
-            except IndexError:
-                self.logger.warn("FIXME: Slot.value for slot {} is {},"
-                                 " which should be wrapped in an ndarray.".format(
-                                     self.name, temp))
-                return temp
+            return temp
+        elif isinstance(temp, list):
+            return temp[0]
+        else:
+            self.logger.warn("FIXME: Slot.value for slot {} is {},"
+                             " which should be wrapped in an ndarray.".format(
+                                 self.name, temp))
+            return temp
 
     @is_setup_fn    
     def setValue(self, value, notify=True, check_changed=True):
