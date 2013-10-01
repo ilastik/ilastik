@@ -168,13 +168,11 @@ class DataExportGui(QWidget):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
     def showEvent(self, event):
-        print "Showing..."
         super( DataExportGui, self ).showEvent(event)
         for opLaneView in self.topLevelOperator:
             opLaneView.setupOnDiskView()
     
     def hideEvent(self, event):
-        print "Hiding..."
         super( DataExportGui, self ).hideEvent(event)
         for opLaneView in self.topLevelOperator:
             opLaneView.cleanupOnDiskView()
@@ -221,8 +219,6 @@ class DataExportGui(QWidget):
             # Discard the temporary model op
             opExportModelOp.cleanUp()
             opSubRegion.cleanUp()
-
-            print "configured shape is: {}".format( self.topLevelOperator.getLane(0).ImageToExport.meta.shape )
 
             # Update the gui with the new export paths            
             for index, slot in enumerate(self.topLevelOperator.ExportPath):
