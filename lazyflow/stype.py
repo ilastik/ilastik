@@ -92,14 +92,20 @@ class ArrayLike( SlotType ):
             try:
                 destination[:] = value[sl]
             except TypeError:
-                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
+                #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
+                # See ilastik/ilastik#704
+                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination[:] = value
         else:
             sl = roiToSlice(roi.start, roi.stop)
             try:
                 destination = value[sl]
             except:
-                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
+                #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
+                # See ilastik/ilastik#704
+                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
 
             if type(destination) == numpy.ndarray and destination.shape == ():
@@ -108,7 +114,11 @@ class ArrayLike( SlotType ):
                 # e.g. try this:
                 # x = np.int64(5)
                 # assert type(x[()]) == np.ndarray and x[()].shape == ()
-                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+
+                # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
+                #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
+                # See ilastik/ilastik#704
+                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
         return destination
 
