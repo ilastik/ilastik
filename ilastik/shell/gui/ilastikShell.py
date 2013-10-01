@@ -1234,8 +1234,6 @@ class IlastikShell( QMainWindow ):
             force - Don't check the project for unsaved data.
             quitApp - For testing purposes, set this to False if you just want to close the main window without quitting the app.
         """
-        logger.info("Quit Action Triggered")
-        
         if force or self.confirmQuit():
             self.closeAndQuit(quitApp)
         
