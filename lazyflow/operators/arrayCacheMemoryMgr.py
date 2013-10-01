@@ -44,7 +44,9 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self._max_usage = 85
         self._target_usage = 70
         self._lock = threading.Lock()
-        self._last_usage = 0
+        vmem = psutil.virtual_memory()
+        mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
+        self._last_usage = mem_usage
 
     def _new_list(self):
         def getPrio(array_cache):
