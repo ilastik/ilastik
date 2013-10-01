@@ -268,7 +268,7 @@ class BlockwiseFileset(object):
         # Add the view origin to find the on-disk block coordinates
         blockstart = numpy.add( blockstart, self._description.view_origin )
         descriptionFileDir = os.path.split(self._descriptionFilePath)[0]
-        absPath, relPath = getPathVariants( self._description.dataset_root_dir, descriptionFileDir )
+        absPath, _ = getPathVariants( self._description.dataset_root_dir, descriptionFileDir )
         blockFilePath = absPath
 
         for axis, start in zip(self._description.axes, blockstart):
