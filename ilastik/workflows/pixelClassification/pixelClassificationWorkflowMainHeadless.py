@@ -25,7 +25,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
-from ilastik.utility import PathComponents
+from lazyflow.utility import PathComponents
 import ilastik.utility.globals
 
 import ilastik.ilastik_logging

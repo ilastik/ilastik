@@ -20,7 +20,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.widgets.massFileLoader import MassFileLoader
@@ -425,7 +425,7 @@ class DataSelectionGui(QWidget):
             absPath, relPath = getPathVariants(filePath, cwd)
             
             # Relative by default, unless the file is in a totally different tree from the working directory.
-            if len(os.path.commonprefix([cwd, absPath])) > 1:
+            if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
                 datasetInfo.filePath = relPath
             else:
                 datasetInfo.filePath = absPath

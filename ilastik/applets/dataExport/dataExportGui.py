@@ -7,7 +7,8 @@ from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidge
 
 from lazyflow.graph import Slot
 
-from ilastik.utility import bind, PathComponents
+from ilastik.utility import bind
+from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui

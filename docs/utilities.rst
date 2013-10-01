@@ -13,11 +13,6 @@ Utility Classes
 .. autoclass:: SimpleSignal
    :members:
 
-.. autoclass:: PathComponents
-   :members:
-
-   .. automethod:: __init__
-
 .. autoclass:: OperatorSubView
 
    .. automethod:: __init__

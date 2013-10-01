@@ -40,7 +40,7 @@ from ilastik.shell.projectManager import ProjectManager
 from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
-from ilastik.utility.pathHelpers import compressPathForDisplay
+from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
@@ -573,8 +573,8 @@ class IlastikShell( QMainWindow ):
         if self.projectManager is None:
             windowTitle += "No Project Loaded"
         else:
-            windowTitle += self.projectManager.currentProjectPath
-            windowTitle += " - " + self.projectManager.workflow.workflowName
+            windowTitle += self.projectManager.currentProjectPath + " - "
+            windowTitle += self.projectManager.workflow.workflowName
             
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
