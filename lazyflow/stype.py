@@ -179,9 +179,14 @@ class Opaque(SlotType):
         return None
 
     def writeIntoDestination(self, destination, value, roi):
-        warnings.warn("FIXME: roi cant be applied here")
-        destination = value
-        return destination
+        # FIXME: To be similar to the ArrayLike stype, we should return the value wrapped in a list:
+        # destination = [value]
+        # ...which is also why, for 'Opaque' slots, slot.value is not the same as slot[:].wait().
+        # But for now, I'm leaving this alone.
+        # "Fixing" this breaks many parts of the object classification workflow 
+        #  that are written to use the existing API, awkward as it is.
+        # See also: ilastik/ilastik#704, and ilastik/ilastik#705.
+        return value
 
     def isCompatible(self, value):
         return True
