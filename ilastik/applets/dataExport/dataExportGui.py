@@ -312,6 +312,10 @@ class DataExportGui(QWidget):
             self.parentApplet.busy = True
             self.parentApplet.appletStateUpdateRequested.emit()
             
+            # Disable our own gui
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, False) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, False) ) )
+            
             # Start with 1% so the progress bar shows up
             self.progressSignal.emit(0)
             self.progressSignal.emit(1)
@@ -351,6 +355,11 @@ class DataExportGui(QWidget):
             # We're not busy any more.  Tell the workflow.
             self.parentApplet.busy = False
             self.parentApplet.appletStateUpdateRequested.emit()
+            
+            # Re-enable our own gui
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, True) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, True) ) )
+
 
     @threadRouted
     def showExportError(self, msg):
