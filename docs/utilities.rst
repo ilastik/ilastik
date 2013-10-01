@@ -48,6 +48,15 @@ FileLock
 
    .. automethod:: __init__
 
+PathComponents
+--------------
+
+.. autoclass:: PathComponents
+   :members:
+
+   .. automethod:: __init__
+
+
 JSON Config Parsing
 -------------------
 
