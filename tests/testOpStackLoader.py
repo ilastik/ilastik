@@ -1,15 +1,11 @@
-import os
-import sys
 import shutil
 import tempfile
 
 import numpy
 import vigra
 
-from lazyflow.utility import PathComponents
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.ioOperators import OpStackLoader
 
 class TestOpStackLoader(object):
     
@@ -45,12 +41,12 @@ class TestOpStackLoader(object):
         op.globstring.setValue( globstring )
         
         assert len(op.stack.meta.axistags) == 4
-        assert op.stack.meta.getAxisKeys() == list('xyzc')
+        assert op.stack.meta.getAxisKeys() == list('zyxc')
         assert op.stack.meta.dtype == expected_volume_zyx.dtype
         
-        vol_from_stack_xyzc = op.stack[:].wait()
-        vol_from_stack_xyzc = vigra.taggedView( vol_from_stack_xyzc, 'xyzc' )
-        vol_from_stack_zyx = vol_from_stack_xyzc.withAxes( *'zyx' )
+        vol_from_stack_zyxc = op.stack[:].wait()
+        vol_from_stack_zyxc = vigra.taggedView( vol_from_stack_zyxc, 'zyxc' )
+        vol_from_stack_zyx = vol_from_stack_zyxc.withAxes( *'zyx' )
         
         assert ( vol_from_stack_zyx == expected_volume_zyx ).all(), "3D Volume from stack did not match expected data."
 
@@ -80,12 +76,12 @@ class TestOpStackLoader(object):
         op.globstring.setValue( globstring )
         
         assert len(op.stack.meta.axistags) == 5
-        assert op.stack.meta.getAxisKeys() == list('txyzc')
+        assert op.stack.meta.getAxisKeys() == list('tzyxc')
         assert op.stack.meta.dtype == expected_volume_tzyx.dtype
         
-        vol_from_stack_txyzc = op.stack[:].wait()
-        vol_from_stack_txyzc = vigra.taggedView( vol_from_stack_txyzc, 'txyzc' )
-        vol_from_stack_tzyx = vol_from_stack_txyzc.withAxes( *'tzyx' )
+        vol_from_stack_tzyxc = op.stack[:].wait()
+        vol_from_stack_tzyxc = vigra.taggedView( vol_from_stack_tzyxc, 'tzyxc' )
+        vol_from_stack_tzyx = vol_from_stack_tzyxc.withAxes( *'tzyx' )
         
         assert ( vol_from_stack_tzyx == expected_volume_tzyx ).all(), "4D Volume from stack did not match expected data."
         

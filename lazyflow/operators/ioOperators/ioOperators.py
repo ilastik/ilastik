@@ -77,14 +77,14 @@ class OpStackLoader(Operator):
         if self.slices_per_file == 1:
             # If this is a stack of 2D images, we assume xy slices stacked along z
             Z = num_files
-            shape = (X, Y, Z, C)
-            axistags = vigra.defaultAxistags('xyzc')
+            shape = (Z, Y, X, C)
+            axistags = vigra.defaultAxistags('zyxc')
         else:
             # If it's a stack of 3D volumes, we assume xyz blocks stacked along t
             T = num_files
             Z = self.slices_per_file
-            shape = (T, X, Y, Z, C)
-            axistags = vigra.defaultAxistags('txyzc')
+            shape = (T, Z, Y, X, C)
+            axistags = vigra.defaultAxistags('tzyxc')
             
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
@@ -104,33 +104,37 @@ class OpStackLoader(Operator):
             assert False, "Unexpected output shape: {}".format( self.stack.meta.shape )
         
     def _execute_4d(self, roi, result):
-        i=0
-        key = roi.toSlice()
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        for fileName in self.fileNameList[key[2]]:
+        # roi is in zyxc order.
+        z_start, y_start, x_start, c_start = roi.start
+        z_stop, y_stop, x_stop, c_stop = roi.stop
+
+        # Copy each z-slice one at a time.
+        for result_z, fileName in enumerate(self.fileNameList[z_start:z_stop]):
             traceLogger.debug( "Reading image: {}".format(fileName) )
             if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
                 raise RuntimeError('not all files have the same shape')
             if self.slices_per_file != vigra.impex.numberImages(self.fileNameList[0]):
                 raise RuntimeError("Not all files have the same number of slices")
 
-            # roi is in xyzc order.
-            # Copy each z-slice one at a time.
-            result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
-            i = i+1
+            result[result_z,:,:,:] = vigra.impex.readImage(fileName)[x_start:x_stop,
+                                                                     y_start:y_stop,
+                                                                     c_start:c_stop].withAxes( *'yxc' )
         return result
 
     def _execute_5d(self, roi, result):
-        t_start, x_start, y_start, z_start, c_start = roi.start
-        t_stop, x_stop, y_stop, z_stop, c_stop = roi.stop
-        
+        # roi is in tzyxc order.
+        t_start, z_start, y_start, x_start, c_start = roi.start
+        t_stop, z_stop, y_stop, x_stop, c_stop = roi.stop
+
+        # Use *enumerated* range to get global t coords and result t coords
         for result_t, t in enumerate( range( t_start, t_stop ) ):
             file_name = self.fileNameList[t]
             for result_z, z in enumerate( range( z_start, z_stop ) ):
                 img = vigra.readImage( file_name, index=z )
-                result[result_t, :, :, result_z, :] = img[ x_start:x_stop,
+                result[result_t, result_z, :, :, :] = img[ x_start:x_stop,
                                                            y_start:y_stop,
-                                                           c_start:c_stop ]
+                                                           c_start:c_stop ].withAxes( *'yxc' )
         return result
         
 
@@ -327,6 +331,8 @@ class OpStackToH5Writer(Operator):
             slicing[zAxis] = slice(z, z+1)
             data[tuple(slicing)] = self.opStackLoader.stack[slicing].wait()
             self.progressSignal( z*100 / numImages )
+
+        data.attrs['axistags'] = axistags.toJSON()
 
         # We're done
         result[...] = True
