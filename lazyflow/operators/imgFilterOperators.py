@@ -114,7 +114,7 @@ class OpBaseVigraFilter(Operator):
         
         #iterate over the requested volumes
         
-        warnings.warn("TODO: This loop could be parallelized for better performance.")
+        #warnings.warn("TODO: This loop could be parallelized for better performance.")
         for src,trgt,mask in nIt:
             result[trgt] = self.vigraFilter(source = source[src],window_size=self.windowSize,roi=origRoi)[mask]
         return result
