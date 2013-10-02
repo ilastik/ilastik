@@ -167,13 +167,14 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
                           matbeg, matind, matval, sense, rhs, NULL);
   if (status) goto QUIT;
   status = GRBsetdblattrarray(model, "lb", 0, numFeatures+1, lb);
+  status = GRBsetintparam(env, "OutputFlag", 0);
   if (status) goto QUIT;
   status = GRBaddqpterms(model, numcols, qrow, qcol, qsepvec);
   if (status) goto QUIT;
   status = GRBupdatemodel(model);
   status = GRBoptimize(model);
   if (status) goto QUIT;
-  status = GRBwrite(model, "qp.lp");
+  /*status = GRBwrite(model, "qp.lp");*/
   status = GRBgetdblattrarray(model, GRB_DBL_ATTR_X, 0, numFeatures+1, w);
   if (status) goto QUIT;
 

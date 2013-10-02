@@ -378,7 +378,7 @@ class OpPredictCounter(Operator):
 
         t3 = time.time()
 
-        logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
+        logger.debug("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
         return result
 
 

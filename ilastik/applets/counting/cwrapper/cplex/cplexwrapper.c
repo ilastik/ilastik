@@ -97,7 +97,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
   char     *hSense = NULL;
   env = CPXopenCPLEX (&status);
   lp = CPXcreateprob (env, &status, probname);
-  status = CPXsetintparam (env, CPX_PARAM_SCRIND, CPX_ON);
+  status = CPXsetintparam (env, CPX_PARAM_SCRIND, CPX_OFF);
   status = CPXsetintparam (env, CPX_PARAM_BARCOLNZ, 2);
   if ( status ) {
     fprintf (stderr,
