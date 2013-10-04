@@ -347,7 +347,8 @@ class OpH5WriterBigDataset(Operator):
 
     inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
                   InputSlot("hdf5Path", stype = "string"),
-                  InputSlot("Image")]
+                  InputSlot("Image"),
+                  InputSlot("CompressionEnabled", value=True)]
 
     outputSlots = [OutputSlot("WriteImage")]
 
@@ -414,12 +415,11 @@ class OpH5WriterBigDataset(Operator):
         self.chunkShape = chunkShape
         if datasetName in g.keys():
             del g[datasetName]
-        self.d=g.create_dataset(datasetName,
-                                shape=dataShape,
-                                dtype=dtype,
-                                chunks=self.chunkShape,
-                                compression='gzip', # <-- Would be nice to use lzf compression here, but that is h5py-specific.
-                                compression_opts=1) # <-- Optimize for speed, not disk space.
+        kwargs = { 'shape' : dataShape, 'dtype' : dtype, 'chunks' : self.chunkShape }
+        if self.CompressionEnabled.value:
+            kwargs['compression'] = 'gzip' # <-- Would be nice to use lzf compression here, but that is h5py-specific.
+            kwargs['compression_opts'] = 1 # <-- Optimize for speed, not disk space.
+        self.d=g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
             self.d.attrs['drange'] = self.Image.meta.drange
