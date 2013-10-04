@@ -3,7 +3,7 @@ import gc
 import time
 import threading
 import logging
-import gc
+import platform
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -13,6 +13,18 @@ import psutil
 
 #lazyflow
 from lazyflow.utility import OrderedSignal
+
+def memoryUsagePercentage():
+    vmem = psutil.virtual_memory()
+    if 'Linux' in platform.platform():
+        return 100 * (vmem.total - vmem.available) / vmem.total
+    return 100 * (vmem.total - vmem.free) / vmem.total
+    
+def memoryUsageGB():
+    vmem = psutil.virtual_memory()
+    if 'Linux' in platform.platform():
+        return (vmem.total - vmem.available) / (1.0e9)
+    return (vmem.total - vmem.free) / (1.0e9)
 
 class MemInfoNode:
     def __init__(self):
@@ -44,9 +56,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self._max_usage = 85
         self._target_usage = 70
         self._lock = threading.Lock()
-        vmem = psutil.virtual_memory()
-        mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
-        self._last_usage = mem_usage
+        self._last_usage = memoryUsagePercentage()
 
     def _new_list(self):
         def getPrio(array_cache):
@@ -76,9 +86,8 @@ class ArrayCacheMemoryMgr(threading.Thread):
 
     def run(self):
         while True:
-            vmem = psutil.virtual_memory()
-            mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
-            mem_usage_gb = (vmem.total - vmem.free) / (1e9)
+            mem_usage = memoryUsagePercentage()
+            mem_usage_gb = memoryUsageGB()
             delta = abs(self._last_usage - mem_usage)
             if delta > 10 or self.logger.level == logging.DEBUG:
                 cpu_usages = psutil.cpu_percent(interval=1, percpu=True)
@@ -118,7 +127,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                             
                         freed = last_cache._freeMemory(refcheck = True)
                         self.traceLogger.debug("Freed: {}".format(freed))
-                        mem_usage = 100 * (vmem.total - vmem.free) / vmem.total
+                        mem_usage = memoryUsagePercentage()
                         count += 1
                         if freed == 0:
                             # store the caches which could not be freed
