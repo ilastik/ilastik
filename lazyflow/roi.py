@@ -288,6 +288,7 @@ def roiToSlice(start, stop, hardBind=False):
 
 
 def extendSlice(start, stop, shape, sigma, window = 3.5):
+    # TODO: Rename this function, since it doesn't use slice() objects.
     zeros = start - start
     if isinstance( sigma, collections.Iterable ):
         sigma = TinyVector(sigma)
