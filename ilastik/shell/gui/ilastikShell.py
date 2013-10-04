@@ -501,7 +501,7 @@ class IlastikShell( QMainWindow ):
         if self._memDlg is None:
             self._memDlg = MemUsageDialog()
             self._memDlg.setWindowTitle("Memory Usage")
-            self._memDlg.showMaximized()
+            self._memDlg.show()
         else:
             self._memDlg.show()
             self._memDlg.raise_()
