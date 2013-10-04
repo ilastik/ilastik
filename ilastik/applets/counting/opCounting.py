@@ -228,14 +228,15 @@ class OpCounting( Operator ):
 
 
         # Hook up the Training operator
+        self.opUpperBound = OpUpperBound( parent= self, graph= self.graph )
+        self.UpperBound.connect(self.opUpperBound.UpperBound)
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
         self.opTrain.inputs['ForegroundLabels'].connect( self.GetFore.Output)
         self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
-        self.opUpperBound = OpUpperBound( parent= self, graph= self.graph )
-        self.UpperBound.connect(self.opUpperBound.UpperBound)
+        self.opTrain.inputs["UpperBound"].connect(self.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
