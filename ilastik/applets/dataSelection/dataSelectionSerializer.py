@@ -72,6 +72,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
                     try:    
                         opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
+                        opWriter.CompressionEnabled.setValue(False) # Compression slows down browsing a lot, and raw data tends to be noisy and doesn't compress very well, anyway.
                         opWriter.hdf5File.setValue( localDataGroup )
                         opWriter.hdf5Path.setValue( info.datasetId )
                         opWriter.Image.connect(dataSlot)
