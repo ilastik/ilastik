@@ -11,7 +11,7 @@ class ObjectClassificationApplet(StandardApplet):
                  workflow=None,
                  projectFileGroupName="ObjectClassification"):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
-        
+        self.predict_enabled = False
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
         self._serializableItems = [

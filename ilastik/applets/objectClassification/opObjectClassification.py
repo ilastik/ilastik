@@ -219,6 +219,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.SegmentationImages.notifyInserted(handleNewInputImage)
 
+        self._predict_enabled = False
+
     def setupCaches(self, imageIndex):
         """Setup the label input and caches to correct dimensions"""
         numImages=len(self.SegmentationImages)
