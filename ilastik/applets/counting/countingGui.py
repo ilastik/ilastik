@@ -1092,7 +1092,6 @@ class CountingGui(LabelingGui):
 
 
     def updateSum(self, *args, **kw):
-        print "updatingSum"
         density = self.op.OutputSum[...].wait()
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
