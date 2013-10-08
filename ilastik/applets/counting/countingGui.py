@@ -165,7 +165,7 @@ class CountingGui(LabelingGui):
 
         self.initCounting()
         try:
-            from sitecustomize import debug_trace
+            from sitecustomize import Shortcuts
         except:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
@@ -485,9 +485,7 @@ class CountingGui(LabelingGui):
 
 
     def _debug(self):
-        import sitecustomize
-        sitecustomize.debug_trace()
-
+        go.db
 
 
     @traceLogged(traceLogger)
