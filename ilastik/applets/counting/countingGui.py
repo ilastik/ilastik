@@ -346,10 +346,10 @@ class CountingGui(LabelingGui):
 
 
         cache = self.op.classifier_cache
-        if type(cache._value) is list and len(self.op.classifier_cache._value) > 0:
+        if hasattr(cache._value, "__iter__") and len(self.op.classifier_cache._value) > 0:
         #if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = cache.Output.value[0].get_params()
+            params = cache._value[0].get_params()
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
