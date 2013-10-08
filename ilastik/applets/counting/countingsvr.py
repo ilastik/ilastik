@@ -68,7 +68,6 @@ class RegressorC(object):
             boxSizes = [boxIndices[i+1] - boxIndices[i] for i in range(len(boxValues))]
             assert(np.count_nonzero(boxSizes) == len(boxValues))
             assert(len(boxFeatures.shape) == 2)
-            print boxIndices[-1], boxFeatures.shape[0]
             assert(boxIndices[-1] == boxFeatures.shape[0])
             #self.dens = np.zeros((boxIndices[-1]), dtype = np.float64).reshape(-1, 1)
             #dens_p = self.dens.ctypes.data_as(c_double_p)
@@ -117,7 +116,6 @@ class RegressorC(object):
             boxSizes = [boxIndices[i+1] - boxIndices[i] for i in range(len(boxValues))]
             assert(np.count_nonzero(boxSizes) == len(boxValues))
             assert(len(boxFeatures.shape) == 2)
-            print boxIndices[-1], boxFeatures.shape[0]
             assert(boxIndices[-1] == boxFeatures.shape[0])
             #self.dens = np.zeros((boxIndices[-1]), dtype = np.float64).reshape(-1, 1)
             #dens_p = self.dens.ctypes.data_as(c_double_p)
