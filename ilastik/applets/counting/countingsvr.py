@@ -598,7 +598,7 @@ class SVR(object):
         return res.reshape(resShape)
 
     def writeHDF5(self, cachePath, targetname):
-        f = h5py.File(cachePath, 'w')
+        f = h5py.File(cachePath)
         str_type = h5py.special_dtype(vlen = str)
         dataset = f.create_dataset(targetname, shape = (1,), dtype = str_type)
         dataset[0] = cPickle.dumps(self)
