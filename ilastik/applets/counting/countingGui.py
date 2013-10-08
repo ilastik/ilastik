@@ -30,7 +30,7 @@ from ilastik.applets.base.applet import ShellRequest
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
 from ilastik.applets.base.appletSerializer import SerialListSlot
-
+from PyQt4 import QtGui
 
 
 try:
@@ -174,6 +174,11 @@ class CountingGui(LabelingGui):
 
 
     def initCounting(self):
+
+
+
+
+
 
         #=======================================================================
         # Init Dotting interface
@@ -500,6 +505,28 @@ class CountingGui(LabelingGui):
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
 
+        def _monkey_contextMenuEvent(s,event):
+            from volumina.widgets.layercontextmenu import layercontextmenu
+            idx = s.indexAt(event.pos())
+            layer = s.model()[idx.row()]
+            if layer.name=="Boxes":
+                pass
+                #FIXME: for the moment we do nothing here
+            else:
+                layercontextmenu(layer, s.mapToGlobal(event.pos()), s )
+
+
+
+        import types
+        self._viewerControlUi.viewerControls.layerWidget.contextMenuEvent = \
+        types.MethodType(_monkey_contextMenuEvent,self._viewerControlUi.viewerControls.layerWidget)
+
+
+
+
+
+
+
     def _initShortcuts(self):
         mgr = ShortcutManager()
         shortcutGroupName = "Predictions"
@@ -581,6 +608,7 @@ class CountingGui(LabelingGui):
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
         boxlabellayer.name = "Boxes"
         boxlabellayer.opacity = 1.0
+        boxlabellayer.boxListModel = self.labelingDrawerUi.boxListModel
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
 

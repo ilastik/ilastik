@@ -26,6 +26,7 @@ class BoxLabel(ListElement):
 
 
 
+
     def __init__(self, name, color, density=0.0, fontsize=12, linewidth=2, fontcolor=QColor(255,255,255), parent = None):
         ListElement.__init__(self, name, parent)
         self._density    = density
@@ -161,6 +162,7 @@ class BoxLabel(ListElement):
 
 class BoxListModel(ListModel):
     boxRemoved = pyqtSignal(int)
+    signalSaveAllBoxesToCSV = pyqtSignal(str)
 
     class ColumnID():
         Color   = 0

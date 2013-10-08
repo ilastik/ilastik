@@ -326,7 +326,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
 
         for el in self._resizeHandles:
-            print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
+            #print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
             el.resetOffset(el._constrainAxis,rect=newrect)
 
 
@@ -863,7 +863,11 @@ class BoxController(QObject):
         self.scene.selectionChanged.connect(self.handleSelectionChange)
 
 
+
         boxListModel.boxRemoved.connect(self.deleteItem)
+        boxListModel.signalSaveAllBoxesToCSV.connect(self.saveBoxesToCSV)
+
+
 
     def getCurrentActiveBox(self):
         pass
@@ -950,7 +954,7 @@ class BoxController(QObject):
     def onChangedPos(self,pos,gpos):
         pos=pos[1:3]
         items=self.scene.items(QPointF(*pos))
-        print items
+        #print items
         items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
 
         self.itemsAtpos=items
@@ -1005,6 +1009,41 @@ class BoxController(QObject):
         color=self._RandomColorGenerator.next()
         return color
 
+
+    def saveBoxesToCSV(self,filename):
+        import os,csv
+        b,ext=os.path.splitext(str(filename))
+        assert ext ==".txt","wrong filename or extension %s"%str(filename)
+        try:
+            with open(filename,'wb') as fh:
+
+
+
+                header = ["ID","StartX","StartY","StopX","StopY","Count","Average density","Std density"]
+
+                fh.write(" , ".join(header) +"\n")
+
+
+                for k,box in enumerate(self._currentBoxesList):
+                    start=box.getStart()
+                    stop=box.getStop()
+                    region = box.getSubRegion()
+                    count = np.sum(region)
+                    averagedens = np.mean(region)
+                    stddensity = np.std(region)
+
+
+                    line=["%5.5d"%k, "%5.5d"%start[1], "%5.5d"%start[2], "%5.5d"%stop[1],\
+                    "%5.5d"%stop[2],"%5.2f"%count,"%5.2f"%averagedens, "%5.2f"%stddensity]
+                    print "line ", ",".join(line)
+                    fh.write(",".join(line)+"\n")
+
+
+
+        except IOError,e:
+            print e
+            raise IOError
+
 #===============================================================================
 # Random colors
 #===============================================================================
@@ -1054,7 +1093,7 @@ def _createDefault16ColorColorTable():
 def RandomColorGenerator(seed=42):
     np.random.seed(seed)
     default=_createDefault16ColorColorTable()
-    print default
+
     i=-1
     while 1:
         i+=1
@@ -1172,7 +1211,7 @@ if __name__=="__main__":
     g = Graph()
 
     cron = QTimer()
-    cron.start(500*10)
+    cron.start(500*100)
 
     op = OpArrayPiper2(graph=g) #Generate random noise
     shape=(1,w,h,1,1)
