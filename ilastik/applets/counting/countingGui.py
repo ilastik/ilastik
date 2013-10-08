@@ -1091,9 +1091,12 @@ class CountingGui(LabelingGui):
 
     def updateSum(self, *args, **kw):
         print "updatingSum"
+        state = self.labelingDrawerUi.liveUpdateButton.isChecked()
+        self.labelingDrawerUi.liveUpdateButton.setChecked(True)
         density = self.op.OutputSum[...].wait()
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(state)
 
 
 countingColorTable = [
