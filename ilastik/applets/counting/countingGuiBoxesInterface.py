@@ -671,8 +671,10 @@ class CoupledRectangleElement(object):
 
         self.boxLabel.isFixed=False
         self.boxLabel.isFixedChanged.emit(True)
-
+        #FIXME: maybe dangerous to do del explicitely here
         del self
+
+
 
 
 # class OpSumAll(Operator):
@@ -751,7 +753,7 @@ class BoxInterpreter(QObject):
 
         self.leftClickReleased.connect(BoxContr.addNewBox)
         self.rightClickReceived.connect(BoxContr.onChangedPos)
-        self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
+        #self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
 
 
         self.origin = QPoint()
@@ -787,9 +789,9 @@ class BoxInterpreter(QObject):
                     items[-1].setSelected(True)
                     #items[0].setZero()
 
-            #Delete element
-            if event.key()==Qt.Key_Delete:
-                self.deleteSelectedItemsSignal.emit()
+            # #Delete element
+            # if event.key()==Qt.Key_Delete:
+            #     self.deleteSelectedItemsSignal.emit()
 
 
 

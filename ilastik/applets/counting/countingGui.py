@@ -151,7 +151,6 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        self._initShortcuts()
 
         try:
             self.render = True
@@ -159,16 +158,17 @@ class CountingGui(LabelingGui):
             self._renderMgr = RenderingManager(
                 renderer=self.editor.view.qvtk.renderer,
                 qvtk=self.editor.view.qvtk)
-        except:
+        except Exception,e:
             self.render = False
 
 
         self.initCounting()
         try:
             from sitecustomize import debug_trace
-        except:
+        except Exception,e:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
+        self._initShortcuts()
 
 
 
@@ -185,6 +185,7 @@ class CountingGui(LabelingGui):
         #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
         self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler)
         self.dotInterpreter=self.editor.brushingInterpreter
+
 
 
         #=======================================================================
@@ -231,16 +232,15 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
         #self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
 
-#        ###FIXME: Only for debug
-        #self.op.Density.notifyDirty(self.updateSum)
+
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
         mainwin=self
-        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #FIXME: Hack , get the proper reference to the graph
+        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
+
         self.density5d.input.connect(self.op.Density)
         self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
-
 
         self.navigationInterpreterDefault=self.editor.navInterpret
 
@@ -249,13 +249,9 @@ class CountingGui(LabelingGui):
         self._setUIParameters()
         self._connectUIParameters()
 
-
-
         self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
-
-
 
     def _connectUIParameters(self):
 
@@ -340,7 +336,7 @@ class CountingGui(LabelingGui):
                 try:
                     for req in option["req"]:
                         importlib.import_module(req)
-                except:
+                except Exception,e:
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
@@ -373,7 +369,6 @@ class CountingGui(LabelingGui):
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
         #FIXME: quick fix recently introduced bug
-
         if type(Sigma)==list:
             Sigma=Sigma[0]
         self.labelingDrawerUi.SigmaBox.setValue(Sigma)
@@ -388,8 +383,6 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
 
         self._hideParameters()
-
-
 
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
@@ -431,12 +424,12 @@ class CountingGui(LabelingGui):
         self._normalizeLayers()
 
     def _normalizeLayers(self):
-            upperBound = self.op.UpperBound.value
-            self.upperBound = upperBound
+        upperBound = self.op.UpperBound.value
+        self.upperBound = upperBound
 
-            if hasattr(self, "labelPreviewLayer"):
-                self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return
+        if hasattr(self, "labelPreviewLayer"):
+            self.labelPreviewLayer.set_normalize(0,(0,upperBound))
+        return
 
 
     def _normalizePrediction(self, *args):
@@ -527,6 +520,17 @@ class CountingGui(LabelingGui):
                       "Toggle Live Prediction Mode",
                       toggleLivePredict,
                       self.labelingDrawerUi.liveUpdateButton )
+
+
+        shortcutGroupName = "Counting"
+
+        deleteBox = QShortcut( QKeySequence("Del"), self, member=self.boxController.deleteSelectedItems)
+        mgr.register( shortcutGroupName,
+                      "Delete a Box",
+                      deleteBox,
+                      None )
+
+
 
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
@@ -1050,7 +1054,7 @@ class CountingGui(LabelingGui):
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Box)
 
-        print len(self.boxController._currentBoxesList)
+
         self.boxController.selectBoxItem(row)
 
 
@@ -1096,6 +1100,10 @@ class CountingGui(LabelingGui):
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
 
+
+#==============================================================================
+#                   Colortable
+#==============================================================================
 
 countingColorTable = [
     QColor(0.0,0.0,127.0,0.0).rgba(),
