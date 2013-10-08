@@ -249,17 +249,26 @@ class CountingGui(LabelingGui):
 
         self.navigationInterpreterDefault=self.editor.navInterpret
 
-        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
 
         self._setUIParameters()
         self._connectUIParameters()
 
+        self._loadViewBoxes()
+
+        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
+        self.boxController.viewBoxesChanged.connect(self._changeViewBoxes)
+        
         self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
 
 
         self._updateSVROptions()
+
+
+     
+
+
 
     def _connectUIParameters(self):
 
@@ -310,23 +319,8 @@ class CountingGui(LabelingGui):
 
         CallToGui(op.SelectedOption,_setoption)
         idx = self.op.current_view_index()
-        op = self.op.opTrain
-        fix = op.fixClassifier.value
-        op.fixClassifier.setValue(True)
 
-        if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
-            #if fixed boxes are existent, make column visible
-            self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
-            for i, constr in enumerate(zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value)):
-                roi, val = constr
-                if type(roi) is not list or len(roi) is not 2:
-                    continue
-                self.boxController.addNewBox(roi[0], roi[1])
-                boxIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.Fix)
-                iconIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.FixIcon)
-                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
-        op.fixClassifier.setValue(fix)
-
+        
 
 
     def _setUIParameters(self):
@@ -351,10 +345,10 @@ class CountingGui(LabelingGui):
 
 
         cache = self.op.classifier_cache
-        if type(cache._value) is list and len(self.op.classifier_cache._value) > 0:
+        if hasattr(cache._value, "__iter__") and len(self.op.classifier_cache._value) > 0:
         #if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = cache.Output.value[0].get_params()
+            params = cache._value[0].get_params()
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
@@ -476,13 +470,54 @@ class CountingGui(LabelingGui):
         fixedClassifier = opTrain.fixClassifier.value
         assert len(vals) == len(rois)
         if opTrain.BoxConstraintRois.ready() and opTrain.BoxConstraintValues.ready():
-            if opTrain.BoxConstraintValues[id].value != vals and opTrain.BoxConstraintRois[id].value != rois:
+            if opTrain.BoxConstraintValues[id].value != vals or opTrain.BoxConstraintRois[id].value != rois:
                 opTrain.fixClassifier.setValue(True)
                 opTrain.BoxConstraintRois[id].setValue(rois)
+                #at this position so the change of a value can trigger a recomputation
                 opTrain.fixClassifier.setValue(fixedClassifier)
                 opTrain.BoxConstraintValues[id].setValue(vals)
 
         #boxes = self.boxController._currentBoxesList
+    def _changeViewBoxes(self, boxes):
+        id = self.op.current_view_index()
+        self.op.boxViewer.rois[id].setValue(boxes["rois"])
+
+
+    def _loadViewBoxes(self):
+        op = self.op.opTrain
+        fix = op.fixClassifier.value
+        op.fixClassifier.setValue(True)
+
+        idx = self.op.current_view_index()
+        boxCounter = 0
+        if self.op.boxViewer.rois.ready() and len(self.op.boxViewer.rois[idx].value) > 0:
+            #if fixed boxes are existent, make column visible
+            #self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
+            for roi in self.op.boxViewer.rois[idx].value:
+                if type(roi) is not list or len(roi) is not 2:
+                    continue
+                self.boxController.addNewBox(roi[0], roi[1])
+                #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
+                #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
+                #self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                boxCounter = boxCounter + 1
+
+
+        if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
+            #if fixed boxes are existent, make column visible
+            self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
+            for constr in zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value):
+                roi, val = constr
+                if type(roi) is not list or len(roi) is not 2:
+                    continue
+                self.boxController.addNewBox(roi[0], roi[1])
+                boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
+                iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
+                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                boxCounter = boxCounter + 1
+        
+        op.fixClassifier.setValue(fix)
+
 
 
     def _debug(self):
