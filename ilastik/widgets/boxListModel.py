@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class BoxLabel(ListElement):
     changed      = pyqtSignal()
+    existenceChanged = pyqtSignal()
     densityChanged = pyqtSignal(object)
     isFixedChanged = pyqtSignal(bool)
 
@@ -40,8 +41,6 @@ class BoxLabel(ListElement):
         self._fixvalue=self._density # a fixed box should have this set to a particular value
         self._isFixed=False
         self._register_signals()
-
-
 
 
     def _register_signals(self):

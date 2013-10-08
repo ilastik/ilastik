@@ -134,6 +134,17 @@ class OpMean(Operator):
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
 
+class OpBoxViewer( Operator ):
+    name = "OpBoxViewer"
+    description = "DummyOperator to serialize view-boxes"
+
+    inputSlots = [
+        #InputSlot("Images", level=1),
+        InputSlot("rois", level = 1, stype="list", value=[] )]
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
 class OpCounting( Operator ):
     """
     Top-level operator for counting
@@ -230,6 +241,9 @@ class OpCounting( Operator ):
         # Hook up the Training operator
         self.opUpperBound = OpUpperBound( parent= self, graph= self.graph )
         self.UpperBound.connect(self.opUpperBound.UpperBound)
+
+        self.boxViewer = OpBoxViewer( parent = self, graph=self.graph )
+
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
         self.opTrain.inputs['ForegroundLabels'].connect( self.GetFore.Output)
         self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
@@ -362,11 +376,13 @@ class OpCounting( Operator ):
         self.InputImages.resize(numLanes+1)
         self.opTrain.BoxConstraintRois.resize(numLanes + 1)
         self.opTrain.BoxConstraintValues.resize(numLanes + 1)
+        self.boxViewer.rois.resize(numLanes + 1)
         
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
         self.opTrain.BoxConstraintRois.removeSlot(laneIndex, finalLength)
         self.opTrain.BoxConstraintValues.removeSlot(laneIndex, finalLength)
+        self.boxViewer.rois.removeSlot(laneIndex, finalLength)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)

@@ -671,6 +671,7 @@ class CoupledRectangleElement(object):
 
         self.boxLabel.isFixed=False
         self.boxLabel.isFixedChanged.emit(True)
+        self.boxLabel.existenceChanged.emit()
         #FIXME: maybe dangerous to do del explicitely here
         del self
 
@@ -841,6 +842,8 @@ class BoxInterpreter(QObject):
 class BoxController(QObject):
 
     fixedBoxesChanged = pyqtSignal(dict)
+    viewBoxesChanged = pyqtSignal(dict)
+
 
     def __init__(self,scene,connectionInput,boxListModel):
         '''
@@ -919,9 +922,11 @@ class BoxController(QObject):
         box.fontColorChanged.connect(rect.setFontColor)
         box.fontSizeChanged.connect(rect.setFontSize)
         box.isFixedChanged.connect(self._fixedBoxesChanged)
+        box.existenceChanged.connect(self._viewBoxesChanged)
 
 
         self.boxListModel.insertRow( newRow, box )
+        box.existenceChanged.emit()
         rect.boxLabel=box
         box.isFixedChanged.connect(rect._rectItem.fixSelf)
         rect._updateTextWhenChanges()
@@ -930,14 +935,22 @@ class BoxController(QObject):
 
     def _fixedBoxesChanged(self, *args):
         boxes = {"rois" : [], "values" : []}
-        #import sitecustomize
-        #sitecustomize.debug_trace()
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
                 boxes["values"].append(float(box._fixvalue.toDouble()[0]))
 
         self.fixedBoxesChanged.emit(boxes)
+
+        self._viewBoxesChanged()
+    
+    def _viewBoxesChanged(self, *args):
+        boxes = {"rois" : []}
+        for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
+            if not box.isFixed:
+                boxes["rois"].append([rect.getStart(), rect.getStop()])
+
+        self.viewBoxesChanged.emit(boxes)
 
 
 

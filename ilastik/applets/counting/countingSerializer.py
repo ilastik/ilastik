@@ -216,7 +216,12 @@ class CountingSerializer(AppletSerializer):
                                subname="rois{:04d}"),
                  SerialBoxSlot(operator.opTrain.BoxConstraintValues,operator.opTrain,
                               name="Values",
-                               subname="values{:04d}")]
+                               subname="values{:04d}"),
+                SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer,
+                              name="ViewRois",
+                              subname="viewrois{:04d}")
+                ]
+                
 
 
         super(CountingSerializer, self).__init__(projectFileGroupName,
