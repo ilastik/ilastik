@@ -1090,7 +1090,6 @@ class CountingGui(LabelingGui):
 
 
     def updateSum(self, *args, **kw):
-        print "updatingSum"
         state = self.labelingDrawerUi.liveUpdateButton.isChecked()
         self.labelingDrawerUi.liveUpdateButton.setChecked(True)
         density = self.op.OutputSum[...].wait()
