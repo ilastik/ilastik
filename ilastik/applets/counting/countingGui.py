@@ -164,7 +164,7 @@ class CountingGui(LabelingGui):
 
         self.initCounting()
         try:
-            from sitecustomize import debug_trace
+            from sitecustomize import Shortcuts
         except Exception,e:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
@@ -478,9 +478,7 @@ class CountingGui(LabelingGui):
 
 
     def _debug(self):
-        import sitecustomize
-        sitecustomize.debug_trace()
-
+        go.db
 
 
     @traceLogged(traceLogger)
@@ -1096,9 +1094,12 @@ class CountingGui(LabelingGui):
 
 
     def updateSum(self, *args, **kw):
+        state = self.labelingDrawerUi.liveUpdateButton.isChecked()
+        self.labelingDrawerUi.liveUpdateButton.setChecked(True)
         density = self.op.OutputSum[...].wait()
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(state)
 
 
 #==============================================================================
