@@ -253,6 +253,9 @@ class CountingGui(LabelingGui):
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
 
+
+        self._updateSVROptions()
+
     def _connectUIParameters(self):
 
         #=======================================================================
