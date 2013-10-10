@@ -30,8 +30,8 @@ class CountingWorkflow(Workflow):
         self.projectMetadataApplet = ProjectMetadataApplet()
 
         self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Data Selection",
-                                                       "DataSelection",
+                                                       "Input Data",
+                                                       "Input Data",
                                                        batchDataGui=False,
                                                        force5d=False
                                                       )
