@@ -218,7 +218,22 @@ class OpCompressedCache(OpCache):
             #  not a numpy.dtype
             dtype = dtype.type
         return dtype().nbytes
-
+    
+    def usedMemory(self):
+        #FIXME
+        tot = 0.0
+        for b in self._cacheFiles:
+            tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
+        return tot
+    
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.dtype = self.Output.meta.dtype
+        report.type = type(self)
+        report.id = id(self)
 
     def _getCacheFile(self, entire_block_roi):
         """
@@ -315,6 +330,7 @@ class OpCompressedCache(OpCache):
             
             # Copy from source to block
             dataset = self._getBlockDataset( entire_block_roi )
+            
             dataset[ roiToSlice( *block_relative_intersection ) ] = value[ roiToSlice(*source_relative_intersection) ]
 
             # Here, we assume that if this function is used to update ANY PART of a 

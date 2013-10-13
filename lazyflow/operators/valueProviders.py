@@ -10,6 +10,7 @@ import numpy
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from operators import OpArrayCache, OpArrayPiper
+from lazyflow.operators.opCache import OpCache
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
@@ -170,7 +171,7 @@ class OpOutputProvider(Operator):
         result[...] = self._data[key]
 
 
-class OpValueCache(Operator):
+class OpValueCache(OpCache):
     """
     This operator caches a value in its entirety, 
     and allows for the value to be "forced in" from an external user.
@@ -194,6 +195,20 @@ class OpValueCache(Operator):
         self._value = None
         self._lock = threading.Lock()
         self._request = None
+        
+    def usedMemory(self):
+        if isinstance(self._value, numpy.ndarray):
+            return self._value.nbytes
+        return 0 #FIXME
+    
+    def generateReport(self, report):
+        report.name = self.name
+        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
+        report.usedMemory = self.usedMemory()
+        report.lastAccessTime = self.lastAccessTime()
+        report.dtype = self.Output.meta.dtype
+        report.type = type(self)
+        report.id = id(self)
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)

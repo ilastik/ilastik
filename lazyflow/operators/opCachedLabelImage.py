@@ -1,7 +1,8 @@
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators import OpLabelImage, OpCompressedCache, Operator
+from lazyflow.operators.opCache import OpCache
 
-class OpCachedLabelImage(Operator):
+class OpCachedLabelImage(OpCache):
     """
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
     """
@@ -24,7 +25,7 @@ class OpCachedLabelImage(Operator):
     # Input ------------> OpLabelImage ---> OpCompressedCache --> Output
     #                                                        \
     #                                                         --> CleanBlocks
-
+    
     def __init__(self, *args, **kwargs):
         super(OpCachedLabelImage, self).__init__(*args, **kwargs)
         
@@ -42,6 +43,18 @@ class OpCachedLabelImage(Operator):
         self.Output.connect( self._opCache.Output )
         self.CleanBlocks.connect( self._opCache.CleanBlocks )
         self.OutputHdf5.connect( self._opCache.OutputHdf5 )
+        
+    def generateReport(self, report):
+        return self._opCache.generateReport(report)
+    
+    def usedMemory(self):
+        return self._opCache.usedMemory()
+    
+    def fractionOfUsedMemoryDirty(self):
+        return self._opCache.fractionOfUsedMemoryDirty()
+    
+    def lastAccessTime(self):
+        return self._opCache.lastAccessTime()
     
     def setupOutputs(self):
         if self.BlockShape.ready():
