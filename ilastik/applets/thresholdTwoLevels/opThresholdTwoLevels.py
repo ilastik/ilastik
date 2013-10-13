@@ -302,6 +302,7 @@ class OpThresholdTwoLevels(Operator):
         
         #cache our own output, don't propagate from internal operator
         self._opCache = OpCompressedCache( parent=self )
+        self._opCache.name = "OpThresholdTwoLevels._opCache"
         self._opCache.InputHdf5.connect( self.InputHdf5 )
         
         self.CachedOutput.connect(self._opCache.Output)
@@ -472,6 +473,7 @@ class OpThresholdTwoLevels4d(Operator):
         self._opFinalLabelSizeFilter.BinaryOut.setValue(False)
 
         self._opCache = OpCompressedCache( parent=self )
+        self._opCache.name = "OpThresholdTwoLevels4d._opCache"
         self._opCache.InputHdf5.connect( self.InputHdf5 )
         self._opCache.Input.connect( self._opFinalLabelSizeFilter.Output )
 
@@ -490,14 +492,17 @@ class OpThresholdTwoLevels4d(Operator):
         
         # More debug outputs.  These all go through their own caches
         self._opBigRegionCache = OpCompressedCache( parent=self )
+        self._opBigRegionCache.name = "OpThresholdTwoLevels4d._opBigRegionCache"
         self._opBigRegionCache.Input.connect( self._opLowThresholder.Output )
         self.BigRegions.connect( self._opBigRegionCache.Output )
         
         self._opSmallRegionCache = OpCompressedCache( parent=self )
+        self._opSmallRegionCache.name = "OpThresholdTwoLevels4d._opSmallRegionCache"
         self._opSmallRegionCache.Input.connect( self._opHighThresholder.Output )
         self.SmallRegions.connect( self._opSmallRegionCache.Output )
         
         self._opFilteredSmallLabelsCache = OpCompressedCache( parent=self )
+        self._opFilteredSmallLabelsCache.name = "OpThresholdTwoLevels4d._opFilteredSmallLabelsCache"
         self._opFilteredSmallLabelsCache.Input.connect( self._opHighLabelSizeFilter.Output )
         self._opColorizeSmallLabels = OpColorizeLabels( parent=self )
         self._opColorizeSmallLabels.Input.connect( self._opFilteredSmallLabelsCache.Output )
@@ -564,6 +569,7 @@ class OpThresholdOneLevel(Operator):
         self._opLabeler.Input.connect(self._opThresholder.Output)
 
         self._opLabelCache = OpCompressedCache( parent=self )
+        self._opLabelCache.name = "OpThresholdOneLevel._opLabelCache"
         self._opLabelCache.Input.connect( self._opLabeler.Output )
         
         self.BeforeSizeFilter.connect( self._opLabelCache.Output )

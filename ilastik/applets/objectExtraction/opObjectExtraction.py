@@ -456,6 +456,7 @@ class OpCachedRegionFeatures(Operator):
 
         # Hook up the cache.
         self._opCache = OpArrayCache(parent=self)
+        self._opCache.name = "OpCachedRegionFeatures._opCache"
         self._opCache.Input.connect(self._opRegionFeatures.Output)
 
         # Hook up our output slots
@@ -645,6 +646,7 @@ class OpObjectExtraction(Operator):
 
         # internal operators
         self._opLabelImage = OpCachedLabelImage(parent=self)
+        self._opLabelImage.name = "OpObjectExtraction._opLabelImage"
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
@@ -667,6 +669,7 @@ class OpObjectExtraction(Operator):
         self._opObjectCenterImage.RegionCenters.connect(self._opRegFeatsAdaptOutput.Output)
 
         self._opCenterCache = OpCompressedCache(parent=self)
+        self._opCenterCache.name = "OpObjectExtraction._opCenterCache"
         self._opCenterCache.Input.connect(self._opObjectCenterImage.Output)
 
         # connect outputs

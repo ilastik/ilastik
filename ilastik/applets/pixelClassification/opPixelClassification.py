@@ -103,6 +103,7 @@ class OpPixelClassification( Operator ):
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
         self.classifier_cache = OpValueCache( parent=self )
+        self.classifier_cache.name = "OpPixelClassification.classifier_cache"
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.classifier_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.Classifier.connect( self.classifier_cache.Output )
