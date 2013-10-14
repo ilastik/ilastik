@@ -19,6 +19,10 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 from lazyflow.operators.valueProviders import OpAttributeSelector
+from lazyflow.roi import TinyVector
+
+import logging
+logger = logging.getLogger(__name__)
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
@@ -242,6 +246,69 @@ class ObjectClassificationWorkflow(Workflow):
             return [self.opBatchClassify.BlockwiseRegionFeatures]
         raise Exception("Unknown headless output slot")
 
+    def handleAppletStateUpdateRequested(self, upstream_ready=False):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        
+        This method will be called by the child classes with the result of their
+        own applet readyness findings as keyword argument.
+        """
+
+        # all workflows have these applets in common:
+
+        # object feature selection
+        # object classification
+        # object prediction export
+        # blockwise classification
+        # batch input
+        # batch prediction export
+
+        cumulated_readyness = upstream_ready
+        self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness)
+
+        if len(self.objectExtractionApplet.topLevelOperator.ComputedFeatureNames) == 0:
+            object_features_ready = False
+        else:
+            object_features_ready = True
+            for slot in self.objectExtractionApplet.topLevelOperator.ComputedFeatureNames:
+                object_features_ready = object_features_ready and len(slot.value) > 0
+        #object_features_ready = self.objectExtractionApplet.topLevelOperator.RegionFeatures.ready()
+
+        cumulated_readyness = cumulated_readyness and object_features_ready
+        self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
+
+        object_classification_ready = \
+            self.objectClassificationApplet.predict_enabled
+
+        cumulated_readyness = cumulated_readyness and object_classification_ready
+        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
+
+        if self.batch:
+            object_prediction_ready = True  # TODO is that so?
+            cumulated_readyness = cumulated_readyness and object_prediction_ready
+
+            self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
+            self._shell.setAppletEnabled(self.dataSelectionAppletBatch, cumulated_readyness)
+            self._shell.setAppletEnabled(self.batchExportApplet, cumulated_readyness)
+
+        # Lastly, check for certain "busy" conditions, during which we 
+        # should prevent the shell from closing the project.
+        #TODO implement
+        busy = False
+        self._shell.enableProjectChanges( not busy )
+
+    def _inputReady(self, nRoles):
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                    all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+
+        return input_ready
 
 
 class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
@@ -425,13 +492,48 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opBatchExport.RawData.connect( opBatchInputs.Image )
         opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
 
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        input_ready = self._inputReady(1)
+        cumulated_readyness = input_ready
+
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator
+        featureOutput = opFeatureSelection.OutputImage
+        features_ready = len(featureOutput) > 0 and  \
+            featureOutput[0].ready() and \
+            (TinyVector(featureOutput[0].meta.shape) > 0).all()
+        cumulated_readyness = cumulated_readyness and features_ready
+        self._shell.setAppletEnabled(self.pcApplet, cumulated_readyness)
+
+        slot = self.pcApplet.topLevelOperator.PredictionProbabilities
+        predictions_ready = len(slot) > 0 and \
+            slot[0].ready() and \
+            (TinyVector(slot[0].meta.shape) > 0).all()
+
+        cumulated_readyness = cumulated_readyness and predictions_ready
+        self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
+
+        # Problems can occur if the features or input data are changed during live update mode.
+        # Don't let the user do that.
+        opPixelClassification = self.pcApplet.topLevelOperator
+        live_update_active = not opPixelClassification.FreezePredictions.value
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
+        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active)
+
+        super(ObjectClassificationWorkflowPixel, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
+
+
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
                             'Use the "Segmentation Image" tab to load your binary mask image(s).'
-        
+
         self.dataSelectionApplet = DataSelectionApplet( self,
                                                         "Input Data",
                                                         "Input Data",
@@ -453,6 +555,15 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
             rawslot = opData.ImageGroup[0]
 
         return rawslot, opData.ImageGroup[1]
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        input_ready = self._inputReady(2)
+
+        super(ObjectClassificationWorkflowBinary, self).handleAppletStateUpdateRequested(upstream_ready=input_ready)
 
 
 class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
@@ -504,7 +615,19 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
 
         return op5raw.Output, op5Binary.Output
 
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        input_ready = self._inputReady(2)
+        cumulated_readyness = input_ready
+        self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
+
+        thresholding_ready = True  # is that so?
+        cumulated_readyness = cumulated_readyness and thresholding_ready
+        super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
+
 if __name__ == "__main__":
     from sys import argv
     w = ObjectClassificationWorkflow(True, argv)
-    
