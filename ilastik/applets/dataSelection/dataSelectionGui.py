@@ -23,7 +23,6 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
@@ -161,7 +160,6 @@ class DataSelectionGui(QWidget):
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
         self.laneSummaryTableView.addFilesRequested.connect( self.handleAddFiles )
         self.laneSummaryTableView.addStackRequested.connect( self.handleAddStack )
-        self.laneSummaryTableView.addByPatternRequested.connect( self.handleAddByPattern )
         self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
@@ -341,27 +339,6 @@ class DataSelectionGui(QWidget):
                 self.addFileNames(fileNames, roleIndex, startingLane)
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
-
-    def handleAddByPattern(self, roleIndex):
-        # Find the most recent directory
-
-        # TODO: remove code duplication
-        mostRecentDirectory = PreferencesManager().get( 'DataSelection', 'recent mass directory' )
-        if mostRecentDirectory is not None:
-            defaultDirectory = os.path.split(mostRecentDirectory)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
-
-        fileNames = self.getMass(defaultDirectory)
-
-        # If the user didn't cancel
-        if len(fileNames) > 0:
-            PreferencesManager().set('DataSelection', 'recent mass directory', os.path.split(fileNames[0])[0])
-            try:
-                self.addFileNames(fileNames, roleIndex)
-            except RuntimeError as e:
-                QMessageBox.critical(self, "Error loading file", str(e))
-
 
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
@@ -584,18 +561,6 @@ class DataSelectionGui(QWidget):
             msg += f + "\n"
         QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
-
-    def getMass(self, defaultDirectory):
-        # TODO: launch dialog and get files
-
-        # Convert from QtString to python str
-        loader = MassFileLoader(defaultDirectory=defaultDirectory)
-        loader.exec_()
-        if loader.result() == QDialog.Accepted:
-            fileNames = [str(s) for s in loader.filenames]
-        else:
-            fileNames = []
-        return fileNames
 
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:

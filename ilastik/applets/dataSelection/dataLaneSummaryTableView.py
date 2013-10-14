@@ -10,7 +10,6 @@ class DataLaneSummaryTableView(QTableView):
     
     addFilesRequested = pyqtSignal(int) # Signature: (roleIndex)
     addStackRequested = pyqtSignal(int) # Signature: (roleIndex)
-    addByPatternRequested = pyqtSignal(int) # Signature: (roleIndex)
     
     removeLanesRequested = pyqtSignal(object) # Signature: (laneIndexes)
 
