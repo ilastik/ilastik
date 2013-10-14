@@ -109,6 +109,7 @@ class ObjectClassificationGui(LabelingGui):
                                                       crosshair=False)
 
         self.op = op
+        self.applet = parentApplet
 
         self.threadRouter = ThreadRouter(self)
         op.Warnings.notifyDirty(self.handleWarnings)
@@ -290,6 +291,8 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = True
 
+        self.applet.predict_enabled = predict_enabled
+        self.applet.appletStateUpdateRequested.emit()
 
     def initAppletDrawerUi(self):
         """
@@ -363,7 +366,8 @@ class ObjectClassificationGui(LabelingGui):
         op.removeLabel(start)
         for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
             value = slot.value
-            value.pop(start)
+            if start in value:
+                value.pop(start)
             slot.setValue(value)
 
 

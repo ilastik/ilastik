@@ -177,7 +177,7 @@ class OpRegionFeatures3d(Operator):
         acc = self._extract(rawVolume4d, labelVolume4d)
         result[tuple(roi.start)] = acc
         stop = time.time()
-        print "TIMING: computing features took:", stop-start
+        logger.info("TIMING: computing features took {:.3f}s".format(stop-start))
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
@@ -524,6 +524,8 @@ class OpAdaptTimeListRoi(Operator):
             stop = taggedShape.values()
             start[timeIndex] = t
             stop[timeIndex] = t + 1
+
+            val = self.Input[...].wait()
 
             #FIXME: why is it wrapped like this?
             val = self.Input(start, stop).wait()
