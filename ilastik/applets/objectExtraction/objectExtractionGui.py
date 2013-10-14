@@ -348,17 +348,10 @@ class ObjectExtractionGui(LayerViewerGui):
         mainOperator = self.topLevelOperatorView
         mainOperator.ObjectCenterImage.setDirty(SubRegion(mainOperator.ObjectCenterImage))
 
-        maxt = mainOperator.LabelImage.meta.shape[0]
-
-        def _handle_one_finished(*args):
-            self._lock.acquire()
-            self.already_done = self.already_done+1
-            self.applet.progressSignal.emit(int(self.already_done*100./maxt))
-            if self.already_done == maxt:
-                _handle_all_finished(*args)
-            self._lock.release()
+        current_t = self.editor.posModel.time
 
         def _handle_all_finished(*args):
+            self._lock.acquire()
             self.applet.progressSignal.emit(100)
             self.topLevelOperatorView._opRegFeats.fixed = True
             feats = self.topLevelOperatorView.RegionFeatures[0].wait()
@@ -382,20 +375,21 @@ class ObjectExtractionGui(LayerViewerGui):
                 success = False
 
             self.applet.appletStateUpdateRequested.emit()
+            self._lock.release()
 
         self.applet.progressSignal.emit(0)
         self.applet.progressSignal.emit(-1)
 
         reqs = []
         self.already_done = 0
-        for t in range(maxt):
-            req = mainOperator.RegionFeatures([t])
-            req.submit()
-            reqs.append(req)
+        req = mainOperator.RegionFeatures([current_t])
+        req.submit()
+        req.notify_failed(self.handleFeatureComputationFailure)
+        req.notify_finished(_handle_all_finished)
+        reqs.append(req)
 
-        for req in reqs:
-            req.notify_failed(self.handleFeatureComputationFailure)
-            req.notify_finished(_handle_one_finished)
+        
+            
 
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):

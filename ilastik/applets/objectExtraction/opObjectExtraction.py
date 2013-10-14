@@ -525,9 +525,6 @@ class OpAdaptTimeListRoi(Operator):
             start[timeIndex] = t
             stop[timeIndex] = t + 1
 
-            val = self.Input[...].wait()
-
-            #FIXME: why is it wrapped like this?
             val = self.Input(start, stop).wait()
             assert val.shape == (1,)
             result[t] = val[0]
