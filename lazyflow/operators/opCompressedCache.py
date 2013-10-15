@@ -223,7 +223,8 @@ class OpCompressedCache(OpCache):
         #FIXME
         tot = 0.0
         for b in self._cacheFiles:
-            tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
+	    if "data" in b:
+                tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
         return tot
     
     def generateReport(self, report):
