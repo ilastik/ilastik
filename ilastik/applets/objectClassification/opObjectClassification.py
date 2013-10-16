@@ -925,12 +925,16 @@ class OpRelabelSegmentation(Operator):
             if isinstance(tmap, list):
                 tmap = tmap[0]
             tmap = tmap.squeeze()
-            tMAP = 1000.0*(time.time()-tMAP)
-
-            #FIXME: This should be cached (and reset when the input becomes dirty)")
+            if tmap.ndim==0:
+                # no objects, nothing to paint
+                result[t-roi.start[0]][:] = 0
+                return result
             
+            tMAP = 1000.0*(time.time()-tMAP)
+            #FIXME: This should be cached (and reset when the input becomes dirty)")
             tMAX = time.time()
             idx = img.max()
+            
             if len(tmap) <= idx:
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]
