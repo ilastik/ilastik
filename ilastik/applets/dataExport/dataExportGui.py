@@ -184,7 +184,8 @@ class DataExportGui(QWidget):
             QMessageBox.information( self, 
                                      "Image not ready for export", 
                                      "Export isn't possible yet: No images are ready for export.  "
-                                     "Please configure upstream pipeline with valid settings and try again." )
+                                     "Please configure upstream pipeline with valid settings, "
+                                     "check that images were specified in the (batch) input applet and try again." )
             return
         
         settingsDlg = DataExportOptionsDlg(self, opExportModelOp)
