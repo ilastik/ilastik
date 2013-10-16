@@ -150,7 +150,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     }
   }
 
-  printf("Status ok\n");
+  /* printf("Status ok\n");*/
   for (i = 0; i < numrows; ++i) {
     matind[numFeatures * numrows + i] = i;
     matval[numFeatures * numrows + i] = 1;
@@ -172,7 +172,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     obj[i] = 0;
   }
 
-  printf("Status ok\n");
+  /*printf("Status ok\n");*/
   status = CPXcopylp (env, lp, numcols, numrows, 1, obj, rhs,
                       sense, matbeg, matcnt, matind, matval,
                       lb, ub, NULL);
