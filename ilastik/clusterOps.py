@@ -13,8 +13,8 @@ from lazyflow.utility import BigRequestStreamer
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 
 from ilastik.clusterConfig import parseClusterConfigFile
-from ilastik.utility.timer import Timer
-from ilastik.utility.pathHelpers import getPathVariants
+from lazyflow.utility.timer import Timer
+from lazyflow.utility.pathHelpers import getPathVariants
 
 import logging
 logger = logging.getLogger(__name__)
@@ -201,7 +201,7 @@ class OpClusterize(Operator):
                 logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
                 del taskInfos[roi]
 
-            absWorkDir, relWorkDir = getPathVariants(self._config.server_working_directory, os.path.split( configFilePath )[0] )
+            absWorkDir, _ = getPathVariants(self._config.server_working_directory, os.path.split( configFilePath )[0] )
             if self._config.task_launch_server == "localhost":
                 def localCommand( cmd ):
                     cwd = os.getcwd()
@@ -256,7 +256,7 @@ class OpClusterize(Operator):
             assert commandFormat.find("{task_args}") != -1
 
             # Output log directory might be a relative path (relative to config file)
-            absLogDir, relLogDir = getPathVariants(self._config.output_log_directory, os.path.split( self.ConfigFilePath.value )[0] )
+            absLogDir, _ = getPathVariants(self._config.output_log_directory, os.path.split( self.ConfigFilePath.value )[0] )
             taskOutputLogFilename = taskName + ".log"
             taskOutputLogPath = os.path.join( absLogDir, taskOutputLogFilename )
             

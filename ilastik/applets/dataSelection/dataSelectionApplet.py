@@ -4,7 +4,7 @@ import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-from ilastik.utility import PathComponents
+from lazyflow.utility import PathComponents
 from ilastik.applets.base.applet import Applet
 from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer

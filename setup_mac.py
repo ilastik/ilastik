@@ -13,6 +13,7 @@ includes = [\
                 'site', 'os',
                 'vtk',
                 'vtk.vtkCommonPythonSIP',
+                'sklearn', 'sklearn.utils',
              ]
 
 # The py2app dependency walker finds this code, which is intended only for Python3.
@@ -64,6 +65,7 @@ class lazyflow_recipe(object):
         return dict(
             packages=['lazyflow']
         )
+
 class vtk_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('vtk')
@@ -75,11 +77,23 @@ class vtk_recipe(object):
             packages=['vtk']
         )
 
+class sklearn_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('sklearn')
+        if m is None:
+            return None
+
+        # Don't put sklearn in the site-packages.zip file
+        return dict(
+            packages=['sklearn']
+        )
+
 import py2app.recipes
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
+py2app.recipes.sklearn = sklearn_recipe()
 
 setup(
     app=APP,

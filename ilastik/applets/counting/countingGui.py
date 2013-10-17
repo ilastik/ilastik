@@ -3,6 +3,7 @@ import os
 import logging
 import threading
 from functools import partial
+import importlib
 
 # Third-party
 import numpy
@@ -29,7 +30,7 @@ from ilastik.applets.base.applet import ShellRequest
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
 from ilastik.applets.base.appletSerializer import SerialListSlot
-
+from PyQt4 import QtGui
 
 
 try:
@@ -150,7 +151,6 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        self._initShortcuts()
 
         try:
             self.render = True
@@ -158,21 +158,27 @@ class CountingGui(LabelingGui):
             self._renderMgr = RenderingManager(
                 renderer=self.editor.view.qvtk.renderer,
                 qvtk=self.editor.view.qvtk)
-        except:
+        except Exception,e:
             self.render = False
 
 
         self.initCounting()
         try:
-            from sitecustomize import debug_trace
-        except:
+            from sitecustomize import Shortcuts
+        except Exception,e:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
+        self._initShortcuts()
 
 
 
 
     def initCounting(self):
+
+
+
+
+
 
         #=======================================================================
         # Init Dotting interface
@@ -184,6 +190,7 @@ class CountingGui(LabelingGui):
         #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
         self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler)
         self.dotInterpreter=self.editor.brushingInterpreter
+
 
 
         #=======================================================================
@@ -230,29 +237,36 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.boxListModel.elementSelected.connect(self._onBoxSelected)
         #self.labelingDrawerUi.boxListModel.boxRemoved.connect(self._removeBox)
 
-#        ###FIXME: Only for debug
-        #self.op.Density.notifyDirty(self.updateSum)
+
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
         mainwin=self
-        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #FIXME: Hack , get the proper reference to the graph
+        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
+
         self.density5d.input.connect(self.op.Density)
         self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
-
         self.navigationInterpreterDefault=self.editor.navInterpret
 
-        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
 
         self._setUIParameters()
         self._connectUIParameters()
 
+        self._loadViewBoxes()
 
-
+        self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
+        self.boxController.viewBoxesChanged.connect(self._changeViewBoxes)
+        
         self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
+
+
+        self._updateSVROptions()
+
+
+     
 
 
 
@@ -305,23 +319,8 @@ class CountingGui(LabelingGui):
 
         CallToGui(op.SelectedOption,_setoption)
         idx = self.op.current_view_index()
-        op = self.op.opTrain
-        fix = op.fixClassifier.value
-        op.fixClassifier.setValue(True)
 
-        if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
-            #if fixed boxes are existent, make column visible
-            self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
-            for i, constr in enumerate(zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value)):
-                roi, val = constr
-                if type(roi) is not list or len(roi) is not 2:
-                    continue
-                self.boxController.addNewBox(roi[0], roi[1])
-                boxIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.Fix)
-                iconIndex = self.boxController.boxListModel.index(i, self.boxController.boxListModel.ColumnID.FixIcon)
-                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
-        op.fixClassifier.setValue(fix)
-
+        
 
 
     def _setUIParameters(self):
@@ -337,20 +336,19 @@ class CountingGui(LabelingGui):
         for option in self.op.options:
             if "req" in option.keys():
                 try:
-                    import importlib
                     for req in option["req"]:
                         importlib.import_module(req)
-                except:
+                except Exception,e:
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
 
 
         cache = self.op.classifier_cache
-        if type(cache._value) is list and len(self.op.classifier_cache._value) > 0:
+        if hasattr(cache._value, "__iter__") and len(self.op.classifier_cache._value) > 0:
         #if self.op.classifier_cache._value!=None and len(self.op.classifier_cache._value) > 0:
             #use parameters from cached classifier
-            params = cache.Output.value[0].get_params()
+            params = cache._value[0].get_params()
             Sigma = params["Sigma"]
             Epsilon = params["epsilon"]
             C = params["C"]
@@ -373,7 +371,6 @@ class CountingGui(LabelingGui):
             _ind = self.labelingDrawerUi.SVROptions.findText(self.op.opTrain.SelectedOption.value)
 
         #FIXME: quick fix recently introduced bug
-
         if type(Sigma)==list:
             Sigma=Sigma[0]
         self.labelingDrawerUi.SigmaBox.setValue(Sigma)
@@ -388,8 +385,6 @@ class CountingGui(LabelingGui):
             self.labelingDrawerUi.SVROptions.setCurrentIndex(_ind)
 
         self._hideParameters()
-
-
 
     def _updateMaxDepth(self):
         self.op.opTrain.MaxDepth.setValue(self.labelingDrawerUi.MaxDepthBox.value())
@@ -425,22 +420,25 @@ class CountingGui(LabelingGui):
         self.editor.crosshairControler.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
+        self.op.opUpperBound.Sigma.setValue(sigma)
         self.op.LabelPreviewer.Sigma.setValue(sigma)
         #    self._changedSigma = False
         self._normalizeLayers()
 
     def _normalizeLayers(self):
-            upperBound = self.op.UpperBound.value
-            self.upperBound = upperBound
+        upperBound = self.op.UpperBound.value
+        self.upperBound = upperBound
 
-            if hasattr(self, "labelPreviewLayer"):
-                self.labelPreviewLayer.set_normalize(0,(0,upperBound))
-            return
+        if hasattr(self, "labelPreviewLayer"):
+            self.labelPreviewLayer.set_normalize(0,(0,upperBound))
+        return
 
 
     def _normalizePrediction(self, *args):
         if hasattr(self, "predictionLayer") and hasattr(self, "upperBound"):
             self.predictionLayer.set_normalize(0,(0,self.upperBound))
+        if hasattr(self, "uncertaintyLayer") and hasattr(self, "upperBound"):
+            self.uncertaintyLayer.set_normalize(0,(0,self.upperBound))
 
 
     def _updateEpsilon(self):
@@ -472,19 +470,58 @@ class CountingGui(LabelingGui):
         fixedClassifier = opTrain.fixClassifier.value
         assert len(vals) == len(rois)
         if opTrain.BoxConstraintRois.ready() and opTrain.BoxConstraintValues.ready():
-            if opTrain.BoxConstraintValues[id].value != vals and opTrain.BoxConstraintRois[id].value != rois:
+            if opTrain.BoxConstraintValues[id].value != vals or opTrain.BoxConstraintRois[id].value != rois:
                 opTrain.fixClassifier.setValue(True)
                 opTrain.BoxConstraintRois[id].setValue(rois)
+                #at this position so the change of a value can trigger a recomputation
                 opTrain.fixClassifier.setValue(fixedClassifier)
                 opTrain.BoxConstraintValues[id].setValue(vals)
 
         #boxes = self.boxController._currentBoxesList
+    def _changeViewBoxes(self, boxes):
+        id = self.op.current_view_index()
+        self.op.boxViewer.rois[id].setValue(boxes["rois"])
+
+
+    def _loadViewBoxes(self):
+        op = self.op.opTrain
+        fix = op.fixClassifier.value
+        op.fixClassifier.setValue(True)
+
+        idx = self.op.current_view_index()
+        boxCounter = 0
+        if self.op.boxViewer.rois.ready() and len(self.op.boxViewer.rois[idx].value) > 0:
+            #if fixed boxes are existent, make column visible
+            #self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
+            for roi in self.op.boxViewer.rois[idx].value:
+                if type(roi) is not list or len(roi) is not 2:
+                    continue
+                self.boxController.addNewBox(roi[0], roi[1])
+                #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
+                #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
+                #self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                boxCounter = boxCounter + 1
+
+
+        if op.BoxConstraintRois.ready() and len(op.BoxConstraintRois[idx].value) > 0:
+            #if fixed boxes are existent, make column visible
+            self.labelingDrawerUi.boxListView._table.setColumnHidden(self.boxController.boxListModel.ColumnID.Fix, False)
+            for constr in zip(op.BoxConstraintRois[idx].value, op.BoxConstraintValues[idx].value):
+                roi, val = constr
+                if type(roi) is not list or len(roi) is not 2:
+                    continue
+                self.boxController.addNewBox(roi[0], roi[1])
+                boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
+                iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
+                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                boxCounter = boxCounter + 1
+        
+        op.fixClassifier.setValue(fix)
+
 
 
     def _debug(self):
-        import sitecustomize
-        sitecustomize.debug_trace()
-
+        go.db
 
 
     @traceLogged(traceLogger)
@@ -502,6 +539,28 @@ class CountingGui(LabelingGui):
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
+
+        def _monkey_contextMenuEvent(s,event):
+            from volumina.widgets.layercontextmenu import layercontextmenu
+            idx = s.indexAt(event.pos())
+            layer = s.model()[idx.row()]
+            if layer.name=="Boxes":
+                pass
+                #FIXME: for the moment we do nothing here
+            else:
+                layercontextmenu(layer, s.mapToGlobal(event.pos()), s )
+
+
+
+        import types
+        self._viewerControlUi.viewerControls.layerWidget.contextMenuEvent = \
+        types.MethodType(_monkey_contextMenuEvent,self._viewerControlUi.viewerControls.layerWidget)
+
+
+
+
+
+
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
@@ -524,6 +583,17 @@ class CountingGui(LabelingGui):
                       "Toggle Live Prediction Mode",
                       toggleLivePredict,
                       self.labelingDrawerUi.liveUpdateButton )
+
+
+        shortcutGroupName = "Counting"
+
+        deleteBox = QShortcut( QKeySequence("Del"), self, member=self.boxController.deleteSelectedItems)
+        mgr.register( shortcutGroupName,
+                      "Delete a Box",
+                      deleteBox,
+                      None )
+
+
 
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
@@ -573,6 +643,7 @@ class CountingGui(LabelingGui):
         boxlabellayer = ColortableLayer(boxlabelsrc, colorTable = self._colorTable16, direct = False)
         boxlabellayer.name = "Boxes"
         boxlabellayer.opacity = 1.0
+        boxlabellayer.boxListModel = self.labelingDrawerUi.boxListModel
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
 
@@ -655,6 +726,8 @@ class CountingGui(LabelingGui):
                 self.labelPreviewLayer = layer
             if layer.name == "Prediction":
                 self.predictionLayer = layer
+            if layer.name == "Uncertainty":
+                self.uncertaintyLayer = layer
 
 
 
@@ -971,9 +1044,10 @@ class CountingGui(LabelingGui):
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # update GUI
-                self.editor.brushingModel.setBrushSize(0)
+                #self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
                 self._gui_setNavigation()
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Paint:
                 # If necessary, tell the brushing model to stop erasing
@@ -987,7 +1061,7 @@ class CountingGui(LabelingGui):
 
                 # update GUI
                 self._gui_setBrushing()
-
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Erase:
 
@@ -999,13 +1073,17 @@ class CountingGui(LabelingGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI
                 self._gui_setErasing()
+                self.setCursor(Qt.ArrowCursor)
 
             elif toolId == Tool.Box:
+
+                self.setCursor(Qt.CrossCursor)
                 self._labelControlUi.labelListModel.clearSelectionModel()
                 for v in self.editor.crosshairControler._imageViews:
                     v._crossHairCursor.enabled=False
 
-                QApplication.setOverrideCursor(Qt.CrossCursor)
+                #self.setOverrideCursor(Qt.CrossCursor)
+                #QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.editor.brushingModel.setBrushSize(0)
                 self.editor.setNavigationInterpreter(self.boxInterpreter)
                 self._gui_setBox()
@@ -1040,7 +1118,7 @@ class CountingGui(LabelingGui):
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Box)
 
-        print len(self.boxController._currentBoxesList)
+
         self.boxController.selectBoxItem(row)
 
 
@@ -1082,11 +1160,17 @@ class CountingGui(LabelingGui):
 
 
     def updateSum(self, *args, **kw):
-        print "updatingSum"
+        state = self.labelingDrawerUi.liveUpdateButton.isChecked()
+        self.labelingDrawerUi.liveUpdateButton.setChecked(True)
         density = self.op.OutputSum[...].wait()
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(state)
 
+
+#==============================================================================
+#                   Colortable
+#==============================================================================
 
 countingColorTable = [
     QColor(0.0,0.0,127.0,0.0).rgba(),

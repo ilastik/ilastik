@@ -105,11 +105,6 @@ class SerialSlot(object):
             inslot = slot
         self.inslot = inslot
 
-        if isinstance(inslot, OutputSlot):
-            # should this be an exception? Or maybe an exception in lazyflow?
-            logger.warn('This SerialSlot will try to call setValue() on an OutputSlot.'
-                        ' This is probably not what you wanted!'
-                        ' slot: {}'.format(slot.name))
         self.default = default
         self.depends = maybe(depends, [])
         if selfdepends:

@@ -62,6 +62,7 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
 {
   int i,j,k;
   GRBenv *     env = NULL;
+  GRBenv *    aenv = NULL;
   GRBmodel *   model = NULL;
   int status;
   char probname[] = "Testproblem";
@@ -168,12 +169,18 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
   if (status) goto QUIT;
   status = GRBsetdblattrarray(model, "lb", 0, numFeatures+1, lb);
   if (status) goto QUIT;
+
+  aenv = GRBgetenv(model);
+  if (!aenv) goto QUIT;
+  
+  status = GRBsetintparam(aenv, "OutputFlag", 0);
+  if (status) goto QUIT;
   status = GRBaddqpterms(model, numcols, qrow, qcol, qsepvec);
   if (status) goto QUIT;
   status = GRBupdatemodel(model);
   status = GRBoptimize(model);
   if (status) goto QUIT;
-  status = GRBwrite(model, "qp.lp");
+  /*status = GRBwrite(model, "qp.lp");*/
   status = GRBgetdblattrarray(model, GRB_DBL_ATTR_X, 0, numFeatures+1, w);
   if (status) goto QUIT;
 

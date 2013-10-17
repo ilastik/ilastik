@@ -7,7 +7,7 @@ import logging
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset
-from ilastik.utility.pathHelpers import PathComponents
+from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.rtype import SubRegion
 logger = logging.getLogger(__name__)
 

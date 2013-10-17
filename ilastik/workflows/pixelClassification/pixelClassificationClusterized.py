@@ -25,11 +25,11 @@ from lazyflow.graph import OperatorWrapper
 
 # ilastik
 import ilastik.monkey_patches
-from ilastik.utility.timer import timeLogged
+from lazyflow.utility.timer import timeLogged
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from ilastik.shell.headless.headlessShell import HeadlessShell
-from ilastik.utility.pathHelpers import getPathVariants
+from lazyflow.utility.pathHelpers import getPathVariants
 from ilastik.workflow import Workflow
 
 import ilastik.workflows # Load all known workflow modules
@@ -96,7 +96,7 @@ def runWorkflow(parsed_args):
         # Tee the log to a file for future reference.
 
         # Output log directory might be a relative path (relative to config file)
-        absLogDir, relLogDir = getPathVariants(config.output_log_directory, os.path.split( configFilePath )[0] )
+        absLogDir, _ = getPathVariants(config.output_log_directory, os.path.split( configFilePath )[0] )
         if not os.path.exists(absLogDir):
             os.mkdir(absLogDir)
 

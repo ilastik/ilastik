@@ -7,7 +7,8 @@ from lazyflow.operators import OpCompressedCache, OpVigraLabelVolume, OpFilterLa
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from ilastik.utility import bind, PathComponents
+from lazyflow.utility import PathComponents
+from ilastik.utility import bind
 from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations, OpMaskedWatershed
 
 import logging

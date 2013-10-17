@@ -14,7 +14,7 @@ from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.utility import getPathVariants, PathComponents
+from lazyflow.utility import getPathVariants, PathComponents
 from opDataSelection import OpDataSelection, DatasetInfo
 
 class StorageLocation(object):
@@ -566,7 +566,7 @@ class DatasetInfoEditorWidget(QDialog):
             datasetInfo = tmpOp.Dataset.value
             
             externalPath = PathComponents( datasetInfo.filePath ).externalPath
-            absPath, relPath = getPathVariants( externalPath, tmpOp.WorkingDirectory.value )
+            absPath, _ = getPathVariants( externalPath, tmpOp.WorkingDirectory.value )
             internalPaths = set( self._getPossibleInternalPaths(absPath) )
             
             if commonInternalPaths is None:
@@ -680,11 +680,13 @@ class DatasetInfoEditorWidget(QDialog):
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( decode_to_qstring("Absolute Link: " + absPath), userData=StorageLocation.AbsoluteLink )
-            self.storageComboBox.addItem( decode_to_qstring("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
+            if relPath is not None:
+                self.storageComboBox.addItem( decode_to_qstring("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )
-            self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
+            if relPath is not None:
+                self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
 
         self.storageComboBox.setCurrentIndex(-1)
 
@@ -769,10 +771,10 @@ class DatasetInfoEditorWidget(QDialog):
                         info.location = DatasetInfo.Location.FileSystem 
                         cwd = op.WorkingDirectory.value
                         absPath, relPath = getPathVariants( info.filePath, cwd )
-                        if newStorageLocation == StorageLocation.AbsoluteLink:
-                            info.filePath = absPath
-                        elif newStorageLocation == StorageLocation.RelativeLink:
+                        if relPath is not None and newStorageLocation == StorageLocation.RelativeLink:
                             info.filePath = relPath
+                        elif newStorageLocation == StorageLocation.AbsoluteLink:
+                            info.filePath = absPath
                         else:
                             assert False, "Unknown storage location setting."
                     op.Dataset.setValue( info )

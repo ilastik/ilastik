@@ -23,3 +23,13 @@ ilastik.egg-info/
 
 test.svg
 geany_run_script.bat
+
+*.lp
+*.log
+*.orig
+ilastik/applets/counting/cwrapper/gurobi
+ilastik/applets/counting/cwrapper/cplex
+CMakeFiles
+CMakeCache*
+*.cmake
+ilastik/applets/counting/cwrapper/Makefile

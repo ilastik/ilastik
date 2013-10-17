@@ -67,7 +67,7 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
         labelSlots.labelNames = topLevelOperatorView.LabelNames
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 

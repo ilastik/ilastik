@@ -10,7 +10,7 @@ from lazyflow.roi import roiFromShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module

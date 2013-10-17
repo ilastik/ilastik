@@ -196,7 +196,7 @@ class PixelClassificationWorkflow(Workflow):
     def handleAppletStateUpdateRequested(self):
         """
         Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
@@ -215,7 +215,13 @@ class PixelClassificationWorkflow(Workflow):
                             opDataExport.Input[0].ready() and \
                             (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
 
-        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
+        # Problems can occur if the features or input data are changed during live update mode.
+        # Don't let the user do that.
+        opPixelClassification = self.pcApplet.topLevelOperator
+        live_update_active = not opPixelClassification.FreezePredictions.value
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
+        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active)
         self._shell.setAppletEnabled(self.pcApplet, features_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
         

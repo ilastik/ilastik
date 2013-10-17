@@ -11,11 +11,8 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 from ilastik.applets.counting.opCounting import OpPredictionPipeline
 
 from lazyflow.roi import TinyVector
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader 
-from lazyflow.operators import OpAttributeSelector, OpTransposeSlots
-
+from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
 class CountingWorkflow(Workflow):
     workfloName = "Counting Workflow Base"
@@ -33,8 +30,8 @@ class CountingWorkflow(Workflow):
         self.projectMetadataApplet = ProjectMetadataApplet()
 
         self.dataSelectionApplet = DataSelectionApplet(self,
-                                                       "Data Selection",
-                                                       "DataSelection",
+                                                       "Input Data",
+                                                       "Input Data",
                                                        batchDataGui=False,
                                                        force5d=False
                                                       )
@@ -123,6 +120,16 @@ class CountingWorkflow(Workflow):
         
         opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
         
+        opSelectFirstLane = OperatorWrapper( OpSelectSubslot, parent=self )
+        opSelectFirstLane.Inputs.connect( opTrainingDataSelection.ImageGroup )
+        opSelectFirstLane.SubslotIndex.setValue(0)
+        
+        opSelectFirstRole = OpSelectSubslot( parent=self )
+        opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
+        opSelectFirstRole.SubslotIndex.setValue(0)
+        
+        opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
+        
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
@@ -151,6 +158,7 @@ class CountingWorkflow(Workflow):
         opBatchResults.RawData.connect( opBatchInputs.Image )
         opBatchResults.PmapColors.connect( opClassify.PmapColors )
         opBatchResults.LabelNames.connect( opClassify.LabelNames )
+        opBatchResults.UpperBound.connect( opClassify.UpperBound )
         
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export
