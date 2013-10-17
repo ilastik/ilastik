@@ -735,8 +735,6 @@ class IlastikShell( QMainWindow ):
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
     
     def onCloseActionTriggered(self):
-        if not self.confirmQuit():
-            return
         if not self.ensureNoCurrentProject():
             return
         self.closeCurrentProject()
