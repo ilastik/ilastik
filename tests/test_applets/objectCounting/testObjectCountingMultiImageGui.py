@@ -26,8 +26,8 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
     PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
     SAMPLE_DATA = []
-    SAMPLE_DATA.append( os.path.split(__file__)[0] + '/0.npy')
     SAMPLE_DATA.append( os.path.split(__file__)[0] + '/1.npy')
+    SAMPLE_DATA.append( os.path.split(__file__)[0] + '/0.npy')
     SAMPLE_DATA.append( os.path.split(__file__)[0] + '/2.npy')
     SAMPLE_DATA.append( os.path.split(__file__)[0] + '/3.npy')
     SAMPLE_DATA.append( os.path.split(__file__)[0] + '/4.npy')
@@ -134,11 +134,9 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     # These points are relative to the CENTER of the view
-    LABEL_START = (-10,-10)
-    LABEL_STOP = (-10,0)
-    LABEL_SAMPLE = (0,0)
-    LABEL_ERASE_START = (-10,-10)
-    LABEL_ERASE_STOP = (10,10)
+
+
+
 
 
     def test_4_AddDotsAndBackground(self):
@@ -147,10 +145,14 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         """
         def impl():
 
+            imageId = 0
 
             workflow = self.shell.projectManager.workflow
             countingClassApplet = workflow.countingApplet
+            self.shell.imageSelectionCombo.setCurrentIndex(imageId)
+
             gui = countingClassApplet.getMultiLaneGui()
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
@@ -196,30 +198,63 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             imgView = gui.currentGui().editor.imageViews[2]
 
-            dot_start_list = [(-20,-20),(15,-15),(9,-3)]
-            dot_stop_list = [(-20,-19),(15,-14),(8,-3)]
+            
+            dot_start_list = [(-14,-20),(6,-8),(10,4), (20,21)]
+            dot_stop_list = [(-20,-11),(9,-12),(15,-3), (20,21)]
+           
+            LABEL_START = (-14,-20)
+            LABEL_STOP = (-14,-21)
+            LABEL_ERASE_START = (6,-8)
+            LABEL_ERASE_STOP = (9,-8)
 
+
+           #draw foreground dots
             for start,stop in zip(dot_start_list,dot_stop_list):
                 self.strokeMouseFromCenter( imgView, start,stop )
+  
+            labelData = opPix.LabelImages[imageId][:].wait()
+            
+            assert numpy.sum(labelData[labelData==1]) == 4, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+
+            center = (numpy.array(labelData.shape[:-1]))/2 + 1
+            
+            true_idx = numpy.array([center + dot for dot in dot_start_list])
+            idx = numpy.where(labelData)
+            test_idx = numpy.array((idx[0],idx[1])).transpose()
+            assert numpy.alltrue(test_idx == true_idx)
 
 
             # Set the brush size
+            # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(6)
-
-            self.strokeMouseFromCenter( imgView, self.LABEL_START,self.LABEL_STOP)
-
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            
+            self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
+            
             #The background in this configuration should override the dots
-            labelData = opPix.LabelImages[0][:].wait()
+            labelData = opPix.LabelImages[imageId][:].wait()
             assert labelData.max() == 2, "Max label value was {}".format( labelData.max() )
+            
+            assert numpy.sum(labelData[labelData==1]) == 3, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
 
 
-            labelData = opPix.LabelImages[0][:].wait()
-            assert numpy.sum(labelData[labelData==1]) == 2, "Max label value was {}".format( labelData.max() )
-
-
-
+            #Now select eraser            
+            gui.currentGui()._labelControlUi.eraserToolButton.click()
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            self.strokeMouseFromCenter( imgView, LABEL_ERASE_START,LABEL_ERASE_STOP)
+            
+            labelData = opPix.LabelImages[imageId][:].wait()
+            assert numpy.sum(labelData[labelData==1]) == 2, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+            
+            true_idx = numpy.array([center + dot for dot in dot_start_list[2:]])
+            idx = numpy.where(labelData == 1)
+            test_idx = numpy.array((idx[0],idx[1])).transpose()
+            assert numpy.alltrue(test_idx == true_idx)
             self.waitForViews([imgView])
+
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
@@ -227,6 +262,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
+
 
 
     def test_5_AddBox(self):
@@ -283,14 +319,23 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             imgView = gui.currentGui().editor.imageViews[2]
 
-            start_box_list=[(-100,-100),(-22,-1),(0,1)]
-            stop_box_list=[(100,100),(0,10),(50,20)]
+            start_box_list=[(-22,-1),(0,1)]
+            stop_box_list=[(0,10),(50,20)]
 
             for start,stop in zip(start_box_list,stop_box_list):
                 self.strokeMouseFromCenter( imgView, start,stop)
 
             added_boxes=len(gui.currentGui()._labelControlUi.boxListModel._elements)
-            assert added_boxes==3," Not all boxes added to the model curr = %d"%added_boxes
+            assert added_boxes==2," Not all boxes added to the model curr = %d"%added_boxes
+            start_box_list= [(-128,-128), (128,128)]
+            stop_box_list = [(128,128), (-128,-128)]
+            for start,stop in zip(start_box_list,stop_box_list):
+                self.strokeMouseFromCenter( imgView, start,stop)
+
+            added_boxes=len(gui.currentGui()._labelControlUi.boxListModel._elements)
+            assert added_boxes==4," Not all boxes added to the model curr = %d"%added_boxes
+
+
             self.waitForViews([imgView])
 
             # Save the project
@@ -301,45 +346,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
 
-    # def test_7_InteractiveMode(self):
-    #     """
-    #     Click the "interactive mode" to see if anything crashes for each of the available counting modalities.
-
-    #     """
-    #     def impl():
-    #         workflow = self.shell.projectManager.workflow
-    #         countingClassApplet = workflow.countingApplet
-    #         gui = countingClassApplet.getMultiLaneGui()
-
-
-    #         clicked=False
-    #         def toggle(clicked):
-    #             clicked= not clicked
-    #             gui.currentGui()._labelControlUi.liveUpdateButton.click()
-    #             return clicked
-
-    #         SVROptions=gui.currentGui()._labelControlUi.SVROptions
-
-    #         #Test each one of the counting modality which is registered
-    #         for el in range(SVROptions.count()):
-    #             if clicked:
-    #                 clicked=toggle(clicked)
-
-    #             SVROptions.setCurrentIndex(el)
-    #             clicked=toggle(clicked)
-    #             imgView = gui.currentGui().editor.imageViews[2]
-
-
-    #             self.waitForViews([imgView])
-    #         if clicked:
-    #             clicked=toggle(clicked)
-
-
-    #     # Run this test from within the shell event loop
-    #     self.exec_in_shell(impl)
-
-
-    def test_7_SwitchImages(self):
+    def test_6_SwitchImages(self):
         """
         Switch back and forth between a labeled image and an unlabeled one.  boxes should disappear and then reappear.
         """
@@ -350,7 +357,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
             # Select the second image
-            self.shell.imageSelectionCombo.setCurrentIndex(1)
+            self.shell.imageSelectionCombo.setCurrentIndex(2)
             gui = countingClassApplet.getMultiLaneGui()
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
             self.waitForViews(gui.currentGui().editor.imageViews)
@@ -367,10 +374,9 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
             self.waitForViews(gui.currentGui().editor.imageViews)
 
-
             #Check that old boxes are still there
             added_boxes=len(gui.currentGui()._labelControlUi.boxListModel._elements)
-            assert added_boxes==3," Not all boxes added to the model curr = %d"%added_boxes
+            assert added_boxes==4," Not all boxes added to the model curr = %d"%added_boxes
 
 
             # Select the second image
@@ -380,11 +386,163 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             self.waitForViews(gui.currentGui().editor.imageViews)
 
 
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
 
+    
+    
+
+    def test_7_AddDotsAndBackground(self):
+        """
+        Add labels and draw them in the volume editor.
+        """
+        def impl():
+
+            imageId = 1
+
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            self.shell.imageSelectionCombo.setCurrentIndex(imageId)
+
+            gui = countingClassApplet.getMultiLaneGui()
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
+            opPix = countingClassApplet.topLevelOperator
+            # Select the labeling drawer
+            self.shell.setSelectedAppletDrawer(3)
+
+            # Turn off the huds and so we can capture the raw image
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
+
+
+            # Select the labeling drawer
+            self.shell.setSelectedAppletDrawer(3)
+
+            # Turn off the huds and so we can capture the raw image
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
+
+            ## Turn off the slicing position lines
+            ## FIXME: This disables the lines without unchecking the position
+            ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
+            #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
+
+            # Do our tests at position 0,0,0
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+
+
+            # Select the brush
+            gui.currentGui()._labelControlUi.paintToolButton.click()
+
+
+
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
+
+            # Draw some arbitrary labels in the view using mouse events.
+
+            # Set the brush size
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(1)
+            gui.currentGui()._labelControlUi.labelListModel.select(0)
+
+            imgView = gui.currentGui().editor.imageViews[2]
+
+            
+            dot_start_list = [(-25,-20),(9,-15),(15,-3)]
+            dot_stop_list = [(-25,-11),(9,-12),(15,-3)]
+           
+            LABEL_START = (-25,-30)
+            LABEL_STOP = (-25,-20)
+            LABEL_ERASE_START = (9,-15)
+            LABEL_ERASE_STOP = (15,-3)
+
+
+           #draw foreground dots
+            for start,stop in zip(dot_start_list,dot_stop_list):
+                self.strokeMouseFromCenter( imgView, start,stop )
+  
+            labelData = opPix.LabelImages[imageId][:].wait()
+            
+            assert numpy.sum(labelData[labelData==1]) == 3, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+
+            center = (numpy.array(labelData.shape[:-1]))/2 + 1
+            
+            true_idx = numpy.array([center + dot for dot in dot_start_list])
+            idx = numpy.where(labelData)
+            test_idx = numpy.array((idx[0],idx[1])).transpose()
+            assert numpy.alltrue(test_idx == true_idx)
+
+
+            # Set the brush size
+            # Draw background
+            gui.currentGui()._labelControlUi.labelListModel.select(1)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            
+            self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
+            
+            #The background in this configuration should override the dots
+            labelData = opPix.LabelImages[imageId][:].wait()
+            assert labelData.max() == 2, "Max label value was {}".format( labelData.max() )
+            
+            assert numpy.sum(labelData[labelData==1]) == 2, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+            assert numpy.sum(labelData[labelData==2]) == 22, "Number of background dots was {}".format(
+                numpy.sum(labelData[labelData==2]) )
+
+
+            #Now select eraser            
+            gui.currentGui()._labelControlUi.eraserToolButton.click()
+            self.strokeMouseFromCenter( imgView, LABEL_ERASE_START,LABEL_ERASE_STOP)
+            
+            labelData = opPix.LabelImages[imageId][:].wait()
+            assert numpy.sum(labelData[labelData==1]) == 0, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+
+            self.waitForViews([imgView])
+            
+            QApplication.processEvents()
+            LABEL_START = (-128,-128)
+            LABEL_STOP = (128,128)
+            LABEL_ERASE_START = (-128,-128)
+            LABEL_ERASE_STOP = (128,128)
+
+            gui.currentGui()._labelControlUi.labelListModel.select(1)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            
+            
+            self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
+            self.waitForViews([imgView])
+            labelData = opPix.LabelImages[imageId][:].wait()
+
+            assert numpy.sum(labelData[labelData==2]) > 22, "Number of background dots was {}".format(
+                numpy.sum(labelData[labelData==2]) )
+
+            gui.currentGui()._labelControlUi.AddBoxButton.click()
+            self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP) 
+
+            labelData = opPix.LabelImages[imageId][:].wait()
+            self.waitForViews([imgView])
+
+            gui.currentGui()._labelControlUi.eraserToolButton.click()
+            self.strokeMouseFromCenter( imgView, LABEL_ERASE_START,LABEL_ERASE_STOP)
+            labelData = opPix.LabelImages[imageId][:].wait()
+            assert numpy.sum(labelData[labelData==2]) == 20, "Number of background dots was {}".format(
+                numpy.sum(labelData[labelData==2]) )
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+
+    
     def test_8_UpdateSum(self):
         """
         Click on the interactive mode to see if training has been
@@ -420,12 +578,48 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
                 gui.currentGui().labelingDrawerUi.DensityButton.click()
                 self.waitForViews([imgView])
                 density = gui.currentGui().op.OutputSum[...].wait()
-
-                assert density[0]>0,"Density value is not updated \
-                {0:.2f} #########################################################".format(density[0])
+                print density[0]
+                assert density[0]>70,"Density value is too low: {0:.2f}".format(density[0])
+                assert density[0]<130,"Density value is too high: {0:.2f}".format(density[0])
 
             #if clicked:
                 #clicked=toggle(clicked)
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_9_CheckBoxes(self):
+        """
+        Click on the interactive mode to see if training has been
+        suceesfull in the secod images even if the labels are given
+        in the first one
+
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+
+            self.shell.imageSelectionCombo.setCurrentIndex(0)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
+            boxes = gui.currentGui()._labelControlUi.boxListModel._elements
+            fullBoxVal = float(boxes[2]._density)
+            fullBoxVal2 = float(boxes[3]._density)
+
+            assert abs(fullBoxVal - fullBoxVal2) < 1E-5, "Box mismatch: {.2f} is not close to\
+            {.2f}".format(fullBoxVal, fullBoxVal2)
+            
+            self.shell.imageSelectionCombo.setCurrentIndex(1)
+            gui.currentGui().labelingDrawerUi.DensityButton.click()
+            boxes = gui.currentGui()._labelControlUi.boxListModel._elements
+            fullBoxVal = float(boxes[0]._density)
+            
+            density = gui.currentGui().op.OutputSum[...].wait()
+            assert density[0] == fullBoxVal, "Box mismatch: {} != {}".format(density[0], fullBoxVal)
+
+
+
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 

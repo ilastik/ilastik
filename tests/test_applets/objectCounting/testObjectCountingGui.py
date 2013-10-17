@@ -206,8 +206,10 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
                   
             imgView = gui.currentGui().editor.imageViews[2]
             
-            dot_start_list = [(-20,-20),(15,-15),(9,-3)]
-            dot_stop_list = [(-20,-19),(15,-14),(8,-3)]
+            dot_start_list = [(-20,-20),(9,-15),(15,-3)]
+            dot_stop_list = [(-20,-11),(9,-12),(15,-3)]
+            #dot_start_list = [(5,5)]
+            #dot_stop_list = [(5,5)]
             
             for start,stop in zip(dot_start_list,dot_stop_list):
                 self.strokeMouseFromCenter( imgView, start,stop )
@@ -216,7 +218,13 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
   
             # Make sure the labels were added to the label array operator
             labelData = opPix.LabelImages[0][:].wait()
+            center = (numpy.array(labelData.shape[:-1]))/2 + 1
             
+            true_idx = numpy.array([center + dot for dot in dot_start_list])
+            idx = numpy.where(labelData)
+            test_idx = numpy.array((idx[0],idx[1])).transpose()
+            assert numpy.alltrue(test_idx == true_idx)
+
             assert numpy.sum(labelData)==len(dot_start_list)
             #assert labelData.max() == i+1, "Max label value was {}".format( labelData.max() )
   
@@ -231,11 +239,10 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         
         
     # These points are relative to the CENTER of the view
-    LABEL_START = (-10,-10)
-    LABEL_STOP = (-10,0)
-    LABEL_SAMPLE = (0,0)
-    LABEL_ERASE_START = (-10,-10)
-    LABEL_ERASE_STOP = (10,10)
+    LABEL_START = (-20,-30)
+    LABEL_STOP = (-20,-20)
+    LABEL_ERASE_START = (9,-15)
+    LABEL_ERASE_STOP = (5,-15)
  
     @timeLogged(logger, logging.INFO)
     def test_5_AddDotsAndBackground(self):
@@ -294,16 +301,18 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
                   
             imgView = gui.currentGui().editor.imageViews[2]
             
-            dot_start_list = [(-20,-20),(15,-15),(9,-3)]
-            dot_stop_list = [(-20,-19),(15,-14),(8,-3)]
-            
+            dot_start_list = [(-20,-20),(9,-15),(15,-3)]
+            dot_stop_list = [(-20,-11),(9,-12),(15,-3)]
+           
+           #draw foreground dots
             for start,stop in zip(dot_start_list,dot_stop_list):
                 self.strokeMouseFromCenter( imgView, start,stop )
   
             
             # Set the brush size
+            # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(6)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
             
             self.strokeMouseFromCenter( imgView, self.LABEL_START,self.LABEL_STOP)
             
@@ -311,9 +320,18 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 2, "Max label value was {}".format( labelData.max() )
             
+            assert numpy.sum(labelData[labelData==1]) == 2, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
+
+
+            #Now select eraser            
+            gui.currentGui()._labelControlUi.eraserToolButton.click()
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START,self.LABEL_ERASE_STOP)
             
             labelData = opPix.LabelImages[0][:].wait()
-            assert numpy.sum(labelData[labelData==1]) == 2, "Max label value was {}".format( labelData.max() )
+            assert numpy.sum(labelData[labelData==1]) == 1, "Number of foreground dots was {}".format(
+                numpy.sum(labelData[labelData==1]) )
             
             
   
