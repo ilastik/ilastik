@@ -16,3 +16,8 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
     
+try:    
+    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowWithoutOptTrans
+except ImportError as e:
+    logger.warn( "Failed to import conservation tracking workflow (without opt. trans.); check dependencies: " + str(e) )
+    
