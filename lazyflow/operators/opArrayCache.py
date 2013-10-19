@@ -84,6 +84,9 @@ class OpArrayCache(OpCache):
         blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
         
     def fractionOfUsedMemoryDirty(self):
+        if self.Output.meta.shape is None:
+            return 0
+
         totAll   = numpy.prod(self.Output.meta.shape)
         totDirty = 0
         if self._blockState is None:
