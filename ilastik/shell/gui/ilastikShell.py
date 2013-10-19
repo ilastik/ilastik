@@ -349,12 +349,15 @@ class IlastikShell( QMainWindow ):
         shellActions = ShellActions()
 
         # Menu item: New Project
-        newProjectMenu = menu.addMenu("&New Project...")
-        
-        workflowActions = []
-        for w,_name in getAvailableWorkflows():
-            a = newProjectMenu.addAction(_name)
-            a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
+       
+        #FIXME: disabled for 1.0
+        #
+        #newProjectMenu = menu.addMenu("&New Project...")
+        # 
+        #workflowActions = []
+        #for w,_name in getAvailableWorkflows():
+        #    a = newProjectMenu.addAction(_name)
+        #    a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
         
         # Menu item: Open Project 
         shellActions.openProjectAction = menu.addAction("&Open Project...")
