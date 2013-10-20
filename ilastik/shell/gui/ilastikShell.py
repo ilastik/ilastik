@@ -458,13 +458,15 @@ class IlastikShell( QMainWindow ):
        
         styleStartScreenButton(self.startscreen.browseFilesButton, ilastikIcons.OpenFolder)
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
-        
+       
+        pos = 1
         for workflow,_name in getAvailableWorkflows():
             b = QToolButton(self.startscreen)
             styleStartScreenButton(b, ilastikIcons.GoNext)
             b.setText(_name)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
-            self.startscreen.VL1.insertWidget(1,b)
+            self.startscreen.VL1.insertWidget(pos,b)
+            pos += 1
     
     def openFileAndCloseStartscreen(self,path):
         #self.startscreen.setParent(None)
@@ -1249,9 +1251,12 @@ class IlastikShell( QMainWindow ):
             if len(dirtyApplets) > 0:
                 message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?\n"
                 message += "(Unsaved changes in: {})".format( ', '.join(dirtyApplets) )
-                buttons = QMessageBox.Discard | QMessageBox.Cancel
-                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+                buttons = QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Save)
                 if response == QMessageBox.Cancel:
+                    return False
+                elif response == QMessageBox.Save:
+                    self.onSaveProjectActionTriggered()
                     return False
 
         return self._recorderGui.confirmQuit()
