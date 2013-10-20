@@ -255,7 +255,8 @@ class IlastikShell( QMainWindow ):
             self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
         self.menuBar().addMenu( self._projectMenu  )
-        self.menuBar().addMenu( self._settingsMenu )
+        if self._settingsMenu is not None:
+            self.menuBar().addMenu( self._settingsMenu )
         if ilastik_config.getboolean("ilastik", "debug"):
             self.menuBar().addMenu( self._debugMenu )
         self.menuBar().addMenu( self._helpMenu    )
@@ -263,7 +264,8 @@ class IlastikShell( QMainWindow ):
         assert self.thread() == QApplication.instance().thread()
         assert self.menuBar().thread() == self.thread()
         assert self._projectMenu.thread() == self.thread()
-        assert self._settingsMenu.thread() == self.thread()
+        if self._settingsMenu is not None:
+            assert self._settingsMenu.thread() == self.thread()
         
         self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
         #self.appletBar.clicked.connect(self.handleAppletBarClick)
@@ -508,6 +510,9 @@ class IlastikShell( QMainWindow ):
             self._memDlg.raise_()
     
     def _createSettingsMenu(self):
+        if not ilastik.config.cfg.getboolean("ilastik", "debug"):
+            return None
+
         menu = QMenu("&Settings", self)
         menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
@@ -753,7 +758,8 @@ class IlastikShell( QMainWindow ):
     def showMenus(self, applet_index):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
-        self.menuBar().addMenu(self._settingsMenu)
+        if self._settingsMenu is not None:
+            self.menuBar().addMenu(self._settingsMenu)
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
