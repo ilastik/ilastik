@@ -370,34 +370,41 @@ class IlastikShell( QMainWindow ):
         
         # Menu item: Open Project 
         shellActions.openProjectAction = menu.addAction("&Open Project...")
+        shellActions.openProjectAction.setIcon( QIcon(ilastikIcons.Open) )
         shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
         
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project")
+        shellActions.saveProjectAction.setIcon( QIcon(ilastikIcons.Save) )
         shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
 
         # Menu item: Save Project As
         shellActions.saveProjectAsAction = menu.addAction("&Save Project As...")
+        shellActions.saveProjectAsAction.setIcon( QIcon(ilastikIcons.SaveAs) )
         shellActions.saveProjectAsAction.setShortcuts( QKeySequence.SaveAs )
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
         shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
+        shellActions.saveProjectSnapshotAction.setIcon( QIcon(ilastikIcons.SaveAs) )
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
         
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
+        shellActions.importProjectAction.setIcon( QIcon(ilastikIcons.Open) )
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
         
         shellActions.closeAction = menu.addAction("&Close")
+        shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
         shellActions.closeAction.setShortcuts( QKeySequence.Close )
         shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
         
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
         shellActions.quitAction.setShortcuts( QKeySequence.Quit )
+        shellActions.quitAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
         shellActions.quitAction.triggered.connect(self.onQuitActionTriggered)
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
