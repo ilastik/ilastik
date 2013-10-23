@@ -86,7 +86,7 @@ class DatasetDetailedInfoTableView(QTableView):
                 menu.addAction( replaceWithStackAction )
                 menu.addAction( resetSelectedAction )
     
-            globalPos = self.mapToGlobal( pos )
+            globalPos = self.viewport().mapToGlobal( pos )
             selection = menu.exec_( globalPos )
             if selection is None:
                 return
