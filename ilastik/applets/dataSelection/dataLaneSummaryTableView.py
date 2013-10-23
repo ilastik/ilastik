@@ -78,7 +78,7 @@ class DataLaneSummaryTableView(QTableView):
             removeLanesAction = QAction( "Remove", menu )
             menu.addAction( removeLanesAction )
     
-            globalPos = self.mapToGlobal( pos )
+            globalPos = self.viewport().mapToGlobal( pos )
             selection = menu.exec_( globalPos )
             if selection is removeLanesAction:
                 self.removeLanesRequested.emit( self._selectedLanes )
