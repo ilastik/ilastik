@@ -83,7 +83,7 @@ class OpCellFeatures(Operator):
     templateSize = 30  # window in which we look for neighboring labels in the next time steps
     size_filter_from_divfeat = 5
     with_uncorrected_features = True # plain features
-    with_corrected_features = True  # the region centers are corrected by translation vector
+    with_corrected_features = False  # the region centers are corrected by translation vector
     with_cell_classification_features = False # features for cell classification
     defaultSquaredDistance = 1000
     size_filter_from_cellfeat = 20
@@ -100,8 +100,7 @@ class OpCellFeatures(Operator):
         self.RegionFeaturesExtended.meta.assignFrom(self.RegionFeaturesVigra.meta)        
         self.ComputedFeatureNames.meta.assignFrom(self.Features.meta)
         
-        if self.with_corrected_features and not self.TranslationVectors.ready():
-            raise Exception("TranslationVectors slot is not ready, cannot compute translation corrected features")                
+        self.with_corrected_features = self.TranslationVectors.ready():
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.TranslationVectors:
@@ -144,7 +143,7 @@ class OpCellFeatures(Operator):
             else:
                 # assumes t,x,y,z,c
                 # the number of channels in TranslationVectors is identical with num.dimensions
-                self.ndim = self.TranslationVectors.meta.shape[-1]
+                self.ndim = len(feats_vigra_cur['RegionCenter'][0])
                 feats_at = {}
                 lshape = self.LabelImage.meta.shape
                 
