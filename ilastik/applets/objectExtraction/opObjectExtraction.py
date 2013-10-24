@@ -58,6 +58,9 @@ def max_margin(d, default=(0, 0, 0)):
 
     """
     margin = default
+    print 'WARNING: max_margin() always returns default'
+    return margin
+   
     for features in d.itervalues():
         for params in features.itervalues():
             try:

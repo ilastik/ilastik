@@ -185,6 +185,7 @@ class OpTrackingBase(Operator):
             
             label2color.append({})
             mergers.append({})
+            moves_at = []
                         
             for e in app:
                 if successive_ids:
@@ -194,13 +195,14 @@ class OpTrackingBase(Operator):
                     label2color[-1][e[0]] = np.random.randint(1, 255)
 
             for e in mov:                
-                if not label2color[-2].has_key(e[0]):
+                if not label2color[-2].has_key(e[0]) or e[0] in moves_at:
                     if successive_ids:
                         label2color[-2][e[0]] = maxId
                         maxId += 1
                     else:
                         label2color[-2][e[0]] = np.random.randint(1, 255)
                 label2color[-1][e[1]] = label2color[-2][e[0]]
+                moves_at.append(e[0])
 
             for e in div:
                 if not label2color[-2].has_key(e[0]):
@@ -217,13 +219,13 @@ class OpTrackingBase(Operator):
                 mergers[-1][e[0]] = e[1]
 
             for e in multi:
-                if not label2color[e[2]].has_key(e[0]):
+                if not label2color[int(e[2])].has_key(e[0]):
                     if successive_ids:
-                        label2color[e[2]][e[0]] = maxId
+                        label2color[int(e[2])][e[0]] = maxId
                         maxId += 1
                     else:
-                        label2color[e[2]][e[0]] = np.random.randint(1, 255)
-                label2color[-1][e[1]] = label2color[e[2]][e[0]]
+                        label2color[int(e[2])][e[0]] = np.random.randint(1, 255)
+                label2color[-1][e[1]] = label2color[int(e[2])][e[0]]
                 
         # mark the filtered objects
         for i in filtered_labels.keys():

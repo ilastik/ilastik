@@ -14,11 +14,15 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 class ConservationTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking)"
 
-    def __init__( self, shell, headless, workflow_cmdline_args, withOptTrans=True, *args, **kwargs ):
+    withOptTrans = True
+    fromBinary = False
+    def __init__( self, shell, headless, workflow_cmdline_args, withOptTrans=True, fromBinary=False, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         if 'withOptTrans' in kwargs:
            self.withOptTrans = kwargs['withOptTrans']
+        if 'fromBinary' in kwargs:
+           self.fromBinary = kwargs['fromBinary']
         super(ConservationTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
@@ -36,7 +40,8 @@ class ConservationTrackingWorkflow( Workflow ):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
-        self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
+        if not self.fromBinary:
+           self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
                                                                   "Threshold and Size Filter", 
                                                                   "ThresholdTwoLevels" )        
         if self.withOptTrans:
@@ -59,7 +64,8 @@ class ConservationTrackingWorkflow( Workflow ):
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.thresholdTwoLevelsApplet)
+        if not self.fromBinary:
+           self._applets.append(self.thresholdTwoLevelsApplet)
         if self.withOptTrans:
            self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
@@ -78,7 +84,8 @@ class ConservationTrackingWorkflow( Workflow ):
     
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        if not self.fromBinary:
+           opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         if self.withOptTrans:
            opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
@@ -90,16 +97,20 @@ class ConservationTrackingWorkflow( Workflow ):
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")
         op5Raw.Input.connect(opData.ImageGroup[0])
-               
-        opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
-        opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
-        # opTwoLevelThreshold.Channel.setValue(1)
+        
+        if not self.fromBinary:
+           opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
+           opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
+           # opTwoLevelThreshold.Channel.setValue(1)
+           binarySrc = opTwoLevelThreshold.CachedOutput
+        else:
+           binarySrc = opData.ImageGroup[1]
         
         # Use Op5ifyers for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding
         op5Binary = OpReorderAxes( parent=self )         
         op5Binary.AxisOrder.setValue("txyzc")
-        op5Binary.Input.connect( opTwoLevelThreshold.CachedOutput )
+        op5Binary.Input.connect( binarySrc )
         
         if self.withOptTrans:
            opOptTranslation.RawImage.connect( op5Raw.Output )
@@ -163,4 +174,14 @@ class ConservationTrackingWorkflowWithoutOptTrans( ConservationTrackingWorkflow 
         self.withOptTrans = False
         super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, withOptTrans=False, *args, **kwargs)
         self.workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation)"
+       
+class ConservationTrackingWorkflowWithoutOptTransFromBinary( ConservationTrackingWorkflowWithoutOptTrans ):
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation, from binary)"
+
+    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
+        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
+        if 'graph' in kwargs: del kwargs['graph']
+        self.withOptTrans = False
+        super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, fromBinary=True, *args, **kwargs)
+        self.workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation, from binary)"
        
