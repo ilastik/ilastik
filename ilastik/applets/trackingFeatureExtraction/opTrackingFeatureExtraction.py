@@ -143,12 +143,12 @@ class OpCellFeatures(Operator):
             else:
                 # assumes t,x,y,z,c
                 # the number of channels in TranslationVectors is identical with num.dimensions
-                self.ndim = len(feats_vigra_cur['RegionCenter'][0])
                 feats_at = {}
                 lshape = self.LabelImage.meta.shape
                 
                 roi_cur = SubRegion(roi.slot, [t], [t+1])                
                 region_feats_cur = self.RegionFeaturesVigra.get(roi_cur).wait()[0]
+                self.ndim = len(feats_vigra_cur['RegionCenter'][0])
                 
 #                for plugin_name in region_feats_cur.keys():
 #                    if plugin_name != self.vigra_feature_plugin_name:
