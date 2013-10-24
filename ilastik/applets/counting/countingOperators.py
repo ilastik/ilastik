@@ -231,6 +231,11 @@ class OpTrainCounter(Operator):
             fullTags = [np.sum(posTags), np.sum(negTags)]
             #pool = RequestPool()
 
+            maxima = np.max(fullFeatMatrix, axis=0)
+            minima = np.min(fullFeatMatrix, axis=0)
+            normalizationFactors = (minima,maxima)
+            
+
 
 
             boxConstraintList = []
@@ -246,7 +251,7 @@ class OpTrainCounter(Operator):
             try:
                 pool = RequestPool()
                 def train_and_store(i):
-                    result[i] = SVR(**params)
+                    result[i] = SVR(minmax = normalizationFactors, **params)
                     result[i].fitPrepared(fullFeatMatrix, fullLabelsMatrix, tags = fullTags, boxConstraints = boxConstraints, numRegressors
                          = self.numRegressors, trainAll = False)
                 for i in range(self.numRegressors):
