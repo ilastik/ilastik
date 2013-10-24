@@ -148,7 +148,6 @@ class OpCellFeatures(Operator):
                 
                 roi_cur = SubRegion(roi.slot, [t], [t+1])                
                 region_feats_cur = self.RegionFeaturesVigra.get(roi_cur).wait()[0]
-                self.ndim = len(feats_vigra_cur['RegionCenter'][0])
                 
 #                for plugin_name in region_feats_cur.keys():
 #                    if plugin_name != self.vigra_feature_plugin_name:
@@ -160,6 +159,7 @@ class OpCellFeatures(Operator):
 #                for name in region_feats_cur[plugin_name].keys():                        
 #                    feats_at_plugin[name] = region_feats_cur[plugin_name][name]                
                 feats_vigra_cur = region_feats_cur[config.features_vigra_name]
+                self.ndim = len(feats_vigra_cur['RegionCenter'][0])
                 feats_cell_class = {}
                 feats_cell_div = {}
                 print 'Extracting Division Features at t=%d' % t
