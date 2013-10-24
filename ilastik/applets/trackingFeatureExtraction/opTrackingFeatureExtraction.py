@@ -100,7 +100,7 @@ class OpCellFeatures(Operator):
         self.RegionFeaturesExtended.meta.assignFrom(self.RegionFeaturesVigra.meta)        
         self.ComputedFeatureNames.meta.assignFrom(self.Features.meta)
         
-        self.with_corrected_features = self.TranslationVectors.ready():
+        self.with_corrected_features = self.TranslationVectors.ready()
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.TranslationVectors:
