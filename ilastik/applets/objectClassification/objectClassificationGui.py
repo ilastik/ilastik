@@ -561,7 +561,7 @@ class ObjectClassificationGui(LabelingGui):
         if label == self.editor.brushingModel.erasingNumber:
             label = 0
 
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        topLevelOp = self.topLevelOperatorView.viewed_operator().parent
         imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
 
         operatorAxisOrder = self.topLevelOperatorView.SegmentationImagesOut.meta.getAxisKeys()
@@ -641,7 +641,7 @@ class ObjectClassificationGui(LabelingGui):
             
             print "------------------------------------------------------------"
         elif action.text()==clearlabel:
-            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp = self.topLevelOperatorView.viewed_operator().parent
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
         else:
@@ -649,7 +649,7 @@ class ObjectClassificationGui(LabelingGui):
                 label = label_actions.index(action.text())
             except ValueError:
                 return
-            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp = self.topLevelOperatorView.viewed_operator().parent
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, label+1)
             

@@ -56,7 +56,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         names = opLane.LabelNames.value
 
         # Use a slicer to provide a separate slot for each channel layer
-        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator() )
+        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
         opSlicer.Input.connect( predictionSlot )
         opSlicer.AxisFlag.setValue('c')
 
