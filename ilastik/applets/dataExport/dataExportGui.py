@@ -364,7 +364,7 @@ class DataExportGui(QWidget):
 
     @threadRouted
     def showExportError(self, msg):
-        QMessageBox.critical(self, msg, "Failed to export", msg )
+        QMessageBox.critical(self, "Failed to export", msg )
 
     def exportResultsForSlot(self, opLane):
         # Do this in a separate thread so the UI remains responsive

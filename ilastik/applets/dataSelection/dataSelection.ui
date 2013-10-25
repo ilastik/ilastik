@@ -38,6 +38,10 @@
             <property name="text">
              <string>Remove Selected</string>
             </property>
+            <property name="icon">
+             <iconset>
+              <normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</normaloff>../../shell/gui/icons/16x16/actions/list-remove.png</iconset>
+            </property>
            </widget>
           </item>
           <item>

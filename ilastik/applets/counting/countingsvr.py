@@ -349,7 +349,7 @@ class SVR(object):
 
 
     def __init__(self, method = options[0]["method"], Sigma = 2.5, C = 1, epsilon = 0.000, \
-                  ntrees=10, maxdepth=50, #RF parameters, maxdepth=None means grows until purity
+                  ntrees=10, maxdepth=50, minmax=None, #RF parameters, maxdepth=None means grows until purity
                  **kwargs
                  ):
         """
@@ -368,6 +368,11 @@ class SVR(object):
         #RF parameters:
         self._ntrees=ntrees
         self._maxdepth=maxdepth
+        self._minmax = minmax
+        if minmax:
+            self._scalingFactor = minmax[1] - minmax[0]
+            self._scalingFactor[self._scalingFactor == 0] = 1
+            self._scalingFactor = 1./self._scalingFactor
         
     @classmethod
     def load(self, cachePath, targetname):
@@ -547,7 +552,8 @@ class SVR(object):
         return 
     
 
-    def _fit(self, img, dot, tags, boxConstraints = []):
+    def _fit(self, image, dot, tags, boxConstraints = []):
+        img = self.normalize(image)
         
         numFeatures = img.shape[1]
         if self._method == "RandomForest":
@@ -580,7 +586,8 @@ class SVR(object):
         oldShape = oldImage.shape
         resShape = oldShape[:-1]
         image = np.copy(oldImage.reshape((-1, oldImage.shape[-1])))
-       
+        image = self.normalize(image)
+
         reslist = []
         for r in self._regressor:
             if r is None:
@@ -633,6 +640,13 @@ class SVR(object):
         return boxConstraints
 
 
+    def normalize(self, image):
+        if not hasattr(self, "_scalingFactor") or self._method == "RandomForest":
+            return image
+        image - self._minmax[0]
+
+        image *= self._scalingFactor
+        return image
 
 if __name__ == "__main__":
 

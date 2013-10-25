@@ -184,9 +184,10 @@ class DataSelectionGui(QWidget):
             # Button
             menu = QMenu(parent=self)
             menu.setObjectName("addFileButton_role_{}".format( roleIndex ))
-            menu.addAction( "Add File(s)..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
+            menu.addAction( "Add one or more separate Files ..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
             menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
-            menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
+            #disabled for ilastik 1.0
+            #menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
             detailViewer.appendButton.setMenu( menu )
             self._retained.append(menu)
 

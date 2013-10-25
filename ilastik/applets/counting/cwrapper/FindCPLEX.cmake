@@ -8,68 +8,78 @@
 #  CPLEX_LIBRARIES          - library files
 
 ## config
-set(CPLEX_ROOT_DIR "$ENV{CPLEX_ROOT_DIR}" CACHE PATH "CPLEX root directory")
-
 if(WIN32)
-execute_process(COMMAND where cplex
-	OUTPUT_VARIABLE CPLEX_BIN_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-FILE(TO_CMAKE_PATH ${CPLEX_BIN_PATH} CPLEX_BIN_PATH)
-SET(CPLEX_HINT_DIR "${CPLEX_BIN_PATH}/../../../" CACHE PATH "Cplex root directory2")
-endif(WIN32)
+  execute_process(COMMAND cmd /C set CPLEX_STUDIO_DIR OUTPUT_VARIABLE CPLEX_STUDIO_DIR_VAR ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  
+  if(NOT CPLEX_STUDIO_DIR_VAR)
+    MESSAGE(FATAL_ERROR "Unable to find CPLEX: environment variable CPLEX_STUDIO_DIR<VERSION> not set.")
+  endif()
+  
+  STRING(REGEX REPLACE "^CPLEX_STUDIO_DIR" "" CPLEX_STUDIO_DIR_VAR ${CPLEX_STUDIO_DIR_VAR})
+  STRING(REGEX MATCH "^[0-9]+" CPLEX_WIN_VERSION ${CPLEX_STUDIO_DIR_VAR})
+  STRING(REGEX REPLACE "^[0-9]+=" "" CPLEX_STUDIO_DIR_VAR ${CPLEX_STUDIO_DIR_VAR})
+  file(TO_CMAKE_PATH "${CPLEX_STUDIO_DIR_VAR}" CPLEX_ROOT_DIR_GUESS) 
+  
+  set(CPLEX_WIN_VERSION ${CPLEX_WIN_VERSION} CACHE STRING "CPLEX version to be used.")
+  set(CPLEX_ROOT_DIR "${CPLEX_ROOT_DIR_GUESS}" CACHE PATH "CPLEX root directory.")
+  
+  MESSAGE(STATUS "Found CLPEX version ${CPLEX_WIN_VERSION} at '${CPLEX_ROOT_DIR}'")
+  
+  STRING(REGEX REPLACE "/VC/bin/.*" "" VISUAL_STUDIO_PATH ${CMAKE_C_COMPILER})
+  STRING(REGEX MATCH "Studio [0-9]+" CPLEX_WIN_VS_VERSION ${VISUAL_STUDIO_PATH})
+  STRING(REGEX REPLACE "Studio " "" CPLEX_WIN_VS_VERSION ${CPLEX_WIN_VS_VERSION})
+  
+  if(${CPLEX_WIN_VS_VERSION} STREQUAL "9")
+    set(CPLEX_WIN_VS_VERSION 2008)
+  elseif(${CPLEX_WIN_VS_VERSION} STREQUAL "10")
+    set(CPLEX_WIN_VS_VERSION 2010)
+  elseif(${CPLEX_WIN_VS_VERSION} STREQUAL "11")
+    set(CPLEX_WIN_VS_VERSION 2012)
+  else()
+    MESSAGE(FATAL_ERROR "CPLEX: unknown Visual Studio version at '${VISUAL_STUDIO_PATH}'.")
+  endif()
+  
+  set(CPLEX_WIN_VS_VERSION ${CPLEX_WIN_VS_VERSION} CACHE STRING "Visual Studio Version")
+  
+  if("${CMAKE_C_COMPILER}" MATCHES "amd64")
+    set(CPLEX_WIN_BITNESS x64)
+  else()
+    set(CPLEX_WIN_BITNESS x86)
+  endif()
+  
+  set(CPLEX_WIN_BITNESS ${CPLEX_WIN_BITNESS} CACHE STRING "On Windows: x86 or x64 (32bit resp. 64bit)")
 
+  MESSAGE(STATUS "CPLEX: using Visual Studio ${CPLEX_WIN_VS_VERSION} ${CPLEX_WIN_BITNESS} at '${VISUAL_STUDIO_PATH}'")
+
+  if(NOT CPLEX_WIN_LINKAGE)
+    set(CPLEX_WIN_LINKAGE mda CACHE STRING "CPLEX linkage variant on Windows. One of these: mda (dll, release), mdd (dll, debug), mta (static, release), mtd (static, debug)")
+  endif(NOT CPLEX_WIN_LINKAGE)
+
+  # now, generate platform string
+  set(CPLEX_WIN_PLATFORM "${CPLEX_WIN_BITNESS}_windows_vs${CPLEX_WIN_VS_VERSION}/stat_${CPLEX_WIN_LINKAGE}")
+
+else()
+
+  set(CPLEX_ROOT_DIR "" CACHE PATH "CPLEX root directory.")
+  set(CPLEX_WIN_PLATFORM "")
+  
+endif()
 
 FIND_PATH(CPLEX_INCLUDE_DIR
   ilcplex/cplex.h
   HINTS ${CPLEX_ROOT_DIR}/cplex/include
         ${CPLEX_ROOT_DIR}/include
-  ${CPLEX_HINT_DIR}/include
   PATHS ENV C_INCLUDE_PATH
         ENV C_PLUS_INCLUDE_PATH
         ENV INCLUDE_PATH
   )
 
-IF(CPLEX_INCLUDE_DIR)
-TRY_RUN(
-  RUN_RESULT_VAR COMPILE_RESULT_VAR
-  ${CMAKE_BINARY_DIR} 
-  ${CMAKE_CURRENT_SOURCE_DIR}/findcplexversion.c
-  CMAKE_FLAGS
-  -DINCLUDE_DIRECTORIES:STRING=${CPLEX_INCLUDE_DIR}
-  RUN_OUTPUT_VARIABLE CPLEX_WIN_VERSION
-  )
-SET (CPLEX_WIN_VERSION ${CPLEX_WIN_VERSION} CACHE STRING "Cplex version integer code. Necessary on Windows to determine the library name")
-ENDIF(CPLEX_INCLUDE_DIR)
-MESSAGE("-- Found Cplex Version = ${CPLEX_WIN_VERSION}")
-if(WIN32)
-  if(NOT CPLEX_WIN_VS_VERSION)
-    set(CPLEX_WIN_VS_VERSION 2010 CACHE STRING "Cplex Visual Studio version, for instance 2008 or 2010.")
-  endif(NOT CPLEX_WIN_VS_VERSION)
-
-  if(NOT CPLEX_WIN_LINKAGE)
-    set(CPLEX_WIN_LINKAGE mda CACHE STRING "Cplex linkage variant on Windows. One of these: mda (dll, release), mdd (dll, debug), mta (static, release), mtd (static, debug)")
-  endif(NOT CPLEX_WIN_LINKAGE)
-
-  if(NOT CPLEX_WIN_BITNESS)
-    set(CPLEX_WIN_BITNESS x64 CACHE STRING "On Windows: x86 or x64 (32bit resp. 64bit)")
-  endif(NOT CPLEX_WIN_BITNESS)
-
-  # now, generate platform string
-  set(CPLEX_WIN_PLATFORM "${CPLEX_WIN_BITNESS}_windows_vs${CPLEX_WIN_VS_VERSION}/stat_${CPLEX_WIN_LINKAGE}")
-
-else(WIN32)
-  set(CPLEX_WIN_PLATFORM "")
-endif(WIN32)
-
-## cplex root dir guessing
-# windows: trying to guess the root dir from a 
-# env variable set by the cplex installer
 FIND_LIBRARY(CPLEX_LIBRARY
-  NAMES cplex cplex${CPLEX_WIN_VERSION}
+  NAMES cplex${CPLEX_WIN_VERSION} cplex
   HINTS ${CPLEX_ROOT_DIR}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows
-        ${WIN_ROOT_GUESS}/cplex/lib/${CPLEX_WIN_PLATFORM} #windows
-  	${CPLEX_HINT_DIR}/lib/${CPLEX_WIN_PLATFORM} #windows
         ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_debian4.0_4.1/static_pic #unix
         ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_sles10_4.1/static_pic #unix 
+        ${CPLEX_ROOT_DIR}/cplex/lib/x86-64_osx/static_pic #osx 
   PATHS ENV LIBRARY_PATH #unix
         ENV LD_LIBRARY_PATH #unix
   )
