@@ -260,6 +260,8 @@ class TrackingBaseGui( LayerViewerGui ):
             self._drawer.exportLabel.hide()
             self._drawer.exportButton.hide()
             self._drawer.exportTifButton.hide()
+            self._drawer.exportButton.setEnabled(True)
+            self._drawer.exportTifButton.setEnabled(True)
             
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
