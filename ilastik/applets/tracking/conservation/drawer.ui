@@ -751,7 +751,7 @@
      <item>
       <widget class="QPushButton" name="exportButton">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>Export Results as h5 ...</string>
@@ -761,7 +761,7 @@
      <item>
       <widget class="QPushButton" name="exportTifButton">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>Export Results as tif ...</string>
