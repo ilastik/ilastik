@@ -1198,27 +1198,28 @@ class Slot(object):
     #####################
     #  Private  Methods #
     #####################
-    def _getInstance(self, operator, level=None):
-        """This method constructs a copy of the slot.
-
+    def _getInstance(self, operator, **init_kwarg_overrides):
+        """
+        This method constructs a copy of the slot.
         This method is used when creating an Instance of an Operator.
 
-        All defined Input and Output slots of the Class are cloned and
-        inserted into the instance of the Operator.
-
+        All slot parameters (e.g. level, optional, etc.) are copied, but can be overridden with the init_kwarg_overrides parameter.
         """
-        if level is None:
-            level = self.level
+        init_kwargs = {}
+        init_kwargs['stype'] = self._stypeType
+        init_kwargs['rtype'] = self.rtype
+        init_kwargs['value'] = self._defaultValue
+        init_kwargs['level'] = self.level
+        init_kwargs['nonlane'] = self.nonlane
         if self._type == "input":
-            s = InputSlot(self.name, operator, stype=self._stypeType,
-                          rtype=self.rtype, value=self._defaultValue,
-                          optional=self._optional, level=level,
-                          nonlane=self.nonlane)
+            init_kwargs['optional'] = self._optional
+        
+        init_kwargs.update( init_kwarg_overrides )
+        
+        if self._type == "input":
+            s = InputSlot(self.name, operator, **init_kwargs)
         elif self._type == "output":
-            s = OutputSlot(self.name, operator, stype=self._stypeType,
-                           rtype=self.rtype, value=self._defaultValue,
-                           level=level,
-                           nonlane=self.nonlane)
+            s = OutputSlot(self.name, operator, **init_kwargs)
         return s
 
     def _changed(self):
@@ -1261,20 +1262,6 @@ class Slot(object):
             # check whether all slots are connected and notify operator
             if self.operator.configured():
                 self.operator._setupOutputs()
-
-    def _requiredLength(self):
-        """
-        Returns the required number of subslots
-        """
-        if self.partner is not None:
-            if self.partner.level == self.level:
-                return len(self.partner)
-            elif self.partner.level < self.level:
-                return 1
-        elif self._value is not None:
-            return 1
-        else:
-            return 0
 
     def _setupOutputs(self):
         """
