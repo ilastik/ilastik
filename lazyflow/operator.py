@@ -198,6 +198,9 @@ class Operator(object):
         # you know what you're doing, and you weren't planning to use
         # that operator, anyway.
         self.externally_managed = False
+        
+        self._debug_text = None
+        self._setup_count = 0
 
     @property
     def children(self):
@@ -417,6 +420,7 @@ class Operator(object):
 
             # Call the subclass
             self.setupOutputs()
+            self._setup_count += 1
 
             self._settingUp = False
             self._condition.notifyAll()
@@ -517,3 +521,12 @@ class Operator(object):
         raise NotImplementedError("Can't use __setitem__ with Operator {}"
                                   " because it doesn't implement"
                                   " setInSlot()".format(self.name))
+
+    @property
+    def debug_text(self):
+        #return self._debug_text
+        return "setups: {}".format( self._setup_count )
+    
+#    @debug_text.setter
+#    def debug_text(self, text):
+#        self._debug_text = text

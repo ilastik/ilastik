@@ -310,6 +310,11 @@ class SvgOperator( DrawableABC ):
         with block(svg.text, x=rect_x+rect_width/2, y=rect_y+r, text_anchor='middle'):
             canvas += title_text + '\n'
 
+        if self.op.debug_text:
+            block = partial(svg.tagblock, canvas)
+            with block(svg.text, x=rect_x+rect_width/2, y=rect_y+2*r, text_anchor='middle'):
+                canvas += self.op.debug_text + '\n'
+
         # Add extra padding between input slots if there's room (i.e. spread out the inputs to cover the entire left side)
         inputSlotPadding = (rect_height - self.getInputSize()[1]) / (len(self.inputs)+1)
         
