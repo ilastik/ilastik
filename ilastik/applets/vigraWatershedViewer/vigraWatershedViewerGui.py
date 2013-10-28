@@ -53,13 +53,13 @@ class VigraWatershedViewerGui(LayerViewerGui):
         # Init padding gui updates
         blockPadding = PreferencesManager().get( 'vigra watershed viewer', 'block padding', 10)
         self.topLevelOperatorView.WatershedPadding.notifyDirty( self.updatePaddingGui )
-        self.topLevelOperatorView.WatershedPadding.setValue(blockPadding)
+        self.topLevelOperatorView.WatershedPadding.setValue( blockPadding )
         self.updatePaddingGui()
         
         # Init block shape gui updates
         cacheBlockShape = PreferencesManager().get( 'vigra watershed viewer', 'cache block shape', (256, 10))
         self.topLevelOperatorView.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
-        self.topLevelOperatorView.CacheBlockShape.setValue( cacheBlockShape )
+        self.topLevelOperatorView.CacheBlockShape.setValue( tuple(cacheBlockShape) )
         self.updateCacheBlockGui()
 
         # Init seeds gui updates
@@ -123,7 +123,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         """
         if self.topLevelOperatorView.CacheBlockShape.ready() and self.topLevelOperatorView.WatershedPadding.ready():
             with PreferencesManager() as prefsMgr:
-                prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.topLevelOperatorView.CacheBlockShape.value )
+                prefsMgr.set( 'vigra watershed viewer', 'cache block shape', tuple(self.topLevelOperatorView.CacheBlockShape.value) )
                 prefsMgr.set( 'vigra watershed viewer', 'block padding', self.topLevelOperatorView.WatershedPadding.value )
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
@@ -292,7 +292,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ## GUI -> Operator
     ##
     def onPaddingChanged(self, value):
-        self.topLevelOperatorView.WatershedPadding.setValue(value)
+        self.topLevelOperatorView.WatershedPadding.setValue( value )
 
     def onBlockShapeChanged(self, value):
         width = self._drawer.blockWidthSpinBox.value()

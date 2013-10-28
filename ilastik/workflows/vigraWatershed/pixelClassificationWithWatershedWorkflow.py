@@ -1,10 +1,12 @@
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-class PixelClassificationWithVigraWatershedWorkflow(PixelClassificationWorkflow):
+class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
+
+    workflowName = "Pixel Classification (with Watershed Preview)"
     
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
-        super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, appendBatchOperators=False, *args, **kwargs )
+        super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, appendBatchOperators=False, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
@@ -13,7 +15,7 @@ class PixelClassificationWithVigraWatershedWorkflow(PixelClassificationWorkflow)
         self._applets.append(self.watershedApplet)
 
     def connectLane(self, laneIndex):
-        super( PixelClassificationWithVigraWatershedWorkflow, self ).connectLane( laneIndex )
+        super( PixelClassificationWithWatershedWorkflow, self ).connectLane( laneIndex )
 
         # Get the right lane from each operator
         opPixelClassification = self.pcApplet.topLevelOperator.getLane(laneIndex)

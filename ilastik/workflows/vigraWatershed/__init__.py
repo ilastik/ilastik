@@ -1,3 +1,2 @@
 from vigraWatershedWorkflow import VigraWatershedWorkflow
-
-
+from pixelClassificationWithWatershedWorkflow import PixelClassificationWithWatershedWorkflow
