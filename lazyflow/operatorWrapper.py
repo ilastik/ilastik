@@ -261,8 +261,7 @@ class OperatorWrapper(Operator):
         length = len(self.innerOperators)
 
     def _setupOutputs(self):
-        for oslot in self.outputs.values():
-            oslot._changed()
+        pass
 
     def execute(self, slot, subindex, roi, result):
         #this should never be called !!!
