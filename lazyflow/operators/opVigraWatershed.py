@@ -1,10 +1,10 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-import warnings
 import numpy
 import vigra
 import logging
 import threading
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ class OpVigraWatershed(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.uint32
         
-        logger.warn("FIXME: How can this drange be right?")
-        self.Output.meta.drange = (0,255)
+        #warnings.warn("FIXME: How can this drange be right?")
+        #self.Output.meta.drange = (0,255)
         
         if self.SeedImage.ready():
             assert numpy.issubdtype(self.SeedImage.meta.dtype, numpy.uint32)
@@ -95,7 +95,8 @@ class OpVigraWatershed(Operator):
 
         # Reduce to 3-D (keep order of xyz axes)
         tags = self.InputImage.meta.axistags
-        inputRegion = inputRegion.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
+        axes3d = "".join( [tag.key for tag in tags if tag.key in 'xyz'] )
+        inputRegion = inputRegion.withAxes( *axes3d )
         logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
         
         logger.debug( "roi={}".format(roi) )
@@ -107,6 +108,7 @@ class OpVigraWatershed(Operator):
         if self.InputImage.meta.drange is not None:
             drange = self.InputImage.meta.drange
             inputRegion = numpy.asarray(inputRegion, dtype=numpy.float32)
+            inputRegion = vigra.taggedView( inputRegion, axes3d )
             inputRegion -= drange[0]
             inputRegion /= (drange[1] - drange[0])
             inputRegion *= 255.0
@@ -117,11 +119,11 @@ class OpVigraWatershed(Operator):
             seedImage = self.SeedImage[paddedSlices].wait()
             seedImage = seedImage.view(vigra.VigraArray)
             seedImage.axistags = tags
-            seedImage = seedImage.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
-            warnings.warn("FIXME: memory-optimize this by providing result as the out parameter")
+            seedImage = seedImage.withAxes( *axes3d )
+            logger.debug("Input shape = {}, seed shape = {}".format( inputRegion.shape, seedImage.shape ))
+            logger.debug("Input axes = {}, seed axes = {}".format( inputRegion.axistags, seedImage.axistags ))
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion, seeds=seedImage)
         else:
-            warnings.warn("FIXME: memory-optimize this by providing result as the out parameter")
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
         logger.debug( "Finished Watershed" )
         
@@ -129,6 +131,7 @@ class OpVigraWatershed(Operator):
         logger.debug( "maxLabel={}".format(maxLabel) )
 
         # Promote back to 5-D
+        watershed = vigra.taggedView(watershed, axes3d)
         watershed = watershed.withAxes( *[tag.key for tag in tags] )
         logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
         logger.debug( "watershed axistags: {}".format(watershed.axistags) )
@@ -140,7 +143,8 @@ class OpVigraWatershed(Operator):
         
         #print numpy.unique(watershed[outputSlices]).shape
         # Return only the region the user requested
-        return watershed[outputSlices].view(numpy.ndarray).reshape(result.shape)
+        result[:] = watershed[outputSlices].view(numpy.ndarray).reshape(result.shape)
+        return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if not self.configured():
