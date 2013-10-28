@@ -224,15 +224,16 @@ class PixelClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active)
         self._shell.setAppletEnabled(self.pcApplet, features_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
-        
-        # Training workflow must be fully configured before batch can be used
-        self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
 
-        opBatchDataSelection = self.batchInputApplet.topLevelOperator
-        batch_input_ready = predictions_ready and \
-                            len(opBatchDataSelection.ImageGroup) > 0
-        self._shell.setAppletEnabled(self.batchResultsApplet, batch_input_ready)
-        
+        if self.batchInputApplet is not None:
+            # Training workflow must be fully configured before batch can be used
+            self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
+    
+            opBatchDataSelection = self.batchInputApplet.topLevelOperator
+            batch_input_ready = predictions_ready and \
+                                len(opBatchDataSelection.ImageGroup) > 0
+            self._shell.setAppletEnabled(self.batchResultsApplet, batch_input_ready)
+            
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
         busy = False
