@@ -334,9 +334,13 @@ class DataExportGui(QWidget):
                 try:
                     opLaneView.run_export()
                 except Exception as ex:
-                    msg = "Failed to generate export file: \n"
-                    msg += opLaneView.ExportPath.value
-                    msg += "\n{}".format( ex )
+                    if opLaneView.ExportPath.ready():
+                        msg = "Failed to generate export file: \n"
+                        msg += opLaneView.ExportPath.value
+                        msg += "\n{}".format( ex )
+                    else:
+                        msg = "Failed to generate export file."
+                        msg += "\n{}".format( ex )
                     self.showExportError(msg)
                     
                     logger.error( msg )
