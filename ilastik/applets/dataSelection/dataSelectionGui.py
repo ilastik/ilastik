@@ -419,10 +419,6 @@ class DataSelectionGui(QWidget):
             datasetInfo = DatasetInfo()
             cwd = self.topLevelOperator.WorkingDirectory.value
             
-            if not areOnSameDrive(filePath,cwd):
-                QMessageBox.critical(self, "Drive Error","Data must be on same drive as working directory.")
-                return
-                
             absPath, relPath = getPathVariants(filePath, cwd)
             
             # Relative by default, unless the file is in a totally different tree from the working directory.
