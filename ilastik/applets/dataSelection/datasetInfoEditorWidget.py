@@ -669,6 +669,7 @@ class DatasetInfoEditorWidget(QDialog):
     def _initStorageCombo(self):
         # If there's only one dataset, show the path in the combo
         showpaths = False
+        relPath = None
         if len( self._laneIndexes ) == 1:
             op = self.tempOps.values()[0]
             info = op.Dataset.value
@@ -685,8 +686,7 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )
-            if relPath is not None:
-                self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
+            self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
 
         self.storageComboBox.setCurrentIndex(-1)
 
