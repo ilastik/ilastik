@@ -309,6 +309,8 @@ class TrackingBaseGui( LayerViewerGui ):
             if t_from == None:
                 return
             
+            t_from = int(t_from)
+
             print "Saving first label image..."
             key = []
             for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
@@ -334,6 +336,7 @@ class TrackingBaseGui( LayerViewerGui ):
                 num_files = float(len(events))
                 for i in events.keys():
                     events_at = events[i]
+                    i = int(i)
                     t = t_from + i            
                     key[0] = slice(t+1,t+2)
                     roi = SubRegion(self.mainOperator.LabelImage, key)
