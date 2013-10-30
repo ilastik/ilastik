@@ -103,12 +103,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.opLabelsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opPredictionImageCache = OpMultiLaneWrapper(OpSlicedBlockedArrayCache, **opkwargs)
+        self.opPredictionImageCache.name="OpObjectClassification.opPredictionImageCache"
         
         self.opProbabilityChannelsToImage = OpMultiLaneWrapper(OpMultiRelabelSegmentation, **opkwargs)
         self.opBadObjectsToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
         self.opBadObjectsToWarningMessage = OpBadObjectsToWarningMessage(parent=self)
 
         self.classifier_cache = OpValueCache(parent=self)
+        self.classifier_cache.name = "OpObjectClassification.classifier_cache"
 
         # connect inputs
         self.opTrain.Features.connect(self.ObjectFeatures)
@@ -163,7 +165,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 self._innerOperator.innerBlockShape.connect( self.innerBlockShape )
                 self._innerOperator.outerBlockShape.connect( self.outerBlockShape )
                 self.Output.connect( self._innerOperator.Output )
-            
+                
             def execute(self, slot, subindex, roi, destination):
                 assert False, "Shouldn't get here."
     
@@ -172,6 +174,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         # Wrap the cache for probability channels twice TWICE.
         self.opProbChannelsImageCache = OpMultiLaneWrapper( OpWrappedCache, parent=self )
+        self.opProbChannelsImageCache.name = "OpObjectClassification.opProbChannelsImageCache"
         self.opProbChannelsImageCache.Input.connect(self.opProbabilityChannelsToImage.Output)
         self.opProbChannelsImageCache.fixAtCurrent.connect( self.FreezePredictions )
         
@@ -218,6 +221,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             multislot[index].notifyReady(handleInputReady)
 
         self.SegmentationImages.notifyInserted(handleNewInputImage)
+
+        self._predict_enabled = False
 
     def setupCaches(self, imageIndex):
         """Setup the label input and caches to correct dimensions"""
@@ -920,12 +925,16 @@ class OpRelabelSegmentation(Operator):
             if isinstance(tmap, list):
                 tmap = tmap[0]
             tmap = tmap.squeeze()
-            tMAP = 1000.0*(time.time()-tMAP)
-
-            #FIXME: This should be cached (and reset when the input becomes dirty)")
+            if tmap.ndim==0:
+                # no objects, nothing to paint
+                result[t-roi.start[0]][:] = 0
+                return result
             
+            tMAP = 1000.0*(time.time()-tMAP)
+            #FIXME: This should be cached (and reset when the input becomes dirty)")
             tMAX = time.time()
             idx = img.max()
+            
             if len(tmap) <= idx:
                 newTmap = numpy.zeros((idx + 1,)) # And maybe this should be cached, too?
                 newTmap[:len(tmap)] = tmap[:]

@@ -38,6 +38,7 @@
         "ilastik.clusterOps":                                       { "level":"INFO" },
         "ilastik.applets":                                          { "level":"INFO" },
         "ilastik.applets.dataSelection":                            { "level":"INFO" },
+        "ilastik.applets.featureSelection":                         { "level":"INFO" },
         "ilastik.applets.pixelClassification":                      { "level":"INFO" },
         "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },

@@ -3,8 +3,9 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDatas
 
 import os
 import vigra
-from ilastik.utility import bind, PathComponents
-from ilastik.utility.pathHelpers import getPathVariants
+from lazyflow.utility import PathComponents
+from ilastik.utility import bind
+from lazyflow.utility.pathHelpers import getPathVariants
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -71,6 +72,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
                     try:    
                         opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
+                        opWriter.CompressionEnabled.setValue(False) # Compression slows down browsing a lot, and raw data tends to be noisy and doesn't compress very well, anyway.
                         opWriter.hdf5File.setValue( localDataGroup )
                         opWriter.hdf5Path.setValue( info.datasetId )
                         opWriter.Image.connect(dataSlot)
@@ -344,11 +346,11 @@ class DataSelectionSerializer( AppletSerializer ):
                     
                     #construct absolute path and recreate relative to the new path
                     fp = PathComponents(datasetInfo.filePath,olddir).totalPath()
-                    abspath,relpath = getPathVariants(fp,newdir)
+                    abspath, relpath = getPathVariants(fp,newdir)
                     
                     # Same convention as in dataSelectionGui:
                     # Relative by default, unless the file is in a totally different tree from the working directory.
-                    if len(os.path.commonprefix([fp, abspath])) > 1:
+                    if relpath is not None and len(os.path.commonprefix([fp, abspath])) > 1:
                         datasetInfo.filePath = relpath
                     else:
                         datasetInfo.filePath = abspath

@@ -8,32 +8,29 @@ from lazyflow.request import Request, RequestPool
 def cleanup_key(k):
     return k.replace(' ', '')
 
-def cleanup_value(val, hasZero, isGlobal):
+def cleanup_value(val, nObjects, isGlobal):
     """ensure that the value is a numpy array with the correct shape."""
     val = np.asarray(val)
 
-    if val.ndim == 0:
-        val = val.reshape(1, 1)
-
+    if val.ndim == 0 or isGlobal:
+        # repeat the global values for all the objects 
+        scalar = val.reshape((1,))[0]
+        val = np.zeros((nObjects, 1), dtype=val.dtype)
+        val[:, 0] = scalar
+    
     if val.ndim == 1:
-        if isGlobal:
-            val = val.reshape(-1, 1)
-        else:
-            if hasZero:
-                val = val.reshape(-1, 1)
-                assert val.shape == (2, 1)
-            else:
-                val = val.reshape(1, -1)
-
+        val = val.reshape(-1, 1)
+   
     if val.ndim > 2:
         val = val.reshape(val.shape[0], -1)
 
-    if hasZero and val.shape[0] > 1:
-        val = val[1:]
+    assert val.shape[0] == nObjects
+    # remove background
+    val = val[1:]
     return val
 
-def cleanup(d, hasZero, isGlobal, features):
-    result = dict((cleanup_key(k), cleanup_value(v, hasZero, isGlobal)) for k, v in d.iteritems())
+def cleanup(d, nObjects, features):
+    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.iteritems())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -98,9 +95,15 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             result = vigra.analysis.extractRegionFeatures(image.squeeze().astype(np.float32), labels.squeeze().astype(np.uint32), features, ignoreLabel=0)
         else:
             result = vigra.analysis.extractRegionFeatures(image.astype(np.float32), labels.astype(np.uint32), features, ignoreLabel=0)
+            
+        #take a non-global feature
+        local_features = [x for x in features if "Global<" not in x]
+        #find the number of objects
+        nobj = result[local_features[0]].shape[0]
+        
         #NOTE: this removes the background object!!!
         #The background object is always present (even if there is no 0 label) and is always removed here
-        return cleanup(result, True, True, features)
+        return cleanup(result, nobj, features)
 
     def compute_global(self, image, labels, features, axes):
         features = features.keys()

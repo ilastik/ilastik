@@ -530,12 +530,6 @@ class CarvingGui(LabelingGui):
         done = self.topLevelOperatorView.DoneObjects
         if done.ready(): 
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
-            for i in range(254-len(colortable)):
-                r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
-                # ensure colors have sufficient distance to pure red and pure green
-                while (255 - r)+g+b<128 or r+(255-g)+b<128:
-                    r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
-                colortable.append(QColor(r,g,b).rgba())
             #have to use lazyflow because it provides dirty signals
             layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
             layer.name = "Completed segments (unicolor)"
@@ -547,36 +541,6 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
-
-        #hints
-        '''
-        useLazyflow = True
-        ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
-        ctable.extend( [QColor(255*random.random(), 255*random.random(), 255*random.random()) for x in range(254)] )
-        if useLazyflow:
-            hints = self.topLevelOperatorView.HintOverlay
-            layer = ColortableLayer(LazyflowSource(hints), ctable, direct=True)
-        else:
-            hints = self.topLevelOperatorView._hints
-            layer = ColortableLayer(ArraySource(hints), ctable, direct=True)
-        if not useLazyflow or hints.ready():
-            layer.name = "hints"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-        '''
-        
-        '''
-        #pmaps
-        useLazyflow = True
-        pmaps = self.topLevelOperatorView._pmap
-        if pmaps is not None:
-            layer = GrayscaleLayer(ArraySource(pmaps), direct=True)
-            layer.name = "pmap"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-        '''
 
         #done seg
         doneSeg = self.topLevelOperatorView.DoneSegmentation
@@ -593,6 +557,7 @@ class CarvingGui(LabelingGui):
         #supervoxel
         sv = self.topLevelOperatorView.Supervoxels
         if sv.ready():
+            colortable = []
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())

@@ -20,7 +20,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from ilastik.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.widgets.massFileLoader import MassFileLoader
@@ -88,7 +88,7 @@ class DataSelectionGui(QWidget):
         if self.guiMode != GuiMode.Batch:
             if(len(self.topLevelOperator.DatasetGroup) != laneIndex+1):
                 import warnings
-                warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
+                warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.DatasetGroup), laneIndex))
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
@@ -184,9 +184,10 @@ class DataSelectionGui(QWidget):
             # Button
             menu = QMenu(parent=self)
             menu.setObjectName("addFileButton_role_{}".format( roleIndex ))
-            menu.addAction( "Add File(s)..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
+            menu.addAction( "Add one or more separate Files ..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
             menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
-            menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
+            #disabled for ilastik 1.0
+            #menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
             detailViewer.appendButton.setMenu( menu )
             self._retained.append(menu)
 
@@ -418,14 +419,10 @@ class DataSelectionGui(QWidget):
             datasetInfo = DatasetInfo()
             cwd = self.topLevelOperator.WorkingDirectory.value
             
-            if not areOnSameDrive(filePath,cwd):
-                QMessageBox.critical(self, "Drive Error","Data must be on same drive as working directory.")
-                return
-                
             absPath, relPath = getPathVariants(filePath, cwd)
             
             # Relative by default, unless the file is in a totally different tree from the working directory.
-            if len(os.path.commonprefix([cwd, absPath])) > 1:
+            if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
                 datasetInfo.filePath = relPath
             else:
                 datasetInfo.filePath = absPath

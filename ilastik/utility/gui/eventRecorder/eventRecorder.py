@@ -6,7 +6,7 @@ from objectNameUtils import get_fully_qualified_name
 from eventSerializers import event_to_string
 from eventTypeNames import EventTypes
 
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 
 import functools
 

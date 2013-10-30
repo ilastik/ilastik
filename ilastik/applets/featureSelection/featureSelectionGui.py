@@ -172,7 +172,7 @@ class FeatureSelectionGui(LayerViewerGui):
             rawLayer = self.createStandardLayerFromSlot(inputSlot)
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            rawLayer.name = "raw data" 
+            rawLayer.name = "Raw Data (display only)" 
             layers.append(rawLayer)
 
         featureMultiSlot = opFeatureSelection.FeatureLayers

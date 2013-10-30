@@ -4,7 +4,8 @@ from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from volumina.utility import decode_to_qstring
 
-from ilastik.utility import bind, PathComponents
+from lazyflow.utility import PathComponents
+from ilastik.utility import bind
 from opDataSelection import DatasetInfo
 
 class DatasetDetailedInfoColumn():

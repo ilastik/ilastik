@@ -9,7 +9,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
+from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QApplication
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -507,6 +507,8 @@ class LabelingGui(LayerViewerGui):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
     def _addNewLabel(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        
         """
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
@@ -544,6 +546,8 @@ class LabelingGui(LayerViewerGui):
        
         e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
+        
+        QApplication.restoreOverrideCursor()
 
     def getNextLabelName(self):
         """

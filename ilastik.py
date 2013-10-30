@@ -108,7 +108,7 @@ elif parsed_args.start_recording or \
 # Auto-open project
 if parsed_args.project is not None:
     #convert path to convenient format
-    from ilastik.utility.pathHelpers import PathComponents
+    from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.project).totalPath()
     
     def loadProject(shell):
@@ -119,7 +119,7 @@ if parsed_args.project is not None:
 # Auto-create new project
 if parsed_args.new_project is not None:
     #convert path to convenient format
-    from ilastik.utility.pathHelpers import PathComponents
+    from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.new_project).totalPath()
     def createNewProject(shell):
         import ilastik.workflows

@@ -21,7 +21,7 @@ from ilastik.shell.headless.startShellHeadless import startShellHeadless
 from autocontextClassificationWorkflow import AutocontextClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
-from ilastik.utility import PathComponents
+from lazyflow.utility import PathComponents
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from tests.helpers import ShellGuiTestCaseBase
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
-from ilastik.utility.timer import Timer
+from lazyflow.utility.timer import Timer
 
 import logging
 logger = logging.getLogger(__name__)

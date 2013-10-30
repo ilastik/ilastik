@@ -32,7 +32,7 @@ import threading
 
 import time
 
-DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the 
+DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
 def mainthreadonly(func):
@@ -67,31 +67,45 @@ class Tool():
 
 class ResizeHandle(QGraphicsRectItem):
 
-    def __init__(self, shape, constrainAxis):
-        size = 2
+    def __init__(self, rect, constrainAxis):
+        size = 5
+        self._rect=rect
         super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size)
-        self.shape=shape
+
         #self._offset = offset
         self._constrainAxis = constrainAxis
         self._hoverOver = False
 
-        self.resetOffset(constrainAxis)
+        self.resetOffset(constrainAxis,rect)
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable);
         self.setFlag(QtGui.QGraphicsItem.ItemSendsGeometryChanges ,True)
         self._updateColor()
 
-    def resetOffset(self,constrainAxis,newshape=None):
+    def resetOffset(self,constrainAxis,rect=None):
         #self._parent=self.parentItem()
-        if newshape!=None:
-            self.shape=newshape
-        if constrainAxis == 1:
-            self._offset = ( self.shape[1], self.shape[0]/2.0 )
-        else:
-            self._offset = ( self.shape[1]/2.0, self.shape[0] )
-        #print "Resetting ",self._offset,self._parent.shape
+        if rect==None:
+            rect=self._rect
+
+
+        if constrainAxis == 0:
+            if  rect.bottom()>0:
+                self._offset = ((rect.left()+rect.right())/2.0, rect.bottom() )
+            else:
+                self._offset = ((rect.left()+rect.right())/2.0, rect.top() )
+
+        elif constrainAxis == 1:
+            if rect.right()>0:
+                self._offset = (rect.right(),(rect.top()+rect.bottom())/2.0 )
+            else:
+                self._offset = (rect.left(),(rect.top()+rect.bottom())/2.0 )
+
+
+            #self._offset = ( sel, self.shape[0] )
+        #print "Resetting ",self._offset
         self.setPos(QPointF(*self._offset))
+        self._rect=rect
 
     def hoverEnterEvent(self, event):
         super(ResizeHandle, self).hoverEnterEvent(event)
@@ -109,15 +123,22 @@ class ResizeHandle(QGraphicsRectItem):
         super(ResizeHandle, self).mouseMoveEvent(event)
 
         axes = [0,1]
-
+        rect=self._rect
+        flip=False
         if self._constrainAxis == 0:
-            newPoint=QPointF(self._offset[0],self.pos().y())
-            self.setPos(newPoint)
-            self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().y())
-        else:
-            self.setPos(QPointF(self.pos().x(),self._offset[1]))
-            self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().x())
 
+
+            if (rect.left()+rect.right())/2.0<0:
+                flip=True
+            newPoint=QPointF((rect.left()+rect.right())/2.0,self.pos().y())
+            self.setPos(newPoint)
+            self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().y(),flip)
+        else:
+
+            if (rect.top()+rect.bottom())/2.0<0:
+                flip=True
+            self.setPos(QPointF(self.pos().x(),(rect.top()+rect.bottom())/2.0))
+            self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().x(),flip=flip)
 
     def _updateColor(self):
 
@@ -129,6 +150,26 @@ class ResizeHandle(QGraphicsRectItem):
         else:
             self.setBrush(QBrush(color))
             self.setPen(color)
+
+    def itemChange(self, change,value):
+        """
+        Enforce that the hadle stays in the region of the scene
+
+        """
+
+        if change==QGraphicsRectItem.ItemPositionChange:
+            newPos=value.toPointF() #new position in rectangle coordinates
+            nPosScene=self.parentItem().mapToScene(newPos)
+            rect=self.parentItem().scene().sceneRect()
+            if not rect.contains(nPosScene):
+                nPosScene.setX(min(rect.right(), max(nPosScene.x(),rect.left())))
+                nPosScene.setY(min(rect.bottom(), max(nPosScene.y(), rect.top())))
+                return self.parentItem().mapFromScene(nPosScene)
+
+        return QGraphicsRectItem.itemChange(self, change,value)
+
+
+
 
 class QGraphicsResizableRectSignaller(QObject):
     """
@@ -146,9 +187,6 @@ class QGraphicsResizableRectSignaller(QObject):
 class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor    = QColor(255, 0, 0) #_hovering and selection color
 
-
-
-
     def __init__(self,x,y,h,w,scene=None,parent=None):
         """"
         This class implements the resizable rectangle item which is dispalied on the scene
@@ -165,15 +203,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._fontSize=10
         self._lineWidth=1
 
-
-
-
         ##Note: need to do like this because the x,y of the graphics item fix the position
         # of the zero relative to the scene
         self.moveBy(x,y)
-        self.width=w
-        self.height=h
-        self.shape=(h,w)
 
         #Flags
         self.setFlag(QGraphicsItem.ItemIsMovable,True  )
@@ -198,9 +230,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._isFixed = False
 
         self.resetHandles()
-
-
-
 
     @property
     def fontColor(self):
@@ -263,34 +292,43 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
             self._updateTextBottom("shape " +str(self.shape))
 
-
     @mainthreadonly
     def _updateTextBottom(self,string):
         self.textItemBottom.setPlainText(QtCore.QString(string))
 
-
-    def setNewSize(self, constrainAxis, size):
-
-
+    def setNewSize(self, constrainAxis, size, flip=False):
 
         if constrainAxis == 0:
             h,w = size, self.rect().width()
+
         else:
             h,w = self.rect().height(), size
-        self.width=w
-        self.height=h
-        self.shape=(h,w)
 
-        #FIXME: ensure rect in the scene after resizing
-        newrect=QtCore.QRectF(0, 0, w, h)
 
+        if flip and constrainAxis ==0:
+            w=-w
+        if flip and constrainAxis ==1:
+            h=-h
+        newrect=QtCore.QRectF(0, 0, w, h).normalized()
         self.setRect(newrect)
+        self.width=self.rect().width()
+        self.height=self.rect().height()
+        self.shape=(self.height,self.width)
+
+        #Ensures that the text is in the upper left corner
+        a=0
+        b=0
+        if w<=0: a=w
+        if h<=0: b=h
+        self.textItem.setPos(QtCore.QPointF(a,b))
 
         if self._dbg:
             self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
 
         for el in self._resizeHandles:
-            el.resetOffset(el._constrainAxis,newshape=self.shape)
+            #print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
+            el.resetOffset(el._constrainAxis,rect=newrect)
+
 
         self.Signaller.signalHasResized.emit()
 
@@ -325,7 +363,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._resizeHandles=[]
         if not self._isFixed and (self._hovering or self.isSelected()):
             for constrAxes in range(2):
-                h = ResizeHandle((self.height,self.width), constrAxes)
+                h = ResizeHandle(self.rect(), constrAxes)
                 h.setParentItem(self)
                 self._resizeHandles.append( h )
 
@@ -343,14 +381,25 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.setBrush(QBrush(color, QtCore.Qt.NoBrush))
 
     def dataPos(self):
-        dataPos = self.scene().scene2data.map(self.scenePos())
+        dataPos = self.scenePos()
+        pos = [int(dataPos.x()), int(dataPos.y())]
+
+        return pos
+
+    def topLeftDataPos(self):
+        dataPos = self.rect().topLeft()+self.scene().scene2data.map(self.scenePos())
+        pos = [int(dataPos.x()), int(dataPos.y())]
+
+        return pos
+
+    def bottomRightDataPos(self):
+        dataPos = self.rect().bottomRight()+self.scene().scene2data.map(self.scenePos())
         pos = [int(dataPos.x()), int(dataPos.y())]
         return pos
 
+
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
-
-        #print self.isSelected(),"HSJAHJHSJAHSJH"
 
         modifiers=QApplication.queryKeyboardModifiers()
         if modifiers == Qt.ControlModifier:
@@ -387,22 +436,23 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF()
-            rect = self.scene().sceneRect()
+            newPos=value.toPointF() #new position in scene coordinates
+            rect=self.scene().sceneRect()
+            topLeftRectCoords=self.rect().topLeft()
+            bottomRightRectCoords=self.rect().bottomRight()
 
-#             if not rect.contains(newPos):
-#                 newPos.setX(min(rect.right(), max(newPos.x(), rect.left())))
-#                 newPos.setY(min(rect.bottom(), max(newPos.y(), rect.top())))
-#                 return newPos
-#
-            #if not rect.contains(newPos2):
-            #    newPos.setX(min(rect.right()-self.width, max(newPos.x()-self.width, rect.left())));
-            #    newPos.setY(min(rect.bottom()-self.height, max(newPos.y()-self.height, rect.top())));
-            #    return newPos
-            if not rect.contains(value.toRectF()) :
-                newPos.setX(min(rect.right()-self.width, max(newPos.x(), rect.left())));
-                newPos.setY(min(rect.bottom()-self.height, max(newPos.y(), rect.top())));
-                return newPos
+            ntl=topLeftRectCoords+newPos
+            nbr=bottomRightRectCoords+newPos
+
+
+
+            if not rect.contains(ntl) or not rect.contains(nbr):
+                ntl.setX(min(rect.right()-self.rect().width(), max(ntl.x(),rect.left())))
+                ntl.setY(min(rect.bottom()-self.rect().height(), max(ntl.y(), rect.top())));
+                return ntl-topLeftRectCoords
+
+
+
 
         return QGraphicsRectItem.itemChange(self, change,value)
 
@@ -434,7 +484,7 @@ class RedRubberBand(QRubberBand):
 
     def paintEvent(self,pe):
         painter=QtGui.QStylePainter(self)
-        pen=QPen(QColor("red"),50)
+        pen=QPen(QColor("red"),4)
         painter.setPen(pen)
         painter.drawRect(pe.rect())
 
@@ -495,17 +545,19 @@ class CoupledRectangleElement(object):
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized
         '''
-        
+
         time.sleep(DELAY*0.001)
-        
-        
-        #FIXME: Workaround: when the array is resized over the border of the image scene the 
+
+
+        #FIXME: Workaround: when the array is resized over the border of the image scene the
         # region get a wrong size
         try:
             subarray=self.getSubRegion()
 
             #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-            value=np.sum(subarray)
+            value=0
+            if subarray!=None:
+                value=np.sum(subarray)
 
             #print "Resetting to a new value ",value,self.boxLabel
 
@@ -514,9 +566,12 @@ class CoupledRectangleElement(object):
             if self.boxLabel!=None:
                 from PyQt4.QtCore import QString
                 self.boxLabel.density=QString("%.1f"%value)
-        except:
-            pass
-            
+        except Exception,e:
+            import warnings
+            warnings.warn("Warning: invalid subregion", RuntimeWarning)
+
+
+
     def getOpsub(self):
         return self._opsub
 
@@ -532,22 +587,19 @@ class CoupledRectangleElement(object):
          5D coordinates of the start position of the subregion
         '''
         rect=self._rectItem
-        newstart=self._rectItem.dataPos()
+        newstart=self._rectItem.topLeftDataPos()
 
         start=(0,newstart[0],newstart[1],0,0)
         return start
 
     def getStop(self):
         '''
-         5D coordinates of the start position of the subregion
+         5D coordinates of the stop position of the subregion
         '''
-
         rect=self._rectItem
-        newstart=self._rectItem.dataPos()
-    
-        stop=(1,newstart[0]+rect.width,newstart[1]+rect.height,1,1)
+        newstop=self._rectItem.bottomRightDataPos()
+        stop=(1,newstop[0],newstop[1],1,1)
         return stop
-
 
     def getSubRegion(self):
         '''
@@ -556,9 +608,15 @@ class CoupledRectangleElement(object):
         '''
         oldstart=self.getStart()
         oldstop=self.getStop()
+
+        # print "Start = %s , Stop = %s"%(oldstart,oldstop)
+
         start=[]
         stop=[]
         for s1,s2 in zip(oldstart,oldstop):
+            if (s1-s2) == 0: #means that the region is squeezed to zero
+                           # thus return None
+                return None
             start.append(int(np.minimum(s1,s2)))
             stop.append(int(np.maximum(s1,s2)))
 
@@ -566,8 +624,8 @@ class CoupledRectangleElement(object):
         self._opsub.Start.disconnect()
         self._opsub.Start.setValue(tuple(start))
         self._opsub.Stop.setValue(tuple(stop))
-        
-        
+
+
         return self._opsub.outputs["Output"][:].wait()
 
     @property
@@ -613,8 +671,11 @@ class CoupledRectangleElement(object):
 
         self.boxLabel.isFixed=False
         self.boxLabel.isFixedChanged.emit(True)
-
+        self.boxLabel.existenceChanged.emit()
+        #FIXME: maybe dangerous to do del explicitely here
         del self
+
+
 
 
 # class OpSumAll(Operator):
@@ -693,7 +754,7 @@ class BoxInterpreter(QObject):
 
         self.leftClickReleased.connect(BoxContr.addNewBox)
         self.rightClickReceived.connect(BoxContr.onChangedPos)
-        self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
+        #self.deleteSelectedItemsSignal.connect(BoxContr.deleteSelectedItems)
 
 
         self.origin = QPoint()
@@ -729,9 +790,9 @@ class BoxInterpreter(QObject):
                     items[-1].setSelected(True)
                     #items[0].setZero()
 
-            #Delete element
-            if event.key()==Qt.Key_Delete:
-                self.deleteSelectedItemsSignal.emit()
+            # #Delete element
+            # if event.key()==Qt.Key_Delete:
+            #     self.deleteSelectedItemsSignal.emit()
 
 
 
@@ -781,6 +842,8 @@ class BoxInterpreter(QObject):
 class BoxController(QObject):
 
     fixedBoxesChanged = pyqtSignal(dict)
+    viewBoxesChanged = pyqtSignal(dict)
+
 
     def __init__(self,scene,connectionInput,boxListModel):
         '''
@@ -803,7 +866,11 @@ class BoxController(QObject):
         self.scene.selectionChanged.connect(self.handleSelectionChange)
 
 
+
         boxListModel.boxRemoved.connect(self.deleteItem)
+        boxListModel.signalSaveAllBoxesToCSV.connect(self.saveBoxesToCSV)
+
+
 
     def getCurrentActiveBox(self):
         pass
@@ -859,9 +926,11 @@ class BoxController(QObject):
         box.fontColorChanged.connect(rect.setFontColor)
         box.fontSizeChanged.connect(rect.setFontSize)
         box.isFixedChanged.connect(self._fixedBoxesChanged)
+        box.existenceChanged.connect(self._viewBoxesChanged)
 
 
         self.boxListModel.insertRow( newRow, box )
+        box.existenceChanged.emit()
         rect.boxLabel=box
         box.isFixedChanged.connect(rect._rectItem.fixSelf)
         rect._updateTextWhenChanges()
@@ -870,14 +939,22 @@ class BoxController(QObject):
 
     def _fixedBoxesChanged(self, *args):
         boxes = {"rois" : [], "values" : []}
-        #import sitecustomize
-        #sitecustomize.debug_trace()
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
                 boxes["values"].append(float(box._fixvalue.toDouble()[0]))
 
         self.fixedBoxesChanged.emit(boxes)
+
+        self._viewBoxesChanged()
+    
+    def _viewBoxesChanged(self, *args):
+        boxes = {"rois" : []}
+        for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
+            if not box.isFixed:
+                boxes["rois"].append([rect.getStart(), rect.getStop()])
+
+        self.viewBoxesChanged.emit(boxes)
 
 
 
@@ -890,7 +967,7 @@ class BoxController(QObject):
     def onChangedPos(self,pos,gpos):
         pos=pos[1:3]
         items=self.scene.items(QPointF(*pos))
-        print items
+        #print items
         items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
 
         self.itemsAtpos=items
@@ -945,6 +1022,41 @@ class BoxController(QObject):
         color=self._RandomColorGenerator.next()
         return color
 
+
+    def saveBoxesToCSV(self,filename):
+        import os,csv
+        b,ext=os.path.splitext(str(filename))
+        assert ext ==".txt","wrong filename or extension %s"%str(filename)
+        try:
+            with open(filename,'wb') as fh:
+
+
+
+                header = ["ID","StartX","StartY","StopX","StopY","Count","Average density","Std density"]
+
+                fh.write(" , ".join(header) +"\n")
+
+
+                for k,box in enumerate(self._currentBoxesList):
+                    start=box.getStart()
+                    stop=box.getStop()
+                    region = box.getSubRegion()
+                    count = np.sum(region)
+                    averagedens = np.mean(region)
+                    stddensity = np.std(region)
+
+
+                    line=["%5.5d"%k, "%5.5d"%start[1], "%5.5d"%start[2], "%5.5d"%stop[1],\
+                    "%5.5d"%stop[2],"%5.2f"%count,"%5.2f"%averagedens, "%5.2f"%stddensity]
+                    print "line ", ",".join(line)
+                    fh.write(",".join(line)+"\n")
+
+
+
+        except IOError,e:
+            print e
+            raise IOError
+
 #===============================================================================
 # Random colors
 #===============================================================================
@@ -994,7 +1106,7 @@ def _createDefault16ColorColorTable():
 def RandomColorGenerator(seed=42):
     np.random.seed(seed)
     default=_createDefault16ColorColorTable()
-    print default
+
     i=-1
     while 1:
         i+=1
@@ -1103,7 +1215,7 @@ if __name__=="__main__":
     boxListModel=BoxListModel()
 
 
-
+    h,w=(500,500)
 
 
     LV=BoxListView()
@@ -1112,12 +1224,15 @@ if __name__=="__main__":
     g = Graph()
 
     cron = QTimer()
-    cron.start(500*3)
+    cron.start(500*100)
 
     op = OpArrayPiper2(graph=g) #Generate random noise
-    shape=(1,500,500,1,1)
+    shape=(1,w,h,1,1)
 
-    array = np.random.randint(0,255,500*500).reshape(shape).astype(np.uint8)
+    #array = np.random.randint(0,255,500*500).reshape(shape).astype(np.uint8)
+    import scipy
+    array=scipy.misc.lena().astype(np.uint8)
+    array=vigra.sampling.resize(array.astype(np.float32),(h,w)).reshape(shape).astype(np.uint8)
     op.Input.setValue(array)
 
     def do():
@@ -1127,6 +1242,7 @@ if __name__=="__main__":
         ii=np.random.randint(0,500,1)
         jj=np.random.randint(0,500,1)
         a[ii,jj]=1
+
         a=vigra.filters.discDilation(a,radius=20)
         array[:]=a.reshape(shape).view(np.ndarray)*255
         op.Input.setDirty()
@@ -1140,12 +1256,12 @@ if __name__=="__main__":
     mainwin=Viewer()
 
     mainwin.layerstack.append(layer)
-    mainwin.dataShape=(1,500,500,1,1)
+    mainwin.dataShape=(1,h,w,1,1)
     print mainwin.centralWidget()
 
 
     BoxContr=BoxController(mainwin.editor.imageScenes[2],op.Output,boxListModel)
-    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor._posModel,BoxContr,mainwin.centralWidget())
+    BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,BoxContr,mainwin.centralWidget())
 
 
     mainwin.editor.setNavigationInterpreter(BoxInt)

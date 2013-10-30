@@ -7,7 +7,8 @@ from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidge
 
 from lazyflow.graph import Slot
 
-from ilastik.utility import bind, PathComponents
+from ilastik.utility import bind
+from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -166,13 +167,25 @@ class DataExportGui(QWidget):
     def initViewerControls(self):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
+    def showEvent(self, event):
+        super( DataExportGui, self ).showEvent(event)
+        for opLaneView in self.topLevelOperator:
+            opLaneView.setupOnDiskView()
+    
+    def hideEvent(self, event):
+        super( DataExportGui, self ).hideEvent(event)
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+    
+
     def _chooseSettings(self):
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
         if opExportModelOp is None:
             QMessageBox.information( self, 
                                      "Image not ready for export", 
                                      "Export isn't possible yet: No images are ready for export.  "
-                                     "Please configure upstream pipeline with valid settings and try again." )
+                                     "Please configure upstream pipeline with valid settings, "
+                                     "check that images were specified in the (batch) input applet and try again." )
             return
         
         settingsDlg = DataExportOptionsDlg(self, opExportModelOp)
@@ -207,8 +220,6 @@ class DataExportGui(QWidget):
             # Discard the temporary model op
             opExportModelOp.cleanUp()
             opSubRegion.cleanUp()
-
-            print "configured shape is: {}".format( self.topLevelOperator.getLane(0).ImageToExport.meta.shape )
 
             # Update the gui with the new export paths            
             for index, slot in enumerate(self.topLevelOperator.ExportPath):
@@ -302,6 +313,10 @@ class DataExportGui(QWidget):
             self.parentApplet.busy = True
             self.parentApplet.appletStateUpdateRequested.emit()
             
+            # Disable our own gui
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, False) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, False) ) )
+            
             # Start with 1% so the progress bar shows up
             self.progressSignal.emit(0)
             self.progressSignal.emit(1)
@@ -319,9 +334,13 @@ class DataExportGui(QWidget):
                 try:
                     opLaneView.run_export()
                 except Exception as ex:
-                    msg = "Failed to generate export file: \n"
-                    msg += opLaneView.ExportPath.value
-                    msg += "\n{}".format( ex )
+                    if opLaneView.ExportPath.ready():
+                        msg = "Failed to generate export file: \n"
+                        msg += opLaneView.ExportPath.value
+                        msg += "\n{}".format( ex )
+                    else:
+                        msg = "Failed to generate export file."
+                        msg += "\n{}".format( ex )
                     self.showExportError(msg)
                     
                     logger.error( msg )
@@ -341,10 +360,15 @@ class DataExportGui(QWidget):
             # We're not busy any more.  Tell the workflow.
             self.parentApplet.busy = False
             self.parentApplet.appletStateUpdateRequested.emit()
+            
+            # Re-enable our own gui
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, True) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, True) ) )
+
 
     @threadRouted
     def showExportError(self, msg):
-        QMessageBox.critical(self, msg, "Failed to export", msg )
+        QMessageBox.critical(self, "Failed to export", msg )
 
     def exportResultsForSlot(self, opLane):
         # Do this in a separate thread so the UI remains responsive

@@ -31,6 +31,7 @@ import sys
 import os
 from PyQt4 import uic
 import qimage2ndarray
+import numpy
 import featureTableWidget
 import preView
 
@@ -50,6 +51,7 @@ class FeatureDlg(QDialog):
         self.ok.clicked.connect(self.accept)
         
         self.featureTableWidget.brushSizeChanged.connect(self.preView.setFilledBrsuh)
+        self.featureTableWidget.itemSelectionChanged.connect( self.updateOKButton )
                 
     # methods
     # ------------------------------------------------
@@ -74,7 +76,14 @@ class FeatureDlg(QDialog):
         
     def setIconsToTableWidget(self, checked, partiallyChecked, unchecked):
         self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked)
+    
+    def updateOKButton(self):
+        num_features = numpy.sum( self.featureTableWidget.createSelectedFeaturesBoolMatrix() )
+        self.ok.setEnabled( num_features > 0 )
 
+    def showEvent(self, event):
+        super( FeatureDlg, self ).showEvent(event)
+        self.updateOKButton()
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C

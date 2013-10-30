@@ -2,6 +2,7 @@
 import copy
 from functools import partial
 import itertools
+import math
 
 #SciPy
 import numpy
@@ -85,6 +86,27 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
+class OpUpperBound(Operator):
+    name = "OpUpperBound"
+    description = "Calculate the upper bound of the data for correct normalization of the output"
+    inputSlots = [InputSlot("Sigma", stype = "float")]
+    outputSlots = [OutputSlot("UpperBound")]
+
+    def setupOutputs(self):
+        self.UpperBound.meta.dtype = numpy.float32
+        self.UpperBound.meta.shape = (1,)
+
+    def execute(self, slot, subindex, roi, result):
+            
+        sigma = self.Sigma.value
+        result[...] = 3 / (2 * math.pi * sigma**2)
+        return result
+    
+    def propagateDirty(self, slot, subindex, roi):
+        key = roi.toSlice()
+        self.UpperBound.setDirty( key[:-1] )
+
+
 class OpMean(Operator):
 
     name = "OpMean"
@@ -111,6 +133,17 @@ class OpMean(Operator):
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
+
+class OpBoxViewer( Operator ):
+    name = "OpBoxViewer"
+    description = "DummyOperator to serialize view-boxes"
+
+    inputSlots = [
+        #InputSlot("Images", level=1),
+        InputSlot("rois", level = 1, stype="list", value=[] )]
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
 
 class OpCounting( Operator ):
     """
@@ -206,13 +239,18 @@ class OpCounting( Operator ):
 
 
         # Hook up the Training operator
+        self.opUpperBound = OpUpperBound( parent= self, graph= self.graph )
+        self.UpperBound.connect(self.opUpperBound.UpperBound)
+
+        self.boxViewer = OpBoxViewer( parent = self, graph=self.graph )
+
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
-        self.opTrain.inputs['ForegroundLabels'].connect( self.LabelPreviewer.Output)
+        self.opTrain.inputs['ForegroundLabels'].connect( self.GetFore.Output)
         self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
-        self.UpperBound.connect(self.opTrain.UpperBound)
+        self.opTrain.inputs["UpperBound"].connect(self.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
@@ -338,11 +376,13 @@ class OpCounting( Operator ):
         self.InputImages.resize(numLanes+1)
         self.opTrain.BoxConstraintRois.resize(numLanes + 1)
         self.opTrain.BoxConstraintValues.resize(numLanes + 1)
+        self.boxViewer.rois.resize(numLanes + 1)
         
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
         self.opTrain.BoxConstraintRois.removeSlot(laneIndex, finalLength)
         self.opTrain.BoxConstraintValues.removeSlot(laneIndex, finalLength)
+        self.boxViewer.rois.removeSlot(laneIndex, finalLength)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
@@ -359,8 +399,16 @@ class OpCounting( Operator ):
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
-                "Your new image has {} has z dimension"\
+                "Your new image has {} z dimension"\
                 .format( thisLaneTaggedShape['z']))
+                # Find a different lane and use it for comparison
+        
+        if thisLaneTaggedShape.has_key('t'):
+            raise DatasetConstraintError(
+                "Objects Counting Workflow",
+                "All input images must be 2D (they cannot contain the t dimension).  "\
+                "Your new image has {} t dimension"\
+                .format( thisLaneTaggedShape['t']))
                 # Find a different lane and use it for comparison
         
         validShape = thisLaneTaggedShape

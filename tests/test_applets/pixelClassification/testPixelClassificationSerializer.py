@@ -51,6 +51,7 @@ class OpMockPixelClassifier(Operator):
         self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
         self.opClassifier.Labels.connect(self.LabelImages)
         self.opClassifier.nonzeroLabelBlocks.connect(self.NonzeroLabelBlocks)
+        self.opClassifier.MaxLabel.setValue(2)
         
         self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
         self.classifier_cache.Input.connect( self.opClassifier.Classifier )

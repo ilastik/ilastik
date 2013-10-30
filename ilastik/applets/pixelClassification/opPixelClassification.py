@@ -86,9 +86,10 @@ class OpPixelClassification( Operator ):
         self.LabelInputs.connect( self.InputImages )
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self )
+        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
         self.opLabelPipeline.RawImage.connect( self.InputImages )
         self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
+        self.opLabelPipeline.DeleteLabel.setValue( -1 )
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
@@ -102,6 +103,7 @@ class OpPixelClassification( Operator ):
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
         self.classifier_cache = OpValueCache( parent=self )
+        self.classifier_cache.name = "OpPixelClassification.classifier_cache"
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.classifier_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.Classifier.connect( self.classifier_cache.Output )
@@ -236,6 +238,7 @@ class OpPixelClassification( Operator ):
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()
+    DeleteLabel = InputSlot()
     
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
@@ -250,10 +253,7 @@ class OpLabelPipeline( Operator ):
         self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.eraser.setValue(100)
 
-        # Initialize the delete input to -1, which means "no label".
-        # Now changing this input to a positive value will cause label deletions.
-        # (The deleteLabel input is monitored for changes.)
-        self.opLabelArray.deleteLabel.setValue(-1)
+        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
 
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
