@@ -113,7 +113,7 @@ class OpFormattedDataExport(Operator):
 
         if not self._opSubRegion.Start.ready() or \
            not self._opSubRegion.Stop.ready() or \
-           self._opSubRegion.Start.value != new_stop or \
+           self._opSubRegion.Start.value != new_start or \
            self._opSubRegion.Stop.value != new_stop:
             # Disconnect first to ensure that the start/stop slots are applied together (atomically)
             self._opSubRegion.Stop.disconnect()
