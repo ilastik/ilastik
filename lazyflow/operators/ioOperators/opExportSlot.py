@@ -92,7 +92,11 @@ class OpExportSlot(Operator):
             path_format += '/' + self.OutputInternalPath.value
 
         roi = numpy.array( roiFromShape(self.Input.meta.shape) )
-        if self.CoordinateOffset.ready():
+        
+        # Intermediate state can cause coordinate offset and input shape to be mismatched.
+        # Just don't use the offset if it looks wrong.
+        # (The client will provide a valid offset later on.)
+        if self.CoordinateOffset.ready() and len(self.CoordinateOffset.value) == len(roi[0]):
             offset = self.CoordinateOffset.value
             assert len(roi[0] == len(offset))
             roi += offset
