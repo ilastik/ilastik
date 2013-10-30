@@ -1470,7 +1470,7 @@ class OpImageReader(Operator):
             oslot = self.outputs["Image"]
             oslot.meta.shape = info.getShape()
             oslot.meta.dtype = info.getDtype()
-            oslot.meta.axistags = info.getAxisTags()
+            oslot.meta.axistags = vigra.defaultAxistags("".join([tag.key for tag in info.getAxisTags()]))
             
             numImages = vigra.impex.numberImages(filename)
             if numImages > 1:
