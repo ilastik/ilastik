@@ -129,11 +129,35 @@ else:
         def run(self):
             """
             The normal py2app run() function copies the ilastik, volumina, and 
-            lazyflow modules in the .app without the surrounding repo directory.
+            lazyflow modules in the .app without the enclosing repo directory.
             
             This function deletes those modules from the app (after saving the drtile.so binary), 
             copies the ENTIRE repo directory for each module, and then creates a symlink to the 
             inner module directory so that the final .app doesn't know the difference.
+            
+            Just to be clear, our usual py2app command (including our recipes) 
+            produces a lib/python2.7 directory that looks like this:
+            
+            $ ls -l dist/ilastik.app/Contents/Resources/lib/python2.7/
+            ilastik/
+            lazyflow/
+            volumina/
+            site-packages.zip
+            ...etc...
+            
+            But with the --include-full-repos option, we post-process the package so it looks like this:
+            $ ls -l dist/ilastik.app/Contents/Resources/lib/python2.7/
+            _ilastik/
+            _lazyflow/
+            _volumina/
+            ilastik@ -> _ilastik/ilastik
+            lazyflow@ -> _lazyflow/lazyflow
+            volumina@ -> _volumina/volumina
+            site-packages.zip
+            ...etc...            
+
+            Hence, the ilastik, lazyflow, and volumina modules are present via symlinks,
+            so the .app doesn't know the difference.
             """
             # Remove modules/repos from an earlier build (if any)
             self.remove_repos()
@@ -143,7 +167,10 @@ else:
             
             # Save drtile.so first!
             shutil.move( self.__destination_libpython_dir + '/lazyflow/drtile/drtile.so', self.__dist_dir )
+            
+            # Copy repos and create symlinks to modules
             self.install_repos()
+            
             # Replace drtile.so
             shutil.move( self.__dist_dir + '/drtile.so', self.__destination_libpython_dir + '/_lazyflow/lazyflow/drtile/drtile.so' )
     
@@ -162,9 +189,9 @@ else:
 
                 # Copy the whole repo
                 shutil.copytree(repo, dst, symlinks=True, ignore=ignore)
-                relative_link = os.path.relpath( dst + '/' + module, self.__destination_libpython_dir )
                 
                 # symlink to the actual module in the repo
+                relative_link = os.path.relpath( dst + '/' + module, self.__destination_libpython_dir )
                 os.symlink( relative_link, self.__destination_libpython_dir + '/' + module )
 
         def remove_repos(self):
@@ -177,21 +204,21 @@ else:
                     p = self.__destination_libpython_dir + '/' + module
                     os.remove( p )
                 except Exception as ex:
-                    print ex
+                    pass
                 
                 try:
                     # repo dir created by this custom post-processing step (if present from an earlier build)
                     p = self.__destination_libpython_dir + '/_' + module
                     shutil.rmtree(p)
                 except Exception as ex:
-                    print ex
+                    pass
                 
                 try:
                     # Module created by py2app
                     p = self.__destination_libpython_dir + '/' + module
                     shutil.rmtree(p)
                 except Exception as ex:
-                    print ex
+                    pass
 
 setup(
     cmdclass={ 'py2app' : custom_py2app }, # See hack above.
