@@ -587,7 +587,76 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_9_CheckBoxes(self):
+    def test_9_CheckDensity(self):
+
+        """
+        Test if the different operators produce the same density
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+
+            self.shell.imageSelectionCombo.setCurrentIndex(0)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
+            operatorDensity = numpy.sum(gui.currentGui().op.Density[...].wait())
+            sumDensity = gui.currentGui().op.OutputSum[...].wait()
+            gui.currentGui().labelingDrawerUi.liveUpdateButton.setChecked(False)
+            displayedDensity = gui.currentGui()._labelControlUi.CountText.text()
+            while str(displayedDensity) == ' -- --':
+                gui.currentGui().labelingDrawerUi.DensityButton.click()
+                displayedDensity = gui.currentGui()._labelControlUi.CountText.text()
+                self.waitForViews(gui.currentGui().editor.imageViews)
+            displayedDensity = float(str(displayedDensity))
+
+            assert abs(displayedDensity - operatorDensity) < 1E-1, "Density mismatch:, the displayed Density {} is not\
+            equal to the internal density from the Operator {}".format(displayedDensity, operatorDensity)
+            
+            assert abs(operatorDensity - sumDensity) < 1E-1, "Density mismatch: the Sum operator {} does not return the same\
+            result as using numpy.sum {}".format(operatorDensity, sumDensity)
+            
+
+        self.exec_in_shell(impl)
+
+
+    def test_6_CheckBox(self):
+
+        """
+        Click on the interactive mode to see if training has been
+        suceesfull in the secod images even if the labels are given
+        in the first one
+
+        """
+        def impl():
+            workflow = self.shell.projectManager.workflow
+            countingClassApplet = workflow.countingApplet
+            gui = countingClassApplet.getMultiLaneGui()
+
+            self.shell.imageSelectionCombo.setCurrentIndex(0)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
+            boxes = gui.currentGui()._labelControlUi.boxListModel._elements
+            boxList = gui.currentGui().boxController._currentBoxesList
+            for box, boxHandle in zip(boxes, boxList):
+                start = boxHandle.getStart()
+                stop = boxHandle.getStop()
+                slicing = [slice(s1, s2) for s1, s2 in zip(start, stop)]
+                val = numpy.sum(gui.currentGui().op.Density[slicing[1:3]].wait())
+                val2 = float(box.density)
+                assert abs(val - val2) < 1E-3, "The value written to the box {} differs from the one gotten via the\
+                operator {}".format(val, val2)
+
+        self.exec_in_shell(impl)
+
+
+
+
+
+
+    def test_11_CheckBoxes(self):
         """
         Click on the interactive mode to see if training has been
         suceesfull in the secod images even if the labels are given
@@ -625,6 +694,8 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         # It should check that the density of the entire image is = to the density of a box which covers the whole image
         # Run this test from within the shell event loop
         #self.exec_in_shell(impl)
+
+
 
 
     def _switchToImg(self,img_number):
