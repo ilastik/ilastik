@@ -222,6 +222,7 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
 
         self.openFileButtons = []
+        self.cleanupFunctions = []
 
         self._new_workflow_cmdline_args = new_workflow_cmdline_args
         
@@ -322,7 +323,7 @@ class IlastikShell( QMainWindow ):
         
     @property
     def _applets(self):
-        if self.projectManager is None:
+        if self.projectManager is None or self.projectManager.workflow is None:
             return []
         else:
             return self.projectManager.workflow.applets
@@ -578,7 +579,7 @@ class IlastikShell( QMainWindow ):
         Update the title bar and allowable shell actions based on the state of the currently loaded project.
         """
         windowTitle = "ilastik - "
-        if self.projectManager is None:
+        if self.projectManager is None or self.projectManager.closed:
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
@@ -591,7 +592,7 @@ class IlastikShell( QMainWindow ):
         self.setWindowTitle( decode_to_qstring(windowTitle) )        
 
         # Enable/Disable menu items
-        projectIsOpen = self.projectManager is not None
+        projectIsOpen = self.projectManager is not None and not self.projectManager.closed
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
@@ -830,6 +831,9 @@ class IlastikShell( QMainWindow ):
         
         # Remove all drawers
         for i in reversed(range(self.appletBar.count())):
+            widget = self.appletBar.widget(i)
+            widget.hide()
+            widget.setParent(None)
             self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
@@ -1029,65 +1033,70 @@ class IlastikShell( QMainWindow ):
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
             
-            # Add all the applets from the workflow
-            for index, app in enumerate(self.projectManager.workflow.applets):
-                self.addApplet(index, app)
-            
-            start = time.time()
-            #load the project data from file
-            if importFromPath is None:
-                #FIXME: load the project asynchronously
-                self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
-            else:
-                assert not readOnly, "Can't import into a read-only file."
-                self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
+            try:
+                # Add all the applets from the workflow
+                for index, app in enumerate(self.projectManager.workflow.applets):
+                    self.addApplet(index, app)
                 
-            stop = time.time()
-            print "Loading the project took %f sec." % (stop-start,)
-            
-            #add file and workflow to users preferences
-            mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
-            if mostRecentProjectPaths is None:
-                mostRecentProjectPaths = []
-            
-            workflowName = self.projectManager.workflow.workflowName
-            
-            for proj,work in mostRecentProjectPaths[:]:
-                if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
-                    mostRecentProjectPaths.remove((proj,work))
-            
-            mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
-            
-            #cut list of stored files at randomly chosen number of 5
-            if len(mostRecentProjectPaths) > 5:
-                mostRecentProjectPaths = mostRecentProjectPaths[:5]
-            
-            PreferencesManager().set('shell', 'recently opened list', mostRecentProjectPaths)
-            PreferencesManager().set('shell', 'recently opened', projectFilePath)
-            
-            #be friendly to user: if this file has not specified a default workflow, do it now
-            if not "workflowName" in hdf5File.keys() and not readOnly:
-                hdf5File.create_dataset("workflowName",data = workflowName)
-            
-            #switch away from the startup screen to show the loaded project
-            self.mainStackedWidget.setCurrentIndex(1)
-            # By default, make the splitter control expose a reasonable width of the applet bar
-            self.mainSplitter.setSizes([300,1])
-           
-            self.progressDisplayManager.cleanUp()
-            self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
-                
-            self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
-            self.updateShellProjectDisplay()
-
-            # Enable all the applet controls
-            self.enableWorkflow = True
-
-            if "currentApplet" in hdf5File.keys():
-                appletName = hdf5File["currentApplet"].value
-                self.setSelectedAppletDrawer(appletName)
+                start = time.time()
+                #load the project data from file
+                if importFromPath is None:
+                    #FIXME: load the project asynchronously
+                    self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
+                else:
+                    assert not readOnly, "Can't import into a read-only file."
+                    self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
+            except Exception as ex:
+                traceback.print_exc()
+                self.closeCurrentProject()
+                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + ex.message)
             else:
-                self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
+                stop = time.time()
+                print "Loading the project took %f sec." % (stop-start,)
+                
+                #add file and workflow to users preferences
+                mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
+                if mostRecentProjectPaths is None:
+                    mostRecentProjectPaths = []
+                
+                workflowName = self.projectManager.workflow.workflowName
+                
+                for proj,work in mostRecentProjectPaths[:]:
+                    if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
+                        mostRecentProjectPaths.remove((proj,work))
+                
+                mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
+                
+                #cut list of stored files at randomly chosen number of 5
+                if len(mostRecentProjectPaths) > 5:
+                    mostRecentProjectPaths = mostRecentProjectPaths[:5]
+                
+                PreferencesManager().set('shell', 'recently opened list', mostRecentProjectPaths)
+                PreferencesManager().set('shell', 'recently opened', projectFilePath)
+                
+                #be friendly to user: if this file has not specified a default workflow, do it now
+                if not "workflowName" in hdf5File.keys() and not readOnly:
+                    hdf5File.create_dataset("workflowName",data = workflowName)
+                
+                #switch away from the startup screen to show the loaded project
+                self.mainStackedWidget.setCurrentIndex(1)
+                # By default, make the splitter control expose a reasonable width of the applet bar
+                self.mainSplitter.setSizes([300,1])
+               
+                self.progressDisplayManager.cleanUp()
+                self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
+                    
+                self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
+                self.updateShellProjectDisplay()
+    
+                # Enable all the applet controls
+                self.enableWorkflow = True
+    
+                if "currentApplet" in hdf5File.keys():
+                    appletName = hdf5File["currentApplet"].value
+                    self.setSelectedAppletDrawer(appletName)
+                else:
+                    self.setSelectedAppletDrawer(self.projectManager.workflow.defaultAppletIndex)
 
     def closeCurrentProject(self):
         """
@@ -1097,7 +1106,7 @@ class IlastikShell( QMainWindow ):
         if self.projectManager is not None:
             
             projectFile = self.projectManager.currentProjectFile 
-            if projectFile is not None:
+            if not self.projectManager.closed and projectFile is not None:
                 if "currentApplet" in projectFile.keys():
                     del projectFile["currentApplet"]
                 self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
@@ -1116,12 +1125,9 @@ class IlastikShell( QMainWindow ):
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
 
-            old = weakref.ref(self.projectManager)
             self.projectManager.cleanUp()
             self.projectManager = None # Destroy project manager
-            # Ensure that it was really destroyed
-            assert old() is None, "There shouldn't be extraneous references to the project manager!"
-        
+
         self.enableWorkflow = False
         self._controlCmds = []
         self._disableCounts = []
