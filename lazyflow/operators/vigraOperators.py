@@ -116,6 +116,12 @@ class OpPixelFeaturesPresmoothed(Operator):
                           'GaussianGradientMagnitude',
                           'DifferenceOfGaussians' ]
 
+    WINDOW_SIZE = 3.5
+    
+    class InvalidScalesError(Exception):
+        def __init__(self, invalid_scales):
+            self.invalid_scales = invalid_scales
+
     def __init__(self, *args, **kwargs):
         Operator.__init__(self, *args, **kwargs)
         self.source = OpArrayPiper(parent=self)
@@ -129,6 +135,27 @@ class OpPixelFeaturesPresmoothed(Operator):
 
         # Give our feature IDs input a default value (connected out of the box, but can be changed)
         self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
+
+    def getInvalidScales(self):
+        """
+        Check each of the scales the user selected against the shape of the input dataset (in space only).
+        Return a list of the selected scales that are too large for the input dataset.
+        
+        .. note:: This function is NOT called automatically.  Clients are expected to call it after 
+                  configuring the operator, before they attempt to execute() the operator.
+                  If this function returns a non-empty list of scales, then calling execute()
+                  would generate errors.
+        """
+        invalid_scales = []
+        for j, scale in enumerate(self.scales):
+            if self.matrix[:,j].any():
+                tagged_shape = self.Input.meta.getTaggedShape()
+                spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
+                spatial_shape = zip( *spatial_axes_shape )[1]
+                
+                if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
+                    invalid_scales.append( scale )
+        return invalid_scales
 
     def setupOutputs(self):
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
@@ -371,14 +398,13 @@ class OpPixelFeaturesPresmoothed(Operator):
             maxSigma = max(0.7,self.maxSigma)  #we use 0.7 as an approximation of not doing any smoothing
             #smoothing was already applied previously
             
-            window_size = 3.5
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
             # 0.7, because the features receive a pre-smoothed array and don't need much of a neighborhood 
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window_size)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, self.WINDOW_SIZE)
             
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window_size)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, self.WINDOW_SIZE)
             
             newStartSmoother = roi.TinyVector(start - vigOpSourceStart)
             newStopSmoother = roi.TinyVector(stop - vigOpSourceStart)
@@ -462,10 +488,10 @@ class OpPixelFeaturesPresmoothed(Operator):
                         for i,vsa in enumerate(sourceArrayV.timeIter()):
                             droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                             tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
-                            sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                            sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = self.WINDOW_SIZE )
                     else:
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
-                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
+                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
             except RuntimeError as e:
                 if e.message.find('kernel longer than line') > -1:
                     message = "Feature computation error:\nYour image is too small to apply a filter with sigma=%.1f. Please select features with smaller sigmas." % self.scales[j]
