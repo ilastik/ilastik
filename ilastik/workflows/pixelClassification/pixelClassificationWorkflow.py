@@ -200,7 +200,7 @@ class PixelClassificationWorkflow(Workflow):
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        input_ready = len(opDataSelection.ImageGroup) > 0
+        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage
