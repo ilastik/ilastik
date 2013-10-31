@@ -27,6 +27,8 @@ from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -342,9 +344,13 @@ class FeatureSelectionGui(LayerViewerGui):
                 self.parentApplet.appletStateUpdateRequested.emit()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
                 QApplication.instance().processEvents()
-
-                opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
-                #self.topLevelOperatorView._setupOutputs()
+                
+                try:
+                    opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                except DatasetConstraintError as ex:
+                    # The user selected some scales that were too big.
+                    QMessageBox.critical(self, "Invalid selections", ex.message)
+                    opFeatureSelection.SelectionMatrix.disconnect()
                 
                 # Re-enable gui
                 QApplication.instance().restoreOverrideCursor()
