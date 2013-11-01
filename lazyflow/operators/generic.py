@@ -477,7 +477,7 @@ class OpSubRegion(Operator):
             self.Output.meta.NOTREADY = True
         else:
             self.Output.meta.assignFrom(self.Input.meta)
-            self.Output.meta.shape = out_shape
+            self.Output.meta.shape = tuple(out_shape)
             if self.Input.meta.drange is not None:
                 self.Output.meta.drange = self.Input.meta.drange
             

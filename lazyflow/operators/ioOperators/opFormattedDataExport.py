@@ -109,7 +109,7 @@ class OpFormattedDataExport(Operator):
             #  which we replace with the full extent of the corresponding axis
             new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
         else:
-            self._opSubRegion.Stop.setValue( total_roi[1] )
+            self._opSubRegion.Stop.setValue( tuple(total_roi[1]) )
 
         if not self._opSubRegion.Start.ready() or \
            not self._opSubRegion.Stop.ready() or \

@@ -54,7 +54,7 @@ class OpSparseLabelArray(OpCache):
         report.id = id(self)
 
     def setupOutputs(self):
-        if (self._oldShape != self.inputs["shape"].value).any():
+        if (numpy.array(self._oldShape) != self.inputs["shape"].value).any():
             shape = self.inputs["shape"].value
             self._oldShape = shape
             self.outputs["Output"].meta.dtype = numpy.uint8

@@ -24,12 +24,22 @@ class MetaDict(defaultdict):
         self._dirty = True
 
     def __setattr__(self, name, value):
-        """Provide convenient acces to the metadict, allows using the
+        """Provide convenient access to the metadict, allows using the
         . notation instead of [] access
 
         """
         if self[name] != value:
             self["_dirty"] = True
+        
+        # Special check: shape must be a tuple.
+        # This avoids some common mistakes.
+        if name == 'shape' and not isinstance(value, tuple):
+            import logging
+            logger = logging.getLogger(__name__)
+            msg = "Slot.meta.shape must always be a tuple, not {}".format( type(value) )
+            logger.error(msg)
+            raise Exception(msg)
+
         self[name] = value
         return value
 
