@@ -164,6 +164,9 @@ class LayerViewerGui(QWidget):
 
         self._up_to_date = False
         
+        # By default, we start out disabled until we have at least one layer.
+        self.centralWidget().setEnabled(False)
+        
     def _after_init(self):
         self._initialized = True
         self.updateAllLayers()
@@ -461,6 +464,9 @@ class LayerViewerGui(QWidget):
                     self.layerstack.moveSelectedDown()
                     stackIndex += 1
 
+        if len(self.layerstack) > 0:
+            self.centralWidget().setEnabled( True )
+
     def determineDatashape(self):
         newDataShape = None
         for provider in self.observedSlots:
@@ -568,12 +574,14 @@ class LayerViewerGui(QWidget):
         return position
 
     def _handleEditorRightClick(self, position5d, globalWindowCoordinate):
-        dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorRightClick(dataPosition, globalWindowCoordinate)
+        if len(self.layerstack) > 0:
+            dataPosition = self._convertPositionToDataSpace(position5d)
+            self.handleEditorRightClick(dataPosition, globalWindowCoordinate)
 
     def _handleEditorLeftClick(self, position5d, globalWindowCoordinate):
-        dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorLeftClick(dataPosition, globalWindowCoordinate)
+        if len(self.layerstack) > 0:
+            dataPosition = self._convertPositionToDataSpace(position5d)
+            self.handleEditorLeftClick(dataPosition, globalWindowCoordinate)
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         # Override me
