@@ -221,9 +221,9 @@ class OpCarving(Operator):
 
         if self._mst is not None:
             objects = self._mst.object_names.keys()
-            self.AllObjectNames.meta.shape = len(objects)
+            self.AllObjectNames.meta.shape = (len(objects),)
         else: 
-            self.AllObjectNames.meta.shape = 0
+            self.AllObjectNames.meta.shape = (0,)
         
         self.AllObjectNames.meta.dtype = object
     
@@ -445,7 +445,7 @@ class OpCarving(Operator):
         
         objects = self._mst.object_names.keys()
         print "save: len = ", len(objects)
-        self.AllObjectNames.meta.shape = len(objects)
+        self.AllObjectNames.meta.shape = (len(objects),)
         
         self.HasSegmentation.setValue(False)
         
@@ -514,7 +514,7 @@ class OpCarving(Operator):
         self.HasSegmentation.setValue(False)
 
         objects = self._mst.object_names.keys()
-        self.AllObjectNames.meta.shape = len(objects)
+        self.AllObjectNames.meta.shape = (len(objects),)
         
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
