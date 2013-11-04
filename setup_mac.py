@@ -97,35 +97,37 @@ py2app.recipes.sklearn = sklearn_recipe()
 
 
 ##
-## The --include-full-repos option is a special option added by this script.
-## If given, we will include the entire git repo directory for ilastik, lazyflow, and volumina in the final app
-## (Otherwise, py2app just includes the corresponding python module directories, without the supporting files.
+## The --include-meta-repo option is a special option added by this script.
+## If given, we will include the entire ilastik-meta git repo directory (which includes ilastik, lazyflow, and volumina).
+## (Otherwise, py2app just includes the individual python module directories, without the supporting files.)
 ##
 
 import sys
 import py2app.build_app
-if '--include-full-repos' not in sys.argv:
+if '--include-meta-repo' not in sys.argv:
     # No customization
     custom_py2app = py2app.build_app.py2app
 else:
-    sys.argv.remove('--include-full-repos')
+    sys.argv.remove('--include-meta-repo')
     # This hack allows us to run custom code before/after the py2app command executes.
     # http://www.niteoweb.com/blog/setuptools-run-custom-code-during-install
     import os
     import shutil
 
-    import ilastik, volumina, lazyflow
-    ilastik_repo = os.path.abspath( os.path.split(ilastik.__file__)[0] + '/..')
-    volumina_repo = os.path.abspath( os.path.split(volumina.__file__)[0] + '/..')
-    lazyflow_repo = os.path.abspath( os.path.split(lazyflow.__file__)[0] + '/..')
+    import ilastik
+    ilastik_meta_repo = os.path.abspath( os.path.split(ilastik.__file__)[0] + '/../..')
+    assert os.path.exists(ilastik_meta_repo + '/ilastik')
+    assert os.path.exists(ilastik_meta_repo + '/lazyflow')
+    assert os.path.exists(ilastik_meta_repo + '/volumina')
 
     class custom_py2app(py2app.build_app.py2app):
         __dist_dir = os.path.split( os.path.abspath(__file__) )[0] + '/dist'
         __destination_libpython_dir = __dist_dir + '/ilastik.app/Contents/Resources/lib/python2.7'
-        __repo_modules = { 'ilastik' : ilastik_repo,
-                           'volumina' : volumina_repo,
-                           'lazyflow' : lazyflow_repo }
-        
+        __replace_modules = ['ilastik', 'volumina', 'lazyflow']
+#        __repo_modules = { 'ilastik' : ilastik_repo,
+#                           'volumina' : volumina_repo,
+#                           'lazyflow' : lazyflow_repo }
+
         def run(self):
             """
             The normal py2app run() function copies the ilastik, volumina, and 
@@ -145,14 +147,12 @@ else:
             site-packages.zip
             ...etc...
             
-            But with the --include-full-repos option, we post-process the package so it looks like this:
+            But with the --include-meta-repo option, we post-process the package so it looks like this:
             $ ls -l dist/ilastik.app/Contents/Resources/lib/python2.7/
-            _ilastik/
-            _lazyflow/
-            _volumina/
-            ilastik@ -> _ilastik/ilastik
-            lazyflow@ -> _lazyflow/lazyflow
-            volumina@ -> _volumina/volumina
+            ilastik-meta
+            ilastik@ -> ilastik-meta/ilastik/ilastik
+            lazyflow@ -> ilastik-meta/lazyflow/lazyflow
+            volumina@ -> ilastik-meta/volumina/volumina
             site-packages.zip
             ...etc...            
 
@@ -172,53 +172,53 @@ else:
             self.install_repos()
             
             # Replace drtile.so
-            shutil.move( self.__dist_dir + '/drtile.so', self.__destination_libpython_dir + '/_lazyflow/lazyflow/drtile/drtile.so' )
+            shutil.move( self.__dist_dir + '/drtile.so', self.__destination_libpython_dir + '/ilastik-meta/lazyflow/lazyflow/drtile/drtile.so' )
     
         def install_repos(self):
             self.remove_repos()
-            for module, repo in self.__repo_modules.items():
-                dst = self.__destination_libpython_dir + '/_' + module
-                print "Copying {} to {}".format(repo, dst )
+            src = ilastik_meta_repo
+            dst = self.__destination_libpython_dir + '/ilastik-meta'
+            print "Copying {} to {}".format(src, dst )
 
-                # Don't copy copy the .app itself!
-                # (which would lead to infinite recursion)
-                def ignore(d, contents):
-                    if d == repo:
-                        return ['dist', 'build']
-                    return []
+            # Don't copy copy the .app itself!
+            # (which would lead to infinite recursion)
+            def ignore(d, contents):
+                return ['dist', 'build']
 
-                # Copy the whole repo
-                shutil.copytree(repo, dst, symlinks=True, ignore=ignore)
+            # Copy the whole repo
+            shutil.copytree(src, dst, symlinks=True, ignore=ignore)
                 
-                # symlink to the actual module in the repo
-                relative_link = os.path.relpath( dst + '/' + module, self.__destination_libpython_dir )
+            # symlink to the actual module within the meta-repo
+            for module in self.__replace_modules:
+                relative_link = os.path.relpath( dst + '/' + module + '/' + module, self.__destination_libpython_dir )
                 os.symlink( relative_link, self.__destination_libpython_dir + '/' + module )
 
         def remove_repos(self):
             """
             Remove the existing modules/repos left in the .app tree.
             """
-            for module, repo in self.__repo_modules.items():
+            try:
+                # repo dir created by this custom post-processing step (if present from an earlier build)
+                p = self.__destination_libpython_dir + '/' + ilastik_meta_repo
+                shutil.rmtree(p)
+            except Exception as ex:
+                pass
+
+            for module in self.__replace_modules:
+                # Remove symlink (if present from a previous build)
                 try:
-                    # Remove symlink (if present from a previous build)
                     p = self.__destination_libpython_dir + '/' + module
                     os.remove( p )
                 except Exception as ex:
                     pass
-                
+
+                # Module created by py2app
                 try:
-                    # repo dir created by this custom post-processing step (if present from an earlier build)
-                    p = self.__destination_libpython_dir + '/_' + module
-                    shutil.rmtree(p)
-                except Exception as ex:
-                    pass
-                
-                try:
-                    # Module created by py2app
                     p = self.__destination_libpython_dir + '/' + module
                     shutil.rmtree(p)
                 except Exception as ex:
                     pass
+                
 
 setup(
     cmdclass={ 'py2app' : custom_py2app }, # See hack above.
