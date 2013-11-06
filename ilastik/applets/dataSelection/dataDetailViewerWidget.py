@@ -4,6 +4,7 @@ from PyQt4 import uic
 from PyQt4.QtGui import QWidget
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoTableModel
+from addFileButton import AddFileButton
 
 class DataDetailViewerWidget( QWidget ):
     def __init__(self, parent, topLevelOperator, roleIndex):

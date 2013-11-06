@@ -182,14 +182,10 @@ class DataSelectionGui(QWidget):
             self._detailViewerWidgets.append( detailViewer )
 
             # Button
-            menu = QMenu(parent=self)
-            menu.setObjectName("addFileButton_role_{}".format( roleIndex ))
-            menu.addAction( "Add one or more separate Files ..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
-            menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
-            #disabled for ilastik 1.0
-            #menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
-            detailViewer.appendButton.setMenu( menu )
-            self._retained.append(menu)
+            detailViewer.appendButton.addFilesRequested.connect(
+                    partial(self.handleAddFiles, roleIndex))
+            detailViewer.appendButton.addStackRequested.connect(
+                    partial(self.handleAddStack, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
             self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer.appendButton, roleIndex ) )

@@ -3,6 +3,7 @@ from PyQt4.QtCore import pyqtSignal, Qt
 from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu, QPushButton, QAction
 
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
+from addFileButton import AddFileButton
 
 class DataLaneSummaryTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)
@@ -31,18 +32,13 @@ class DataLaneSummaryTableView(QTableView):
     def setModel(self, model):
         super( DataLaneSummaryTableView, self ).setModel(model)
 
-        self._retained = []
         roleIndex = 0
         for column in range( LaneColumn.NumColumns, model.columnCount(), DatasetInfoColumn.NumColumns ):
-            menu = QMenu(parent=self)
-            menu.setObjectName( "SummaryTable_AddButton_{}".format( roleIndex ) )
-            self._retained.append(menu)
-            menu.addAction( "Add File(s)..." ).triggered.connect( partial(self.addFilesRequested.emit, roleIndex) )
-            menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.addStackRequested.emit, roleIndex) )
-            menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.addByPatternRequested.emit, roleIndex) )
-            
-            button = QPushButton("Add File(s)...", self)
-            button.setMenu( menu )
+            button = AddFileButton(self)
+            button.addFilesRequested.connect(
+                    partial(self.addFilesRequested.emit, roleIndex))
+            button.addStackRequested.connect(
+                    partial(self.addStackRequested.emit, roleIndex))
             self.addFilesButtons[roleIndex] = button
 
             lastRow = self.model().rowCount()-1

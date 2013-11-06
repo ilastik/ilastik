@@ -26,7 +26,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QPushButton" name="appendButton">
+      <widget class="AddFileButton" name="appendButton">
        <property name="text">
         <string>Add...</string>
        </property>
@@ -58,6 +58,11 @@
    <class>DatasetDetailedInfoTableView</class>
    <extends>QTableView</extends>
    <header>ilastik.applets.dataSelection.datasetDetailedInfoTableView</header>
+  </customwidget>
+  <customwidget>
+   <class>AddFileButton</class>
+   <extends>QPushButton</extends>
+   <header>ilastik.applets.dataSelection.addFileButton</header>
   </customwidget>
  </customwidgets>
  <resources/>
