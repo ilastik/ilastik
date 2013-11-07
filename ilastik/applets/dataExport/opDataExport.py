@@ -148,7 +148,11 @@ class OpDataExport(Operator):
         self._opImageOnDiskProvider.Input.connect( self._opFormattedExport.ImageToExport )
         self._opImageOnDiskProvider.WorkingDirectory.connect( self.WorkingDirectory )
         self._opImageOnDiskProvider.DatasetPath.connect( self._opFormattedExport.ExportPath )
-        self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
+        
+        # Not permitted to make this connection because we can't connect our own output to a child operator.
+        # Instead, dirty state is copied manually into the child op whenever we change it.
+        #self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
+        
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         
     def setupOutputs(self):
@@ -211,6 +215,8 @@ class OpDataExport(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Out input data changed, so we have work to do when we get executed.
         self.Dirty.setValue(True)
+        if self._opImageOnDiskProvider:
+            self._opImageOnDiskProvider.Dirty.setValue( False )
 
     def run_export(self):
         # If we're not dirty, we don't have to do anything.
@@ -219,6 +225,7 @@ class OpDataExport(Operator):
             self._opFormattedExport.run_export()
             self.Dirty.setValue( False )
             self.setupOnDiskView()
+            self._opImageOnDiskProvider.Dirty.setValue( False )
 
 class OpRawSubRegionHelper(Operator):
     """

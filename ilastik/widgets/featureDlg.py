@@ -32,7 +32,6 @@ import os
 from PyQt4 import uic
 import qimage2ndarray
 import numpy
-import featureTableWidget
 import preView
 
 class FeatureDlg(QDialog):
@@ -84,7 +83,11 @@ class FeatureDlg(QDialog):
     def showEvent(self, event):
         super( FeatureDlg, self ).showEvent(event)
         self.updateOKButton()
-        
+    
+    def setEnableItemMask(self, mask):
+        # See comments in FeatureTableWidget.setEnableItemMask()
+        self.featureTableWidget.setEnableItemMask(mask)
+
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal

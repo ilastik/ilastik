@@ -1,10 +1,10 @@
-import os
 import numpy
 from PyQt4.QtGui import QApplication,QKeyEvent
 from PyQt4.QtCore import QEvent,Qt
 from ilastik.workflows.counting import CountingWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
+import os
 
 class TestObjectCountingDrawing(ShellGuiTestCaseBase):
     """
@@ -173,18 +173,18 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             gui.currentGui()._labelControlUi.labelListModel.select(0)
 
             imgView = gui.currentGui().editor.imageViews[2]
-            
-            
+
+
             QApplication.processEvents()
             LABEL_START = (-128,-128)
-            LABEL_STOP = (128,128)
+            LABEL_STOP = (0,0)
             LABEL_ERASE_START = (-128,-128)
             LABEL_ERASE_STOP = (128,128)
 
             gui.currentGui()._labelControlUi.labelListModel.select(1)
             gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
-            
-            
+
+
             self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
             self.waitForViews([imgView])
             labelData = opPix.LabelImages[imageId][:].wait()
@@ -193,16 +193,17 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 #                numpy.sum(labelData[labelData==2]) )
 
             gui.currentGui()._labelControlUi.AddBoxButton.click()
-            self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP) 
+            self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
 
             labelData = opPix.LabelImages[imageId][:].wait()
             self.waitForViews([imgView])
 
             rectangles = gui.currentGui().boxController._currentBoxesList
             rect = rectangles[0]._rectItem.rect()
-            go.db
-            assert rect.bottomRight().x() == 255, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().x())
-            assert rect.bottomRight().y() == 255, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().y())
+#            go.db
+
+            assert rect.bottomRight().x() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().x())
+            assert rect.bottomRight().y() == 128, "Rectangle is incorrect: {} is not 255".format(rect.bottomRight().y())
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
