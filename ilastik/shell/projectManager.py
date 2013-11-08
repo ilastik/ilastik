@@ -441,6 +441,8 @@ class ProjectManager(object):
         # Close the original project
         self._closeCurrentProject()
 
+        self.currentProjectFile = None
+
         # Create brand new workflow to load from the new project file.
         self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args)
 

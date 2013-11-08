@@ -275,6 +275,10 @@ class DataExportGui(QWidget):
             all_ready &= slot.ready()
             export_button = self.batchOutputTableWidget.cellWidget( row, Column.Action )
             if export_button is not None:
+                def setEnabledIfAlive(button, enable):
+                    import sip
+                    if not sip.isdeleted(button):
+                        button.setEnabled(enable)
                 executable_event = ThunkEvent( partial(export_button.setEnabled, slot.ready()) )
                 QApplication.instance().postEvent( self, executable_event )
 

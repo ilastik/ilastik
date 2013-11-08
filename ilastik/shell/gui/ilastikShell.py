@@ -1307,17 +1307,22 @@ class IlastikShell( QMainWindow ):
         self._shellActions.quitAction.setEnabled( enabled )
 
     def _setAppletEnabled(self, applet, enabled):
-        applet_index = self._applets.index(applet)
-        applet.getMultiLaneGui().setEnabled( enabled )
-
-        # Apply to the applet bar drawer heading, too.
-        if applet_index < self.appletBar.count():
-            # Unfortunately, Qt will auto-select a different drawer if 
-            #  we try to disable the currently selected drawer.
-            # That can cause lots of problems for us (e.g. it trigger's the
-            #  creation of applet guis that haven't been created yet.)
-            # Therefore, only disable the title button of a drawer if it isn't already selected.
-            if enabled or self.appletBar.currentIndex() != applet_index:
-                self.appletBar.setItemEnabled(applet_index, enabled)
+        try:
+            # This can fail if the applet was recently removed (e.g. if the project was closed)
+            applet_index = self._applets.index(applet)
+        except ValueError:
+            pass
+        else:
+            applet.getMultiLaneGui().setEnabled( enabled )
+    
+            # Apply to the applet bar drawer heading, too.
+            if applet_index < self.appletBar.count():
+                # Unfortunately, Qt will auto-select a different drawer if 
+                #  we try to disable the currently selected drawer.
+                # That can cause lots of problems for us (e.g. it trigger's the
+                #  creation of applet guis that haven't been created yet.)
+                # Therefore, only disable the title button of a drawer if it isn't already selected.
+                if enabled or self.appletBar.currentIndex() != applet_index:
+                    self.appletBar.setItemEnabled(applet_index, enabled)
 
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"
