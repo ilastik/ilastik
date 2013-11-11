@@ -186,6 +186,10 @@ class DatasetInfoEditorWidget(QDialog):
         ## Storage option warning.
         need_message_about_storage = False
         for laneIndex in self._laneIndexes:
+            if not self._op.DatasetGroup[laneIndex][self._roleIndex].ready():
+                # "real" slot may not be ready yet if this dialog was opened automatically to correct an error
+                # (for example, if the user's data has the wrong axes)
+                continue
             old_storage = self._op.DatasetGroup[laneIndex][self._roleIndex].value.location
             new_storage = self.tempOps[laneIndex].Dataset.value.location
             
