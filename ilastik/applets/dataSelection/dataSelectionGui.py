@@ -26,10 +26,11 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
-from dataDetailViewerWidget import DataDetailViewerWidget
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
+        DatasetDetailedInfoTableModel
+from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -70,7 +71,7 @@ class DataSelectionGui(QWidget):
         if imageIndex is not None:
             self.laneSummaryTableView.selectRow(imageIndex)
             for detailWidget in self._detailViewerWidgets:
-                detailWidget.datasetDetailTableView.selectRow(imageIndex)
+                detailWidget.selectRow(imageIndex)
 
     def stopAndCleanUp(self):
         for editor in self.volumeEditors.values():
@@ -165,9 +166,9 @@ class DataSelectionGui(QWidget):
 
         # These two helper functions enable/disable an 'add files' button for a given role  
         #  based on the the max lane index for that role and the overall permitted max_lanes
-        def _update_button_status(button, role_index):
+        def _update_button_status(viewer, role_index):
             if self._max_lanes:
-                button.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
+                viewer.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
 
         def _handle_lane_added( button, role_index, slot, lane_index ):
             slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
@@ -176,37 +177,43 @@ class DataSelectionGui(QWidget):
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
-            detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
+            detailViewer = DatasetDetailedInfoTableView(self)
+            detailViewer.setModel(DatasetDetailedInfoTableModel(self,
+                self.topLevelOperator, roleIndex))
             self._detailViewerWidgets.append( detailViewer )
 
             # Button
-            detailViewer.appendButton.addFilesRequested.connect(
+            detailViewer.addFilesRequested.connect(
                     partial(self.handleAddFiles, roleIndex))
-            detailViewer.appendButton.addStackRequested.connect(
+            detailViewer.addStackRequested.connect(
                     partial(self.handleAddStack, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
-            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer.appendButton, roleIndex ) )
-            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer.appendButton, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer, roleIndex ) )
             
             # While we're at it, do the same for the buttons in the summary table, too
             self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             
-            # Context menu            
-            detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
-            detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
-            detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
-            detailViewer.datasetDetailTableView.resetRequested.connect( partial(self.handleClearDatasets, roleIndex) )
+            # Context menu
+            detailViewer.replaceWithFileRequested.connect(
+                    partial(self.handleReplaceFile, roleIndex) )
+            detailViewer.replaceWithStackRequested.connect(
+                    partial(self.replaceWithStack, roleIndex) )
+            detailViewer.editRequested.connect(
+                    partial(self.editDatasetInfo, roleIndex) )
+            detailViewer.resetRequested.connect(
+                    partial(self.handleClearDatasets, roleIndex) )
 
             # Drag-and-drop
-            detailViewer.datasetDetailTableView.addFilesRequested.connect( partial( self.addFileNames, roleIndex=roleIndex ) )
+            detailViewer.addFilesRequestedDrop.connect( partial( self.addFileNames, roleIndex=roleIndex ) )
 
             # Selection handling
             def showFirstSelectedDataset( _roleIndex, lanes ):
                 if lanes:
                     self.showDataset( lanes[0], _roleIndex )
-            detailViewer.datasetDetailTableView.dataLaneSelected.connect( partial(showFirstSelectedDataset, roleIndex) )
+            detailViewer.dataLaneSelected.connect( partial(showFirstSelectedDataset, roleIndex) )
 
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
                 
@@ -217,7 +224,7 @@ class DataSelectionGui(QWidget):
         if tabIndex < len(self._detailViewerWidgets):
             roleIndex = tabIndex # If summary tab is moved to the front, change this line.
             detailViewer = self._detailViewerWidgets[roleIndex]
-            selectedLanes = detailViewer.datasetDetailTableView.selectedLanes
+            selectedLanes = detailViewer.selectedLanes
             if selectedLanes:
                 self.showDataset( selectedLanes[0], roleIndex )
 
@@ -584,8 +591,7 @@ class DataSelectionGui(QWidget):
         editorDlg.exec_()
 
     def updateInternalPathVisiblity(self):
-        for widget in self._detailViewerWidgets:
-            view = widget.datasetDetailTableView
+        for view in self._detailViewerWidgets:
             model = view.model()
             view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
                                  not model.hasInternalPaths())

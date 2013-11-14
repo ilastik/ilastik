@@ -68,7 +68,8 @@ class DataLaneSummaryTableView(QTableView):
         col = self.columnAt( pos.x() )
         row = self.rowAt( pos.y() )
 
-        if col < self.model().columnCount() and row < self.model().rowCount():
+        if col < self.model().columnCount() and \
+                row < self.model().rowCount() - 1: # last row has buttons
             menu = QMenu(parent=self)
             removeLanesAction = QAction( "Remove", menu )
             menu.addAction( removeLanesAction )

@@ -1,7 +1,9 @@
 from PyQt4.QtCore import pyqtSignal, Qt, QUrl
-from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction
+from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
+        QHBoxLayout
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from addFileButton import AddFileButton
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
@@ -11,7 +13,9 @@ class DatasetDetailedInfoTableView(QTableView):
     editRequested = pyqtSignal(object) # Signature: (lane_index_list)
     resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
 
-    addFilesRequested = pyqtSignal(object) # Signature: ( filepath_list )
+    addFilesRequested = pyqtSignal() # Signature: ()
+    addStackRequested = pyqtSignal() # Signature: (x)
+    addFilesRequestedDrop = pyqtSignal(object) # Signature: ( filepath_list )
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
@@ -33,6 +37,39 @@ class DatasetDetailedInfoTableView(QTableView):
         
         self.setAcceptDrops(True)
 
+    def setModel(self, model):
+        """
+        Set model used to store the data. This method adds an extra row
+        at the end, which is used to keep the "Add..." button.
+        """
+        super( DatasetDetailedInfoTableView, self ).setModel(model)
+
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        self._addButton = button = AddFileButton(widget)
+        button.addFilesRequested.connect(self.addFilesRequested.emit)
+        button.addStackRequested.connect(self.addStackRequested.emit)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(button)
+        layout.addStretch()
+        widget.setLayout(layout)
+
+        lastRow = self.model().rowCount()-1
+        modelIndex = self.model().index( lastRow, 0 )
+        self.setIndexWidget( modelIndex, widget )
+        # the "Add..." button spans last row
+        self.setSpan(lastRow, 0, 1, model.columnCount())
+
+    def setEnabled(self, status):
+        """
+        Set status of the add button shown on the last row.
+
+        If this view is used for a secondary role, such as importing
+        prediction maps, the button is only available if there are more
+        raw data lanes than prediction maps.
+        """
+        self._addButton.setEnabled(status)
+
     def dataChanged(self, topLeft, bottomRight):
         self.dataLaneSelected.emit( self.selectedLanes )
 
@@ -47,18 +84,17 @@ class DatasetDetailedInfoTableView(QTableView):
             rows = set()
             for index in selectedIndexes:
                 rows.add(index.row())
+            rows.discard(self.model().rowCount() - 1) # last row is a button
             self.selectedLanes = sorted(rows)
 
         self.dataLaneSelected.emit(self.selectedLanes)
         
-    def selectedLanes(self):
-        return self.selectedLanes
-    
     def handleCustomContextMenuRequested(self, pos):
         col = self.columnAt( pos.x() )
         row = self.rowAt( pos.y() )
         
-        if 0<= col < self.model().columnCount() and 0<= row < self.model().rowCount():
+        if 0 <= col < self.model().columnCount() and \
+                0 <= row < self.model().rowCount() - 1: # last row is a button
             menu = QMenu(parent=self)
             editSharedPropertiesAction = QAction( "Edit shared properties...", menu )
             editPropertiesAction = QAction( "Edit properties...", menu )
@@ -136,7 +172,7 @@ class DatasetDetailedInfoTableView(QTableView):
         urls = dropEvent.mimeData().urls()
         filepaths = map( QUrl.toLocalFile, urls )
         filepaths = map( str, filepaths )
-        self.addFilesRequested.emit( filepaths )    
+        self.addFilesRequestedDrop.emit( filepaths )
 
 
 
