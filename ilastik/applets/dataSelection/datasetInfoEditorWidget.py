@@ -166,14 +166,38 @@ class DatasetInfoEditorWidget(QDialog):
                 msg += field + '\n'
             QMessageBox.warning(self, "Error", msg)
             return
-        
+
+        # Inspect the user's changes to see if we need to warn about anything.
+        closing_messages = self._getClosingMessages()
+
         if not self._applyTempOpSettingsRealOp():
             return
         else:
             # Success.  Close the dialog.
+            for title, msg in closing_messages:
+                QMessageBox.information( self, title, msg )
             self._tearDownEventFilters()
             self._cleanUpTempOperators()
             super( DatasetInfoEditorWidget, self ).accept()
+
+    def _getClosingMessages(self):
+        closing_msgs = []
+        
+        ## Storage option warning.
+        need_message_about_storage = False
+        for laneIndex in self._laneIndexes:
+            old_storage = self._op.DatasetGroup[laneIndex][self._roleIndex].value.location
+            new_storage = self.tempOps[laneIndex].Dataset.value.location
+            
+            if old_storage != new_storage and new_storage == DatasetInfo.Location.ProjectInternal:
+                need_message_about_storage = True
+                break
+        if need_message_about_storage:
+            msg = "Your dataset will be copied to your project file when your project is saved.\n"\
+                  "Please save your project now."
+            closing_msgs.append( ("Storage Option Changed", msg) )
+
+        return closing_msgs
 
     def reject(self):
         self._tearDownEventFilters()
@@ -439,7 +463,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._applyRangeToTempOps()
     
     def _applyNormalizeDisplayToTempOps(self):
-         # Save a copy of our settings
+        # Save a copy of our settings
         oldInfos = {}
         new_norm = {"True":True,"False":False,"Default":None}[str(self.normalizeDisplayComboBox.currentText())]        
         
@@ -669,6 +693,7 @@ class DatasetInfoEditorWidget(QDialog):
     def _initStorageCombo(self):
         # If there's only one dataset, show the path in the combo
         showpaths = False
+        relPath = None
         if len( self._laneIndexes ) == 1:
             op = self.tempOps.values()[0]
             info = op.Dataset.value
@@ -685,8 +710,7 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )
-            if relPath is not None:
-                self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
+            self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
 
         self.storageComboBox.setCurrentIndex(-1)
 

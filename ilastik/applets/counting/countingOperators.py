@@ -161,13 +161,16 @@ class OpTrainCounter(Operator):
                     self.progressSignal(progress_outer[0])
 
                 for ir, req in enumerate(reqlistfeat):
-                    image = req.notify_finished(progressNotify)
+                    req.notify_finished(progressNotify)
+                    req.submit()
 
                 for ir, req in enumerate(reqlistlabels):
-                    labblock = req.notify_finished(progressNotify)
+                    req.notify_finished(progressNotify)
+                    req.submit()
 
                 for ir, req in enumerate(reqlistbg):
-                    labbgblock = req.notify_finished(progressNotify)
+                    req.notify_finished(progressNotify)
+                    req.submit()
                 
                 traceLogger.debug("Requests fired")
                 

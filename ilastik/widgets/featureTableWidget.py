@@ -33,6 +33,8 @@ from PyQt4.QtGui import QVBoxLayout, QLabel, QPixmap, QPainter, \
                         QFont, QPen, QPolygon, QSlider, QImage
 from PyQt4.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
+import numpy
+
 class FeatureEntry:
     def __init__(self, name):
         self.name = name
@@ -171,7 +173,12 @@ class ItemDelegate(QItemDelegate):
         self.drawPixmapForCkecked()
         self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
         self.drawPixmapForPartiallyChecked()
-        
+        self.drawPixmapForDisabled()
+
+    def drawPixmapForDisabled(self):
+        self.pixmapDisabled = QPixmap(self.itemWidth, self.itemHeight)
+        self.pixmapDisabled.fill(Qt.white)
+
     def drawPixmapForUnckecked(self):
         self.pixmapUnckecked = QPixmap(self.itemWidth, self.itemHeight)
         self.pixmapUnckecked.fill(Qt.transparent)
@@ -221,7 +228,10 @@ class ItemDelegate(QItemDelegate):
         
         tableWidgetCell = self.parent().item(index.row(), index.column())
         
-        if tableWidgetCell.featureState == Qt.Unchecked:
+        flags = tableWidgetCell.flags()
+        if not (flags & Qt.ItemIsEnabled):
+            painter.drawPixmap(option.rect, self.pixmapDisabled)
+        elif tableWidgetCell.featureState == Qt.Unchecked:
             if not self.uncheckedIcon == None: 
                 painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
             else:
@@ -338,7 +348,41 @@ class FeatureTableWidget(QTableWidget):
                     self.item(row, column).setFeatureState(Qt.Unchecked)
             r+=1
         self._updateParentCell()
-    
+
+    def setEnableItemMask(self, mask):
+        """
+        Selectively enable/disable specific items in the table.
+        mask - a matrix with the same dimensions as the feature bool matrix.  True means enable, False means disable.
+        
+        Note: If a cell in a column is disabled, ALL of the cells under 
+              that parent in the same column must be disabled.
+              Categories of partially enabled cells are not supported yet.
+        """
+        featureMatrix = numpy.asarray(self.createSelectedFeaturesBoolMatrix())
+        assert mask.shape == featureMatrix.shape
+        r = 0
+        for row in range(self.rowCount()):
+            for column in range(self.columnCount()):
+                item = self.item(row, column)
+                flags = item.flags()
+                if self.verticalHeaderItem(row).isRootNode:
+                    # Check all children
+                    num_children = len(item.children)
+                    child_status = mask[r:r+num_children, column]
+                    enabled = child_status.any()
+                else:
+                    enabled = mask[r][column]
+                if enabled:
+                    flags |= Qt.ItemIsEnabled
+                else:
+                    flags &= ~Qt.ItemIsEnabled
+                item.setFlags(flags)
+
+            if not self.verticalHeaderItem(row).isRootNode:
+                r+=1
+
+        self._updateParentCell()
+
     def setSelectedFeatureList(self, featureList):
         for feature in featureList:
             for r,c in self._tableEntries():

@@ -7,6 +7,8 @@ from lazyflow.graph import Graph
 
 class VigraWatershedWorkflow(Workflow):
 
+    workflowName = "Watershed Preview"
+
     @property
     def applets(self):
         return self._applets
@@ -25,6 +27,10 @@ class VigraWatershedWorkflow(Workflow):
         # Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
+
+        # Dataset inputs
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         # Expose to shell
         self._applets.append(self.dataSelectionApplet)
