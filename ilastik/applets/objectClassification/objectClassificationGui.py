@@ -246,6 +246,15 @@ class ObjectClassificationGui(LabelingGui):
         if dlg.result() == QDialog.Accepted:
             if len(dlg.selectedFeatures) == 0:
                 self.interactiveMode = False
+            found = False
+            for plugin_name in dlg.selectedFeatures:
+                for key in dlg.selectedFeatures[plugin_name]:
+                    if key == 'Coord<ValueList>' or key == 'Coord<ValueList >':
+                        del dlg.selectedFeatures[plugin_name][key]
+                        found = True
+                        break
+                if found: break
+
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
             nfeatures = 0
             for plugin_features in dlg.selectedFeatures.itervalues():
