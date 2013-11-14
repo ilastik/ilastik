@@ -940,7 +940,7 @@ class BoxController(QObject):
     def _fixedBoxesChanged(self, *args):
         boxes = {"rois" : [], "values" : []}
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
-            if box.isFixed:
+            if rect._rectItem.scene() and box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
                 boxes["values"].append(float(box._fixvalue.toDouble()[0]))
 
@@ -951,7 +951,7 @@ class BoxController(QObject):
     def _viewBoxesChanged(self, *args):
         boxes = {"rois" : []}
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
-            if not box.isFixed:
+            if rect._rectItem.scene() and not box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
 
         self.viewBoxesChanged.emit(boxes)
