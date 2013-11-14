@@ -161,7 +161,6 @@ class DataSelectionGui(QWidget):
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
         self.laneSummaryTableView.addFilesRequested.connect( self.handleAddFiles )
         self.laneSummaryTableView.addStackRequested.connect( self.handleAddStack )
-        self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
         # These two helper functions enable/disable an 'add files' button for a given role  
