@@ -1054,7 +1054,8 @@ class CountingGui(LabelingGui):
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
-
+                #this is done at the wrong time, drawnNumber has to be changed first before changing
+                #interaction mode
                 if self.editor.brushingModel.drawnNumber==1:
                     brushSize = 1
                     self.editor.brushingModel.setBrushSize(brushSize)
@@ -1127,8 +1128,6 @@ class CountingGui(LabelingGui):
 
 
 
-        # If the user is selecting a label, he probably wants to be in paint mode
-        self._changeInteractionMode(Tool.Paint)
 
 
 
@@ -1142,6 +1141,8 @@ class CountingGui(LabelingGui):
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
 
+        # If the user is selecting a label, he probably wants to be in paint mode
+        self._changeInteractionMode(Tool.Paint)
 
 
         if row==0: #foreground
