@@ -219,12 +219,13 @@ class OpTrackingBase(Operator):
                 mergers[-1][e[0]] = e[1]
 
             for e in multi:
-                if not label2color[int(e[2])].has_key(e[0]):
+                if int(e[2]) >= 0 and not label2color[int(e[2])].has_key(e[0]):
                     if successive_ids:
                         label2color[int(e[2])][e[0]] = maxId
                         maxId += 1
                     else:
                         label2color[int(e[2])][e[0]] = np.random.randint(1, 255)
+                    print str(e[0]), 'was not in label2color[', e[2], ']'
                 label2color[-1][e[1]] = label2color[int(e[2])][e[0]]
                 
         # mark the filtered objects

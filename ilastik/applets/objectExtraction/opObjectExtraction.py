@@ -251,7 +251,10 @@ class OpRegionFeatures3d(Operator):
                 selected_vigra_features = feature_dict.keys()
                 feature_dict.update(default_features)
                 extra_features_computed = True
-            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
+            try:
+                global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
+            except:
+                print 'WARNING: cannot compute global_features for plugin', plugin_name
         
         extrafeats = {}
         if extra_features_computed:
