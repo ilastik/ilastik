@@ -13,8 +13,8 @@ class AddFileButton(QPushButton):
         - Add one or more files
         - Add volume from stack
     """
-    addFilesRequested = pyqtSignal(int)
-    addStackRequested = pyqtSignal(int)
+    addFilesRequested = pyqtSignal()
+    addStackRequested = pyqtSignal()
 
     def __init__(self, parent):
         super(AddFileButton, self).__init__( QIcon(FILEPATH +
