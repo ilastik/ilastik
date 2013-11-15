@@ -22,7 +22,7 @@ from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
-    workflowDescription = "This is obviously self-explanoratory."
+    workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
     
     @property
