@@ -1,9 +1,106 @@
-from PyQt4.QtCore import pyqtSignal, Qt, QUrl
+from PyQt4.QtCore import pyqtSignal, Qt, QUrl, QObject, QEvent
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
-        QHBoxLayout
+        QHBoxLayout, QPushButton, QIcon
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from addFileButton import AddFileButton
+from addFileButton import AddFileButton, FILEPATH
+
+
+class ButtonOverlay(QPushButton):
+    """
+    Overlay used to show "Remove" button in the row under the cursor.
+    """
+    def __init__(self, parent = None):
+        super(ButtonOverlay, self).__init__(QIcon(FILEPATH +
+            "/../../shell/gui/icons/16x16/actions/list-remove.png"),
+            "", parent, clicked=self.removeButtonClicked)
+        self.setFixedSize(20, 20) # size is fixed based on the icon above
+        # these are used to compute placement at the right end of the
+        # first column
+        self.width = 20
+        self.height = 20
+        self.setVisible(False)
+
+        # space taken by the headers in tableview
+        # the coordinate system is for the whole table, we need to
+        # skip the headers to draw in the correct place
+        # these will be initialized first time placeAtRow is called
+        self.xoffset = None
+        self.yoffset = None
+
+        self.current_row = -1
+
+    def removeButtonClicked(self):
+        """
+        Handles the button click by passing the current row to the parent
+        handler.
+        """
+        assert(self.current_row > -1)
+        view = self.parent()
+        view.removeButtonClicked(self.current_row)
+
+    def setVisible(self, state):
+        """
+        Set visibility of the overlay button.
+
+        ``current_row`` is reset when visibility is turned off to make sure
+        that we recompute the placement afterwards.
+        """
+        if state is False:
+            self.current_row = -1
+        return super(ButtonOverlay, self).setVisible(state)
+
+    def placeAtRow(self, ind):
+        """
+        Place the button in the row with index ``ind``.
+        """
+        if ind == self.current_row:
+            return
+        view = self.parent()
+        if ind == -1 or ind >= view.model().rowCount() - 1:
+            self.setVisible(False)
+            return
+
+        # initialize x and y offset if not done already
+        if self.yoffset is None:
+            self.yoffset = view.horizontalHeader().sizeHint().height() + \
+                    2 # nudge a little lower
+        if self.xoffset is None:
+            self.xoffset = view.verticalHeader().sizeHint().width()
+
+        # avoid painting over the header
+        row_y_offset = view.rowViewportPosition(ind)
+        if row_y_offset < 0:
+            self.setVisible(False)
+            return
+
+        # we're on
+        column_width = view.columnWidth(0)
+        row_height = view.rowHeight(ind)
+
+        self.setGeometry(self.xoffset + column_width - self.width,
+                row_y_offset + self.yoffset + (row_height - self.height)/2,
+                self.width, self.height)
+        self.setVisible(True)
+        self.current_row = ind
+
+
+class DisableButtonOverlayOnMouseEnter(QObject):
+    """
+    Event filter to disable the button overlay if mouse enters the widget.
+
+    This is used on the horizontal and vertical headers of the table
+    view to prevent the remove button from being displayed.
+    """
+    def __init__(self, parent, overlay):
+        super(DisableButtonOverlayOnMouseEnter, self).__init__(parent)
+        self._overlay = overlay
+
+    def eventFilter(self, object, event):
+        if event.type() == QEvent.Enter:
+            self._overlay.setVisible(False)
+        return False
+
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
@@ -19,6 +116,9 @@ class DatasetDetailedInfoTableView(QTableView):
 
     def __init__(self, parent):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
+        # this is needed to capture mouse events that are used for
+        # the remove button placement
+        self.setMouseTracking(True)
 
         self.selectedLanes = []
         self.setContextMenuPolicy( Qt.CustomContextMenu )
@@ -36,6 +136,56 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setSelectionBehavior( QTableView.SelectRows )
         
         self.setAcceptDrops(True)
+
+        self.overlay = ButtonOverlay(self)
+
+        event_filter = DisableButtonOverlayOnMouseEnter(self, self.overlay)
+        self.horizontalHeader().installEventFilter(event_filter)
+        self.verticalHeader().installEventFilter(event_filter)
+
+    def wheelEvent(self, event):
+        """
+        Handle mouse wheel scroll by updating the remove button overlay.
+        """
+        res = super(DatasetDetailedInfoTableView, self).wheelEvent(event)
+        self.adjustRemoveButton(event.pos())
+        return res
+
+    def leaveEvent(self, event):
+        """
+        Disable the remove button overlay when mouse leaves this widget.
+        """
+        self.overlay.setVisible(False)
+        return super(DatasetDetailedInfoTableView, self).enterEvent(event)
+
+    def mouseMoveEvent(self, event=None):
+        """
+        Update the remove button overlay according to the new mouse
+        position.
+        """
+        self.adjustRemoveButton(event.pos())
+        return super(DatasetDetailedInfoTableView, self).mouseMoveEvent(event)
+
+    def adjustRemoveButton(self, pos):
+        """
+        Move the remove button overlay to the row under the cursor
+        position given by ``pos``.
+        """
+        ind = self.indexAt(pos)
+        if ind.column() == -1:
+            # disable remove button if not cursor is not over a column
+            self.overlay.setVisible(False)
+            return
+
+        row_ind = ind.row()
+        self.overlay.placeAtRow(row_ind)
+
+    def removeButtonClicked(self, ind):
+        """
+        Handle remove file events generated by the remove button overlay.
+        """
+        assert(ind <= self.model().rowCount() - 1)
+        self.resetRequested.emit([ind])
 
     def setModel(self, model):
         """
@@ -173,31 +323,3 @@ class DatasetDetailedInfoTableView(QTableView):
         filepaths = map( QUrl.toLocalFile, urls )
         filepaths = map( str, filepaths )
         self.addFilesRequestedDrop.emit( filepaths )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
