@@ -14,6 +14,9 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
+# always available
+import math
+
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -125,6 +128,16 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         if (block_shape_dict['x']<0.1) != (block_shape_dict['y']<0.1):
             mexBox = QMessageBox()
             mexBox.setText("One of the smoothing sigma values is 0. Reset it to a value > 0.1 or set all sigmas to 0 for no smoothing.")
+            mexBox.exec_()
+            return
+
+        # avoid 'kernel longer than line' errors
+        shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+        n = 3 if 'z' in shape else 2
+        s = 'xyz'
+        if any([block_shape_dict[s[i]] > math.floor(shape[s[i]]/2-1) for i in range(n)]):
+            mexBox = QMessageBox()
+            mexBox.setText("The sigma value {} for dimension '{}' is too high, should be at most {:.1f}.".format(block_shape_dict[s[i]], s[i], math.floor(shape[s[i]]/2-1)))
             mexBox.exec_()
             return
 
