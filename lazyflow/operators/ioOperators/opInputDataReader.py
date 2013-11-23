@@ -2,7 +2,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpDvidVolume
 from lazyflow.utility.jsonConfig import JsonConfigParser
 
 import h5py
@@ -21,8 +21,9 @@ class OpInputDataReader(Operator):
     h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
     blockwiseExts = ['json']
+    dvidExts = ['dvidvol']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
+    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts + dvidExts
 
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
@@ -82,6 +83,7 @@ class OpInputDataReader(Operator):
         openFuncs = [ self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
+                      self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenWithVigraImpex ]
@@ -170,6 +172,15 @@ class OpInputDataReader(Operator):
                 return (npyReader, npyReader.Output)
             except OpNpyFileReader.DatasetReadError as e:
                 raise OpInputDataReader.DatasetReadError( *e.args )
+
+    def _attemptOpenAsDvidVolume(self, filePath):
+        if not os.path.splitext(filePath)[1] == '.dvidvol':
+            return (None, None)
+        with open(filePath) as f:
+            filetext = f.read()
+            hostname, uuid, dataset_name = filetext.splitlines()
+        opDvidVolume = OpDvidVolume( hostname, uuid, dataset_name, transpose_axes=True, parent=self )
+        return opDvidVolume, opDvidVolume.Output
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
