@@ -33,7 +33,7 @@ class DataLaneSummaryTableView(QTableView):
 
         roleIndex = 0
         for column in range( LaneColumn.NumColumns, model.columnCount(), DatasetInfoColumn.NumColumns ):
-            button = AddFileButton(self)
+            button = AddFileButton(self, new=True)
             button.addFilesRequested.connect(
                     partial(self.addFilesRequested.emit, roleIndex))
             button.addStackRequested.connect(

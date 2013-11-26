@@ -1,9 +1,11 @@
-from PyQt4.QtCore import pyqtSignal, Qt, QUrl, QObject, QEvent
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
-        QHBoxLayout, QPushButton, QIcon
+        QHBoxLayout, QPushButton, QIcon, QItemDelegate
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 from addFileButton import AddFileButton, FILEPATH
+
+from functools import partial
 
 
 class ButtonOverlay(QPushButton):
@@ -57,7 +59,8 @@ class ButtonOverlay(QPushButton):
         if ind == self.current_row:
             return
         view = self.parent()
-        if ind == -1 or ind >= view.model().rowCount() - 1:
+        model = view.model()
+        if ind == -1 or ind >= model.rowCount() - 1 or model.isEmptyRow(ind):
             self.setVisible(False)
             return
 
@@ -101,6 +104,44 @@ class DisableButtonOverlayOnMouseEnter(QObject):
             self._overlay.setVisible(False)
         return False
 
+class AddButtonDelegate(QItemDelegate):
+    """
+    Displays an "Add..." button on the first column of the table if the
+    corresponding row has not been assigned data yet. This is needed when a
+    prediction map for a raw data lane needs to be specified for example.
+    """
+    def __init__(self, parent):
+        super(AddButtonDelegate, self).__init__(parent)
+
+    def paint(self, painter, option, index):
+        # This method will be called every time a particular cell is in
+        # view and that view is changed in some way. We ask the delegates
+        # parent (in this case a table view) if the index in question (the
+        # table cell) corresponds to an empty row (indicated by '<empty>'
+        # in the data field), and create a button if there isn't one
+        # already associated with the cell.
+        button = self.parent().indexWidget(index)
+        if index.data() == '<empty>':
+            if not button:
+                parent = self.parent()
+                button = AddFileButton(parent)
+                button.addFilesRequested.connect(
+                        partial(parent.handleCellAddFilesEvent, index.row()))
+                button.addStackRequested.connect(
+                        partial(parent.handleCellAddStackEvent, index.row()))
+
+                parent.setIndexWidget(index, button)
+            else:
+                button.setVisible(True)
+        elif index.data() != '':
+            # the button needs to be disabled when a file is added to the
+            # row. This is accomplished by setting its visibility to
+            # False. Since the last row of the table also has an add
+            # button, before disabling it we check that there is actual
+            # data in the cell.
+            if button is not None:
+                button.setVisible(False)
+        super(AddButtonDelegate, self).paint(painter, option, index)
 
 class DatasetDetailedInfoTableView(QTableView):
     dataLaneSelected = pyqtSignal(object) # Signature: (laneIndex)
@@ -110,8 +151,8 @@ class DatasetDetailedInfoTableView(QTableView):
     editRequested = pyqtSignal(object) # Signature: (lane_index_list)
     resetRequested = pyqtSignal(object) # Signature: (lane_index_list)
 
-    addFilesRequested = pyqtSignal() # Signature: ()
-    addStackRequested = pyqtSignal() # Signature: (x)
+    addFilesRequested = pyqtSignal(int) # Signature: (lane_index)
+    addStackRequested = pyqtSignal(int) # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object) # Signature: ( filepath_list )
 
     def __init__(self, parent):
@@ -132,6 +173,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+
+        self.setItemDelegateForColumn(0, AddButtonDelegate(self))
         
         self.setSelectionBehavior( QTableView.SelectRows )
         
@@ -142,6 +185,16 @@ class DatasetDetailedInfoTableView(QTableView):
         event_filter = DisableButtonOverlayOnMouseEnter(self, self.overlay)
         self.horizontalHeader().installEventFilter(event_filter)
         self.verticalHeader().installEventFilter(event_filter)
+
+    @pyqtSlot(int)
+    def handleCellAddFilesEvent(self, row):
+        self.addFilesRequested.emit(row)
+        self.sender().setVisible(False)
+
+    @pyqtSlot(int)
+    def handleCellAddStackEvent(self, row):
+        self.addStackRequested.emit(row)
+        self.sender().setVisible(False)
 
     def wheelEvent(self, event):
         """
@@ -186,6 +239,9 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         assert(ind <= self.model().rowCount() - 1)
         self.resetRequested.emit([ind])
+        # redraw the table and disable the overlay
+        self.overlay.setVisible(False)
+        self.update()
 
     def setModel(self, model):
         """
@@ -196,9 +252,11 @@ class DatasetDetailedInfoTableView(QTableView):
 
         widget = QWidget()
         layout = QHBoxLayout(widget)
-        self._addButton = button = AddFileButton(widget)
-        button.addFilesRequested.connect(self.addFilesRequested.emit)
-        button.addStackRequested.connect(self.addStackRequested.emit)
+        self._addButton = button = AddFileButton(widget, new=True)
+        button.addFilesRequested.connect(
+                partial(self.addFilesRequested.emit, -1))
+        button.addStackRequested.connect(
+                partial(self.addStackRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()

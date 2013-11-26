@@ -119,6 +119,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
             return section+1
+
+    def isEmptyRow(self, index):
+        return not self._op.DatasetGroup[index][self._roleIndex].ready()
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()

@@ -16,10 +16,15 @@ class AddFileButton(QPushButton):
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, new=False):
+        """
+        -- ``new`` - boolean parameter to indicate if this button is used to
+           add new lanes or files to new roles corresponding to an
+           existing lane (such as prediction maps)
+        """
         super(AddFileButton, self).__init__( QIcon(FILEPATH +
             "/../../shell/gui/icons/16x16/actions/list-add.png"),
-            "Add...", parent)
+            "Add..." if new == False else "Add New...", parent)
 
         # drop down menu for different add options
         menu = QMenu(parent=self)

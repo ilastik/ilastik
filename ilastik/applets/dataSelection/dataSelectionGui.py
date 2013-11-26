@@ -159,8 +159,8 @@ class DataSelectionGui(QWidget):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
-        self.laneSummaryTableView.addFilesRequested.connect( self.handleAddFiles )
-        self.laneSummaryTableView.addStackRequested.connect( self.handleAddStack )
+        self.laneSummaryTableView.addFilesRequested.connect( self.addFiles )
+        self.laneSummaryTableView.addStackRequested.connect( self.addStack )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
         # These two helper functions enable/disable an 'add files' button for a given role  
@@ -183,9 +183,9 @@ class DataSelectionGui(QWidget):
 
             # Button
             detailViewer.addFilesRequested.connect(
-                    partial(self.handleAddFiles, roleIndex))
+                    partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(
-                    partial(self.handleAddStack, roleIndex))
+                    partial(self.addStack, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
             self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer, roleIndex ) )
@@ -199,7 +199,7 @@ class DataSelectionGui(QWidget):
             detailViewer.replaceWithFileRequested.connect(
                     partial(self.handleReplaceFile, roleIndex) )
             detailViewer.replaceWithStackRequested.connect(
-                    partial(self.replaceWithStack, roleIndex) )
+                    partial(self.addStack, roleIndex) )
             detailViewer.editRequested.connect(
                     partial(self.editDatasetInfo, roleIndex) )
             detailViewer.resetRequested.connect(
@@ -316,9 +316,6 @@ class DataSelectionGui(QWidget):
         self._viewerControlWidgetStack.setCurrentWidget( viewer.viewerControlWidget() )
 
 
-    def handleAddFiles(self, roleIndex):
-        self.addFiles(roleIndex)
-
     def handleReplaceFile(self, roleIndex, startingLane):
         self.addFiles(roleIndex, startingLane)
 
@@ -394,11 +391,22 @@ class DataSelectionGui(QWidget):
         infos = []
 
         if startingLane is None or startingLane == -1:
-            startingLane = self._findFirstEmptyLane(roleIndex)
+            startingLane = len(self.topLevelOperator.DatasetGroup)
             endingLane = startingLane+len(fileNames)-1
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
-            endingLane = startingLane+len(fileNames)-1
+            max_files = len(self.topLevelOperator.DatasetGroup) - \
+                    startingLane
+            if len(fileNames) > max_files:
+                msg = "You selected {num_selected} files for {num_slots} "\
+                      "slots. To add new files use the 'Add new...' option "\
+                      "in the context menu or the button in the last row."\
+                              .format(num_selected=len(fileNames),
+                                      num_slots=max_files)
+                QMessageBox.critical( self, "Too many files", msg )
+                return
+            endingLane = min(startingLane+len(fileNames)-1,
+                    len(self.topLevelOperator.DatasetGroup))
             
         if self._max_lanes and endingLane >= self._max_lanes:
             msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
@@ -498,10 +506,7 @@ class DataSelectionGui(QWidget):
             f.visititems(accumulateDatasetPaths)
         return datasetNames
 
-    def handleAddStack(self, roleIndex):
-        self.replaceWithStack(roleIndex, laneIndex=None)
-
-    def replaceWithStack(self, roleIndex, laneIndex):
+    def addStack(self, roleIndex, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
@@ -528,7 +533,7 @@ class DataSelectionGui(QWidget):
         originalNumLanes = len(self.topLevelOperator.DatasetGroup)
 
         if laneIndex is None:
-            laneIndex = self._findFirstEmptyLane(roleIndex)
+            laneIndex = len(self.topLevelOperator.DatasetGroup)
         if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
             self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
 
