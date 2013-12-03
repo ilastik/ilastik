@@ -34,6 +34,14 @@ class HeadlessShell(object):
         try:
             # Open the project file
             hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
+
+            if workflow_class is None:
+                # If the project file has no known workflow, we assume pixel classification
+                import ilastik.workflows
+                workflow_class = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
+                import warnings
+                warnings.warn( "Your project file ({}) does not specify a workflow type.  "
+                               "Assuming Pixel Classification".format( projectFilePath ) )            
             
             # Create our project manager
             # This instantiates the workflow and applies all settings from the project.
