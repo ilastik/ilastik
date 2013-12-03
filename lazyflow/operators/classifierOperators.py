@@ -104,6 +104,7 @@ class OpTrainRandomForestBlocked(Operator):
         self.outputs["Classifier"].meta.dtype = object
         self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
+    @traceLogged(logger, level=logging.DEBUG, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, subindex, roi, result):
         progress = 0
         self.progressSignal(progress)
