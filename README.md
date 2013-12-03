@@ -1,4 +1,3 @@
-ilastik-0.6-meta
-================
+# FlyEM Ilastik repo
 
-Small repo for tracking compatible versions of the ilastik subprojects via git submodules.
+This git repo aggregates a number of git submodules necessary to run ilastik in headless and gui mode.
