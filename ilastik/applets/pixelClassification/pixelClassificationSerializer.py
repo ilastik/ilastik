@@ -6,6 +6,10 @@ class PixelClassificationSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
+        self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
+                                                           operator.classifier_cache,
+                                                           name="ClassifierForests",
+                                                           subname="Forest{:04d}")
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -17,10 +21,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
-                 SerialClassifierSlot(operator.Classifier,
-                                      operator.classifier_cache,
-                                      name="ClassifierForests",
-                                      subname="Forest{:04d}") ]
+                 self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
     
@@ -58,6 +59,10 @@ class PixelClassificationSerializer(AppletSerializer):
                 colors.append( default_colors[i] )
             self.operator.LabelColors.setValue( colors )
             self.operator.PmapColors.setValue( colors )
+            
+            # Now RE-deserialize the classifier, so it isn't marked dirty
+            self._serialClassifierSlot.deserialize(topGroup)
+
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
