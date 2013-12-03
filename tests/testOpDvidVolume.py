@@ -7,10 +7,11 @@ import numpy
 import vigra
 import h5py
 
-from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
-
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpDvidVolume
+
+# Must be imported AFTER lazyflow, which adds dvidclient to sys.path
+from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
 
 class TestOpDvidVolume(object):
     """

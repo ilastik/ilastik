@@ -2,8 +2,16 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpDvidVolume
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
+
+try:
+    from lazyflow.operators.ioOperators import OpDvidVolume
+    _supports_dvid = True
+except ImportError as ex:
+    if 'OpDvidVolume' not in ex.message:
+        raise
+    _supports_dvid = False
 
 import h5py
 import vigra
@@ -21,9 +29,11 @@ class OpInputDataReader(Operator):
     h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
     blockwiseExts = ['json']
-    dvidExts = ['dvidvol']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts + dvidExts
+    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
+    if _supports_dvid:
+        dvidExts = ['dvidvol']
+        SupportedExtensions += dvidExts
 
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
