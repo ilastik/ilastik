@@ -423,7 +423,7 @@ class OpDetectMissing(Operator):
         else:
             try:
                 svm = cls._manager.get(nBins)
-            except NotTrainedError:
+            except SVMManager.NotTrainedError:
                 # fail gracefully if not trained => responsibility of user!
                 svm = PseudoSVC()
 
@@ -540,7 +540,7 @@ class SVMManager(object):
         try:
             return self._svms[n]
         except KeyError:
-            raise NotTrainedError(
+            raise self.NotTrainedError(
                 "Detector for bin size {} not trained.\nHave {}.".format(
                     n, self._svms))
 
