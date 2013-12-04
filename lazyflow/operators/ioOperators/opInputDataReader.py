@@ -5,6 +5,14 @@ from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
 
+try:
+    from lazyflow.operators.ioOperators import OpDvidVolume
+    _supports_dvid = True
+except ImportError as ex:
+    if 'OpDvidVolume' not in ex.message:
+        raise
+    _supports_dvid = False
+
 import h5py
 import vigra
 import os
@@ -23,6 +31,9 @@ class OpInputDataReader(Operator):
     blockwiseExts = ['json']
     vigraImpexExts = vigra.impex.listExtensions().split()
     SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
+    if _supports_dvid:
+        dvidExts = ['dvidvol']
+        SupportedExtensions += dvidExts
 
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
@@ -82,6 +93,7 @@ class OpInputDataReader(Operator):
         openFuncs = [ self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
+                      self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenWithVigraImpex ]
@@ -170,6 +182,15 @@ class OpInputDataReader(Operator):
                 return (npyReader, npyReader.Output)
             except OpNpyFileReader.DatasetReadError as e:
                 raise OpInputDataReader.DatasetReadError( *e.args )
+
+    def _attemptOpenAsDvidVolume(self, filePath):
+        if not os.path.splitext(filePath)[1] == '.dvidvol':
+            return (None, None)
+        with open(filePath) as f:
+            filetext = f.read()
+            hostname, uuid, dataset_name = filetext.splitlines()
+        opDvidVolume = OpDvidVolume( hostname, uuid, dataset_name, transpose_axes=True, parent=self )
+        return opDvidVolume, opDvidVolume.Output
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()

@@ -1,0 +1,3 @@
+[submodule "submodules/dvidclient"]
+	path = submodules/dvidclient
+	url = http://github.com/stuarteberg/dvidclient
