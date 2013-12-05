@@ -120,27 +120,25 @@ class AddButtonDelegate(QItemDelegate):
         # table cell) corresponds to an empty row (indicated by '<empty>'
         # in the data field), and create a button if there isn't one
         # already associated with the cell.
-        button = self.parent().indexWidget(index)
-        if index.data() == '<empty>':
+        parent_view = self.parent()
+        button = parent_view.indexWidget(index)
+        if index.row() < parent_view.model().rowCount()-1 and parent_view.model().isEmptyRow(index.row()):
             if not button:
-                parent = self.parent()
-                button = AddFileButton(parent)
+                button = AddFileButton(parent_view)
                 button.addFilesRequested.connect(
-                        partial(parent.handleCellAddFilesEvent, index.row()))
+                        partial(parent_view.handleCellAddFilesEvent, index.row()))
                 button.addStackRequested.connect(
-                        partial(parent.handleCellAddStackEvent, index.row()))
+                        partial(parent_view.handleCellAddStackEvent, index.row()))
 
-                parent.setIndexWidget(index, button)
-            else:
-                button.setVisible(True)
+                parent_view.setIndexWidget(index, button)
         elif index.data() != '':
-            # the button needs to be disabled when a file is added to the
-            # row. This is accomplished by setting its visibility to
-            # False. Since the last row of the table also has an add
+            # The button needs to be removed when a file is added to the
+            # row. Otherwise, it can steal events from the parent view, even if it isn't visible.
+            # Also, since the last row of the table also has an add
             # button, before disabling it we check that there is actual
             # data in the cell.
             if button is not None:
-                button.setVisible(False)
+                parent_view.setIndexWidget(index, None)
         super(AddButtonDelegate, self).paint(painter, option, index)
 
 class DatasetDetailedInfoTableView(QTableView):
@@ -381,3 +379,18 @@ class DatasetDetailedInfoTableView(QTableView):
         filepaths = map( QUrl.toLocalFile, urls )
         filepaths = map( str, filepaths )
         self.addFilesRequestedDrop.emit( filepaths )
+    
+    def scrollContentsBy(self, dx, dy):
+        """
+        Overridden from QTableView.
+        This forces the table to be redrawn after the user scrolls.
+        This is apparently needed on OS X.
+        """
+        super( DatasetDetailedInfoTableView, self ).scrollContentsBy(dx, dy)
+
+        # Hack: On Mac OS X, there is an issue that causes the row buttons not to be drawn correctly in some cases.
+        # We can force a repaint by resizing the column.
+        # (Manually calling self.update() here doesn't solve the issue, but this trick does.)
+        first_col_width = self.columnWidth(0)
+        self.setColumnWidth( 0, first_col_width+1 )
+        self.setColumnWidth( 0, first_col_width )
