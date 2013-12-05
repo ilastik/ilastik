@@ -379,3 +379,18 @@ class DatasetDetailedInfoTableView(QTableView):
         filepaths = map( QUrl.toLocalFile, urls )
         filepaths = map( str, filepaths )
         self.addFilesRequestedDrop.emit( filepaths )
+    
+    def scrollContentsBy(self, dx, dy):
+        """
+        Overridden from QTableView.
+        This forces the table to be redrawn after the user scrolls.
+        This is apparently needed on OS X.
+        """
+        super( DatasetDetailedInfoTableView, self ).scrollContentsBy(dx, dy)
+
+        # Hack: On Mac OS X, there is an issue that causes the row buttons not to be drawn correctly in some cases.
+        # We can force a repaint by resizing the column.
+        # (Manually calling self.update() here doesn't solve the issue, but this trick does.)
+        first_col_width = self.columnWidth(0)
+        self.setColumnWidth( 0, first_col_width+1 )
+        self.setColumnWidth( 0, first_col_width )
