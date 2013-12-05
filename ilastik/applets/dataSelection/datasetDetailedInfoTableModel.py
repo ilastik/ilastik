@@ -8,6 +8,8 @@ from lazyflow.utility import PathComponents
 from ilastik.utility import bind
 from opDataSelection import DatasetInfo
 
+from dataLaneSummaryTableModel import rowOfButtonsProxy
+
 class DatasetDetailedInfoColumn():
     Nickname = 0
     Location = 1
@@ -17,13 +19,15 @@ class DatasetDetailedInfoColumn():
     Range = 5
     NumColumns = 6
 
+@rowOfButtonsProxy
 class DatasetDetailedInfoTableModel(QAbstractItemModel):
     
     def __init__(self, parent, topLevelOperator, roleIndex):
         """
         :param topLevelOperator: An instance of OpMultiLaneDataSelectionGroup
         """
-        super( DatasetDetailedInfoTableModel, self ).__init__(parent)
+        # super does not work here in Python 2.x, decorated class confuses it
+        QAbstractItemModel.__init__(self, parent)
         self._op = topLevelOperator
         self._roleIndex = roleIndex
 
@@ -115,6 +119,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
             return InfoColumnNames[section]
         elif orientation == Qt.Vertical:
             return section+1
+
+    def isEmptyRow(self, index):
+        return not self._op.DatasetGroup[index][self._roleIndex].ready()
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
