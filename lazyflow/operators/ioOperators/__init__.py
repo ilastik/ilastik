@@ -18,5 +18,5 @@ try:
     from opDvidVolume import OpDvidVolume
 except ImportError as ex:
     # If the exception was not related to dvidclient, then re-raise it.
-    if 'dvidclient' not in ex.message:
+    if 'dvidclient' not in ex.args[0]:
         raise

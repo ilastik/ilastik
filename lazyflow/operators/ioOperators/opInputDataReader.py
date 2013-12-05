@@ -9,7 +9,7 @@ try:
     from lazyflow.operators.ioOperators import OpDvidVolume
     _supports_dvid = True
 except ImportError as ex:
-    if 'OpDvidVolume' not in ex.message:
+    if 'OpDvidVolume' not in ex.args[0]:
         raise
     _supports_dvid = False
 
