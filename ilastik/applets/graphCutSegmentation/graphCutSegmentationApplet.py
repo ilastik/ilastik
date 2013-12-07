@@ -1,6 +1,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from opGraphCutSegmentation import OpGraphCutSegmentation
+from graphCutSegmentationGui import GraphCutSegmentationGui
 
 
 class GraphCutSegmentationApplet(StandardApplet):
@@ -12,25 +13,21 @@ class GraphCutSegmentationApplet(StandardApplet):
 
     @property
     def singleLaneOperatorClass(self):
-        return OpThresholdTwoLevels
+        return OpGraphCutSegmentation
 
     @property
     def broadcastingSlots(self):
-        raise NotImplementedError("slots??")
         return ['MinSize',
                 'MaxSize',
-                'HighThreshold',
-                'LowThreshold',
-                'SmootherSigma',
-                'CurOperator',
-                'SingleThreshold',
+                'Threshold',
+                'Beta',
                 'Channel']
 
     @property
     def singleLaneGuiClass(self):
         from graphCutSegmentationGui import GraphCutSegmentationGui
-        return ThresholdTwoLevelsGui
+        return GraphCutSegmentationGui
 
-    @property
-    def dataSerializers(self):
-        return self._serializableItems
+    #@property
+    #def dataSerializers(self):
+        #return self._serializableItems

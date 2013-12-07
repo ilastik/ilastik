@@ -39,186 +39,69 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QLabel" name="blockLabel">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Smooth the input data with a Gaussian with user-defined sigma values for x, y and z. Anisotropic smoothing is allowed, i.e. sigmas can all be different. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Smoothed input&amp;quot;&lt;/span&gt; layer for the results (first check the &amp;quot;Show intermediate results&amp;quot; checkbox).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Sigmas:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="sigmaSpinBox_X">
-       <property name="toolTip">
-        <string>Smoothing sigma: X dimension</string>
-       </property>
-       <property name="decimals">
-        <number>1</number>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>100.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="sigmaSpinBox_Y">
-       <property name="toolTip">
-        <string>Smoothing sigma: Y dimension</string>
-       </property>
-       <property name="decimals">
-        <number>1</number>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>100.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="sigmaSpinBox_Z">
-       <property name="toolTip">
-        <string>Smoothing sigma: Z dimension</string>
-       </property>
-       <property name="decimals">
-        <number>1</number>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>100.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QWidget" name="threshold">
+     <attribute name="title">
+      <string>Threshold</string>
+     </attribute>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_7">
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Threshold:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDoubleSpinBox" name="thresholdSpinBox">
+          <property name="toolTip">
+           <string>Threshold value</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QTabWidget" name="tabWidget">
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>111</height>
-      </size>
-     </property>
-     <property name="toolTip">
-      <string extracomment="Simple (one threshold) or Advanced(two threshold)">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;One threshold&lt;/span&gt;: discard all pixel lower than threshold value.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Two thresholds&lt;/span&gt;: hysteresis thresholding. High threshold serves for detection, low threshold for segmentation. First the high threshold is applied and all pixels lower than the high threshold are discarded. Size filtering is performed on the objects (connected components). For the remaining objects, pixel value threshold is relaxed to the low threshold value. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="currentIndex">
-      <number>1</number>
-     </property>
-     <widget class="QWidget" name="tab_1">
-      <attribute name="title">
-       <string>One threshold</string>
-      </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout_4">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
-         <item>
-          <widget class="QLabel" name="label_6">
-           <property name="text">
-            <string>Threshold:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QDoubleSpinBox" name="thresholdSpinBox">
-           <property name="toolTip">
-            <string>Threshold value</string>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="tab_2">
-      <attribute name="title">
-       <string>Two thresholds</string>
-      </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Thresholds:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QDoubleSpinBox" name="lowThresholdSpinBox">
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Low threshold value. Look at &amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;After low threshold&lt;/span&gt;&amp;quot; layer for the result of changing this setting (check the &amp;quot;Show intermediate results&amp;quot; checkbox to see it).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QDoubleSpinBox" name="highThresholdSpinBox">
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;High threshold value. Look at the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;After high threshold&amp;quot;&lt;/span&gt; layer for the results of changing this setting (check the &amp;quot;Show intermediate results&amp;quot; checkbox to see it). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-           <property name="value">
-            <double>1.000000000000000</double>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
+    <widget class="QWidget" name="beta">
+     <attribute name="title">
+      <string>Threshold</string>
+     </attribute>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_7">
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Beta:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDoubleSpinBox" name="betaSpinBox">
+          <property name="toolTip">
+           <string>Threshold value</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -286,16 +169,6 @@ recomputation and might take a while.</string>
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QCheckBox" name="showDebugCheckbox">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show intermediate computation results, such as the segmented objects after thresholding, but before size filter.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Show intermediate results</string>
-     </property>
-    </widget>
-   </item>
   </layout>
   <zorder>tabWidget</zorder>
   <zorder></zorder>
@@ -305,16 +178,9 @@ recomputation and might take a while.</string>
  </widget>
  <tabstops>
   <tabstop>inputChannelSpinBox</tabstop>
-  <tabstop>sigmaSpinBox_X</tabstop>
-  <tabstop>sigmaSpinBox_Y</tabstop>
-  <tabstop>sigmaSpinBox_Z</tabstop>
-  <tabstop>tabWidget</tabstop>
   <tabstop>thresholdSpinBox</tabstop>
-  <tabstop>lowThresholdSpinBox</tabstop>
-  <tabstop>highThresholdSpinBox</tabstop>
   <tabstop>minSizeSpinBox</tabstop>
   <tabstop>maxSizeSpinBox</tabstop>
-  <tabstop>showDebugCheckbox</tabstop>
  </tabstops>
  <resources/>
  <connections/>
