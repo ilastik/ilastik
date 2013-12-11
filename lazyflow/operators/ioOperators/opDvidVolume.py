@@ -5,9 +5,9 @@ from dvidclient.volume_client import VolumeClient
 class OpDvidVolume(Operator):
     Output = OutputSlot()
     
-    def __init__(self, hostname, uuid, dataset_name, transpose_axes, *args, **kwargs):
+    def __init__(self, hostname, uuid, dataname, transpose_axes, *args, **kwargs):
         super( OpDvidVolume, self ).__init__(*args, **kwargs)
-        self._volume_client = VolumeClient( hostname, uuid, dataset_name )
+        self._volume_client = VolumeClient( hostname, uuid, dataname )
         self._transpose_axes = transpose_axes
     
     def setupOutputs(self):
