@@ -649,68 +649,33 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
 
 
-class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflow):
-    workflowName = "Object Classification (with graph-cut segmentation)"
+class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflowPrediction):
+    workflowName = "Object Classification (from prediction image, with graph-cut segmentation)"
 
     def setupInputs(self):
-        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
-                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+        super(ObjectClassificationWorkflowGraphcut, self).setupInputs()
 
-        self.dataSelectionApplet = DataSelectionApplet( self,
-                                                        "Input Data",
-                                                        "Input Data",
-                                                        batchDataGui=False,
-                                                        force5d=True,
-                                                        instructionText=data_instructions )
-
-        opData = self.dataSelectionApplet.topLevelOperator
-        opData.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
-        self._applets.append(self.dataSelectionApplet)
-
-        self.segmentationApplet = GraphCutSegmentationApplet(self, "Graph-Cut", "GraphCutSegmentation")
+        self.segmentationApplet = GraphCutSegmentationApplet(self, "Graph-Cut",
+                                                             "GraphCutSegmentation")
         self._applets.append(self.segmentationApplet)
 
     def connectInputs(self, laneIndex):
-        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opGraphCut = self.segmentationApplet.topLevelOperator.getLane(laneIndex)
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
-        op5raw = OpReorderAxes(parent=self)
-        op5raw.AxisOrder.setValue("txyzc")
-        op5predictions = OpReorderAxes(parent=self)
-        op5predictions.AxisOrder.setValue("txyzc")
+        rawSlot, binarySlot = super(ObjectClassificationWorkflowGraphcut,
+                                    self).connectInputs(laneIndex)
 
-        if self.fillMissing != 'none':
-            opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
-            opFillMissingSlices.Input.connect(opData.ImageGroup[0])
-            rawslot = opFillMissingSlices.Output
-        else:
-            rawslot = opData.ImageGroup[0]
-
-        op5raw.Input.connect(rawslot)
-        op5predictions.Input.connect(opData.ImageGroup[1])
-
-        opGraphCut.RawInput.connect(op5raw.Output)
-        opGraphCut.Input.connect(op5predictions.Output)
+        opGraphCut.RawInput.connect(rawSlot)
+        opGraphCut.InputImage.connect(opData.ImageGroup[1])
+        opGraphCut.Binary.connect(binarySlot)
 
         op5Binary = OpReorderAxes(parent=self)
         op5Binary.AxisOrder.setValue("txyzc")
         op5Binary.Input.connect(opGraphCut.CachedOutput)
 
-        return op5raw.Output, op5Binary.Output
+        return rawSlot, op5Binary.Output
 
-    def handleAppletStateUpdateRequested(self):
-        """
-        Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        """
-        input_ready = self._inputReady(2)
-        cumulated_readyness = input_ready
-        self._shell.setAppletEnabled(self.segmentationApplet, cumulated_readyness)
-
-        segmentation_ready = True  # should be pre-configured and non-breakable
-        cumulated_readyness = cumulated_readyness and segmentation_ready
-        super(ObjectClassificationWorkflowGraphcut,
-              self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
 
 if __name__ == "__main__":
     from sys import argv

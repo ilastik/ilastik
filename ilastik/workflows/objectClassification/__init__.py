@@ -28,4 +28,4 @@ from objectClassificationWorkflow import \
 try:
     from objectClassificationWorkflow import ObjectClassificationWorkflowGraphcut
 except ImportError as e:
-    logger.warn("Failed to import object workflow; check dependencies: " + str(e))
+    logger.warn("Failed to import graph-cut object workflow; check dependencies: " + str(e))

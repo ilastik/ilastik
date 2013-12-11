@@ -17,10 +17,7 @@ class GraphCutSegmentationApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['MinSize',
-                'MaxSize',
-                'Threshold',
-                'Beta',
+        return ['Beta',
                 'Channel']
 
     @property
