@@ -32,6 +32,12 @@ from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
         DatasetDetailedInfoTableModel
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
+try:
+    import dvidclient
+    _has_dvid_support = True
+except:
+    _has_dvid_support = False
+
 #===----------------------------------------------------------------------------------------------------------------===
 
 class LocationOptions():
@@ -186,6 +192,8 @@ class DataSelectionGui(QWidget):
                     partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(
                     partial(self.addStack, roleIndex))
+            detailViewer.addRemoteVolumeRequested.connect(
+                    partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
             self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer, roleIndex ) )
@@ -599,3 +607,56 @@ class DataSelectionGui(QWidget):
             model = view.model()
             view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
                                  not model.hasInternalPaths())
+    
+    def addDvidVolume(self, roleIndex, laneIndex):
+        # First, ask for the server name.
+        from PyQt4.QtGui import QDialog, QVBoxLayout, QLineEdit, QDialogButtonBox, QSizePolicy
+        from PyQt4.QtCore import Qt
+
+        edit = QLineEdit(parent=self)
+        edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        
+        layout = QVBoxLayout(self)
+        layout.addWidget( edit )
+        layout.addWidget( buttonbox )
+
+        dlg = QDialog(parent=self)
+        dlg.setLayout(layout)
+        dlg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        dlg.setWindowTitle("Specify DVID hostname")
+        dlg.setMinimumWidth(500)
+
+        buttonbox.accepted.connect( dlg.accept )
+        buttonbox.rejected.connect( dlg.reject )
+        
+        if dlg.exec_() == QDialog.Rejected:
+            return
+        
+        hostname = str(edit.text())
+        from dvidclient.gui.contents_browser import ContentsBrowser
+        browser = ContentsBrowser(hostname, parent=self)
+        if browser.exec_() != QDialog.Accepted:
+            return
+
+        dset_index, volume_name, uuid = browser.get_selection()
+
+        import tempfile
+        tempd = tempfile.mkdtemp()
+        filename = os.path.join( tempd, "/tmp.dvidvol" )
+        with open(filename, 'w') as f:
+            f.write( hostname + '\n' )
+            f.write( uuid + '\n' )
+            f.write( volume_name + '\n' )
+        
+        self.addFileNames([filename], roleIndex, laneIndex)
+            
+
+
+
+
+
+

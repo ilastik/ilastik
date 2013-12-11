@@ -129,6 +129,9 @@ class AddButtonDelegate(QItemDelegate):
                         partial(parent_view.handleCellAddFilesEvent, index.row()))
                 button.addStackRequested.connect(
                         partial(parent_view.handleCellAddStackEvent, index.row()))
+                button.addRemoteVolumeRequested.connect(
+                        partial(parent_view.handleCellAddRemoteVolumeEvent, index.row()))
+                
 
                 parent_view.setIndexWidget(index, button)
         elif index.data() != '':
@@ -151,6 +154,7 @@ class DatasetDetailedInfoTableView(QTableView):
 
     addFilesRequested = pyqtSignal(int) # Signature: (lane_index)
     addStackRequested = pyqtSignal(int) # Signature: (lane_index)
+    addRemoteVolumeRequested = pyqtSignal(int) # Signature: (lane_index)
     addFilesRequestedDrop = pyqtSignal(object) # Signature: ( filepath_list )
 
     def __init__(self, parent):
@@ -193,6 +197,11 @@ class DatasetDetailedInfoTableView(QTableView):
     def handleCellAddStackEvent(self, row):
         self.addStackRequested.emit(row)
         self.sender().setVisible(False)
+
+    @pyqtSlot(int)
+    def handleCellAddRemoteVolumeEvent(self, row):
+        self.addRemoteVolumeRequested.emit(row)
+        self.sender().setVisible(False)        
 
     def wheelEvent(self, event):
         """
@@ -255,6 +264,8 @@ class DatasetDetailedInfoTableView(QTableView):
                 partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(
                 partial(self.addStackRequested.emit, -1))
+        button.addRemoteVolumeRequested.connect(
+                partial(self.addRemoteVolumeRequested.emit, -1))
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()

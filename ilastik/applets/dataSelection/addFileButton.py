@@ -5,16 +5,25 @@ from PyQt4.QtGui import QMenu, QPushButton, QIcon
 import os.path
 FILEPATH = os.path.split(__file__)[0]
 
+# Is DVID available?
+try:
+    import dvidclient
+    _supports_dvid = True
+except ImportError:
+    _supports_dvid = False
+
 class AddFileButton(QPushButton):
     """
     Button used for adding new files. It presents a drop down menu with
-    two options:
+    three options:
 
         - Add one or more files
         - Add volume from stack
+        - Add remote volume
     """
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
+    addRemoteVolumeRequested = pyqtSignal()
 
     def __init__(self, parent, new=False):
         """
@@ -32,4 +41,9 @@ class AddFileButton(QPushButton):
                 connect(self.addFilesRequested.emit)
         menu.addAction("Add Volume from Stack...").triggered.connect(
                 self.addStackRequested.emit)
+        
+        if _supports_dvid:
+            menu.addAction("Add DVID Volume...").triggered.connect(
+                    self.addRemoteVolumeRequested.emit)
+
         self.setMenu( menu )
