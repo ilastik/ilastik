@@ -5,7 +5,7 @@ from singleton import Singleton
 from orderedSignal import OrderedSignal
 from fileLock import FileLock
 from tracer import Tracer, traceLogged
-from pathHelpers import PathComponents, getPathVariants
+from pathHelpers import PathComponents, getPathVariants, isUrl
 from roiRequestBatch import RoiRequestBatch
 from bigRequestStreamer import BigRequestStreamer
 import io
