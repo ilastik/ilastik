@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import multiprocessing
 
 import numpy
 import vigra
@@ -11,7 +10,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpDvidVolume
 
 # Must be imported AFTER lazyflow, which adds dvidclient to sys.path
-from mockserver.h5mockserver import H5MockServer, H5CutoutRequestHandler
+from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
 
 class TestOpDvidVolume(object):
     """
@@ -26,7 +25,7 @@ class TestOpDvidVolume(object):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = cls._start_mockserver( cls.test_filepath )
+        cls.server_proc = H5MockServer.start( cls.test_filepath, "localhost", 8000 )
 
     @classmethod
     def teardownClass(cls):
@@ -45,30 +44,17 @@ class TestOpDvidVolume(object):
         data = numpy.indices( (10, 100, 200, 3) )
         assert data.shape == (4, 10, 100, 200, 3)
         data = data.astype( numpy.uint32 )
+        data = vigra.taggedView( data, 'tzyxc' )
 
         # Choose names
+        cls.dvid_dataset = "datasetA"
         cls.data_uuid = "abcde"
         cls.data_name = "indices_data"
-        dataset_name = cls.data_uuid + '/' + cls.data_name
 
         # Write to h5 file
-        with h5py.File( test_filepath, "w" ) as test_h5file:        
-            dset = test_h5file.create_dataset(dataset_name, data=data)
-            dset.attrs["axistags"] = vigra.defaultAxistags("tzyxc").toJSON()
-
-    @classmethod
-    def _start_mockserver(cls, h5filepath):
-        """
-        Start the mock DVID server in a separate process.
-        """
-        def server_main():
-            server_address = ('', 8000)
-            server = H5MockServer( h5filepath, server_address, H5CutoutRequestHandler )
-            server.serve_forever()
-    
-        server_proc = multiprocessing.Process( target=server_main )
-        server_proc.start()    
-        return server_proc
+        with H5MockServerDataFile( test_filepath ) as test_h5file:
+            test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
     
     def test_cutout(self):
         """
@@ -76,7 +62,7 @@ class TestOpDvidVolume(object):
         """
         self._test_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,9,5,50,0), (4,10,20,150,3) )
     
-    def _test_volume(self, hostname, h5filename, h5group, h5dataset, start, stop):
+    def _test_volume(self, hostname, h5filename, uuid, dataname, start, stop):
         """
         hostname: The dvid server host
         h5filename: The h5 file to compare against
@@ -86,13 +72,13 @@ class TestOpDvidVolume(object):
         """
         # Retrieve from server
         graph = Graph()
-        opDvidVolume = OpDvidVolume( hostname, uuid=h5group, dataset_name=h5dataset, transpose_axes=True, graph=graph )
+        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, graph=graph )
         subvol = opDvidVolume.Output( start, stop ).wait()
 
         # Retrieve from file
         slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
         with h5py.File(h5filename, 'r') as f:
-            expected_data = f[h5group][h5dataset][slicing]
+            expected_data = f['all_nodes'][uuid][dataname][slicing]
 
         # Compare.
         assert ( subvol.view(numpy.ndarray) == expected_data ).all(),\
