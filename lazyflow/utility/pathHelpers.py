@@ -1,5 +1,4 @@
 import os
-import re
 
 class PathComponents(object):
     """
@@ -166,4 +165,10 @@ if __name__ == "__main__":
     assert components.extension == '.h5'
     assert components.internalPath == '/with/internal/path/to/data'
 
+    # Everything should work for URLs, too.
+    components = PathComponents('http://somehost:8000/path/to/data/with.ext')
+    assert components.externalPath == 'http://somehost:8000/path/to/data/with.ext'
+    assert components.extension == '.ext'    
+    assert components.internalPath is None
+    assert components.externalDirectory == 'http://somehost:8000/path/to/data'
 
