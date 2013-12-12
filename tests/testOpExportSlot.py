@@ -2,6 +2,7 @@ import os
 import tempfile
 import shutil
 
+import nose
 import numpy
 import vigra
 
@@ -10,6 +11,12 @@ from lazyflow.utility import PathComponents
 from lazyflow.operators.operators import OpArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
+
+try:
+    import dvidclient
+    _skip_dvid = False
+except ImportError:
+    _skip_dvid = True
 
 class TestOpExportSlot(object):
     
@@ -66,6 +73,43 @@ class TestOpExportSlot(object):
         expected_data = data.view(numpy.ndarray)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+
+    def testBasic_Dvid(self):
+        if _skip_dvid:
+            raise nose.SkipTest
+        
+        # Spin up a mock dvid server to test with.
+        from mockserver.h5mockserver import H5MockServerDataFile, H5MockServer
+        dvid_dataset, data_uuid, data_name = "datasetA", "abcde", "indices_data"
+        mockserver_data_file = self._tmpdir + '/mockserver_data.h5'
+        with H5MockServerDataFile( mockserver_data_file ) as test_h5file:
+            test_h5file.add_node( dvid_dataset, data_uuid )
+        server_proc = H5MockServer.start( mockserver_data_file, "localhost", 8000,
+                                          same_process=False, disable_server_logging=True )
+
+        try:            
+            data = 255 * numpy.random.random( (100,100, 4) )
+            data = data.astype( numpy.uint8 )
+            data = vigra.taggedView( data, vigra.defaultAxistags('xyc') )
+            
+            graph = Graph()
+            opExport = OpExportSlot(graph=graph)
+            opExport.Input.setValue( data.transpose() ) # FIXME: Export requires fortran order, even though the import is smart enough to transpose it...
+            opExport.OutputFormat.setValue( 'dvid' )
+            url = 'http://localhost:8000/api/node/{data_uuid}/{data_name}'.format( **locals() )
+            opExport.OutputFilenameFormat.setValue( url )
+            
+            assert opExport.ExportPath.ready()
+            assert opExport.ExportPath.value == url
+            opExport.run_export()
+            
+            opRead = OpInputDataReader( graph=graph )
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+            expected_data = data.view(numpy.ndarray)
+            read_data = opRead.Output[:].wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            server_proc.terminate()
 
     def testBasic_2d(self):
         data = 255 * numpy.random.random( (50,100) )
@@ -166,6 +210,10 @@ class TestOpExportSlot(object):
 if __name__ == "__main__":
     import sys
     import nose
+    import logging
+    handler = logging.StreamHandler( sys.stdout )
+    logging.getLogger().addHandler( handler )
+
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     nose.run(defaultTest=__file__)

@@ -11,6 +11,7 @@ from opRESTfulBlockwiseFilesetReader import *
 # If it fails, that's okay.
 try:
     from opDvidVolume import OpDvidVolume
+    from opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
     # If the exception was not related to dvidclient, then re-raise it.
     if 'dvidclient' not in ex.args[0]:
