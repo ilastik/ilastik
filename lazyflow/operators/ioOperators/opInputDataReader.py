@@ -17,6 +17,7 @@ except ImportError as ex:
 import h5py
 import vigra
 import os
+import re
 import logging
 
 class OpInputDataReader(Operator):
@@ -200,7 +201,6 @@ class OpInputDataReader(Operator):
             url_format = "^protocol://hostname/api/node/uuid/dataname"
             for field in ['protocol', 'hostname', 'uuid', 'dataname']:
                 url_format = url_format.replace( field, '(?P<' + field + '>.+)' )
-            import re
             match = re.match( url_format, filePath )
             if match:
                 fields = match.groupdict()
