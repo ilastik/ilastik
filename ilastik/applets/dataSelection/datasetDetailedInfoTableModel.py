@@ -4,7 +4,7 @@ from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from volumina.utility import decode_to_qstring
 
-from lazyflow.utility import PathComponents
+from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from opDataSelection import DatasetInfo
 
@@ -155,7 +155,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                if os.path.isabs(datasetInfo.filePath):
+                if isUrl(datasetInfo.filePath) or os.path.isabs(datasetInfo.filePath):
                     text = "Absolute Link: {}".format( filePathComponents.externalPath )
                     return decode_to_qstring(text)
                 else:
