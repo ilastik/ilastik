@@ -614,6 +614,7 @@ class DataSelectionGui(QWidget):
         from PyQt4.QtCore import Qt
 
         edit = QLineEdit(parent=self)
+        edit.setText('localhost:8000')
         edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
 
         buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
@@ -637,23 +638,22 @@ class DataSelectionGui(QWidget):
             return
         
         hostname = str(edit.text())
+        import socket
         from dvidclient.gui.contents_browser import ContentsBrowser
-        browser = ContentsBrowser(hostname, parent=self)
-        if browser.exec_() != QDialog.Accepted:
+        try:
+            browser = ContentsBrowser(hostname, parent=self)
+        except socket.error as ex:
+            msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
+            QMessageBox.critical(self, "Connection Error", msg)
+            return
+
+        if browser.exec_() == ContentsBrowser.Rejected:
             return
 
         dset_index, volume_name, uuid = browser.get_selection()
+        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )        
+        self.addFileNames([dvid_url], roleIndex, laneIndex)
 
-        import tempfile
-        tempd = tempfile.mkdtemp()
-        filename = os.path.join( tempd, "/tmp.dvidvol" )
-        with open(filename, 'w') as f:
-            f.write( hostname + '\n' )
-            f.write( uuid + '\n' )
-            f.write( volume_name + '\n' )
-        
-        self.addFileNames([filename], roleIndex, laneIndex)
-            
 
 
 
