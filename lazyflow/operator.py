@@ -85,6 +85,10 @@ class OperatorMetaClass(ABCMeta):
         try:
             instance = ABCMeta.__call__(cls, *args, **kwargs)
         except Exception as e:
+            # FIXME: What is the point of this long exception message?
+            # Why can't we just let the exception propagate up the stack?
+            # Is it because of some weird interaction between this metaclass and the Qt event loop?
+            # ....probably
             err = "Could not create instance of '{}'\n".format(cls)
             err += "args   = {}\n".format(args)
             err += "kwargs = {}\n".format(kwargs)
