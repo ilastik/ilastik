@@ -25,7 +25,7 @@ class TestOpDvidVolume(object):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = H5MockServer.start( cls.test_filepath, "localhost", 8000 )
+        cls.server_proc = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000 )
 
     @classmethod
     def teardownClass(cls):

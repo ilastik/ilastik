@@ -84,8 +84,8 @@ class TestOpExportSlot(object):
         mockserver_data_file = self._tmpdir + '/mockserver_data.h5'
         with H5MockServerDataFile( mockserver_data_file ) as test_h5file:
             test_h5file.add_node( dvid_dataset, data_uuid )
-        server_proc = H5MockServer.start( mockserver_data_file, "localhost", 8000,
-                                          same_process=False, disable_server_logging=True )
+        server_proc = H5MockServer.create_and_start( mockserver_data_file, "localhost", 8000,
+                                                     same_process=False, disable_server_logging=True )
 
         try:            
             data = 255 * numpy.random.random( (100,100, 4) )
