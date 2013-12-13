@@ -94,7 +94,7 @@ class TestOpExportSlot(object):
             
             graph = Graph()
             opExport = OpExportSlot(graph=graph)
-            opExport.Input.setValue( data.transpose() ) # FIXME: Export requires fortran order, even though the import is smart enough to transpose it...
+            opExport.Input.setValue( data )
             opExport.OutputFormat.setValue( 'dvid' )
             url = 'http://localhost:8000/api/node/{data_uuid}/{data_name}'.format( **locals() )
             opExport.OutputFilenameFormat.setValue( url )

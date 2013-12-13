@@ -14,15 +14,18 @@ class OpExportDvidVolume(Operator):
     Input = InputSlot()
     NodeDataUrl = InputSlot() # Should be a url of the form http://<hostname>[:<port>]/api/node/<uuid>/<dataname>
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, transpose_axes, *args, **kwargs):
         super(OpExportDvidVolume, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
+        self._transpose_axes = transpose_axes
 
     # No output slots...
     def setupOutputs(self):
-        assert self.Input.meta.axistags.channelIndex == 0, \
-            "DVID volumes must be exported in fortran order."
-        
+        if self._transpose_axes:
+            assert self.Input.meta.axistags.channelIndex == len(self.Input.meta.axistags)-1
+        else:
+            assert self.Input.meta.axistags.channelIndex == 0
+                    
     def execute(self, slot, subindex, roi, result): pass 
     def propagateDirty(self, slot, subindex, roi): pass
 
@@ -35,11 +38,15 @@ class OpExportDvidVolume(Operator):
         assert api == 'api'
         assert node == 'node'
         
+        # Request the data
+        data = vigra.taggedView( self.Input[:].wait(), self.Input.meta.axistags )
+        
+        if self._transpose_axes:
+            data = data.transpose()
+        
         # FIXME: We assume the dataset needs to be created first.
         #        If it already existed, this (presumably) causes an error on the DVID side.
-        metainfo = MetaInfo( self.Input.meta.shape,
-                             self.Input.meta.dtype,
-                             self.Input.meta.axistags )
+        metainfo = MetaInfo( data.shape, data.dtype.type, data.axistags )
 
         self.progressSignal(5)
         VolumeClient.create_volume(hostname, uuid, dataname, metainfo)
@@ -48,9 +55,6 @@ class OpExportDvidVolume(Operator):
         
         # For now, we send the whole darn thing at once.
         # TODO: Stream it over in blocks...
-        
-        # Request the data
-        data = vigra.taggedView( self.Input[:].wait(), metainfo.axistags )
         
         # Send it to dvid
         start, stop = roiFromShape(data.shape)

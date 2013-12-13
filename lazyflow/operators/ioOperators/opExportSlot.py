@@ -267,7 +267,7 @@ class OpExportSlot(Operator):
         self.progressSignal(0)
         export_path = self.ExportPath.value
         
-        opExport = OpExportDvidVolume( parent=self )
+        opExport = OpExportDvidVolume( transpose_axes=True, parent=self )
         try:
             opExport.Input.connect( self.Input )
             opExport.NodeDataUrl.setValue( export_path )

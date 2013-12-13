@@ -57,7 +57,7 @@ class TestOpDvidVolume(object):
         """
         # Retrieve from server
         graph = Graph()
-        opExport = OpExportDvidVolume( graph=graph )
+        opExport = OpExportDvidVolume( transpose_axes=True, graph=graph )
         
         data = numpy.indices( (10, 100, 200, 4) )
         assert data.shape == (4, 10, 100, 200, 4)
@@ -65,7 +65,7 @@ class TestOpDvidVolume(object):
         data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
 
         # Reverse data order for dvid export
-        opExport.Input.setValue( data.withAxes(*'cxyzt') )
+        opExport.Input.setValue( data )
         opExport.NodeDataUrl.setValue( 'http://localhost:8000/api/node/{uuid}/{dataname}'.format( uuid=self.data_uuid, dataname=self.data_name ) )
 
         # Export!
