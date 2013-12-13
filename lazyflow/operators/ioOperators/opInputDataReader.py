@@ -204,8 +204,12 @@ class OpInputDataReader(Operator):
             match = re.match( url_format, filePath )
             if match:
                 fields = match.groupdict()
-                opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], transpose_axes=True, parent=self )
-                return opDvidVolume, opDvidVolume.Output
+                try:
+                    opDvidVolume = OpDvidVolume( transpose_axes=True, parent=self )
+                    opDvidVolume.init_client( fields['hostname'], fields['uuid'], fields['dataname'] )
+                    return opDvidVolume, opDvidVolume.Output
+                except OpDvidVolume.DatasetReadError as e:
+                    raise OpInputDataReader.DatasetReadError( *e.args )
         return (None, None)
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
