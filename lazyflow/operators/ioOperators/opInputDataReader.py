@@ -205,8 +205,8 @@ class OpInputDataReader(Operator):
             if match:
                 fields = match.groupdict()
                 try:
-                    opDvidVolume = OpDvidVolume( transpose_axes=True, parent=self )
-                    opDvidVolume.init_client( fields['hostname'], fields['uuid'], fields['dataname'] )
+                    opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'],
+                                                 transpose_axes=True, parent=self )
                     return opDvidVolume, opDvidVolume.Output
                 except OpDvidVolume.DatasetReadError as e:
                     raise OpInputDataReader.DatasetReadError( *e.args )
