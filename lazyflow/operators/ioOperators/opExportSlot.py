@@ -132,13 +132,31 @@ class OpExportSlot(Operator):
             return False
         output_format = self.OutputFormat.value
 
-        # hdf5 and npy support all combinations
-        if output_format == 'hdf5' or output_format == 'npy':
+        # These cases support all combinations
+        if output_format in ('hdf5', 'npy'):
             return True
         
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
         output_dtype = self.Input.meta.dtype
+
+        if output_format == 'dvid':
+            # dvid requires a channel axis, which must come last.
+            # Internally, we transpose it before sending it over the wire
+            if tagged_shape.keys()[-1] != 'c':
+                return False
+
+            # Make sure DVID supports this dtype/channel combo.
+            from dvidclient.volume_metainfo import MetaInfo
+            metainfo = MetaInfo( self.Input.meta.shape,
+                                 output_dtype,
+                                 self.Input.meta.axistags )
+            try:
+                metainfo.determine_dvid_typename()
+            except:
+                return False
+            else:
+                return True
 
         # None of the remaining formats support more than 4 channels.
         if 'c' in tagged_shape and tagged_shape['c'] > 4:
