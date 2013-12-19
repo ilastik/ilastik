@@ -1031,7 +1031,10 @@ class IlastikShell( QMainWindow ):
 
         except Exception, e:
             traceback.print_exc()
-            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
+            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(e))
+
+            # no project will be loaded, free the file resource
+            hdf5File.close()
         else:
 
             try:
@@ -1050,7 +1053,16 @@ class IlastikShell( QMainWindow ):
             except Exception as ex:
                 traceback.print_exc()
                 self.closeCurrentProject()
-                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + ex.message)
+
+                # _loadProject failed, so we cannot expect it to clean up
+                # the hdf5 file (but it might have cleaned it up, so we catch 
+                # the error)
+                try:
+                    hdf5File.close()
+                except:
+                    pass
+                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
+
             else:
                 stop = time.time()
                 print "Loading the project took %f sec." % (stop-start,)
