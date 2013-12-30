@@ -15,7 +15,7 @@ class TestOpSparseLabelArray(object):
         graph = Graph()
         op = OpSparseLabelArray(graph=graph)
         arrayshape = numpy.array([1,10,10,10,1])
-        op.inputs["shape"].setValue( arrayshape )
+        op.inputs["shape"].setValue( tuple(arrayshape) )
         op.eraser.setValue(100)
 
         slicing = sl[0:1, 1:5, 2:6, 3:7, 0:1]
