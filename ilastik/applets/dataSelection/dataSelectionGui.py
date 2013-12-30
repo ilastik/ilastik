@@ -609,48 +609,13 @@ class DataSelectionGui(QWidget):
                                  not model.hasInternalPaths())
     
     def addDvidVolume(self, roleIndex, laneIndex):
-        # First, ask for the server name.
-        from PyQt4.QtGui import QDialog, QVBoxLayout, QLineEdit, QDialogButtonBox, QSizePolicy
-        from PyQt4.QtCore import Qt
-
-        edit = QLineEdit(parent=self)
-        edit.setText('localhost:8000')
-        edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-
-        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
-        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
-        buttonbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        
-        layout = QVBoxLayout(self)
-        layout.addWidget( edit )
-        layout.addWidget( buttonbox )
-
-        dlg = QDialog(parent=self)
-        dlg.setLayout(layout)
-        dlg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-        dlg.setWindowTitle("Specify DVID hostname")
-        dlg.setMinimumWidth(500)
-
-        buttonbox.accepted.connect( dlg.accept )
-        buttonbox.rejected.connect( dlg.reject )
-        
-        if dlg.exec_() == QDialog.Rejected:
-            return
-        
-        hostname = str(edit.text())
-        import socket
+        # TODO: Provide list of recently used dvid hosts, loaded from user preferences
         from dvidclient.gui.contents_browser import ContentsBrowser
-        try:
-            browser = ContentsBrowser(hostname, parent=self)
-        except socket.error as ex:
-            msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
-            QMessageBox.critical(self, "Connection Error", msg)
-            return
-
+        browser = ContentsBrowser(["localhost:8000"], parent=self)
         if browser.exec_() == ContentsBrowser.Rejected:
             return
 
-        dset_index, volume_name, uuid = browser.get_selection()
+        hostname, dset_index, volume_name, uuid = browser.get_selection()
         dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )        
         self.addFileNames([dvid_url], roleIndex, laneIndex)
 
