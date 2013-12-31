@@ -34,7 +34,7 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
         axes = localDescription.axes
         assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
 
-        self.Output.meta.shape = localDescription.view_shape
+        self.Output.meta.shape = tuple(localDescription.view_shape)
         self.Output.meta.dtype = localDescription.dtype
         self.Output.meta.axistags = vigra.defaultAxistags(localDescription.axes)
         drange = localDescription.drange
