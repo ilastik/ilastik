@@ -55,9 +55,6 @@ class LabelingGui(LayerViewerGui):
         for fn in self.__cleanup_fns:
             fn()
 
-        # Start in navigation mode (not painting)
-        self._changeInteractionMode(Tool.Navigation)
-
     ###########################################
     ###########################################
 
@@ -253,19 +250,19 @@ class LabelingGui(LayerViewerGui):
                           addLabel,
                           self.labelingDrawerUi.AddLabelButton )
 
-        navMode = QShortcut( QKeySequence("n"), self, member=self.labelingDrawerUi.arrowToolButton.click )
+        navMode = QShortcut( QKeySequence("n"), self.labelingDrawerUi.arrowToolButton, member=self.labelingDrawerUi.arrowToolButton.click )
         mgr.register( shortcutGroupName,
                       "Navigation Cursor",
                       navMode,
                       self.labelingDrawerUi.arrowToolButton )
 
-        brushMode = QShortcut( QKeySequence("b"), self, member=self.labelingDrawerUi.paintToolButton.click )
+        brushMode = QShortcut( QKeySequence("b"), self.labelingDrawerUi.paintToolButton, member=self.labelingDrawerUi.paintToolButton.click )
         mgr.register( shortcutGroupName,
                       "Brush Cursor",
                       brushMode,
                       self.labelingDrawerUi.paintToolButton )
 
-        eraserMode = QShortcut( QKeySequence("e"), self, member=self.labelingDrawerUi.eraserToolButton.click )
+        eraserMode = QShortcut( QKeySequence("e"), self.labelingDrawerUi.eraserToolButton, member=self.labelingDrawerUi.eraserToolButton.click )
         mgr.register( shortcutGroupName,
                       "Eraser Cursor",
                       eraserMode,

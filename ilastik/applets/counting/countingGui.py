@@ -96,14 +96,8 @@ class CountingGui(LabelingGui):
         return self
 
     def stopAndCleanUp(self):
-        # Base class first
+        # Base class
         super(CountingGui, self).stopAndCleanUp()
-
-        # Ensure that we are NOT in interactive mode
-        self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-        self._viewerControlUi.checkShowPredictions.setChecked(False)
-        self._viewerControlUi.checkShowSegmentation.setChecked(False)
-        self.toggleInteractive(False)
 
     def viewerControlWidget(self):
         return self._viewerControlUi

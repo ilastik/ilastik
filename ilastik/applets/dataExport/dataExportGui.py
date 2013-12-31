@@ -2,6 +2,7 @@ import os
 import threading
 from functools import partial
 
+import sip
 from PyQt4 import uic
 from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
 
@@ -266,24 +267,23 @@ class DataExportGui(QWidget):
         if len(selectedRanges) == 0:
             self.batchOutputTableWidget.selectRow(0)
 
+    def setEnabledIfAlive(self, widget, enable):
+        if not sip.isdeleted(widget):
+            widget.setEnabled(enable)
     def _updateExportButtons(self, *args):
         """Called when at least one dataset became 'unready', so we have to disable the export button."""
         all_ready = True
         # Enable/disable the appropriate export buttons in the table.
-        # Use ThunkEvents to ensure that this happens in the Gui thread.
+        # Use ThunkEvents to ensure that this happens in the Gui thread.        
         for row, slot in enumerate( self.topLevelOperator.ImageToExport ):
             all_ready &= slot.ready()
             export_button = self.batchOutputTableWidget.cellWidget( row, Column.Action )
             if export_button is not None:
-                def setEnabledIfAlive(button, enable):
-                    import sip
-                    if not sip.isdeleted(button):
-                        button.setEnabled(enable)
-                executable_event = ThunkEvent( partial(export_button.setEnabled, slot.ready()) )
+                executable_event = ThunkEvent( partial(self.setEnabledIfAlive, export_button, slot.ready()) )
                 QApplication.instance().postEvent( self, executable_event )
 
         # Disable the "Export all" button unless all slots are ready.
-        executable_event = ThunkEvent( partial(self.drawer.exportAllButton.setEnabled, all_ready) )
+        executable_event = ThunkEvent( partial(self.setEnabledIfAlive, self.drawer.exportAllButton, all_ready) )
         QApplication.instance().postEvent( self, executable_event )
 
     def handleTableSelectionChange(self):
@@ -318,8 +318,8 @@ class DataExportGui(QWidget):
             self.parentApplet.appletStateUpdateRequested.emit()
             
             # Disable our own gui
-            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, False) ) )
-            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, False) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self.drawer, False) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, False) ) )
             
             # Start with 1% so the progress bar shows up
             self.progressSignal.emit(0)
@@ -366,8 +366,8 @@ class DataExportGui(QWidget):
             self.parentApplet.appletStateUpdateRequested.emit()
             
             # Re-enable our own gui
-            QApplication.instance().postEvent( self, ThunkEvent( partial(self.drawer.setEnabled, True) ) )
-            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabled, True) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self.drawer, True) ) )
+            QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )
 
 
     @threadRouted
