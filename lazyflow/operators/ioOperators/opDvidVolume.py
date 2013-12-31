@@ -2,6 +2,7 @@ import vigra
 from lazyflow.graph import Operator, OutputSlot
 from dvidclient.volume_client import VolumeClient
 import httplib
+import socket
 
 class OpDvidVolume(Operator):
     Output = OutputSlot()
@@ -32,8 +33,13 @@ class OpDvidVolume(Operator):
             self._volume_client = VolumeClient( self._hostname, self._uuid, self._dataname )
         except VolumeClient.ErrorResponseException as ex:
             if ex.status_code == httplib.NOT_FOUND:
-                raise OpDvidVolume.DatasetReadError()
-            raise    
+                raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
+            raise
+        except socket.error as ex:
+            import errno
+            if ex.errno == errno.ECONNREFUSED:
+                raise OpDvidVolume.DatasetReadError("Connection refused: {}".format( self._hostname ))
+            raise
     
     def setupOutputs(self):
         shape, dtype, axistags = self._volume_client.metainfo
