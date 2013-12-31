@@ -8,8 +8,6 @@ class OpCache(Operator):
     
     def __init__(self, parent=None, graph=None):
         super(OpCache, self).__init__(parent=parent, graph=graph)
-        if parent is None or not isinstance(parent, OpCache):
-            ArrayCacheMemoryMgr.instance.addNamedCache(self)
             
     def generateReport(self, report):
         raise NotImplementedError()
@@ -26,3 +24,13 @@ class OpCache(Operator):
         """timestamp of last access (time.time())"""
         return 0 #overwrite me
     
+    def _after_init(self):
+        """
+        Overridden from Operator
+        """
+        super( OpCache, self )._after_init()
+
+        # Register with the manager here, AFTER we're fully initialized
+        # Otherwise it isn't safe for the manager to poll our stats.
+        if self.parent is None or not isinstance(self.parent, OpCache):
+            ArrayCacheMemoryMgr.instance.addNamedCache(self)
