@@ -46,7 +46,7 @@ def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
        python: ../../src/xcb_io.c:178: dequeue_pending_request: Assertion !xcb_xlib_unknown_req_in_deq failed.
     """
     platform_str = platform.platform().lower()
-    if 'ubuntu' in platform_str or 'fedora' in platform_str:
+    if 'ubuntu' in platform_str or 'fedora' in platform_str or 'debian' in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
