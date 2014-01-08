@@ -223,7 +223,10 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             true_idx = numpy.array([center + dot for dot in dot_start_list])
             idx = numpy.where(labelData)
             test_idx = numpy.array((idx[0],idx[1])).transpose()
-            assert numpy.alltrue(test_idx == true_idx)
+            # This test doesn't require *exact* pixel locations to match due to rounding differences in mouse strokes.
+            # Instead, we just require them to be close.
+            # FIXME: This should be fixable by ensuring that the image is properly zoomed to 1-1 scale before the test.
+            assert numpy.abs(test_idx - true_idx).max() <= 1
 
             assert numpy.sum(labelData)==len(dot_start_list)
             #assert labelData.max() == i+1, "Max label value was {}".format( labelData.max() )
