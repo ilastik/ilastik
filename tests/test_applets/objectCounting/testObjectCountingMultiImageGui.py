@@ -590,7 +590,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
                 density = gui.currentGui().op.OutputSum[...].wait()
                 # Check that the predicted count is in a fine range
                 assert density[0]>70,"Density value is too low: {0:.2f}".format(density[0])
-                assert density[0]<130,"Density value is too high: {0:.2f}".format(density[0])
+                assert density[0]<140,"Density value is too high: {0:.2f}".format(density[0])
 
             #if clicked:
                 #clicked=toggle(clicked)
