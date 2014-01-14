@@ -65,15 +65,10 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def stopAndCleanUp(self):
         super(FeatureSelectionGui, self).stopAndCleanUp()
-        self.drawer.caption.setText( "(No features selected)" )
 
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Why is this necessary?
-        # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
-        self._viewerControlWidget.featureListWidget.clear()
 
     # (Other methods already provided by our base class)
 
