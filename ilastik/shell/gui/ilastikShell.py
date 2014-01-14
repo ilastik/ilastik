@@ -1264,16 +1264,13 @@ class IlastikShell( QMainWindow ):
                     return False
                 elif response == QMessageBox.Save:
                     self.onSaveProjectActionTriggered()
-                    return False
-
         return self._recorderGui.confirmQuit()
 
     def closeAndQuit(self, quitApp=True):
         PreferencesManager().set( 'shell', 'startscreenSize', (self.size().width(),self.size().height()))
 
         if self.projectManager is not None:
-            self.projectManager.cleanUp()
-            self.projectManager = None # Destroy project manager
+            self.closeCurrentProject()
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
