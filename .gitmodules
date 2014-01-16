@@ -1,0 +1,3 @@
+[submodule "submodules/eventcapture"]
+	path = submodules/eventcapture
+	url = https://github.com/ilastik/eventcapture
