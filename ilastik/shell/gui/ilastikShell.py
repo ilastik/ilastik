@@ -44,8 +44,6 @@ from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 
-from eventcapture.eventRecordingApp import EventRecordingApp
-
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
@@ -498,11 +496,6 @@ class IlastikShell( QMainWindow ):
         for name, level in detail_levels:
             exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
             exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
-
-        if isinstance( QApplication.instance(), EventRecordingApp ):
-            def openRecorderControls():
-                QApplication.instance().recorder_control_window.show()
-            menu.addAction( "Open Recorder Controls" ).triggered.connect( openRecorderControls )
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         return menu
@@ -1264,9 +1257,12 @@ class IlastikShell( QMainWindow ):
                     return False
                 elif response == QMessageBox.Save:
                     self.onSaveProjectActionTriggered()
-        
-        if isinstance( QApplication.instance(), EventRecordingApp ):
-            return QApplication.instance().recorder_control_window.confirmQuit()
+        try:
+            from eventcapture.eventRecordingApp import EventRecordingApp
+            if isinstance( QApplication.instance(), EventRecordingApp ):
+                return QApplication.instance().recorder_control_window.confirmQuit()
+        except ImportError:
+            pass
         return True
 
     def closeAndQuit(self, quitApp=True):

@@ -19,8 +19,6 @@ import functools
 
 shell = None
 
-from eventcapture.eventRecordingApp import EventRecordingApp
-
 def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):
     """
     Create an application and launch the shell in it.
@@ -43,6 +41,7 @@ def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *test
     if eventcapture_mode is not None:
         # Only use a special QApplication subclass if we are recording.
         # Otherwise, it's a performance penalty for every event processed by Qt.
+        from eventcapture.eventRecordingApp import EventRecordingApp
         app = EventRecordingApp.create_app(eventcapture_mode, **playback_args)
     else:
         app = QApplication([])
