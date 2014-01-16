@@ -529,7 +529,7 @@ class LayerViewerGui(QWidget):
         """
         Initialize the Volume Editor GUI.
         """
-        self.editor = VolumeEditor(self.layerstack, crosshair=crosshair)
+        self.editor = VolumeEditor(self.layerstack, parent=self, crosshair=crosshair)
 
         # Replace the editor's navigation interpreter with one that has extra functionality
         self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )
