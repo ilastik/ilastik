@@ -19,46 +19,9 @@ import functools
 
 shell = None
 
-def assign_unique_child_index( child ):
-    """
-    Assign a unique 'child index' to this child AND all its siblings of the same type.
-    """
-    parent = QObject.parent(child)
-    # Find all siblings of matching type
-    matching_siblings = filter( lambda c:type(c) == type(child), parent.children() )
-    existing_indexes = set()
-    for sibling in matching_siblings:
-        if hasattr(sibling, 'unique_child_index'):
-            existing_indexes.add(sibling.unique_child_index)
-    
-    next_available_index = 0
-    for sibling in matching_siblings:
-        while next_available_index in existing_indexes:
-            next_available_index += 1
-        if not hasattr(sibling, 'unique_child_index'):
-            sibling.unique_child_index = next_available_index
-            existing_indexes.add( next_available_index )
+from eventcapture.eventRecordingApp import EventRecordingApp
 
-class EventRecordingApp(QApplication):
-    """
-    Special QApplication subclass that overrides the notify() function.
-    Using notify() instead of QApplication.instance().installEventFilter() is more general,
-    and necessary in 
-    """
-    def __init__(self, *args, **kwargs):
-        super(EventRecordingApp, self).__init__(*args, **kwargs)
-        self._notify = functools.partial( QApplication.notify, QApplication.instance() )
-    
-    def notify(self, receiver, event):
-        f = self._notify
-        if event.type() == QEvent.ChildPolished:
-            child = event.child()
-            if hasattr(child, 'unique_child_index'):
-                del child.unique_child_index
-            assign_unique_child_index(child)
-        return f( receiver, event )
-
-def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
+def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
@@ -77,10 +40,10 @@ def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
-    if recording_events:
+    if eventcapture_mode is not None:
         # Only use a special QApplication subclass if we are recording.
         # Otherwise, it's a performance penalty for every event processed by Qt.
-        app = EventRecordingApp([])
+        app = EventRecordingApp.create_app(eventcapture_mode, **playback_args)
     else:
         app = QApplication([])
     _applyStyleSheet(app)

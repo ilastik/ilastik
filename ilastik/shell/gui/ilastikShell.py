@@ -37,13 +37,14 @@ from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from ilastik.shell.projectManager import ProjectManager
-from ilastik.utility.gui.eventRecorder import EventRecorderGui
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
 from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
+
+from eventcapture.eventRecordingApp import EventRecordingApp
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -290,7 +291,6 @@ class IlastikShell( QMainWindow ):
         self.updateShellProjectDisplay()
 
         self.threadRouter = ThreadRouter(self) # Enable @threadRouted
-        self._recorderGui = EventRecorderGui()
 
         self.errorMessageFilter = ErrorMessageFilter(self)
 
@@ -499,7 +499,10 @@ class IlastikShell( QMainWindow ):
             exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
             exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
 
-        menu.addAction( "Open Recorder Controls" ).triggered.connect( self._openRecorderControls )
+        if isinstance( QApplication.instance(), EventRecordingApp ):
+            def openRecorderControls():
+                QApplication.instance().recorder_control_window.show()
+            menu.addAction( "Open Recorder Controls" ).triggered.connect( openRecorderControls )
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         return menu
@@ -560,9 +563,6 @@ class IlastikShell( QMainWindow ):
             svgPath = encode_from_qstring( svgPath )
             PreferencesManager().set( 'shell', 'recent debug diagram', svgPath )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
-
-    def _openRecorderControls(self):
-        self._recorderGui.show()
 
     def show(self):
         """
@@ -1264,7 +1264,10 @@ class IlastikShell( QMainWindow ):
                     return False
                 elif response == QMessageBox.Save:
                     self.onSaveProjectActionTriggered()
-        return self._recorderGui.confirmQuit()
+        
+        if isinstance( QApplication.instance(), EventRecordingApp ):
+            return QApplication.instance().recorder_control_window.confirmQuit()
+        return True
 
     def closeAndQuit(self, quitApp=True):
         PreferencesManager().set( 'shell', 'startscreenSize', (self.size().width(),self.size().height()))
