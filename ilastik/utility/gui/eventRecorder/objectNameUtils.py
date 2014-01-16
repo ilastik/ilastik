@@ -62,25 +62,50 @@ def get_named_object(full_name, timeout=10.0):
 
         msg = "Couldn't locate object: {} within timeout of {} seconds\n".format( full_name, timeout_ )
         if ancestor_name:
-            msg += "Deepest found object was: {}".format( ancestor_name )
+            msg += "Deepest found object was: {}\n".format( ancestor_name )
+            msg += "Existing children were: {}".format( map(QObject.objectName, obj.children()) )
         else:
             msg += "Failed to find the top-level widget {}".format( full_name.split('.')[0] )
         raise RuntimeError( msg )
     return obj
 
+def assign_unique_child_index( child ):
+    """
+    Assign a unique 'child index' to this child AND all its siblings of the same type.
+    """
+    parent = QObject.parent(child)
+    # Find all siblings of matching type
+    matching_siblings = filter( lambda c:type(c) == type(child), parent.children() )
+    existing_indexes = set()
+    for sibling in matching_siblings:
+        if hasattr(sibling, 'unique_child_index'):
+            existing_indexes.add(sibling.unique_child_index)
+    
+    next_available_index = 0
+    for sibling in matching_siblings:
+        while next_available_index in existing_indexes:
+            next_available_index += 1
+        if not hasattr(sibling, 'unique_child_index'):
+            sibling.unique_child_index = next_available_index
+            existing_indexes.add( next_available_index )
+
 def _assign_default_object_name( obj ):
+    # Must call QObject.parent this way because obj.parent() is *shadowed* in 
+    #  some subclasses (e.g. QModelIndex), which really is very ugly on Qt's part.
     parent = QObject.parent(obj)
     if parent is None:
         # We just name the object after it's type and hope for the best.
         obj.setObjectName( obj.__class__.__name__ )
     else:
-        index = parent.children().index( obj )
-        newname = "child_{}_{}".format( index, obj.__class__.__name__ )
-        existing_names = map( QObject.objectName, parent.children() )
-        assert newname not in existing_names, "Children were not accessed in the expected order, so renaming is not consistent! Parent widget: {} already has a child with name: {}".format( get_fully_qualified_name(parent), newname )
+        if not hasattr(obj, 'unique_child_index'):
+            assign_unique_child_index(obj)
+        
+        newname = '{}_{}'.format( obj.__class__.__name__, obj.unique_child_index )
         obj.setObjectName( newname )
 
 def _has_unique_name(obj):
+    # Must call QObject.parent this way because obj.parent() is *shadowed* in 
+    #  some subclasses (e.g. QModelIndex), which really is very ugly on Qt's part.
     parent = QObject.parent(obj)
     if parent is None:
         return True # We assume that top-level widgets are uniquely named
@@ -109,11 +134,17 @@ def _locate_immediate_child(parent, childname):
     if parent is None:
         siblings = QApplication.topLevelWidgets()
     else:
-        # Only consider visible children (or non-widgets)
         siblings = parent.children()
-        def isVisible(obj):
-            return not isinstance(obj, QWidget) or obj.isVisible()
-        siblings = filter( isVisible, siblings )
+        # Only consider visible children (or non-widgets)
+        # EDIT: This 'optimization' cannot be used.
+        #       Sometimes a recording can capture an event for a widget *just* before it is hidden, 
+        #       but during playback that event is played back after the widget was hidden.
+        #       (For example, a keypress event may ultimately lead to a widget becoming hidden,
+        #       but the recording might still try to send it a keyrelease event after it was hidden.)
+        #       For this reason, we must allow events to be sent to a widget, even if it is hidden.
+        #def isVisible(obj):
+        #     return not isinstance(obj, QWidget) or obj.isVisible()
+        # siblings = filter( isVisible, siblings )
 
     for child in siblings:
         if child.objectName() == "":

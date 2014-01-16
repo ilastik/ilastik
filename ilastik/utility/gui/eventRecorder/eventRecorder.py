@@ -135,7 +135,6 @@ class EventRecorder( QObject ):
     def paused(self):
         return self._timer.paused
 
-    QEvent_Style = 91
     IgnoredEventTypes = set( [ QEvent.Paint,
                               QEvent.KeyboardLayoutChange,
                               QEvent.WindowActivate,

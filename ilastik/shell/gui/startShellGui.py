@@ -6,7 +6,7 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
-from PyQt4.QtCore import Qt, QTimer, QEvent
+from PyQt4.QtCore import Qt, QObject, QTimer, QEvent
 
 # Logging configuration
 import ilastik.ilastik_logging
@@ -18,6 +18,26 @@ import ilastik.config
 import functools
 
 shell = None
+
+def assign_unique_child_index( child ):
+    """
+    Assign a unique 'child index' to this child AND all its siblings of the same type.
+    """
+    parent = QObject.parent(child)
+    # Find all siblings of matching type
+    matching_siblings = filter( lambda c:type(c) == type(child), parent.children() )
+    existing_indexes = set()
+    for sibling in matching_siblings:
+        if hasattr(sibling, 'unique_child_index'):
+            existing_indexes.add(sibling.unique_child_index)
+    
+    next_available_index = 0
+    for sibling in matching_siblings:
+        while next_available_index in existing_indexes:
+            next_available_index += 1
+        if not hasattr(sibling, 'unique_child_index'):
+            sibling.unique_child_index = next_available_index
+            existing_indexes.add( next_available_index )
 
 class EventRecordingApp(QApplication):
     """
@@ -31,6 +51,11 @@ class EventRecordingApp(QApplication):
     
     def notify(self, receiver, event):
         f = self._notify
+        if event.type() == QEvent.ChildPolished:
+            child = event.child()
+            if hasattr(child, 'unique_child_index'):
+                del child.unique_child_index
+            assign_unique_child_index(child)
         return f( receiver, event )
 
 def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
