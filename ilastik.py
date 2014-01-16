@@ -59,6 +59,8 @@ ilastik.monkey_patches.extend_arg_parser(parser)
 
 # DEBUG
 #sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
+#sys.argv.append('--start_recording')
+#sys.argv.append('--playback_script=/tmp/recording-20140115-1006.py')
 
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
@@ -66,7 +68,7 @@ init_funcs = []
 # DEBUG DEBUG
 #parsed_args.project = '/magnetic/split-body-data/test_data2/full_proj2.ilp'
 #parsed_args.project = '/magnetic/split-body-data/test_data2/small_proj2.ilp'
-#parsed_args.project = '/home/bergs/MyProject.ilp'
+#parsed_args.project = '/Users/bergs/MyProject.ilp'
 
 # DEBUG
 #parsed_args.headless = True
@@ -75,6 +77,12 @@ init_funcs = []
 #parsed_args.new_project = '/magnetic/split-body-data/assignment980/MyProject.ilp'
 #parsed_args.workflow = 'SplitBodyCarvingWorkflow'
 
+
+if parsed_args.start_recording or parsed_args.playback_script:
+    # Disable the opengl widgets during recording and playback.
+    # Somehow they can cause random segfaults if used during recording playback.
+    import volumina
+    volumina.NO3D = True
 
 if parsed_args.start_recording:
     assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
@@ -183,6 +191,6 @@ if parsed_args.headless:
 # Normal launch
 else:
     from ilastik.shell.gui.startShellGui import startShellGui
-    sys.exit(startShellGui(workflow_cmdline_args, parsed_args.start_recording, *init_funcs))
+    sys.exit(startShellGui(workflow_cmdline_args, parsed_args.start_recording or parsed_args.playback_script, *init_funcs))
 
 
