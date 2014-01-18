@@ -5,7 +5,6 @@ import sys
 import argparse
 import threading
 import logging
-from functools import partial
 
 from ilastik.config import cfg as ilastik_config
 import ilastik.monkey_patches
@@ -59,15 +58,13 @@ ilastik.monkey_patches.extend_arg_parser(parser)
 
 # DEBUG
 #sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
-#sys.argv.append('--start_recording')
-#sys.argv.append('--playback_script=/tmp/recording-20140116-1354.py')
-
+#sys.argv.append( '--start_recording' )
+#sys.argv.append( '--playback_script=/tmp/test_recording.py' )
+#
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
 # DEBUG DEBUG
-#parsed_args.project = '/magnetic/split-body-data/test_data2/full_proj2.ilp'
-#parsed_args.project = '/magnetic/split-body-data/test_data2/small_proj2.ilp'
 #parsed_args.project = '/Users/bergs/MyProject.ilp'
 
 # DEBUG
