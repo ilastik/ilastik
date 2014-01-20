@@ -144,7 +144,7 @@ elif parsed_args.playback_script is not None:
     playback_args['playback_speed'] = parsed_args.playback_speed
     # Auto-exit on success?
     if parsed_args.exit_on_success:
-        playback_args['finish_allback'] = QApplication.quit        
+        playback_args['finish_callback'] = QApplication.quit        
 
 # Force debug mode
 if parsed_args.debug:
