@@ -540,7 +540,7 @@ class DataSelectionGui(QWidget):
 
         originalNumLanes = len(self.topLevelOperator.DatasetGroup)
 
-        if laneIndex is None:
+        if laneIndex is None or laneIndex == -1:
             laneIndex = len(self.topLevelOperator.DatasetGroup)
         if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
             self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
