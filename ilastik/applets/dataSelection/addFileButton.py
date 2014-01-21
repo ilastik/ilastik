@@ -17,9 +17,9 @@ class AddFileButton(QPushButton):
     Button used for adding new files. It presents a drop down menu with
     three options:
 
-        - Add one or more files
-        - Add volume from stack
-        - Add remote volume
+        - Add separate image(s)
+        - Add 3D/4D volume from stack
+        - Add DVID volume
     """
     addFilesRequested = pyqtSignal()
     addStackRequested = pyqtSignal()
@@ -37,9 +37,9 @@ class AddFileButton(QPushButton):
 
         # drop down menu for different add options
         menu = QMenu(parent=self)
-        menu.addAction("Add one or more separate files ...").triggered.\
+        menu.addAction("Add separate image(s)...").triggered.\
                 connect(self.addFilesRequested.emit)
-        menu.addAction("Add Volume from Stack...").triggered.connect(
+        menu.addAction("Add a single 3D/4D Volume from Stack...").triggered.connect(
                 self.addStackRequested.emit)
         
         if _supports_dvid:
