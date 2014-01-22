@@ -583,6 +583,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
 
+    
     inputSlots = [InputSlot("Input"),
                   InputSlot("Matrix"),
                   InputSlot("Scales"),
@@ -599,7 +600,9 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                           'HessianOfGaussianEigenvalues',
                           'GaussianGradientMagnitude',
                           'DifferenceOfGaussians' ]
-
+    
+    WINDOW_SIZE = 3.5
+    
     def __init__(self, *args, **kwargs):
         Operator.__init__(self, *args, **kwargs)
         self.source = OpArrayPiper(parent=self)
@@ -613,6 +616,33 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
 
         # Give our feature IDs input a default value (connected out of the box, but can be changed)
         self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
+
+    def getInvalidScales(self):
+        """
+        Check each of the scales the user selected against the shape of the input dataset (in space only).
+        Return a list of the selected scales that are too large for the input dataset.
+        
+        .. note:: This function is NOT called automatically.  Clients are expected to call it after 
+                  configuring the operator, before they attempt to execute() the operator.
+                  If this function returns a non-empty list of scales, then calling execute()
+                  would generate errors.
+        """
+        invalid_scales = []
+        z_scale = self.InterpolationScaleZ.value
+        
+        tagged_shape = self.Input.meta.getTaggedShape()
+        tagged_shape['z'] = tagged_shape['z']*z_scale
+        spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
+        spatial_shape = zip( *spatial_axes_shape )[1]
+        
+        for j, scale in enumerate(self.scales):
+            if self.matrix[:,j].any():
+                
+                
+                if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
+                    invalid_scales.append( scale )
+        return invalid_scales
+
 
     def setupOutputs(self):
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
@@ -815,7 +845,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             flag = 'c'
             channelAxis=self.inputs["Input"].meta.axistags.index('c')
             assert self.inputs["Input"].meta.shape[channelAxis]==1, "Multichannel data is not yet supported"
-            assert len(self.inputs["Input"].meta.shape)==4, "Only 3d data, as the interpolation is in z"
+            
+            #assert len(self.inputs["Input"].meta.shape)==4, "Only 3d data, as the interpolation is in z"
             axisindex = channelAxis
             oldkey = list(key)
             oldkey.pop(axisindex)
@@ -843,7 +874,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             
             maxSigma = max(0.7,self.maxSigma)
             #maxSigma = max(1., self.maxSigma)
-            window_size = 3.5
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
             # all this has to be done for the interpolated array!
             zaxis = axistags.index('z')
@@ -851,15 +881,20 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             newRangeZ = scaleZ*(shape[zaxis]-1)+1
             interpShape = list(copy.copy(popFlagsFromTheKey(shape, axistags, 'c')))
             interpShape[zaxis] = numpy.long(newRangeZ)
+            #TODO: this insanity can most probably be avoided by using taggedShape
+            #FIXME: we assume that time is first. Whatever.
+            if hasTimeAxis:
+                assert timeAxis==0
+                interpShape = interpShape[1:]
             interp_start = copy.copy(start)
             interp_stop = copy.copy(stop)
             interp_start[zaxis] = scaleZ*interp_start[zaxis]
             interp_stop[zaxis] = scaleZ*interp_stop[zaxis]-1
             
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(interp_start, interp_stop, interpShape, 0.7, window_size)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(interp_start, interp_stop, interpShape, 0.7, window = self.WINDOW_SIZE)
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, interpShape, maxSigma, window = 3.5)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, interpShape, maxSigma, window = self.WINDOW_SIZE)
             
             vigOpOffset = start - vigOpSourceStart
             newStartSmoother = roi.TinyVector(interp_start - vigOpSourceStart)
@@ -932,7 +967,10 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             #FIXME: this won't work with multichannel data. Don't care for now.
             
             sourceArrayVInterp = vigra.sampling.resizeVolumeSplineInterpolation(sourceArrayV.squeeze(), shape=interpShape)
-            sourceArrayVInterp = numpy.ndarray.reshape(sourceArrayVInterp, sourceArrayVInterp.shape+(1,))
+            interpShapeFull = sourceArrayVInterp.shape+(1,)
+            if hasTimeAxis:
+                interpShapeFull = (1,)+interpShapeFull
+            sourceArrayVInterp = numpy.ndarray.reshape(sourceArrayVInterp, interpShapeFull)
             sourceArrayVInterp.axistags = copy.copy(axistags)
             sourceArrayVInterp = sourceArrayVInterp[treadKeyInterp]
 
@@ -963,16 +1001,16 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                     else:
                         vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
                     vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
-
+                    print "vigOpSourceShape:", vigOpSourceShape
                     sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
-                    for i,vsa in enumerate(sourceArrayV.timeIter()):
+                    for i,vsa in enumerate(sourceArrayVInterp.timeIter()):
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                         tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
-                        sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                        sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = self.WINDOW_SIZE )
                 else:
                     droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                     try:
-                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
+                        sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
                     except RuntimeError:
                         print "interpolated array:", sourceArrayVInterp.shape, sourceArrayVInterp.axistags
                         print "source array:", sourceArrayV.shape, sourceArrayV.axistags
@@ -1027,7 +1065,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     newRoi = SubRegion(self.Input, pslice=newRoi)
                                     #print "roi smoother:", roiSmoother
                                     
-                                    zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window_size)
+                                    zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, self.WINDOW_SIZE)
                                     
                                     sourceKey = []
                                     sourceKey.insert(axistags.index('x'), slice(None, None, None))
