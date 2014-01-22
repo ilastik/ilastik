@@ -4,18 +4,20 @@ from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
+from lazyflow.utility.pathHelpers import isUrl
 
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume
     _supports_dvid = True
 except ImportError as ex:
-    if 'OpDvidVolume' not in ex.message:
+    if 'OpDvidVolume' not in ex.args[0]:
         raise
     _supports_dvid = False
 
 import h5py
 import vigra
 import os
+import re
 import logging
 
 class OpInputDataReader(Operator):
@@ -71,7 +73,7 @@ class OpInputDataReader(Operator):
         assert type(filePath) == str, "Error: filePath is not of type str.  It's of type {}".format(type(filePath))
 
         # Does this look like a relative path?
-        useRelativePath = not os.path.isabs(filePath)
+        useRelativePath = not isUrl(filePath) and not os.path.isabs(filePath)
 
         if useRelativePath:
             # If using a relative path, we need both inputs before proceeding
@@ -184,13 +186,31 @@ class OpInputDataReader(Operator):
                 raise OpInputDataReader.DatasetReadError( *e.args )
 
     def _attemptOpenAsDvidVolume(self, filePath):
-        if not os.path.splitext(filePath)[1] == '.dvidvol':
-            return (None, None)
-        with open(filePath) as f:
-            filetext = f.read()
-            hostname, uuid, dataset_name = filetext.splitlines()
-        opDvidVolume = OpDvidVolume( hostname, uuid, dataset_name, transpose_axes=True, parent=self )
-        return opDvidVolume, opDvidVolume.Output
+        """
+        Two ways to specify a dvid volume.
+        1) via a file that contains the hostname, uuid, and dataset name (1 per line)
+        2) as a url, e.g. http://localhost:8000/api/node/uuid/dataname
+        """
+        if os.path.splitext(filePath)[1] == '.dvidvol':
+            with open(filePath) as f:
+                filetext = f.read()
+                hostname, uuid, dataname = filetext.splitlines()
+            opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, parent=self )
+            return opDvidVolume, opDvidVolume.Output
+        if '://' in filePath:
+            url_format = "^protocol://hostname/api/node/uuid/dataname"
+            for field in ['protocol', 'hostname', 'uuid', 'dataname']:
+                url_format = url_format.replace( field, '(?P<' + field + '>.+)' )
+            match = re.match( url_format, filePath )
+            if match:
+                fields = match.groupdict()
+                try:
+                    opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'],
+                                                 transpose_axes=True, parent=self )
+                    return opDvidVolume, opDvidVolume.Output
+                except OpDvidVolume.DatasetReadError as e:
+                    raise OpInputDataReader.DatasetReadError( *e.args )
+        return (None, None)
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()

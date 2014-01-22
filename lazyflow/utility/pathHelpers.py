@@ -85,6 +85,8 @@ class PathComponents(object):
 
 def areOnSameDrive(path1,path2):
     #if one path is relative, assume they are on same drive
+    if isUrl(path1) or isUrl(path2):
+        return False
     if not os.path.isabs(path1) or not os.path.isabs(path2):
         return True
     drive1,path1 = os.path.splitdrive(path1)
@@ -111,12 +113,20 @@ def compressPathForDisplay(pathstr,maxlength):
             break
         prefix=prefix+c+"/"
     return prefix+"..."+suffix
-    
+
+def isUrl(path):
+    # For now, the simplest rule will work.
+    return '://' in path
+
 def getPathVariants(originalPath, workingDirectory):
     """
     Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
     and return a tuple of the absolute and relative paths to the file.
     """
+    # urls are considered absolute
+    if isUrl(originalPath):
+        return originalPath, None
+    
     relPath = originalPath
     
     if os.path.isabs(originalPath):
@@ -155,4 +165,10 @@ if __name__ == "__main__":
     assert components.extension == '.h5'
     assert components.internalPath == '/with/internal/path/to/data'
 
+    # Everything should work for URLs, too.
+    components = PathComponents('http://somehost:8000/path/to/data/with.ext')
+    assert components.externalPath == 'http://somehost:8000/path/to/data/with.ext'
+    assert components.extension == '.ext'    
+    assert components.internalPath is None
+    assert components.externalDirectory == 'http://somehost:8000/path/to/data'
 

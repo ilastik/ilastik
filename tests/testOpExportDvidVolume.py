@@ -7,15 +7,12 @@ import vigra
 import h5py
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpDvidVolume
+from lazyflow.operators.ioOperators import OpExportDvidVolume
 
 # Must be imported AFTER lazyflow, which adds dvidclient to sys.path
 from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
 
 class TestOpDvidVolume(object):
-    """
-    Mostly copied from the dvid_volume test...
-    """
     
     @classmethod
     def setupClass(cls):
@@ -24,8 +21,9 @@ class TestOpDvidVolume(object):
         """
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
-        cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000 )
+        cls._generate_empty_h5(cls.test_filepath)
+        cls.server_proc = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000, 
+                                                         same_process=False, disable_server_logging=True )
 
     @classmethod
     def teardownClass(cls):
@@ -36,16 +34,10 @@ class TestOpDvidVolume(object):
         cls.server_proc.terminate()
 
     @classmethod
-    def _generate_testdata_h5(cls, test_filepath):
+    def _generate_empty_h5(cls, test_filepath):
         """
         Generate a temporary hdf5 file for the mock server to use (and us to compare against)
         """
-        # Generate some test data
-        data = numpy.indices( (10, 100, 200, 3) )
-        assert data.shape == (4, 10, 100, 200, 3)
-        data = data.astype( numpy.uint32 )
-        data = vigra.taggedView( data, 'tzyxc' )
-
         # Choose names
         cls.dvid_dataset = "datasetA"
         cls.data_uuid = "abcde"
@@ -54,15 +46,8 @@ class TestOpDvidVolume(object):
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
     
-    def test_cutout(self):
-        """
-        Get some data from the server and check it.
-        """
-        self._test_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,9,5,50,0), (4,10,20,150,3) )
-    
-    def _test_volume(self, hostname, h5filename, uuid, dataname, start, stop):
+    def test_export(self):
         """
         hostname: The dvid server host
         h5filename: The h5 file to compare against
@@ -72,17 +57,27 @@ class TestOpDvidVolume(object):
         """
         # Retrieve from server
         graph = Graph()
-        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, graph=graph )
-        subvol = opDvidVolume.Output( start, stop ).wait()
+        opExport = OpExportDvidVolume( transpose_axes=True, graph=graph )
+        
+        data = numpy.indices( (10, 100, 200, 4) )
+        assert data.shape == (4, 10, 100, 200, 4)
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
+
+        # Reverse data order for dvid export
+        opExport.Input.setValue( data )
+        opExport.NodeDataUrl.setValue( 'http://localhost:8000/api/node/{uuid}/{dataname}'.format( uuid=self.data_uuid, dataname=self.data_name ) )
+
+        # Export!
+        opExport.run_export()
 
         # Retrieve from file
-        slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
-        with h5py.File(h5filename, 'r') as f:
-            expected_data = f['all_nodes'][uuid][dataname][slicing]
+        with h5py.File(self.test_filepath, 'r') as f:
+            exported_data = f['all_nodes'][self.data_uuid][self.data_name][:]
 
         # Compare.
-        assert ( subvol.view(numpy.ndarray) == expected_data ).all(),\
-            "Data from server didn't match data from file!"
+        assert ( data.view(numpy.ndarray) == exported_data ).all(),\
+            "Exported data is not correct"
 
 if __name__ == "__main__":
     import sys
