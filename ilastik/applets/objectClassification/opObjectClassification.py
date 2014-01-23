@@ -56,6 +56,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
 
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
+    AllowDeleteLabels = InputSlot(stype='bool', value=True)
+    AllowAddLabel = InputSlot(stype='bool', value=True)
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
     
     FreezePredictions = InputSlot(stype='bool', value=False)

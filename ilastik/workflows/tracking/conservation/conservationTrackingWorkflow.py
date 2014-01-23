@@ -143,7 +143,9 @@ class ConservationTrackingWorkflow( Workflow ):
         opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
         opDivDetection.SelectedFeatures.setValue(selected_features_div)
-#        opDivDetection.LabelInputs.setValue(['Not Dividing', 'Dividing'])        
+        opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
+        opDivDetection.AllowDeleteLabels.setValue(False)
+        opDivDetection.AllowAddLabel.setValue(False)
         
         selected_features_cell = {}
         for plugin_name in config.selected_features_cell_classification.keys():

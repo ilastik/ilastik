@@ -172,7 +172,11 @@ class ObjectClassificationGui(LabelingGui):
         
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
-        
+ 
+        if not self.op.AllowAddLabel([]).wait()[0]:
+            self.labelingDrawerUi.AddLabelButton.hide()
+            self.labelingDrawerUi.AddLabelButton.clicked.disconnect()
+
         self.checkEnableButtons()
 
     @property
@@ -181,7 +185,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @labelMode.setter
     def labelMode(self, val):
-        self.labelingDrawerUi.labelListView.allowDelete = val
+        self.labelingDrawerUi.labelListView.allowDelete = ( val and self.op.AllowDeleteLabels([]).wait()[0] ) 
         self.labelingDrawerUi.AddLabelButton.setEnabled(val)
         self._labelMode = val
 
@@ -290,7 +294,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
-        self.labelingDrawerUi.labelListView.allowDelete = True
+        self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
 
         self.applet.predict_enabled = predict_enabled
         self.applet.appletStateUpdateRequested.emit()
