@@ -11,18 +11,18 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import manual tracking workflow; check dependencies: " + str(e) )
     
+try:    
+    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflow
+except ImportError as e:
+    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
+    
 #try:    
-#    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflow
+#    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowWithOptTrans
 #except ImportError as e:
 #    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
     
 try:    
-    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowWithoutOptTrans
-except ImportError as e:
-    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
-    
-try:    
-    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowWithoutOptTransFromBinary
+    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowFromBinary
 except ImportError as e:
     logger.warn( "Failed to import conservation tracking workflow (from binary); check dependencies: " + str(e) )
     

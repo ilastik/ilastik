@@ -12,11 +12,11 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
 class ConservationTrackingWorkflow( Workflow ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking, with optical translation)"
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction map"
 
-    withOptTrans = True
+    withOptTrans = False
     fromBinary = False
-    def __init__( self, shell, headless, workflow_cmdline_args, withOptTrans=True, fromBinary=False, *args, **kwargs ):
+    def __init__( self, shell, headless, workflow_cmdline_args, withOptTrans=False, fromBinary=False, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         if 'withOptTrans' in kwargs:
@@ -25,8 +25,12 @@ class ConservationTrackingWorkflow( Workflow ):
            self.fromBinary = kwargs['fromBinary']
         super(ConservationTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
 
-        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
-                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
+        if fromBinary:
+           data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
+        else:
+           data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
@@ -38,7 +42,10 @@ class ConservationTrackingWorkflow( Workflow ):
                                                        )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
+        if fromBinary:
+           opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
+        else:
+           opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
         if not self.fromBinary:
            self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
@@ -165,21 +172,23 @@ class ConservationTrackingWorkflow( Workflow ):
 
 
 
-class ConservationTrackingWorkflowWithoutOptTrans( ConservationTrackingWorkflow ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction image"
+#class ConservationTrackingWorkflowWithOptTrans( ConservationTrackingWorkflow ):
+#    workflowName = "Automatic Tracking Workflow (Conservation Tracking) with optical translation"
+#
+#    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
+#        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
+#        if 'graph' in kwargs: del kwargs['graph']
+#        self.withOptTrans = True
+#        super(ConservationTrackingWorkflowWithOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, withOptTrans=self.withOptTrans, *args, **kwargs)
 
-    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
-        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-        if 'graph' in kwargs: del kwargs['graph']
-        self.withOptTrans = False
-        super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, withOptTrans=False, *args, **kwargs)
-       
-class ConservationTrackingWorkflowWithoutOptTransFromBinary( ConservationTrackingWorkflowWithoutOptTrans ):
+
+class ConservationTrackingWorkflowFromBinary( ConservationTrackingWorkflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) from binary image"
 
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         self.withOptTrans = False
-        super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, fromBinary=True, *args, **kwargs)
+        self.fromBinary = True
+        super(ConservationTrackingWorkflowFromBinary, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, fromBinary=self.fromBinary, *args, **kwargs)
        

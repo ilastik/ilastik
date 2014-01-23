@@ -94,7 +94,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
 
     def __init__(self, *args, **kwargs):
-        super(OpObjectClassification, self).__init__(*args)
+        super(OpObjectClassification, self).__init__(*args, **kwargs)
 
         # internal operators
         opkwargs = dict(parent=self)
