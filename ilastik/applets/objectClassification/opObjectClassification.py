@@ -17,7 +17,6 @@ from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 MISSING_VALUE = 0
@@ -95,16 +94,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
 
     def __init__(self, *args, **kwargs):
-        assert len(kwargs) == 2, 'assume that kwargs only consists of parent and featurename'
-        super(OpObjectClassification, self).__init__(*args, parent=kwargs['parent'])
+        super(OpObjectClassification, self).__init__(*args)
 
-#        if 'featurename' in kwargs and kwargs['featurename'] == "Division Detection":
-#            self.selectedFeatures = config.selected_features_division_detection
-#        elif 'featurename' in kwargs and kwargs['featurename'] == "Cell Classification":
-#            self.selectedFeatures = config.selected_features_cell_classification
-#        else:
-#            self.selectedFeatures = config.selected_features
-            
         # internal operators
         opkwargs = dict(parent=self)
         self.opTrain = OpObjectTrain(parent=self)
@@ -230,9 +221,6 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             multislot[index].notifyReady(handleInputReady)
 
         self.SegmentationImages.notifyInserted(handleNewInputImage)
-        
-        
-            
 
         self._predict_enabled = False
 
@@ -615,14 +603,13 @@ class OpObjectTrain(Operator):
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
     ForestCount = InputSlot(stype="int", value=1)
-    SelectedFeatures = InputSlot(stype=Opaque, rtype=List)
 
     Classifier = OutputSlot()
     BadObjects = OutputSlot(stype=Opaque)
 
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
-        self._tree_count = 30
+        self._tree_count = 100
         self.FixClassifier.setValue(False)        
 
     def setupOutputs(self):

@@ -2,7 +2,6 @@
 import os
 from functools import partial
 import logging
-from lazyflow.operators.generic import OpSubRegion
 logger = logging.getLogger(__name__)
 
 # SciPy
@@ -45,7 +44,6 @@ class FeatureSelectionGui(LayerViewerGui):
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
                       ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
-#                      ( "Time",   [ "BlurredTempDifference", "BlurredCrossCorrelation" ] ) ]
 
     # Map feature IDs to feature names
     FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
@@ -54,8 +52,6 @@ class FeatureSelectionGui(LayerViewerGui):
                      'DifferenceOfGaussians' : "Difference of Gaussians",
                      'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
                      'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
-#                     'BlurredTempDifference' : "Blurred Temporal Difference",
-#                     'BlurredCrossCorrelation' : "Blurred Cross Correlation" }
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###

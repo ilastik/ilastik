@@ -12,7 +12,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
 class ConservationTrackingWorkflow( Workflow ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking)"
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking, with optical translation)"
 
     withOptTrans = True
     fromBinary = False
@@ -166,22 +166,20 @@ class ConservationTrackingWorkflow( Workflow ):
 
 
 class ConservationTrackingWorkflowWithoutOptTrans( ConservationTrackingWorkflow ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation)"
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction image"
 
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         self.withOptTrans = False
         super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, withOptTrans=False, *args, **kwargs)
-        self.workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation)"
        
 class ConservationTrackingWorkflowWithoutOptTransFromBinary( ConservationTrackingWorkflowWithoutOptTrans ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation, from binary)"
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from binary image"
 
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         self.withOptTrans = False
         super(ConservationTrackingWorkflowWithoutOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, fromBinary=True, *args, **kwargs)
-        self.workflowName = "Automatic Tracking Workflow (Conservation Tracking, without Optical Translation, from binary)"
        

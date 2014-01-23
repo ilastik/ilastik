@@ -45,9 +45,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     ndim = None
     
     def availableFeatures(self, image, labels):
-        #FIXME: remove the squeeze
-        print 'FIXME: VigraObjFeats.availableFeatures() uses squeeze()'
-        names = vigra.analysis.supportedRegionFeatures(image.squeeze(), labels.squeeze())
+        names = vigra.analysis.supportedRegionFeatures(image, labels)
         names = list(f.replace(' ', '') for f in names)
         local = set(names) & self.local_features
         tooltips = {}

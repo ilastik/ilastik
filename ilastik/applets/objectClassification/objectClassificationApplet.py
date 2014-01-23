@@ -10,7 +10,7 @@ class ObjectClassificationApplet(StandardApplet):
                  name="Object Classification",
                  workflow=None,
                  projectFileGroupName="ObjectClassification"):
-        self._topLevelOperator = OpObjectClassification(parent=workflow, featurename=name)
+        self._topLevelOperator = OpObjectClassification(parent=workflow)
         self.predict_enabled = False
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 

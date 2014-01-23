@@ -10,7 +10,6 @@ from collections import defaultdict
 #SciPy
 import numpy as np
 import vigra.analysis
-import math
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
@@ -58,9 +57,6 @@ def max_margin(d, default=(0, 0, 0)):
 
     """
     margin = default
-    print 'WARNING: max_margin() always returns default'
-    return margin
-   
     for features in d.itervalues():
         for params in features.itervalues():
             try:
@@ -251,10 +247,7 @@ class OpRegionFeatures3d(Operator):
                 selected_vigra_features = feature_dict.keys()
                 feature_dict.update(default_features)
                 extra_features_computed = True
-            try:
-                global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
-            except:
-                print 'WARNING: cannot compute global_features for plugin', plugin_name
+            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
         
         extrafeats = {}
         if extra_features_computed:
@@ -349,12 +342,9 @@ class OpRegionFeatures3d(Operator):
                 # include background. FIXME: we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
-                if key == 'Coord<ValueList>' or key == 'Coord<ValueList >':
-                    print 'Do not convert to float32 for Coord<ValueList>'
-                else:
-                    value = value.astype(np.float32) #turn Nones into numpy.NaNs
-                    assert value.dtype == np.float32
-                
+                value = value.astype(np.float32) #turn Nones into numpy.NaNs
+
+                assert value.dtype == np.float32
                 assert value.shape[0] == nobj+1
                 assert value.ndim == 2
 

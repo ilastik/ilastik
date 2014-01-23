@@ -11,10 +11,6 @@ from lazyflow.request import Request, RequestLock, RequestPool
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     deleteIfPresent, getOrCreateGroup, SerialSlot, SerialHdf5BlockSlot, SerialDictSlot
 
-from ilastik.utility.timer import timeLogged
-
-import collections
-
 logger = logging.getLogger(__name__)
 
 class SerialObjectFeaturesSlot(SerialSlot):
@@ -49,31 +45,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 for key, val in region_features.iteritems():
                     plugin_group = getOrCreateGroup(roi_grp, key)
                     for featname, featval in val.iteritems():
-                        # workaround for Coord<ValueList> which is stored as list of numpy arrays of different sizes:
-                        # create numpy array with shape (n_objects*max_length, 3)
-                        # if an object has less pixels than max_length, fill the first spare coordinate row with -1,
-                        # the rest with 0
-
-                        # to do:
-                        # create subfolder for each object
-                        is_list_of_iterable = False
-                        if featname == 'Coord<ValueList>':
-                            if featname not in plugin_group:
-                                dg = plugin_group.create_group(featname)
-                            else:
-                                dg = plugin_group[featname]
-                                if not type(dg) is  h5py.Group:
-                                    raise Exception, "%s already exists and is not of type Group!" % featname
-                            for idx, values in enumerate(featval):
-                                if idx == 0 and len(featval) > 1:
-                                    dim = featval[1][0].shape[1]
-                                    ds = dg.create_dataset(name=str(idx), data=numpy.zeros((1,dim), dtype=numpy.float32))
-                                else:
-                                    ds = dg.create_dataset(name=str(idx), data=numpy.array(values[0], dtype=numpy.float32))
-
-                        else:
-                            ds = plugin_group.create_dataset(name=featname, data=featval)
-
+                        plugin_group.create_dataset(name=featname, data=featval)
 
         self.dirty = False
 
@@ -88,22 +60,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
                 region_features = {}
                 for key, val in roi_grp.iteritems():
-                    region_features[key] = {}
-                    for featname, featval in val.iteritems():
-                        # for special feature Coord<ValueList>:
-                        # copy meaningful coordinates into python list
-                        # for each region omit everything after [-1 -1 -1]
-
-                        # now: features for Coord<ValueList> reside in own subfolder
-                        if featname == 'Coord<ValueList>':
-                            list_feat = [[]]
-                            for obj_id in sorted([int(x) for x in featval.keys()]):
-                                values = featval[str(obj_id)]
-                                list_feat.append([numpy.array(values.value, dtype=object)])
-                            region_features[key][featname] = numpy.array(list_feat, dtype=object)
-
-                        else:
-                            region_features[key][featname] = featval[...]
+                    region_features[key][featname] = featval[...]
 
                 slicing = roiToSlice( *roi )
                 self.inslot[i][slicing] = numpy.array([region_features])

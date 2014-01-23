@@ -260,15 +260,10 @@ class TrackingBaseGui( LayerViewerGui ):
             self._drawer.exportLabel.hide()
             self._drawer.exportButton.hide()
             self._drawer.exportTifButton.hide()
-            self._drawer.exportButton.setEnabled(True)
-            self._drawer.exportTifButton.setEnabled(True)
             
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
-#        self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
-#        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
-#        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
 
         self._drawer.from_time.valueChanged.connect(self._setRanges)
         self._drawer.from_x.valueChanged.connect(self._setRanges)
