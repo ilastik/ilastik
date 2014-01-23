@@ -5,9 +5,11 @@ import sys
 ################################
 import os
 this_file = os.path.abspath(__file__)
-lazyflow_package_dir = os.path.dirname(this_file)
-lazyflow_repo_dir = os.path.dirname(lazyflow_package_dir)
-submodule_dir = os.path.join( lazyflow_repo_dir, 'submodules' )
+this_file = os.path.realpath( this_file )
+ilastik_package_dir = os.path.dirname(this_file)
+ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
+submodule_dir = os.path.join( ilastik_repo_dir, 'submodules' )
+print "Using submodule dir:", submodule_dir
 
 # Add all submodules to the PYTHONPATH
 import expose_submodules
