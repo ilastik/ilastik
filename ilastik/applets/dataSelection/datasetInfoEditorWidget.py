@@ -14,7 +14,7 @@ from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from lazyflow.utility import getPathVariants, PathComponents
+from lazyflow.utility import getPathVariants, PathComponents, isUrl
 from opDataSelection import OpDataSelection, DatasetInfo
 
 class StorageLocation(object):
@@ -186,6 +186,10 @@ class DatasetInfoEditorWidget(QDialog):
         ## Storage option warning.
         need_message_about_storage = False
         for laneIndex in self._laneIndexes:
+            if not self._op.DatasetGroup[laneIndex][self._roleIndex].ready():
+                # "real" slot may not be ready yet if this dialog was opened automatically to correct an error
+                # (for example, if the user's data has the wrong axes)
+                continue
             old_storage = self._op.DatasetGroup[laneIndex][self._roleIndex].value.location
             new_storage = self.tempOps[laneIndex].Dataset.value.location
             
@@ -727,7 +731,7 @@ class DatasetInfoEditorWidget(QDialog):
                 storageSetting = StorageLocation.ProjectFile
             elif location == DatasetInfo.Location.FileSystem:
                 # Determine if the path is relative or absolute
-                if os.path.isabs(info.filePath):
+                if isUrl(info.filePath) or os.path.isabs(info.filePath):
                     storageSetting = StorageLocation.AbsoluteLink
                 else:
                     storageSetting = StorageLocation.RelativeLink
@@ -783,7 +787,7 @@ class DatasetInfoEditorWidget(QDialog):
                     thisLaneStorage = StorageLocation.ProjectFile
                 elif info.location == DatasetInfo.Location.FileSystem:
                     # Determine if the path is relative or absolute
-                    if os.path.isabs(info.filePath):
+                    if isUrl(info.filePath) or os.path.isabs(info.filePath):
                         thisLaneStorage = StorageLocation.AbsoluteLink
                     else:
                         thisLaneStorage = StorageLocation.RelativeLink

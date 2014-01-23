@@ -6,7 +6,7 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
-from PyQt4.QtCore import Qt, QTimer, QEvent
+from PyQt4.QtCore import Qt, QObject, QTimer, QEvent
 
 # Logging configuration
 import ilastik.ilastik_logging
@@ -19,21 +19,7 @@ import functools
 
 shell = None
 
-class EventRecordingApp(QApplication):
-    """
-    Special QApplication subclass that overrides the notify() function.
-    Using notify() instead of QApplication.instance().installEventFilter() is more general,
-    and necessary in 
-    """
-    def __init__(self, *args, **kwargs):
-        super(EventRecordingApp, self).__init__(*args, **kwargs)
-        self._notify = functools.partial( QApplication.notify, QApplication.instance() )
-    
-    def notify(self, receiver, event):
-        f = self._notify
-        return f( receiver, event )
-
-def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
+def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):
     """
     Create an application and launch the shell in it.
     """
@@ -46,16 +32,17 @@ def startShellGui(workflow_cmdline_args, recording_events, *testFuncs):
        python: ../../src/xcb_io.c:178: dequeue_pending_request: Assertion !xcb_xlib_unknown_req_in_deq failed.
     """
     platform_str = platform.platform().lower()
-    if 'ubuntu' in platform_str or 'fedora' in platform_str:
+    if 'ubuntu' in platform_str or 'fedora' in platform_str or 'debian' in platform_str:
         QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
-    if recording_events:
+    if eventcapture_mode is not None:
         # Only use a special QApplication subclass if we are recording.
         # Otherwise, it's a performance penalty for every event processed by Qt.
-        app = EventRecordingApp([])
+        from eventcapture.eventRecordingApp import EventRecordingApp
+        app = EventRecordingApp.create_app(eventcapture_mode, **playback_args)
     else:
         app = QApplication([])
     _applyStyleSheet(app)

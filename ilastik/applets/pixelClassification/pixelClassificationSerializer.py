@@ -6,6 +6,10 @@ class PixelClassificationSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
+        self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
+                                                           operator.classifier_cache,
+                                                           name="ClassifierForests",
+                                                           subname="Forest{:04d}")
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -17,13 +21,48 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
-                 SerialClassifierSlot(operator.Classifier,
-                                      operator.classifier_cache,
-                                      name="ClassifierForests",
-                                      subname="Forest{:04d}") ]
+                 self._serialClassifierSlot ]
 
-        super(PixelClassificationSerializer, self).__init__(projectFileGroupName,
-                                                            slots=slots)
+        super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
+    
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        """
+        Override from AppletSerializer.
+        Implement any additional deserialization that wasn't already accomplished by our list of serializable slots.
+        """
+        # If this is an old project file that didn't save the label names to the project,
+        #   create some default names.
+        if not self.operator.LabelNames.ready():
+            # How many labels are there?
+            max_label = 0
+            for op in self.operator.opLabelPipeline:
+                max_label = max(max_label, op.opLabelArray.maxLabel.value)
+            
+            label_names = []
+            for i in range(max_label):
+                label_names.append( "Label {}".format( i+1 ) )
+            
+            self.operator.LabelNames.setValue( label_names )
+            # Make some default colors, too
+            default_colors = [(255,0,0),
+                              (0,255,0),
+                              (0,0,255),
+                              (255,255,0),
+                              (255,0,255),
+                              (0,255,255),
+                              (128,128,128),
+                              (255, 105, 180),
+                              (255, 165, 0),
+                              (240, 230, 140) ]
+            colors = []
+            for i, _ in enumerate(label_names):
+                colors.append( default_colors[i] )
+            self.operator.LabelColors.setValue( colors )
+            self.operator.PmapColors.setValue( colors )
+            
+            # Now RE-deserialize the classifier, so it isn't marked dirty
+            self._serialClassifierSlot.deserialize(topGroup)
+
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """

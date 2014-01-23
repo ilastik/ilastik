@@ -5,7 +5,6 @@ import sys
 import argparse
 import threading
 import logging
-from functools import partial
 
 from ilastik.config import cfg as ilastik_config
 import ilastik.monkey_patches
@@ -59,14 +58,14 @@ ilastik.monkey_patches.extend_arg_parser(parser)
 
 # DEBUG
 #sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
-
+#sys.argv.append( '--start_recording' )
+#sys.argv.append( '--playback_script=/tmp/test_recording.py' )
+#
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
 # DEBUG DEBUG
-#parsed_args.project = '/magnetic/split-body-data/test_data2/full_proj2.ilp'
-#parsed_args.project = '/magnetic/split-body-data/test_data2/small_proj2.ilp'
-#parsed_args.project = '/home/bergs/MyProject.ilp'
+#parsed_args.project = '/Users/bergs/MyProject.ilp'
 
 # DEBUG
 #parsed_args.headless = True
@@ -76,12 +75,11 @@ init_funcs = []
 #parsed_args.workflow = 'SplitBodyCarvingWorkflow'
 
 
-if parsed_args.start_recording:
-    assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
-    parsed_args.debug = True # Auto-enable debug mode
-    def startRecording(shell):
-        shell._recorderGui.openInPausedState()
-    init_funcs.append(startRecording)
+if parsed_args.start_recording or parsed_args.playback_script:
+    # Disable the opengl widgets during recording and playback.
+    # Somehow they can cause random segfaults if used during recording playback.
+    import volumina
+    volumina.NO3D = True
 
 # Check for bad input options
 if parsed_args.workflow is not None and parsed_args.new_project is None:
@@ -131,19 +129,22 @@ if parsed_args.new_project is not None:
         shell.createAndLoadNewProject(path, workflow_class)
     init_funcs.append(createNewProject)
 
-# Enable test-case recording
-if parsed_args.playback_script is not None:
-    # Auto-exit on success?
-    onfinish = None
-    if parsed_args.exit_on_success:
-        onfinish = QApplication.quit
-
+# Enable test-case recording?
+eventcapture_mode = None
+playback_args = {}
+if parsed_args.start_recording:
+    assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
     parsed_args.debug = True # Auto-enable debug mode
-    def play_recording(shell):
-        from ilastik.utility.gui.eventRecorder import EventPlayer
-        player = EventPlayer(parsed_args.playback_speed)
-        player.play_script(parsed_args.playback_script, onfinish)
-    init_funcs.append( partial(play_recording) )
+    eventcapture_mode = 'record'
+elif parsed_args.playback_script is not None:
+    parsed_args.debug = True # Auto-enable debug mode
+    eventcapture_mode = 'playback'
+    # See EventRecordingApp.create_app() for details
+    playback_args['playback_script'] = parsed_args.playback_script
+    playback_args['playback_speed'] = parsed_args.playback_speed
+    # Auto-exit on success?
+    if parsed_args.exit_on_success:
+        playback_args['finish_callback'] = QApplication.quit        
 
 # Force debug mode
 if parsed_args.debug:
@@ -183,6 +184,6 @@ if parsed_args.headless:
 # Normal launch
 else:
     from ilastik.shell.gui.startShellGui import startShellGui
-    sys.exit(startShellGui(workflow_cmdline_args, parsed_args.start_recording, *init_funcs))
+    sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
 
 

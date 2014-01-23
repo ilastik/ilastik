@@ -23,14 +23,20 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.widgets.massFileLoader import MassFileLoader
 
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
-from dataDetailViewerWidget import DataDetailViewerWidget
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
+        DatasetDetailedInfoTableModel
+from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+
+try:
+    import dvidclient
+    _has_dvid_support = True
+except:
+    _has_dvid_support = False
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -71,7 +77,7 @@ class DataSelectionGui(QWidget):
         if imageIndex is not None:
             self.laneSummaryTableView.selectRow(imageIndex)
             for detailWidget in self._detailViewerWidgets:
-                detailWidget.datasetDetailTableView.selectRow(imageIndex)
+                detailWidget.selectRow(imageIndex)
 
     def stopAndCleanUp(self):
         for editor in self.volumeEditors.values():
@@ -159,17 +165,15 @@ class DataSelectionGui(QWidget):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
         self.laneSummaryTableView.dataLaneSelected.connect( self.showDataset )
-        self.laneSummaryTableView.addFilesRequested.connect( self.handleAddFiles )
-        self.laneSummaryTableView.addStackRequested.connect( self.handleAddStack )
-        self.laneSummaryTableView.addByPatternRequested.connect( self.handleAddByPattern )
-        self.removeLaneButton.clicked.connect( self.handleRemoveLaneButtonClicked )
+        self.laneSummaryTableView.addFilesRequested.connect( self.addFiles )
+        self.laneSummaryTableView.addStackRequested.connect( self.addStack )
         self.laneSummaryTableView.removeLanesRequested.connect( self.handleRemoveLaneButtonClicked )
 
         # These two helper functions enable/disable an 'add files' button for a given role  
         #  based on the the max lane index for that role and the overall permitted max_lanes
-        def _update_button_status(button, role_index):
+        def _update_button_status(viewer, role_index):
             if self._max_lanes:
-                button.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
+                viewer.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
 
         def _handle_lane_added( button, role_index, slot, lane_index ):
             slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
@@ -178,41 +182,45 @@ class DataSelectionGui(QWidget):
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
-            detailViewer = DataDetailViewerWidget( self, self.topLevelOperator, roleIndex )
+            detailViewer = DatasetDetailedInfoTableView(self)
+            detailViewer.setModel(DatasetDetailedInfoTableModel(self,
+                self.topLevelOperator, roleIndex))
             self._detailViewerWidgets.append( detailViewer )
 
             # Button
-            menu = QMenu(parent=self)
-            menu.setObjectName("addFileButton_role_{}".format( roleIndex ))
-            menu.addAction( "Add one or more separate Files ..." ).triggered.connect( partial(self.handleAddFiles, roleIndex) )
-            menu.addAction( "Add Volume from Stack..." ).triggered.connect( partial(self.handleAddStack, roleIndex) )
-            #disabled for ilastik 1.0
-            #menu.addAction( "Add Many by Pattern..." ).triggered.connect( partial(self.handleAddByPattern, roleIndex) )
-            detailViewer.appendButton.setMenu( menu )
-            self._retained.append(menu)
+            detailViewer.addFilesRequested.connect(
+                    partial(self.addFiles, roleIndex))
+            detailViewer.addStackRequested.connect(
+                    partial(self.addStack, roleIndex))
+            detailViewer.addRemoteVolumeRequested.connect(
+                    partial(self.addDvidVolume, roleIndex))
 
             # Monitor changes to each lane so we can enable/disable the 'add lanes' button for each tab
-            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer.appendButton, roleIndex ) )
-            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer.appendButton, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, detailViewer, roleIndex ) )
+            self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, detailViewer, roleIndex ) )
             
             # While we're at it, do the same for the buttons in the summary table, too
             self.topLevelOperator.DatasetGroup.notifyInserted( bind( _handle_lane_added, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             self.topLevelOperator.DatasetGroup.notifyRemoved( bind( _update_button_status, self.laneSummaryTableView.addFilesButtons[roleIndex], roleIndex ) )
             
-            # Context menu            
-            detailViewer.datasetDetailTableView.replaceWithFileRequested.connect( partial(self.handleReplaceFile, roleIndex) )
-            detailViewer.datasetDetailTableView.replaceWithStackRequested.connect( partial(self.replaceWithStack, roleIndex) )
-            detailViewer.datasetDetailTableView.editRequested.connect( partial(self.editDatasetInfo, roleIndex) )
-            detailViewer.datasetDetailTableView.resetRequested.connect( partial(self.handleClearDatasets, roleIndex) )
+            # Context menu
+            detailViewer.replaceWithFileRequested.connect(
+                    partial(self.handleReplaceFile, roleIndex) )
+            detailViewer.replaceWithStackRequested.connect(
+                    partial(self.addStack, roleIndex) )
+            detailViewer.editRequested.connect(
+                    partial(self.editDatasetInfo, roleIndex) )
+            detailViewer.resetRequested.connect(
+                    partial(self.handleClearDatasets, roleIndex) )
 
             # Drag-and-drop
-            detailViewer.datasetDetailTableView.addFilesRequested.connect( partial( self.addFileNames, roleIndex=roleIndex ) )
+            detailViewer.addFilesRequestedDrop.connect( partial( self.addFileNames, roleIndex=roleIndex ) )
 
             # Selection handling
             def showFirstSelectedDataset( _roleIndex, lanes ):
                 if lanes:
                     self.showDataset( lanes[0], _roleIndex )
-            detailViewer.datasetDetailTableView.dataLaneSelected.connect( partial(showFirstSelectedDataset, roleIndex) )
+            detailViewer.dataLaneSelected.connect( partial(showFirstSelectedDataset, roleIndex) )
 
             self.fileInfoTabWidget.insertTab(roleIndex, detailViewer, role)
                 
@@ -223,7 +231,7 @@ class DataSelectionGui(QWidget):
         if tabIndex < len(self._detailViewerWidgets):
             roleIndex = tabIndex # If summary tab is moved to the front, change this line.
             detailViewer = self._detailViewerWidgets[roleIndex]
-            selectedLanes = detailViewer.datasetDetailTableView.selectedLanes
+            selectedLanes = detailViewer.selectedLanes
             if selectedLanes:
                 self.showDataset( selectedLanes[0], roleIndex )
 
@@ -316,9 +324,6 @@ class DataSelectionGui(QWidget):
         self._viewerControlWidgetStack.setCurrentWidget( viewer.viewerControlWidget() )
 
 
-    def handleAddFiles(self, roleIndex):
-        self.addFiles(roleIndex)
-
     def handleReplaceFile(self, roleIndex, startingLane):
         self.addFiles(roleIndex, startingLane)
 
@@ -346,41 +351,33 @@ class DataSelectionGui(QWidget):
             except RuntimeError as e:
                 QMessageBox.critical(self, "Error loading file", str(e))
 
-    def handleAddByPattern(self, roleIndex):
-        # Find the most recent directory
-
-        # TODO: remove code duplication
-        mostRecentDirectory = PreferencesManager().get( 'DataSelection', 'recent mass directory' )
-        if mostRecentDirectory is not None:
-            defaultDirectory = os.path.split(mostRecentDirectory)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
-
-        fileNames = self.getMass(defaultDirectory)
-
-        # If the user didn't cancel
-        if len(fileNames) > 0:
-            PreferencesManager().set('DataSelection', 'recent mass directory', os.path.split(fileNames[0])[0])
-            try:
-                self.addFileNames(fileNames, roleIndex)
-            except RuntimeError as e:
-                QMessageBox.critical(self, "Error loading file", str(e))
-
-
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
+        file_dialog = QFileDialog(self, "Select Images")
+
         extensions = OpDataSelection.SupportedExtensions
-        filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
-        options = QFileDialog.Options()
+        filter_strs = ["*." + x for x in extensions]
+        filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
+        filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
+        file_dialog.setFilters([filt_all_str] + filters)
+
+        # do not display file types associated with a filter
+        # the line for "Image files" is too long otherwise
+        file_dialog.setNameFilterDetailsVisible(False)
+        # select multiple files
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |=  QFileDialog.DontUseNativeDialog
-        fileNames = QFileDialog.getOpenFileNames( self, "Select Images", 
-                                 defaultDirectory, filt, options=options )
-        # Convert from QtString to python str
-        fileNames = map(encode_from_qstring, fileNames)
-        return fileNames
+            file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+
+        if file_dialog.exec_():
+            fileNames = file_dialog.selectedFiles()
+            # Convert from QtString to python str
+            fileNames = map(encode_from_qstring, fileNames)
+            return fileNames
+
+        return []
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -402,11 +399,22 @@ class DataSelectionGui(QWidget):
         infos = []
 
         if startingLane is None or startingLane == -1:
-            startingLane = self._findFirstEmptyLane(roleIndex)
+            startingLane = len(self.topLevelOperator.DatasetGroup)
             endingLane = startingLane+len(fileNames)-1
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
-            endingLane = startingLane+len(fileNames)-1
+            max_files = len(self.topLevelOperator.DatasetGroup) - \
+                    startingLane
+            if len(fileNames) > max_files:
+                msg = "You selected {num_selected} files for {num_slots} "\
+                      "slots. To add new files use the 'Add new...' option "\
+                      "in the context menu or the button in the last row."\
+                              .format(num_selected=len(fileNames),
+                                      num_slots=max_files)
+                QMessageBox.critical( self, "Too many files", msg )
+                return
+            endingLane = min(startingLane+len(fileNames)-1,
+                    len(self.topLevelOperator.DatasetGroup))
             
         if self._max_lanes and endingLane >= self._max_lanes:
             msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
@@ -506,10 +514,7 @@ class DataSelectionGui(QWidget):
             f.visititems(accumulateDatasetPaths)
         return datasetNames
 
-    def handleAddStack(self, roleIndex):
-        self.replaceWithStack(roleIndex, laneIndex=None)
-
-    def replaceWithStack(self, roleIndex, laneIndex):
+    def addStack(self, roleIndex, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
         """
@@ -535,8 +540,8 @@ class DataSelectionGui(QWidget):
 
         originalNumLanes = len(self.topLevelOperator.DatasetGroup)
 
-        if laneIndex is None:
-            laneIndex = self._findFirstEmptyLane(roleIndex)
+        if laneIndex is None or laneIndex == -1:
+            laneIndex = len(self.topLevelOperator.DatasetGroup)
         if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
             self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
 
@@ -576,18 +581,6 @@ class DataSelectionGui(QWidget):
         QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 
-    def getMass(self, defaultDirectory):
-        # TODO: launch dialog and get files
-
-        # Convert from QtString to python str
-        loader = MassFileLoader(defaultDirectory=defaultDirectory)
-        loader.exec_()
-        if loader.result() == QDialog.Accepted:
-            fileNames = [str(s) for s in loader.filenames]
-        else:
-            fileNames = []
-        return fileNames
-
     def handleClearDatasets(self, roleIndex, selectedRows):
         for row in selectedRows:
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
@@ -610,8 +603,25 @@ class DataSelectionGui(QWidget):
         editorDlg.exec_()
 
     def updateInternalPathVisiblity(self):
-        for widget in self._detailViewerWidgets:
-            view = widget.datasetDetailTableView
+        for view in self._detailViewerWidgets:
             model = view.model()
             view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
                                  not model.hasInternalPaths())
+    
+    def addDvidVolume(self, roleIndex, laneIndex):
+        # TODO: Provide list of recently used dvid hosts, loaded from user preferences
+        from dvidclient.gui.contents_browser import ContentsBrowser
+        browser = ContentsBrowser(["localhost:8000"], parent=self)
+        if browser.exec_() == ContentsBrowser.Rejected:
+            return
+
+        hostname, dset_index, volume_name, uuid = browser.get_selection()
+        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )        
+        self.addFileNames([dvid_url], roleIndex, laneIndex)
+
+
+
+
+
+
+

@@ -22,7 +22,7 @@ from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
-    workflowDescription = "This is obviously self-explanoratory."
+    workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
     
     @property
@@ -283,8 +283,10 @@ class PixelClassificationWorkflow(Workflow):
                 print "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value)
     
                 sys.stdout.write( "Result {}/{} Progress: ".format( i, len( opBatchDataExport ) ) )
+                sys.stdout.flush()
                 def print_progress( progress ):
                     sys.stdout.write( "{} ".format( progress ) )
+                    sys.stdout.flush()
     
                 # If the operator provides a progress signal, use it.
                 slotProgressSignal = opExportDataLaneView.progressSignal

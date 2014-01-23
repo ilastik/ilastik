@@ -33,3 +33,16 @@ CMakeFiles
 CMakeCache*
 *.cmake
 ilastik/applets/counting/cwrapper/Makefile
+
+# Vim swap files
+*.s[a-w][a-z]
+*.un~
+.netrwhist
+
+# Ctags file
+tags
+# cscope output
+cscope.out
+
+# qt designer autosave
+*.autosave
