@@ -512,11 +512,14 @@
      </item>
      <item>
       <widget class="QCheckBox" name="opticalBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="text">
         <string>With Optical Correction</string>
        </property>
        <property name="checked">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
       </widget>
      </item>

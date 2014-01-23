@@ -5,6 +5,8 @@ import sys
 import traceback
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.config import cfg as ilastik_config
+
 from lazyflow.request.request import Request
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,28 @@ class ConservationTrackingGui( TrackingBaseGui ):
 
     def initAppletDrawerUi(self):
         super(ConservationTrackingGui, self).initAppletDrawerUi()        
-        
+
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            assert self._drawer.trackletsBox.isChecked()
+            self._drawer.trackletsBox.hide()
+
+            assert not self._drawer.sizeDepBox.isChecked()
+            self._drawer.sizeDepBox.hide()
+            
+            assert not self._drawer.hardPriorBox.isChecked()
+            self._drawer.hardPriorBox.hide()
+
+            assert self._drawer.classifierPriorBox.isChecked()
+            self._drawer.classifierPriorBox.hide()
+
+            assert not self._drawer.opticalBox.isChecked()
+            self._drawer.opticalBox.hide()
+
+            self._drawer.label_5.hide() # hide division threshold label
+            self._drawer.divThreshBox.hide()
+            self._drawer.label_25.hide() # hide avg. obj size label
+            self._drawer.avgSizeBox.hide()
+          
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
                              self._drawer.merg3,
