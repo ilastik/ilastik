@@ -62,8 +62,8 @@ class ConservationTrackingWorkflow( Workflow ):
                                                                      projectFileGroupName="DivisionDetection")
         
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Cell Classification",
-                                                                     projectFileGroupName="CellClassification")
+                                                                     name="Object Count Classification",
+                                                                     projectFileGroupName="CountClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
 
@@ -157,7 +157,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
         opCellClassification.SelectedFeatures.setValue( selected_features_cell )        
-#        opCellClassification.LabelInputs.setValue([ str(i) + ' Objects' for i in range(0,config.num_max_objects) ] )
+        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )

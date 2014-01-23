@@ -327,9 +327,17 @@ class ObjectClassificationGui(LabelingGui):
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
+    def _getNextSuggestedLabelName(self):
+        row_idx = self._labelControlUi.labelListModel.rowCount()
+        return self.topLevelOperatorView.SuggestedLabelNames([]).wait()[row_idx]
+
     def getNextLabelName(self):
-        return self._getNext(self.topLevelOperatorView.LabelNames,
+        if self._labelControlUi.labelListModel.rowCount() >= len(self.topLevelOperatorView.SuggestedLabelNames([]).wait()):
+            return self._getNext(self.topLevelOperatorView.LabelNames,
                              super(ObjectClassificationGui, self).getNextLabelName)
+        else:
+            return self._getNext(self.topLevelOperatorView.LabelNames, 
+                             self._getNextSuggestedLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
