@@ -264,6 +264,7 @@ class DataSelectionGui(QWidget):
             # The gui and the operator should be in sync (model has one extra row for the button row)
             assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
+    @threadRouted
     def showDataset(self, laneIndex, roleIndex=None):
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
@@ -475,6 +476,10 @@ class DataSelectionGui(QWidget):
                 opTop.DatasetGroup.resize( originalSize )
                 raise
 
+        # If we succeeded in adding all images, show the first one.
+        if laneIndex == endingLane:
+            self.showDataset(startingLane, roleIndex)
+
         # Notify the workflow that something that could affect applet readyness has occurred.
         self.parentApplet.appletStateUpdateRequested.emit()
 
@@ -567,6 +572,7 @@ class DataSelectionGui(QWidget):
                 self.parentApplet.appletStateUpdateRequested.emit()
 
         req = Request( importStack )
+        req.notify_finished( lambda result: self.showDataset(laneIndex, roleIndex) )
         req.notify_failed( partial(self.handleFailedStackLoad, files, originalNumLanes ) )
         req.submit()
 
