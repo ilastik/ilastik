@@ -189,20 +189,23 @@ class TestRequest(object):
         req = Request( big_workload )
         req.notify_finished( handle_complete )
         req.submit()
-        time.sleep(.5)
+
+        while workcounter[0] == 0:
+            time.sleep(0.5)
+            
         req.cancel()
+        time.sleep(1)
         
         assert req.cancelled
         
-        time.sleep(2)
         assert not completed[0]
         assert got_cancel[0]
         
         # Make sure this test is functioning properly:
         # The cancellation should have occurred in the middle (not before the request even got started)
         # If not, then adjust the timing of the cancellation, above.
-        assert workcounter[0] != 0
-        assert workcounter[0] != 100
+        assert workcounter[0] != 0, "This timing-sensitive test needs to be tweaked."
+        assert workcounter[0] != 100, "This timing-sensitive test needs to be tweaked."
 
     @traceLogged(traceLogger)
     def test_dont_cancel_shared_request(self):
