@@ -1,18 +1,26 @@
 import os
 import shutil
 import tempfile
+import unittest
 
 import numpy
 import vigra
 import h5py
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpDvidVolume
 
-# Must be imported AFTER lazyflow, which adds dvidclient to sys.path
-from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
+try:
+    from lazyflow.operators.ioOperators import OpDvidVolume
+    # Must be imported AFTER lazyflow, which adds dvidclient to sys.path
+    from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
+except ImportError:
+    have_dvid = False
+else:
+    have_dvid = True
 
-class TestOpDvidVolume(object):
+
+@unittest.skipIf(not have_dvid, "optional module dvidclient not available.")
+class TestOpDvidVolume(unittest.TestCase):
     """
     Mostly copied from the dvid_volume test...
     """
@@ -22,6 +30,8 @@ class TestOpDvidVolume(object):
         """
         Override.  Called by nosetests.
         """
+        if not have_dvid:
+            return
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_testdata_h5(cls.test_filepath)
@@ -32,6 +42,8 @@ class TestOpDvidVolume(object):
         """
         Override.  Called by nosetests.
         """
+        if not have_dvid:
+            return
         shutil.rmtree(cls._tmp_dir)
         cls.server_proc.terminate()
 
