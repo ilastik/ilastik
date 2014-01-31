@@ -32,8 +32,8 @@ class TestOpDvidVolume(unittest.TestCase):
         cls._tmp_dir = tempfile.mkdtemp()
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_empty_h5(cls.test_filepath)
-        cls.server_proc = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000, 
-                                                         same_process=False, disable_server_logging=True )
+        cls.server_proc, cls.shutdown_event = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000, 
+                                                                             same_process=False, disable_server_logging=True )
 
     @classmethod
     def teardownClass(cls):
@@ -43,7 +43,8 @@ class TestOpDvidVolume(unittest.TestCase):
         if not have_dvid:
             return
         shutil.rmtree(cls._tmp_dir)
-        cls.server_proc.terminate()
+        cls.shutdown_event.set()
+        cls.server_proc.join()
 
     @classmethod
     def _generate_empty_h5(cls, test_filepath):

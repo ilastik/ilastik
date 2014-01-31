@@ -84,8 +84,8 @@ class TestOpExportSlot(object):
         mockserver_data_file = self._tmpdir + '/mockserver_data.h5'
         with H5MockServerDataFile( mockserver_data_file ) as test_h5file:
             test_h5file.add_node( dvid_dataset, data_uuid )
-        server_proc = H5MockServer.create_and_start( mockserver_data_file, "localhost", 8000,
-                                                     same_process=False, disable_server_logging=True )
+        server_proc, shutdown_event = H5MockServer.create_and_start( mockserver_data_file, "localhost", 8000,
+                                                                     same_process=False, disable_server_logging=True )
 
         try:            
             data = 255 * numpy.random.random( (100,100, 4) )
@@ -109,7 +109,8 @@ class TestOpExportSlot(object):
             read_data = opRead.Output[:].wait()
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
-            server_proc.terminate()
+            shutdown_event.set()
+            server_proc.join()
 
     def testBasic_2d(self):
         data = 255 * numpy.random.random( (50,100) )
