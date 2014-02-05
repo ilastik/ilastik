@@ -49,9 +49,11 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         return layers 
 
     def _initPredictionLayers(self, predictionSlot):
-        layers = []
-
         opLane = self.topLevelOperatorView
+        if not opLane.LabelNames.ready() or not opLane.PmapColors.ready():
+            return []
+
+        layers = []
         colors = opLane.PmapColors.value
         names = opLane.LabelNames.value
 

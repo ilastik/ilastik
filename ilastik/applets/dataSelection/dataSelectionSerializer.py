@@ -5,7 +5,7 @@ import os
 import vigra
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from lazyflow.utility.pathHelpers import getPathVariants
+from lazyflow.utility.pathHelpers import getPathVariants, isUrl
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -309,7 +309,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         dirty = False
         # If the data is supposed to exist outside the project, make sure it really does.
-        if datasetInfo.location == DatasetInfo.Location.FileSystem:
+        if datasetInfo.location == DatasetInfo.Location.FileSystem and not isUrl(datasetInfo.filePath):
             pathData = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0])
             filePath = pathData.externalPath
             if not os.path.exists(filePath):

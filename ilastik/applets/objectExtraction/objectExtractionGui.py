@@ -1,12 +1,11 @@
-from PyQt4.QtGui import QWidget, QColor, QProgressDialog, QTreeWidgetItem, QMessageBox, QIntValidator
+from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QString, QVariant, pyqtSignal, QObject
+from PyQt4.QtCore import Qt
 
 from lazyflow.rtype import SubRegion
 import os
 from collections import defaultdict
 
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from functools import partial
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
@@ -15,19 +14,15 @@ from ilastik.plugins import pluginManager
 from ilastik.utility.gui import threadRouted
 from ilastik.config import cfg as ilastik_config
 
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
-                         LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
+from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
 from volumina.utility import encode_from_qstring
-from ilastik.widgets.viewerControls import ViewerControls
 
 import vigra
 import numpy as np
 
-from PyQt4.QtGui import QDialog, QFileDialog, QAbstractItemView
-from PyQt4 import uic
+from PyQt4.QtGui import QDialog, QFileDialog
 
-import sys
 import cPickle as pickle
 import threading
 

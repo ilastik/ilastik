@@ -27,6 +27,8 @@ from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -63,15 +65,10 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def stopAndCleanUp(self):
         super(FeatureSelectionGui, self).stopAndCleanUp()
-        self.drawer.caption.setText( "(No features selected)" )
 
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Why is this necessary?
-        # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
-        self._viewerControlWidget.featureListWidget.clear()
 
     # (Other methods already provided by our base class)
 
@@ -265,6 +262,16 @@ class FeatureSelectionGui(LayerViewerGui):
 
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
+        # Disable the first column, except for the first item.
+        # This is a slightly hacky way of fixing ilastik issue #610.
+        # Besides color, the features at a sigma of 0.3 are not valid because the 
+        #  results are overwhelmed by the inherent sampling noise of the filter.
+        # (This is a bit hacky because we ASSUME the first feature is Gaussian 
+        # Smoothing.  It works for now.)
+        enabled_item_mask = numpy.ones( defaultFeatures.shape, dtype=bool )
+        enabled_item_mask[1:,0] = False # hacky
+        self.featureDlg.setEnableItemMask( enabled_item_mask )
+
     def onUsePrecomputedFeaturesButtonClicked(self):
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
@@ -342,9 +349,13 @@ class FeatureSelectionGui(LayerViewerGui):
                 self.parentApplet.appletStateUpdateRequested.emit()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
                 QApplication.instance().processEvents()
-
-                opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
-                #self.topLevelOperatorView._setupOutputs()
+                
+                try:
+                    opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+                except DatasetConstraintError as ex:
+                    # The user selected some scales that were too big.
+                    QMessageBox.critical(self, "Invalid selections", ex.message)
+                    opFeatureSelection.SelectionMatrix.disconnect()
                 
                 # Re-enable gui
                 QApplication.instance().restoreOverrideCursor()

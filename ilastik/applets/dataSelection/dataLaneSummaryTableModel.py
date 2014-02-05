@@ -14,13 +14,53 @@ class DatasetInfoColumn():
     Name = 0
     NumColumns = 1
 
+def rowOfButtonsProxy(model_cls):
+    """
+    Given a TableModel class, return a new class that pretends to have an
+    extra row at the end. This row is used to display "Add..." buttons in
+    the GUI.
+    """
+    class ProxyModel(model_cls):
+        def __init__(self, *args, **kwds):
+            super(ProxyModel, self).__init__(*args, **kwds)
+
+        def rowCount(self, parent=QModelIndex()):
+            """
+            Return number of rows in the model.
+
+            This proxy model keeps an extra row at the end for buttons.
+            """
+            return super(ProxyModel, self).rowCount(parent) + 1
+
+        def headerData(self, section, orientation, role=Qt.DisplayRole ):
+            """
+            Return header information for row/column.
+
+            Skip vertical header for the last row, which is used for buttons.
+            """
+            if orientation == Qt.Vertical:
+                if section >= super(ProxyModel, self).rowCount():
+                    return ""
+            return super(ProxyModel, self).headerData(section, orientation,
+                    role)
+
+        def _getDisplayRoleData(self, index):
+            # Last row is just buttons
+            if index.row() >= super(ProxyModel, self).rowCount():
+                return ""
+            return model_cls._getDisplayRoleData(self, index)
+
+    return ProxyModel
+
+
+@rowOfButtonsProxy
 class DataLaneSummaryTableModel(QAbstractItemModel):
-    
     def __init__(self, parent, topLevelOperator):
         """
         :param topLevelOperator: An instance of OpMultiLaneDataSelectionGroup
         """
-        super( DataLaneSummaryTableModel, self ).__init__(parent)
+        # super does not work here in Python 2.x, decorated class confuses it
+        QAbstractItemModel.__init__(self, parent)
         self._op = topLevelOperator
 
         def handleNewLane( multislot, laneIndex):
@@ -65,7 +105,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         return LaneColumn.NumColumns + DatasetInfoColumn.NumColumns * len(roles)
     
     def rowCount(self, parent=QModelIndex()):
-        return len( self._op.ImageGroup ) + 1 # Add a row of buttons...
+        return len( self._op.ImageGroup )
     
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -81,8 +121,6 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if role != Qt.DisplayRole:
             return None
         if orientation == Qt.Vertical:
-            if section == self.rowCount()-1:
-                return ""
             return section+1
         if section == LaneColumn.LabelsAllowed:
             return "Labelable"
@@ -96,10 +134,6 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         assert False, "Unknown header column: {}".format( section )
             
     def _getDisplayRoleData(self, index):
-        # Last row is just buttons
-        if index.row() >= self.rowCount()-1:
-            return ""
-
         laneIndex = index.row()
         
         if index.column() < LaneColumn.NumColumns:
@@ -139,5 +173,3 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return LocationNames[ datasetInfo.location ]
 
         assert False, "Unknown column"
-
-

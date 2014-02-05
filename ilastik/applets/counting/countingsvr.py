@@ -554,7 +554,8 @@ class SVR(object):
 
     def _fit(self, image, dot, tags, boxConstraints = []):
         img = self.normalize(image)
-        
+        if type(boxConstraints) is dict:
+            boxConstraints["boxFeatures"] = self.normalize(boxConstraints["boxFeatures"])
         numFeatures = img.shape[1]
         if self._method == "RandomForest":
             from sklearn.ensemble import RandomForestRegressor as RFR

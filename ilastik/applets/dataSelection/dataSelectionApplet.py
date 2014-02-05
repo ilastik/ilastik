@@ -80,6 +80,7 @@ class DataSelectionApplet( Applet ):
         # Currently, we don't support any special options -- just a list of files        
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument('input_files', nargs='*', help='List of input files to process.')
+        arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
         
         # Check for errors: Do all input files exist?
@@ -107,8 +108,14 @@ class DataSelectionApplet( Applet ):
         
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
-        # TODO: Support image stack inputs by checking for globstrings and converting to hdf5.
         input_paths = parsed_args.input_files
+
+        # If the user doesn't want image stacks to be copied inte the project file,
+        #  we generate hdf5 volumes in a temporary directory and use those files instead.        
+        if parsed_args.preconvert_stacks:
+            import tempfile
+            input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
+        
         input_infos = []
         for p in input_paths:
             info = DatasetInfo()
@@ -129,5 +136,61 @@ class DataSelectionApplet( Applet ):
             # Only one dataset role in pixel classification
             opDataSelection.DatasetGroup[lane_index][0].setValue( info )
         
+    @classmethod
+    def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
+        """
+        If any of the files in filePaths appear to be globstrings for a stack,
+        convert the given stack to hdf5 format.
         
+        Return the filePaths list with globstrings replaced by the paths to the new hdf5 volumes.
+        """
+        import hashlib
+        import pickle
+        import h5py
+        from lazyflow.graph import Graph
+        from lazyflow.operators.ioOperators import OpStackToH5Writer
         
+        filePaths = list(filePaths)
+        for i, path in enumerate(filePaths):
+            if '*' in path:
+                globstring = path
+    
+                # Embrace paranoia:
+                # We want to make sure we never re-use a stale cache file for a new dataset,
+                #  even if the dataset is located in the same location as a previous one and has the same globstring!
+                # Create a sha-1 of the file name and modification date.
+                sha = hashlib.sha1()
+                files = [k.replace('\\', '/') for k in glob.glob( path )]
+                for f in files:
+                    sha.update(f)
+                    sha.update(pickle.dumps(os.stat(f).st_mtime))
+                stackFile = sha.hexdigest() + '.h5'
+                stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
+                
+                # Overwrite original path
+                filePaths[i] = stackPath + "/volume/data"
+    
+                # Generate the hdf5 if it doesn't already exist
+                if os.path.exists(stackPath):
+                    logger.info( "Using previously generated hdf5 volume for stack {}".format(path) )
+                    logger.info( "Volume path: {}".format(filePaths[i]) )
+                else:
+                    logger.info( "Generating hdf5 volume for stack {}".format(path) )
+                    logger.info( "Volume path: {}".format(filePaths[i]) )
+    
+                    if not os.path.exists( stackVolumeCacheDir ):
+                        os.makedirs( stackVolumeCacheDir )
+                    
+                    with h5py.File(stackPath) as f:
+                        # Configure the conversion operator
+                        opWriter = OpStackToH5Writer( graph=Graph() )
+                        opWriter.hdf5Group.setValue(f)
+                        opWriter.hdf5Path.setValue("volume/data")
+                        opWriter.GlobString.setValue(globstring)
+                        
+                        # Initiate the write
+                        success = opWriter.WriteImage.value
+                        assert success, "Something went wrong when generating an hdf5 file from an image sequence."
+            
+        return filePaths
+            

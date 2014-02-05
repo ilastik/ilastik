@@ -24,17 +24,25 @@ class OpPixelClassificationDataExport( OpDataExport ):
         if not self.ConstraintDataset.ready() or not self.RawData.ready():
             return
         
-        dataTrain = self.ConstraintDataset.meta
-        dataBatch = self.RawData.meta
+        trainingMeta = self.ConstraintDataset.meta
+        batchMeta = self.RawData.meta
 
-        # Must have same dimensionality (but not necessarily the same shape)
-        if len(dataTrain.shape) != len(dataBatch.shape):
-            raise DatasetConstraintError("Batch Prediction Input","Batch input must have the same dimension as training input.")
-        
         # Must have same number of channels
-        if dataTrain.getTaggedShape()['c'] != dataBatch.getTaggedShape()['c']:
-            raise DatasetConstraintError("Batch Prediction Input","Batch input must have the same number of channels as training input.")
+        training_channels = trainingMeta.getTaggedShape()['c']
+        batch_channels = batchMeta.getTaggedShape()['c']
+        if training_channels != batch_channels :
+            raise DatasetConstraintError("Batch Prediction Input",
+                                         "Batch input must have the same number of channels as training input."\
+                                         "(Batch has {} channels, but training input used {}"\
+                                         "".format( batch_channels, training_channels ))
+
+        # Other than time, Must have same set of axes (but not necessarily in the same order)
+        training_axes = set(trainingMeta.getAxisKeys())
+        batch_axes = set(batchMeta.getAxisKeys())
+        training_axes.discard('t')
+        batch_axes.discard('t')
         
-        # Must have same set of axes (but not necessarily in the same order)
-        if set(dataTrain.getAxisKeys()) != set(dataBatch.getAxisKeys()):
-            raise DatasetConstraintError("Batch Prediction Input","Batch input axis must fit axis of training input.")
+        if training_axes != batch_axes:
+            raise DatasetConstraintError("Batch Prediction Input",
+                                         "Batch input file does not have the same spatial input axes as the training input:"\
+                                         "has {}, expected {}".format( batch_axes, training_axes ))

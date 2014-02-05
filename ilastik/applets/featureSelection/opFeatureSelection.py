@@ -14,6 +14,8 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPres
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 logger = logging.getLogger(__name__)
 
 class OpFeatureSelectionNoCache(Operator):
@@ -66,10 +68,12 @@ class OpFeatureSelectionNoCache(Operator):
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
         self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
-        self.opPixelFeatures.Matrix.connect( self.SelectionMatrix )
         self.opPixelFeatures.Input.connect( self.InputImage )
+        # We don't connect SelectionMatrix here because we want to 
+        #  check it for errors (See setupOutputs)
+        # self.opPixelFeatures.SelectionMatrix.connect( self.SelectionMatrix )
 
-    def setupOutputs(self):        
+    def setupOutputs(self):
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
             f = open(self.FeatureListFilename.value, 'r')
             self._files = []
@@ -103,6 +107,16 @@ class OpFeatureSelectionNoCache(Operator):
             self.CachedOutputImage.meta.shape    = (shape) + (len(self._files),)
             self.CachedOutputImage.meta.axistags = axistags 
         else:
+            # Set the new selection matrix and check if it creates an error.
+            selections = self.SelectionMatrix.value
+            self.opPixelFeatures.Matrix.setValue( selections, check_changed=False )
+            invalid_scales = self.opPixelFeatures.getInvalidScales()
+            if invalid_scales:
+                msg = "Some of your selected feature scales are too large for your dataset.\n"\
+                      "Choose smaller scales (sigma) or use a larger dataset.\n"\
+                      "The invalid scales are: {}".format( invalid_scales )                      
+                raise DatasetConstraintError( "Feature Selection", msg )
+            
             # Connect our external outputs to our internal operators
             self.OutputImage.connect( self.opPixelFeatures.Output )
             self.FeatureLayers.connect( self.opPixelFeatures.Features )

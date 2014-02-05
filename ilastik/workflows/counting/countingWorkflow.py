@@ -15,7 +15,8 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
 class CountingWorkflow(Workflow):
-    workfloName = "Counting Workflow Base"
+    workflowName = "Cell Density Counting"
+    workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
 
     def __init__(self, shell, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
@@ -180,7 +181,7 @@ class CountingWorkflow(Workflow):
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        input_ready = len(opDataSelection.ImageGroup) > 0
+        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage

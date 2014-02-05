@@ -7,7 +7,6 @@ from ilastik.config import cfg as ilastik_config
 from ilastik import isVersionCompatible
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
-from volumina.utility import encode_from_qstring
 import os
 import tempfile
 import vigra
@@ -840,6 +839,7 @@ class AppletSerializer(object):
         """get new path to lost file"""
         
         from PyQt4.QtGui import QFileDialog,QMessageBox
+        from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)

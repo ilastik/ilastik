@@ -12,7 +12,7 @@ do
     echo "Cleaning environment..."
     rm -f ~/*.ilp && rm -f ~/.ilastik_preferences
   fi
-  echo "Running recorded test: $f"; python ilastik.py --playback_script=$f --exit_on_failure --exit_on_success
+  echo "Running recorded test: $f"; python ../ilastik.py --playback_script=$f --exit_on_failure --exit_on_success
   RETVAL=$?
   if [[ $RETVAL -ne 0 ]]; then
     exit $RETVAL

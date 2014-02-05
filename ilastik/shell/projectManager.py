@@ -143,6 +143,7 @@ class ProjectManager(object):
             workflow_cmdline_args = []
 
         # Init
+        self.closed = True
         self._shell = shell
         self.workflow = None
         self.currentProjectFile = None
@@ -381,11 +382,12 @@ class ProjectManager(object):
 
                     item.ignoreDirty = False
             
+
+            self.closed = False
             # Call the workflow's custom post-load initialization (if any)
             self.workflow.onProjectLoaded( self )
 
-            self.workflow.handleAppletStateUpdateRequested()
-            
+            self.workflow.handleAppletStateUpdateRequested()            
         except:
             logger.error("Project could not be loaded due to the following exception:")
             traceback.print_exc()
@@ -439,6 +441,8 @@ class ProjectManager(object):
         # Close the original project
         self._closeCurrentProject()
 
+        self.currentProjectFile = None
+
         # Create brand new workflow to load from the new project file.
         self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args)
 
@@ -446,11 +450,10 @@ class ProjectManager(object):
         self._loadProject(newProjectFile, newProjectFilePath, False)
 
     def _closeCurrentProject(self):
+        if self.closed:
+            return
+        self.closed = True
         if self.workflow is not None:
             self.workflow.cleanUp()
-        self.workflow = None
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
-            self.currentProjectFile = None
-            self.currentProjectPath = None
-            self.currentProjectIsReadOnly = False

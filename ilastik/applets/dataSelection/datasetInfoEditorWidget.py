@@ -14,7 +14,7 @@ from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from lazyflow.utility import getPathVariants, PathComponents
+from lazyflow.utility import getPathVariants, PathComponents, isUrl
 from opDataSelection import OpDataSelection, DatasetInfo
 
 class StorageLocation(object):
@@ -166,14 +166,42 @@ class DatasetInfoEditorWidget(QDialog):
                 msg += field + '\n'
             QMessageBox.warning(self, "Error", msg)
             return
-        
+
+        # Inspect the user's changes to see if we need to warn about anything.
+        closing_messages = self._getClosingMessages()
+
         if not self._applyTempOpSettingsRealOp():
             return
         else:
             # Success.  Close the dialog.
+            for title, msg in closing_messages:
+                QMessageBox.information( self, title, msg )
             self._tearDownEventFilters()
             self._cleanUpTempOperators()
             super( DatasetInfoEditorWidget, self ).accept()
+
+    def _getClosingMessages(self):
+        closing_msgs = []
+        
+        ## Storage option warning.
+        need_message_about_storage = False
+        for laneIndex in self._laneIndexes:
+            if not self._op.DatasetGroup[laneIndex][self._roleIndex].ready():
+                # "real" slot may not be ready yet if this dialog was opened automatically to correct an error
+                # (for example, if the user's data has the wrong axes)
+                continue
+            old_storage = self._op.DatasetGroup[laneIndex][self._roleIndex].value.location
+            new_storage = self.tempOps[laneIndex].Dataset.value.location
+            
+            if old_storage != new_storage and new_storage == DatasetInfo.Location.ProjectInternal:
+                need_message_about_storage = True
+                break
+        if need_message_about_storage:
+            msg = "Your dataset will be copied to your project file when your project is saved.\n"\
+                  "Please save your project now."
+            closing_msgs.append( ("Storage Option Changed", msg) )
+
+        return closing_msgs
 
     def reject(self):
         self._tearDownEventFilters()
@@ -439,7 +467,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._applyRangeToTempOps()
     
     def _applyNormalizeDisplayToTempOps(self):
-         # Save a copy of our settings
+        # Save a copy of our settings
         oldInfos = {}
         new_norm = {"True":True,"False":False,"Default":None}[str(self.normalizeDisplayComboBox.currentText())]        
         
@@ -703,7 +731,7 @@ class DatasetInfoEditorWidget(QDialog):
                 storageSetting = StorageLocation.ProjectFile
             elif location == DatasetInfo.Location.FileSystem:
                 # Determine if the path is relative or absolute
-                if os.path.isabs(info.filePath):
+                if isUrl(info.filePath) or os.path.isabs(info.filePath):
                     storageSetting = StorageLocation.AbsoluteLink
                 else:
                     storageSetting = StorageLocation.RelativeLink
@@ -759,7 +787,7 @@ class DatasetInfoEditorWidget(QDialog):
                     thisLaneStorage = StorageLocation.ProjectFile
                 elif info.location == DatasetInfo.Location.FileSystem:
                     # Determine if the path is relative or absolute
-                    if os.path.isabs(info.filePath):
+                    if isUrl(info.filePath) or os.path.isabs(info.filePath):
                         thisLaneStorage = StorageLocation.AbsoluteLink
                     else:
                         thisLaneStorage = StorageLocation.RelativeLink

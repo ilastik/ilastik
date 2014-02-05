@@ -12,8 +12,8 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelectionNoCache
+from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipelineNoCache
 
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Graph, OperatorWrapper
@@ -22,7 +22,7 @@ from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
-    workflowDescription = "This is obviously self-explanoratory."
+    workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
     
     @property
@@ -153,8 +153,8 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation': self.filter_implementation}, parent=self, promotedSlotNames=['InputImage'] )
-        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelectionNoCache, operator_kwargs={'filter_implementation': self.filter_implementation}, parent=self, promotedSlotNames=['InputImage'] )
+        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipelineNoCache, parent=self )
         
         ## Connect Operators ##
         opTranspose = OpTransposeSlots( parent=self )
@@ -189,7 +189,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
-        opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
+        #opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
@@ -200,7 +200,7 @@ class PixelClassificationWorkflow(Workflow):
         """
         # If no data, nothing else is ready.
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        input_ready = len(opDataSelection.ImageGroup) > 0
+        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage
@@ -283,8 +283,10 @@ class PixelClassificationWorkflow(Workflow):
                 print "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value)
     
                 sys.stdout.write( "Result {}/{} Progress: ".format( i, len( opBatchDataExport ) ) )
+                sys.stdout.flush()
                 def print_progress( progress ):
                     sys.stdout.write( "{} ".format( progress ) )
+                    sys.stdout.flush()
     
                 # If the operator provides a progress signal, use it.
                 slotProgressSignal = opExportDataLaneView.progressSignal

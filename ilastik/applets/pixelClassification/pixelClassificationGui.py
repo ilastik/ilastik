@@ -42,17 +42,11 @@ class PixelClassificationGui(LabelingGui):
         return self
 
     def stopAndCleanUp(self):
-        # Base class first
-        super(PixelClassificationGui, self).stopAndCleanUp()
-
-        # Ensure that we are NOT in interactive mode
-        self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-        self._viewerControlUi.checkShowPredictions.setChecked(False)
-        self._viewerControlUi.checkShowSegmentation.setChecked(False)
-        self.toggleInteractive(False)
-
         for fn in self.__cleanup_fns:
             fn()
+
+        # Base class
+        super(PixelClassificationGui, self).stopAndCleanUp()
 
     def viewerControlWidget(self):
         return self._viewerControlUi

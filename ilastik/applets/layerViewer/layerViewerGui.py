@@ -5,31 +5,26 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-#SciPy
-import numpy
-
 #PyQt
-from PyQt4.QtCore import QRectF
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
 #lazyflow
 from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
-                         LayerStackModel, VolumeEditor
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, LayerStackModel
+from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from volumina.interpreter import ClickReportingInterpreter
-
-from ilastik.widgets.viewerControls import ViewerControls
 
 #ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.config import cfg as ilastik_config
+from ilastik.widgets.viewerControls import ViewerControls
 
 #===----------------------------------------------------------------------------------------------------------------===
 
@@ -163,6 +158,9 @@ class LayerViewerGui(QWidget):
             self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
 
         self._up_to_date = False
+        
+        # By default, we start out disabled until we have at least one layer.
+        self.centralWidget().setEnabled(False)
         
     def _after_init(self):
         self._initialized = True
@@ -461,6 +459,9 @@ class LayerViewerGui(QWidget):
                     self.layerstack.moveSelectedDown()
                     stackIndex += 1
 
+        if len(self.layerstack) > 0:
+            self.centralWidget().setEnabled( True )
+
     def determineDatashape(self):
         newDataShape = None
         for provider in self.observedSlots:
@@ -523,7 +524,7 @@ class LayerViewerGui(QWidget):
         """
         Initialize the Volume Editor GUI.
         """
-        self.editor = VolumeEditor(self.layerstack, crosshair=crosshair)
+        self.editor = VolumeEditor(self.layerstack, parent=self, crosshair=crosshair)
 
         # Replace the editor's navigation interpreter with one that has extra functionality
         self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )
@@ -568,12 +569,14 @@ class LayerViewerGui(QWidget):
         return position
 
     def _handleEditorRightClick(self, position5d, globalWindowCoordinate):
-        dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorRightClick(dataPosition, globalWindowCoordinate)
+        if len(self.layerstack) > 0:
+            dataPosition = self._convertPositionToDataSpace(position5d)
+            self.handleEditorRightClick(dataPosition, globalWindowCoordinate)
 
     def _handleEditorLeftClick(self, position5d, globalWindowCoordinate):
-        dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorLeftClick(dataPosition, globalWindowCoordinate)
+        if len(self.layerstack) > 0:
+            dataPosition = self._convertPositionToDataSpace(position5d)
+            self.handleEditorLeftClick(dataPosition, globalWindowCoordinate)
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         # Override me

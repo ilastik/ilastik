@@ -1,3 +1,4 @@
+import sip
 class SingleToMultiGuiAdapter( object ):
     """
     Utility class used by the StandardApplet to wrap several single-image 
@@ -100,5 +101,6 @@ class SingleToMultiGuiAdapter( object ):
         for gui in filter(lambda x:x, self._guis):
             gui.setEnabled(enabled)
         for blank_drawer in self._tempDrawers.values():
-            blank_drawer.setEnabled(enabled)
+            if not sip.isdeleted(blank_drawer):
+                blank_drawer.setEnabled(enabled)
         
