@@ -187,12 +187,12 @@ class ManualTrackingGui(LayerViewerGui):
             untrackedLayer.opacity = 0.8
             layers.append(untrackedLayer)
         
-        if self.topLevelOperatorView.BinaryImage.ready():
+        if self.topLevelOperatorView.LabelImage.ready():
             ct = colortables.create_random_16bit()
             for i in range(len(ct)):
                 ct[i] = QColor(255,255,0,100).rgba()
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )             
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )             
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 0.8
