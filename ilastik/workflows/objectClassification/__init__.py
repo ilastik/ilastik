@@ -26,6 +26,7 @@ from objectClassificationWorkflow import \
     ObjectClassificationWorkflowPrediction
 
 try:
+    import opengm
     from objectClassificationWorkflow import ObjectClassificationWorkflowGraphcut
 except ImportError as e:
     logger.warn("Failed to import graph-cut object workflow; check dependencies: " + str(e))

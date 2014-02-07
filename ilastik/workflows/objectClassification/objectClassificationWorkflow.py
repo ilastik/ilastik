@@ -30,7 +30,13 @@ from ilastik.applets.objectClassification import ObjectClassificationApplet, Obj
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification
-from ilastik.applets.graphCutSegmentation import GraphCutSegmentationApplet
+
+try:
+    from ilastik.applets.graphCutSegmentation import GraphCutSegmentationApplet
+except ImportError:
+    have_opengm = False
+else:
+    have_opengm = True
 
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -648,46 +654,46 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         cumulated_readyness = cumulated_readyness and thresholding_ready
         super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
 
+if have_opengm:
+    class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflowPrediction):
+        workflowName = "Object Classification (from prediction image, with graph-cut segmentation)"
 
-class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflowPrediction):
-    workflowName = "Object Classification (from prediction image, with graph-cut segmentation)"
+        def setupInputs(self):
+            super(ObjectClassificationWorkflowGraphcut, self).setupInputs()
 
-    def setupInputs(self):
-        super(ObjectClassificationWorkflowGraphcut, self).setupInputs()
+            self.segmentationApplet = GraphCutSegmentationApplet(self, "Graph-Cut",
+                                                                "GraphCutSegmentation")
+            self._applets.append(self.segmentationApplet)
 
-        self.segmentationApplet = GraphCutSegmentationApplet(self, "Graph-Cut",
-                                                             "GraphCutSegmentation")
-        self._applets.append(self.segmentationApplet)
+        def connectInputs(self, laneIndex):
+            opGraphCut = self.segmentationApplet.topLevelOperator.getLane(laneIndex)
+            opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
-    def connectInputs(self, laneIndex):
-        opGraphCut = self.segmentationApplet.topLevelOperator.getLane(laneIndex)
-        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+            rawSlot, binarySlot = super(ObjectClassificationWorkflowGraphcut,
+                                        self).connectInputs(laneIndex)
 
-        rawSlot, binarySlot = super(ObjectClassificationWorkflowGraphcut,
-                                    self).connectInputs(laneIndex)
+            opGraphCut.RawInput.connect(rawSlot)
+            opGraphCut.InputImage.connect(opData.ImageGroup[1])
+            opGraphCut.Binary.connect(binarySlot)
 
-        opGraphCut.RawInput.connect(rawSlot)
-        opGraphCut.InputImage.connect(opData.ImageGroup[1])
-        opGraphCut.Binary.connect(binarySlot)
+            op5Binary = OpReorderAxes(parent=self)
+            op5Binary.AxisOrder.setValue("txyzc")
+            op5Binary.Input.connect(opGraphCut.CachedOutput)
 
-        op5Binary = OpReorderAxes(parent=self)
-        op5Binary.AxisOrder.setValue("txyzc")
-        op5Binary.Input.connect(opGraphCut.CachedOutput)
+            return rawSlot, op5Binary.Output
 
-        return rawSlot, op5Binary.Output
+        def handleAppletStateUpdateRequested(self):
+            """
+            Overridden from Workflow base class
+            Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+            """
+            input_ready = self._inputReady(2)
+            cumulated_readyness = input_ready
+            self._shell.setAppletEnabled(self.segmentationApplet, cumulated_readyness)
 
-    def handleAppletStateUpdateRequested(self):
-        """
-        Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        """
-        input_ready = self._inputReady(2)
-        cumulated_readyness = input_ready
-        self._shell.setAppletEnabled(self.segmentationApplet, cumulated_readyness)
-
-        thresholding_ready = True  # is that so?
-        cumulated_readyness = cumulated_readyness and thresholding_ready
-        super(ObjectClassificationWorkflowGraphcut, self).handleAppletStateUpdateRequested()
+            thresholding_ready = True  # is that so?
+            cumulated_readyness = cumulated_readyness and thresholding_ready
+            super(ObjectClassificationWorkflowGraphcut, self).handleAppletStateUpdateRequested()
 
 
 if __name__ == "__main__":
