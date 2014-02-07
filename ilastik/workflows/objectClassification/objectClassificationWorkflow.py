@@ -676,6 +676,19 @@ class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflowPredictio
 
         return rawSlot, op5Binary.Output
 
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        input_ready = self._inputReady(2)
+        cumulated_readyness = input_ready
+        self._shell.setAppletEnabled(self.segmentationApplet, cumulated_readyness)
+
+        thresholding_ready = True  # is that so?
+        cumulated_readyness = cumulated_readyness and thresholding_ready
+        super(ObjectClassificationWorkflowGraphcut, self).handleAppletStateUpdateRequested()
+
 
 if __name__ == "__main__":
     from sys import argv

@@ -3,9 +3,8 @@ import threading
 
 import numpy as np
 import vigra
-import opengm
 
-from context.operators.opObjectsSegment import OpObjectsSegment
+from opObjectsSegment import OpObjectsSegment
 
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.operators.valueProviders import OpArrayCache
