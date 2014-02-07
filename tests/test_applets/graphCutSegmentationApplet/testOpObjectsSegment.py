@@ -2,15 +2,25 @@ import unittest
 import numpy as np
 import vigra
 
+try:
+    import opengm
+except ImportError:
+    have_opengm = False
+else:
+    have_opengm = True
+
 from numpy.testing.utils import assert_array_equal,\
     assert_array_almost_equal, assert_array_less
 from nose import SkipTest
 
 from lazyflow.graph import Graph
-from ilastik.applets.graphCutSegmentation.opObjectsSegment import OpObjectsSegment
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
+if have_opengm:
+    from ilastik.applets.graphCutSegmentation.opObjectsSegment import OpObjectsSegment
 
+
+@unittest.skipIf(not have_opengm, "OpenGM not available")
 class TestOpObjectsSegment(unittest.TestCase):
     def setUp(self):
         shape = (120, 100, 90)
