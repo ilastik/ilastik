@@ -456,6 +456,7 @@ class DataSelectionGui(QWidget):
             
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
+        loaded_all = True
         for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
@@ -466,18 +467,21 @@ class DataSelectionGui(QWidget):
                 if not return_val[0]:
                     # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
+                    loaded_all = False
                     break
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
+                    loaded_all = False
                     break
             except:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
                 opTop.DatasetGroup.resize( originalSize )
+                loaded_all = False
                 raise
 
         # If we succeeded in adding all images, show the first one.
-        if laneIndex == endingLane:
+        if loaded_all:
             self.showDataset(startingLane, roleIndex)
 
         # Notify the workflow that something that could affect applet readyness has occurred.
