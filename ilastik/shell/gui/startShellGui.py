@@ -95,6 +95,9 @@ def launchShell(workflow_cmdline_args, *testFuncs):
         # In debug mode, we always start with the same size window.
         # This is critical for recorded test cases.
         shell.resize(1000, 750)
+        # Also, ensure that the window title bar doesn't start off screen, 
+        #  which can be an issue when using xvfb or vnc viewers
+        shell.move(10,10)
     shell.show()
     
     if workflow_cmdline_args and "--fullscreen" in workflow_cmdline_args:

@@ -264,6 +264,7 @@ class DataSelectionGui(QWidget):
             # The gui and the operator should be in sync (model has one extra row for the button row)
             assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
 
+    @threadRouted
     def showDataset(self, laneIndex, roleIndex=None):
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
@@ -455,6 +456,7 @@ class DataSelectionGui(QWidget):
             
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
+        loaded_all = True
         for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
@@ -465,15 +467,22 @@ class DataSelectionGui(QWidget):
                 if not return_val[0]:
                     # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
+                    loaded_all = False
                     break
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
+                    loaded_all = False
                     break
             except:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
                 opTop.DatasetGroup.resize( originalSize )
+                loaded_all = False
                 raise
+
+        # If we succeeded in adding all images, show the first one.
+        if loaded_all:
+            self.showDataset(startingLane, roleIndex)
 
         # Notify the workflow that something that could affect applet readyness has occurred.
         self.parentApplet.appletStateUpdateRequested.emit()
@@ -567,6 +576,7 @@ class DataSelectionGui(QWidget):
                 self.parentApplet.appletStateUpdateRequested.emit()
 
         req = Request( importStack )
+        req.notify_finished( lambda result: self.showDataset(laneIndex, roleIndex) )
         req.notify_failed( partial(self.handleFailedStackLoad, files, originalNumLanes ) )
         req.submit()
 

@@ -1,4 +1,5 @@
 import uuid
+import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
@@ -150,12 +151,18 @@ class OpDataSelection(Operator):
                 self._opReaders.append(opReader)
             
             # Inject metadata if the dataset info specified any.
+            # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
             if datasetInfo.normalizeDisplay is not None or \
                datasetInfo.drange is not None or \
-               datasetInfo.axistags is not None:
+               datasetInfo.axistags is not None or \
+               (providerSlot.meta.drange is None and providerSlot.meta.dtype == numpy.uint8):
                 metadata = {}
                 if datasetInfo.drange is not None:
                     metadata['drange'] = datasetInfo.drange
+                elif providerSlot.meta.dtype == numpy.uint8:
+                    # SPECIAL case for uint8 data: Provide a default drange.
+                    # The user can always override this herself if she wants.
+                    metadata['drange'] = (0,255)
                 if datasetInfo.normalizeDisplay is not None:
                     metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
                 if datasetInfo.axistags is not None:
@@ -165,7 +172,7 @@ class OpDataSelection(Operator):
                 opMetadataInjector.Metadata.setValue( metadata )
                 providerSlot = opMetadataInjector.Output
                 self._opReaders.append( opMetadataInjector )
-            
+
             self._NonTransposedImage.connect(providerSlot)
             
             if self.force5d:

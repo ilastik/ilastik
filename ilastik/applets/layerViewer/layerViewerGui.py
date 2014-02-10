@@ -5,31 +5,26 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-#SciPy
-import numpy
-
 #PyQt
-from PyQt4.QtCore import QRectF
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
 #lazyflow
 from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
-                         LayerStackModel, VolumeEditor
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, LayerStackModel
+from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 from volumina.interpreter import ClickReportingInterpreter
-
-from ilastik.widgets.viewerControls import ViewerControls
 
 #ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.config import cfg as ilastik_config
+from ilastik.widgets.viewerControls import ViewerControls
 
 #===----------------------------------------------------------------------------------------------------------------===
 
