@@ -59,7 +59,7 @@ ilastik.monkey_patches.extend_arg_parser(parser)
 # DEBUG
 #sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
 #sys.argv.append( '--start_recording' )
-#sys.argv.append( '--playback_script=/tmp/test_recording.py' )
+#sys.argv.append( '--playback_script=/tmp/recording-20140210-0047.py' )
 #
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
@@ -174,6 +174,10 @@ elif not ilastik_config.getboolean('ilastik', 'debug') and not parsed_args.headl
 
 if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
+    # Enable full stack trace printout in case of a segfault
+    # (Requires the faulthandler module from PyPI)
+    import faulthandler
+    faulthandler.enable()
 
 # Headless launch
 if parsed_args.headless:
