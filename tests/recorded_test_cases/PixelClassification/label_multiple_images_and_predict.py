@@ -31,6 +31,9 @@ def playback_events(player):
     event = PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(105, 9), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(416, 117), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier)
     player.post_event( 'MainWindow.mainLayout.mainStackedWidget.startupPage.frame.CreateList.qt_scrollarea_viewport.scrollAreaWidgetContents.NewProjectButton_PixelClassificationWorkflow', event , 2.032105 )
 
+    event = PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(44, 15), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(772, 527), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier)
+    player.post_event( 'MainWindow.QFileDialog.buttonBox.QPushButton_0', event , 2.724406 )
+
     event = PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(44, 15), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(772, 527), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier)
     player.post_event( 'MainWindow.QFileDialog.buttonBox.QPushButton_0', event , 2.724406 )
 

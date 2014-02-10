@@ -37,6 +37,9 @@ def playback_events(player):
     event = PyQt4.QtGui.QMouseEvent(QEvent.MouseMove, PyQt4.QtCore.QPoint(17, 8), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(745, 520), Qt.NoButton, (Qt.LeftButton), Qt.NoModifier)
     player.post_event( 'MainWindow.QFileDialog.buttonBox.QPushButton_0', event , 3.323605 )
 
+    event = PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonPress, PyQt4.QtCore.QPoint(17, 8), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(745, 520), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier)
+    player.post_event( 'MainWindow.QFileDialog.buttonBox.QPushButton_0', event , 3.37243 )
+
     event = PyQt4.QtGui.QMouseEvent(QEvent.MouseButtonRelease, PyQt4.QtCore.QPoint(17, 8), mainwin.mapToGlobal( QPoint(0,0) ) + PyQt4.QtCore.QPoint(745, 520), (Qt.LeftButton), Qt.NoButton, Qt.NoModifier)
     player.post_event( 'MainWindow.QFileDialog.buttonBox.QPushButton_0', event , 3.37243 )
 
