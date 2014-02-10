@@ -271,6 +271,9 @@ class DataSelectionGui(QWidget):
             return
         
         assert threading.current_thread().name == "MainThread"
+        
+        if laneIndex >= len(self.topLevelOperator.Image):
+            return
         imageSlot = self.topLevelOperator.Image[laneIndex]
 
         # Create if necessary
