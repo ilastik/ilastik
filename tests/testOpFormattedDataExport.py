@@ -61,7 +61,7 @@ class TestOpFormattedDataExport(object):
         expected_data = expected_data.astype(numpy.uint8)
         expected_data += 100 # see renormalization settings
         read_data = opRead.Output[:].wait()
-        assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        assert numpy.allclose(read_data, expected_data), "Read data didn't match exported data!"
 
 if __name__ == "__main__":
     import sys
