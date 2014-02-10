@@ -1,10 +1,10 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction import OpTrackingFeatureExtraction
-from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionGui import TrackingFeatureExtractionGui
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionSerializer import TrackingFeatureExtractionSerializer
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class TrackingFeatureExtractionApplet( StandardApplet ):
-    def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction" ):
+    def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="TrackingFeatureExtraction" ):
         super(TrackingFeatureExtractionApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ TrackingFeatureExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
 
@@ -18,7 +18,7 @@ class TrackingFeatureExtractionApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
-        return TrackingFeatureExtractionGui
+        return LayerViewerGui
 
     @property
     def dataSerializers(self):

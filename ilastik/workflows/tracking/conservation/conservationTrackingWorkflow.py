@@ -7,7 +7,7 @@ from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalT
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
-from ilastik.applets.objectExtraction import config
+from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
@@ -20,16 +20,16 @@ class ConservationTrackingWorkflow( Workflow ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         if 'withOptTrans' in kwargs:
-           self.withOptTrans = kwargs['withOptTrans']
+            self.withOptTrans = kwargs['withOptTrans']
         if 'fromBinary' in kwargs:
-           self.fromBinary = kwargs['fromBinary']
+            self.fromBinary = kwargs['fromBinary']
         super(ConservationTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if fromBinary:
-           data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
+            data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
         else:
-           data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+            data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
@@ -43,16 +43,16 @@ class ConservationTrackingWorkflow( Workflow ):
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         if fromBinary:
-           opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
         else:
-           opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
         if not self.fromBinary:
-           self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
+            self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
                                                                   "Threshold and Size Filter", 
                                                                   "ThresholdTwoLevels" )        
         if self.withOptTrans:
-           self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
+            self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self,
                                                                       name="Object Feature Computation")                                                                      
@@ -72,9 +72,9 @@ class ConservationTrackingWorkflow( Workflow ):
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
         if not self.fromBinary:
-           self._applets.append(self.thresholdTwoLevelsApplet)
+            self._applets.append(self.thresholdTwoLevelsApplet)
         if self.withOptTrans:
-           self._applets.append(self.opticalTranslationApplet)
+            self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.divisionDetectionApplet)
         self._applets.append(self.cellClassificationApplet)
@@ -92,9 +92,9 @@ class ConservationTrackingWorkflow( Workflow ):
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         if not self.fromBinary:
-           opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+            opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         if self.withOptTrans:
-           opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
+            opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
         opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
         opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
@@ -106,62 +106,70 @@ class ConservationTrackingWorkflow( Workflow ):
         op5Raw.Input.connect(opData.ImageGroup[0])
         
         if not self.fromBinary:
-           opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
-           opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
-           # opTwoLevelThreshold.Channel.setValue(1)
-           binarySrc = opTwoLevelThreshold.CachedOutput
+            opTwoLevelThreshold.InputImage.connect(opData.ImageGroup[1])
+            opTwoLevelThreshold.RawInput.connect(opData.ImageGroup[0])  # Used for display only
+            # opTwoLevelThreshold.Channel.setValue(1)
+            binarySrc = opTwoLevelThreshold.CachedOutput
         else:
-           binarySrc = opData.ImageGroup[1]
+            binarySrc = opData.ImageGroup[1]
         
         # Use Op5ifyers for both input datasets such that they are guaranteed to 
         # have the same axis order after thresholding
-        op5Binary = OpReorderAxes( parent=self )         
+        op5Binary = OpReorderAxes(parent=self)         
         op5Binary.AxisOrder.setValue("txyzc")
-        op5Binary.Input.connect( binarySrc )
+        op5Binary.Input.connect(binarySrc)
         
         if self.withOptTrans:
-           opOptTranslation.RawImage.connect( op5Raw.Output )
-           opOptTranslation.BinaryImage.connect( op5Binary.Output )
+            opOptTranslation.RawImage.connect(op5Raw.Output)
+            opOptTranslation.BinaryImage.connect(op5Binary.Output)
         
-        ## Connect operators ##        
-        features = {}
-        features[config.features_vigra_name] = { name: {} for name in config.vigra_features }                
-        opObjExtraction.RawImage.connect( op5Raw.Output )
-        opObjExtraction.BinaryImage.connect( op5Binary.Output )
+        # # Connect operators ##       
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }                
+        opObjExtraction.RawImage.connect(op5Raw.Output)
+        opObjExtraction.BinaryImage.connect(op5Binary.Output)
         if self.withOptTrans:
-           opObjExtraction.TranslationVectors.connect( opOptTranslation.TranslationVectors )
-        opObjExtraction.Features.setValue(features)        
+            opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
+        opObjExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
+        feature_dict_division = {}
+        feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
+        opObjExtraction.FeatureNamesDivision.setValue(feature_dict_division)
         
         
         selected_features_div = {}
-        for plugin_name in config.selected_features_division_detection.keys():
-            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division_detection[plugin_name] }
+        for plugin_name in config.selected_features_division.keys():
+            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
+        # FIXME: do not hard code this
+        for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
+            selected_features_div[config.features_division_name][name] = {}
+            
         opDivDetection.BinaryImages.connect( op5Binary.Output )
         opDivDetection.RawImages.connect( op5Raw.Output )        
         opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
-        opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
+        opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeaturesAll)
+        opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesAll)
         opDivDetection.SelectedFeatures.setValue(selected_features_div)
         opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
         opDivDetection.AllowDeleteLabels.setValue(False)
         opDivDetection.AllowAddLabel.setValue(False)
         
-        selected_features_cell = {}
-        for plugin_name in config.selected_features_cell_classification.keys():
-            selected_features_cell[plugin_name] = { name: {} for name in config.selected_features_cell_classification[plugin_name] }
+        selected_features_objectcount = {}
+        for plugin_name in config.selected_features_objectcount.keys():
+            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
-        opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
-        opCellClassification.SelectedFeatures.setValue( selected_features_cell )        
+        opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
+        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
+        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        opTracking.ObjectFeatures.connect( opDivDetection.ObjectFeatures )
+        opTracking.ObjectFeatures.connect( opObjExtraction.BlockwiseRegionFeaturesVigra )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )        
 #        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        

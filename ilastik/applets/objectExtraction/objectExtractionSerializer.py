@@ -60,7 +60,9 @@ class SerialObjectFeaturesSlot(SerialSlot):
 
                 region_features = {}
                 for key, val in roi_grp.iteritems():
-                    region_features[key][featname] = featval[...]
+                    region_features[key] = {}
+                    for featname, featval in val.iteritems():
+                        region_features[key][featname] = featval[...]
 
                 slicing = roiToSlice( *roi )
                 self.inslot[i][slicing] = numpy.array([region_features])
