@@ -191,17 +191,14 @@ class DatasetDetailedInfoTableView(QTableView):
     @pyqtSlot(int)
     def handleCellAddFilesEvent(self, row):
         self.addFilesRequested.emit(row)
-        self.sender().setVisible(False)
 
     @pyqtSlot(int)
     def handleCellAddStackEvent(self, row):
         self.addStackRequested.emit(row)
-        self.sender().setVisible(False)
 
     @pyqtSlot(int)
     def handleCellAddRemoteVolumeEvent(self, row):
         self.addRemoteVolumeRequested.emit(row)
-        self.sender().setVisible(False)        
 
     def wheelEvent(self, event):
         """
