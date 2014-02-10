@@ -9,6 +9,8 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
+import vigra
+
 #lazyflow
 from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
@@ -187,8 +189,9 @@ class LayerViewerGui(QWidget):
         """
         layers = []
         for multiLayerSlot in self.observedSlots:
-            for j, slot in enumerate(multiLayerSlot):
-                if slot.ready() and slot.meta.axistags is not None:
+            for j, slot in enumerate(multiLayerSlot):                
+                has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
+                if slot.ready() and has_space:
                     layer = self.createStandardLayerFromSlot(slot)
                     
                     # Name the layer after the slot name.

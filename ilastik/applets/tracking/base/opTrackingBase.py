@@ -168,12 +168,12 @@ class OpTrackingBase(Operator):
             mergers.append({})
         
         for i in time_range:
-            dis = get_dict_value(events[str(i-time_range[0])], "dis", [])            
-            app = get_dict_value(events[str(i-time_range[0])], "app", [])
-            div = get_dict_value(events[str(i-time_range[0])], "div", [])
-            mov = get_dict_value(events[str(i-time_range[0])], "mov", [])
-            merger = get_dict_value(events[str(i-time_range[0])], "merger", [])
-            multi = get_dict_value(events[str(i-time_range[0])], "multiMove", [])
+            dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])            
+            app = get_dict_value(events[str(i-time_range[0]+1)], "app", [])
+            div = get_dict_value(events[str(i-time_range[0]+1)], "div", [])
+            mov = get_dict_value(events[str(i-time_range[0]+1)], "mov", [])
+            merger = get_dict_value(events[str(i-time_range[0]+1)], "merger", [])
+            multi = get_dict_value(events[str(i-time_range[0]+1)], "multiMove", [])
             
             print len(dis), "dis at", i
             print len(app), "app at", i

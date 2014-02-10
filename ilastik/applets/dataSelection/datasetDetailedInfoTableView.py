@@ -1,4 +1,4 @@
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
         QHBoxLayout, QPushButton, QIcon, QItemDelegate
 
@@ -123,7 +123,7 @@ class AddButtonDelegate(QItemDelegate):
         parent_view = self.parent()
         button = parent_view.indexWidget(index)
         if index.row() < parent_view.model().rowCount()-1 and parent_view.model().isEmptyRow(index.row()):
-            if not button:
+            if button is None:
                 button = AddFileButton(parent_view)
                 button.addFilesRequested.connect(
                         partial(parent_view.handleCellAddFilesEvent, index.row()))
@@ -131,17 +131,14 @@ class AddButtonDelegate(QItemDelegate):
                         partial(parent_view.handleCellAddStackEvent, index.row()))
                 button.addRemoteVolumeRequested.connect(
                         partial(parent_view.handleCellAddRemoteVolumeEvent, index.row()))
-                
-
                 parent_view.setIndexWidget(index, button)
         elif index.data() != '':
-            # The button needs to be removed when a file is added to the
-            # row. Otherwise, it can steal events from the parent view, even if it isn't visible.
-            # Also, since the last row of the table also has an add
-            # button, before disabling it we check that there is actual
-            # data in the cell.
             if button is not None:
-                parent_view.setIndexWidget(index, None)
+                # If this row has data, we must delete the button.
+                # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
+                # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
+                # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
+                QTimer.singleShot(1, lambda: parent_view.setIndexWidget(index, None) )
         super(AddButtonDelegate, self).paint(painter, option, index)
 
 class DatasetDetailedInfoTableView(QTableView):
@@ -191,17 +188,14 @@ class DatasetDetailedInfoTableView(QTableView):
     @pyqtSlot(int)
     def handleCellAddFilesEvent(self, row):
         self.addFilesRequested.emit(row)
-        self.sender().setVisible(False)
 
     @pyqtSlot(int)
     def handleCellAddStackEvent(self, row):
         self.addStackRequested.emit(row)
-        self.sender().setVisible(False)
 
     @pyqtSlot(int)
     def handleCellAddRemoteVolumeEvent(self, row):
         self.addRemoteVolumeRequested.emit(row)
-        self.sender().setVisible(False)        
 
     def wheelEvent(self, event):
         """
