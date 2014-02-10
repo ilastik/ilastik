@@ -83,6 +83,8 @@ class OpConservationTracking(OpTrackingBase):
             parameters['cplex_timeout'] = ''
         
         if withClassifierPrior:
+            if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
+                raise Exception, 'Classifier not ready yet. Did you forget to train the Object Count Classifier?'
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
                 raise Exception, 'the max. number of objects must be consistent with the number of labels given in cell classification'
         
