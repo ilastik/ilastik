@@ -2,7 +2,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 import pixelClassification
-import vigraWatershed
 
 try:
     import objectClassification
@@ -28,9 +27,8 @@ except ImportError as e:
 # Examples
 import ilastik.config
 
-
-
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    import vigraWatershed
     import examples.layerViewer
     import examples.thresholdMasking
     import examples.deviationFromMean
