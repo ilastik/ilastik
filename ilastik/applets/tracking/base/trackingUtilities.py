@@ -46,8 +46,8 @@ def write_dict_value(dic, key, value):
 
 def get_events(eventsVector):
     events = {}
-    for t in range(len(eventsVector)):
-        events[str(t)] = get_events_at(eventsVector, t)
+    for t in range(1,len(eventsVector)+1): # +1 since the current pgmlink-eventsVector has length #timesteps-1
+        events[str(t)] = get_events_at(eventsVector, t-1)
     return events
 
 def get_events_at(eventsVector, t):  
