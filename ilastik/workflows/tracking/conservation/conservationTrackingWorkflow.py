@@ -169,7 +169,7 @@ class ConservationTrackingWorkflow( Workflow ):
         
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        opTracking.ObjectFeatures.connect( opObjExtraction.BlockwiseRegionFeaturesVigra )
+        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )        
 #        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
