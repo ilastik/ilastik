@@ -326,36 +326,7 @@ class OpTrackingBase(Operator):
             if ct.size:
                 ct = ct[1:, ...]
 
-            if with_coordinate_list:
-                coordinates = feats[t][config.features_vigra_name]['Coord<ValueList>']
-                if len(coordinates):
-                    coordinates = coordinates[1:]
-            elif coordinate_map is not None: # store coordinates in arma::mat
-                # generate roi: assume the following order: txyzc
-                n_dim = len(rc[0])
-                for idx in range(lower.shape[0]):
-                    roi = [0]*5
-                    roi[0] = slice(int(t), int(t+1))
-                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
-                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
-                    if n_dim == 3:
-                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
-                    else:
-                        assert n_dim == 2
-                    image_excerpt = self.LabelImage[roi].wait()
-                    if n_dim == 2:
-                        image_excerpt = image_excerpt[0, ..., 0, 0]
-                    elif n_dim ==3:
-                        image_excerpt = image_excerpt[0, ..., 0]
-                    else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
-                    trax = pgmlink.Traxel()
-                    trax.Id = idx+1
-                    trax.Timestep = t
-                    trax.add_feature_array("count", 1)
-                    trax.set_feature_value('count', 0, float(ct[idx]))  
-                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), trax)
-                
+            
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
             filtered_labels_at = []
@@ -427,21 +398,32 @@ class OpTrackingBase(Operator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
 
-                if with_coordinate_list:
-                    tr.add_feature_array("coordinates", 3*len(coordinates[idx][0]))
-
-                    for i, v in enumerate(coordinates[idx][0]):
-                        tr.set_feature_value("coordinates", 3*i,   float(v[0]))
-                        tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
-                        if len(v) == 2:
-                            tr.set_feature_value("coordinates", 3*i+2, 0.)
-                        elif len(v) == 3:
-                            tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
-                        else:
-                            raise Exception, "dimensions must be 2 or 3"
-
                     
-                ts.add(tr)   
+                ts.add(tr)
+
+                # add coordinate lists
+
+                if with_coordinate_list and coordinate_map is not None: # store coordinates in arma::mat
+                    # generate roi: assume the following order: txyzc
+                    n_dim = len(rc[idx])
+                    roi = [0]*5
+                    roi[0] = slice(int(t), int(t+1))
+                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
+                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
+                    if n_dim == 3:
+                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
+                    else:
+                        assert n_dim == 2
+                    image_excerpt = self.LabelImage[roi].wait()
+                    if n_dim == 2:
+                        image_excerpt = image_excerpt[0, ..., 0, 0]
+                    elif n_dim ==3:
+                        image_excerpt = image_excerpt[0, ..., 0]
+                    else:
+                        raise Exception, "n_dim = %s instead of 2 or 3"
+
+                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), tr)
+                    
             
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t)-time_range[0])] = filtered_labels_at

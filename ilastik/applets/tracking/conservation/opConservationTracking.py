@@ -93,12 +93,14 @@ class OpConservationTracking(OpTrackingBase):
         median_obj_size = [0]
 
         coordinate_map = pgmlink.TimestepIdCoordinateMap()
+        if withArmaCoordinates:
+            coordinate_map.initialize()
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=not withArmaCoordinates , # no vigra coordinate list, that is done by arma
+                                                                      with_coordinate_list=withMergerResolution , # no vigra coordinate list, that is done by arma
                                                                       with_classifier_prior=withClassifierPrior,
                                                                       coordinate_map=coordinate_map)
         
