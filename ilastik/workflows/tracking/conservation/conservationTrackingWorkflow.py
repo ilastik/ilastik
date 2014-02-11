@@ -218,33 +218,28 @@ class ConservationTrackingWorkflow( Workflow ):
         features_ready = thresholding_ready and \
                          len(objectExtractionOutput) > 0
 
-        objectCountClassifier_ready = features_ready and \
-                            self.cellClassificationApplet.predict_enabled
+        objectCountClassifier_ready = features_ready
 
         opTracking = self.trackingApplet.topLevelOperator
         tracking_ready = objectCountClassifier_ready and \
                            len(opTracking.EventsVector) > 0
                            
 
-        print input_ready, thresholding_ready, features_ready, objectCountClassifier_ready, tracking_ready
-        if not self.fromBinary:
-            self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready)
-        self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready)
-        self._shell.setAppletEnabled(self.cellClassificationApplet, features_ready)
-        self._shell.setAppletEnabled(self.divisionDetectionApplet, features_ready)
-        self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready)
-        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready)
-        
-        # Lastly, check for certain "busy" conditions, during which we 
-        #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
-#        busy |= self.objectExtractionApplet.busy
-#        busy |= self.cellClassificationApplet.busy
-#        busy |= self.divisionDetectionApplet.busy
-#        busy |= self.trackingApplet.busy
+        busy |= self.trackingApplet.busy
         busy |= self.dataExportApplet.busy
         self._shell.enableProjectChanges( not busy )
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
+        if not self.fromBinary:
+            self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)
+        self._shell.setAppletEnabled(self.cellClassificationApplet, features_ready and not busy)
+        self._shell.setAppletEnabled(self.divisionDetectionApplet, features_ready and not busy)
+        self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        
 
 
 #class ConservationTrackingWorkflowWithOptTrans( ConservationTrackingWorkflow ):

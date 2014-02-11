@@ -119,6 +119,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
             return
         
         def _track():    
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
             maxObj = self._drawer.maxObjectsBox.value()        
             divThreshold = self._drawer.divThreshBox.value()
@@ -179,13 +181,15 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     borderAwareWidth = borderAwareWidth,
                     withArmaCoordinates = withArmaCoordinates
                     )
-            except Exception:            
+            except Exception:           
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)            
                 self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))       
                 return                     
         
         def _handle_finished(*args):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
@@ -193,12 +197,13 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._setLayerVisible("Objects", False) 
             
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
         
-        self._drawer.TrackButton.setEnabled(False)        
         self.applet.progressSignal.emit(0)
         self.applet.progressSignal.emit(-1)
         req = Request( _track )

@@ -8,6 +8,7 @@ class ConservationTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="ConservationTracking" ):
         super(ConservationTrackingApplet, self).__init__( name=name, workflow=workflow )        
         self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self.busy = False
 
     @property
     def singleLaneOperatorClass( self ):
