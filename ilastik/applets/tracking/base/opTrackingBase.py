@@ -352,8 +352,8 @@ class OpTrackingBase(Operator):
                     trax = pgmlink.Traxel()
                     trax.Id = idx+1
                     trax.Timestep = t
-                    trax.add_feature_array("Count", 1)
-                    trax.set_feature_value('Count', 0, float(ct[idx]))  
+                    trax.add_feature_array("count", 1)
+                    trax.set_feature_value('count', 0, float(ct[idx]))  
                     pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), trax)
                 
             print "at timestep ", t, rc.shape[0], "traxels found"
