@@ -136,7 +136,3 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
-        
-        # Lastly, check for certain "busy" conditions, during which we 
-        #  should prevent the shell from closing the project.
-        

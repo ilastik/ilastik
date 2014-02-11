@@ -595,8 +595,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
         
         
-    def _runSubtracking(self, position5d, oid):
-                    
+    def _runSubtracking(self, position5d, oid):        
+               
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
@@ -665,12 +665,18 @@ class ManualTrackingGui(LayerViewerGui):
         
         def _handle_finished(*args):
             self._enableButtons(enable=True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
-            
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
         self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
