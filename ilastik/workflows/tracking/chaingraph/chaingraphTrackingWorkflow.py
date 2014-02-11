@@ -89,4 +89,54 @@ class ChaingraphTrackingWorkflow( Workflow ):
         opDataExport.Input.connect( opTracking.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
         
+    def _inputReady(self, nRoles):
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                    all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+
+        return input_ready
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        """
+        # If no data, nothing else is ready.        
+        input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
+        
+        opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
+        thresholdingOutput = opThresholding.CachedOutput
+        thresholding_ready = input_ready and \
+                       len(thresholdingOutput) > 0 
+
+        opObjectExtraction = self.objectExtractionApplet.topLevelOperator
+        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
+        features_ready = thresholding_ready and \
+                         len(objectExtractionOutput) > 0
+
+        opTracking = self.trackingApplet.topLevelOperator
+        tracking_ready = features_ready and \
+                           len(opTracking.EventsVector) > 0 and \
+                           opTracking.EventsVector.ready() and \
+                           opTracking.Output.ready() 
+        
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.dataExportApplet.busy
+        busy |= self.trackingApplet.busy        
+        self._shell.enableProjectChanges( not busy )
+        
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
+        self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
+        self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        
+        # Lastly, check for certain "busy" conditions, during which we 
+        #  should prevent the shell from closing the project.
         

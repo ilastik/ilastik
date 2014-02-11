@@ -7,6 +7,7 @@ class ChaingraphTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="ChaingraphTracking" ):
         super(ChaingraphTrackingApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self.busy = False
 
     @property
     def singleLaneOperatorClass( self ):
