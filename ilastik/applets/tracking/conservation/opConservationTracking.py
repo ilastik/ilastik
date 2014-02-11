@@ -56,7 +56,8 @@ class OpConservationTracking(OpTrackingBase):
             ndim=3,
             cplex_timeout=None,
             withMergerResolution=True,
-            borderAwareWidth = 0.0
+            borderAwareWidth = 0.0,
+            withArmaCoordinates = True
             ):
         
         if not self.Parameters.ready():
@@ -76,6 +77,7 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withClassifierPrior'] = withClassifierPrior
         parameters['withMergerResolution'] = withMergerResolution
         parameters['borderAwareWidth'] = borderAwareWidth
+        parameters['withArmaCoordinates'] = withArmaCoordinates
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -89,14 +91,16 @@ class OpConservationTracking(OpTrackingBase):
                 raise Exception, 'the max. number of objects must be consistent with the number of labels given in cell classification'
         
         median_obj_size = [0]
-                
+
+        coordinate_map = pgmlink.TimestepIdCoordinateMap()
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=withMergerResolution,
-                                                                      with_classifier_prior=withClassifierPrior)
+                                                                      with_coordinate_list=not withArmaCoordinates , # no vigra coordinate list, that is done by arma
+                                                                      with_classifier_prior=withClassifierPrior,
+                                                                      coordinate_map=coordinate_map)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
@@ -155,9 +159,10 @@ class OpConservationTracking(OpTrackingBase):
                                          fov,
                                          True #with_constraints
                                          )
+
         
         try:
-            eventsVector = tracker(ts)
+            eventsVector = tracker(ts, coordinate_map.get())
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         

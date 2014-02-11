@@ -263,10 +263,14 @@ class OpTrackingBase(Operator):
                                max_traxel_id_at=None,
                                with_opt_correction=False,
                                with_coordinate_list=False,
-                               with_classifier_prior=False):
+                               with_classifier_prior=False,
+                               coordinate_map = None):
                 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
+
+        if coordinate_map is not None and not with_coordinate_list:
+            coordinate_map.initialize()
         
         parameters = self.Parameters.value
         parameters['scales'] = [x_scale,y_scale,z_scale] 
@@ -303,8 +307,12 @@ class OpTrackingBase(Operator):
         empty_frame = False
         for t in feats.keys():
             rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
             if rc.size:
                 rc = rc[1:, ...]
+                lower = lower[1:, ...]
+                upper = upper[1:, ...]
                 
             if with_opt_correction:
                 try:
@@ -322,6 +330,31 @@ class OpTrackingBase(Operator):
                 coordinates = feats[t][config.features_vigra_name]['Coord<ValueList>']
                 if len(coordinates):
                     coordinates = coordinates[1:]
+            elif coordinate_map is not None: # store coordinates in arma::mat
+                # generate roi: assume the following order: txyzc
+                n_dim = len(rc[0])
+                for idx in range(lower.shape[0]):
+                    roi = [0]*5
+                    roi[0] = slice(int(t), int(t+1))
+                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
+                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
+                    if n_dim == 3:
+                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
+                    else:
+                        assert n_dim == 2
+                    image_excerpt = self.LabelImage[roi].wait()
+                    if n_dim == 2:
+                        image_excerpt = image_excerpt[0, ..., 0, 0]
+                    elif n_dim ==3:
+                        image_excerpt = image_excerpt[0, ..., 0]
+                    else:
+                        raise Exception, "n_dim = %s instead of 2 or 3"
+                    trax = pgmlink.Traxel()
+                    trax.Id = idx+1
+                    trax.Timestep = t
+                    trax.add_feature_array("Count", 1)
+                    trax.set_feature_value('Count', 0, float(ct[idx]))  
+                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), trax)
                 
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0

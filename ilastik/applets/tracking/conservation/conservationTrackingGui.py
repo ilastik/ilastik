@@ -147,6 +147,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withOpticalCorrection = self._drawer.opticalBox.isChecked()
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
             borderAwareWidth = self._drawer.bordWidthBox.value()
+            withArmaCoordinates = True
     
             ndim=3
             if (to_z - from_z == 0):
@@ -175,7 +176,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     withClassifierPrior=classifierPrior,
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth
+                    borderAwareWidth = borderAwareWidth,
+                    withArmaCoordinates = withArmaCoordinates
                     )
             except Exception:            
                 ex_type, ex, tb = sys.exc_info()
