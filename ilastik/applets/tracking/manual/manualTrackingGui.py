@@ -537,7 +537,7 @@ class ManualTrackingGui(LayerViewerGui):
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
-                                       " Remove division event first.")
+                                       " Remove division event first by right clicking on the parent.")
             self._gotoObject(oid, t)
             return False
         
