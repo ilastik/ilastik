@@ -30,13 +30,14 @@ class Feature( object ):
     default_value = 0
     dimensionality = None
 
-    def __init__(self, feats_name, default_value=None, delim='_', scales=[1.0,1.0,1.0], ndim=2):
+    def __init__(self, feats_name, default_value=None, delim='_', scales=[1.0,1.0,1.0], ndim=2, feat_dim=1):
         self.name += str(delim) + str(feats_name)
         self.feats_name = feats_name
         if default_value != None:
             self.default_value = default_value
         self.scales = scales
         self.ndim = ndim
+        self.feat_dim = feat_dim
 
     def compute(self, feats_cur, feats_next, **kwargs):
         raise NotImplementedError('Feature not fully implemented yet.')
@@ -57,12 +58,15 @@ class ParentChildrenRatio( Feature ):
     
     def compute(self, feats_cur, feats_next, **kwargs):
         if len(feats_next) < 2:
-            return self.default_value
-        result = float(feats_cur) / (feats_next[0] + feats_next[1])
-        if math.isnan(result):
-            return self.default_value
+            return np.array(len(feats_cur) * [self.default_value,])
+        result = np.array(feats_cur) / np.array(feats_next[0] + feats_next[1])
+        for i in range(len(result)):
+            if math.isnan(result[i]):
+                result[i] = self.default_value
         return result
 
+    def dim(self):
+        return self.dimensionality * self.feat_dim
 
 class ChildrenRatio( Feature ):
     name = 'ChildrenRatio'
@@ -70,14 +74,17 @@ class ChildrenRatio( Feature ):
 
     def compute(self, feats_cur, feats_next, **kwargs):
         if len(feats_next) < 2:
-            return self.default_value
-        ratio = feats_next[0] / float(feats_next[1])
-        if math.isnan(ratio):
-            return self.default_value
-        if ratio > 1 and ratio != 0:
-            return 1./ratio
+            return np.array(len(feats_cur) * [self.default_value,])
+        ratio = np.array(feats_next[0]) / np.array(feats_next[1])
+        for i in range(len(ratio)):
+            if math.isnan(ratio[i]):
+                ratio[i] = self.default_value
+            if ratio[i] > 1 and ratio[i] != 0:
+                ratio[i] = 1./ratio[i]
         return ratio
 
+    def dim(self):
+        return self.dimensionality * self.feat_dim
 
 class SquaredDistances( Feature ):
     name = 'SquaredDistances'
@@ -180,8 +187,9 @@ class FeatureManager( object ):
                 continue
             
             if len(name_split) != 2:                
-                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split)            
-            feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim)
+                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split) 
+            feat_dim = len(feats_cur[name_split[1]][0])
+            feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim, feat_dim=feat_dim)
 
             shape = (feats_cur.values()[0].shape[0],feat_classes[name].dim())
             result[name] = np.ones(shape) * feat_classes[name].default_value
