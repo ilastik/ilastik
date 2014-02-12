@@ -1,3 +1,9 @@
+try:
+    import faulthandler
+    faulthandler.enable()
+except ImportError:
+    pass
+
 import os
 this_file = os.path.abspath(__file__)
 this_file = os.path.realpath( this_file )
