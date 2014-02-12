@@ -591,6 +591,7 @@ class OpMaxChannelIndicatorOperator(Operator):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.axistags = self.Input.meta.axistags
         self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.drange = (0,1)
         self._num_channels = self.Input.meta.shape[-1]
 
     def execute(self, slot, subindex, roi, result):
