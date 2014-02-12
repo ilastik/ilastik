@@ -10,6 +10,7 @@ from ilastik.applets.tracking.base.trackingUtilities import get_events
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    NumLabels = InputSlot()
     
     MergerOutput = OutputSlot()    
     
@@ -87,8 +88,14 @@ class OpConservationTracking(OpTrackingBase):
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
                 raise Exception, 'Classifier not ready yet. Did you forget to train the Object Count Classifier?'
+            if not self.NumLabels.ready() or self.NumLabels.value != (maxObj + 1):
+                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' \
+                    'one training example for each class.'
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
-                raise Exception, 'the max. number of objects must be consistent with the number of labels given in cell classification'
+                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' \
+                    'one training example for each class.'            
         
         median_obj_size = [0]
 
