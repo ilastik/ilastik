@@ -50,7 +50,10 @@ class HeadlessShell(object):
                                                   headless=True,
                                                   workflow_cmdline_args=self._workflow_cmdline_args )
             self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
-            
+
+        except ProjectManager.FileMissingError:
+            logger.error("Couldn't find project file: {}".format( projectFilePath ))
+            raise            
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
             oldProjectFilePath = projectFilePath
