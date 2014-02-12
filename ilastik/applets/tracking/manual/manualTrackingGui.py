@@ -47,6 +47,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
+        self._drawer.exportMergers.pressed.connect(self._onExportMergersButtonPressed)
+        self._drawer.exportDivisions.pressed.connect(self._onExportDivisionsButtonPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
@@ -535,7 +537,7 @@ class ManualTrackingGui(LayerViewerGui):
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
-                                       " Remove division event first.")
+                                       " Remove division event first by right clicking on the parent.")
             self._gotoObject(oid, t)
             return False
         
@@ -595,8 +597,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
         
         
-    def _runSubtracking(self, position5d, oid):
-                    
+    def _runSubtracking(self, position5d, oid):        
+               
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
@@ -665,12 +667,18 @@ class ManualTrackingGui(LayerViewerGui):
         
         def _handle_finished(*args):
             self._enableButtons(enable=True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
-            
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
         self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
@@ -874,18 +882,71 @@ class ManualTrackingGui(LayerViewerGui):
         
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
+    def _onExportDivisionsButtonPressed(self):
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
         
+        if out_fn is None or str(out_fn) == '':            
+            return
+        if out_fn.split(".")[-1] != "csv":
+            out_fn += ".csv"
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
+        try:            
+            import csv
+            with open(out_fn, 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['timestep_parent','track_id_parent','track_id_child1','track_id_child2'])
+                for tid in self.mainOperator.divisions.keys():
+                    children, t_parent = self.mainOperator.divisions[tid]
+                    writer.writerow([t_parent, tid, children[0], children[1]])
+                
+        finally:
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()  
+    
+    def _onExportMergersButtonPressed(self):        
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        
+        if out_fn is None or str(out_fn) == '':            
+            return
+        if out_fn.split(".")[-1] != "csv":
+            out_fn += ".csv"
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
+        try:            
+            import csv
+            with open(out_fn, 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['timestep','object_id','track_ids'])
+                for t in self.mainOperator.labels.keys():
+                    for oid in self.mainOperator.labels[t].keys():
+                        if len(self.mainOperator.labels[t][oid]) > 1:
+                            writer.writerow([t,oid,";".join(list(str(x) for x in self.mainOperator.labels[t][oid]))])
+                
+        finally:
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()            
+            
+            
     def _onExportButtonPressed(self):
-        import h5py
-        self._drawer.exportButton.setEnabled(False)
+        import h5py        
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
         directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
-        if directory is None or str(directory) == '':
-            self._drawer.exportButton.setEnabled(True)
+        if directory is None or str(directory) == '':            
             return
         directory = str(directory)
         
@@ -893,6 +954,8 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.progressSignal.emit(x)
             
         def _export():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()    
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
             num_files = float(len(oid2tids.keys()))
@@ -964,7 +1027,7 @@ class ManualTrackingGui(LayerViewerGui):
                         if len(merger_at):
                             merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
                             ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
-                            ds.attrs["Format"] = "descendant (current file), number of objects"    
+                            ds.attrs["Format"] = "descendant (current file), number of objects"
                             ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
                             ds.attrs["Format"] = "lower energy -> higher confidence"
                         if len(multiMoves_at):
@@ -980,27 +1043,27 @@ class ManualTrackingGui(LayerViewerGui):
                 _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
         
-        def _handle_finished(*args):
-            self._drawer.exportButton.setEnabled(True)
+        def _handle_finished(*args):            
             self.applet.progressSignal.emit(100)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
                
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")
-            self._drawer.exportButton.setEnabled(True)    
             self.applet.progressSignal.emit(100)
         
-        self.applet.progressSignal.emit(0)      
+        self.applet.progressSignal.emit(0)  
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
 
     def _onExportTifButtonPressed(self):
-        import vigra
-        
-        self._drawer.exportTifButton.setEnabled(False)
+        import vigra        
         
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
@@ -1008,13 +1071,14 @@ class ManualTrackingGui(LayerViewerGui):
 
         directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
         if directory is None or len(str(directory)) == 0:
-            self._drawer.exportTifButton.setEnabled(True)
             return
         
         def _handle_progress(x):       
             self.applet.progressSignal.emit(x)
             
         def _export():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
             for k, vals in divisions.items():
@@ -1059,16 +1123,18 @@ class ManualTrackingGui(LayerViewerGui):
             self._log("-> tracking successfully exported")
         
         def _handle_finished(*args):
-            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")     
-            self._drawer.exportTifButton.setEnabled(True)
             self.applet.progressSignal.emit(100)       
-        
+                
         self.applet.progressSignal.emit(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )

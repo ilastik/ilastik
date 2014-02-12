@@ -138,7 +138,7 @@ class AddButtonDelegate(QItemDelegate):
                 # Otherwise, it can steal input events (e.g. mouse clicks) from the cell, even if it is hidden!
                 # However, we can't remove it yet, because we are currently running in the context of a signal handler for the button itself!
                 # Instead, use a QTimer to delete the button as soon as the eventloop is finished with the current event.
-                QTimer.singleShot(1, lambda: parent_view.setIndexWidget(index, None) )
+                QTimer.singleShot(750, lambda: parent_view.setIndexWidget(index, None) )
         super(AddButtonDelegate, self).paint(painter, option, index)
 
 class DatasetDetailedInfoTableView(QTableView):

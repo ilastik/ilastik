@@ -61,6 +61,9 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         
         
         def _track():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+            
             app = self._drawer.appSpinBox.value()
             dis = self._drawer.disSpinBox.value()
             opp = self._drawer.oppSpinBox.value()
@@ -115,12 +118,16 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
             self._setLayerVisible("Objects", False) 
+            self.applet.busy = False            
+            self.applet.appletStateUpdateRequested.emit()
             
         def _handle_failure( exc, exc_info ):
             self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
         
         self._drawer.TrackButton.setEnabled(False)        
         self.applet.progressSignal.emit(0)
