@@ -231,6 +231,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         self.resetHandles()
 
+
+        self.setToolTip("Hold CTRL to drag the box")
+
     @property
     def fontColor(self):
         return self._fontColor
