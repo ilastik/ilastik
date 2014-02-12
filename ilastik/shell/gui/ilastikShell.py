@@ -1046,7 +1046,7 @@ class IlastikShell( QMainWindow ):
                 QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + ex.message)
             else:
                 stop = time.time()
-                print "Loading the project took %f sec." % (stop-start,)
+                logger.debug( "Loading the project took {:.2f} sec.".format(stop-start) )
 
                 #add file and workflow to users preferences
                 mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')

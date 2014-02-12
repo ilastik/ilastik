@@ -3,7 +3,31 @@ import logging.config
 import warnings
 import loggingHelpers
 
-def get_default_config(prefix=""):
+LOGFILE_PATH = os.path.expanduser("~/.ilastik_log.txt")
+
+class OutputMode:
+    CONSOLE = 0
+    LOGFILE = 1
+    BOTH = 2
+    LOGFILE_WITH_CONSOLE_ERRORS = 3
+
+def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS):
+    if output_mode == OutputMode.CONSOLE:
+        root_handlers = ["console", "console_warn"]
+        warnings_module_handlers = ["console_warnings_module"]
+
+    if output_mode == OutputMode.LOGFILE:
+        root_handlers = ["rotating_file"]
+        warnings_module_handlers = ["rotating_file"]
+    
+    if output_mode == OutputMode.BOTH:
+        root_handlers = ["console", "console_warn", "rotating_file"]
+        warnings_module_handlers = ["console_warnings_module", "rotating_file"]
+    
+    if output_mode == OutputMode.LOGFILE_WITH_CONSOLE_ERRORS:
+        root_handlers = ["rotating_file", "console_errors_only"]
+        warnings_module_handlers = ["rotating_file"]
+    
     default_log_config = {
         "version": 1,
         #"incremental" : False,
@@ -32,42 +56,58 @@ def get_default_config(prefix=""):
         "handlers": {
             "console":{
                 "level":"DEBUG",
-                #"class":"logging.StreamHandler",
-                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stdout",
                 "formatter": "location",
-                "filters":["no_warn"]
+                "filters":["no_warn"] # This handler does NOT show warnings (see below)
             },
             "console_timestamp":{
                 "level":"DEBUG",
-                #"class":"logging.StreamHandler",
-                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stdout",
                 "formatter": "timestamped",
-                "filters":["no_warn"]
+                "filters":["no_warn"] # Does not show warnings
             },
             "console_warn":{
-                "level":"WARN",
-                "class":"logging.StreamHandler", # Defaults to sys.stderr
+                "level":"WARN", # Shows ONLY warnings and errors, on stderr
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stderr",
                 "formatter":"verbose"
             },
-            "console_warning_module":{
+            "console_errors_only":{
+                "level":"ERROR", # Shows ONLY errors, on stderr
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stderr",
+                "formatter":"verbose"
+            },
+            "console_warnings_module":{
                 "level":"WARN",
-                "class":"logging.StreamHandler", # Defaults to sys.stderr
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stderr",
                 "formatter":"simple"
             },
             "console_trace":{
                 "level":"DEBUG",
-                #"class":"logging.StreamHandler",
-                "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
+                "class":"logging.StreamHandler",
+                "stream":"ext://sys.stdout",
                 "formatter": "verbose"
+            },
+            "rotating_file":{
+                "level":"DEBUG",
+                "class":"logging.handlers.RotatingFileHandler",
+                "filename" : LOGFILE_PATH,
+                "maxBytes":20e6, # 20 MB
+                "backupCount":5,
+                "formatter":"verbose",
             },
         },
         "root": {
-            "handlers": ["console", "console_warn"],
+            "handlers": root_handlers,
             "level": "INFO",
         },
         "loggers": {
             # This logger captures warnings module warnings
-            "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
+            "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
@@ -126,9 +166,9 @@ def get_default_config(prefix=""):
     }
     return default_log_config
 
-def init(format_prefix=""):
+def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS):
     # Start with the default
-    logging.config.dictConfig( get_default_config( format_prefix ) )
+    logging.config.dictConfig( get_default_config( format_prefix, output_mode ) )
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()

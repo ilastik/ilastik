@@ -1,7 +1,3 @@
-#have to do that so that plugin manager has a handler
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
-
 #Python
 from copy import copy
 import collections
@@ -28,8 +24,6 @@ except:
     logger.warn('could not import pluginManager')
 
 from ilastik.applets.base.applet import DatasetConstraintError
-
-import collections
 
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.

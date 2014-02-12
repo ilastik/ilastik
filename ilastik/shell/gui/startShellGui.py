@@ -1,4 +1,5 @@
 import os
+import functools
 import platform
 
 #make the program quit on Ctrl+C
@@ -6,17 +7,9 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
-from PyQt4.QtCore import Qt, QObject, QTimer, QEvent
-
-# Logging configuration
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
-ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
+from PyQt4.QtCore import Qt, QTimer
 
 import ilastik.config
-
-import functools
-
 shell = None
 
 def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):

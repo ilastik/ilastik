@@ -3,7 +3,7 @@
     "incremental" : true,
     "root": { "level": "INFO" },
     "loggers": {
-        "py.warnings": {  "level":"WARN", "handlers":["console_warning_module"], "propagate": false },
+        "py.warnings": {  "level":"WARN" },
 
         "__main__":                                                 { "level":"INFO" },
         "lazyflow":                                                 { "level":"INFO" },
