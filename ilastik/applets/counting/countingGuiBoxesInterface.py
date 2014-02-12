@@ -239,6 +239,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._fontColor
 
     @fontColor.setter
+    @mainthreadonly
     def fontColor(self,color):
         self._fontColor=color
         self.textItem.setDefaultTextColor(color)
@@ -249,6 +250,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._fontSize
 
     @fontSize.setter
+    @mainthreadonly
     def fontSize(self,s):
         self._fontSize=s
         font=QFont()
@@ -261,6 +263,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._lineWidth
 
     @linewWidth.setter
+    @mainthreadonly
     def linewWidth(self,s):
         self._lineWidth=s
         self.updateColor()
@@ -270,6 +273,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._normalColor
 
     @color.setter
+    @mainthreadonly
     def color(self,qcolor):
         self._normalColor=qcolor
         self.updateColor()
