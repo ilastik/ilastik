@@ -296,6 +296,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
 
+        self.op._predict_enabled = predict_enabled
         self.applet.predict_enabled = predict_enabled
         self.applet.appletStateUpdateRequested.emit()
 
