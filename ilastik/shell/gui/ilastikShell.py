@@ -398,10 +398,11 @@ class IlastikShell( QMainWindow ):
         shellActions.importProjectAction.setIcon( QIcon(ilastikIcons.Open) )
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
-        shellActions.closeAction = menu.addAction("&Close")
-        shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
-        shellActions.closeAction.setShortcuts( QKeySequence.Close )
-        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            shellActions.closeAction = menu.addAction("&Close")
+            shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
+            shellActions.closeAction.setShortcuts( QKeySequence.Close )
+            shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
@@ -590,7 +591,8 @@ class IlastikShell( QMainWindow ):
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
-        self._shellActions.closeAction.setEnabled(projectIsOpen)
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -1300,8 +1302,9 @@ class IlastikShell( QMainWindow ):
         """
         self._shellActions.openProjectAction.setEnabled( enabled )
         self._shellActions.importProjectAction.setEnabled( enabled )
-        self._shellActions.closeAction.setEnabled( enabled )
         self._shellActions.quitAction.setEnabled( enabled )
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled( enabled )
 
     def _setAppletEnabled(self, applet, enabled):
         try:
