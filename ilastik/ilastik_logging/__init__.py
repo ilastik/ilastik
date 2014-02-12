@@ -1,2 +1,3 @@
 import default_config
-from loggingHelpers import StdOutStreamHandler, updateFromConfigFile, startUpdateInterval, stopUpdates
+from default_config import LOGFILE_PATH
+from loggingHelpers import updateFromConfigFile, startUpdateInterval, stopUpdates

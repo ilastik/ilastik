@@ -12,13 +12,6 @@ logger = logging.getLogger(__name__)
 
 import ilastik
 
-class StdOutStreamHandler(logging.StreamHandler):
-    """
-    Stream Handler that defaults to sys.stdout instead of sys.stderr.
-    """
-    def __init__(self):
-        super( StdOutStreamHandler, self ).__init__(stream=sys.stdout)
-
 def updateFromConfigFile():
     # Import changes from a file    
    

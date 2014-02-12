@@ -3,38 +3,9 @@
 # Standard
 import sys
 import argparse
-import threading
-import logging
 
 from ilastik.config import cfg as ilastik_config
 import ilastik.monkey_patches
-
-# Initialize logging before anything else
-from ilastik.ilastik_logging import default_config
-default_config.init()
-
-# Ilastik
-logger = logging.getLogger(__name__)
-
-def install_thread_excepthook():
-    # This function was copied from: http://bugs.python.org/issue1230540
-    # It is necessary because sys.excepthook doesn't work for unhandled exceptions in other threads.
-    """
-    Workaround for sys.excepthook thread bug
-    (https://sourceforge.net/tracker/?func=detail&atid=105470&aid=1230540&group_id=5470).
-    Call once from __main__ before creating any threads.
-    If using psyco, call psycho.cannotcompile(threading.Thread.run)
-    since this replaces a new-style class method.
-    """
-    run_old = threading.Thread.run
-    def run(*args, **kwargs):
-        try:
-            run_old(*args, **kwargs)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except:
-            sys.excepthook(*sys.exc_info())
-    threading.Thread.run = run
 
 parser = argparse.ArgumentParser( description="start an ilastik workflow" )
 parser.add_argument('--start_recording', help='Open the recorder controls and immediately start recording', action='store_true', default=False)
@@ -52,27 +23,27 @@ parser.add_argument('--headless', help="Don't start the ilastik gui.", action='s
 # Special command-line control over default tmp dir
 ilastik.monkey_patches.extend_arg_parser(parser)
 
-
-# Example:
+# Examples:
+# python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
 # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
-# DEBUG
-#sys.argv.append( '--split_tool_param_file=/magnetic/split-body-data/assignment980/assignment980_params.json' )
-#sys.argv.append( '--start_recording' )
-#sys.argv.append( '--playback_script=/tmp/recording-20140210-0047.py' )
-#
 parsed_args, workflow_cmdline_args = parser.parse_known_args()
 init_funcs = []
 
-# DEBUG DEBUG
-#parsed_args.project = '/Users/bergs/MyProject.ilp'
+# Force debug mode
+if parsed_args.debug or parsed_args.start_recording or parsed_args.playback_script:
+    ilastik_config.set('ilastik', 'debug', 'true')
+    parsed_args.debug = True
 
-# DEBUG
-#parsed_args.headless = True
-#parsed_args.new_project = '/home/bergs/MyProject.ilp'
-#parsed_args.workflow = 'LayerViewerWorkflow'
-#parsed_args.new_project = '/magnetic/split-body-data/assignment980/MyProject.ilp'
-#parsed_args.workflow = 'SplitBodyCarvingWorkflow'
+# Initialize logging before anything else
+from ilastik.ilastik_logging import default_config
+if ilastik_config.getboolean('ilastik', 'debug'):
+    default_config.init(output_mode=default_config.OutputMode.BOTH)
+else:
+    default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
+    ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
+import logging
+logger = logging.getLogger(__name__)
 
 
 if parsed_args.start_recording or parsed_args.playback_script:
@@ -134,10 +105,8 @@ eventcapture_mode = None
 playback_args = {}
 if parsed_args.start_recording:
     assert not parsed_args.playback_script is False, "Can't record and play back at the same time!  Choose one or the other"
-    parsed_args.debug = True # Auto-enable debug mode
     eventcapture_mode = 'record'
 elif parsed_args.playback_script is not None:
-    parsed_args.debug = True # Auto-enable debug mode
     eventcapture_mode = 'playback'
     # See EventRecordingApp.create_app() for details
     playback_args['playback_script'] = parsed_args.playback_script
@@ -146,31 +115,17 @@ elif parsed_args.playback_script is not None:
     if parsed_args.exit_on_success:
         playback_args['finish_callback'] = QApplication.quit        
 
-# Force debug mode
-if parsed_args.debug:
-    ilastik_config.set('ilastik', 'debug', 'true')
-    
-# Auto-exit on uncaught exceptions (useful for testing)
+# Initialize global exception handling behavior
+import ilastik.excepthooks
 if parsed_args.exit_on_failure:
-    old_excepthook = sys.excepthook
-    def print_exc_and_exit(*args):
-        old_excepthook(*args)
-        sys.stderr.write("Exiting early due to an unhandled exception.  See error output above.\n")
-        QApplication.exit(1)
-    sys.excepthook = print_exc_and_exit
-    install_thread_excepthook()
-# Show uncaught exceptions to the user (default behavior)
+    # Auto-exit on uncaught exceptions (useful for testing)
+    ilastik.excepthooks.init_early_exit_excepthook()
 elif not ilastik_config.getboolean('ilastik', 'debug') and not parsed_args.headless:
-    old_excepthook = sys.excepthook
-    def exception_dialog(*exc_info):
-        old_excepthook(*exc_info)
-        try:
-            from ilastik.shell.gui.startShellGui import shell
-            shell.postErrorMessage( exc_info[0].__name__, str(exc_info[1]) )
-        except:
-            pass
-    sys.excepthook = exception_dialog
-    install_thread_excepthook()
+    # Show most uncaught exceptions to the user (default behavior)
+    ilastik.excepthooks.init_user_mode_excepthook()
+else:
+    # Log all exceptions as errors
+    ilastik.excepthooks.init_developer_mode_excepthook()
 
 if ilastik_config.getboolean("ilastik", "debug"):
     logger.info("Starting ilastik in debug mode.")
@@ -178,6 +133,8 @@ if ilastik_config.getboolean("ilastik", "debug"):
     # (Requires the faulthandler module from PyPI)
     import faulthandler
     faulthandler.enable()
+else:
+    logger.info("Starting ilastik.")
 
 # Headless launch
 if parsed_args.headless:

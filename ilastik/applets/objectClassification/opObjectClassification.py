@@ -553,6 +553,7 @@ def make_feature_array(feats, selected, labels=None):
             index = numpy.nonzero(lab)
             labellist_tmp.append(lab[index])
 
+        timestep_col_names = []
         for plugin in sorted(feats[t].keys()):
             if plugin == default_features_key or plugin not in selected:
                 continue
@@ -564,9 +565,12 @@ def make_feature_array(feats, selected, labels=None):
                 if index is not None:
                     ft = ft[index]
                 featsMatrix_tmp.append(ft)
-                col_names.extend([(plugin, featname)] * value.shape[1])
-
-
+                timestep_col_names.extend([(plugin, featname)] * value.shape[1])
+        if not col_names:
+            col_names = timestep_col_names
+        elif col_names != timestep_col_names:
+            raise Exception('different time slices did not have same features.')
+            
         #FIXME: we can do it all with just arrays
         featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
         featlist.append(featsMatrix_tmp_combined)

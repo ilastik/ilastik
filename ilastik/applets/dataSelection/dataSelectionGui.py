@@ -478,7 +478,7 @@ class DataSelectionGui(QWidget):
                     loaded_all = False
                     break
             except:
-                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
+                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
                 raise
