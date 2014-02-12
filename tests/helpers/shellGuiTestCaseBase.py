@@ -14,6 +14,9 @@ from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
+from ilastik.ilastik_logging import default_config
+default_config.init(output_mode=default_config.OutputMode.CONSOLE)
+
 @atexit.register
 def quitApp():
     if qApp is not None:
