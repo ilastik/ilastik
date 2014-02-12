@@ -50,7 +50,7 @@ class FeatureSelectionGui(LayerViewerGui):
                      'LaplacianOfGaussian' : "Laplacian of Gaussian",
                      'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
                      'DifferenceOfGaussians' : "Difference of Gaussians",
-                     'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
+                     'StructureTensorEigenvalues' : "Structure Tensor Eigenvalues",
                      'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
 
     ###########################################
