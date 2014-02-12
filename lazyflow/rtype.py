@@ -5,6 +5,9 @@ import collections
 from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
 from lazyflow.utility import slicingtools
 
+import logging
+logger = logging.getLogger(__name__)
+
 class RoiMeta(type):
     """
     Roi metaclass.  This mechanism automatically registers all roi 
@@ -69,7 +72,7 @@ class List(Roi):
         super(List, self).__init__(slot)
         self._l = list(iterable)
         if pslice is not None:
-            print "pslice not none, but we are in a list!", pslice
+            logger.debug("pslice not none, but we are in a list! {}".format(pslice))
             self._l = [pslice]
     def __iter__( self ):
         return iter(self._l)
