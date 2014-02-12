@@ -52,7 +52,8 @@ def init_user_mode_excepthook():
 
 def init_developer_mode_excepthook():
     def log_exception(*args):
-        logger.error( traceback.format_exc() )
+        etype, value, tb = args
+        logger.error( traceback.format_tb(tb) )
     sys.excepthook = log_exception
     _install_thread_excepthook()
 
