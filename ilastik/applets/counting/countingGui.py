@@ -157,6 +157,7 @@ class CountingGui(LabelingGui):
 
 
         self.initCounting()
+        #personal debugging code
         try:
             from sitecustomize import Shortcuts
         except Exception,e:
@@ -587,6 +588,15 @@ class CountingGui(LabelingGui):
                       deleteBox,
                       None )
 
+        try:
+            from sitecustomize import Shortcuts
+            debugging = QShortcut( QKeySequence("F5"), self, member=self._debug)
+            mgr.register( shortcutGroupName,
+                          "Activate Debug Mode",
+                          debugging,
+                          None )
+        except Exception,e:
+            pass
 
 
     def _setup_contexts(self, layer):
