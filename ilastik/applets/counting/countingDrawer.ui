@@ -157,6 +157,9 @@
    </item>
    <item>
     <widget class="QPushButton" name="AddBoxButton">
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
      <property name="text">
       <string>Add Box</string>
      </property>
@@ -324,6 +327,9 @@
      </item>
      <item>
       <widget class="QPushButton" name="DebugButton">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="styleSheet">
         <string notr="true"/>
        </property>
