@@ -111,12 +111,24 @@ class ResizeHandle(QGraphicsRectItem):
         super(ResizeHandle, self).hoverEnterEvent(event)
         event.setAccepted(True)
         self._hoverOver = True
-        self._updateColor();
+        self._updateColor()
+        if hasattr(self.parentItem(), "_editor") and \
+            self.parentItem()._editor:
+            if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
+                if self._constrainAxis == 0:
+                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitVCursor)
+                else:
+                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitHCursor)
+                
+
+            
 
     def hoverLeaveEvent(self, event):
         super(ResizeHandle, self).hoverLeaveEvent(event)
         self._hoverOver = False
         self._updateColor()
+        QtGui.QApplication.restoreOverrideCursor()
+
 
     def mouseMoveEvent(self, event):
         #print "[view=%d] mouse move event constrained to %r" % (self.scene().skeletonAxis, self._constrainAxis)
@@ -187,12 +199,14 @@ class QGraphicsResizableRectSignaller(QObject):
 class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor    = QColor(255, 0, 0) #_hovering and selection color
 
-    def __init__(self,x,y,h,w,scene=None,parent=None):
+    def __init__(self,x,y,h,w, scene=None,parent=None, editor=None):
         """"
         This class implements the resizable rectangle item which is dispalied on the scene
          x y should be the original positions in scene coordinates
          h,w are the height and the width of the rectangle
         """
+        
+        self._editor = editor
 
         QGraphicsRectItem.__init__(self,0,0,w,h,scene=scene,parent=parent)
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
@@ -500,7 +514,7 @@ class RedRubberBand(QRubberBand):
 #===============================================================================
 
 class CoupledRectangleElement(object):
-    def __init__(self,x,y,h,w,inputSlot,scene=None,parent=None,qcolor=QColor(0,0,255)):
+    def __init__(self,x,y,h,w,inputSlot,editor = None, scene=None,parent=None,qcolor=QColor(0,0,255)):
         '''
         Couples the functionality of the lazyflow operator OpSubRegion which gets a subregion of interest
         and the functionality of the resizable rectangle Item.
@@ -518,7 +532,7 @@ class CoupledRectangleElement(object):
         '''
 
 
-        self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent)
+        self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent,editor)
         self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
         #self.opsum = OpSumAll(graph=inputSlot.operator.graph)
         self._graph=inputSlot.operator.graph
@@ -738,6 +752,8 @@ class BoxInterpreter(QObject):
     cursorPositionChanged  = pyqtSignal(object)
     deleteSelectedItemsSignal= pyqtSignal() #send the signal that we want to delete the currently selected item
 
+    acceptBoxManipulation = True
+
     def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
         '''
         Class which interacts directly with the image scene
@@ -853,7 +869,7 @@ class BoxController(QObject):
     viewBoxesChanged = pyqtSignal(dict)
 
 
-    def __init__(self,scene,connectionInput,boxListModel):
+    def __init__(self,editor,connectionInput,boxListModel):
         '''
         Class which controls all boxes on the scene
 
@@ -862,6 +878,10 @@ class BoxController(QObject):
         :param boxListModel:
 
         '''
+
+        scene = editor.imageScenes[2]
+        self._editor = editor
+        
         QObject.__init__(self,parent=scene.parent())
         self._setUpRandomColors()
         self.scene=scene
@@ -1268,7 +1288,7 @@ if __name__=="__main__":
     print mainwin.centralWidget()
 
 
-    BoxContr=BoxController(mainwin.editor.imageScenes[2],op.Output,boxListModel)
+    BoxContr=BoxController(mainwin.editor,op.Output,boxListModel)
     BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,BoxContr,mainwin.centralWidget())
 
 
