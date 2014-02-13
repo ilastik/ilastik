@@ -309,6 +309,7 @@ class OpMultiArrayStacker(Operator):
                 axisindex = self.Output.meta.axistags.index(flag)
                 newshape[axisindex]=c
             else:
+                #FIXME axisindex is not necessarily defined yet (try setValue on subslot)
                 newshape.insert(axisindex, c)
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:

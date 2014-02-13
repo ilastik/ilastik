@@ -10,6 +10,8 @@ from lazyflow.operators.valueProviders import OpOutputProvider
 
 from numpy.testing import *
 
+import unittest
+
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -180,6 +182,47 @@ def testPartialAllocate():
     substack = stack[key]
     print newdata.shape, substack.shape
     assert_array_equal(newdata, substack.view(numpy.ndarray))
+
+
+class TestAxisIndex(unittest.TestCase):
+    def setUp(self):
+        vol = numpy.random.randint(0, 256, size=(100, 200, 300, 2))
+        vol = vol.astype(numpy.uint8)
+        vol = vigra.taggedView(vol, 'xyzc')
+        self.vol = vol
+        self.nc = vol.shape[-1]
+
+    def testAxisIndex(self):
+        pipers = []
+        g = Graph()
+        op = OpMultiArrayStacker(graph=g)
+        op.AxisFlag.setValue('c')
+        op.AxisIndex.setValue(0)
+        op.Images.resize(self.nc)
+        
+        for i in range(self.nc):
+            piper = OpArrayPiper(graph=g)
+            piper.Input.setValue(self.vol[..., i])
+            op.Images[i].connect(piper.Output)
+            pipers.append(piper)
+        
+        out = op.Output[...].wait()
+        out = vigra.taggedView(out, axistags='cxyz').withAxes(*'xyzc')
+        assert_array_equal(out, self.vol)
+
+        class OpCheckRoi(Operator):
+            Input = InputSlot()
+            def propagateDirty(self, slot, subindex, roi):
+                print("also here")
+                print(roi.stop)
+                print(self.Input.meta.shape)
+                assert len(roi.stop) == len(self.Input.meta.shape)
+                for x, y in zip(roi.stop, self.Input.meta.shape):
+                    assert x <= y, "{} > {}".format(x, y)
+
+        check = OpCheckRoi(graph=g)
+        check.Input.connect(op.Output)
+        op.Images[0].setDirty(slice(None))
 
 
 if __name__ == "__main__":
