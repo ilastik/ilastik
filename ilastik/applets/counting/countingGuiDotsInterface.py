@@ -169,6 +169,16 @@ class DotInterpreter(BrushingInterpreter):
         etype = event.type()
         
         if self._current_state == self.DEFAULT_MODE:
+            
+            if event.type()==QEvent.KeyPress:
+                if event.key()==Qt.Key_Control :
+                    QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+
+            if event.type()==QEvent.KeyRelease:
+                if event.key()==Qt.Key_Control :
+                    QApplication.restoreOverrideCursor()
+
+
             if etype == QEvent.MouseButtonPress \
                 and event.button() == Qt.LeftButton \
                 and event.modifiers() == Qt.NoModifier \

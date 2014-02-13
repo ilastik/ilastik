@@ -226,7 +226,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable,True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
 
-        #self.setFlag(QtGui.QGraphicsItem.ItemIsFocusable,True)
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
@@ -364,6 +363,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.resetHandles()
 
         super(QGraphicsResizableRect,self).hoverEnterEvent( event)
+        self._editor.imageViews[2].setFocus()
 
     def hoverLeaveEvent(self, event):
         event.setAccepted(True)
@@ -418,6 +418,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         pos = [int(dataPos.x()), int(dataPos.y())]
         return pos
 
+    def mousePressEvent(self,event):
+        modifiers=QApplication.queryKeyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            QApplication.setOverrideCursor(QtCore.Qt.ClosedHandCursor)
 
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
@@ -436,7 +440,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             #self.updateText("("+string+")"+" "+str(pos))
 
     def mouseDoubleClickEvent(self, event):
-        print "DOUBLE CLICK ON ITEM"
+        #print "DOUBLE CLICK ON ITEM"
         #FIXME: Implement me
         event.accept()
 
@@ -453,6 +457,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             #self._has_moved=False
 
             self._has_moved=False
+        QApplication.restoreOverrideCursor()
         return QGraphicsRectItem.mouseReleaseEvent(self, event)
 
     def itemChange(self, change,value):
@@ -801,11 +806,11 @@ class BoxInterpreter(QObject):
         #Keyboard interaction
         if event.type()==QEvent.KeyPress:
             #Switch selection
-            if event.key()==Qt.Key_N :
+            if event.key()==Qt.Key_Space :
                 #assert items[0]._hovering
                 #items[0].setZValue(1)
-                for el in items:
-                    print el.zValue()
+                #for el in items:
+                #    print el.zValue()
 
                 if len(items)>1:
                     items[-1].setZValue(items[0].zValue()+1)
@@ -813,11 +818,15 @@ class BoxInterpreter(QObject):
                     items[-1].setSelected(True)
                     #items[0].setZero()
 
+            if event.key()==Qt.Key_Control :
+                QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+
             # #Delete element
             # if event.key()==Qt.Key_Delete:
             #     self.deleteSelectedItemsSignal.emit()
-
-
+        if event.type()==QEvent.KeyRelease:
+            if event.key()==Qt.Key_Control :
+                QApplication.restoreOverrideCursor()
 
 
         #Pressing mouse and menaging rubber band
@@ -1020,6 +1029,7 @@ class BoxController(QObject):
     def selectBoxItem(self,index):
         [el._rectItem.setSelected(False) for el in self._currentBoxesList] #deselect the others
         self._currentBoxesList[index]._rectItem.setSelected(True)
+
 
     def handleSelectionChange(self):
         for row,el in enumerate(self._currentBoxesList):
