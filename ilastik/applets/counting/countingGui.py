@@ -239,7 +239,7 @@ class CountingGui(LabelingGui):
         self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
 
         self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
+        self.boxController=BoxController(mainwin.editor,self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
         self.navigationInterpreterDefault=self.editor.navInterpret

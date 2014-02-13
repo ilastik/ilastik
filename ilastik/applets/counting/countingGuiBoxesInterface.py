@@ -938,7 +938,7 @@ class BoxController(QObject):
         w=stop[0]-start[0]
         if h*w<9: return #too small
 
-        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,scene=self.scene,parent=self.scene.parent())
+        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,editor = self._editor, scene=self.scene,parent=self.scene.parent())
         rect.setZValue(len(self._currentBoxesList))
         rect.setColor(self.currentColor)
         #self.counter-=1
