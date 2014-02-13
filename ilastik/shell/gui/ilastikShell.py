@@ -44,6 +44,8 @@ from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 
+from ilastik.shell.gui.splashScreen import showSplashScreen
+
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
@@ -478,14 +480,8 @@ class IlastikShell( QMainWindow ):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
-        aboutIlastikAction.triggered.connect(self._showAboutDialog)
+        aboutIlastikAction.triggered.connect(showSplashScreen)
         return menu
-
-    def _showAboutDialog(self):
-        localDir = os.path.split(__file__)[0]
-        dlg = QDialog()
-        uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
-        dlg.exec_()
 
     def _createDebugMenu(self):
         menu = QMenu("&Debug", self)

@@ -9,6 +9,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
 from PyQt4.QtCore import Qt, QTimer
 
+import splashScreen
 import ilastik.config
 shell = None
 
@@ -40,10 +41,10 @@ def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *test
         app = QApplication([])
     _applyStyleSheet(app)
 
-    showSplashScreen()
+    splashScreen.showSplashScreen()
     app.processEvents()
     QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, *testFuncs ) )
-    QTimer.singleShot( 0, hideSplashScreen)
+    QTimer.singleShot( 0, splashScreen.hideSplashScreen)
 
     return app.exec_()
 
@@ -56,18 +57,6 @@ def _applyStyleSheet(app):
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
 
-splashScreen = None
-def showSplashScreen():
-    splash_path = os.path.join(os.path.split(ilastik.__file__)[0], 'ilastik-splash.png')
-    splashImage = QPixmap(splash_path)
-    global splashScreen
-    splashScreen = QSplashScreen(splashImage)
-    splashScreen.show()
-
-def hideSplashScreen():
-    global splashScreen
-    global shell
-    splashScreen.finish(shell)
 
 def launchShell(workflow_cmdline_args, *testFuncs):
     """
