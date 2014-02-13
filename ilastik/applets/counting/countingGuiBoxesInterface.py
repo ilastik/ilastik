@@ -838,9 +838,10 @@ class BoxInterpreter(QObject):
         if event.type() == QEvent.MouseButtonRelease:
             pos = [int(i) for i in self._posModel.cursorPos]
             pos = [self._posModel.time] + pos + [self._posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )
+            if self.rubberBand.isVisible():
+                if event.button() == Qt.LeftButton:
+                    self.rubberBand.hide()
+                    self.leftClickReleased.emit( self.originpos,pos )
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
