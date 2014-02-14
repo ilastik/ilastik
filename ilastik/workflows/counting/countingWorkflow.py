@@ -34,7 +34,8 @@ class CountingWorkflow(Workflow):
                                                        "Input Data",
                                                        "Input Data",
                                                        batchDataGui=False,
-                                                       force5d=False
+                                                       force5d=False,
+                                                       supports_stack=False
                                                       )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
@@ -66,7 +67,10 @@ class CountingWorkflow(Workflow):
 
         if appendBatchOperators:
             # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection",
+                                                        supportIlastik05Import=False, batchDataGui=True,
+                                                        supports_stack=False
+                                                       )
             self.batchResultsApplet = CountingDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
     
             # Expose in shell        

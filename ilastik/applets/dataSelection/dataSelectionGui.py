@@ -104,7 +104,8 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal,
+                 max_lanes=None, supports_images=True, supports_stack=True):
         """
         Constructor.
         
@@ -118,6 +119,8 @@ class DataSelectionGui(QWidget):
 
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
+        self._supports_images = supports_images
+        self._supports_stack = supports_stack
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -129,6 +132,7 @@ class DataSelectionGui(QWidget):
         self._initAppletDrawerUic(instructionText)
         
         self._viewerControlWidgetStack = QStackedWidget(self)
+
 
         def handleImageRemoved(multislot, index, finalLength):
             # Remove the viewer for this dataset
@@ -148,6 +152,7 @@ class DataSelectionGui(QWidget):
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]+'/'
         uic.loadUi(localDir+"/dataSelection.ui", self)
+        self.laneSummaryTableView.setCapabilities(self._supports_images, self._supports_stack)
 
         self._initTableViews()
         self._initViewerStack()
@@ -183,6 +188,7 @@ class DataSelectionGui(QWidget):
         self._detailViewerWidgets = []
         for roleIndex, role in enumerate(self.topLevelOperator.DatasetRoles.value):
             detailViewer = DatasetDetailedInfoTableView(self)
+            detailViewer.setCapabilities(self._supports_images, self._supports_stack)
             detailViewer.setModel(DatasetDetailedInfoTableModel(self,
                 self.topLevelOperator, roleIndex))
             self._detailViewerWidgets.append( detailViewer )
