@@ -83,7 +83,8 @@ class OpBlockedArrayCache(OpCache):
                 self._blockShape = self.inputs["outerBlockShape"].value
                 self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
                 assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
-                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) /
+                                              numpy.array(self._blockShape)).astype(numpy.int)
                 assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
 
                 self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)

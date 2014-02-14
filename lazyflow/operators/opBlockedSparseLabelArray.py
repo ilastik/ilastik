@@ -160,7 +160,8 @@ class OpBlockedSparseLabelArray(OpCache):
 
             self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
 
-            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
+            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) /
+                                          numpy.array(self._blockShape)).astype(numpy.int)
 
             self.logger.debug( "Reconfigured Sparse labels with {}, {}, {}, {}".format( self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape ) )
             #FIXME: we don't really need this blockState thing

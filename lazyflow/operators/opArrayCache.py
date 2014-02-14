@@ -140,7 +140,7 @@ class OpArrayCache(OpCache):
     
         self._blockShape = numpy.minimum(self._blockShape, shape)
     
-        self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape))
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape)).astype(numpy.int)
     
         self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
     

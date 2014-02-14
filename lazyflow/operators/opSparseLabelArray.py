@@ -133,8 +133,8 @@ class OpSparseLabelArray(OpCache):
         self.lock.acquire()
         #fix slicing of single dimensions:
         start, stop = sliceToRoi(key, shape, extendSingleton = False)
-        start = start.floor()
-        stop = stop.floor()
+        start = start.floor()._asint()
+        stop = stop.floor()._asint()
 
         tempKey = roiToSlice(start-start, stop-start) #, hardBind = True)
 
