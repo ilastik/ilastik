@@ -33,7 +33,9 @@ class DataSelectionApplet( Applet ):
     
     DEFAULT_INSTRUCTIONS = "Use the controls shown to the right to add image files to this workflow."
     
-    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, force5d=False, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None):
+    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False,
+                 force5d=False, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, supports_images=True,
+                 supports_stack = True):
         self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, force5d=force5d)
         super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
@@ -46,6 +48,8 @@ class DataSelectionApplet( Applet ):
         self._batchDataGui = batchDataGui
         self._title = title
         self._max_lanes = max_lanes
+        self._supports_images=supports_images
+        self._supports_stack=supports_stack
         self.busy = False
 
     #
@@ -60,7 +64,10 @@ class DataSelectionApplet( Applet ):
                                           self._serializableItems[0],
                                           self._instructionText,
                                           guiMode,
-                                          self._max_lanes )
+                                          self._max_lanes,
+                                          self._supports_images,
+                                          self._supports_stack
+                                        )
         return self._gui
 
     #

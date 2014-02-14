@@ -126,8 +126,10 @@ class AddButtonDelegate(QItemDelegate):
     corresponding row has not been assigned data yet. This is needed when a
     prediction map for a raw data lane needs to be specified for example.
     """
-    def __init__(self, parent):
+    def __init__(self, parent, supports_images=True, supports_stack=True):
         super(AddButtonDelegate, self).__init__(parent)
+        self._supports_images = supports_images
+        self._supports_stack = supports_stack
 
     def paint(self, painter, option, index):
         # This method will be called every time a particular cell is in
@@ -140,7 +142,8 @@ class AddButtonDelegate(QItemDelegate):
         button = parent_view.indexWidget(index)
         if index.row() < parent_view.model().rowCount()-1 and parent_view.model().isEmptyRow(index.row()):
             if button is None:
-                button = AddFileButton(parent_view)
+                button = AddFileButton(parent_view, supports_images = self._supports_images,
+                                       supports_stack = self._supports_stack)
                 button.addFilesRequested.connect(
                         partial(parent_view.handleCellAddFilesEvent, index.row()))
                 button.addStackRequested.connect(
@@ -174,6 +177,8 @@ class DatasetDetailedInfoTableView(QTableView):
         super( DatasetDetailedInfoTableView, self ).__init__(parent)
         # this is needed to capture mouse events that are used for
         # the remove button placement
+        self._supports_images = True
+        self._supports_stack = True
         self.setMouseTracking(True)
 
         self.selectedLanes = []
@@ -189,7 +194,8 @@ class DatasetDetailedInfoTableView(QTableView):
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
         self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
 
-        self.setItemDelegateForColumn(0, AddButtonDelegate(self))
+        self.setItemDelegateForColumn(0, AddButtonDelegate(self, supports_images=self._supports_images,
+                                                           supports_stack=self._supports_stack))
         
         self.setSelectionBehavior( QTableView.SelectRows )
         
@@ -269,7 +275,8 @@ class DatasetDetailedInfoTableView(QTableView):
 
         widget = QWidget()
         layout = QHBoxLayout(widget)
-        self._addButton = button = AddFileButton(widget, new=True)
+        self._addButton = button = AddFileButton(widget, new=True, supports_images=self._supports_images,
+                                                 supports_stack=self._supports_stack)
         button.addFilesRequested.connect(
                 partial(self.addFilesRequested.emit, -1))
         button.addStackRequested.connect(
@@ -415,3 +422,8 @@ class DatasetDetailedInfoTableView(QTableView):
         first_col_width = self.columnWidth(0)
         self.setColumnWidth( 0, first_col_width+1 )
         self.setColumnWidth( 0, first_col_width )
+
+    def setCapabilities(self, supports_images, supports_stack):
+
+        self._supports_images=supports_images
+        self._supports_stack=supports_stack
