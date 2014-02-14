@@ -22,8 +22,15 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (0, 6)
+__version_info__ = (1, 0, 0)
 __version__ = _format_version(__version_info__)
+
+core_developers = [ "Stuart Berg", "Fred Hamprecht", "Bernhard Kausler", "Anna Kreshuk", "Ullrich Koethe", "Thorben Kroeger", "Christoph Straehle" ]
+
+developers = [ "Kemal Eren", "Luca Fiaschi", "Martin Schiegg", "Christoph Sommer", "Buote Xu" ]
+
+contributors = [ "Markus Doering", "Brucin Erocal", "Carsten Haubold", "Ben Heuer", 
+                 "Philipp Hanslovsky", "Kai Karius", "Jens Kleesiek", "Markus Nullmeier", "Oliver Petra", "Chong Zhang" ]
 
 def convertVersion(vstring):
     if not isinstance(vstring, str):
