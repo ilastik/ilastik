@@ -25,7 +25,7 @@ class AddFileButton(QPushButton):
     addStackRequested = pyqtSignal()
     addRemoteVolumeRequested = pyqtSignal()
 
-    def __init__(self, parent, new=False):
+    def __init__(self, parent, new=False, supports_images=True, supports_stack=True):
         """
         -- ``new`` - boolean parameter to indicate if this button is used to
            add new lanes or files to new roles corresponding to an
@@ -37,10 +37,13 @@ class AddFileButton(QPushButton):
 
         # drop down menu for different add options
         menu = QMenu(parent=self)
-        menu.addAction("Add separate image(s)...").triggered.\
-                connect(self.addFilesRequested.emit)
-        menu.addAction("Add a single 3D/4D Volume from Stack...").triggered.connect(
-                self.addStackRequested.emit)
+        if supports_images:
+            menu.addAction("Add separate image(s)...").triggered.\
+                    connect(self.addFilesRequested.emit)
+
+        if supports_stack:
+            menu.addAction("Add a single 3D/4D Volume from Stack...").triggered.connect(
+                    self.addStackRequested.emit)
         
         if _supports_dvid:
             menu.addAction("Add DVID Volume...").triggered.connect(
