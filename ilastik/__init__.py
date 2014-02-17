@@ -25,12 +25,29 @@ def _format_version(t):
 __version_info__ = (1, 0, 0)
 __version__ = _format_version(__version_info__)
 
-core_developers = [ "Stuart Berg", "Fred Hamprecht", "Bernhard Kausler", "Anna Kreshuk", "Ullrich Koethe", "Thorben Kroeger", "Christoph Straehle" ]
+core_developers = [ "Stuart Berg", 
+                    "Fred Hamprecht", 
+                    "Bernhard Kausler", 
+                    "Anna Kreshuk", 
+                    "Ullrich Koethe", 
+                    "Thorben Kroeger", 
+                    "Martin Schiegg", 
+                    "Christoph Sommer", 
+                    "Christoph Straehle" ]
 
-developers = [ "Kemal Eren", "Luca Fiaschi", "Martin Schiegg", "Christoph Sommer", "Buote Xu" ]
-
-contributors = [ "Markus Doering", "Brucin Erocal", "Carsten Haubold", "Ben Heuer", 
-                 "Philipp Hanslovsky", "Kai Karius", "Jens Kleesiek", "Markus Nullmeier", "Oliver Petra", "Chong Zhang" ]
+developers = [ "Markus Doering", 
+               "Kemal Eren", 
+               "Burcin Erocal", 
+               "Luca Fiaschi", 
+               "Carsten Haubold", 
+               "Ben Heuer", 
+               "Philipp Hanslovsky", 
+               "Kai Karius", 
+               "Jens Kleesiek", 
+               "Markus Nullmeier", 
+               "Oliver Petra", 
+               "Buote Xu", 
+               "Chong Zhang" ]
 
 def convertVersion(vstring):
     if not isinstance(vstring, str):
@@ -49,7 +66,7 @@ def isVersionCompatible(version):
 
     # for now, also allow old-style floats as version numbers
     if isinstance(version, float):
-        return float(__version__) == version
+        return float(_format_version(__version_info__[0:2])) == version
     return convertVersion(version) == __version_info__
 
 #######################
