@@ -224,10 +224,10 @@ class OpBlockedSparseLabelArray(OpCache):
                         denseArray = labeler._denseArray[smallkey]
                         result[bigkey]= denseArray
                     except:
-                        print "Exception in OpBlockedSparseLabelArray.execute, probably due to simultaneous calls to setInSlot() and execute()"
-                        print "labeler =", labeler
-                        print "denseArray =", denseArray
-                        print "result =", result
+                        logger.error( "Exception in OpBlockedSparseLabelArray.execute, probably due to simultaneous calls to setInSlot() and execute()" )
+                        logger.error( "labeler = {}".format( labeler ) )
+                        logger.error( "denseArray = {}".format( denseArray ) )
+                        logger.error( "result = {}".format( result ) )
                         raise
 
         elif slot.name == "nonzeroValues":
@@ -237,7 +237,7 @@ class OpBlockedSparseLabelArray(OpCache):
             result[0] = numpy.array(list(nzvalues))
 
         elif slot.name == "nonzeroCoordinates":
-            print "not supported yet"
+            assert False, "not supported yet"
             #result[0] = numpy.array(self._sparseNZ.keys())
         elif slot.name == "nonzeroBlocks":
             #we only return all non-zero blocks, no keys

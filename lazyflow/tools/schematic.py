@@ -4,6 +4,9 @@ import numpy
 from functools import partial
 import itertools
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Reverse lookup of lazyflow slots to svg slots
 slot_registry = {}
 op_registry = {}
@@ -221,14 +224,14 @@ class SvgOperator( DrawableABC ):
         x, y = upperLeft
 
         title_text = self.op.name
-        print "generating code for operator:", title_text
+        logger.debug( "generating code for operator: {}".format( title_text ) )
 
         inputSize = self.getInputSize()
         outputSize = self.getOutputSize()
 
         child_ordering = {}
         for child in self.op.children:
-            print "child with name:", child.name
+            logger.debug( "child with name: {}".format( child.name ) )
             col = get_column_within_parent(child)
             if col not in child_ordering:
                 child_ordering[col] = []

@@ -343,15 +343,15 @@ class OpArrayCache(OpCache):
 
                 #sanity check:
                 if (self._blockState[key2] != OpArrayCache.DIRTY).any():
-                    print "original condition", cond
-                    print "original tilearray", tileArray, tileArray.shape
-                    print "original tileWeights", tileWeights, tileWeights.shape
-                    print "sub condition", self._blockState[key2] == OpArrayCache.DIRTY
-                    print "START, STOP", drStart2, drStop2
+                    logger.warning( "original condition" + str(cond) )
+                    logger.warning( "original tilearray {} {}".format( tileArray, tileArray.shape ) )
+                    logger.warning( "original tileWeights {} {}".format( tileWeights, tileWeights.shape ) )
+                    logger.warning( "sub condition {}".format( self._blockState[key2] == OpArrayCache.DIRTY ) )
+                    logger.warning( "START={}, STOP={}".format( drStart2, drStop2 ) )
                     import h5py
                     with h5py.File("test.h5", "w") as f:
                         f.create_dataset("data",data = tileWeights)
-                        print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                        logger.warning( "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights) )
                     assert False
                 self._blockState[key2] = OpArrayCache.IN_PROCESS
 

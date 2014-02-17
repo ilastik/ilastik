@@ -1001,7 +1001,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                     else:
                         vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
                     vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
-                    print "vigOpSourceShape:", vigOpSourceShape
+                    logger.debug( "vigOpSourceShape: {}".format( vigOpSourceShape ) )
                     sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
                     for i,vsa in enumerate(sourceArrayVInterp.timeIter()):
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
@@ -1012,9 +1012,9 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                     try:
                         sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
                     except RuntimeError:
-                        print "interpolated array:", sourceArrayVInterp.shape, sourceArrayVInterp.axistags
-                        print "source array:", sourceArrayV.shape, sourceArrayV.axistags
-                        print "droi:", droi
+                        logger.error( "interpolated array: {} {}".format( sourceArrayVInterp.shape, sourceArrayVInterp.axistags ) )
+                        logger.error( "source array: {} {}".format( sourceArrayV.shape, sourceArrayV.axistags ) )
+                        logger.error( "droi: {}".format( droi ) )
                         raise
             del sourceArrayV
             del sourceArrayVInterp
@@ -1286,15 +1286,17 @@ class OpBaseVigraFilter(OpArrayPiper):
                         try:
                             vres = vres.view(vigra.VigraArray)
                             vres.axistags = copy.copy(image.axistags)
-                            print "FAST LANE", self.name, vres.shape, image[twriteKey].shape, vroi
+                            logger.debug( "FAST LANE {} {} {} {}".format( self.name, vres.shape, image[twriteKey].shape, vroi ) )
                             temp = self.vigraFilter(image[twriteKey], roi = vroi,out=vres, **kwparams)
                         except:
-                            print self.name, image.shape, vroi, kwparams
+                            logger.error( "{} {} {} {}".format(self.name, image.shape, vroi, kwparams) )
+                            raise
                     else:
                         try:
                             temp = self.vigraFilter(image, **kwparams)
                         except:
-                            print self.name, image.shape, vroi, kwparams
+                            logger.error( "{} {} {} {}".format(self.name, image.shape, vroi, kwparams) )
+                            raise
                         temp=temp[writeKey]
                 else:
                     if self.supportsRoi:
@@ -1303,7 +1305,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
                             
                         except Exception, e:
-                            print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
+                            logger.error( "EXCEPT 2.1 {} {} {} {}".format( self.name, image.shape, vroi, kwparams ) )
                             traceback.print_exc(e)
                             import sys
                             sys.exit(1)
@@ -1311,7 +1313,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                         try:
                             temp = self.vigraFilter(image, **kwparams)
                         except Exception, e:
-                            print "EXCEPT 2.2", self.name, image.shape, kwparams
+                            logger.error( "EXCEPT 2.2 {} {} {} {}".format( self.name, image.shape, kwparams ) )
                             traceback.print_exc(e)
                             sys.exit(1)
                         temp=temp[writeKey]
@@ -1320,9 +1322,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                     try:
                         vres[:] = temp[twriteKey]
                     except:
-                        print "EXCEPT3", vres.shape, temp.shape, twriteKey
-                        print "EXCEPT3", resultArea.shape,  tresKey, twriteKey
-                        print "EXCEPT3", step, t.shape, timeAxis
+                        logger.error( "EXCEPT3 {} {} {}".format( vres.shape, temp.shape, twriteKey ) )
+                        logger.error( "EXCEPT3 {} {} {}".format( resultArea.shape,  tresKey, twriteKey ) )
+                        logger.error( "EXCEPT3 {} {} {}".format( step, t.shape, timeAxis ) )
                         raise
                 
                 #print "(in.min=",image.min(),",in.max=",image.max(),") (vres.min=",vres.min(),",vres.max=",vres.max(),")"

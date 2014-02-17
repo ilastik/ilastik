@@ -1104,9 +1104,9 @@ if __name__ == "__main__":
                     logger.info(
                         "Detector written to {}".format(f.name))
                 except Exception as e:
-                    print("==== BEGIN DETECTOR DUMP ====")
-                    print(op.dumps())
-                    print("==== END DETECTOR DUMP ====")
+                    logger.error("==== BEGIN DETECTOR DUMP ====")
+                    logger.error(op.dumps())
+                    logger.error("==== END DETECTOR DUMP ====")
                     logger.error(str(e))
 
                 if len(testHistograms) == 0:
