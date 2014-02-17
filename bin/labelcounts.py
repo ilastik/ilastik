@@ -6,8 +6,6 @@ import os
 import h5py
 import numpy
 
-sys.argv.append("/Users/bergs/MyProject.ilp")
-
 if len(sys.argv) != 2 or not sys.argv[1].endswith(".ilp"):
     sys.stderr.write("Usage: {} <my_project.ilp>\n".format( sys.argv[0] ))
     sys.exit(1)
