@@ -2,6 +2,9 @@ from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators import OpLabelImage, OpCompressedCache, Operator
 from lazyflow.operators.opCache import OpCache
 
+import logging
+logger = logging.getLogger(__name__)
+
 class OpCachedLabelImage(OpCache):
     """
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
@@ -28,6 +31,7 @@ class OpCachedLabelImage(OpCache):
     
     def __init__(self, *args, **kwargs):
         super(OpCachedLabelImage, self).__init__(*args, **kwargs)
+        logger.info("OpCachedLabelImage is deprecated, use OpLabelVolume instead")
         
         # Hook up the labeler
         self._opLabelImage = OpLabelImage( parent=self )
