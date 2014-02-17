@@ -16,7 +16,7 @@ class TestProjectMetadataSerializer(object):
             pass
         
         with h5py.File(testProjectName) as testProject:
-            testProject.create_dataset('ilastikVersion', data=0.6)
+            testProject.create_dataset("ilastikVersion", data="1.0.0")
             
             metadata = ProjectMetadata()
             metadata.projectName = "Test Project"

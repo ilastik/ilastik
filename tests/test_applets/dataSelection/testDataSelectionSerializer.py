@@ -42,7 +42,7 @@ class TestDataSelectionSerializer(object):
         """
         # Create an empty project
         with h5py.File(self.testProjectName) as testProject:
-            testProject.create_dataset("ilastikVersion", data=0.6)
+            testProject.create_dataset("ilastikVersion", data="1.0.0")
             
             ##
             ## Serialization
