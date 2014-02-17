@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QStackedWidget, QMenu, QMessageBox, QFileDialog, QDialog
+from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, QDialog
 
 #lazyflow
 from lazyflow.request import Request
@@ -20,7 +20,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -427,7 +427,7 @@ class DataSelectionGui(QWidget):
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
-        for i, filePath in enumerate(fileNames):
+        for _, filePath in enumerate(fileNames):
             datasetInfo = DatasetInfo()
             cwd = self.topLevelOperator.WorkingDirectory.value
             
@@ -599,7 +599,6 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
 
         # Remove all operators that no longer have any connected slots        
-        last_valid = -1
         laneIndexes = range( len(self.topLevelOperator.DatasetGroup) )
         for laneIndex, multislot in reversed(zip(laneIndexes, self.topLevelOperator.DatasetGroup)):
             any_ready = False
