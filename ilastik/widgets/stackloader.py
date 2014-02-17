@@ -39,6 +39,8 @@ from PyQt4 import QtCore, QtGui
 from shutil import rmtree
 from lazyflow.operators.adaptors import Op5ifyer
 
+import logging
+logger = logging.getLogger(__name__)
 
 #*******************************************************************************
 # O p  C h a i n L o a d e r                                                   *
@@ -204,7 +206,7 @@ class TestOperatorChain():
     def createImages(self):
 
         if not os.path.exists(self.testdir):
-            print "creating directory '%s'" % (self.testdir)
+            logging.debug( "creating directory '%s'" % (self.testdir) )
             os.mkdir(self.testdir)
         self.block = numpy.random.rand(self.dim[0],self.dim[1],self.dim[2],self.dim[3])*255
         self.block = self.block.astype('uint8')

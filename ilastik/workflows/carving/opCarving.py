@@ -18,6 +18,9 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving
 from cylemon.segmentation import MSTSegmentor
 
+import logging
+logger = logging.getLogger(__name__)
+
 #===----------------------------------------------------------------------------------------------------------------===
 
 class OpCarving(Operator):
@@ -109,7 +112,7 @@ class OpCarving(Operator):
             try:
                 f = h5py.File(hintOverlayFile,"r")
             except Exception as e:
-                print "Could not open hint overlay '%s'" % hintOverlayFile
+                logger.info( "Could not open hint overlay '%s'" % hintOverlayFile )
                 raise e
             self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
         
@@ -182,14 +185,14 @@ class OpCarving(Operator):
         with Timer() as timer:
             self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
             self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-            print "building 'done' luts"
+            logger.info( "building 'done' luts" )
             for name, objectSupervoxels in self._mst.object_lut.iteritems():
                 if name == self._currObjectName:
                     continue
                 self._done_lut[objectSupervoxels] += 1
                 assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
-        print "building the 'done' luts took {} seconds".format( timer.seconds() )
+        logger.info( "building the 'done' luts took {} seconds".format( timer.seconds() ) )
     
     def dataIsStorable(self):
         if self._mst is None:
@@ -273,7 +276,7 @@ class OpCarving(Operator):
         for name, objectSupervoxels in self._mst.object_lut.iteritems():
             if numpy.sum(sv == objectSupervoxels) > 0:
                 names.append(name)
-        print "click on %r, supervoxel=%d: %r" % (position3d, sv, names)
+        logger.info( "click on %r, supervoxel=%d: %r" % (position3d, sv, names) )
         return names
 
     @Operator.forbidParallelExecute
@@ -305,7 +308,7 @@ class OpCarving(Operator):
         not part of the done segmentation anymore.
         """
         assert self._mst is not None
-        print "[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst))
+        logger.info( "[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)) )
 
         assert name in self._mst.object_lut
         assert name in self._mst.object_seeds_fg_voxels
@@ -339,9 +342,9 @@ class OpCarving(Operator):
         return (fgVoxels, bgVoxels)
     
     def loadObject(self, name):
-        print "want to load object with name = %s" % name
+        logger.info( "want to load object with name = %s" % name )
         if not self.hasObjectWithName(name):
-            print "  --> no such object '%s'" % name 
+            logger.info( "  --> no such object '%s'" % name ) 
             return False
         
         if self.hasCurrentObject():
@@ -374,13 +377,13 @@ class OpCarving(Operator):
         bgVoxels = list(bgVoxels)
 
         with Timer() as timer:
-            print "Loading seeds...."
+            logger.info( "Loading seeds...." )
             z = numpy.zeros(bounding_box_shape, dtype=dtype)
-            print "Allocating seed array took {} seconds".format( timer.seconds() )
+            logger.info( "Allocating seed array took {} seconds".format( timer.seconds() ) )
             z[fgVoxels] = 2
             z[bgVoxels] = 1
             self.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
-        print "Loading seeds took a total of {} seconds".format( timer.seconds() )
+        logger.info( "Loading seeds took a total of {} seconds".format( timer.seconds() ) )
         
         #restore the correct parameter values 
         mst = self._mst
@@ -431,9 +434,9 @@ class OpCarving(Operator):
         self.updatePreprocessing()
     
     def deleteObject(self, name):
-        print "want to delete object with name = %s" % name
+        logger.info( "want to delete object with name = %s" % name )
         if not self.hasObjectWithName(name):
-            print "  --> no such object '%s'" % name 
+            logger.info( "  --> no such object '%s'" % name ) 
             return False
         
         self.deleteObject_impl(name)
@@ -444,7 +447,7 @@ class OpCarving(Operator):
         self._dirtyObjects.add(name)
         
         objects = self._mst.object_names.keys()
-        print "save: len = ", len(objects)
+        logger.info( "save: len = {}".format( len(objects) ) )
         self.AllObjectNames.meta.shape = (len(objects),)
         
         self.HasSegmentation.setValue(False)
@@ -458,7 +461,7 @@ class OpCarving(Operator):
         """
         if self._currObjectName:
             name = copy.copy(self._currObjectName)
-            print "saving object %s" % self._currObjectName
+            logger.info( "saving object %s" % self._currObjectName )
             self.saveCurrentObjectAs(self._currObjectName)
             self.HasSegmentation.setValue(False)
             return name
@@ -470,7 +473,7 @@ class OpCarving(Operator):
         Saves current object as name.
         """
         seed = 2
-        print "   --> Saving object %r from seed %r" % (name, seed)
+        logger.info( "   --> Saving object %r from seed %r" % (name, seed) )
         if self._mst.object_names.has_key(name):
             objNr = self._mst.object_names[name]
         else:
@@ -637,9 +640,9 @@ class OpCarving(Operator):
         key = roi.toSlice()
         if slot == self.WriteSeeds:
             with Timer() as timer:
-                print "Writing seeds to label array"
+                logger.info( "Writing seeds to label array" )
                 self.opLabelArray.LabelSinkInput[roi.toSlice()] = value
-                print "Writing seeds to label array took {} seconds".format( timer.seconds() )
+                logger.info( "Writing seeds to label array took {} seconds".format( timer.seconds() ) )
             
             assert self._mst is not None
 
@@ -647,12 +650,12 @@ class OpCarving(Operator):
             value[:] = numpy.where(value == 100, 255, value)
 
             with Timer() as timer:
-                print "Writing seeds to MST"
+                logger.info( "Writing seeds to MST" )
                 if hasattr(key, '__len__'):
                     self._mst.seeds[key[1:4]] = value
                 else:
                     self._mst.seeds[key] = value
-            print "Writing seeds to MST took {} seconds".format( timer.seconds() )
+            logger.info( "Writing seeds to MST took {} seconds".format( timer.seconds() ) )
 
             self.has_seeds = True
         else:
@@ -673,7 +676,7 @@ class OpCarving(Operator):
             bgPrio = self.BackgroundPriority.value
             noBiasBelow = self.NoBiasBelow.value
 
-            print "compute new carving results with bg priority = %f, no bias below %d" % (bgPrio, noBiasBelow)
+            logger.info( "compute new carving results with bg priority = %f, no bias below %d" % (bgPrio, noBiasBelow) )
             t1 = time.time()
             labelCount = 2
             params = dict()
@@ -682,7 +685,7 @@ class OpCarving(Operator):
             params["noBiasBelow"] = noBiasBelow
             unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
             self._mst.run(unaries, **params)
-            print " ... carving took %f sec." % (time.time()-t1)
+            logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
             self.Segmentation.setDirty(slice(None))
             hasSeg = numpy.any(self._mst.segmentation.lut > 0 )

@@ -5,6 +5,9 @@ from PyQt4.QtGui import QTableView, \
     QLabel, QSizePolicy
 from PyQt4.QtCore import Qt, QString
 
+import logging
+logger = logging.getLogger(__name__)
+
 #===============================================================================
 # Common base class that can be used by the labelListView and the boxListView
 #===============================================================================
@@ -57,7 +60,7 @@ class ListView(QStackedWidget):
 #                                               self._colorDialog.pmapColor ()))
 
     def rowMovedTest(self, logicalIndex, oldVisualIndex, newVisualIndex):
-        print "{} {} {}".format(logicalIndex, oldVisualIndex, newVisualIndex)
+        logger.debug( "{} {} {}".format(logicalIndex, oldVisualIndex, newVisualIndex) )
 
     def _setListViewLook(self):
         table = self._table

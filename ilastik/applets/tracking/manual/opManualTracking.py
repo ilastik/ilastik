@@ -6,6 +6,9 @@ from lazyflow.stype import Opaque
 
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 class OpManualTracking(Operator):
     name = "Manual Tracking"
     category = "other"
@@ -162,7 +165,7 @@ class OpManualTracking(Operator):
                             alltids.add(l)   
                         count += 1
                          
-            print "at timestep ", t, count, "traxels found"
+            logger.info( "at timestep {}, {} traxels found".format( t, count ) )
             
         return oid2tids, alltids
     

@@ -9,6 +9,9 @@ except:
 import h5py, cPickle
 import sys
 
+import logging
+logger = logging.getLogger(__name__)
+
 class RegressorC(object):
 
     def __init__(self, C=1, epsilon=0.1, penalty="l2",regularization="l2",pos_constr=False):
@@ -189,7 +192,7 @@ class RegressorGurobi(object):
         
          
         model.update()
-        print "done "
+        logger.info( "done " )
         
         #print "setting penalty objective %s ..."%self.penalty,
         obj=None
@@ -198,7 +201,7 @@ class RegressorGurobi(object):
         elif self.penalty=="l2":
             obj=self._C * (gu.quicksum([u*u for u in u_vars1 ])+gu.quicksum([u*u for u in u_vars2 ]))
         else:
-            print  "penalty term not know !"
+            logger.error( "penalty term not know !" )
             raise RuntimeError
         
         
@@ -208,13 +211,13 @@ class RegressorGurobi(object):
         model.setObjective(obj)
 
 
-        print "done"
+        logger.info( "done" )
         #print "objective = ", model.getObjective()
         
         ### add constraint for the variables
-        print "adding constraint penalty"
+        logger.info( "adding constraint penalty" )
         if tags:
-            print "huh, wtf"
+            logger.debug( "huh, ???" )
             for i in range(sum(tags)):
                 #logme("%.2f"%(i/float(X_hat.shape[0])*100.0))
                 constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
@@ -394,8 +397,8 @@ class SVR(object):
             try:
                 dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
             except Exception,e:
-                print "HHHHHHHH",dot.shape,dot.dtype
-                print e
+                logger.error( "HHHHHHHH {} {}".format(dot.shape,dot.dtype) )
+                logger.error(str(e))
                 raise Exception
             
         

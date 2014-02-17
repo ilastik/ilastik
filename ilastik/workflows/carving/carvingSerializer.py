@@ -3,6 +3,9 @@ import numpy
 
 from lazyflow.roi import roiFromShape, roiToSlice
 
+import logging
+logger = logging.getLogger(__name__)
+
 class CarvingSerializer( AppletSerializer ):
     def __init__(self, carvingTopLevelOperator, *args, **kwargs):
         super(CarvingSerializer, self).__init__(*args, **kwargs)
@@ -14,15 +17,15 @@ class CarvingSerializer( AppletSerializer ):
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
             for name in opCarving._dirtyObjects:
-                print "[CarvingSerializer] serializing %s" % name
+                logger.info( "[CarvingSerializer] serializing %s" % name )
                
                 if name in obj and name in mst.object_seeds_fg_voxels: 
                     #group already exists
-                    print "  -> changed"
+                    logger.info( "  -> changed" )
                 elif name not in mst.object_seeds_fg_voxels:
-                    print "  -> deleted"
+                    logger.info( "  -> deleted" )
                 else:
-                    print "  -> added"
+                    logger.info( "  -> added" )
                     
                 g = getOrCreateGroup(obj, name)
                 deleteIfPresent(g, "fg_voxels")
@@ -71,7 +74,7 @@ class CarvingSerializer( AppletSerializer ):
                 v = numpy.concatenate(v, axis=1)
                 topGroup.create_dataset("bg_voxels", data = v)
 
-            print "saved seeds"
+            logger.info( "saved seeds" )
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         obj = topGroup["objects"]
@@ -79,7 +82,7 @@ class CarvingSerializer( AppletSerializer ):
             mst = opCarving._mst 
             
             for i, name in enumerate(obj):
-                print " loading object with name='%s'" % name
+                logger.info( " loading object with name='%s'" % name )
                 try:
                     g = obj[name]
                     fg_voxels = g["fg_voxels"]
@@ -96,14 +99,14 @@ class CarvingSerializer( AppletSerializer ):
                     mst.bg_priority[name]            = g["bg_prio"].value
                     mst.no_bias_below[name]          = g["no_bias_below"].value
                     
-                    print "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d" % (name, id(opCarving), id(mst))
-                    print "  %d voxels labeled with green seed" % fg_voxels[0].shape[0] 
-                    print "  %d voxels labeled with red seed" % bg_voxels[0].shape[0] 
-                    print "  object is made up of %d supervoxels" % sv.size
-                    print "  bg priority = %f" % mst.bg_priority[name]
-                    print "  no bias below = %d" % mst.no_bias_below[name]
+                    logger.info( "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d" % (name, id(opCarving), id(mst)) )
+                    logger.info( "  %d voxels labeled with green seed" % fg_voxels[0].shape[0] ) 
+                    logger.info( "  %d voxels labeled with red seed" % bg_voxels[0].shape[0] ) 
+                    logger.info( "  object is made up of %d supervoxels" % sv.size )
+                    logger.info( "  bg priority = %f" % mst.bg_priority[name] )
+                    logger.info( "  no bias below = %d" % mst.no_bias_below[name] )
                 except Exception as e:
-                    print 'object %s could not be loaded due to exception: %s'% (name,e)
+                    logger.info( 'object %s could not be loaded due to exception: %s'% (name,e) )
 
             shape = opCarving.opLabelArray.Output.meta.shape
             dtype = opCarving.opLabelArray.Output.meta.dtype
@@ -147,7 +150,7 @@ class CarvingSerializer( AppletSerializer ):
 
                 bounding_box_slicing = roiToSlice( bounding_box_roi[0], bounding_box_roi[1] )
                 opCarving.WriteSeeds[(slice(0,1),) + bounding_box_slicing + (slice(0,1),)] = z[numpy.newaxis, :,:,:, numpy.newaxis]
-                print "restored seeds"
+                logger.info( "restored seeds" )
                 
             opCarving._buildDone()
            

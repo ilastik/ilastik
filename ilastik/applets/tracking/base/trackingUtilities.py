@@ -3,6 +3,8 @@ import numpy as np
 import os.path as path
 import pgmlink
 
+import logging
+logger = logging.getLogger(__name__)
 
 def relabel(volume, replace):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
@@ -83,7 +85,7 @@ def get_events_at(eventsVector, t):
 def write_events(events_at, directory, t, labelImage, mergers=None):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         
-        print "-- Writing results to " + path.basename(fn) 
+        logger.info( "-- Writing results to " + path.basename(fn) ) 
         if len(events_at) == 0:
             dis = []
             app = []
@@ -143,7 +145,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
                 
     
-        print "-> results successfully written"
+        logger.info( "-> results successfully written" )
 
 
     

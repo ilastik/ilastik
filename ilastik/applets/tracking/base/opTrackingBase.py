@@ -13,6 +13,8 @@ from lazyflow.operators.valueProviders import OpZeroDefault
 
 from lazyflow.roi import sliceToRoi
 
+import logging
+logger = logging.getLogger(__name__)
 
 class OpTrackingBase(Operator):
     name = "Tracking"
@@ -171,12 +173,11 @@ class OpTrackingBase(Operator):
             mov = get_dict_value(events[str(i-time_range[0]+1)], "mov", [])
             merger = get_dict_value(events[str(i-time_range[0]+1)], "merger", [])
             
-            print len(dis), "dis at", i
-            print len(app), "app at", i
-            print len(div), "div at", i
-            print len(mov), "mov at", i
-            print len(merger), "merger at", i
-            print
+            logger.info( " {} dis at {}".format( len(dis), i ) )
+            logger.info( " {} app at {}".format( len(app), i ) )
+            logger.info( " {} div at {}".format( len(div), i ) )
+            logger.info( " {} mov at {}".format( len(mov), i ) )
+            logger.info( " {} merger at {}\n".format( len(merger), i ) )
             
             label2color.append({})
             mergers.append({})
@@ -252,8 +253,8 @@ class OpTrackingBase(Operator):
         parameters['z_range'] = z_range
         parameters['size_range'] = size_range
         
-        print "generating traxels"
-        print "fetching region features and division probabilities"
+        logger.info( "generating traxels" )
+        logger.info( "fetching region features and division probabilities" )
         feats = self.ObjectFeatures(time_range).wait()        
         
         if with_div:
@@ -262,7 +263,7 @@ class OpTrackingBase(Operator):
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
         
-        print "filling traxelstore"
+        logger.info( "filling traxelstore" )
         ts = pgmlink.TraxelStore()
                 
         max_traxel_id_at = pgmlink.VectorOfInt()  
@@ -279,7 +280,7 @@ class OpTrackingBase(Operator):
             if ct.size:
                 ct = ct[1:, ...]
             
-            print "at timestep ", t, rc.shape[0], "traxels found"
+            logger.info( "at timestep {}, {} traxels found".format( t, rc.shape[0] ) )
             count = 0
             filtered_labels_at = []
             for idx in range(rc.shape[0]):
@@ -335,7 +336,7 @@ class OpTrackingBase(Operator):
             
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t)-time_range[0])] = filtered_labels_at
-            print "at timestep ", t, count, "traxels passed filter"
+            logger.info( "at timestep {}, {} traxels passed filter".format(t, count) )
             max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
                 empty_frame = True
@@ -344,7 +345,7 @@ class OpTrackingBase(Operator):
         
         if median_object_size is not None:
             median_object_size[0] = np.median(np.array(obj_sizes),overwrite_input=True)
-            print 'median object size = ' + str(median_object_size[0])
+            logger.info( 'median object size = ' + str(median_object_size[0]) )
         
         self.FilteredLabels.setValue(filtered_labels, check_changed=False)
         

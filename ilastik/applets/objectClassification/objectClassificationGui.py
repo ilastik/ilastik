@@ -596,8 +596,8 @@ class ObjectClassificationGui(LabelingGui):
             return
         if action.text() == text:
             numpy.set_printoptions(precision=4)
-            print "------------------------------------------------------------"
-            print "object:         {}".format(obj)
+            logger.info( "------------------------------------------------------------" )
+            logger.info( "object:         {}".format(obj) )
             
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
@@ -605,21 +605,21 @@ class ObjectClassificationGui(LabelingGui):
                 label = int(labels[obj])
             else:
                 label = "none"
-            print "label:          {}".format(label)
+            logger.info( "label:          {}".format(label) )
             
-            print 'features:'
+            logger.info( 'features:' )
             feats = self.op.ObjectFeatures([t]).wait()[t]
             selected = self.op.SelectedFeatures([]).wait()
             for plugin in sorted(feats.keys()):
                 if plugin == default_features_key or plugin not in selected:
                     continue
-                print "Feature category: {}".format(plugin)
+                logger.info( "Feature category: {}".format(plugin) )
                 for featname in sorted(feats[plugin].keys()):
                     if featname not in selected[plugin]:
                         continue
                     value = feats[plugin][featname]
                     ft = numpy.asarray(value.squeeze())[obj]
-                    print "{}: {}".format(featname, ft)
+                    logger.info( "{}: {}".format(featname, ft) )
 
             if len(selected)>0 and label!='none':
                 if self.op.Predictions.ready():
@@ -635,11 +635,11 @@ class ObjectClassificationGui(LabelingGui):
                     if len(probs) >= obj:
                         prob = probs[obj]
     
-                print "probabilities:  {}".format(prob)
-                print "prediction:     {}".format(pred)
+                logger.info( "probabilities:  {}".format(prob) )
+                logger.info( "prediction:     {}".format(pred) )
 
             
-            print "------------------------------------------------------------"
+            logger.info( "------------------------------------------------------------" )
         elif action.text()==clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )

@@ -27,7 +27,8 @@ import vigra
 
 from countingGuiBoxesInterface import OpArrayPiper2
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 
 #===============================================================================
@@ -248,7 +249,7 @@ class DotController(QObject):
     def addNewDot(self,pos5D):
         pos=tuple(pos5D[1:3])
         if self._currentDotsHash.has_key(pos): 
-            print "Dot is already there %s",self._currentDotsHash[pos]
+            logger.debug( "Dot is already there %s",self._currentDotsHash[pos] )
             return
         
         newdot=QDot(pos,self._radius,self.Signaller)
@@ -392,7 +393,7 @@ if __name__=="__main__":
     
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,500,500,1,1)
-    print mainwin.centralWidget()    
+    logger.debug( str(mainwin.centralWidget()) )    
      
      
     BoxContr=DotController(mainwin.editor.imageScenes[2],mainwin.editor.brushingControler)

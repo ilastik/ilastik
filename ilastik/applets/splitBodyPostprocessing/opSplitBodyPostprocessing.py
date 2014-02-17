@@ -298,12 +298,12 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
 
                 # Instead, we bend over backwards here to do this 'in place'
-                print "Adding body {} to final image.".format( body_index )
+                logger.info( "Adding body {} to final image.".format( body_index ) )
                 fragment_image[:] = numpy.where( fragment_image, fragment_image, -max_label )
                 numpy.add( fragment_image, max_label, out=fragment_image )
                 result[:] = numpy.where( fragment_image, fragment_image, result )
                 
-                print "Finding new max label..."
+                logger.info( "Finding new max label..." )
                 # New max
                 max_label = result.max()
                 
@@ -312,7 +312,7 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 body_id = slot.meta.selected_label
                 self._mapping[(old_max,max_label+1)] = body_id
 
-            print "Finished assembling final segmentation."
+            logger.info( "Finished assembling final segmentation." )
             return result
         else:
             assert False, "Unknown output slot: {}".format( slot.name )

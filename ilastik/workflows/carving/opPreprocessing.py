@@ -16,6 +16,9 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving Cython module
 from cylemon.segmentation import MSTSegmentor
 
+import logging
+logger = logging.getLogger(__name__)
+
 class OpFilter(Operator):
     HESSIAN_BRIGHT = 0
     HESSIAN_DARK = 1
@@ -48,65 +51,65 @@ class OpFilter(Operator):
         volume = volume5d[0,:,:,:,0]
         result_view = result[0,:,:,:,0]
         
-        print "input volume shape: ", volume.shape
-        print "input volume size: ", volume.nbytes / 1024**2, "MB"
+        logger.info( "input volume shape: ", volume.shape )
+        logger.info( "input volume size: ", volume.nbytes / 1024**2, "MB" )
         fvol = numpy.asarray(volume, numpy.float32)
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
 
-        print "applying filter", fvol.shape
+        logger.info( "applying filter", fvol.shape )
         with Timer() as filterTimer:        
             if fvol.shape[2] > 1:
                 # true 3D volume
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    print "lowest eigenvalue of Hessian of Gaussian"
+                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
                     result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
-                    print "greatest eigenvalue of Hessian of Gaussian"
+                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
                     result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
-                    print "Gaussian Gradient Magnitude"
+                    logger.info( "Gaussian Gradient Magnitude" )
                     result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW:
-                    print "Gaussian Smoothing"
+                    logger.info( "Gaussian Smoothing" )
                     result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
-                    print "negative Gaussian Smoothing"
+                    logger.info( "negative Gaussian Smoothing" )
                     result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
-                print "Filter took {} seconds".format( filterTimer.seconds() )
+                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
             else:
                 # 2D Image
                 fvol = fvol[:,:,0]
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    print "lowest eigenvalue of Hessian of Gaussian"
+                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
                     volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
-                    print "greatest eigenvalue of Hessian of Gaussian"
+                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
-                    print "Gaussian Gradient Magnitude"
+                    logger.info( "Gaussian Gradient Magnitude" )
                     volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW:
-                    print "Gaussian Smoothing"
+                    logger.info( "Gaussian Smoothing" )
                     volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
-                    print "negative Gaussian Smoothing"
+                    logger.info( "negative Gaussian Smoothing" )
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
                 result_view[:,:,0] = volume_feat
-                print "Filter took {} seconds".format( filterTimer.seconds() )
+                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -155,15 +158,15 @@ class OpSimpleWatershed(Operator):
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
                 result_view[...] = vigra.analysis.watersheds(volume_feat[:,:].astype(numpy.uint8))[0]
-                print "done" ,numpy.max(result[...])
+                logger.info( "done {}".format(numpy.max(result[...]) ) )
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 
                 labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
-                print "done" ,numpy.max(labelVolume)
+                logger.info( "done {}".format(numpy.max(labelVolume)) )
 
-        print "Watershed took {} seconds".format( watershedTimer.seconds() )
+        logger.info( "Watershed took {} seconds".format( watershedTimer.seconds() ) )
         return result
 
     def propagateDirty(self, slot, subindex, roi):

@@ -89,7 +89,7 @@ class DataConversionWorkflow(Workflow):
             # Now run the export and report progress....
             opDataExport = self.dataExportApplet.topLevelOperator
             for i, opExportDataLaneView in enumerate(opDataExport):
-                print "Exporting file #{} to {}".format(i, opExportDataLaneView.ExportPath.value)
+                logger.info( "Exporting file #{} to {}".format(i, opExportDataLaneView.ExportPath.value) )
     
                 sys.stdout.write( "Result #{}/{} Progress: ".format( i, len( opDataExport ) ) )
                 def print_progress( progress ):

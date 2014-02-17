@@ -286,10 +286,10 @@ class OpFragmentSetLut(Operator):
             result[:] = 0
             return result
 
-        print "Requesting fragment names"
+        logger.info( "Requesting fragment names" )
         mst = self.MST.value
         names = OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel)
-        print "Got fragment names: {}".format( names )
+        logger.info( "Got fragment names: {}".format( names ) )
         
         # Accumulate the supervoxels from each fragment that came from the current raveler object
         result[:] = 0
@@ -299,7 +299,7 @@ class OpFragmentSetLut(Operator):
                 # Give each fragment it's own label to support different colors for each
                 result[objectSupervoxels] = i+1
 
-        print "Finished accumulating fragments into lut"
+        logger.info( "Finished accumulating fragments into lut" )
         return result
     
     def propagateDirty(self, slot, subindex, roi):

@@ -22,6 +22,9 @@ from ilastik.applets.labeling.labelingGui import Tool
 
 from ilastik.utility.gui import threadRouted, ThunkEventHandler, ThunkEvent
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SplitBodyCarvingGui(CarvingGui):
     
     def __init__(self, topLevelOperatorView):
@@ -122,7 +125,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         rendered_volume_shape = (250, 250, 250)
 
-        print "Starting to update 3D volume data"
+        logger.info( "Starting to update 3D volume data" )
 
         fragmentColors = self._fragmentColors
         op = self.topLevelOperatorView
@@ -153,9 +156,9 @@ class SplitBodyCarvingGui(CarvingGui):
 
         ravelerLabel = op.CurrentRavelerLabel.value
         if ravelerLabel != 0:
-            print " Asking for fragment segmentation"
+            logger.info( " Asking for fragment segmentation" )
             op.CurrentFragmentSegmentation(*rendering_roi_5d).writeInto(renderVol5d).wait()
-            print " Obtained Fragment Segmentation"
+            logger.info( " Obtained Fragment Segmentation" )
 
             fragmentNames = op.getFragmentNames(ravelerLabel)
             numFragments = len(fragmentNames)
@@ -171,14 +174,14 @@ class SplitBodyCarvingGui(CarvingGui):
                     renderLabels.append( renderLabel )
 
             if op.CurrentEditingFragment.value != "":
-                print " Asking for masked editing segmentation"
+                logger.info( " Asking for masked editing segmentation" )
                 maskedSegmentation = op.MaskedSegmentation(*rendering_roi_5d).wait()
-                print " Obtained for masked editing segmentation"
+                logger.info( " Obtained for masked editing segmentation" )
                 segLabel = numFragments
 
-                print " Start updating volume data with masked segmentation"
+                logger.info( " Start updating volume data with masked segmentation" )
                 renderVol5d[:] = numpy.where(maskedSegmentation != 0, segLabel, renderVol5d)
-                print " Finished updating volume data with masked segmentation"
+                logger.info( " Finished updating volume data with masked segmentation" )
 
                 segmentationColor = (0.0, 1.0, 0.0)
                 renderLabel = self._renderMgr.addObject( color=segmentationColor )
@@ -189,7 +192,7 @@ class SplitBodyCarvingGui(CarvingGui):
             if renderLabels != list(range(len(renderLabels))):
                 renderVol5d[:] = numpy.array([0] + renderLabels)[renderVol5d]
 
-        print "Finished updating 3D volume data"
+        logger.info( "Finished updating 3D volume data" )
         self.thunkEventHandler.post(self._refreshRenderMgr)
 
     @threadRouted
@@ -197,9 +200,9 @@ class SplitBodyCarvingGui(CarvingGui):
         """
         The render mgr can segfault if this isn't called from the main thread.
         """
-        print "Begin render update"
+        logger.info( "Begin render update" )
         self._renderMgr.update()
-        print "End render update"
+        logger.info( "End render update" )
 
     
     def setupLayers(self):

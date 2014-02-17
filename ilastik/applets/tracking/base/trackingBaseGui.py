@@ -36,7 +36,6 @@ class TrackingBaseGui( LayerViewerGui ):
 
     def stopAndCleanUp( self ):
         super( TrackingBaseGui, self ).stopAndCleanUp()
-        print "TrackinGui.reset(): not implemented"
 
     
     ###########################################
@@ -287,7 +286,7 @@ class TrackingBaseGui( LayerViewerGui ):
         directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
         if directory is None or len(str(directory)) == 0:
-            print "cancelled."
+            logger.info( "cancelled." )
             return
         
         def _handle_progress(x):       
@@ -305,7 +304,7 @@ class TrackingBaseGui( LayerViewerGui ):
             if t_from == None:
                 return
             
-            print "Saving first label image..."
+            logger.info( "Saving first label image..." )
             key = []
             for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
                 if flag is 't':
@@ -323,8 +322,8 @@ class TrackingBaseGui( LayerViewerGui ):
                 write_events([], str(directory), t_from, labelImage)
                 
                 events = self.mainOperator.EventsVector.value
-                print "Saving events..."
-                print "Length of events " + str(len(events))
+                logger.info( "Saving events..." )
+                logger.info( "Length of events " + str(len(events)) )
                 
                 num_files = float(len(events))
                 for i in events.keys():
@@ -371,10 +370,10 @@ class TrackingBaseGui( LayerViewerGui ):
         directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
                 
         if directory is None or len(str(directory)) == 0:
-            print "cancelled."
+            logger.info( "cancelled." )
             return
         
-        print 'Saving results as tiffs...'
+        logger.info( 'Saving results as tiffs...' )
         
         label2color = self.mainOperator.label2color
         lshape = list(self.mainOperator.LabelImage.meta.shape)
@@ -387,7 +386,7 @@ class TrackingBaseGui( LayerViewerGui ):
             for t, label2color_at in enumerate(label2color):
                 if len(label2color_at) == 0:                
                     continue
-                print 'exporting tiffs for t = ' + str(t)            
+                logger.info( 'exporting tiffs for t = ' + str(t) )            
                 
                 roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
                 labelImage = self.mainOperator.LabelImage.get(roi).wait()
@@ -398,7 +397,7 @@ class TrackingBaseGui( LayerViewerGui ):
                     vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint32), out_fn)
                 
                 _handle_progress(t/num_files * 100)
-            print 'Tiffs exported.'
+            logger.info( 'Tiffs exported.' )
             
         def _handle_finished(*args):
             self._drawer.exportTifButton.setEnabled(True)
@@ -425,7 +424,7 @@ class TrackingBaseGui( LayerViewerGui ):
             options |= QFileDialog.DontUseNativeDialog
         fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'), options=options)
         if fn is None:
-            print "cancelled."
+            logger.info( "cancelled." )
             return        
         self._drawer.lineageFileNameEdit.setText(str(fn))
         
@@ -445,9 +444,9 @@ class TrackingBaseGui( LayerViewerGui ):
         from_t = self._drawer.lineageFromBox.value()
         to_t = self._drawer.lineageToBox.value()
         
-        print "Computing Lineage Trees..."
+        logger.info( "Computing Lineage Trees..." )
         self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing, from_t=from_t, to_t=to_t)
-        print 'Lineage Trees saved.'
+        logger.info( 'Lineage Trees saved.' )
         
         
     def _onTrackButtonPressed( self ):

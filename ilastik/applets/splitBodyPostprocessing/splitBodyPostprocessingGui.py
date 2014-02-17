@@ -13,6 +13,9 @@ from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.splitBodyCarving.bodySplitInfoWidget import BodySplitInfoWidget
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SplitBodyPostprocessingGui(LayerViewerGui):
     
     firstFragmentColors = [ QColor(0,0,0,0), # transparent (background)
@@ -65,7 +68,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
 
         def handleProgress(progress):
             # TODO: Hook this up to the progress bar
-            print "Export progress: {}%".format( progress )
+            logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
         req = op.exportFinalSegmentation( encode_from_qstring( exportPath ), 

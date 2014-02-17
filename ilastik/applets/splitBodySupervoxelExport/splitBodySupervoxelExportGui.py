@@ -10,6 +10,9 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+import logging
+logger = logging.getLogger(__name__)
+
 class SplitBodySupervoxelExportGui(LayerViewerGui):
 
     def __init__(self, topLevelOperatorView):
@@ -36,7 +39,7 @@ class SplitBodySupervoxelExportGui(LayerViewerGui):
 
         def handleProgress(progress):
             # TODO: Hook this up to the progress bar
-            print "Export progress: {}%".format( progress )
+            logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
         req = op.exportFinalSupervoxels( encode_from_qstring( exportPath ), 

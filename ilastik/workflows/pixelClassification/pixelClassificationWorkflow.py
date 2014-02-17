@@ -280,7 +280,7 @@ class PixelClassificationWorkflow(Workflow):
             # Now run the batch export and report progress....
             opBatchDataExport = self.batchResultsApplet.topLevelOperator
             for i, opExportDataLaneView in enumerate(opBatchDataExport):
-                print "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value)
+                logger.info( "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value) )
     
                 sys.stdout.write( "Result {}/{} Progress: ".format( i, len( opBatchDataExport ) ) )
                 sys.stdout.flush()

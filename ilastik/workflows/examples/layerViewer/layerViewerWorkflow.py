@@ -7,6 +7,9 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
+import logging
+logger = logging.getLogger(__name__)
+
 class LayerViewerWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
         
@@ -38,8 +41,8 @@ class LayerViewerWorkflow(Workflow):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
         """
-        print "LayerViewerWorkflow Project was opened with the following args: "
-        print self._workflow_cmdline_args
+        logger.info( "LayerViewerWorkflow Project was opened with the following args: " )
+        logger.info( self._workflow_cmdline_args )
 
     def connectLane(self, laneIndex):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)

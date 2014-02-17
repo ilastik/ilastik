@@ -30,7 +30,6 @@ class ManualTrackingGui(LayerViewerGui):
 
     def reset( self ):
         super( ManualTrackingGui, self ).stopAndCleanUp()
-        print "TrackinGui.reset(): not implemented"
 
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
@@ -878,7 +877,7 @@ class ManualTrackingGui(LayerViewerGui):
                         merger_sizes[m_size] = 0
                     merger_sizes[m_size] += 1
         
-        print 'Merger-Sizes:', merger_sizes
+        logging.info( 'Merger-Sizes: {}'.format(merger_sizes) )
         
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
@@ -1182,7 +1181,7 @@ class ManualTrackingGui(LayerViewerGui):
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
-        print prompt
+        logger.info( prompt )
 
 
     def _onNextUnlabeledPressed(self):

@@ -32,6 +32,9 @@ import threading
 
 import time
 
+import logging
+logger = logging.getLogger(__name__)
+
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
@@ -440,7 +443,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             #self.updateText("("+string+")"+" "+str(pos))
 
     def mouseDoubleClickEvent(self, event):
-        #print "DOUBLE CLICK ON ITEM"
+        logger.debug("DOUBLE CLICK ON ITEM")
         #FIXME: Implement me
         event.accept()
 
@@ -484,7 +487,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
 
     def setOpacity(self,float):
-        print "Resetting Opacity",float
+        logger.debug("Resetting Opacity {}".format(float))
 
         self._normalColor.setAlpha(float*255)
 
@@ -1086,13 +1089,13 @@ class BoxController(QObject):
 
                     line=["%5.5d"%k, "%5.5d"%start[1], "%5.5d"%start[2], "%5.5d"%stop[1],\
                     "%5.5d"%stop[2],"%5.2f"%count,"%5.2f"%averagedens, "%5.2f"%stddensity]
-                    print "line ", ",".join(line)
+                    logger.debug( "line " + ",".join(line) )
                     fh.write(",".join(line)+"\n")
 
 
 
         except IOError,e:
-            print e
+            logger.error( e )
             raise IOError
 
 #===============================================================================
