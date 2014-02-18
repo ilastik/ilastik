@@ -67,14 +67,14 @@ class OpFilter(Operator):
         volume = volume5d[0,:,:,:,0]
         result_view = result[0,:,:,:,0]
         
-        logger.info( "input volume shape: ", volume.shape )
-        logger.info( "input volume size: ", volume.nbytes / 1024**2, "MB" )
+        logger.info( "input volume shape: %r" %  (volume.shape,) )
+        logger.info( "input volume size: %r MB", (volume.nbytes / 1024**2,) )
         fvol = numpy.asarray(volume, numpy.float32)
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
 
-        logger.info( "applying filter", fvol.shape )
+        logger.info( "applying filter on shape = %r" % (fvol.shape,) )
         with Timer() as filterTimer:        
             if fvol.shape[2] > 1:
                 # true 3D volume
