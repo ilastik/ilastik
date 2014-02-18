@@ -422,7 +422,14 @@ class ProjectManager(object):
         All caches, etc. will be lost.
         """
         self.saveProjectSnapshot( newPath )
-        hdf5File, readOnly = ProjectManager.openProjectFile( newPath )
+        hdf5File, workflowClass, readOnly = ProjectManager.openProjectFile( newPath )
+        
+        # Close the old project *file*, but don't destroy the workflow.
+        assert self.currentProjectFile is not None
+        self.currentProjectFile.close()
+        self.currentProjectFile = None
+        
+        # Open the snapshot of the old project that we just made
         self._loadProject(hdf5File, newPath, readOnly)
 
     def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
