@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/env python
 """
 Executable script for obtaining cutout volumes from a blockwise fileset.
 Two export formats are supported:
