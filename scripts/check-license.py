@@ -60,7 +60,6 @@ def check_file(fname):
     else:
         c = "".join(lines)
 
-    '''
     if not c.startswith(gplv2orlater):
         f = open(fname, 'w')
         if firstline is not None:
@@ -69,7 +68,6 @@ def check_file(fname):
         f.write(gplv2orlater)
         f.write(c)
         f.close()
-    '''
 
 def check_directory(arg, dirname, name):
     for fname in sorted(glob.glob("%s/*.py" % dirname)):
