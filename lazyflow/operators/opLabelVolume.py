@@ -111,9 +111,17 @@ class OpLabelVolume(Operator):
         self._setBG()
 
     def propagateDirty(self, slot, subindex, roi):
-        # just reset the background, that will trigger recomputation
-        #FIXME respect roi
-        self._setBG()
+        if slot == self.Method:
+            # We are changing the labeling method. In principle, the labelings
+            # are equivalent, but not neccessary the same!
+            self.Output.setDirty(slice(None))
+        elif slot == self.Input:
+            # handled by internal operator
+            pass
+        elif slot == self.Background:
+            # propagate the background values, output will be set dirty in 
+            # internal operator
+            self._setBG()
 
     ## set the background values of inner operator
     def _setBG(self):
@@ -177,12 +185,12 @@ class OpLabelingABC(Operator):
         self._locks = locks
 
     def propagateDirty(self, slot, subindex, roi):
-        # a change somewhere makes the whole time-channel-slice dirty
-        # (CCL with vigra is a global operation)
-        # applies for Background and Input
+        # a change in either input or background makes the whole
+        # time-channel-slice dirty (CCL is a global operation)
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
                 self._cached[c, t] = 0
+        self.Output.setDirty(roi)
 
     def execute(self, slot, subindex, roi, result):
         #FIXME we don't care right now which slot is requested, just return cached CC
@@ -216,7 +224,7 @@ class OpLabelingABC(Operator):
         # release locks and set caching flags
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
-                self._cached [c,t] = 1
+                self._cached [c, t] = 1
                 self._locks[c, t].release()
 
     ## compute the requested slice and put the results into self._cache
@@ -228,7 +236,8 @@ class OpLabelingABC(Operator):
 ## vigra connected components
 class _OpLabelVigra(OpLabelingABC):
     def _updateSlice(self, c, t, bg):
-        source = vigra.taggedView(self.Input[..., c, t].wait(), axistags='xyzct')
+        source = vigra.taggedView(self.Input[..., c, t].wait(),
+                                  axistags='xyzct')
         source = source.withAxes(*'xyz')
         result = vigra.analysis.labelVolumeWithBackground(
             source, background_value=int(bg))
