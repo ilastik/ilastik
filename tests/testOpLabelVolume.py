@@ -5,6 +5,9 @@ import unittest
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume
+from lazyflow.operator import Operator
+from lazyflow.slot import InputSlot, OutputSlot
+from lazyflow.rtype import SubRegion
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -89,6 +92,30 @@ class TestVigra(unittest.TestCase):
         out2 = op.Output[500:, ...].wait()
         assert out1[0, 0, 0] != out2[499, 0, 0]
 
+    def testSetDirty(self):
+        g = Graph()
+        vol = np.zeros((5, 2, 200, 100, 10))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='tcxyz')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.setValue(vol)
+
+        opCheck = DirtyAssert(graph=g)
+        opCheck.Input.connect(op.Output)
+        opCheck.willBeDirty(1, 1)
+
+        out = op.Output[...].wait()
+
+        roi = SubRegion(op.Input,
+                        start=(1, 1, 0, 0, 0),
+                        stop=(2, 2, 200, 100, 10))
+        with self.assertRaises(PropagateDirtyCalled):
+            op.Input.setDirty(roi)
+
 
 class TestBlocked(TestVigra):
 
@@ -118,3 +145,23 @@ def assertEquivalentLabeling(x, y):
         n = len(np.where(y == block[0])[0])
         assert m == n, "Label {} is used somewhere else.".format(label)
 
+
+class DirtyAssert(Operator):
+    Input = InputSlot()
+
+    def willBeDirty(self, t, c):
+        self._t = t
+        self._c = c
+
+    def propagateDirty(self, slot, subindex, roi):
+        t_ind = self.Input.meta.axistags.index('t')
+        c_ind = self.Input.meta.axistags.index('c')
+        assert roi.start[t_ind] == self._t
+        assert roi.start[c_ind] == self._c
+        assert roi.stop[t_ind] == self._t+1
+        assert roi.stop[c_ind] == self._c+1
+        raise PropagateDirtyCalled()
+
+
+class PropagateDirtyCalled(Exception):
+    pass

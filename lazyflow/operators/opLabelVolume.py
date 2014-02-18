@@ -190,7 +190,10 @@ class OpLabelingABC(Operator):
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
                 self._cached[c, t] = 0
-        self.Output.setDirty(roi)
+        outroi = roi.copy()
+        outroi.start[:3] = (0, 0, 0)
+        outroi.stop[:3] = self.Input.meta.shape[:3]
+        self.Output.setDirty(outroi)
 
     def execute(self, slot, subindex, roi, result):
         #FIXME we don't care right now which slot is requested, just return cached CC
