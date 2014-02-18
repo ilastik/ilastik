@@ -646,6 +646,9 @@ class AppletSerializer(object):
     # override if necessary
     version = "0.1"
 
+    class IncompatibleProjectVersionError(Exception):
+        pass
+
     #########################
     # Semi-abstract methods #
     #########################
@@ -759,7 +762,8 @@ class AppletSerializer(object):
 
         # Make sure we can find our way around the project tree
         if not isVersionCompatible(fileVersion):
-            return
+            msg = "Can't read project with format version: {}".format( fileVersion )
+            raise self.IncompatibleProjectVersionError(msg)
 
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
@@ -806,7 +810,8 @@ class AppletSerializer(object):
 
         # Make sure we can find our way around the project tree
         if not isVersionCompatible(fileVersion):
-            return
+            msg = "Can't read project with format version: {}".format( fileVersion )
+            raise self.IncompatibleProjectVersionError(msg)
 
         self.progressSignal.emit(0)
 
