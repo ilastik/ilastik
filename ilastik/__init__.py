@@ -59,15 +59,20 @@ def isVersionCompatible(version):
     """Return True if the current project file format is
     backwards-compatible with the format used in this version of
     ilastik.
-
     """
-    # Currently we aren't forwards or backwards compatible with any
-    # other versions.
+    if isinstance( version, float ):
+        version = str(version)
 
-    # for now, also allow old-style floats as version numbers
-    if isinstance(version, float):
-        return float(_format_version(__version_info__[0:2])) == version
-    return convertVersion(version) == __version_info__
+    # Only consider major and minor rev
+    v1 = convertVersion(version)[0:2]
+    v2 = __version_info__[0:2]
+    
+    # Version 1.0 is compatible in all respects with version 0.6
+    if v1 in [(0,6), (1,0)] and v2 in [(0,6), (1,0)]:
+        return True
+    
+    # Otherwise, we need an exact match (for now)
+    return v1 == v2
 
 #######################
 ## Dependency checks ##
