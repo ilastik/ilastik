@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 from PyQt4.QtGui import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
 from PyQt4.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
-
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
