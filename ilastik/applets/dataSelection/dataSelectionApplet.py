@@ -20,7 +20,7 @@ import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-from lazyflow.utility import PathComponents
+from lazyflow.utility import PathComponents, isUrl
 from ilastik.applets.base.applet import Applet
 from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -103,6 +103,9 @@ class DataSelectionApplet( Applet ):
         input_paths = parsed_args.input_files
         error = False
         for p in input_paths:
+            if isUrl(p):
+                # Don't error-check urls in advance.
+                continue
             p = PathComponents(p).externalPath
             if '*' in p:
                 if len(glob.glob(p)) == 0:
@@ -136,13 +139,15 @@ class DataSelectionApplet( Applet ):
         for p in input_paths:
             info = DatasetInfo()
             info.location = DatasetInfo.Location.FileSystem
-    
-            # Convert all paths to absolute 
-            # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+            info.filePath = p
+
             comp = PathComponents(p)
-            comp.externalPath = os.path.abspath(comp.externalPath)
-            
-            info.filePath = comp.totalPath()
+
+            # Convert all (non-url) paths to absolute 
+            # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+            if not isUrl(p):
+                comp.externalPath = os.path.abspath(comp.externalPath)
+                info.filePath = comp.totalPath()
             info.nickname = comp.filenameBase
             input_infos.append(info)
 
