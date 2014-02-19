@@ -385,6 +385,10 @@ class OpThresholdTwoLevels(Operator):
         self._inputStacker.AxisIndex.setValue(t_index)
         self._opReorder2.AxisOrder.setValue("".join(self.InputImage.meta.getAxisKeys()))
 
+        # propagate drange
+        self.opThreshold1.InputImage.meta.drange = self.InputImage.meta.drange
+        self.opThreshold2.InputImage.meta.drange = self.InputImage.meta.drange
+
         curIndex = self.CurOperator.value
         if curIndex == 0:
             self._opReorder2.Input.connect(self.opThreshold1.Output)
@@ -469,14 +473,13 @@ class _OpThresholdOneLevel(Operator):
         self.Output.connect(self._opFilter.Output)
 
     def setupOutputs(self):
-        drange = self.InputImage.meta.drange
-        thresholdValue = self.Threshold.value
-        if drange is not None:
-            assert drange[0] == 0, "Don't know how to threshold data with this drange."
-            thresholdValue *= drange[1]
 
-        # thresholding function for PixelOperator
         def thresholdToUint8(thresholdValue, a):
+            drange = self.InputImage.meta.drange
+            if drange is not None:
+                assert drange[0] == 0,\
+                    "Don't know how to threshold data with this drange."
+                thresholdValue *= drange[1]
             if a.dtype == numpy.uint8:
                 # In-place (numpy optimizes this!)
                 a[:] = (a > thresholdValue)
@@ -484,9 +487,10 @@ class _OpThresholdOneLevel(Operator):
             else:
                 return (a > thresholdValue).astype(numpy.uint8)
 
-        self._opThresholder.Function.setValue(partial( thresholdToUint8, thresholdValue) )
+        self._opThresholder.Function.setValue(
+            partial(thresholdToUint8, self.Threshold.value))
         # Copy the input metadata to the output
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom(self.InputImage.meta)
         self.Output.meta.dtype=numpy.uint8
 
     def execute(self, slot, subindex, roi, result):
@@ -609,7 +613,6 @@ class _OpThresholdTwoLevels(Operator):
         self.FilteredSmallLabels.connect( self._opColorizeSmallLabels.Output )
 
     def setupOutputs(self):
-
         def thresholdToUint8(thresholdValue, a):
             drange = self.InputImage.meta.drange
             if drange is not None:
@@ -617,7 +620,7 @@ class _OpThresholdTwoLevels(Operator):
                     "Don't know how to threshold data with this drange."
                 thresholdValue *= drange[1]
             if a.dtype == numpy.uint8:
-                # In-place (does numpy optimize cases like this?)
+                # In-place (numpy optimizes this!)
                 a[:] = (a > thresholdValue)
                 return a
             else:
@@ -716,15 +719,18 @@ class _OpFilterLabels5d(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # upstream dirtiness affects whole volume (per time/channel)
-        stop = numpy.asarray(self.Input.meta.shape)
-        start = 0*stop
 
-        for t in range(roi.start[0], roi.stop[0]):
-            start[0] = t
-            stop[0] = t+1
-            for c in range(roi.start[-1], roi.stop[-1]):
-                start[-1] = c
-                stop[-1] = c+1
+        t_ind = self.Input.meta.axistags.index('t')
+        c_ind = self.Input.meta.axistags.index('c')
+
+        for t in range(roi.start[t_ind], roi.stop[t_ind]):
+            for c in range(roi.start[c_ind], roi.stop[c_ind]):
+                stop = numpy.asarray(self.Input.meta.shape)
+                start = 0*stop
+                start[t_ind] = t
+                stop[t_ind] = t+1
+                start[c_ind] = c
+                stop[c_ind] = c+1
                 roi = SubRegion(self.Output, start, stop)
                 self.Output.setDirty(roi)
 
