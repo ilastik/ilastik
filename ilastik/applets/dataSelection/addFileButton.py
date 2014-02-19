@@ -53,7 +53,7 @@ class AddFileButton(QPushButton):
 
         # drop down menu for different add options
         menu = QMenu(parent=self)
-        menu.addAction("Add separate image(s)...").triggered.\
+        menu.addAction("Add separate Image(s)...").triggered.\
                 connect(self.addFilesRequested.emit)
         menu.addAction("Add a single 3D/4D Volume from Stack...").triggered.connect(
                 self.addStackRequested.emit)
