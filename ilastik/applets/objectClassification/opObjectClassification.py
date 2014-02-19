@@ -142,8 +142,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.Features.connect(self.ObjectFeatures)
         self.opPredict.Classifier.connect(self.classifier_cache.Output)
-        self.opPredict.LabelsCount.connect(self.opMaxLabel.Output)
         self.opPredict.SelectedFeatures.connect(self.SelectedFeatures)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.opPredict.LabelsCount.connect(self.opMaxLabel.Output) # See _updateNumClasses()
 
         self.opLabelsToImage.Image.connect(self.SegmentationImages)
         self.opLabelsToImage.ObjectMap.connect(self.LabelInputs)
@@ -203,12 +206,22 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
 
+        def _updateNumClasses(*args):
+            """
+            When the number of labels changes, we MUST make sure that the prediction image changes its shape (the number of channels).
+            Since setupOutputs is not called for mere dirty notifications, but is called in response to setValue(),
+            we use this function to call setValue().
+            """
+            numClasses = len(self.LabelNames.value)
+            self.opPredict.LabelsCount.setValue( numClasses )
+            self.NumLabels.setValue( numClasses )
+        self.LabelNames.notifyDirty( _updateNumClasses )
+
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
 
         # connect outputs
-        self.NumLabels.connect( self.opMaxLabel.Output )
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
@@ -223,6 +236,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.NumLabels.connect( self.opMaxLabel.Output )
+
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)

@@ -95,9 +95,7 @@ class ObjectClassificationGui(LabelingGui):
         # Base class
         super(ObjectClassificationGui, self).stopAndCleanUp()
 
-        # Ensure that we are NOT in interactive mode
-        self.labelingDrawerUi.checkInteractive.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+    PREDICTION_LAYER_NAME = "Prediction"
 
     def __init__(self, parentApplet, op):
         self.__cleanup_fns = []
@@ -377,9 +375,26 @@ class ObjectClassificationGui(LabelingGui):
                              self.topLevelOperatorView.PmapColors)
 
     def _onLabelRemoved(self, parent, start, end):
-        op = self.topLevelOperatorView
+        # Don't respond unless this actually came from the GUI
+        if self._programmaticallyRemovingLabels:
+            return
+
+        # update the pmap colors. copied from labelingGui._onLabelRemoved
+        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
+        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
+        oldColor = self._colorTable16_forpmaps.pop(start+1)
+        # Recycle the deleted color back into the table (for the next label to be added)
+        self._colorTable16_forpmaps.insert(oldcount, oldColor)
+
+        # Find the prediction layer and update its colortable
+        layer_index = self.layerstack.findMatchingIndex(lambda x: x.name == self.PREDICTION_LAYER_NAME)
+        predictLayer = self.layerstack[layer_index]
+        predictLayer.colorTable = self._colorTable16_forpmaps
+
+        # Base class
         super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
-        
+
+        op = self.topLevelOperatorView
         op.removeLabel(start)
         # Keep colors in sync with names
         # (If we deleted a name, delete its corresponding colors, too.)
@@ -390,12 +405,6 @@ class ObjectClassificationGui(LabelingGui):
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
         
-        # update the pmap colors. copied from labelingGui._onLabelRemoved
-        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
-        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
-        oldColor = self._colorTable16_forpmaps.pop(start+1)
-        # Recycle the deleted color back into the table (for the next label to be added)
-        self._colorTable16_forpmaps.insert(oldcount, oldColor)
         
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
@@ -477,7 +486,7 @@ class ObjectClassificationGui(LabelingGui):
             predictLayer = ColortableLayer(predictsrc,
                                            colorTable=self._colorTable16_forpmaps)
 
-            predictLayer.name = "Prediction"
+            predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
             predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             predictLayer.opacity = 0.5
