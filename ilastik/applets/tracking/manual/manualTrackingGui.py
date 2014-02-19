@@ -44,9 +44,6 @@ class ManualTrackingGui(LayerViewerGui):
     def appletDrawer( self ):
         return self._drawer
 
-    def reset( self ):
-        super( ManualTrackingGui, self ).stopAndCleanUp()
-
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
