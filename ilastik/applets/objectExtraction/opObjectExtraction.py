@@ -187,7 +187,7 @@ class OpRegionFeatures3d(Operator):
         acc = self._extract(rawVolume4d, labelVolume4d)
         result[tuple(roi.start)] = acc
         stop = time.time()
-        logger.info("TIMING: computing features took {:.3f}s".format(stop-start))
+        logger.debug("TIMING: computing features took {:.3f}s".format(stop-start))
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
