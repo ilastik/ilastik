@@ -119,7 +119,9 @@ def compressPathForDisplay(pathstr,maxlength):
     component_list = pathstr.split("/")
     while component_list:
         c = component_list.pop(-1)
-        if len(suffix)+1+len(c)+len(prefix)>maxlength:
+        newlength = len(suffix)+1+len(c)+len(prefix)
+        if newlength>maxlength:
+            suffix = c[-min(len(c)-3,maxlength-3):]
             break
         suffix="/"+c+suffix
         if not component_list:
