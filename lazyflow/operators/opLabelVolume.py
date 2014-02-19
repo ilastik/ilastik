@@ -155,7 +155,7 @@ class OpLabelingABC(Operator):
         self._metaProvider = _OpMetaProvider(parent=self)
 
     def setupOutputs(self):
-        labelType = np.int32
+        labelType = np.uint32
 
         # remove unneeded old cache
         if self._cache is not None:
@@ -238,6 +238,17 @@ class OpLabelingABC(Operator):
 
 ## vigra connected components
 class _OpLabelVigra(OpLabelingABC):
+    def setupOutputs(self):
+        if self.Input.ready():
+            supportedDtypes = [np.uint8, np.uint32, np.float32]
+            dtype = self.Input.meta.dtype
+            if dtype not in supportedDtypes:
+                msg = "OpLabelVolume: dtype '{}' not supported "\
+                    "with method 'vigra'. Supported types: {}"
+                msg = msg.format(dtype, supportedDtypes)
+                raise ValueError(msg)
+        super(_OpLabelVigra, self).setupOutputs()
+        
     def _updateSlice(self, c, t, bg):
         source = vigra.taggedView(self.Input[..., c, t].wait(),
                                   axistags='xyzct')

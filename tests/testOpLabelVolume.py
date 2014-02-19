@@ -116,11 +116,28 @@ class TestVigra(unittest.TestCase):
         with self.assertRaises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
+    def testUnsupported(self):
+        g = Graph()
+        vol = np.zeros((50, 50))
+        vol = vol.astype(np.int16)
+        vol = vigra.taggedView(vol, axistags='xy')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        with self.assertRaises(ValueError):
+            op.Input.setValue(vol)
+
 
 class TestBlocked(TestVigra):
 
     def setUp(self):
         self.method = np.asarray(['blocked'], dtype=np.object)
+
+    @unittest.skip("Not implemented yet")
+    def testUnsupported(self):
+        pass
 
 
 def assertEquivalentLabeling(x, y):
