@@ -189,4 +189,5 @@ if __name__ == "__main__":
     assert components.extension == '.ext'    
     assert components.internalPath is None
     assert components.externalDirectory == 'http://somehost:8000/path/to/data'
+    assert components.filenameBase == 'with'
 
