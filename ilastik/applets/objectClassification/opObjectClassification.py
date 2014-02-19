@@ -276,12 +276,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
             cur_labels = label_slot.value
             nTimes = self.RawImages[islot].meta.shape[0]
-            nLabels = len(self.LabelNames.value)
+            nLabels = len(self.LabelNames.value)+1 #+1 because we already took out the name in labelingGui
             for t in range(nTimes):
                 label_values = cur_labels[t]
                 label_values[label_values==label+1] = 0
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
+        self.LabelInputs.setDirty([])
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)

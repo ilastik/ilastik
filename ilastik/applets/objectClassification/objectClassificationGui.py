@@ -377,16 +377,26 @@ class ObjectClassificationGui(LabelingGui):
                              self.topLevelOperatorView.PmapColors)
 
     def _onLabelRemoved(self, parent, start, end):
-        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
         op = self.topLevelOperatorView
+        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+        
         op.removeLabel(start)
-        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
-            value = slot.value
-            if start in value:
+        # Keep colors in sync with names
+        # (If we deleted a name, delete its corresponding colors, too.)
+        if len(op.PmapColors.value) > len(op.LabelNames.value):
+            for slot in (op.LabelColors, op.PmapColors):
+                value = slot.value
                 value.pop(start)
-            slot.setValue(value)
-
-
+                # Force dirty propagation even though the list id is unchanged.
+                slot.setValue(value, check_changed=False)
+        
+        # update the pmap colors. copied from labelingGui._onLabelRemoved
+        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
+        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
+        oldColor = self._colorTable16_forpmaps.pop(start+1)
+        # Recycle the deleted color back into the table (for the next label to be added)
+        self._colorTable16_forpmaps.insert(oldcount, oldColor)
+        
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.
