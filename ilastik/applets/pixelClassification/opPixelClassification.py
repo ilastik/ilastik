@@ -133,6 +133,11 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
         
         def _updateNumClasses(*args):
+            """
+            When the number of labels changes, we MUST make sure that the prediction image changes its shape (the number of channels).
+            Since setupOutputs is not called for mere dirty notifications, but is called in response to setValue(),
+            we use this function to call setValue().
+            """
             numClasses = len(self.LabelNames.value)
             self.opTrain.MaxLabel.setValue( numClasses )
             self.opPredictionPipeline.NumClasses.setValue( numClasses )
