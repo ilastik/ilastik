@@ -398,7 +398,6 @@ class OpThresholdTwoLevels(Operator):
 
         self._opChannelSelector.Index.setValue(hackChannel)
         '''
-        self._opSmoother.Input.connect(self._opChannelSelector.Output)
 
         t_index = self.InputImage.meta.axistags.index('t')
         self._smoothStacker.AxisIndex.setValue(t_index)
@@ -650,8 +649,6 @@ class _OpThresholdTwoLevels(Operator):
             else:
                 return (a > thresholdValue).astype(numpy.uint8)
 
-        
-
         self._opLowThresholder.Function.setValue(
             partial(thresholdToUint8, self.LowThreshold.value))
         self._opHighThresholder.Function.setValue(
@@ -660,12 +657,11 @@ class _OpThresholdTwoLevels(Operator):
         # Copy the input metadata to the output
         self.Output.meta.assignFrom(self.InputImage.meta)
         self.Output.meta.dtype = numpy.uint8
-        
+
         # Blockshape is the entire block, except only 1 time slice
         tagged_shape = self.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
         self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
-        
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
