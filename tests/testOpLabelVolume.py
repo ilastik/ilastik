@@ -116,6 +116,18 @@ class TestVigra(unittest.TestCase):
         with self.assertRaises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
+        opCheck.Input.disconnect()
+        opCheck.Input.connect(op.CachedOutput)
+        opCheck.willBeDirty(1, 1)
+
+        out = op.Output[...].wait()
+
+        roi = SubRegion(op.Input,
+                        start=(1, 1, 0, 0, 0),
+                        stop=(2, 2, 200, 100, 10))
+        with self.assertRaises(PropagateDirtyCalled):
+            op.Input.setDirty(roi)
+
     def testUnsupported(self):
         g = Graph()
         vol = np.zeros((50, 50))

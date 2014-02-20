@@ -194,6 +194,7 @@ class OpLabelingABC(Operator):
         outroi.start[:3] = (0, 0, 0)
         outroi.stop[:3] = self.Input.meta.shape[:3]
         self.Output.setDirty(outroi)
+        self.CachedOutput.setDirty(outroi)
 
     def execute(self, slot, subindex, roi, result):
         #FIXME we don't care right now which slot is requested, just return cached CC
