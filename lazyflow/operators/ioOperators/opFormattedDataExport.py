@@ -14,6 +14,7 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
+import os
 import collections
 import numpy
 
@@ -54,7 +55,7 @@ class OpFormattedDataExport(Operator):
     OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    OutputFilenameFormat = InputSlot(value='RESULTS_{roi}') # A format string allowing {roi}, {x_start}, {x_stop}, etc.
+    OutputFilenameFormat = InputSlot(value=os.path.expanduser('~')+os.sep+'RESULTS_{roi}') # A format string allowing {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
 
