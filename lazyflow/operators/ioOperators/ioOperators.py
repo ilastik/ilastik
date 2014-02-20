@@ -375,6 +375,15 @@ class OpH5WriterBigDataset(Operator):
     def __init__(self, *args, **kwargs):
         super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
+        self.d = None
+        self.f = None
+
+    def cleanUp(self):
+        super( OpH5WriterBigDataset, self ).cleanUp()
+        # Discard the reference to the dataset, to ensure that hdf5 can close the file.
+        self.d = None
+        self.f = None
+        self.progressSignal.clean()
 
     def setupOutputs(self):
         self.outputs["WriteImage"].meta.shape = (1,)
@@ -487,6 +496,9 @@ class OpH5WriterBigDataset(Operator):
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
+
+        # Be paranoid: Flush right now.
+        self.f.file.flush()
 
         # We're finished.
         result[0] = True
