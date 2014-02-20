@@ -66,3 +66,6 @@ class OrderedSignal(object):
         """
         for f, kw in self.callbacks.items():
             f(*args, **kw)
+
+    def clean(self):
+        self.callbacks = OrderedDict()
