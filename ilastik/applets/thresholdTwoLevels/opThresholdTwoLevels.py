@@ -335,10 +335,12 @@ class OpThresholdTwoLevels(Operator):
 
         self._opChannelSelector = OperatorWrapper(OpSingleChannelSelector, parent=self)
         self._opChannelSelector.Input.connect(self._opTimeSlicer.Slices)
+        self._opChannelSelector.Index.connect(self.Channel)
 
         # anisotropic gauss
         self._opSmoother = OperatorWrapper(OpAnisotropicGaussianSmoothing, parent=self)
         self._opSmoother.Sigmas.connect(self.SmootherSigma)
+        self._opSmoother.Input.connect(self._opChannelSelector.Output)
 
         # stack output again, everything is now going to work for arbitrary dimensions
         self._smoothStacker = OpMultiArrayStacker(parent=self)
@@ -387,13 +389,15 @@ class OpThresholdTwoLevels(Operator):
     def setupOutputs(self):
         #FIXME: this happens when someone deletes the other prediction channels
         # to save space, we should find a better way to handle this
+        '''
         channelAxis = self.InputImage.meta.axistags.index('c')
         hackChannel = self.Channel.value
-        if len(self.InputImage.meta.shape) > channelAxis\
+        if len(self.InputImage.meta.shape) >= channelAxis\
                 and hackChannel > self.InputImage.meta.shape[channelAxis]:
             hackChannel = 0
 
         self._opChannelSelector.Index.setValue(hackChannel)
+        '''
         self._opSmoother.Input.connect(self._opChannelSelector.Output)
 
         t_index = self.InputImage.meta.axistags.index('t')
@@ -426,6 +430,10 @@ class OpThresholdTwoLevels(Operator):
 
         elif curIndex == 1:
             self._opReorder2.Input.connect(self.opThreshold2.Output)
+            # Blockshape is the entire block, except only 1 time slice
+            tagged_shape = self.opThreshold2.Output.meta.getTaggedShape()
+            tagged_shape['t'] = 1
+            self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
             self._opCache.Input.connect( self.opThreshold2.Output )
 
             self.BigRegions.connect(self.opThreshold2.BigRegions)
@@ -599,7 +607,7 @@ class _OpThresholdTwoLevels(Operator):
         self._opCache.name = "_OpThresholdTwoLevels._opCache"
         self._opCache.InputHdf5.connect( self.InputHdf5 )
         self._opCache.Input.connect( self._opFinalLabelSizeFilter.Output )
-
+       
         # Connect our own outputs
         self.Output.connect( self._opFinalLabelSizeFilter.Output )
         self.CachedOutput.connect( self._opCache.Output )
@@ -642,6 +650,8 @@ class _OpThresholdTwoLevels(Operator):
             else:
                 return (a > thresholdValue).astype(numpy.uint8)
 
+        
+
         self._opLowThresholder.Function.setValue(
             partial(thresholdToUint8, self.LowThreshold.value))
         self._opHighThresholder.Function.setValue(
@@ -650,6 +660,12 @@ class _OpThresholdTwoLevels(Operator):
         # Copy the input metadata to the output
         self.Output.meta.assignFrom(self.InputImage.meta)
         self.Output.meta.dtype = numpy.uint8
+        
+        # Blockshape is the entire block, except only 1 time slice
+        tagged_shape = self.Output.meta.getTaggedShape()
+        tagged_shape['t'] = 1
+        self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
+        
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -735,35 +751,26 @@ class _OpFilterLabels5d(Operator):
         pool.clean()
 
     def propagateDirty(self, slot, subindex, roi):
+        inStop = numpy.asarray(self.Input.meta.shape)
+        inStart = inStop*0
         if slot == self.Input:
             # upstream dirtiness affects whole volume (per time/channel)
-            inStart = roi.start
-            inStop = roi.stop
+            t_ind = self.Input.meta.axistags.index('t')
+            c_ind = self.Input.meta.axistags.index('c')
+            inStart[t_ind] = roi.start[t_ind]
+            inStop[t_ind] = roi.stop[t_ind]
+            inStart[c_ind] = roi.start[c_ind]
+            inStop[c_ind] = roi.stop[c_ind]
         elif slot == self.MinLabelSize or slot == self.MaxLabelSize\
                 or slot == self.BinaryOut:
             # changes in the size affect the entire volume including all time
             # slices and channels
             # if we change the semantics of the output, we have to set it dirty
-            inStop = numpy.asarray(self.Input.meta.shape)
-            inStart = inStop*0
+            pass
         else:
             assert False, "Invalid slot {}".format(slot)
 
-        t_ind = self.Input.meta.axistags.index('t')
-        c_ind = self.Input.meta.axistags.index('c')
-
-        assert t_ind < len(inStart)
-        assert c_ind < len(inStart)
-
-        for t in range(inStart[t_ind], inStop[t_ind]):
-            for c in range(inStart[c_ind], inStop[c_ind]):
-                stop = numpy.asarray(self.Input.meta.shape)
-                start = 0*stop
-                start[t_ind] = t
-                stop[t_ind] = t+1
-                start[c_ind] = c
-                stop[c_ind] = c+1
-                roi = SubRegion(self.Output, start, stop)
-                self.Output.setDirty(roi)
+        roi = SubRegion(self.Output, start=inStart, stop=inStop)
+        self.Output.setDirty(roi)
 
 
