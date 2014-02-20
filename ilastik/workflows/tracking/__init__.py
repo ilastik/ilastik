@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 try:
     from chaingraph.chaingraphTrackingWorkflow import ChaingraphTrackingWorkflow 
 except ImportError as e:
-    logger.warn( "Failed to import chaingraph tracking workflow; check dependencies: " + str(e) )
+    logger.warn( "Failed to import automatic tracking workflow (chaingraph). For this workflow, see the installation"\
+                 "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
 try:    
     from manual.manualTrackingWorkflow import ManualTrackingWorkflow
