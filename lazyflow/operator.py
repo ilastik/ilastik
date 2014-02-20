@@ -337,6 +337,7 @@ class Operator(object):
         for child in self._children.keys():
             child._disconnect()
 
+    #  FIXME: Unused function?
     def disconnectFromDownStreamPartners(self):
         for slot in self.inputs.values() + self.outputs.values():
             partners = list(slot.partners)
