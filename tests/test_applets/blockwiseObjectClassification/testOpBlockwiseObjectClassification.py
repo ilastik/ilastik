@@ -196,6 +196,9 @@ class TestOpBlockwiseObjectClassification(object):
         # Gray: 0<=x<50
         # White: 50<=x<100
 
+        # Must provide label names, since that determines the number of classes the operator knows about.
+        opObjectClassification.LabelNames.setValue( ["BigWhite and SmallGray", "SmallWhite and Big Gray"] )
+
         # big & white: label 1
         big_white_coords = [(0, 60, 0, 0, 0), (0, 60, 20, 0, 0), (0, 60, 0, 20, 0)]
         for coord in big_white_coords:
@@ -221,7 +224,7 @@ class TestOpBlockwiseObjectClassification(object):
             opObjectClassification.assignObjectLabel( 0, coord, 2)
 
         assert opObjectClassification.SegmentationImages[0].ready()
-        assert opObjectClassification.NumLabels.value == 2
+        assert opObjectClassification.NumLabels.value == 2, "Wrong number of labels: {}".format( opObjectClassification.NumLabels.value )
         
         prediction_volume = opObjectClassification.PredictionImages[0][:].wait()
         self.prediction_volume = prediction_volume

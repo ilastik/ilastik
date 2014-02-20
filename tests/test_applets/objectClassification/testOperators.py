@@ -326,6 +326,8 @@ class TestMaxLabel(object):
         self.op.SelectedFeatures.setValue(self.features)
         
     def testNumLabels(self):
+        # LabelNames is now a non-optional slot.
+        self.op.LabelNames.setValue(["1", "2", "3", "4"])
         labelArray1 =  np.zeros((7,))
         labelArray1[1] = 1
         labelArray1[3] = 2
