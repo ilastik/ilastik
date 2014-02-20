@@ -359,7 +359,7 @@ class TestThresholdTwoLevels(Generator2):
         oper5d.HighThreshold.setValue(self.highThreshold)
         oper5d.LowThreshold.setValue(self.lowThreshold)
         oper5d.SmootherSigma.setValue(self.sigma)
-        oper5d.Channel.setValue(2)
+        oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(1)
 
         out5d = oper5d.Output[:].wait()
@@ -373,7 +373,7 @@ class TestThresholdTwoLevels(Generator2):
         oper5d.HighThreshold.setValue(-0.01)
         oper5d.LowThreshold.setValue(-0.01)
         oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
-        oper5d.Channel.setValue(2)
+        oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(1)
 
         out5d = oper5d.Output[:].wait()
@@ -385,6 +385,62 @@ class TestThresholdTwoLevels(Generator2):
         assert numpy.all(small > 0)
         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
         assert numpy.all(out5d > 0)
+
+    def testChannel(self):
+        shape = (200, 100, 1)
+        tags = 'xyc'
+        zeros = numpy.zeros(shape)
+        ones = numpy.ones(shape)
+        vol = numpy.concatenate((zeros, ones), axis=2)
+        vol = vigra.taggedView(vol, axistags=tags)
+        assert vol.shape[vol.axistags.index('c')] == 2
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(vol)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(zeros.size)
+        oper5d.HighThreshold.setValue(.5)
+        oper5d.LowThreshold.setValue(.5)
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        oper5d.CurOperator.setValue(1)
+
+        # channel 0
+        oper5d.Channel.setValue(0)
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
+
+        # channel 0
+        oper5d.Channel.setValue(1)
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d > 0), str(numpy.histogram(out5d))
+
+    def testSingletonZ(self):
+        shape = (200, 100, 1)
+        tags = 'xyc'
+        zeros = numpy.zeros(shape)
+        ones = numpy.ones(shape)
+        vol = numpy.concatenate((zeros, ones), axis=2)
+        vol = vigra.taggedView(vol, axistags=tags)
+        assert vol.shape[vol.axistags.index('c')] == 2
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(vol)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(zeros.size)
+        oper5d.HighThreshold.setValue(.5)
+        oper5d.LowThreshold.setValue(.5)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(1)
+
+        # no smoothing
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
+
+        # smoothing
+        oper5d.SmootherSigma.setValue({'x': 1.0, 'y': 1.0, 'z': 1.0})
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
 
     def test4dAnd5d(self):
         g = Graph()
@@ -408,7 +464,7 @@ class TestThresholdTwoLevels(Generator2):
         oper5d.HighThreshold.setValue(self.highThreshold)
         oper5d.LowThreshold.setValue(self.lowThreshold)
         oper5d.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
-        oper5d.Channel.setValue(2)
+        oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(1)
 
         out5d = oper5d.Output[:].wait()

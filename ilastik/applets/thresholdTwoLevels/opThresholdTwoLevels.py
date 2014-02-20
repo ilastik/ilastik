@@ -102,20 +102,28 @@ class OpAnisotropicGaussianSmoothing(Operator):
         
         axiskeys = self.Input.meta.getAxisKeys()
         spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
-        
-        
-        
+
+        # we need to remove a singleton z axis, otherwise we get 
+        # 'kernel longer than line' errors
         reskey = [slice(None, None, None)]*len(self.Input.meta.shape)
         reskey[cIndex]=0
-        if zIndex and self.Input.meta.shape[zIndex]==1:            
+        if zIndex and self.Input.meta.shape[zIndex]==1:
+            removedZ = True
             data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
             reskey[zIndex]=0
             spatialkeys = filter( lambda k: k in 'xy', axiskeys )
-                
-        sigma = map( self._sigmas.get, spatialkeys )
+        else:
+            removedZ = False
+
+        sigma = map(self._sigmas.get, spatialkeys)
         #Check if we need to smooth
-        if any([x<0.1 for x in sigma]):
-            result[:]=data
+        if any([x < 0.1 for x in sigma]):
+            if removedZ:
+                resultXY = vigra.taggedView(result, axistags="".join(axiskeys))
+                resultXY = resultXY.withAxes(*'xy')
+                resultXY[:] = data
+            else:
+                result[:] = data
             return result
 
         # Smooth the input data
@@ -387,17 +395,6 @@ class OpThresholdTwoLevels(Operator):
         self.InputChannel.connect(self._inputStacker.Output)
 
     def setupOutputs(self):
-        #FIXME: this happens when someone deletes the other prediction channels
-        # to save space, we should find a better way to handle this
-        '''
-        channelAxis = self.InputImage.meta.axistags.index('c')
-        hackChannel = self.Channel.value
-        if len(self.InputImage.meta.shape) >= channelAxis\
-                and hackChannel > self.InputImage.meta.shape[channelAxis]:
-            hackChannel = 0
-
-        self._opChannelSelector.Index.setValue(hackChannel)
-        '''
 
         t_index = self.InputImage.meta.axistags.index('t')
         self._smoothStacker.AxisIndex.setValue(t_index)
