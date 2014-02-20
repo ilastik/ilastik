@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import copy
 import numpy
 import vigra
@@ -286,10 +302,10 @@ class OpFragmentSetLut(Operator):
             result[:] = 0
             return result
 
-        print "Requesting fragment names"
+        logger.info( "Requesting fragment names" )
         mst = self.MST.value
         names = OpSplitBodyCarving.getSavedObjectNamesForMstAndRavelerLabel(mst, ravelerLabel)
-        print "Got fragment names: {}".format( names )
+        logger.info( "Got fragment names: {}".format( names ) )
         
         # Accumulate the supervoxels from each fragment that came from the current raveler object
         result[:] = 0
@@ -299,7 +315,7 @@ class OpFragmentSetLut(Operator):
                 # Give each fragment it's own label to support different colors for each
                 result[objectSupervoxels] = i+1
 
-        print "Finished accumulating fragments into lut"
+        logger.info( "Finished accumulating fragments into lut" )
         return result
     
     def propagateDirty(self, slot, subindex, roi):

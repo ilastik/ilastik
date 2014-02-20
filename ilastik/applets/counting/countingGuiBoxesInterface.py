@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #===============================================================================
 # Implements a mechanism to keep in sinc the GUI elements with the operators
 # for the counting applet
@@ -31,6 +47,9 @@ import warnings
 import threading
 
 import time
+
+import logging
+logger = logging.getLogger(__name__)
 
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
@@ -111,12 +130,24 @@ class ResizeHandle(QGraphicsRectItem):
         super(ResizeHandle, self).hoverEnterEvent(event)
         event.setAccepted(True)
         self._hoverOver = True
-        self._updateColor();
+        self._updateColor()
+        if hasattr(self.parentItem(), "_editor") and \
+            self.parentItem()._editor:
+            if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
+                if self._constrainAxis == 0:
+                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitVCursor)
+                else:
+                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitHCursor)
+                
+
+            
 
     def hoverLeaveEvent(self, event):
         super(ResizeHandle, self).hoverLeaveEvent(event)
         self._hoverOver = False
         self._updateColor()
+        QtGui.QApplication.restoreOverrideCursor()
+
 
     def mouseMoveEvent(self, event):
         #print "[view=%d] mouse move event constrained to %r" % (self.scene().skeletonAxis, self._constrainAxis)
@@ -187,12 +218,14 @@ class QGraphicsResizableRectSignaller(QObject):
 class QGraphicsResizableRect(QGraphicsRectItem):
     hoverColor    = QColor(255, 0, 0) #_hovering and selection color
 
-    def __init__(self,x,y,h,w,scene=None,parent=None):
+    def __init__(self,x,y,h,w, scene=None,parent=None, editor=None):
         """"
         This class implements the resizable rectangle item which is dispalied on the scene
          x y should be the original positions in scene coordinates
          h,w are the height and the width of the rectangle
         """
+        
+        self._editor = editor
 
         QGraphicsRectItem.__init__(self,0,0,w,h,scene=scene,parent=parent)
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
@@ -212,7 +245,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable,True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
 
-        #self.setFlag(QtGui.QGraphicsItem.ItemIsFocusable,True)
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
@@ -231,11 +263,15 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         self.resetHandles()
 
+
+        self.setToolTip("Hold CTRL to drag the box")
+
     @property
     def fontColor(self):
         return self._fontColor
 
     @fontColor.setter
+    @mainthreadonly
     def fontColor(self,color):
         self._fontColor=color
         self.textItem.setDefaultTextColor(color)
@@ -246,6 +282,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._fontSize
 
     @fontSize.setter
+    @mainthreadonly
     def fontSize(self,s):
         self._fontSize=s
         font=QFont()
@@ -258,6 +295,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._lineWidth
 
     @linewWidth.setter
+    @mainthreadonly
     def linewWidth(self,s):
         self._lineWidth=s
         self.updateColor()
@@ -267,6 +305,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         return self._normalColor
 
     @color.setter
+    @mainthreadonly
     def color(self,qcolor):
         self._normalColor=qcolor
         self.updateColor()
@@ -343,6 +382,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.resetHandles()
 
         super(QGraphicsResizableRect,self).hoverEnterEvent( event)
+        self._editor.imageViews[2].setFocus()
 
     def hoverLeaveEvent(self, event):
         event.setAccepted(True)
@@ -397,6 +437,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         pos = [int(dataPos.x()), int(dataPos.y())]
         return pos
 
+    def mousePressEvent(self,event):
+        modifiers=QApplication.queryKeyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            QApplication.setOverrideCursor(QtCore.Qt.ClosedHandCursor)
 
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
@@ -415,7 +459,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             #self.updateText("("+string+")"+" "+str(pos))
 
     def mouseDoubleClickEvent(self, event):
-        print "DOUBLE CLICK ON ITEM"
+        logger.debug("DOUBLE CLICK ON ITEM")
         #FIXME: Implement me
         event.accept()
 
@@ -432,6 +476,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             #self._has_moved=False
 
             self._has_moved=False
+        QApplication.restoreOverrideCursor()
         return QGraphicsRectItem.mouseReleaseEvent(self, event)
 
     def itemChange(self, change,value):
@@ -458,7 +503,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
 
     def setOpacity(self,float):
-        print "Resetting Opacity",float
+        logger.debug("Resetting Opacity {}".format(float))
 
         self._normalColor.setAlpha(float*255)
 
@@ -493,7 +538,7 @@ class RedRubberBand(QRubberBand):
 #===============================================================================
 
 class CoupledRectangleElement(object):
-    def __init__(self,x,y,h,w,inputSlot,scene=None,parent=None,qcolor=QColor(0,0,255)):
+    def __init__(self,x,y,h,w,inputSlot,editor = None, scene=None,parent=None,qcolor=QColor(0,0,255)):
         '''
         Couples the functionality of the lazyflow operator OpSubRegion which gets a subregion of interest
         and the functionality of the resizable rectangle Item.
@@ -511,7 +556,7 @@ class CoupledRectangleElement(object):
         '''
 
 
-        self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent)
+        self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent,editor)
         self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
         #self.opsum = OpSumAll(graph=inputSlot.operator.graph)
         self._graph=inputSlot.operator.graph
@@ -731,6 +776,8 @@ class BoxInterpreter(QObject):
     cursorPositionChanged  = pyqtSignal(object)
     deleteSelectedItemsSignal= pyqtSignal() #send the signal that we want to delete the currently selected item
 
+    acceptBoxManipulation = True
+
     def __init__(self, navigationInterpreter, positionModel, BoxContr, widget):
         '''
         Class which interacts directly with the image scene
@@ -778,11 +825,11 @@ class BoxInterpreter(QObject):
         #Keyboard interaction
         if event.type()==QEvent.KeyPress:
             #Switch selection
-            if event.key()==Qt.Key_N :
+            if event.key()==Qt.Key_Space :
                 #assert items[0]._hovering
                 #items[0].setZValue(1)
-                for el in items:
-                    print el.zValue()
+                #for el in items:
+                #    print el.zValue()
 
                 if len(items)>1:
                     items[-1].setZValue(items[0].zValue()+1)
@@ -790,11 +837,15 @@ class BoxInterpreter(QObject):
                     items[-1].setSelected(True)
                     #items[0].setZero()
 
+            if event.key()==Qt.Key_Control :
+                QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+
             # #Delete element
             # if event.key()==Qt.Key_Delete:
             #     self.deleteSelectedItemsSignal.emit()
-
-
+        if event.type()==QEvent.KeyRelease:
+            if event.key()==Qt.Key_Control :
+                QApplication.restoreOverrideCursor()
 
 
         #Pressing mouse and menaging rubber band
@@ -831,9 +882,10 @@ class BoxInterpreter(QObject):
         if event.type() == QEvent.MouseButtonRelease:
             pos = [int(i) for i in self._posModel.cursorPos]
             pos = [self._posModel.time] + pos + [self._posModel.channel]
-            if event.button() == Qt.LeftButton:
-                self.rubberBand.hide()
-                self.leftClickReleased.emit( self.originpos,pos )
+            if self.rubberBand.isVisible():
+                if event.button() == Qt.LeftButton:
+                    self.rubberBand.hide()
+                    self.leftClickReleased.emit( self.originpos,pos )
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
@@ -845,7 +897,7 @@ class BoxController(QObject):
     viewBoxesChanged = pyqtSignal(dict)
 
 
-    def __init__(self,scene,connectionInput,boxListModel):
+    def __init__(self,editor,connectionInput,boxListModel):
         '''
         Class which controls all boxes on the scene
 
@@ -854,6 +906,10 @@ class BoxController(QObject):
         :param boxListModel:
 
         '''
+
+        scene = editor.imageScenes[2]
+        self._editor = editor
+        
         QObject.__init__(self,parent=scene.parent())
         self._setUpRandomColors()
         self.scene=scene
@@ -910,7 +966,7 @@ class BoxController(QObject):
         w=stop[0]-start[0]
         if h*w<9: return #too small
 
-        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,scene=self.scene,parent=self.scene.parent())
+        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,editor = self._editor, scene=self.scene,parent=self.scene.parent())
         rect.setZValue(len(self._currentBoxesList))
         rect.setColor(self.currentColor)
         #self.counter-=1
@@ -993,6 +1049,7 @@ class BoxController(QObject):
         [el._rectItem.setSelected(False) for el in self._currentBoxesList] #deselect the others
         self._currentBoxesList[index]._rectItem.setSelected(True)
 
+
     def handleSelectionChange(self):
         for row,el in enumerate(self._currentBoxesList):
             if el._rectItem.isSelected():
@@ -1048,13 +1105,13 @@ class BoxController(QObject):
 
                     line=["%5.5d"%k, "%5.5d"%start[1], "%5.5d"%start[2], "%5.5d"%stop[1],\
                     "%5.5d"%stop[2],"%5.2f"%count,"%5.2f"%averagedens, "%5.2f"%stddensity]
-                    print "line ", ",".join(line)
+                    logger.debug( "line " + ",".join(line) )
                     fh.write(",".join(line)+"\n")
 
 
 
         except IOError,e:
-            print e
+            logger.error( e )
             raise IOError
 
 #===============================================================================
@@ -1260,7 +1317,7 @@ if __name__=="__main__":
     print mainwin.centralWidget()
 
 
-    BoxContr=BoxController(mainwin.editor.imageScenes[2],op.Output,boxListModel)
+    BoxContr=BoxController(mainwin.editor,op.Output,boxListModel)
     BoxInt=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,BoxContr,mainwin.centralWidget())
 
 

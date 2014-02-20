@@ -1,8 +1,26 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import h5py
 import numpy as np
 import os.path as path
 import pgmlink
 
+import logging
+logger = logging.getLogger(__name__)
 
 def relabel(volume, replace):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
@@ -87,7 +105,7 @@ def get_events_at(eventsVector, t):
 def write_events(events_at, directory, t, labelImage, mergers=None):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         
-        print "-- Writing results to " + path.basename(fn) 
+        logger.info( "-- Writing results to " + path.basename(fn) ) 
         if len(events_at) == 0:
             dis = []
             app = []
@@ -153,7 +171,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
                 
     
-        print "-> results successfully written"
+        logger.info( "-> results successfully written" )
 
 
     

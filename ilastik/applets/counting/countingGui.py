@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Built-in
 import os
 import logging
@@ -157,6 +173,7 @@ class CountingGui(LabelingGui):
 
 
         self.initCounting()
+        #personal debugging code
         try:
             from sitecustomize import Shortcuts
         except Exception,e:
@@ -238,7 +255,7 @@ class CountingGui(LabelingGui):
         self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
 
         self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
+        self.boxController=BoxController(mainwin.editor,self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
         self.navigationInterpreterDefault=self.editor.navInterpret
@@ -587,6 +604,15 @@ class CountingGui(LabelingGui):
                       deleteBox,
                       None )
 
+        try:
+            from sitecustomize import Shortcuts
+            debugging = QShortcut( QKeySequence("F5"), self, member=self._debug)
+            mgr.register( shortcutGroupName,
+                          "Activate Debug Mode",
+                          debugging,
+                          None )
+        except Exception,e:
+            pass
 
 
     def _setup_contexts(self, layer):

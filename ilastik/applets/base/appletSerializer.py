@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -646,6 +662,9 @@ class AppletSerializer(object):
     # override if necessary
     version = "0.1"
 
+    class IncompatibleProjectVersionError(Exception):
+        pass
+
     #########################
     # Semi-abstract methods #
     #########################
@@ -759,7 +778,8 @@ class AppletSerializer(object):
 
         # Make sure we can find our way around the project tree
         if not isVersionCompatible(fileVersion):
-            return
+            msg = "Can't read project with format version: {}".format( fileVersion )
+            raise self.IncompatibleProjectVersionError(msg)
 
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
@@ -806,7 +826,8 @@ class AppletSerializer(object):
 
         # Make sure we can find our way around the project tree
         if not isVersionCompatible(fileVersion):
-            return
+            msg = "Can't read project with format version: {}".format( fileVersion )
+            raise self.IncompatibleProjectVersionError(msg)
 
         self.progressSignal.emit(0)
 

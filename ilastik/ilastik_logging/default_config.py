@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import logging.config
 import warnings
@@ -108,6 +124,8 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
         "loggers": {
             # This logger captures warnings module warnings
             "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
+
+            "PyQt4": {"level":"INFO"},
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },

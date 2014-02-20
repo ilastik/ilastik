@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import sys
 import traceback
 import threading
@@ -9,10 +25,12 @@ from ilastik.ilastik_logging import LOGFILE_PATH
 
 def init_early_exit_excepthook():
     """
+    This excepthook is used during automated testing.
+    If an unhandled exception occurs, it is logged and the app exits immediately.
     """
     from PyQt4.QtGui import QApplication
-    def print_exc_and_exit(*args):
-        logger.error( traceback.format_exc() )
+    def print_exc_and_exit(*exc_info):
+        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
         logger.error("Exiting early due to an unhandled exception.  See error output above.\n")
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
@@ -31,11 +49,11 @@ def init_user_mode_excepthook():
             from lazyflow.graph import Slot
             if isinstance(exc_info[1], Slot.SlotNotReadyError):
                 logger.warn( "Caught unhandled SlotNotReadyError exception in the volumina tile rendering thread:" )
-                logger.warn( traceback.format_exc() )
+                logger.error( "".join( traceback.format_exception( *exc_info ) ) )
                 return
         
         # All other exceptions are treated as true errors
-        logger.error( traceback.format_exc() )
+        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
         try:
             from ilastik.shell.gui.startShellGui import shell
             msg = str(exc_info[1])
@@ -44,15 +62,18 @@ def init_user_mode_excepthook():
             shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )
-            logger.error( traceback.format_exc() )
+            logger.error( "".join( traceback.format_exception( *exc_info ) ) )
             raise
     
     sys.excepthook = display_and_log
     _install_thread_excepthook()
 
 def init_developer_mode_excepthook():
-    def log_exception(*args):
-        logger.error( traceback.format_exc() )
+    """
+    This excepthook is used in debug mode (for developers).  It simply logs the exception.
+    """
+    def log_exception(*exc_info):
+        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
     sys.excepthook = log_exception
     _install_thread_excepthook()
 

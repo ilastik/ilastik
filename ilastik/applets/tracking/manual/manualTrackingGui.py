@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor
 
@@ -27,10 +43,6 @@ class ManualTrackingGui(LayerViewerGui):
 
     def appletDrawer( self ):
         return self._drawer
-
-    def reset( self ):
-        super( ManualTrackingGui, self ).stopAndCleanUp()
-        print "TrackinGui.reset(): not implemented"
 
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
@@ -878,7 +890,7 @@ class ManualTrackingGui(LayerViewerGui):
                         merger_sizes[m_size] = 0
                     merger_sizes[m_size] += 1
         
-        print 'Merger-Sizes:', merger_sizes
+        logging.info( 'Merger-Sizes: {}'.format(merger_sizes) )
         
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
@@ -1182,7 +1194,7 @@ class ManualTrackingGui(LayerViewerGui):
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
-        print prompt
+        logger.info( prompt )
 
 
     def _onNextUnlabeledPressed(self):

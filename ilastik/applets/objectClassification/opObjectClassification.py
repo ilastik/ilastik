@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import numpy
 import vigra
 import time
@@ -129,8 +145,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.Features.connect(self.ObjectFeatures)
         self.opPredict.Classifier.connect(self.classifier_cache.Output)
-        self.opPredict.LabelsCount.connect(self.opMaxLabel.Output)
         self.opPredict.SelectedFeatures.connect(self.SelectedFeatures)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.opPredict.LabelsCount.connect(self.opMaxLabel.Output) # See _updateNumClasses()
 
         self.opLabelsToImage.Image.connect(self.SegmentationImages)
         self.opLabelsToImage.ObjectMap.connect(self.LabelInputs)
@@ -190,12 +209,22 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
 
+        def _updateNumClasses(*args):
+            """
+            When the number of labels changes, we MUST make sure that the prediction image changes its shape (the number of channels).
+            Since setupOutputs is not called for mere dirty notifications, but is called in response to setValue(),
+            we use this function to call setValue().
+            """
+            numClasses = len(self.LabelNames.value)
+            self.opPredict.LabelsCount.setValue( numClasses )
+            self.NumLabels.setValue( numClasses )
+        self.LabelNames.notifyDirty( _updateNumClasses )
+
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
 
         # connect outputs
-        self.NumLabels.connect( self.opMaxLabel.Output )
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
@@ -210,6 +239,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.NumLabels.connect( self.opMaxLabel.Output )
+
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)
@@ -263,12 +297,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
             cur_labels = label_slot.value
             nTimes = self.RawImages[islot].meta.shape[0]
-            nLabels = len(self.LabelNames.value)
+            nLabels = len(self.LabelNames.value)+1 #+1 because we already took out the name in labelingGui
             for t in range(nTimes):
                 label_values = cur_labels[t]
                 label_values[label_values==label+1] = 0
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
+        self.LabelInputs.setDirty([])
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)

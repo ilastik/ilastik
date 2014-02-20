@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Standard
 import re
 import traceback
@@ -43,6 +59,8 @@ from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
+
+from ilastik.shell.gui.splashScreen import showSplashScreen
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -398,10 +416,11 @@ class IlastikShell( QMainWindow ):
         shellActions.importProjectAction.setIcon( QIcon(ilastikIcons.Open) )
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
-        shellActions.closeAction = menu.addAction("&Close")
-        shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
-        shellActions.closeAction.setShortcuts( QKeySequence.Close )
-        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            shellActions.closeAction = menu.addAction("&Close")
+            shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
+            shellActions.closeAction.setShortcuts( QKeySequence.Close )
+            shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
@@ -477,14 +496,8 @@ class IlastikShell( QMainWindow ):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
-        aboutIlastikAction.triggered.connect(self._showAboutDialog)
+        aboutIlastikAction.triggered.connect(showSplashScreen)
         return menu
-
-    def _showAboutDialog(self):
-        localDir = os.path.split(__file__)[0]
-        dlg = QDialog()
-        uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
-        dlg.exec_()
 
     def _createDebugMenu(self):
         menu = QMenu("&Debug", self)
@@ -590,7 +603,8 @@ class IlastikShell( QMainWindow ):
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
-        self._shellActions.closeAction.setEnabled(projectIsOpen)
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -1300,8 +1314,9 @@ class IlastikShell( QMainWindow ):
         """
         self._shellActions.openProjectAction.setEnabled( enabled )
         self._shellActions.importProjectAction.setEnabled( enabled )
-        self._shellActions.closeAction.setEnabled( enabled )
         self._shellActions.quitAction.setEnabled( enabled )
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled( enabled )
 
     def _setAppletEnabled(self, applet, enabled):
         try:

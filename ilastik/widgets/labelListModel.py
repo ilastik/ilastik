@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
 from PyQt4.QtCore import Qt, pyqtSignal
 from listModel import ListModel,ListElement,_NPIXELS
@@ -117,16 +133,16 @@ class LabelListModel(ListModel):
             brushColor = QColor(value[0])
             pmapColor = QColor(value[1])
             if brushColor.isValid() and pmapColor.isValid():
-                print "setData: brushColor = {}, pmapColor = {}".format(
-                    brushColor.name(), pmapColor.name())
-                print "  self._elements[row] has type {}".format(
-                    type(self._elements[row]))
+                logger.debug("setData: brushColor = {}, pmapColor = {}"
+                             "".format(brushColor.name(), pmapColor.name()))
+                logger.debug("  self._elements[row] has type {}"
+                             "".format(type(self._elements[row])))
                 self._elements[row].setBrushColor(brushColor)
                 self._elements[row].setPmapColor(pmapColor)
-                print "  self._elements[row].brushColor = {}".format(
-                    self._elements[row].brushColor().name())
-                print "  self._elements[row].pmapColor  = {}".format(
-                    self._elements[row].pmapColor().name())
+                logger.debug("  self._elements[row].brushColor = {}"
+                             "".format(self._elements[row].brushColor().name()))
+                logger.debug("  self._elements[row].pmapColor  = {}"
+                             "".format(self._elements[row].pmapColor().name()))
                 self.dataChanged.emit(index, index)
                 return True
 
