@@ -76,6 +76,8 @@ class TestOpFormattedDataExport(object):
         expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
         expected_data = expected_data.astype(numpy.uint8)
         expected_data += 100 # see renormalization settings
+
+        assert opRead.Output.meta.shape == expected_data.shape
         read_data = opRead.Output[:].wait()
         assert numpy.allclose(read_data, expected_data), "Read data didn't match exported data!"
 
