@@ -493,11 +493,11 @@ class DataSelectionGui(QWidget):
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     loaded_all = False
                     break
-            except:
+            except Exception as ex:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                raise
+                logger.critical(ex)
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
