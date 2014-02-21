@@ -220,11 +220,19 @@ class PixelClassificationGui(LabelingGui):
                 segLayer.visible = False #self.labelingDrawerUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
-                def setLayerColor(c, segLayer=segLayer):
+                def setLayerColor(c, segLayer_=segLayer, initializing=False):
+                    if not initializing and segLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
                     segLayer.tintColor = c
                     self._update_rendering()
 
-                def setSegLayerName(n, segLayer=segLayer):
+                def setSegLayerName(n, segLayer_=segLayer, initializing=False):
+                    if not initializing and segLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
                     oldname = segLayer.name
                     newName = "Segmentation (%s)" % n
                     segLayer.name = newName
@@ -234,7 +242,7 @@ class PixelClassificationGui(LabelingGui):
                         label = self._renderedLayers.pop(oldname)
                         self._renderedLayers[newName] = label
 
-                setSegLayerName(ref_label.name)
+                setSegLayerName(ref_label.name, initializing=True)
 
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setSegLayerName)
@@ -261,14 +269,22 @@ class PixelClassificationGui(LabelingGui):
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
-                def setLayerColor(c, predictLayer=predictLayer):
-                    predictLayer.tintColor = c
+                def setLayerColor(c, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    predictLayer_.tintColor = c
 
-                def setPredLayerName(n, predictLayer=predictLayer):
+                def setPredLayerName(n, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
                     newName = "Prediction for %s" % n
-                    predictLayer.name = newName
+                    predictLayer_.name = newName
 
-                setPredLayerName(ref_label.name)
+                setPredLayerName(ref_label.name, initializing=True)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
