@@ -79,7 +79,15 @@ class TestOpFormattedDataExport(object):
 
         assert opRead.Output.meta.shape == expected_data.shape
         read_data = opRead.Output[:].wait()
-        assert numpy.allclose(read_data, expected_data), "Read data didn't match exported data!"
+        try:
+            assert numpy.allclose(read_data, expected_data), "Read data didn't match exported data!"
+        except:
+            print 'read_data:'
+            print read_data
+            print "expected_data:"
+            print expected_data
+            raise
+            
 
 if __name__ == "__main__":
     import sys
