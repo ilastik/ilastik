@@ -227,7 +227,7 @@ class OpSelectLabels(Operator):
         del prod
         
         all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint8 )
-        assert len(passed < 255), "Too many labels in this block to be stored in a uint8 array"
+        assert len(passed) < 255, "Too many labels in this block to be stored in a uint8 array"
         for i, l in enumerate(passed):
             all_label_values[l] = i+1
         all_label_values[0] = 0
