@@ -17,6 +17,7 @@
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators import OpLabelImage, OpCompressedCache, Operator
 from lazyflow.operators.opCache import OpCache
+from lazyflow.utility.helpers import warn_deprecated
 
 class OpCachedLabelImage(OpCache):
     """
@@ -43,6 +44,7 @@ class OpCachedLabelImage(OpCache):
     #                                                         --> CleanBlocks
     
     def __init__(self, *args, **kwargs):
+        warn_deprecated("OpCachedLabelImage is deprecated, use OpLabelVolume instead")
         super(OpCachedLabelImage, self).__init__(*args, **kwargs)
         
         # Hook up the labeler

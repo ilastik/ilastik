@@ -21,8 +21,10 @@ import vigra
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpVigraLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.utility.helpers import warn_deprecated
 
-class OpLabelImage(Operator):
+
+class _OpLabelImage(Operator):
     """
     Produces labeled 5D volumes.  If multiple time slices and/or channels are present, 
     each time/channel combo is treated as a separate volume for labeling,
@@ -48,7 +50,7 @@ class OpLabelImage(Operator):
 
         See ascii schematic in comments above for an overview.
         """
-        super( OpLabelImage, self ).__init__( *args, **kwargs )
+        super(_OpLabelImage, self).__init__( *args, **kwargs )
         
         self.opTimeSlicer = OpMultiArraySlicer2( parent=self )
         self.opTimeSlicer.AxisFlag.setValue('t')
@@ -152,7 +154,11 @@ class OpLabelImage(Operator):
         pass # Nothing to do...
 
 
-
+class OpLabelImage(_OpLabelImage):
+    def __init__(self, *args, **kwargs):
+        warn_deprecated("OpLabelImage is deprecated,"
+                        " use OpLabelVolume instead")
+        super(OpLabelImage, self).__init__(*args, **kwargs)
 
 
 

@@ -14,16 +14,14 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
-import logging
-
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility.helpers import warn_deprecated
 
-logger = logging.getLogger(__name__)
 
-class OpVigraLabelVolume(Operator):
+class _OpVigraLabelVolume(Operator):
     """
     Operator that simply wraps vigra's labelVolume function.
     """
@@ -103,4 +101,12 @@ class OpVigraLabelVolume(Operator):
             self.Output.setDirty( slice(None) )
         elif inputSlot == self.BackgroundValue:
             self.Output.setDirty( slice(None) )
+
+
+class OpVigraLabelVolume(_OpVigraLabelVolume):
+    def __init__(self, *args, **kwargs):
+        warn_deprecated("Usage of OpVigraLabelVolume is deprecated,"
+                        " use OpLabelVolume instead!")
+        super(OpVigraLabelVolume, self).__init__(*args, **kwargs)
+
 
