@@ -35,7 +35,7 @@ class StandardApplet( Applet ):
     3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  
     """
 
-    def __init__(self, name, workflow, *args, **kwargs):
+    def __init__(self, name, workflow=None, interactive=True, *args, **kwargs):
         """
         Constructor.
 
