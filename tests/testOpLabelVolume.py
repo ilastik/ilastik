@@ -141,6 +141,52 @@ class TestVigra(unittest.TestCase):
         with self.assertRaises(ValueError):
             op.Input.setValue(vol)
 
+    def testBackground(self):
+        vol = np.zeros((1000, 100, 10))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyz')
+
+        vol[20:40, 10:30, 2:4] = 1
+
+        op = OpLabelVolume(graph=Graph())
+        op.Method.setValue(self.method)
+        op.Background.setValue(1)
+        op.Input.setValue(vol)
+
+        out = op.Output[...].wait()
+        tags = op.Output.meta.getTaggedShape()
+        out = vigra.taggedView(out, axistags="".join([s for s in tags]))
+
+        assertEquivalentLabeling(1-vol, out)
+
+        vol = vol.withAxes(*'xyzct')
+        vol = np.concatenate(3*(vol,), axis=3)
+        vol = np.concatenate(4*(vol,), axis=4)
+        vol = vigra.taggedView(vol, axistags='xyzct')
+        assert len(vol.shape) == 5
+        assert vol.shape[3] == 3
+        assert vol.shape[4] == 4
+        #op = OpLabelVolume(graph=Graph())
+        op.Method.setValue(self.method)
+        bg = np.asarray([[1, 0, 1, 0],
+                         [0, 1, 0, 1],
+                         [1, 0, 0, 1]], dtype=np.uint8)
+        bg = vigra.taggedView(bg, axistags='ct')
+        assert len(bg.shape) == 2
+        assert bg.shape[0] == 3
+        assert bg.shape[1] == 4
+        op.Background.setValue(bg)
+        op.Input.setValue(vol)
+
+        for c in range(bg.shape[0]):
+            for t in range(bg.shape[1]):
+                out = op.Output[..., c, t].wait()
+                out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
+                if bg[c, t]:
+                    assertEquivalentLabeling(1-vol[..., c, t], out.squeeze())
+                else:
+                    assertEquivalentLabeling(vol[..., c, t], out.squeeze())
+
 
 class TestBlocked(TestVigra):
 
@@ -149,6 +195,10 @@ class TestBlocked(TestVigra):
 
     @unittest.skip("Not implemented yet")
     def testUnsupported(self):
+        pass
+
+    @unittest.skip("Not implemented yet")
+    def testBackground(self):
         pass
 
 

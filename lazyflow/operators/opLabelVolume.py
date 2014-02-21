@@ -33,8 +33,8 @@ class OpLabelVolume(Operator):
     Input = InputSlot()
 
     ## provide labels that are treated as background
-    # the shape of the background albels must match the shape of the volume in
-    # channel and in time axis, and must have singleton spatial axes.
+    # the shape of the background labels must match the shape of the volume in
+    # channel and in time axis, and must have no spatial axes.
     # E.g.: volume.taggedShape = {'x': 10, 'y': 12, 'z': 5, 'c': 3, 't': 100}
     # ==>
     # background.taggedShape = {'c': 3, 't': 100}
@@ -135,10 +135,10 @@ class OpLabelVolume(Operator):
         if bg.size == 1:
             bg = np.zeros(self._op5.Output.meta.shape[3:])
             bg[:] = val
+            bg = vigra.taggedView(bg, axistags='ct')
         else:
-            bg = val
-        bg = vigra.taggedView(bg, axistags='ct')
-        #bg.flat = [v for (u,v) in np.broadcast(bg, val)]
+            bg = vigra.taggedView(val, axistags=self.Background.meta.axistags)
+            bg = bg.withAxes(*'ct')
         bg = bg.withAxes(*'xyzct')
         self._opLabel.Background.setValue(bg)
 
@@ -175,6 +175,9 @@ class OpLabelingABC(Operator):
         self._cache = OpCompressedCache(parent=self)
         self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.Input.connect(self._metaProvider.Output)
+        shape = np.asarray(self.Input.meta.shape)
+        shape[3:5] = 1
+        self._cache.BlockShape.setValue(tuple(shape))
         self.Output.meta.assignFrom(self._cache.Output.meta)
         self.CachedOutput.meta.assignFrom(self._cache.Output.meta)
 
@@ -206,6 +209,9 @@ class OpLabelingABC(Operator):
         bg = self.Background[...].wait()
         bg = vigra.taggedView(bg, axistags=self.Background.meta.axistags)
         bg = bg.withAxes(*'ct')
+        assert np.all(self.Background.meta.shape[3:] ==
+                      self.Input.meta.shape[3:]),\
+            "Shape of background values incompatible to shape of Input"
 
         # do labeling in parallel over channels and time slices
         pool = RequestPool()
@@ -232,7 +238,7 @@ class OpLabelingABC(Operator):
         # release locks and set caching flags
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
-                self._cached [c, t] = 1
+                self._cached[c, t] = 1
                 self._locks[c, t].release()
 
     ## compute the requested slice and put the results into self._cache
@@ -307,7 +313,6 @@ class _OpMetaProvider(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        print(roi)
         assert False,\
             "The cache asked for data which should not happen."
 
@@ -373,7 +378,6 @@ if _blockedarray_module_available:
             roiP = np.asarray(roi[0])
             roiQ = np.asarray(roi[1])
             sub = fullRoiFromPQ(self._op.Input, roiP, roiQ, self._c, self._t)
-            print(self._op.Input.meta)
             self._op.setInSlot(self._op.Input, (), sub,
                                block[..., np.newaxis, np.newaxis])
 
