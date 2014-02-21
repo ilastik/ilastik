@@ -161,8 +161,9 @@ class AppletDrawerToolBox(QToolBox):
     
     def setCurrentIndex(self, index):
         visible_index = self._get_visible_index(index)
-        assert visible_index != -1, "Can't make an invisible widget current"
-        super( AppletDrawerToolBox, self ).setCurrentIndex( visible_index )
+        # If the given index isn't actually visible, this is a no-op.
+        if visible_index != -1:
+            super( AppletDrawerToolBox, self ).setCurrentIndex( visible_index )
     
     def setCurrentWidget(self, widget):
         # Find this widget's total index
