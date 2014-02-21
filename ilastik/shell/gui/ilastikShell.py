@@ -62,6 +62,8 @@ from ilastik.shell.shellAbc import ShellABC
 
 from ilastik.shell.gui.splashScreen import showSplashScreen
 
+from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
@@ -248,6 +250,8 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
 
         self._loaduifile()
+        
+        assert isinstance(self.appletBar, AppletDrawerToolBox)
 
         # show a nice window icon
         self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
@@ -819,6 +823,10 @@ class IlastikShell( QMainWindow ):
         stackedWidget.addWidget( controlGuiWidget )
 
         self.appletBar.addItem( stackedWidget, controlName )
+        if not app.interactive:
+            # Some applets don't really need a GUI, but they still have a top-level operator and serializer.
+            # In that case, we don't show it in the applet drawer
+            self.appletBar.hideIndexItem( applet_index )
 
         # Set up handling of GUI commands from this applet
         self._disableCounts.append(0)

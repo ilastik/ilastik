@@ -27,7 +27,7 @@ class Applet( object ):
 
     _base_initialized = False
 
-    def __init__( self, name, syncWithImageIndex=True ):
+    def __init__( self, name, syncWithImageIndex=True, interactive=True ):
         """
         Constructor.
         Subclasses must call this base implementation in their own ``__init__`` methods.
@@ -38,6 +38,7 @@ class Applet( object ):
         """
         self.name = name
         self.syncWithImageIndex = syncWithImageIndex
+        self.__interactive = interactive
 
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
@@ -62,6 +63,10 @@ class Applet( object ):
         self.appletStateUpdateRequested = SimpleSignal()
 
         self._base_initialized = True
+
+    @property
+    def interactive(self):
+        return self.__interactive
 
     @abstractproperty
     def topLevelOperator(self):
