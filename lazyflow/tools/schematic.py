@@ -1,8 +1,27 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from schematic_abc import DrawableABC, ConnectableABC
 import svg
 import numpy
 from functools import partial
 import itertools
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Reverse lookup of lazyflow slots to svg slots
 slot_registry = {}
@@ -221,14 +240,14 @@ class SvgOperator( DrawableABC ):
         x, y = upperLeft
 
         title_text = self.op.name
-        print "generating code for operator:", title_text
+        logger.debug( "generating code for operator: {}".format( title_text ) )
 
         inputSize = self.getInputSize()
         outputSize = self.getOutputSize()
 
         child_ordering = {}
         for child in self.op.children:
-            print "child with name:", child.name
+            logger.debug( "child with name: {}".format( child.name ) )
             col = get_column_within_parent(child)
             if col not in child_ordering:
                 child_ordering[col] = []

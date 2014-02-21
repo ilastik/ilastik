@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 from functools import partial
 import os
@@ -359,6 +375,15 @@ class OpH5WriterBigDataset(Operator):
     def __init__(self, *args, **kwargs):
         super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
+        self.d = None
+        self.f = None
+
+    def cleanUp(self):
+        super( OpH5WriterBigDataset, self ).cleanUp()
+        # Discard the reference to the dataset, to ensure that hdf5 can close the file.
+        self.d = None
+        self.f = None
+        self.progressSignal.clean()
 
     def setupOutputs(self):
         self.outputs["WriteImage"].meta.shape = (1,)
@@ -471,6 +496,9 @@ class OpH5WriterBigDataset(Operator):
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
+
+        # Be paranoid: Flush right now.
+        self.f.file.flush()
 
         # We're finished.
         result[0] = True

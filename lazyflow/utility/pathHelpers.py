@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 
 class PathComponents(object):
@@ -103,7 +119,9 @@ def compressPathForDisplay(pathstr,maxlength):
     component_list = pathstr.split("/")
     while component_list:
         c = component_list.pop(-1)
-        if len(suffix)+1+len(c)+len(prefix)>maxlength:
+        newlength = len(suffix)+1+len(c)+len(prefix)
+        if newlength>maxlength:
+            suffix = c[-min(len(c)-3,maxlength-3):]
             break
         suffix="/"+c+suffix
         if not component_list:
@@ -171,4 +189,5 @@ if __name__ == "__main__":
     assert components.extension == '.ext'    
     assert components.internalPath is None
     assert components.externalDirectory == 'http://somehost:8000/path/to/data'
+    assert components.filenameBase == 'with'
 

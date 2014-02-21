@@ -14,16 +14,19 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
-class Singleton(type):
-    """
-    simple implementation of meta class that implements the singleton pattern.
-    """
-    def __init__(cls, name, bases, dict):
-        super(Singleton, cls).__init__(name, bases, dict)
-        cls.instance = None
+from lazyflow.utility.pathHelpers import compressPathForDisplay
 
-    def __call__(cls,*args,**kw):
-        if cls.instance is None:
-            cls.instance = super(Singleton, cls).__call__(*args, **kw)
-        return cls.instance
-
+class TestPathHelpers(object):
+    
+    def testCompressPathForDisplay(self):
+        assert compressPathForDisplay("/a/b.txt", 30) == "/a/b.txt"
+        path = "/test/bla/bla/this_is_a_very_long_filename_bla_bla.txt"
+        for l in [5,10,15,20,30]:
+            assert len(compressPathForDisplay(path, l)) == l
+        
+if __name__ == "__main__":
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)
