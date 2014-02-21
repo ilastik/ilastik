@@ -325,6 +325,7 @@ class OpMultiArrayStacker(Operator):
                 axisindex = self.Output.meta.axistags.index(flag)
                 newshape[axisindex]=c
             else:
+                #FIXME axisindex is not necessarily defined yet (try setValue on subslot)
                 newshape.insert(axisindex, c)
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
@@ -399,15 +400,20 @@ class OpMultiArrayStacker(Operator):
             imageIndex = subindex[0]
             axisflag = self.AxisFlag.value
             axisIndex = self.Output.meta.axistags.index(axisflag)
-            if len(roi.start)>axisIndex:
+
+            if len(roi.start) == len(self.Output.meta.shape):
+                # axis is already in the input 
                 roi.start[axisIndex] += self.intervals[imageIndex][0] 
                 roi.stop[axisIndex] += self.intervals[imageIndex][0] 
-                self.Output.setDirty( roi )
+                self.Output.setDirty(roi)
             else:
+                # insert axis into roi
                 newroi = copy.copy(roi)
-                newroi = newroi.insertDim(axisIndex, self.intervals[imageIndex][0], self.intervals[imageIndex][0]+1)
-                self.Output.setDirty( newroi )
-                
+                newroi = newroi.insertDim(axisIndex, 
+                                          self.intervals[imageIndex][0],
+                                          self.intervals[imageIndex][0]+1)
+                self.Output.setDirty(newroi)
+
         else:
             assert False, "Unknown input slot."
 
