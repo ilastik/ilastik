@@ -54,25 +54,6 @@ logger = logging.getLogger(__name__)
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
-def mainthreadonly(func):
-    '''
-    Helper decorator to declare a function which can be called only from the main thread
-    In case the function is not called in the main thread, a warning is sent but the program
-    will not crash
-    :param func:
-    '''
-    def inner(*args,**kwargs):
-        if threading.current_thread().name=="MainThread":
-
-            return func(*args,**kwargs)
-        else:
-            warnings.warn("Trying to execute: %s\n from thread %s\n"%(func,threading.current_thread().name))
-            #warnings.warn("Trying to execute: %s\n from thread %s\n with arguments:\n %s\n %s\n"%(func,threading.current_thread().name,args,kwargs))
-
-    return inner
-
-
-
 class Tool():
 
     Navigation = 0 # Arrow
@@ -282,7 +263,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontSize(self):
         return self._fontSize
 
-    #@mainthreadonly
     @pyqtSlot(int)
     def setFontSize(self,s):
         self._fontSize=s
@@ -330,7 +310,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
             self._updateTextBottom("shape " +str(self.shape))
 
-    @mainthreadonly
+    @pyqtSlot(str)
     def _updateTextBottom(self,string):
         self.textItemBottom.setPlainText(QtCore.QString(string))
 
@@ -593,14 +573,15 @@ class CoupledRectangleElement(object):
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
 
-    @mainthreadonly
-    def _updateTextWhenChanges(self,*args,**kwargs):
+    #@mainthreadonly
+    @pyqtSlot()
+    def _updateTextWhenChanges(self):
         '''
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized
         '''
 
-        time.sleep(DELAY*0.001)
+        #time.sleep(DELAY*0.001)
 
 
         #FIXME: Workaround: when the array is resized over the border of the image scene the
