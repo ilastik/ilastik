@@ -78,16 +78,13 @@ class TestOpFormattedDataExport(object):
         expected_data += 100 # see renormalization settings
 
         assert opRead.Output.meta.shape == expected_data.shape
+        assert opRead.Output.meta.dtype == expected_data.dtype
         read_data = opRead.Output[:].wait()
-        try:
-            assert numpy.allclose(read_data, expected_data), "Read data didn't match exported data!"
-        except:
-            print 'read_data:'
-            print read_data
-            print "expected_data:"
-            print expected_data
-            raise
-            
+
+        # Due to rounding errors, the actual result and the expected result may differ by 1
+        #  e.g. if the original pixel value was 32.99999999
+        difference_from_expected = expected_data - read_data
+        assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
 
 if __name__ == "__main__":
     import sys
