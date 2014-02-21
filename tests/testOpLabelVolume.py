@@ -11,6 +11,13 @@ from lazyflow.rtype import SubRegion
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
+try:
+    import blockedarray
+except ImportError:
+    have_blocked = False
+else:
+    have_blocked = True
+
 
 class TestVigra(unittest.TestCase):
 
@@ -68,9 +75,6 @@ class TestVigra(unittest.TestCase):
         tags = op.Output.meta.getTaggedShape()
         print(tags)
         out = vigra.taggedView(out, axistags="".join([s for s in tags]))
-
-        vigra.writeHDF5(vol, '/tmp/in.h5', '/volume/data')
-        vigra.writeHDF5(out, '/tmp/out.h5', '/volume/data')
 
         for c in range(out.shape[3]):
             for t in range(out.shape[4]):
@@ -188,6 +192,7 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
 
+@unittest.skipIf(not have_blocked, "Cannot test blockedarray because you don't have the module")
 class TestBlocked(TestVigra):
 
     def setUp(self):
