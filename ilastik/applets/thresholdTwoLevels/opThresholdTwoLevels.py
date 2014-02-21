@@ -216,7 +216,7 @@ class OpSelectLabels(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.BigLabels.meta)
-        self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.dtype = numpy.uint32
         self.Output.meta.drange = (0, 1)
 
     def execute(self, slot, subindex, roi, result):
@@ -265,8 +265,7 @@ class OpSelectLabels(Operator):
         logMemoryIncrease("After taking product")
         del prod
 
-        all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint8 )
-        assert len(passed) < 255, "Too many labels ({}) in this block to be stored in a uint8 array".format(len(passed))
+        all_label_values = numpy.zeros( (bigLabels.max()+1,), dtype=numpy.uint32 )
 
         for i, l in enumerate(passed):
             all_label_values[l] = i+1
@@ -520,7 +519,7 @@ class _OpThresholdOneLevel(Operator):
             partial(thresholdToUint8, self.Threshold.value))
         # Copy the input metadata to the output
         self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype=numpy.uint8
+        self.Output.meta.dtype=numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -662,7 +661,7 @@ class _OpThresholdTwoLevels(Operator):
 
         # Copy the input metadata to the output
         self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.dtype = numpy.uint32
 
         # Blockshape is the entire block, except only 1 time slice
         tagged_shape = self.Output.meta.getTaggedShape()
