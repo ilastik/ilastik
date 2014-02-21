@@ -15,56 +15,66 @@
 # Copyright 2011-2014, the ilastik developers
 
 import numpy
+import vigra
+np = numpy
+
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ifyer
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpThresholdTwoLevels4d, OpThresholdTwoLevels, \
-                                                                    OpThresholdOneLevel
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels \
+    import OpThresholdTwoLevels, OpSelectLabels
+
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels\
+    import _OpThresholdOneLevel as OpThresholdOneLevel
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels\
+    import _OpThresholdTwoLevels as OpThresholdTwoLevels5d
 
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
+import unittest
 
-import vigra
 
-def generateData((nx, ny, nz, nc)):
-  
-    clusters = []
-    
-    #cluster of 4 points
-    cluster1 = numpy.zeros((nx, ny, nz))
-    cluster1[1:3, 1:3, 1]=0.9
-    clusters.append(cluster1)
-    
-    #cluster of 18 points
-    cluster2 = numpy.zeros((nx, ny, nz))
-    cluster2[5:8, 5:8, 5:8]=0.7
-    clusters.append(cluster2)
-    
-    #cluster of lower probability (18 points)
-    cluster3 = numpy.zeros((nx, ny, nz))
-    cluster3[4:7, 11:14, 9:11]=0.3
-    clusters.append(cluster3)
-    
-    #cluster of 64 points
-    cluster4 = numpy.zeros((nx, ny, nz))
-    cluster4[2:10, 2:10, 15]=0.9
-    clusters.append(cluster4)
-    
-    #dual cluster
-    cluster5 = numpy.zeros((nx, ny, nz))
-    cluster5[20:30, 20:30, 20] = 0.4 #bigger cluster of lower prob
-    cluster5[25:30, 25:30, 20] = 0.95 #smaller core of high prob
-    clusters.append(cluster5)
-    
-    return clusters
+## for testing ThresholdOneLevel
+class Generator1(unittest.TestCase):
 
-class TestThresholdOneLevel(object):
+    def generateData(self, (nx, ny, nz, nc)):
+
+        clusters = []
+
+        #cluster of 4 points
+        cluster1 = numpy.zeros((nx, ny, nz))
+        cluster1[1:3, 1:3, 1] = 0.9
+        clusters.append(cluster1)
+
+        #cluster of 18 points
+        cluster2 = numpy.zeros((nx, ny, nz))
+        cluster2[5:8, 5:8, 5:8] = 0.7
+        clusters.append(cluster2)
+
+        #cluster of lower probability (18 points)
+        cluster3 = numpy.zeros((nx, ny, nz))
+        cluster3[4:7, 11:14, 9:11] = 0.3
+        clusters.append(cluster3)
+
+        #cluster of 64 points
+        cluster4 = numpy.zeros((nx, ny, nz))
+        cluster4[2:10, 2:10, 15] = 0.9
+        clusters.append(cluster4)
+
+        #dual cluster
+        cluster5 = numpy.zeros((nx, ny, nz))
+        cluster5[20:30, 20:30, 20] = 0.4  # bigger cluster of lower prob
+        cluster5[25:30, 25:30, 20] = 0.95  # smaller core of high prob
+        clusters.append(cluster5)
+
+        return clusters
+
     def setUp(self):
         self.nx = 50
         self.ny = 50
         self.nz = 50
         self.nc = 3
-        
-        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
         self.data = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
         self.data = self.data.reshape(self.data.shape+(1,))
         self.data5d = self.data.reshape((1,)+self.data.shape)
@@ -72,242 +82,507 @@ class TestThresholdOneLevel(object):
         self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
         self.data5d = self.data5d.view(vigra.VigraArray)
         self.data5d.axistags = vigra.VigraArray.defaultAxistags('txyzc')
-        
+
         self.minSize = 0
         self.maxSize = 50
-        
-        self.sigma = { 'x' : 0.3, 'y' : 0.3, 'z' : 0.3 }
-        self.data = vigra.filters.gaussianSmoothing(self.data.astype(numpy.float32), 0.3)
-        
-    def test(self):
+
+        self.sigma = {'x': 0.3, 'y': 0.3, 'z': 0.3}
+        self.data = vigra.filters.gaussianSmoothing(
+            self.data.astype(numpy.float32), 0.3)
+
+
+class TestThresholdOneLevelInternal(Generator1):
+
+    @unittest.skip("Not supported anymore, test kept for reference")
+    def test4d(self):
         g = Graph()
         oper = OpThresholdOneLevel(graph=g)
         oper.MinSize.setValue(self.minSize)
         oper.MaxSize.setValue(self.maxSize)
         oper.Threshold.setValue(0.5)
         oper.InputImage.setValue(self.data)
-        
+
         output = oper.Output[:].wait()
-        
-        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
-        
+        assert numpy.all(output.shape == self.data.shape)
+
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
+
         cluster1 = numpy.logical_and(output, clusters[0])
-        assert numpy.any(cluster1!=0)
-                
+        assert numpy.any(cluster1 != 0)
+
         oper.MinSize.setValue(5)
         output = oper.Output[:].wait()
         cluster1 = numpy.logical_and(output, clusters[0])
-        assert numpy.all(cluster1==0)
-        
+        assert numpy.all(cluster1 == 0)
+
         cluster4 = numpy.logical_and(output.squeeze(), clusters[3])
-        assert numpy.all(cluster4==0)
-        
+        assert numpy.all(cluster4 == 0)
+
         cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
-        assert numpy.all(cluster5==0)
+        assert numpy.all(cluster5 == 0)
         oper.Threshold.setValue(0.2)
         output = oper.Output[:].wait()
         cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
-        assert numpy.any(cluster5!=0)
-        
-        oper5d = OpThresholdTwoLevels(graph=g)
+        assert numpy.any(cluster5 != 0)
+
+    def test5d(self):
+        g = Graph()
+        oper = OpThresholdOneLevel(graph=g)
+        oper.MinSize.setValue(self.minSize)
+        oper.MaxSize.setValue(self.maxSize)
+        oper.Threshold.setValue(0.5)
+        oper.InputImage.setValue(self.data5d)
+
+        output = oper.Output[:].wait()
+        assert numpy.all(output.shape == self.data5d.shape)
+
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
+
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.any(cluster1 != 0)
+
+        oper.MinSize.setValue(5)
+        output = oper.Output[:].wait()
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.all(cluster1 == 0)
+
+        cluster4 = numpy.logical_and(output.squeeze(), clusters[3])
+        assert numpy.all(cluster4 == 0)
+
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.all(cluster5 == 0)
+        oper.Threshold.setValue(0.2)
+        output = oper.Output[:].wait()
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.any(cluster5 != 0)
+
+    def testFunnyAxes(self):
+        vol = self.data.withAxes(*'ztxcy')
+        g = Graph()
+        oper = OpThresholdOneLevel(graph=g)
+        oper.MinSize.setValue(self.minSize)
+        oper.MaxSize.setValue(self.maxSize)
+        oper.Threshold.setValue(0.5)
+        oper.InputImage.setValue(vol)
+
+        output = oper.Output[:].wait()
+        assert numpy.all(output.shape == vol.shape)
+
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
+        output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
+        output = output.withAxes(*'xyzc')
+
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.any(cluster1 != 0)
+
+        oper.MinSize.setValue(5)
+        output = oper.Output[:].wait()
+        cluster1 = numpy.logical_and(output, clusters[0])
+        assert numpy.all(cluster1 == 0)
+
+        cluster4 = numpy.logical_and(output.squeeze(), clusters[3])
+        assert numpy.all(cluster4 == 0)
+
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.all(cluster5 == 0)
+        oper.Threshold.setValue(0.2)
+        output = oper.Output[:].wait()
+        output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
+        output = output.withAxes(*'xyzc')
+        cluster5 = numpy.logical_and(output.squeeze(), clusters[2])
+        assert numpy.any(cluster5 != 0)
+
+
+class TestThresholdOneLevel(Generator1):
+    def testSimpleUsage(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
         oper5d.InputImage.setValue(self.data5d)
-        oper5d.MinSize.setValue(oper.MinSize.value)
-        oper5d.MaxSize.setValue(oper.MaxSize.value)
-        oper5d.SingleThreshold.setValue(oper.Threshold.value)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.SingleThreshold.setValue(0.5)
         oper5d.SmootherSigma.setValue(self.sigma)
         oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(0)
-        
-        output5d = oper5d.Output[:].wait()
-        
-        tIndex= oper5d.Output.meta.axistags.index('t')
-        slicing = 5*[slice(None, None, None)]
-        slicing[tIndex]= slice(0, 1, None)
-        assert numpy.all(output5d[slicing].squeeze()==output[:].squeeze())
+
+        out5d = oper5d.Output[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+    def testWrongChannel(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.SingleThreshold.setValue(0.5)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        # the operator should be able to figure out that this channel index is wrong
+        oper5d.Channel.setValue(15)
+        oper5d.CurOperator.setValue(0)
+
+        out5d = oper5d.Output[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+    def testNoOp(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(self.data5d.size)
+        oper5d.SingleThreshold.setValue(-0.01)
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(0)
+
+        out5d = oper5d.Output[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+        # the image should be white, because of negative threshold
+        assert numpy.all(out5d > 0),\
+            "{}% elements <= 0".format((out5d <= 0).sum()/float(out5d.size)*100)
+
+        oper5d.SingleThreshold.setValue(1.01)
+        out5d = oper5d.Output[:].wait()
+
+        # the image should be black, because of threshold larger than 1
+        assert numpy.all(out5d == 0),\
+            "{}% elements > 0".format((out5d > 0).sum()/float(out5d.size)*100)
+
+    def testEvenFunnierAxes(self):
+        vol = numpy.random.randint(0, 255, size=(5, 17, 31, 42, 11))
+        vol = vol.astype(numpy.uint8)
+        # don't care about corner cases
+        vol[vol == 128] = 129
+        vol[vol == 127] = 126
+        desiredResult = numpy.where(vol > 128, 1, 0)
+        vol = vigra.taggedView(vol, axistags='xtycz')
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(vol)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(vol.size)
+        oper5d.SingleThreshold.setValue(128)
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        oper5d.CurOperator.setValue(0)
+
+        #for i in range(vol.shape[3]):
+        for i in range(2, 5):  # just test some sample slices (runtime :)
+            oper5d.Channel.setValue(i)
+            out5d = oper5d.Output[:].wait()
+            out5d[out5d > 0] = 1
+            numpy.testing.assert_array_equal(out5d.squeeze(), desiredResult[..., i, :])
 
 
-class TestThresholdTwoLevels(object):
+class Generator2(Generator1):
     def setUp(self):
-        
+
         self.nx = 50
         self.ny = 50
         self.nz = 50
         self.nc = 3
-        
-        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
+
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
         self.data = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
         self.data = self.data.reshape(self.data.shape+(1,))
-        self.data = self.data.view(vigra.VigraArray)
-        self.data.axistags = vigra.VigraArray.defaultAxistags('xyzc')
-        
-        self.dataChannels = numpy.zeros((self.nx, self.ny, self.nz, self.nc))
-        self.dataChannels[:, :, :, 2] = clusters[0] + clusters[1] + clusters[2] + clusters[3] + clusters[4]
-        
-        self.dataChannels = self.dataChannels.view(vigra.VigraArray)
-        self.dataChannels.axistags = vigra.VigraArray.defaultAxistags('xyzc')
-        
-        self.dataRandom = numpy.random.rand(self.nx, self.ny, self.nz)
-        self.dataRandom = self.dataRandom.reshape(self.dataRandom.shape+(1,))
-        self.dataRandom = self.dataRandom.view(vigra.VigraArray)
-        self.dataRandom.axistags = vigra.VigraArray.defaultAxistags("xyzc")
-        
-        self.minSize = 5 #first cluster doesn't pass this
-        self.maxSize = 30 #fourth cluster doesn't pass this
-        self.highThreshold = 0.65 #third cluster doesn't pass
-        self.lowThreshold = 0.1
-        
-        self.sigma = { 'x' : 0.3, 'y' : 0.3, 'z' : 0.3 }
-        #pre-smooth all 3d and 4d data
-        self.data = vigra.filters.gaussianSmoothing(self.data.astype(numpy.float32), 0.3)
-        self.dataChannels = vigra.filters.gaussianSmoothing(self.dataChannels[..., 2:3].astype(numpy.float32), 0.3)
+        self.data = vigra.taggedView(self.data, axistags='xyzc')
 
-        self.data5d = numpy.concatenate(3*(self.dataChannels[numpy.newaxis],), axis=0) # Duplicate the 4d data for multiple time slices
-        self.data5d = self.data5d.view(vigra.VigraArray)
-        self.data5d.axistags = vigra.VigraArray.defaultAxistags("txyzc")
-        
-    def test4dAnd5d(self):
-        g = Graph()
-        
-        oper = OpThresholdTwoLevels4d(graph = g)
-        oper.InputImage.setValue(self.data)
-        oper.MinSize.setValue(self.minSize)
-        oper.MaxSize.setValue(self.maxSize)
-        oper.HighThreshold.setValue(self.highThreshold)
-        oper.LowThreshold.setValue(self.lowThreshold)
-        #oper.SmootherSigma.setValue(self.sigma)
-        
-        output = oper.Output[:].wait()
-        output = output.reshape((self.nx, self.ny, self.nz))
-        
-        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
-        
-        cluster1 = numpy.logical_and(output, clusters[0])
-        assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output, clusters[1])
-        assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output, clusters[2])
-        assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output, clusters[3])
-        assert numpy.any(cluster4!=0)==False
-        cluster5 = numpy.logical_and(output, clusters[4])
-        assert numpy.all(cluster5==0)
-        
-        oper.InputImage.setValue(self.dataChannels)
-        output = oper.Output[:].wait()
-        output3d = output.reshape((self.nx, self.ny, self.nz))
-        cluster1 = numpy.logical_and(output3d, clusters[0])
-        assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output3d, clusters[1])
-        assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output3d, clusters[2])
-        assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output3d, clusters[3])
-        assert numpy.any(cluster4!=0)==False
-        
-        
-        oper5d = OpThresholdTwoLevels(graph=g)
+        self.minSize = 5  # first cluster doesn't pass this
+        self.maxSize = 30  # fourth and fifth cluster don't pass this
+        self.highThreshold = 0.65  # third cluster doesn't pass
+        self.lowThreshold = 0.1
+
+        # Replicate the 4d data for multiple time slices
+        self.data5d = numpy.concatenate(3*(self.data[numpy.newaxis, ...],),
+                                        axis=0)
+        self.data5d = vigra.taggedView(self.data5d, axistags="txyzc")
+
+        self.sigma = {'x': 0.3, 'y': 0.3, 'z': 0.3}
+        #pre-smooth 4d data
+        self.data = vigra.filters.gaussianSmoothing(
+            self.data.astype(numpy.float32), 0.3)
+
+    ## check thresholding results for parameters stored in attributes
+    def checkResult(self, result):
+        result = result.withAxes(*'xyzc')
+        clusters = self.generateData((self.nx, self.ny, self.nz, self.nc))
+
+        # the cluster 2 and 5 must pass, others mustn't
+        for i in (1,):
+            cluster = result[clusters[i] != 0]
+            assert numpy.all(cluster != 0), "Cluster {} did not pass.".format(i+1)
+        for i in (0, 2, 3, 4):
+            cluster = result[clusters[i] != 0]
+            assert numpy.all(cluster == 0), "Cluster {} passed.".format(i+1)
+
+
+class TestThresholdTwoLevelsInternal(Generator2):
+
+    def testNoOp(self):
+        oper5d = OpThresholdTwoLevels5d(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d[0:1, ..., 0:1])
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(self.data5d.size)
+        oper5d.HighThreshold.setValue(-0.01)
+        oper5d.LowThreshold.setValue(-0.01)
+
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d > 0),\
+            "{}% elements <= 0".format((out5d <= 0).sum()/float(out5d.size)*100)
+
+
+class TestThresholdTwoLevels(Generator2):
+
+    def testOpSelectLabels(self):
+        op = OpSelectLabels(graph=Graph())
+
+        small = numpy.asarray(
+            [[0, 0, 0],
+             [0, 1, 0],
+             [0, 0, 0]])
+        big = numpy.asarray(
+            [[0, 1, 0],
+             [1, 1, 1],
+             [0, 1, 0]])
+
+        op.BigLabels.setValue(big)
+        op.SmallLabels.setValue(small)
+        out = op.Output[...].wait()
+        numpy.testing.assert_array_equal(out, big)
+
+        op.BigLabels.setValue(big)
+        op.SmallLabels.setValue(small*0)
+        out = op.Output[...].wait()
+        numpy.testing.assert_array_equal(out, big*0)
+
+    def testSimpleUsage(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
         oper5d.InputImage.setValue(self.data5d)
         oper5d.MinSize.setValue(self.minSize)
         oper5d.MaxSize.setValue(self.maxSize)
         oper5d.HighThreshold.setValue(self.highThreshold)
         oper5d.LowThreshold.setValue(self.lowThreshold)
         oper5d.SmootherSigma.setValue(self.sigma)
-        oper5d.Channel.setValue(2)
+        oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(1)
-        
-        out5d = oper5d.Output[:].wait()
 
-        # output is 4d (xyzc), out5d is 5d (xyzct).        
-        assert numpy.all(out5d == output[...,numpy.newaxis])
-        
-    def thresholdTwoLevels(self, data):
-        #this function is the same as the operator, but without any lazyflow stuff
-        #or memory management
-        
-        #sigmatuple = (self.sigma['x'], self.sigma['y'], self.sigma['z'])
-        #data = vigra.filters.gaussianSmoothing(data.astype(numpy.float32), sigmatuple)
-        
-        th_high = data>self.highThreshold
-        th_low = data>self.lowThreshold
-        
-        cc_high = vigra.analysis.labelVolumeWithBackground(th_high.astype(numpy.uint8))
-        cc_low = vigra.analysis.labelVolumeWithBackground(th_low.astype(numpy.uint8))
-        
-        # Must explicitly convert to int on 32-bit systems (mostly for VM testing)
-        sizes = numpy.bincount(numpy.asarray(cc_high.flat, dtype=int))
-        new_labels = numpy.zeros((sizes.shape[0]+1,))
-        for icomp, comp in enumerate(sizes):
-            if comp<self.minSize or comp>self.maxSize:
-                new_labels[icomp]=0
-            else:
-                new_labels[icomp]=1
-        
-        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(numpy.bool)
-    
-        prod = cc_high_filtered.astype(numpy.uint8) * numpy.asarray(cc_low)
-        
-        passed = numpy.unique(prod)
-        del prod
-        all_label_values = numpy.zeros( (cc_low.max()+1,), dtype=numpy.uint8 )
-        for i, l in enumerate(passed):
-            all_label_values[l] = i+1
-        all_label_values[0] = 0
-        
-        filtered1 = all_label_values[ cc_low ]
-        
-        sizes2 = numpy.bincount(filtered1.flat)
-        final_label_values = numpy.zeros((filtered1.max()+1,))
-        for icomp, comp in enumerate(sizes2):
-            if comp<self.minSize or comp>self.maxSize:
-                final_label_values[icomp]=0
-            else:
-                final_label_values[icomp]=1
-        filtered2 = final_label_values[filtered1]
-        return filtered2.squeeze()
-        
-    
-    def testAgainstOwn(self):
+        out5d = oper5d.Output[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+    def testNoOp(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(self.data5d.size)
+        oper5d.HighThreshold.setValue(-0.01)
+        oper5d.LowThreshold.setValue(-0.01)
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(1)
+
+        out5d = oper5d.Output[:].wait()
+        big = vigra.taggedView(oper5d.BigRegions[:].wait(),
+                               axistags=oper5d.BigRegions.meta.axistags)
+        assert numpy.all(big > 0)
+        small = vigra.taggedView(oper5d.SmallRegions[:].wait(),
+                                 axistags=oper5d.SmallRegions.meta.axistags)
+        assert numpy.all(small > 0)
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+        assert numpy.all(out5d > 0)
+
+    def testChannel(self):
+        shape = (200, 100, 1)
+        tags = 'xyc'
+        zeros = numpy.zeros(shape)
+        ones = numpy.ones(shape)
+        vol = numpy.concatenate((zeros, ones), axis=2)
+        vol = vigra.taggedView(vol, axistags=tags)
+        assert vol.shape[vol.axistags.index('c')] == 2
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(vol)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(zeros.size)
+        oper5d.HighThreshold.setValue(.5)
+        oper5d.LowThreshold.setValue(.5)
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        oper5d.CurOperator.setValue(1)
+
+        # channel 0
+        oper5d.Channel.setValue(0)
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
+
+        # channel 0
+        oper5d.Channel.setValue(1)
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d > 0), str(numpy.histogram(out5d))
+
+    def testSingletonZ(self):
+        shape = (200, 100, 1)
+        tags = 'xyc'
+        zeros = numpy.zeros(shape)
+        ones = numpy.ones(shape)
+        vol = numpy.concatenate((zeros, ones), axis=2)
+        vol = vigra.taggedView(vol, axistags=tags)
+        assert vol.shape[vol.axistags.index('c')] == 2
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(vol)
+        oper5d.MinSize.setValue(1)
+        oper5d.MaxSize.setValue(zeros.size)
+        oper5d.HighThreshold.setValue(.5)
+        oper5d.LowThreshold.setValue(.5)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(1)
+
+        # no smoothing
+        oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
+
+        # smoothing
+        oper5d.SmootherSigma.setValue({'x': 1.0, 'y': 1.0, 'z': 1.0})
+        out5d = oper5d.Output[:].wait()
+        assert numpy.all(out5d == 0), str(numpy.histogram(out5d))
+
+    def test4dAnd5d(self):
         g = Graph()
-        oper = OpThresholdTwoLevels4d(graph = g)
-        oper.InputImage.setValue(self.data)
+
+        oper = OpThresholdTwoLevels5d(graph=g)
+        oper.InputImage.setValue(self.data.withAxes(*'txyzc'))
         oper.MinSize.setValue(self.minSize)
         oper.MaxSize.setValue(self.maxSize)
         oper.HighThreshold.setValue(self.highThreshold)
         oper.LowThreshold.setValue(self.lowThreshold)
-        #oper.SmootherSigma.setValue(self.sigma)
-        
-        output = oper.Output[:].wait()
-        output = output.reshape((self.nx, self.ny, self.nz))
-        
-        output2 = self.thresholdTwoLevels(self.data)
-        output2 = output2.astype(numpy.bool).astype(numpy.uint8)
-       
-        clusters = generateData((self.nx, self.ny, self.nz, self.nc))
-       
-        cluster1 = numpy.logical_and(output2, clusters[0])
-        assert numpy.any(cluster1!=0)==False
-        cluster2 = numpy.logical_and(output2, clusters[1])
-        assert numpy.any(cluster2!=0)==True
-        cluster3 = numpy.logical_and(output2, clusters[2])
-        assert numpy.any(cluster3!=0)==False
-        cluster4 = numpy.logical_and(output2, clusters[3])
-        assert numpy.all(cluster4==0)
-        cluster5 = numpy.logical_and(output2, clusters[4])
-        assert numpy.all(cluster5==0)
 
-        output = output.astype(numpy.bool).astype(numpy.uint8)
-        assert numpy.all(output==output2)
-        
-        oper.InputImage.setValue(self.dataRandom)
         output = oper.Output[:].wait()
-        output = output.reshape((self.nx, self.ny, self.nz))
-        output2 = self.thresholdTwoLevels(self.dataRandom)
-        output2 = output2.astype(numpy.bool).astype(numpy.uint8)
-        output = output.astype(numpy.bool).astype(numpy.uint8)
-        assert numpy.all(output==output2)
-        
-        
-        
+        output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
+
+        self.checkResult(output)
+
+        oper5d = OpThresholdTwoLevels(graph=g)
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(1)
+
+        out5d = oper5d.Output[:].wait()
+        out5d = vigra.taggedView(out5d[0:1, ...], axistags=oper5d.Output.meta.axistags)
+
+        self.checkResult(out5d)
+        numpy.testing.assert_array_equal(out5d[0:1, ...], output)
+
+    def thresholdTwoLevels(self, data):
+        #this function is the same as the operator, but without any lazyflow stuff
+        #or memory management
+
+        th_high = data > self.highThreshold
+        th_low = data > self.lowThreshold
+
+        cc_high = vigra.analysis.labelVolumeWithBackground(th_high.astype(numpy.uint8))
+        cc_low = vigra.analysis.labelVolumeWithBackground(th_low.astype(numpy.uint8))
+
+        # Must explicitly convert to int on 32-bit systems (mostly for VM testing)
+        sizes = numpy.bincount(numpy.asarray(cc_high.flat, dtype=int))
+        new_labels = numpy.zeros((sizes.shape[0]+1,))
+        for icomp, comp in enumerate(sizes):
+            if comp < self.minSize or comp > self.maxSize:
+                new_labels[icomp] = 0
+            else:
+                new_labels[icomp] = 1
+
+        cc_high_filtered = numpy.asarray(new_labels[cc_high]).astype(numpy.bool)
+
+        prod = cc_high_filtered.astype(numpy.uint8) * numpy.asarray(cc_low)
+
+        passed = numpy.unique(prod)
+        del prod
+        all_label_values = numpy.zeros((cc_low.max()+1,), dtype=numpy.uint8)
+        for i, l in enumerate(passed):
+            all_label_values[l] = i+1
+        all_label_values[0] = 0
+
+        filtered1 = all_label_values[cc_low]
+
+        sizes2 = numpy.bincount(filtered1.flat)
+        final_label_values = numpy.zeros((filtered1.max()+1,))
+        for icomp, comp in enumerate(sizes2):
+            if comp < self.minSize or comp > self.maxSize:
+                final_label_values[icomp] = 0
+            else:
+                final_label_values[icomp] = 1
+        filtered2 = final_label_values[filtered1]
+        return filtered2.squeeze()
+
+    def testAgainstOwn(self):
+        g = Graph()
+        oper = OpThresholdTwoLevels(graph=g)
+        oper.InputImage.setValue(self.data5d)
+        oper.MinSize.setValue(self.minSize)
+        oper.MaxSize.setValue(self.maxSize)
+        oper.HighThreshold.setValue(self.highThreshold)
+        oper.LowThreshold.setValue(self.lowThreshold)
+        oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
+        oper.CurOperator.setValue(1)
+
+        output = oper.Output[:].wait()
+        output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
+        output = output[0, ..., 0]
+        output = output.withAxes(*'xyz')
+
+        output2 = self.thresholdTwoLevels(self.data5d[0, ..., 0])
+        output2 = vigra.taggedView(output2, axistags='xyz')
+
+        numpy.testing.assert_array_almost_equal(output*output2, output)
+
+
+class TestTTLUseCase(unittest.TestCase):
+    def setUp(self):
+        # The setting:
+        # We have a 3-dimensional plus sign (3 bars crossing) that wanders
+        # around as time passes. The predictions are noisy. Predictions for the
+        # plus are around .9, predictions for background are around .1. The axis
+        # order is a bit strange.
+
+        shift = np.asarray((5, 4, 3), dtype=np.int)
+        vol = np.ones((70, 60, 50))*.1
+        vol[11:13, 12:14, 5:15] = .9  # bar in z direction
+        vol[11:13, 8:18, 9:11] = .9  # bar in y direction
+        vol[7:17, 12:14, 9:11] = .9  # bar in x direction
+
+        nt = 5
+        tvol = np.zeros((nt,)+vol.shape)
+        for i in range(nt):
+            for a in range(len(shift)):
+                vol = np.roll(vol, shift[a], axis=a)
+            tvol[i, ...] = vol + (np.random.random(size=vol.shape)-.5)*.1
+
+        tvol = vigra.taggedView(tvol, axistags='txyz')
+        self.tvol = tvol.withAxes(*'ztyx')
+
+    def checkCorrect(self, vol):
+        vol = vol.withAxes(*'txyz')
+        tvol = self.tvol.withAxes(*'txyz')
+        assert np.all(vol[tvol > .5] > 0)
+        assert np.all(vol[tvol < .5] == 0)
+
+    def testSimpleUseCase(self):
+        g = Graph()
+        oper = OpThresholdTwoLevels(graph=g)
+        oper.InputImage.setValue(self.tvol)
+        oper.MinSize.setValue(1)
+        oper.MaxSize.setValue(np.prod(self.tvol.shape[1:]))
+        oper.HighThreshold.setValue(.7)
+        oper.LowThreshold.setValue(.3)
+        oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
+        oper.CurOperator.setValue(1)
+
+        output = oper.Output[:].wait()
+        output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
+        self.checkCorrect(output)
+
 if __name__ == "__main__":
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
+
