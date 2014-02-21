@@ -31,7 +31,7 @@ class OpLabelVolume(Operator):
     ## provide the volume to label here
     # (arbitrary shape, dtype could be restricted #TODO)
     Input = InputSlot()
- 
+
     ## provide labels that are treated as background
     # the shape of the background albels must match the shape of the volume in
     # channel and in time axis, and must have singleton spatial axes.
@@ -52,7 +52,7 @@ class OpLabelVolume(Operator):
     # Axistags and shape are the same as on the Input, dtype is an integer
     # datatype.
     # Note: The output might be cached internally depending on the chosen CC
-    # method, use the CachedOutput to avoid duplicate caches. (see inner 
+    # method, use the CachedOutput to avoid duplicate caches. (see inner
     # operator below for details)
     Output = OutputSlot()
 
@@ -61,6 +61,8 @@ class OpLabelVolume(Operator):
     # volume, be sure to use this slot, since it makes use of the internal
     # cache that might be in use anyway.
     CachedOutput = OutputSlot()
+
+    name = "OpLabelVolume"
 
     def __init__(self, *args, **kwargs):
         super(OpLabelVolume, self).__init__(*args, **kwargs)
@@ -78,7 +80,7 @@ class OpLabelVolume(Operator):
 
         self.Output.connect(self._op5_2.Output)
         self.CachedOutput.connect(self._op5_2_cached.Output)
-        
+
         # available OpLabelingABCs:
         self._labelOps = {'vigra': _OpLabelVigra, 'blocked': _OpLabelBlocked}
 
@@ -143,7 +145,10 @@ class OpLabelVolume(Operator):
 
 ## parent class for all connected component labeling implementations
 class OpLabelingABC(Operator):
+    ## input with axes 'xyzct'
     Input = InputSlot()
+
+    ## background with axes 'xyzct', spatial axes must be singletons
     Background = InputSlot()
 
     Output = OutputSlot()
@@ -168,7 +173,7 @@ class OpLabelingABC(Operator):
                       'axistags': m.axistags}))
 
         self._cache = OpCompressedCache(parent=self)
-        self._cache.name = "OpLabelVolume.OpCompressedCache"
+        self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.Input.connect(self._metaProvider.Output)
         self.Output.meta.assignFrom(self._cache.Output.meta)
         self.CachedOutput.meta.assignFrom(self._cache.Output.meta)
@@ -187,9 +192,8 @@ class OpLabelingABC(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # a change in either input or background makes the whole
         # time-channel-slice dirty (CCL is a global operation)
-        for t in range(roi.start[4], roi.stop[4]):
-            for c in range(roi.start[3], roi.stop[3]):
-                self._cached[c, t] = 0
+        self._cached[roi.start[3]:roi.stop[3],
+                     roi.start[4]:roi.stop[4]] = 0
         outroi = roi.copy()
         outroi.start[:3] = (0, 0, 0)
         outroi.stop[:3] = self.Input.meta.shape[:3]
@@ -239,6 +243,8 @@ class OpLabelingABC(Operator):
 
 ## vigra connected components
 class _OpLabelVigra(OpLabelingABC):
+    name = "OpLabelVigra"
+
     def setupOutputs(self):
         if self.Input.ready():
             supportedDtypes = [np.uint8, np.uint32, np.float32]
@@ -249,7 +255,7 @@ class _OpLabelVigra(OpLabelingABC):
                 msg = msg.format(dtype, supportedDtypes)
                 raise ValueError(msg)
         super(_OpLabelVigra, self).setupOutputs()
-        
+
     def _updateSlice(self, c, t, bg):
         source = vigra.taggedView(self.Input[..., c, t].wait(),
                                   axistags='xyzct')
@@ -269,6 +275,8 @@ class _OpLabelVigra(OpLabelingABC):
 
 ## blockedarray connected components
 class _OpLabelBlocked(OpLabelingABC):
+    name = "OpLabelBlocked"
+
     def _updateSlice(self, c, t, bg):
         assert _blockedarray_module_available,\
             "Failed to import blockedarray: {}".format(_importMsg)
