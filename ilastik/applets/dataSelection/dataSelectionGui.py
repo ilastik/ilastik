@@ -388,6 +388,8 @@ class DataSelectionGui(QWidget):
         file_dialog.setNameFilterDetailsVisible(False)
         # select multiple files
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setDirectory( defaultDirectory )
+        
         if ilastik_config.getboolean("ilastik", "debug"):
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
 
