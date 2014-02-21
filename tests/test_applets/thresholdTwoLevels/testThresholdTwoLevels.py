@@ -471,12 +471,6 @@ class TestThresholdTwoLevels(Generator2):
         out5d = vigra.taggedView(out5d[0:1, ...], axistags=oper5d.Output.meta.axistags)
 
         self.checkResult(out5d)
-
-        vigra.writeHDF5(self.data, "/tmp/input_inner_operator.h5", "/volume/data")
-        vigra.writeHDF5(self.data5d, "/tmp/input.h5", "/volume/data")
-        vigra.writeHDF5(output, "/tmp/TTL_inner_operator.h5", "/volume/data")
-        vigra.writeHDF5(out5d, "/tmp/TTL.h5", "/volume/data")
-
         numpy.testing.assert_array_equal(out5d[0:1, ...], output)
 
     def thresholdTwoLevels(self, data):

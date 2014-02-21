@@ -295,7 +295,7 @@ class OpSelectLabels(Operator):
 
 ## High level operator for one/two level threshold
 class OpThresholdTwoLevels(Operator):
-    name = "opThresholdTwoLevels"
+    name = "OpThresholdTwoLevels"
 
     RawInput = InputSlot(optional=True)  # Display only
 
@@ -407,6 +407,16 @@ class OpThresholdTwoLevels(Operator):
 
         curIndex = self.CurOperator.value
         if curIndex == 0:
+            # disconnect all operators that are not needed for SingleThreshold
+            # start from back
+            for slot in [self.BigRegions, self.SmallRegions,
+                         self.FilteredSmallLabels]:
+                slot.disconnect()
+                slot.meta.NOTREADY = True
+            self._opCache.Input.disconnect()
+            self._opReorder2.Input.disconnect()
+
+            # connect the operators for SingleThreshold
             self._opReorder2.Input.connect(self.opThreshold1.Output)
             # Blockshape is the entire block, except only 1 time slice
             tagged_shape = self.opThreshold1.Output.meta.getTaggedShape()
@@ -414,17 +424,22 @@ class OpThresholdTwoLevels(Operator):
             self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
             self._opCache.Input.connect(self.opThreshold1.Output)
 
-            self.BigRegions.disconnect()
-            self.SmallRegions.disconnect()
-            self.FilteredSmallLabels.disconnect()
-
             self.BeforeSizeFilter.connect(self.opThreshold1.BeforeSizeFilter)
+            self.BeforeSizeFilter.meta.NOTREADY = None
 
             # Output may not actually be ready if there aren't any channels yet.
             # assert self.Output.ready()
             # assert self.BeforeSizeFilter.ready()
 
         elif curIndex == 1:
+            # disconnect all operators that are not needed for SingleThreshold
+            # start from back
+            self.BeforeSizeFilter.disconnect()
+            self.BeforeSizeFilter.meta.NOTREADY = True
+            self._opCache.Input.disconnect()
+            self._opReorder2.Input.disconnect()
+
+            # connect the operators for TwoLevelThreshold
             self._opReorder2.Input.connect(self.opThreshold2.Output)
             # Blockshape is the entire block, except only 1 time slice
             tagged_shape = self.opThreshold2.Output.meta.getTaggedShape()
@@ -435,8 +450,9 @@ class OpThresholdTwoLevels(Operator):
             self.BigRegions.connect(self.opThreshold2.BigRegions)
             self.SmallRegions.connect(self.opThreshold2.SmallRegions)
             self.FilteredSmallLabels.connect(self.opThreshold2.FilteredSmallLabels)
-
-            self.BeforeSizeFilter.disconnect()
+            for slot in [self.BigRegions, self.SmallRegions,
+                         self.FilteredSmallLabels]:
+                slot.meta.NOTREADY = None
 
             assert self.Output.ready()
             assert self.BigRegions.ready()
@@ -461,7 +477,7 @@ class OpThresholdTwoLevels(Operator):
 #
 # The input must have 5 dimensions.
 class _OpThresholdOneLevel(Operator):
-    name = "OpThresholdOneLevel"
+    name = "_OpThresholdOneLevel"
 
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=0)
@@ -530,7 +546,7 @@ class _OpThresholdOneLevel(Operator):
 #
 # The input must have 5 dimensions.
 class _OpThresholdTwoLevels(Operator):
-    name = "opThresholdTwoLevels5d"
+    name = "_OpThresholdTwoLevels"
 
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=0)
@@ -658,7 +674,14 @@ class _OpThresholdTwoLevels(Operator):
         # Blockshape is the entire block, except only 1 time slice
         tagged_shape = self.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
-        self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
+        self._opCache.BlockShape.setValue(
+            tuple(tagged_shape.values()))
+        self._opBigRegionCache.BlockShape.setValue(
+            tuple(tagged_shape.values()))
+        self._opSmallRegionCache.BlockShape.setValue(
+            tuple(tagged_shape.values()))
+        self._opFilteredSmallLabelsCache.BlockShape.setValue(
+            tuple(tagged_shape.values()))
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
