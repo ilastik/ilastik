@@ -83,6 +83,7 @@ class OpFilterLabels(Operator):
         bad_locations = bad_sizes[a]
         a[bad_locations] = 0
         if (bin_out):
-            a[a>0]=1
+            # Replace non-zero values with 1
+            numpy.place(a,a,1)
         return numpy.array(a, dtype=original_dtype)
 
