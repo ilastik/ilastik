@@ -334,7 +334,7 @@ class TestMaxLabel(object):
         cc0 = vigra.analysis.labelVolumeWithBackground(binimg[0,:, :, :, 0].astype(np.uint8))
         cc1 = vigra.analysis.labelVolumeWithBackground(binimg[1,:, :, :, 0].astype(np.uint8))
         nobj = np.max(cc0)+1+np.max(cc1)+1
-        segmimg = np.zeros(rawimg.shape)
+        segmimg = np.zeros(rawimg.shape, cc0.dtype)
         segmimg[0,:, : , :, 0] = cc0[:]
         segmimg[1,:, :, :,0] = cc1[:]
         rawimg = vigra.taggedView(rawimg, 'txyzc')

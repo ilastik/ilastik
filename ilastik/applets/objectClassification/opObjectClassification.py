@@ -32,6 +32,8 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -261,6 +263,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def setupCaches(self, imageIndex):
         """Setup the label input and caches to correct dimensions"""
         numImages=len(self.SegmentationImages)
+        cctype = self.SegmentationImages[imageIndex].meta.dtype
+        if not issubclass(cctype, numpy.integer):
+            msg = "Connected Components image should be of integer type.\n"\
+                  "Ask your workflow developer to change the input applet accordingly.\n"
+            raise DatasetConstraintError("Object Classification", msg)
         self.LabelInputs.resize(numImages)
         self.LabelInputs[imageIndex].meta.shape = (1,)
         self.LabelInputs[imageIndex].meta.dtype = object
