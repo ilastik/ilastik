@@ -5,9 +5,8 @@ import vigra
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpVigraLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.utility.helpers import warn_deprecated
 
-import logging
-logger = logging.getLogger(__name__)
 
 class _OpLabelImage(Operator):
     """
@@ -36,7 +35,6 @@ class _OpLabelImage(Operator):
         See ascii schematic in comments above for an overview.
         """
         super(_OpLabelImage, self).__init__( *args, **kwargs )
-        logger.info("OpLabelImage is deprecated, use OpLabelVolume instead")
         
         self.opTimeSlicer = OpMultiArraySlicer2( parent=self )
         self.opTimeSlicer.AxisFlag.setValue('t')
@@ -139,13 +137,12 @@ class _OpLabelImage(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass # Nothing to do...
 
-import logging
-logger = logging.getLogger(__name__)
+
 class OpLabelImage(_OpLabelImage):
     def __init__(self, *args, **kwargs):
+        warn_deprecated("OpLabelImage is deprecated,"
+                        " use OpLabelVolume instead")
         super(OpLabelImage, self).__init__(*args, **kwargs)
-        logger.info("Usage of OpLabelImage is deprecated,"
-                    " use OpLabelVolume instead!")
 
 
 

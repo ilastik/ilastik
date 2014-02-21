@@ -1,11 +1,8 @@
-import logging
-
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-logger = logging.getLogger(__name__)
+from lazyflow.utility.helpers import warn_deprecated
 
 
 class _OpVigraLabelVolume(Operator):
@@ -92,8 +89,8 @@ class _OpVigraLabelVolume(Operator):
 
 class OpVigraLabelVolume(_OpVigraLabelVolume):
     def __init__(self, *args, **kwargs):
+        warn_deprecated("Usage of OpVigraLabelVolume is deprecated,"
+                        " use OpLabelVolume instead!")
         super(OpVigraLabelVolume, self).__init__(*args, **kwargs)
-        logger.info("Usage of OpVigraLabelVolume is deprecated,"
-                    " use OpLabelVolume instead!")
 
 
