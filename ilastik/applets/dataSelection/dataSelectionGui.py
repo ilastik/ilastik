@@ -369,7 +369,7 @@ class DataSelectionGui(QWidget):
             try:
                 self.addFileNames(fileNames, roleIndex, startingLane)
             except RuntimeError as e:
-                QMessageBox.critical(self, "Error loading file", str(e))
+                QMessageBox.error(self, "Error loading file", str(e))
 
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
@@ -388,6 +388,8 @@ class DataSelectionGui(QWidget):
         file_dialog.setNameFilterDetailsVisible(False)
         # select multiple files
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setDirectory( defaultDirectory )
+        
         if ilastik_config.getboolean("ilastik", "debug"):
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
 
@@ -493,11 +495,11 @@ class DataSelectionGui(QWidget):
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     loaded_all = False
                     break
-            except:
+            except Exception as ex:
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                raise
+                logger.critical(ex)
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:

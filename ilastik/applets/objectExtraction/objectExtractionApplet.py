@@ -29,9 +29,8 @@ class ObjectExtractionApplet(StandardApplet):
     def __init__(self, name="Object Extraction", workflow=None,
                  projectFileGroupName="ObjectExtraction",
                  interactive=True):
-        super(ObjectExtractionApplet, self).__init__(name=name, workflow=workflow)
+        super(ObjectExtractionApplet, self).__init__(name=name, workflow=workflow, interactive=interactive)
         self._serializableItems = [ ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
-        self._interactive = interactive
 
     @property
     def singleLaneOperatorClass(self):
@@ -45,7 +44,7 @@ class ObjectExtractionApplet(StandardApplet):
     def singleLaneGuiClass(self):
         from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGui
         from ilastik.applets.objectExtraction.objectExtractionGui import ObjectExtractionGuiNonInteractive
-        if self._interactive:
+        if self.interactive:
             return ObjectExtractionGui
         else:
             return ObjectExtractionGuiNonInteractive

@@ -35,14 +35,14 @@ class StandardApplet( Applet ):
     3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  
     """
 
-    def __init__(self, name, workflow=None):
+    def __init__(self, name, workflow=None, interactive=True, *args, **kwargs):
         """
         Constructor.
 
         :param name: The applet's name as it will appear in the GUI (e.g. the Applet Drawer title).
         :param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).
         """
-        super(StandardApplet, self).__init__(name)
+        super(StandardApplet, self).__init__(name, *args, interactive=interactive, **kwargs)
         self._gui = None
         self.__topLevelOperator = None
         self.__workflow = workflow

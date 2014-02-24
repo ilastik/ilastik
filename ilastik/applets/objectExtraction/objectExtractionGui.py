@@ -428,28 +428,29 @@ class ObjectExtractionGui(LayerViewerGui):
         logger.debug("Exported object features to file '{}'".format(fname))
 
 
-class ObjectExtractionGuiNonInteractive(ObjectExtractionGui):
-    def _selectFeaturesButtonPressed(self):        
-        mainOperator = self.topLevelOperatorView
-        if not mainOperator.RawImage.ready():
-            mexBox=QMessageBox()
-            mexBox.setText("Please add the raw data before calculating features.")
-            mexBox.exec_()
-            return
-        
-        if not mainOperator.BinaryImage.ready():
-            mexBox=QMessageBox()
-            mexBox.setText("Please add binary (segmentation) data before calculating features.")
-            mexBox.exec_()
-            return
-        
-        self.topLevelOperatorView.Features.setValue({})
-        self._calculateFeatures(interactive=False)
+from PyQt4.QtGui import QWidget
+class ObjectExtractionGuiNonInteractive(QWidget):
+    """
+    In non-interactive mode, we don't use any object extraction gui at all.
+    The ObjectExtraction applet is just used for its top-level operator and serializer. 
+    This class is a stand-in for the normal gui, since the shell needs some placeholder. 
+    """
+    def __init__(self, *args, **kwargs):
+        super( ObjectExtractionGuiNonInteractive, self ).__init__()
+        self._drawer = QWidget(self)
+        self._viewer_controls = QWidget(self)
+    
+    def centralWidget( self ):
+        return self
 
-    def initAppletDrawerUi(self):
-        super(ObjectExtractionGuiNonInteractive, self).initAppletDrawerUi()
-        self._drawer.selectFeaturesButton.setText('Calculate features')
-        self._drawer.label.hide()
-        self._drawer.featuresSelected.hide()
-        self._drawer.exportButton.hide()
-        
+    def appletDrawer(self):
+        return self._drawer
+
+    def menus( self ):
+        return []
+
+    def viewerControlWidget(self):
+        return self._viewer_controls
+
+    def stopAndCleanUp(self):
+        pass

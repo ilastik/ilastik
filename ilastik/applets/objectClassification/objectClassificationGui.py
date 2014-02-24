@@ -481,14 +481,22 @@ class ObjectClassificationGui(LabelingGui):
                 probLayer.visible = False
                 probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
                     
-                def setLayerColor(c, predictLayer=probLayer, ch=channel):
-                    predictLayer.tintColor = c
+                def setLayerColor(c, predictLayer_=probLayer, ch=channel, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    predictLayer_.tintColor = c
 
-                def setLayerName(n, predictLayer=probLayer):
+                def setLayerName(n, predictLayer_=probLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
                     newName = "Prediction for %s" % n
-                    predictLayer.name = newName
+                    predictLayer_.name = newName
 
-                setLayerName(ref_label.name)
+                setLayerName(ref_label.name, initializing=True)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 layers.append(probLayer)

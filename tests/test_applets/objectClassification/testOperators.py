@@ -92,7 +92,7 @@ class TestOpObjectTrain(unittest.TestCase):
         feats = {"Standard Object Features": 
                     {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, "Coord<Minimum>":{}, "Coord<Maximum>":{}} 
                 }
-
+        
         g = Graph()
         self.featsop = OpRegionFeatures(graph=g)
         self.featsop.LabelImage.setValue(segimg)
@@ -128,6 +128,36 @@ class TestOpObjectTrain(unittest.TestCase):
         
         for randomForest in results:
             self.assertIsInstance(randomForest, vigra.learning.RandomForest)
+            
+            
+    def test_train_fail(self):
+        segimg = segImage()
+        rawimg = np.indices(segimg.shape).sum(0).astype(np.float32)
+        rawimg = vigra.taggedView(rawimg, "txyzc")
+        
+        segimg[0,...] = 1
+        rawimg[0,...] = 0
+        featsFail = {"Standard Object Features": {"Count":{}}, "TestFeatures": {"fail_on_zero":{}}}
+        
+        self.featsop.LabelImage.setValue(segimg)
+        self.featsop.RawImage.setValue(rawimg)
+        self.featsop.Features.setValue(featsFail)
+        
+        self.op.SelectedFeatures.setValue(featsFail)
+        
+        labels = {0: np.array([0, 0]),
+                  1: np.array([0, 1, 1, 2])}
+        
+        self.op.Labels.resize(1)
+        self.op.Labels.setValue(labels)
+        
+        try:
+            results = self.op.Classifier[:].wait()
+        except RuntimeError:
+            print "Tried to compute features for time step w/o labels!"
+            raise
+        
+        
 
 
 class TestOpObjectPredict(unittest.TestCase):
@@ -304,7 +334,7 @@ class TestMaxLabel(object):
         cc0 = vigra.analysis.labelVolumeWithBackground(binimg[0,:, :, :, 0].astype(np.uint8))
         cc1 = vigra.analysis.labelVolumeWithBackground(binimg[1,:, :, :, 0].astype(np.uint8))
         nobj = np.max(cc0)+1+np.max(cc1)+1
-        segmimg = np.zeros(rawimg.shape)
+        segmimg = np.zeros(rawimg.shape, cc0.dtype)
         segmimg[0,:, : , :, 0] = cc0[:]
         segmimg[1,:, :, :,0] = cc1[:]
         rawimg = vigra.taggedView(rawimg, 'txyzc')

@@ -22,7 +22,7 @@
 
 
 from PyQt4 import QtCore,QtGui
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
+from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
 from PyQt4.QtGui import QRubberBand,QBrush,QColor,QMouseEvent
 from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
 from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen,QFont
@@ -270,9 +270,8 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontColor(self):
         return self._fontColor
 
-    @fontColor.setter
-    @mainthreadonly
-    def fontColor(self,color):
+    @pyqtSlot(int)
+    def setFontColor(self,color):
         self._fontColor=color
         self.textItem.setDefaultTextColor(color)
         self.updateText(self.textItem.toPlainText())
@@ -281,9 +280,9 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontSize(self):
         return self._fontSize
 
-    @fontSize.setter
-    @mainthreadonly
-    def fontSize(self,s):
+    #@mainthreadonly
+    @pyqtSlot(int)
+    def setFontSize(self,s):
         self._fontSize=s
         font=QFont()
         font.setPointSize(self._fontSize)
@@ -291,12 +290,11 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.updateText(self.textItem.toPlainText())
 
     @property
-    def linewWidth(self):
+    def lineWidth(self):
         return self._lineWidth
 
-    @linewWidth.setter
-    @mainthreadonly
-    def linewWidth(self,s):
+    @pyqtSlot(int)
+    def setLineWidth(self,s):
         self._lineWidth=s
         self.updateColor()
 
@@ -304,14 +302,13 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def color(self):
         return self._normalColor
 
-    @color.setter
-    @mainthreadonly
-    def color(self,qcolor):
+    @pyqtSlot(int)
+    def setColor(self,qcolor):
         self._normalColor=qcolor
         self.updateColor()
 
 
-    @mainthreadonly
+    @pyqtSlot()
     def _setupTextItem(self):
         #Set up the text
         self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
@@ -407,7 +404,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
                 h.setParentItem(self)
                 self._resizeHandles.append( h )
 
-
+    @pyqtSlot(int)
     def setSelected(self, selected):
         QGraphicsRectItem.setSelected(self, selected)
         if self.isSelected(): self.Signaller.signalSelected.emit()
@@ -415,6 +412,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.updateColor()
         self.resetHandles()
 
+    @pyqtSlot()
     def updateColor(self):
         color = self.hoverColor if (self._hovering or self.isSelected())  else self._normalColor
         self.setPen(QPen(color,self._lineWidth))
@@ -463,7 +461,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         #FIXME: Implement me
         event.accept()
 
-    @mainthreadonly
+    @pyqtSlot(str)
     def updateText(self,string):
 
         self.textItem.setPlainText(QtCore.QString(string))
@@ -479,6 +477,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         QApplication.restoreOverrideCursor()
         return QGraphicsRectItem.mouseReleaseEvent(self, event)
 
+    
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
             newPos=value.toPointF() #new position in scene coordinates
@@ -678,28 +677,28 @@ class CoupledRectangleElement(object):
         return self._rectItem.color
 
     def setColor(self,qcolor):
-        self._rectItem.color=qcolor
+        self._rectItem.setColor(qcolor)
 
     @property
     def fontSize(self):
         return self._rectItem.fontSize
 
     def setFontSize(self,size):
-        self._rectItem.fontSize=size
+        self._rectItem.setFontSize(size)
 
     @property
     def fontColor(self):
         return self._rectItem.fontSize
 
     def setFontColor(self,color):
-        self._rectItem.fontColor=color
+        self._rectItem.setFontColor(color)
 
     @property
     def lineWidth(self):
-        return self._rectItem.linewWidth
+        return self._rectItem.lineWidth
 
     def setLineWidth(self,w):
-        self._rectItem.linewWidth=w
+        self._rectItem.setLineWidth(w)
 
     def setVisible(self,bool):
         return self._rectItem.setVisible(bool)

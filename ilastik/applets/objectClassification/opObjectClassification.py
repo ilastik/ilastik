@@ -32,6 +32,8 @@ from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWr
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -264,6 +266,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def setupCaches(self, imageIndex):
         """Setup the label input and caches to correct dimensions"""
         numImages=len(self.SegmentationImages)
+        cctype = self.SegmentationImages[imageIndex].meta.dtype
+        if not issubclass(cctype, numpy.integer):
+            msg = "Connected Components image should be of integer type.\n"\
+                  "Ask your workflow developer to change the input applet accordingly.\n"
+            raise DatasetConstraintError("Object Classification", msg)
         self.LabelInputs.resize(numImages)
         self.LabelInputs[imageIndex].meta.shape = (1,)
         self.LabelInputs[imageIndex].meta.dtype = object
@@ -680,15 +687,29 @@ class OpObjectTrain(Operator):
             return
         
         for i in range(len(self.Labels)):
-            # FIXME: we should only compute the features if there are nonzero labels in this image
-            feats = self.Features[i]([]).wait()
+            # this loop is by image, not time! 
 
             # TODO: we should be able to use self.Labels[i].value,
             # but the current implementation of Slot.value() does not
             # do the right thing.
-            labels = self.Labels[i]([]).wait()
+            labels_image = self.Labels[i]([]).wait()
+            labels_image_filtered = {}
+            nztimes = []
+            for timestep, labels_time in labels_image.iteritems():
+                nz = numpy.nonzero(labels_time)
+                if len(nz[0])==0:
+                    continue
+                else:
+                    nztimes.append(timestep)
+                    labels_image_filtered[timestep] = labels_time
 
-            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels)
+            if len(nztimes)==0:
+                continue
+            # compute the features if there are nonzero labels in this image
+            # and only for the time steps, which have labels
+            feats = self.Features[i](nztimes).wait()
+
+            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels_image_filtered)
             if labelstmp.size == 0 or featstmp.size == 0:
                 continue
 
@@ -719,7 +740,7 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-
+        
         logger.info("training on matrix of shape {}".format(featMatrix.shape))
 
         if featMatrix.size == 0 or labelsMatrix.size == 0:

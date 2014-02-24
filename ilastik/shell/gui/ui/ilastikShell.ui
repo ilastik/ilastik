@@ -303,7 +303,7 @@
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>
-              <widget class="QToolBox" name="appletBar">
+              <widget class="AppletDrawerToolBox" name="appletBar">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
                  <horstretch>0</horstretch>
@@ -468,6 +468,14 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AppletDrawerToolBox</class>
+   <extends>QToolBox</extends>
+   <header>ilastik.widgets.appletDrawerToolBox</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
