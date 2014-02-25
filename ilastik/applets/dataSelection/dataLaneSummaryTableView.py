@@ -32,10 +32,6 @@ class DataLaneSummaryTableView(QTableView):
     def __init__(self, parent):
         super( DataLaneSummaryTableView, self ).__init__(parent)
 
-        self._supports_images=True
-        self._supports_stack=True
-
-
         self._selectedLanes = []
         self.resizeRowsToContents()
         self.resizeColumnsToContents()
@@ -49,13 +45,11 @@ class DataLaneSummaryTableView(QTableView):
         self.addFilesButtons = {}
 
     def setModel(self, model):
-
         super( DataLaneSummaryTableView, self ).setModel(model)
 
         roleIndex = 0
         for column in range( LaneColumn.NumColumns, model.columnCount(), DatasetInfoColumn.NumColumns ):
-            button = AddFileButton(self, new=True, supports_images=self._supports_images,
-                                   supports_stack=self._supports_stack)
+            button = AddFileButton(self, new=True)
             button.addFilesRequested.connect(
                     partial(self.addFilesRequested.emit, roleIndex))
             button.addStackRequested.connect(
@@ -101,8 +95,4 @@ class DataLaneSummaryTableView(QTableView):
             if selection is removeLanesAction:
                 self.removeLanesRequested.emit( self._selectedLanes )
 
-    def setCapabilities(self, supports_images, supports_stack):
-
-        self._supports_images=supports_images
-        self._supports_stack=supports_stack
 
