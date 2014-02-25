@@ -575,13 +575,13 @@ class CoupledRectangleElement(object):
 
     #@mainthreadonly
     @pyqtSlot()
-    def _updateTextWhenChanges(self):
+    def _updateTextWhenChanges(self, *args, **kwargs):
         '''
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized
         '''
 
-        #time.sleep(DELAY*0.001)
+        time.sleep(DELAY*0.001)
 
 
         #FIXME: Workaround: when the array is resized over the border of the image scene the
