@@ -327,8 +327,12 @@ class OpCompressedCache(OpCache):
             assert False, "Invalid input slot for setInSlot(): {}".format( slot.name )
 
     def _setInSlotInput(self, slot, subindex, roi, value):
-        assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
-        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
+        assert len(roi.stop) == len(self.Input.meta.shape), \
+            "roi: {} has the wrong number of dimensions for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), \
+            "roi: {} is out-of-bounds for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         block_starts = map( tuple, block_starts )
@@ -362,19 +366,27 @@ class OpCompressedCache(OpCache):
     def _setInSlotInputHdf5(self, slot, subindex, roi, value):
         logger.debug("Setting block {} from hdf5".format( roi ))
         assert isinstance( value, h5py.Dataset ), "InputHdf5 slot requires an hdf5 Dataset to copy from (not a numpy array)."
-        assert ((roi.start % self._blockshape) == 0).all(), "InputHdf5 slot requires roi to be exactly one block."
+
         block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
-        assert (block_roi == numpy.array((roi.start, roi.stop))).all(), "InputHdf5 slot requires roi to be exactly one block."
 
-        cachefile = self._getCacheFile( block_roi )
-        logger.debug( "Copying HDF5 data directly into block {}".format( block_roi ) )
-        assert cachefile['data'].dtype == value.dtype
-        assert cachefile['data'].shape == value.shape
-        del cachefile['data']
-        cachefile.copy( value, 'data' )
-
-        block_start = tuple(roi.start)
-        self._dirtyBlocks.discard( block_start )
+        roi_is_exactly_one_block = True
+        roi_is_exactly_one_block &= ((roi.start % self._blockshape) == 0).all()
+        roi_is_exactly_one_block &= (block_roi == numpy.array((roi.start, roi.stop))).all()
+        if roi_is_exactly_one_block:
+            cachefile = self._getCacheFile( block_roi )
+            logger.debug( "Copying HDF5 data directly into block {}".format( block_roi ) )
+            assert cachefile['data'].dtype == value.dtype
+            assert cachefile['data'].shape == value.shape
+            del cachefile['data']
+            cachefile.copy( value, 'data' )
+    
+            block_start = tuple(roi.start)
+            self._dirtyBlocks.discard( block_start )
+        else:
+            # This hdf5 data does not correspond to exactly one block.
+            # We must uncompress it and write it the "normal" way (the slow way)
+            # FIXME: This would use less memory if we uncompressed the data block-by-block
+            self.Input[roiToSlice(roi.start, roi.stop)] = value[:]
 
 #        self.Output._sig_value_changed()
 #        self.OutputHdf5._sig_value_changed()
