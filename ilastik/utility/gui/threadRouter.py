@@ -23,6 +23,10 @@ class ThreadRouter(QObject):
     Create an instance of this class called 'threadRouter' to enable the :py:func:`@threadRouted<threadRouted>` decorator for methods of your object.
     """
     routeToParent = pyqtSignal(object)
+    
+    # The main window of the app should set this to True when the 
+    #  app is shutting down and thus no gui events should be processed any more.
+    app_is_shutting_down = False
 
     def __init__(self, parent):
         """
@@ -49,6 +53,9 @@ def threadRouted(func):
     """
     @wraps(func)
     def routed(*args, **kwargs):
+        if ThreadRouter.app_is_shutting_down:
+            return
+        
         assert len(args) > 0
         obj = args[0]
         assert isinstance(obj, QObject)
@@ -59,7 +66,7 @@ def threadRouted(func):
             val = func(*args, **kwargs)
             # We rely on Qt signals (below) so it is an error to 
             #  use @threadRouted with a function that gives a return value
-            assert val is None, "Can't return a valud from an @threadRouted function."
+            assert val is None, "Can't return a value from an @threadRouted function."
         
         # Otherwise, we rely on the Qt BlockingQueuedConnection 
         #  signal behavior to transfer the call to the parent thread. 

@@ -1264,6 +1264,11 @@ class IlastikShell( QMainWindow ):
         Reimplemented from QWidget.  Ignore the close event if the user has unsaved data and changes his mind.
         """
         if self.confirmQuit():
+            # Since we're shutting down the app, we don't want to process any more gui events.
+            # (We may encounter segfaults at this point if we try.)
+            ThreadRouter.app_is_shutting_down = True
+
+            # Quit.
             self.closeAndQuit()
         else:
             closeEvent.ignore()
