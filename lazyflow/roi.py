@@ -16,7 +16,7 @@
 
 import numpy
 from numpy.lib.stride_tricks import as_strided as ast
-from math import ceil, floor
+from math import ceil, floor, pow
 import collections
 
 class TinyVector(list):
@@ -415,6 +415,38 @@ def getBlockBounds(dataset_shape, block_shape, block_start):
     # Clip to dataset bounds
     block_bounds = getIntersection( block_bounds, entire_dataset_roi )
     return block_bounds
+
+def determineBlockShape( max_shape, target_size ):
+    """
+    Choose a blockshape that is close to the target_size (in pixels), 
+    without exceeding max_shape in any dimension.
+    """
+    assert (TinyVector(max_shape) > 0).all(), "Invalid max_shape: {}".format( max_shape )
+    ndims = len( max_shape )
+    
+    # Attach indexes to remember where each max_shape element came from
+    max_with_index = zip( max_shape, range( len(max_shape) ) )
+    
+    # Sort from smallest to largest, to ensure that larger dimensions
+    #   will pick up extra volume that smaller dims can't accomodate.
+    sorted_max = sorted( max_with_index )
+    
+    prod_so_far = 1
+    block_shape = []
+    
+    for (m, i), num_remaining_axes in zip(sorted_max, range(ndims, 0, -1)):
+        # Make a block_shape that is isotropic in the remaining dimensions
+        remaining_factor = target_size/prod_so_far
+        block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) )
+        block_side = min( block_side, m )
+        block_shape.append( block_side )
+        prod_so_far *= block_side        
+    
+    # Sort block_shape dimensions back to the original axis order
+    index_order = zip( *sorted_max )[1]
+    indexed_block_shape = zip( index_order, block_shape )
+    block_shape = zip( *sorted( indexed_block_shape ) )[1]    
+    return tuple(block_shape)
 
 if __name__ == "__main__":
     import doctest
