@@ -27,6 +27,7 @@ import traceback
 import ilastik
 from ilastik import isVersionCompatible
 from ilastik.workflow import getWorkflowFromName
+from lazyflow.utility.timer import Timer
 
 class ProjectManager(object):
     """
@@ -387,16 +388,18 @@ class ProjectManager(object):
         try:
             # Applet serializable items are given the whole file (root group)
             for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.ignoreDirty = True
-                                        
-                    if item.caresOfHeadless:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
-                    else:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-
-                    item.ignoreDirty = False
+                with Timer() as timer:
+                    for item in aplt.dataSerializers:
+                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                        item.ignoreDirty = True
+                                            
+                        if item.caresOfHeadless:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+                        else:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+    
+                        item.ignoreDirty = False
+                logger.debug('Deserializing applet "{}" took {} seconds'.format( aplt.name, timer.seconds() ))
             
 
             self.closed = False
