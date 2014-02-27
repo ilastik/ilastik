@@ -23,6 +23,7 @@ import numpy
 import vigra
 
 #lazyflow
+from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
@@ -281,11 +282,12 @@ class OpLabelPipeline( Operator ):
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
     
     def setupOutputs(self):
-        taggedShape = self.RawImage.meta.getTaggedShape()
-        blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
-        blockDims = dict( filter( lambda (k,v): k in taggedShape, blockDims.items() ) )
-        taggedShape.update( blockDims )
-        self.opLabelArray.blockShape.setValue( tuple( taggedShape.values() ) )
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        tagged_shape['c'] = 1
+        
+        # Aim for blocks that are roughly 1MB
+        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
