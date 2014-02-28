@@ -143,6 +143,8 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
             "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
             "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
+            "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
+            "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
             "ilastik":                                                  { "level":"INFO" },
             "ilastik.clusterOps":                                       { "level":"INFO" },
             "ilastik.applets":                                          { "level":"INFO" },
