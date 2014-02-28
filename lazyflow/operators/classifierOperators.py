@@ -105,12 +105,12 @@ class OpTrainRandomForestBlocked(Operator):
     
     Classifier = OutputSlot()
     
-    # TODO: Block diagram schematic
+    # Images[N] ---                                                                                    MaxLabel ------
+    #              \                                                                                                  \
+    # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
-        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
-        
-        # TODO: Merge progress from sub-operators into our own signal...
+        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)        
         self.progressSignal = OrderedSignal()
         
         self._opFeatureMatrixCaches = OperatorWrapper( OpFeatureMatrixCache, parent=self )
@@ -120,12 +120,22 @@ class OpTrainRandomForestBlocked(Operator):
         
         self._opConcatenateFeatureMatrices = OpConcatenateFeatureMatrices( parent=self )
         self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )
+        self._opConcatenateFeatureMatrices.ProgressSignals.connect( self._opFeatureMatrixCaches.ProgressSignal )
         
         self._opTrainFromFeatures = OpTrainRandomForestFromFeatures( parent=self )
         self._opTrainFromFeatures.LabelAndFeatureMatrix.connect( self._opConcatenateFeatureMatrices.ConcatenatedOutput )
         self._opTrainFromFeatures.MaxLabel.connect( self.MaxLabel )
         
         self.Classifier.connect( self._opTrainFromFeatures.Classifier )
+
+        # Progress reporting
+        def _handleFeatureProgress( progress ):
+            self.progressSignal( 0.8*progress )
+        self._opConcatenateFeatureMatrices.progressSignal.subscribe( _handleFeatureProgress )
+        
+        def _handleTrainingComplete():
+            self.progressSignal( 100.0 )
+        self._opTrainFromFeatures.trainingCompleteSignal.subscribe( _handleTrainingComplete )
 
     def setupOutputs(self):
         pass # Nothing to do; our output is connected to an internal operator.
@@ -144,6 +154,7 @@ class OpTrainRandomForestFromFeatures(Operator):
     
     def __init__(self, *args, **kwargs):
         super(OpTrainRandomForestFromFeatures, self).__init__(*args, **kwargs)
+        self.trainingCompleteSignal = OrderedSignal()
         self._forest_count = 10
         self._forests = (None,) * self._forest_count
 
@@ -190,6 +201,8 @@ class OpTrainRandomForestFromFeatures(Operator):
             raise
 
         self._forests = result
+        
+        self.trainingCompleteSignal()
         return result
 
     def propagateDirty(self, slot, subindex, roi):

@@ -24,18 +24,25 @@ class OpFeatureMatrixCache(Operator):
     # The first row is labels, the rest are the features.
     # (As a consequence of this, labels are converted to float)
     LabelAndFeatureMatrix = OutputSlot()
+    
+    ProgressSignal = OutputSlot() # For convenience of passing several progress signals 
+                                  # to a downstream operator (such as OpConcatenateFeatureMatrices),  
+                                  # we provide the progressSignal member as an output slot.
 
     # Aim for label request blocks of approximately 1 MB
     MAX_BLOCK_PIXELS = 1e6
 
     def __init__(self, *args, **kwargs):
         super(OpFeatureMatrixCache, self).__init__(*args, **kwargs)
-        self.progressSignal = OrderedSignal()
-        self._blockshape = None
-        self._dirty_blocks = set()
         self._lock = RequestLock()
-        self._block_locks = {}
+        
+        self.progressSignal = OrderedSignal()
+        self._progress_lock = RequestLock()
+        
+        self._blockshape = None
         self._blockwise_feature_matrices = {}
+        self._dirty_blocks = set()
+        self._block_locks = {}
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -52,19 +59,36 @@ class OpFeatureMatrixCache(Operator):
         self.LabelAndFeatureMatrix.meta.shape = (1,)
         self.LabelAndFeatureMatrix.meta.dtype = object
 
+        self.ProgressSignal.meta.shape = (1,)
+        self.ProgressSignal.meta.dtype = object
+        self.ProgressSignal.setValue( self.progressSignal )
+
         # Auto-choose a blockshape
         self._blockshape = determineBlockShape( self.LabelImage.meta.shape,
                                                 OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.LabelAndFeatureMatrix
+        self.progressSignal(0.0)
+
+        # Technically, this could result in strange progress reporting if execute() 
+        #  is called by multiple threads in parallel.
+        # This could be fixed with some fancier progress state, but 
+        # (1) We don't expect that to by typical, and
+        # (2) progress reporting is merely informational.
+        num_dirty_blocks = len( self._dirty_blocks )
+        def update_progress( result ):
+            remaining_dirty = len( self._dirty_blocks )
+            percent_complete = 95.0*(num_dirty_blocks - remaining_dirty)/num_dirty_blocks
+            self.progressSignal( percent_complete )
 
         # Update all dirty blocks in the cache
+        logger.debug( "Updating {} dirty blocks ({} are clean)"\
+                      "".format(num_dirty_blocks, len(self._blockwise_feature_matrices)) )
         pool = RequestPool()
         for block_start in self._dirty_blocks:
             req = Request( partial(self._update_block, block_start ) )
-            # TODO: Update progress
-            # req.notify_finished( update progress here )
+            req.notify_finished( update_progress )
             pool.add( req )
         pool.wait()
 
@@ -73,6 +97,8 @@ class OpFeatureMatrixCache(Operator):
             total_feature_matrix = numpy.concatenate( self._blockwise_feature_matrices.values(), axis=0 )
         else:
             total_feature_matrix = numpy.ndarray( shape=(0,0), dtype=numpy.float )
+
+        self.progressSignal(100.0)
         result[0] = total_feature_matrix
 
     def propagateDirty(self, slot, subindex, roi):
