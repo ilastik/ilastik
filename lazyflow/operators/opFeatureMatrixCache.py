@@ -18,7 +18,7 @@ class OpFeatureMatrixCache(Operator):
     """    
     FeatureImage = InputSlot()
     LabelImage = InputSlot()
-    NonZeroLabelBlocks = InputSlot()
+    NonZeroLabelBlocks = InputSlot()  # TODO: Eliminate this slot. It isn't used...
     
     # Output is a single 'value', which is a 2D ndarray.
     # The first row is labels, the rest are the features.

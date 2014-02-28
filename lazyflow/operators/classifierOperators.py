@@ -100,7 +100,7 @@ class OpTrainRandomForest(Operator):
 class OpTrainRandomForestBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
-    nonzeroLabelBlocks = InputSlot(level=1)
+    nonzeroLabelBlocks = InputSlot(level=1) # TODO: Eliminate this slot. It isn't used any more...
     MaxLabel = InputSlot()
     
     Classifier = OutputSlot()
@@ -209,6 +209,7 @@ class OpTrainRandomForestFromFeatures(Operator):
         self.Classifier.setDirty()        
 
 class OpTrainRandomForestBlocked_OLD(Operator):
+    # TODO: Eliminate this obsolete operator....
     name = "TrainRandomForestBlocked"
     description = "Train a random forest on multiple images"
     category = "Learning"
