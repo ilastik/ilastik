@@ -17,6 +17,10 @@ class TestOpConcatenateFeatureMatrices(object):
         opConcatenate.FeatureMatrices.resize(2)
         opConcatenate.FeatureMatrices[0].connect( op1.LabelAndFeatureMatrix )
         opConcatenate.FeatureMatrices[1].connect( op2.LabelAndFeatureMatrix )
+        opConcatenate.ProgressSignals.resize(2)
+        opConcatenate.ProgressSignals[0].connect( op1.ProgressSignal )
+        opConcatenate.ProgressSignals[1].connect( op2.ProgressSignal )
+        
         
         result = opConcatenate.ConcatenatedOutput.value
         assert result.shape == (8,3)
