@@ -91,17 +91,19 @@ class OpMockPixelClassifier(Operator):
             self.NonzeroLabelBlocks[i].meta.shape = (1,)
             self.NonzeroLabelBlocks[i].meta.dtype = object
 
-            self.LabelImages[i].meta.shape = self.dataShape
-            self.LabelImages[i].meta.dtype = numpy.float64
-            
             # Hard-coded: Two prediction classes
             self.PredictionProbabilities[i].meta.shape = self.prediction_shape
             self.PredictionProbabilities[i].meta.dtype = numpy.float64
             self.PredictionProbabilities[i].meta.axistags = vigra.defaultAxistags('txyzc')
             
             # Classify with random data
-            self.opClassifier.Images[i].setValue( numpy.random.random(self.dataShape) )
+            self.opClassifier.Images[i].setValue( vigra.taggedView( numpy.random.random(self.dataShape), 'txyzc' ) )
         
+            self.LabelImages[i].meta.shape = self.dataShape
+            self.LabelImages[i].meta.dtype = numpy.float64
+            self.LabelImages[i].meta.axistags = self.opClassifier.Images[i].meta.axistags
+            
+
         self.Classifier.connect( self.opClassifier.Classifier )
         
     def setInSlot(self, slot, subindex, roi, value):
