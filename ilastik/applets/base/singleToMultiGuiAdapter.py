@@ -14,7 +14,6 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
-import sip
 class SingleToMultiGuiAdapter( object ):
     """
     Utility class used by the StandardApplet to wrap several single-image 
@@ -117,6 +116,8 @@ class SingleToMultiGuiAdapter( object ):
         for gui in filter(lambda x:x, self._guis):
             gui.setEnabled(enabled)
         for blank_drawer in self._tempDrawers.values():
+            # Late import here to avoid importing sip in headless mode.
+            import sip
             if not sip.isdeleted(blank_drawer):
                 blank_drawer.setEnabled(enabled)
         

@@ -1,3 +1,4 @@
+
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
@@ -20,6 +21,7 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDatas
 import os
 import vigra
 from lazyflow.utility import PathComponents
+from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
 from lazyflow.utility.pathHelpers import getPathVariants, isUrl
 import ilastik.utility.globals
@@ -71,6 +73,7 @@ class DataSelectionSerializer( AppletSerializer ):
         # If a dataset was removed, we need to be reserialized.
         self.topLevelOperator.DatasetGroup.notifyRemoved( bind(handleDirty) )
         
+    @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Write any missing local datasets to the local_data group
         localDataGroup = getOrCreateGroup(topGroup, 'local_data')
@@ -220,6 +223,7 @@ class DataSelectionSerializer( AppletSerializer ):
         
         self._dirty = False
 
+    @timeLogged(logger, logging.DEBUG)
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless):
         self._projectFilePath = projectFilePath
         self.initWithoutTopGroup(hdf5File, projectFilePath)

@@ -54,25 +54,6 @@ logger = logging.getLogger(__name__)
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
-def mainthreadonly(func):
-    '''
-    Helper decorator to declare a function which can be called only from the main thread
-    In case the function is not called in the main thread, a warning is sent but the program
-    will not crash
-    :param func:
-    '''
-    def inner(*args,**kwargs):
-        if threading.current_thread().name=="MainThread":
-
-            return func(*args,**kwargs)
-        else:
-            warnings.warn("Trying to execute: %s\n from thread %s\n"%(func,threading.current_thread().name))
-            #warnings.warn("Trying to execute: %s\n from thread %s\n with arguments:\n %s\n %s\n"%(func,threading.current_thread().name,args,kwargs))
-
-    return inner
-
-
-
 class Tool():
 
     Navigation = 0 # Arrow
@@ -86,10 +67,10 @@ class Tool():
 
 class ResizeHandle(QGraphicsRectItem):
 
-    def __init__(self, rect, constrainAxis):
+    def __init__(self, rect, constrainAxis, parent):
         size = 5
         self._rect=rect
-        super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size)
+        super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size, parent)
 
         #self._offset = offset
         self._constrainAxis = constrainAxis
@@ -125,6 +106,7 @@ class ResizeHandle(QGraphicsRectItem):
         #print "Resetting ",self._offset
         self.setPos(QPointF(*self._offset))
         self._rect=rect
+
 
     def hoverEnterEvent(self, event):
         super(ResizeHandle, self).hoverEnterEvent(event)
@@ -261,7 +243,8 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self._setupTextItem()
         self._isFixed = False
 
-        self.resetHandles()
+        self.initHandles()
+        self.hideHandles()
 
 
         self.setToolTip("Hold CTRL to drag the box")
@@ -280,7 +263,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def fontSize(self):
         return self._fontSize
 
-    #@mainthreadonly
     @pyqtSlot(int)
     def setFontSize(self,s):
         self._fontSize=s
@@ -328,7 +310,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
             self._updateTextBottom("shape " +str(self.shape))
 
-    @mainthreadonly
+    @pyqtSlot(str)
     def _updateTextBottom(self,string):
         self.textItemBottom.setPlainText(QtCore.QString(string))
 
@@ -376,7 +358,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         #self.radius = self.radius # modified radius b/c _hovering
         self.updateColor()
         self.setSelected(True)
-        self.resetHandles()
+        self.showHandles()
 
         super(QGraphicsResizableRect,self).hoverEnterEvent( event)
         self._editor.imageViews[2].setFocus()
@@ -387,22 +369,30 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         self.setSelected(False)
         #self.setCursor(CURSOR)
         #self.radius = self.radius # no longer _hovering
-        self.resetHandles()
-#         for h in self._resizeHandles:
-#             self.scene().removeItem(h)
-#         self._resizeHandles = []
+        self.hideHandles()
         super(QGraphicsResizableRect,self).hoverLeaveEvent( event)
 
-    def resetHandles(self):
-        #if len(self._resizeHandles)>0:
+
+
+    def initHandles(self):
+        for constrAxes in range(2):
+            h = ResizeHandle(self.rect(), constrAxes, self)
+            self._resizeHandles.append( h )
+
+    def moveHandles(self):
+        for h, constrAxes in zip(self._resizeHandles, range(2)):
+            h.resetOffset(constrAxes, self.rect())
+
+
+    def hideHandles(self):
         for h in self._resizeHandles:
-            self.scene().removeItem(h)
-        self._resizeHandles=[]
-        if not self._isFixed and (self._hovering or self.isSelected()):
-            for constrAxes in range(2):
-                h = ResizeHandle(self.rect(), constrAxes)
-                h.setParentItem(self)
-                self._resizeHandles.append( h )
+            h.hide()
+
+    def showHandles(self):
+        for h in self._resizeHandles:
+            h.show()
+
+
 
     @pyqtSlot(int)
     def setSelected(self, selected):
@@ -410,7 +400,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         if self.isSelected(): self.Signaller.signalSelected.emit()
         if not self.isSelected(): self._hovering=False
         self.updateColor()
-        self.resetHandles()
+        #self.resetHandles()
 
     @pyqtSlot()
     def updateColor(self):
@@ -583,8 +573,9 @@ class CoupledRectangleElement(object):
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
 
-    @mainthreadonly
-    def _updateTextWhenChanges(self,*args,**kwargs):
+    #@mainthreadonly
+    @pyqtSlot()
+    def _updateTextWhenChanges(self, *args, **kwargs):
         '''
         Do the actual job of displaying a new number when the region gets notified dirty
         or the rectangle is moved or resized

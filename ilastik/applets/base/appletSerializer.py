@@ -334,7 +334,9 @@ class SerialListSlot(SerialSlot):
             raise
         sg.attrs['isEmpty'] = isempty
 
+    @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
+        logger.debug("Deserializing ListSlot: {}".format(self.name))
         try:
             subgroup = group[self.name]
         except KeyError:
@@ -377,6 +379,7 @@ class SerialBlockSlot(SerialSlot):
 
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
+        logger.debug("Serializing BlockSlot: {}".format( self.name ))
         mygroup = group.create_group(name)
         num = len(self.blockslot)
         for index in range(num):
@@ -404,7 +407,9 @@ class SerialBlockSlot(SerialSlot):
                 subgroup.create_dataset(blockName, data=block)
                 subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
+    @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
+        logger.debug("Deserializing BlockSlot: {}".format( self.name ))
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
