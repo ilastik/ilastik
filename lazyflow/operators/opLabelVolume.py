@@ -105,7 +105,7 @@ class OpLabelVolume(Operator):
         self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
 
         # set the final reordering operator's AxisOrder to that of the input
-        origOrder = "".join([s for s in self.Input.meta.getTaggedShape()])
+        origOrder = self.Input.meta.getAxisKeys()
         self._op5_2.AxisOrder.setValue(origOrder)
         self._op5_2_cached.AxisOrder.setValue(origOrder)
 
@@ -218,14 +218,9 @@ class OpLabelingABC(Operator):
 
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
-                # only one thread may update the cache for this c and t, other requests
-                # must wait until labeling is finished
-                self._locks[c, t].acquire()
-                if self._cached[c, t]:
-                    # this slice is already computed
-                    continue
                 # update the whole slice
-                req = Request(partial(self._updateSlice, c, t, bg[c, t]))
+                req = Request(partial(self._updateSliceWrapper,
+                                      c, t, bg[c, t]))
                 pool.add(req)
 
         pool.wait()
@@ -235,11 +230,22 @@ class OpLabelingABC(Operator):
         req.writeInto(result)
         req.block()
 
-        # release locks and set caching flags
-        for t in range(roi.start[4], roi.stop[4]):
-            for c in range(roi.start[3], roi.stop[3]):
-                self._cached[c, t] = 1
-                self._locks[c, t].release()
+    ## takes care of locking and cache status, calls _updateSlice
+    #
+    def _updateSliceWrapper(self, c, t, bg):
+        ## intro ##
+
+        # assert single access to cache
+        self._locks[c, t].acquire()
+
+        # do we need to update?
+        if not self._cached[c, t]:
+            # update the slice
+            self._updateSlice(c, t, bg)
+            self._cached[c, t] = 1
+
+        ## outro ##
+        self._locks[c, t].release()
 
     ## compute the requested slice and put the results into self._cache
     #
@@ -266,8 +272,12 @@ class _OpLabelVigra(OpLabelingABC):
         source = vigra.taggedView(self.Input[..., c, t].wait(),
                                   axistags='xyzct')
         source = source.withAxes(*'xyz')
-        result = vigra.analysis.labelVolumeWithBackground(
-            source, background_value=int(bg))
+        if source.shape[2] > 1:
+            result = vigra.analysis.labelVolumeWithBackground(
+                source, background_value=int(bg))
+        else:
+            result = vigra.analysis.labelImageWithBackground(
+                source[..., 0], background_value=int(bg))
         result = result.withAxes(*'xyzct')
 
         stop = np.asarray(self.Input.meta.shape)

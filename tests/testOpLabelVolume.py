@@ -81,6 +81,33 @@ class TestVigra(unittest.TestCase):
                 print("t={}, c={}".format(t, c))
                 assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
 
+    def testSingletonZ(self):
+        vol = np.zeros((82, 70, 1, 5, 5), dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyzct')
+
+        blocks = np.zeros(vol.shape, dtype=np.uint8)
+        blocks[30:50, 40:60, :, 2:4, 3:5] = 1
+        blocks[30:50, 40:60, :, 2:4, 0:2] = 2
+        blocks[60:70, 30:40, :, :, :] = 3
+
+        vol[blocks == 1] = 255
+        vol[blocks == 2] = 255
+        vol[blocks == 3] = 255
+
+        op = OpLabelVolume(graph=Graph())
+        op.Method.setValue(self.method)
+        op.Input.setValue(vol)
+
+        out = op.Output[...].wait()
+        tags = op.Output.meta.getTaggedShape()
+        print(tags)
+        out = vigra.taggedView(out, axistags="".join([s for s in tags]))
+
+        for c in range(out.shape[3]):
+            for t in range(out.shape[4]):
+                print("t={}, c={}".format(t, c))
+                assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
+
     def testConsistency(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
