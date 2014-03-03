@@ -533,12 +533,14 @@ class IlastikShell( QMainWindow ):
                 action.setEnabled( stopped )
 
         def _startProfiling():
+            logger.info("Activating new profiler")
             self._currentProfile = cProfile.Profile()
             self._currentProfile.enable()
             self._currentProfile.running = True # Monkey-patched.
             _updateMenuStatus()
 
         def _stopProfiling():
+            logger.info("Dectivating new profiler")
             self._currentProfile.disable()
             self._currentProfile.running = False
             _updateMenuStatus()
@@ -559,6 +561,7 @@ class IlastikShell( QMainWindow ):
                 statsPath = encode_from_qstring( statsPath )
                 PreferencesManager().set( 'shell', 'recent profile dumpfile', statsPath )            
                 self._currentProfile.create_stats()
+                logger.info("Dumping profiling stats database to file:{}".format(statsPath))
                 self._currentProfile.dump_stats( statsPath )
 
         def _exportSortedStats(sortby):
@@ -582,6 +585,7 @@ class IlastikShell( QMainWindow ):
                 with open(statsPath, 'w') as f:
                     ps = pstats.Stats(self._currentProfile, stream=f).sort_stats(sortby)
                     ps.sort_stats(sortby)
+                    logger.info("Printing stats to file:{}".format(filename))
                     ps.print_stats()
 
         profilingSubmenu = QMenu("Profiling")
