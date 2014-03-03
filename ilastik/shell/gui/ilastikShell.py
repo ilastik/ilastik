@@ -15,6 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 # Standard
+import sys
 import re
 import traceback
 import os
@@ -22,11 +23,12 @@ import time
 from functools import partial
 import weakref
 import logging
+import platform
+import threading
+import cProfile, pstats
 
 # SciPy
 import numpy
-import platform
-import threading
 
 # PyQt
 from PyQt4 import uic
@@ -42,6 +44,7 @@ from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.utility import timeLogged
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
@@ -152,8 +155,6 @@ class ProgressDisplayManager(QObject):
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
 
-        # Add all applets from the workflow
-
     def initializeForWorkflow(self, workflow):
         """When a workflow is available, call this method to connect the workflows' progress signals
         """
@@ -243,6 +244,9 @@ class IlastikShell( QMainWindow ):
 
         self.openFileButtons = []
         self.cleanupFunctions = []
+
+        # Performance profiling (see debug menu)
+        self._currentProfile = None
 
         self._new_workflow_cmdline_args = new_workflow_cmdline_args
 
@@ -515,7 +519,92 @@ class IlastikShell( QMainWindow ):
             exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
+        menu.addMenu( self._createProfilingSubmenu() )
         return menu
+
+    def _createProfilingSubmenu(self):
+        def _updateMenuStatus():
+            running = self._currentProfile is not None and self._currentProfile.running
+            stopped = self._currentProfile is not None and not self._currentProfile.running
+            startAction.setEnabled( not running )
+            stopAction.setEnabled( running )
+            dumpAction.setEnabled( stopped )
+            for action in sortedExportSubmenu.actions():
+                action.setEnabled( stopped )
+
+        def _startProfiling():
+            self._currentProfile = cProfile.Profile()
+            self._currentProfile.enable()
+            self._currentProfile.running = True # Monkey-patched.
+            _updateMenuStatus()
+
+        def _stopProfiling():
+            self._currentProfile.disable()
+            self._currentProfile.running = False
+            _updateMenuStatus()
+        
+        def _dumpStats():
+            assert not self._currentProfile.running
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent profile dumpfile' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), 'ilastik_profile_stats.pstats')
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], 'ilastik_profile_stats.pstats')
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Dump profile stats database", defaultPath, "Python pstats database (*.pstats)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                statsPath = encode_from_qstring( statsPath )
+                PreferencesManager().set( 'shell', 'recent profile dumpfile', statsPath )            
+                self._currentProfile.create_stats()
+                self._currentProfile.dump_stats( statsPath )
+
+        def _exportSortedStats(sortby):
+            assert not self._currentProfile.running
+            
+            filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                statsPath = encode_from_qstring( statsPath )
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', statsPath )
+                self._currentProfile.create_stats()
+                with open(statsPath, 'w') as f:
+                    ps = pstats.Stats(self._currentProfile, stream=f).sort_stats(sortby)
+                    ps.sort_stats(sortby)
+                    ps.print_stats()
+
+        profilingSubmenu = QMenu("Profiling")
+        
+        startAction = profilingSubmenu.addAction("Start (reset)")
+        startAction.triggered.connect( _startProfiling )
+
+        stopAction = profilingSubmenu.addAction("Stop")
+        stopAction.triggered.connect( _stopProfiling )
+        
+        dumpAction = profilingSubmenu.addAction("Dump Stats Database...")
+        dumpAction.triggered.connect( _dumpStats )
+
+        sortedExportSubmenu = profilingSubmenu.addMenu("Export Sorted Stats...")
+        for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
+            action = sortedExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedStats, sortby ) )
+        
+        _updateMenuStatus()
+
+        # Must retain this reference, otherwise the menu gets automatically removed
+        self._profilingSubmenu = profilingSubmenu
+        return profilingSubmenu
 
     def showMemUsageDialog(self):
         if self._memDlg is None:
@@ -653,6 +742,7 @@ class IlastikShell( QMainWindow ):
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
 
+    @timeLogged( logger, logging.DEBUG )
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
         and self.populatingImageSelectionCombo == False:
