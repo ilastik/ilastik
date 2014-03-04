@@ -366,20 +366,20 @@ class OpThresholdTwoLevels(Operator):
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
         self.opThreshold2.HighThreshold.connect(self.HighThreshold)
 
-        # HACK: For backwards compatibility with old projects, 
+        # HACK: For backwards compatibility with old projects,
         #       the cache must by in xyzct order,
         #       because the cache is loaded directly from the serializer
         self._op5CacheInput = OpReorderAxes(parent=self)
-        self._op5CacheInput.AxisOrder.setValue( "xyzct" )
+        self._op5CacheInput.AxisOrder.setValue("xyzct")
 
         #cache our own output, don't propagate from internal operator
         self._opCache = OpCompressedCache(parent=self)
         self._opCache.name = "OpThresholdTwoLevels._opCache"
         self._opCache.InputHdf5.connect(self.InputHdf5)
-        self._opCache.Input.connect( self._op5CacheInput.Output )
+        self._opCache.Input.connect(self._op5CacheInput.Output)
 
         self._op5CacheOutput = OpReorderAxes(parent=self)
-        self._op5CacheOutput.Input.connect( self._opCache.Output )
+        self._op5CacheOutput.Input.connect(self._opCache.Output)
 
         self._opReorder2 = OpReorderAxes(parent=self)
         self.Output.connect(self._opReorder2.Output)
@@ -402,7 +402,7 @@ class OpThresholdTwoLevels(Operator):
         t_index = self.InputImage.meta.axistags.index('t')
         self._smoothStacker.AxisIndex.setValue(t_index)
         self._inputStacker.AxisIndex.setValue(t_index)
-        self._opReorder2.AxisOrder.setValue("".join(self.InputImage.meta.getAxisKeys()))
+        self._opReorder2.AxisOrder.setValue(self.InputImage.meta.getAxisKeys())
 
         # propagate drange
         self.opThreshold1.InputImage.meta.drange = self.InputImage.meta.drange
@@ -424,12 +424,13 @@ class OpThresholdTwoLevels(Operator):
             # Blockshape is the entire block, except only 1 time slice
             tagged_shape = self.opThreshold1.Output.meta.getTaggedShape()
             tagged_shape['t'] = 1
-            
+
             # Blockshape must correspond to cache input order
-            blockshape = map( lambda k: tagged_shape[k], 'xyzct' )
+            blockshape = map(lambda k: tagged_shape[k], 'xyzct')
             self._opCache.BlockShape.setValue(tuple(blockshape))
             self._op5CacheInput.Input.connect(self.opThreshold1.Output)
-            self._op5CacheOutput.AxisOrder.setValue( self._op5CacheInput.Input.meta.getAxisKeys() )
+            self._op5CacheOutput.AxisOrder.setValue(
+                self._op5CacheInput.Input.meta.getAxisKeys())
 
             self.BeforeSizeFilter.connect(self.opThreshold1.BeforeSizeFilter)
             self.BeforeSizeFilter.meta.NOTREADY = None
@@ -453,9 +454,9 @@ class OpThresholdTwoLevels(Operator):
             tagged_shape['t'] = 1
 
             # Blockshape must correspond to cache input order
-            blockshape = map( lambda k: tagged_shape[k], 'xyzct' )
+            blockshape = map(lambda k: tagged_shape[k], 'xyzct')
             self._opCache.BlockShape.setValue(tuple(blockshape))
-            self._op5CacheInput.Input.connect( self.opThreshold2.Output )
+            self._op5CacheInput.Input.connect(self.opThreshold2.Output)
 
             self.BigRegions.connect(self.opThreshold2.BigRegions)
             self.SmallRegions.connect(self.opThreshold2.SmallRegions)
@@ -748,8 +749,7 @@ class _OpFilterLabels5d(Operator):
         assert len(self._reorder1.Output.meta.shape) == 5
         self.Output.meta.assignFrom(self.Input.meta)
         self._ReorderedOutput.meta.assignFrom(self._reorder1.Output.meta)
-        order = "".join(self.Input.meta.getAxisKeys())
-        self._reorder2.AxisOrder.setValue(order)
+        self._reorder2.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self._ReorderedOutput
