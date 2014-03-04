@@ -137,7 +137,6 @@ class OpObjectsSegment(Operator):
         channel = self.Channel.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
-        print("\n\n####################### COMPUTING {} #######################\n\n".format(channel))
 
         # add time and channel to roi (we reordered to full 'xyztc'!)
         predRoi = roi.copy()
@@ -163,6 +162,8 @@ class OpObjectsSegment(Operator):
         mins = feats["Coord<Minimum>"]
         maxs = feats["Coord<Maximum>"]
         nobj = mins.shape[0]
+        mins = mins.astype(np.uint32)
+        maxs = maxs.astype(np.uint32)
 
         # provide xyz view for the output
         resultXYZ = vigra.taggedView(result, axistags=self.Output.meta.axistags
@@ -173,7 +174,6 @@ class OpObjectsSegment(Operator):
         # let's hope the objects are not overlapping
         def parallel(i):
             logger.debug("processing object {}".format(i))
-            print("processing object {} starting at {}".format(i, mins[i]))
             xmin = max(mins[i][0]-margin[0], 0)
             ymin = max(mins[i][1]-margin[1], 0)
             zmin = max(mins[i][2]-margin[2], 0)
@@ -214,7 +214,7 @@ class OpObjectsSegment(Operator):
                 resbox[ccsegm == label] = 1
 
         pool = RequestPool()
-
+        #TODO make sure that the parallel computations fit into memory
         for i in range(1, nobj):
             req = Request(functools.partial(parallel, i))
             pool.add(req)

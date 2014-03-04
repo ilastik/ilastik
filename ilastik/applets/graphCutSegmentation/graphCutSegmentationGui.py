@@ -32,7 +32,7 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
         self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
         self._allWatchedWidgets = [
-            self._drawer.inputChannelSpinBox,
+            #self._drawer.inputChannelSpinBox,
             self._drawer.betaSpinBox]
 
         for widget in self._allWatchedWidgets:
@@ -67,8 +67,8 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
             # Channel
             channelIndex = op.InputImage.meta.axistags.index('c')
             numChannels = op.InputImage.meta.shape[channelIndex]
-        self._drawer.inputChannelSpinBox.setRange(0, numChannels-1)
-        self._drawer.inputChannelSpinBox.setValue(op.Channel.value)
+        #self._drawer.inputChannelSpinBox.setRange(0, numChannels-1)
+        #self._drawer.inputChannelSpinBox.setValue(op.Channel.value)
 
         # Beta
         self._drawer.betaSpinBox.setValue(op.Beta.value)
@@ -81,11 +81,11 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
         #  and we don't want it to update until we've read all gui values.)
 
         # Read Channel
-        channel = self._drawer.inputChannelSpinBox.value()
+        #channel = self._drawer.inputChannelSpinBox.value()
 
         # read beta
         beta = self._drawer.betaSpinBox.value()
 
         # Apply new settings to the operator
-        op.Channel.setValue(channel)
+        #op.Channel.setValue(channel)
         op.Beta.setValue(beta)

@@ -668,6 +668,7 @@ if have_opengm:
         def connectInputs(self, laneIndex):
             opGraphCut = self.segmentationApplet.topLevelOperator.getLane(laneIndex)
             opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+            opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
             rawSlot, binarySlot = super(ObjectClassificationWorkflowGraphcut,
                                         self).connectInputs(laneIndex)
@@ -675,6 +676,7 @@ if have_opengm:
             opGraphCut.RawInput.connect(rawSlot)
             opGraphCut.InputImage.connect(opData.ImageGroup[1])
             opGraphCut.Binary.connect(binarySlot)
+            opGraphCut.Channel.connect(opThreshold.Channel)
 
             op5Binary = OpReorderAxes(parent=self)
             op5Binary.AxisOrder.setValue("txyzc")
