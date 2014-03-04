@@ -1,6 +1,8 @@
 
 from threading import Lock as ThreadLock
 from functools import partial
+from abc import ABCMeta, abstractmethod, abstractproperty
+import logging
 
 import numpy as np
 import vigra
@@ -11,6 +13,8 @@ from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.operators import OpCompressedCache, OpReorderAxes
+
+logger = logging.getLogger(__name__)
 
 # try to import the blockedarray module, fail only if neccessary
 try:
@@ -51,15 +55,13 @@ class OpLabelVolume(Operator):
     ## Labeled volume
     # Axistags and shape are the same as on the Input, dtype is an integer
     # datatype.
-    # Note: The output might be cached internally depending on the chosen CC
-    # method, use the CachedOutput to avoid duplicate caches. (see inner
-    # operator below for details)
+    # Note: This output is just an alias for CachedOutput, because all
+    # implementations use internal caches.
     Output = OutputSlot()
 
     ## Cached label image
-    # Access the internal cache. If you were planning to cache the labeled
-    # volume, be sure to use this slot, since it makes use of the internal
-    # cache that might be in use anyway.
+    # Axistags and shape are the same as on the Input, dtype is an integer
+    # datatype.
     CachedOutput = OutputSlot()
 
     name = "OpLabelVolume"
@@ -145,6 +147,8 @@ class OpLabelVolume(Operator):
 
 ## parent class for all connected component labeling implementations
 class OpLabelingABC(Operator):
+    __metaclass__ = ABCMeta
+
     ## input with axes 'xyzct'
     Input = InputSlot()
 
@@ -154,6 +158,11 @@ class OpLabelingABC(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
+    ## list of supported dtypes
+    @abstractproperty
+    def supportedDtypes(self):
+        pass
+
     def __init__(self, *args, **kwargs):
         super(OpLabelingABC, self).__init__(*args, **kwargs)
         self._cache = None
@@ -161,6 +170,15 @@ class OpLabelingABC(Operator):
 
     def setupOutputs(self):
         labelType = np.uint32
+
+        # check if the input dtype is valid
+        if self.Input.ready():
+            dtype = self.Input.meta.dtype
+            if dtype not in self.supportedDtypes:
+                msg = "{}: dtype '{}' not supported "\
+                    "with method 'vigra'. Supported types: {}"
+                msg = msg.format(self.name, dtype, self.supportedDtypes)
+                raise ValueError(msg)
 
         # remove unneeded old cache
         if self._cache is not None:
@@ -181,11 +199,9 @@ class OpLabelingABC(Operator):
         self.Output.meta.assignFrom(self._cache.Output.meta)
         self.CachedOutput.meta.assignFrom(self._cache.Output.meta)
 
+        # prepare locks for each channel and time slice
         s = self.Input.meta.getTaggedShape()
         shape = (s['c'], s['t'])
-        self._cached = np.zeros(shape)
-
-        # prepare locks for each channel and time slice
         locks = np.empty(shape, dtype=np.object)
         for c in range(s['c']):
             for t in range(s['t']):
@@ -204,7 +220,9 @@ class OpLabelingABC(Operator):
         self.CachedOutput.setDirty(outroi)
 
     def execute(self, slot, subindex, roi, result):
-        #FIXME we don't care right now which slot is requested, just return cached CC
+        #FIXME we don't care right now which slot is requested, just return
+        # cached CC (all implementations cache anyways)
+
         # get the background values
         bg = self.Background[...].wait()
         bg = vigra.taggedView(bg, axistags=self.Background.meta.axistags)
@@ -216,13 +234,28 @@ class OpLabelingABC(Operator):
         # do labeling in parallel over channels and time slices
         pool = RequestPool()
 
+        ## function for request ##
+        def singleSliceRequest(start3d, stop3d, c, t, bg):
+            # computing CC is a critical section
+            self._locks[c, t].acquire()
+
+            # update the slice
+            self._updateCache(start3d, stop3d, c, t, bg)
+
+            # leave the critical section
+            self._locks[c, t].release()
+        ## end function for request ##
+
         for t in range(roi.start[4], roi.stop[4]):
             for c in range(roi.start[3], roi.stop[3]):
                 # update the whole slice
-                req = Request(partial(self._updateSliceWrapper,
+                req = Request(partial(singleSliceRequest,
+                                      roi.start[:3], roi.stop[:3],
                                       c, t, bg[c, t]))
                 pool.add(req)
 
+        logger.debug("{}: Computing connected components for ROI {}".format(
+            self.name, roi))
         pool.wait()
         pool.clean()
 
@@ -230,43 +263,46 @@ class OpLabelingABC(Operator):
         req.writeInto(result)
         req.block()
 
-    ## takes care of locking and cache status, calls _updateSlice
+    ## compute the requested roi and put the results into self._cache
     #
-    def _updateSliceWrapper(self, c, t, bg):
-        ## intro ##
-
-        # assert single access to cache
-        self._locks[c, t].acquire()
-
-        # do we need to update?
-        if not self._cached[c, t]:
-            # update the slice
-            self._updateSlice(c, t, bg)
-            self._cached[c, t] = 1
-
-        ## outro ##
-        self._locks[c, t].release()
-
-    ## compute the requested slice and put the results into self._cache
-    #
-    def _updateSlice(self, c, t, bg):
-        raise NotImplementedError("This is an abstract method")
+    @abstractmethod
+    def _updateCache(self, start3d, stop3d, c, t, bg):
+        pass
 
 
-## vigra connected components
-class _OpLabelVigra(OpLabelingABC):
-    name = "OpLabelVigra"
+class _OpNonLazyCC(OpLabelingABC):
 
     def setupOutputs(self):
         if self.Input.ready():
-            supportedDtypes = [np.uint8, np.uint32, np.float32]
-            dtype = self.Input.meta.dtype
-            if dtype not in supportedDtypes:
-                msg = "OpLabelVolume: dtype '{}' not supported "\
-                    "with method 'vigra'. Supported types: {}"
-                msg = msg.format(dtype, supportedDtypes)
-                raise ValueError(msg)
-        super(_OpLabelVigra, self).setupOutputs()
+            s = self.Input.meta.getTaggedShape()
+            shape = (s['c'], s['t'])
+            self._cached = np.zeros(shape, dtype=np.bool)
+        super(_OpNonLazyCC, self).setupOutputs()
+
+    ## wraps the childrens' updateSlice function to check if recomputation is
+    ## needed
+    def _updateCache(self, start3d, stop3d, c, t, bg):
+        # we compute the whole slice, regardless of actual roi, if needed
+        if self._cached[c, t]:
+            return
+        self._updateSlice(c, t, bg)
+        self._cached[c, t] = True
+
+    @abstractmethod
+    def _updateSlice(self, c, t, bg):
+        pass
+
+
+## vigra connected components
+class _OpLabelVigra(_OpNonLazyCC):
+    name = "OpLabelVigra"
+    supportedDtypes = [np.uint8, np.uint32, np.float32]
+
+    def propagateDirty(self, slot, subindex, roi):
+        # set the cache to dirty
+        self._cached[roi.start[3]:roi.stop[3],
+                     roi.start[4]:roi.stop[4]] = 0
+        super(_OpLabelVigra, self).propagateDirty(slot, subindex, roi)
 
     def _updateSlice(self, c, t, bg):
         source = vigra.taggedView(self.Input[..., c, t].wait(),
@@ -290,8 +326,9 @@ class _OpLabelVigra(OpLabelingABC):
 
 
 ## blockedarray connected components
-class _OpLabelBlocked(OpLabelingABC):
+class _OpLabelBlocked(_OpNonLazyCC):
     name = "OpLabelBlocked"
+    supportedDtypes = [np.uint8]
 
     def _updateSlice(self, c, t, bg):
         assert _blockedarray_module_available,\
@@ -300,6 +337,7 @@ class _OpLabelBlocked(OpLabelingABC):
             "Blocked Labeling not implemented for background value {}".format(bg)
 
         blockShape = _findBlockShape(self.Input.meta.shape[:3])
+        logger.debug("{}: Using blockshape {}".format(self.name, blockShape))
 
         source = _Source(self.Input, blockShape, c, t)
         sink = _Sink(self._cache, c, t)
