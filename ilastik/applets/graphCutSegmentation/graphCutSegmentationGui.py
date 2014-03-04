@@ -27,7 +27,9 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(os.path.join(localDir,"drawer.ui"))
+        self._drawer = uic.loadUi(os.path.join(localDir, "drawer.ui"))
+
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
         self._allWatchedWidgets = [
             self._drawer.inputChannelSpinBox,
@@ -49,6 +51,12 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
         self.__cleanup_fns.append(
             partial(self.topLevelOperatorView.InputImage.unregisterMetaChanged,
                     bind(self._updateGuiFromOperator)))
+
+    def _onApplyButtonClicked(self):
+        self._updateOperatorFromGui()
+        for layer in self.layerstack:
+            if "Final" in layer.name:
+                layer.visible = True
 
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -74,7 +82,7 @@ class GraphCutSegmentationGui(ThresholdTwoLevelsGui):
 
         # Read Channel
         channel = self._drawer.inputChannelSpinBox.value()
-        
+
         # read beta
         beta = self._drawer.betaSpinBox.value()
 

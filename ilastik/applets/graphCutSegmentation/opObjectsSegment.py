@@ -4,6 +4,7 @@ import functools
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+from threading import Lock as ThreadLock
 
 # required numerical modules
 import numpy as np
@@ -18,8 +19,9 @@ from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
 # required lazyflow operators
-from lazyflow.operators.opLabelImage import OpLabelImage
+from lazyflow.operators.opLabelVolume import OpLabelVolume
 from lazyflow.operators.valueProviders import OpArrayCache
+from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
@@ -47,6 +49,8 @@ class OpObjectsSegment(Operator):
     # segmentation image -> graph cut segmentation
     Output = OutputSlot()
 
+    CachedOutput = OutputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpObjectsSegment, self).__init__(*args, **kwargs)
 
@@ -60,16 +64,18 @@ class OpObjectsSegment(Operator):
         opReorder.AxisOrder.setValue('xyztc')  # vigra order
         self._opReorderBin = opReorder
 
-        opCC = OpLabelImage(parent=self)
+        opCC = OpLabelVolume(parent=self)
         opCC.Input.connect(self._opReorderBin.Output)
-        opCC.BackgroundLabels.setValue([0])
         self.ConnectedComponents.connect(opCC.Output)
         self._opCC = opCC
 
-        opCache = OpArrayCache(parent=self)
-        opCache.Input.connect(self.ConnectedComponents)
-        self._opCache = opCache
-        self.CachedConnectedComponents.connect(opCache.Output)
+        self.CachedConnectedComponents.connect(opCC.CachedOutput)
+
+        self._outputCache = OpCompressedCache(parent=self)
+        self._outputCache.name = "{}._outputCache".format(self.name)
+        self._outputCache.Input.connect(self.Output)
+
+        self._lock = ThreadLock()
 
     def setupOutputs(self):
         # sanity checks
@@ -81,9 +87,13 @@ class OpObjectsSegment(Operator):
         # bounding boxes are just one element arrays of type object
         self.BoundingBoxes.meta.shape = (1,)
 
-        self.Output.meta.assignFrom(self.Prediction.meta)  # FIXME dtype uint?
+        self.Output.meta.assignFrom(self.Prediction.meta)
+        self.Output.meta.dtype = np.uint8
         self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
         self.Output.meta.axistags = vigra.defaultAxistags('xyz')
+        self.CachedOutput.meta.assignFrom(self.Output.meta)
+
+        self._outputCache.BlockShape.setValue(self.Output.meta.shape)
 
     def execute(self, slot, subindex, roi, result):
 
@@ -91,6 +101,13 @@ class OpObjectsSegment(Operator):
             return self._execute_bbox(roi, result)
         elif slot == self.Output:
             return self._execute_graphcut(roi, result)
+        elif slot == self.CachedOutput:
+            self._lock.acquire()
+            newroi = roi.copy()
+            req = self._outputCache.Output.get(newroi)
+            req.writeInto(result)
+            req.block()
+            self._lock.release()
         else:
             raise NotImplementedError(
                 "execute() is not implemented for slot {}".format(str(slot)))
@@ -98,9 +115,8 @@ class OpObjectsSegment(Operator):
     def _execute_bbox(self, roi, result):
         logger.debug("computing bboxes...")
 
-        cc = self._opCache.Output[...].wait()
-        cc = vigra.taggedView(cc,
-                              axistags=self._opReorderPred.Output.meta.axistags)
+        cc = self._opCC.CachedOutput[...].wait()
+        cc = vigra.taggedView(cc, axistags=self._opCC.Output.meta.axistags)
         #FIXME what about time slices???
         cc = cc.withAxes(*'xyz')
 
@@ -117,11 +133,11 @@ class OpObjectsSegment(Operator):
     def _execute_graphcut(self, roi, result):
 
         #TODO make margins an InputSlot
-        margin = np.asarray((150, 150, 10))
+        margin = np.asarray((20, 20, 10))
         channel = self.Channel.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
-
+        print("\n\n####################### COMPUTING {} #######################\n\n".format(channel))
 
         # add time and channel to roi (we reordered to full 'xyztc'!)
         predRoi = roi.copy()
@@ -134,13 +150,12 @@ class OpObjectsSegment(Operator):
         #FIXME what about time slices???
         pred = pred.withAxes(*'xyz')
 
-        # noone knows how the axes of OpArrayCache will be ordered
         ccRoi = roi.copy()
-        ccRoi.insertDim(self._opCache.Output.meta.axistags.index('c'), 0, 1)
-        ccRoi.insertDim(self._opCache.Output.meta.axistags.index('t'), 0, 1)
-        cc = self._opCache.Output.get(ccRoi).wait()
+        ccRoi.insertDim(3, 0, 1)  # t
+        ccRoi.insertDim(4, 0, 1)  # c
+        cc = self._opCC.CachedOutput.get(ccRoi).wait()
         cc = vigra.taggedView(cc,
-                              axistags=self._opReorderBin.Output.meta.axistags)
+                              axistags=self._opCC.CachedOutput.meta.axistags)
         #FIXME what about time slices???
         cc = cc.withAxes(*'xyz')
 
@@ -149,14 +164,16 @@ class OpObjectsSegment(Operator):
         maxs = feats["Coord<Maximum>"]
         nobj = mins.shape[0]
 
-
         # provide xyz view for the output
         resultXYZ = vigra.taggedView(result, axistags=self.Output.meta.axistags
                                      ).withAxes(*'xyz')
+        # initialize result
+        resultXYZ[:] = 0
 
         # let's hope the objects are not overlapping
         def parallel(i):
             logger.debug("processing object {}".format(i))
+            print("processing object {} starting at {}".format(i, mins[i]))
             xmin = max(mins[i][0]-margin[0], 0)
             ymin = max(mins[i][1]-margin[1], 0)
             zmin = max(mins[i][2]-margin[2], 0)
@@ -179,34 +196,18 @@ class OpObjectsSegment(Operator):
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
 
-            #FIXME what's this part doing?
+            #FIXME document what this part is doing
             seed = ccbox == i
             filtered = seed*ccsegm
             passed = np.unique(filtered)
-            if passed.shape[0] > 2:
+            assert len(passed.shape) == 1
+            if passed.size > 2:
                 logger.warn("ambiguous label assignment for region {}".format(
                     (xmin, xmax, ymin, ymax, zmin, zmax)))
                 resbox[ccbox == i] = 1
-            #TODO remove "OLD STUFF" if not needed anymore
-            #elif passed.shape[0] == 1:
-                #logger.warn(
-                    #"box {} segmented out with beta {}".format(i, beta) +
-                    #", trying with smaller beta {}".format(smallBeta))
-                #gcsegmnew = self._segmentGC_fast(probbox, smallBeta)
-                #gcsegmnew = vigra.taggedView(gcsegmnew, axistags='xyz')
-                #ccsegmnew = vigra.analysis.labelVolumeWithBackground(
-                    #gcsegmnew.astype(np.uint8))
-                #filterednew = seed*ccsegmnew
-                #passednew = np.unique(filterednew)
-                #if passednew.shape[0] == 1:
-                    #logger.warn("box {} still not there".format(i))
-                    ##still not there, assign to seed
-                    #resbox[ccbox == i] = 1
-                #else:
-                    #logger.info("box {} appeared with smaller beta".format(i))
-                    #label = passednew[1]
-                    #resbox[ccsegm == label] = 1
-
+            elif passed.size <= 1:
+                logger.warn(
+                    "box {} segmented out with beta {}".format(i, beta))
             else:
                 # assign to the overlap region
                 label = passed[1]  # 0 is background
@@ -218,33 +219,15 @@ class OpObjectsSegment(Operator):
             req = Request(functools.partial(parallel, i))
             pool.add(req)
 
-        logger.info("Processing {} objects ...".format(nobj))
-
-        print("D")
+        logger.info("Processing {} objects ...".format(nobj-1))
 
         pool.wait()
         pool.clean()
 
         logger.info("object loop done")
 
-        #final connected components and big size filter
-        resultcc = vigra.analysis.labelVolumeWithBackground(resultXYZ)
-        countfeats = vigra.analysis.extractRegionFeatures(
-            resultcc.astype(np.float32), resultcc, features=["Count"])
-        counts = countfeats["Count"]
-        #relabel
-        nobjnew = counts.shape[0]
-        relabel = np.zeros(nobjnew+1, dtype=np.uint32)
-
-        for i in range(1, nobjnew):
-            ''' # have no more MAXSIZE
-            if counts[i] > MAXSIZE:
-                relabel[i] = 0
-            else:
-                relabel[i] = 1
-            '''
-            relabel[i] = 1
-        resultXYZ[:] = relabel[resultcc]
+        # convert from label image to segmentation
+        resultXYZ[resultXYZ > 0] = 1
 
         return result
 
@@ -300,10 +283,7 @@ class OpObjectsSegment(Operator):
         return res
 
     def propagateDirty(self, slot, subindex, roi):
-        #FIXME okay to set whole volume dirty??
-        stop = self.Output.meta.shape
-        start = tuple([0]*len(stop))
-        outroi = SubRegion(self.Output, start=start, stop=stop)
-        #TODO set bb, cc dirty
-        self.Output.setDirty(outroi)
+        # all input slots affect the (global) graph cut computation
+        self.Output.setDirty(slice(None))
+        self.CachedOutput.setDirty(slice(None))
 

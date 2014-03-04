@@ -1,6 +1,4 @@
 
-import threading
-
 import numpy as np
 import vigra
 
@@ -31,35 +29,17 @@ class OpGraphCutSegmentation(Operator):
         op.Beta.connect(self.Beta)
         op.Channel.connect(self.Channel)
 
-        self._guiCache = OpArrayCache(parent=self)
-
-        self._guiCache.Input.connect(op.Output)
+        self.CachedOutput.connect(op.CachedOutput)
 
         self._op = op
 
-        self._lock = threading.Lock()
         self._filled = False
 
     def setupOutputs(self):
-        self.CachedOutput.meta.assignFrom(self._guiCache.Output.meta)
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
-        self._filled = False
-        #FIXME okay to set whole volume dirty??
-        stop = self.CachedOutput.meta.shape
-        start = tuple([0]*len(stop))
-        outroi = SubRegion(self.Output, start=start, stop=stop)
-        #TODO set bb, cc dirty
-        self.CachedOutput.setDirty(outroi)
+        pass  # Nothing to do
 
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.CachedOutput
-
-        # suspend other calls to execute, we will do the whole block anyway
-        self._lock.acquire()
-        if not self._filled:
-            self._guiCache.Output[...].block()
-            self._filled = True
-        self._lock.release()
-
-        result[:] = self._guiCache.Output.get(roi).wait()
+        assert False, "Shuld not get here"
