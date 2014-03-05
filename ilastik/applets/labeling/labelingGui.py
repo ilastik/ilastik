@@ -288,13 +288,6 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
-        '''
-        changeBrushSize = QShortcut( QKeySequence("c"), self, member=self.labelingDrawerUi.brushSizeComboBox.showPopup )
-        mgr.register( shortcutGroupName,
-                      "Change Brush Size",
-                      changeBrushSize,
-                      self.labelingDrawerUi.brushSizeComboBox )
-        '''
 
         self._labelShortcuts = []
 

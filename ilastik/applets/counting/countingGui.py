@@ -692,11 +692,13 @@ class CountingGui(LabelingGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            inputLayer.shortcutRegistration = (
-                "Prediction Layers",
-                "Bring Input To Top/Bottom",
-                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
-                inputLayer )
+            inputLayer.shortcutRegistration = ( "i", ShortcutManager2.ActionInfo(
+                                                        "Prediction Layers",
+                                                        "Bring Input To Top/Bottom",
+                                                        "Bring Input To Top/Bottom",
+                                                        toggleTopToBottom,
+                                                        self.viewerControlWidget(),
+                                                        inputLayer ) )
             layers.append(inputLayer)
 
         self.handleLabelSelectionChange()
