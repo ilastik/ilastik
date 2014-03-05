@@ -138,34 +138,37 @@ class OpFeatureMatrixCache(Operator):
             with self._lock:
                 self._dirty_blocks.remove(block_start)
 
-    def _extract_feature_matrix(self, label_roi):
+    def _extract_feature_matrix(self, label_block_roi):
         num_feature_channels = self.FeatureImage.meta.shape[-1]
-        labels = self.LabelImage(label_roi[0], label_roi[1]).wait()
-        label_positions = numpy.nonzero(labels[...,0].view(numpy.ndarray))
-        labels_matrix = labels[label_positions].astype(numpy.float).view(numpy.ndarray)
+        labels = self.LabelImage(label_block_roi[0], label_block_roi[1]).wait()
+        label_block_positions = numpy.nonzero(labels[...,0].view(numpy.ndarray))
+        labels_matrix = labels[label_block_positions].astype(numpy.float).view(numpy.ndarray)
         
-        if len(label_positions) == 0 or len(label_positions[0]) == 0:
+        if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
             # No label points in this roi.  
             # Return an empty label&feature matrix (of the correct shape)
             return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 
         # Shrink the roi to the bounding box of nonzero labels
-        bounding_box_start = map( numpy.min, label_positions )
-        bounding_box_stop = 1 + numpy.array( map( numpy.max, label_positions ) )
+        block_bounding_box_start = numpy.array( map( numpy.min, label_block_positions ) )
+        block_bounding_box_stop = 1 + numpy.array( map( numpy.max, label_block_positions ) )
+        
+        global_bounding_box_start = block_bounding_box_start + label_block_roi[0][:-1]
+        global_bounding_box_stop  = block_bounding_box_stop + label_block_roi[0][:-1]
 
         # Since we're just requesting the bounding box, offset the feature positions by the box start
-        feature_positions = numpy.transpose( numpy.transpose(label_positions) - numpy.array(bounding_box_start) )
-        feature_positions = tuple(feature_positions)
+        bounding_box_positions = numpy.transpose( numpy.transpose(label_block_positions) - numpy.array(block_bounding_box_start) )
+        bounding_box_positions = tuple(bounding_box_positions)
 
         # Append channel roi (all feature channels)
-        feature_roi_start = list(bounding_box_start) + [0]
-        feature_roi_stop = list(bounding_box_stop) + [num_feature_channels]
+        feature_roi_start = list(global_bounding_box_start) + [0]
+        feature_roi_stop = list(global_bounding_box_stop) + [num_feature_channels]
 
-        # Request features
+        # Request features (bounding box only)
         features = self.FeatureImage(feature_roi_start, feature_roi_stop).wait()
 
         # Cast as plain ndarray (not VigraArray), since we don't need/want axistags
-        features_matrix = features[feature_positions].view(numpy.ndarray)
+        features_matrix = features[bounding_box_positions].view(numpy.ndarray)
         return numpy.concatenate( (labels_matrix, features_matrix), axis=1)
 
         

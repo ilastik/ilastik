@@ -6,6 +6,17 @@ from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 
 class TestOpFeatureMatrixCache(object):
     
+    @classmethod
+    def setupClass(cls):
+        # For better testing with small data, force a smaller block size
+        cls._REAL_MAX_BLOCK_PIXELS = OpFeatureMatrixCache.MAX_BLOCK_PIXELS
+        OpFeatureMatrixCache.MAX_BLOCK_PIXELS = 100
+
+    @classmethod
+    def teardownClass(cls):
+        # Restore the original block size
+        OpFeatureMatrixCache.MAX_BLOCK_PIXELS = cls._REAL_MAX_BLOCK_PIXELS
+    
     def testBasic(self):
         features = numpy.indices( (100,100) ).astype(numpy.float) + 0.5
         features = numpy.rollaxis(features, 0, 3)
@@ -35,6 +46,7 @@ class TestOpFeatureMatrixCache(object):
         assert labels_and_features.shape == (4,3)
         assert (labels_and_features[:,0] == 1).sum() == 2
         assert (labels_and_features[:,0] == 2).sum() == 2
+        assert (labels_and_features[:,1:] == [[10.5, 10.5], [10.5, 11.5], [20.5, 20.5], [20.5, 21.5]]).all()
 
 
 if __name__ == "__main__":
