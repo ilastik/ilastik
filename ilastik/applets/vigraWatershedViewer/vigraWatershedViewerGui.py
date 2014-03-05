@@ -32,7 +32,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler
 
 from volumina.slicingtools import index2slice
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 
 import logging
 logger = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
     def setupLayers(self):
-        ActionInfo = ShortcutManager2.ActionInfo
+        ActionInfo = ShortcutManager.ActionInfo
         layers = []
 
         self.updateInputChannelGui()

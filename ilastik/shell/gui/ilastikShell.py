@@ -46,7 +46,7 @@ from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoN
 from lazyflow.utility import timeLogged
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager2, decode_to_qstring, encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -321,8 +321,8 @@ class IlastikShell( QMainWindow ):
         self._initShortcuts()
 
     def _initShortcuts(self):
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Ilastik Shell"
 
         mgr.register( "PgDown", ActionInfo( shortcutGroupName,

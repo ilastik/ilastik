@@ -27,7 +27,7 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind
@@ -142,8 +142,8 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.viewerControls.setupConnections(model)
        
     def _initShortcuts(self):
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Predictions"
 
         mgr.register( "p", ActionInfo( shortcutGroupName,
@@ -190,7 +190,7 @@ class PixelClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers()
 
-        ActionInfo = ShortcutManager2.ActionInfo
+        ActionInfo = ShortcutManager.ActionInfo
 
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate

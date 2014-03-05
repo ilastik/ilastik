@@ -30,7 +30,7 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 # HCI
 from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
@@ -574,8 +574,8 @@ class CountingGui(LabelingGui):
 
 
     def _initShortcuts(self):
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Predictions"
         
         mgr.register( "p", ActionInfo( shortcutGroupName,
@@ -692,7 +692,7 @@ class CountingGui(LabelingGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            inputLayer.shortcutRegistration = ( "i", ShortcutManager2.ActionInfo(
+            inputLayer.shortcutRegistration = ( "i", ShortcutManager.ActionInfo(
                                                         "Prediction Layers",
                                                         "Bring Input To Top/Bottom",
                                                         "Bring Input To Top/Bottom",

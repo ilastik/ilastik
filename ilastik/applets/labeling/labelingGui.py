@@ -29,7 +29,7 @@ from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QApplication
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
-from volumina.utility import ShortcutManager2, PreferencesManager
+from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
@@ -256,8 +256,8 @@ class LabelingGui(LayerViewerGui):
                 labellayer.colorTable = self._colorTable16
 
     def __initShortcuts(self):
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Labeling"
 
         if hasattr(self.labelingDrawerUi, "AddLabelButton"):
@@ -295,8 +295,8 @@ class LabelingGui(LayerViewerGui):
         numShortcuts = len(self._labelShortcuts)
         numRows = len(self._labelControlUi.labelListModel)
 
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         # Add any shortcuts we don't have yet.
         for i in range(numShortcuts,numRows):
             toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)

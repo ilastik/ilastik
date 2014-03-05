@@ -32,7 +32,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 
 from ilastik.config import cfg as ilastik_config
 
@@ -70,8 +70,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
 
     def _initShortcuts(self):
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Manual Tracking"
 
         mgr.register( "d", ActionInfo( shortcutGroupName,
@@ -189,7 +189,7 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleTrackingVisibility():
                 trackingLayer.visible = not trackingLayer.visible
                 
-            trackingLayer.shortcutRegistration = ( "e", ShortcutManager2.ActionInfo( 
+            trackingLayer.shortcutRegistration = ( "e", ShortcutManager.ActionInfo( 
                                                             "Layer Visibilities",
                                                             "Toggle Manual Tracking Layer Visibility",
                                                             "Toggle Manual Tracking Layer Visibility",
@@ -225,7 +225,7 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleObjectVisibility():
                 objLayer.visible = not objLayer.visible
                 
-            objLayer.shortcutRegistration = ( "r", ShortcutManager2.ActionInfo(
+            objLayer.shortcutRegistration = ( "r", ShortcutManager.ActionInfo(
                                                        "Layer Visibilities",
                                                        "Toggle Objects Layer Visibility",
                                                        "Toggle Objects Layer Visibility",

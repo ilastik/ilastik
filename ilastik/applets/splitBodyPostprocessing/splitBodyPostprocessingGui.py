@@ -23,7 +23,7 @@ from PyQt4.QtGui import QColor, QFileDialog, QShortcut, QKeySequence
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 
 from ilastik.utility import bind
 from volumina.utility import encode_from_qstring
@@ -177,7 +177,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
             rawLayer.name = "raw"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            rawLayer.shortcutRegistration = ( "g", ShortcutManager2.ActionInfo(
+            rawLayer.shortcutRegistration = ( "g", ShortcutManager.ActionInfo(
                                                        "Postprocessing",
                                                        "Raw Data to Top",
                                                        "Raw Data to Top",

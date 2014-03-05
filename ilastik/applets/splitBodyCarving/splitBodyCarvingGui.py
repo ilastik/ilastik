@@ -25,7 +25,7 @@ from lazyflow.roi import TinyVector
 
 from volumina.layer import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 
 from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
@@ -312,7 +312,7 @@ class SplitBodyCarvingGui(CarvingGui):
         removeBaseLayer( "done" )
         removeBaseLayer( "done" )
         
-        ActionInfo = ShortcutManager2.ActionInfo
+        ActionInfo = ShortcutManager.ActionInfo
         
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():

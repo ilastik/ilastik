@@ -28,7 +28,7 @@ from PyQt4 import uic
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager2
+from volumina.utility import ShortcutManager
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -79,8 +79,8 @@ class CarvingGui(LabelingGui):
         self.minLabelNumber = 2
         self.maxLabelNumber = 2
         
-        mgr = ShortcutManager2()
-        ActionInfo = ShortcutManager2.ActionInfo
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         
         #set up keyboard shortcuts
         mgr.register( "3", ActionInfo( "Carving", 
