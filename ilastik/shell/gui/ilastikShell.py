@@ -25,7 +25,6 @@ import weakref
 import logging
 import platform
 import threading
-import cProfile, pstats
 
 # SciPy
 import numpy
@@ -244,9 +243,6 @@ class IlastikShell( QMainWindow ):
 
         self.openFileButtons = []
         self.cleanupFunctions = []
-
-        # Performance profiling (see debug menu)
-        self._currentProfile = None
 
         self._new_workflow_cmdline_args = new_workflow_cmdline_args
 
@@ -523,49 +519,31 @@ class IlastikShell( QMainWindow ):
         return menu
 
     def _createProfilingSubmenu(self):
+        try:
+            import yappi
+            has_yappi = True
+        except ImportError:
+            has_yappi = False
+        
         def _updateMenuStatus():
-            running = self._currentProfile is not None and self._currentProfile.running
-            stopped = self._currentProfile is not None and not self._currentProfile.running
-            startAction.setEnabled( not running )
-            stopAction.setEnabled( running )
-            dumpAction.setEnabled( stopped )
+            startAction.setEnabled( not yappi.is_running() )
+            stopAction.setEnabled( yappi.is_running() )
             for action in sortedExportSubmenu.actions():
-                action.setEnabled( stopped )
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
 
         def _startProfiling():
             logger.info("Activating new profiler")
-            self._currentProfile = cProfile.Profile()
-            self._currentProfile.enable()
-            self._currentProfile.running = True # Monkey-patched.
+            yappi.clear_stats()
+            yappi.start()
             _updateMenuStatus()
 
         def _stopProfiling():
             logger.info("Dectivating new profiler")
-            self._currentProfile.disable()
-            self._currentProfile.running = False
+            yappi.stop()
             _updateMenuStatus()
-        
-        def _dumpStats():
-            assert not self._currentProfile.running
-            
-            recentPath = PreferencesManager().get( 'shell', 'recent profile dumpfile' )
-            if recentPath is None:
-                defaultPath = os.path.join(os.path.expanduser('~'), 'ilastik_profile_stats.pstats')
-            else:
-                defaultPath = os.path.join(os.path.split(recentPath)[0], 'ilastik_profile_stats.pstats')
-            statsPath = QFileDialog.getSaveFileName(
-               self, "Dump profile stats database", defaultPath, "Python pstats database (*.pstats)",
-               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
-
-            if not statsPath.isNull():
-                statsPath = encode_from_qstring( statsPath )
-                PreferencesManager().set( 'shell', 'recent profile dumpfile', statsPath )            
-                self._currentProfile.create_stats()
-                logger.info("Dumping profiling stats database to file:{}".format(statsPath))
-                self._currentProfile.dump_stats( statsPath )
 
         def _exportSortedStats(sortby):
-            assert not self._currentProfile.running
+            assert not yappi.is_running()
             
             filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
             
@@ -579,16 +557,27 @@ class IlastikShell( QMainWindow ):
                options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not statsPath.isNull():
-                statsPath = encode_from_qstring( statsPath )
-                PreferencesManager().set( 'shell', 'recent sorted profile stats', statsPath )
-                self._currentProfile.create_stats()
-                with open(statsPath, 'w') as f:
-                    ps = pstats.Stats(self._currentProfile, stream=f).sort_stats(sortby)
+                stats_path = encode_from_qstring( statsPath )
+                pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_func_stats()
+                stats.save(pstats_path, type='pstat')
+                with open(stats_path, 'w') as f:
+                    import pstats
+                    ps = pstats.Stats(pstats_path, stream=f)
                     ps.sort_stats(sortby)
-                    logger.info("Printing stats to file:{}".format(filename))
                     ps.print_stats()
+                logger.info("Printed stats to file: {}".format(stats_path))
 
         profilingSubmenu = QMenu("Profiling")
+        if not has_yappi:
+            self._profilingSubmenu = profilingSubmenu
+            errorMsgAction = self._profilingSubmenu.addAction("<yappi module not installed>")
+            errorMsgAction.setEnabled(False)
+            return self._profilingSubmenu
         
         startAction = profilingSubmenu.addAction("Start (reset)")
         startAction.triggered.connect( _startProfiling )
@@ -596,10 +585,7 @@ class IlastikShell( QMainWindow ):
         stopAction = profilingSubmenu.addAction("Stop")
         stopAction.triggered.connect( _stopProfiling )
         
-        dumpAction = profilingSubmenu.addAction("Dump Stats Database...")
-        dumpAction.triggered.connect( _dumpStats )
-
-        sortedExportSubmenu = profilingSubmenu.addMenu("Export Sorted Stats...")
+        sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
         for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
             action = sortedExportSubmenu.addAction(sortby)
             action.triggered.connect( partial( _exportSortedStats, sortby ) )
