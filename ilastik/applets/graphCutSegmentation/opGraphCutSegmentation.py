@@ -13,7 +13,7 @@ from lazyflow.rtype import SubRegion
 class OpGraphCutSegmentation(Operator):
     RawInput = InputSlot()  # FIXME is this neccessary?
     InputImage = InputSlot()
-    Binary = InputSlot()
+    LabelImage = InputSlot()
     Beta = InputSlot(value=.2)
     Channel = InputSlot(value=0)
 
@@ -25,7 +25,7 @@ class OpGraphCutSegmentation(Operator):
         op = OpObjectsSegment(parent=self)
 
         op.Prediction.connect(self.InputImage)
-        op.Binary.connect(self.Binary)
+        op.LabelImage.connect(self.LabelImage)
         op.Beta.connect(self.Beta)
         op.Channel.connect(self.Channel)
 

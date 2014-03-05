@@ -33,7 +33,7 @@ class OpObjectsSegment(Operator):
 
     # thresholded predictions, or otherwise obtained ROI indicators
     # (a value of 0 is assumed to be background and ignored)
-    Binary = InputSlot()
+    LabelImage = InputSlot()
 
     # which channel to use (if there are multiple channels)
     Channel = InputSlot(value=0)
@@ -41,9 +41,12 @@ class OpObjectsSegment(Operator):
     # graph cut parameter
     Beta = InputSlot(value=.2)
 
-    # intermediate results
+    ## intermediate results ##
+
+    # these slots are just piped
     ConnectedComponents = OutputSlot()
     CachedConnectedComponents = OutputSlot()
+
     BoundingBoxes = OutputSlot(stype=Opaque)
 
     # segmentation image -> graph cut segmentation
@@ -60,16 +63,12 @@ class OpObjectsSegment(Operator):
         self._opReorderPred = opReorder
 
         opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.Binary)
+        opReorder.Input.connect(self.LabelImage)
         opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderBin = opReorder
+        self._opReorderLabels = opReorder
 
-        opCC = OpLabelVolume(parent=self)
-        opCC.Input.connect(self._opReorderBin.Output)
-        self.ConnectedComponents.connect(opCC.Output)
-        self._opCC = opCC
-
-        self.CachedConnectedComponents.connect(opCC.CachedOutput)
+        self.ConnectedComponents.connect(self.LabelImage)
+        self.CachedConnectedComponents.connect(self.LabelImage)
 
         self._outputCache = OpCompressedCache(parent=self)
         self._outputCache.name = "{}._outputCache".format(self.name)
@@ -115,8 +114,8 @@ class OpObjectsSegment(Operator):
     def _execute_bbox(self, roi, result):
         logger.debug("computing bboxes...")
 
-        cc = self._opCC.CachedOutput[...].wait()
-        cc = vigra.taggedView(cc, axistags=self._opCC.Output.meta.axistags)
+        cc = self._opReorderLabels.Output[...].wait()
+        cc = vigra.taggedView(cc, axistags=self._opReorderLabels.Output.meta.axistags)
         #FIXME what about time slices???
         cc = cc.withAxes(*'xyz')
 
@@ -138,6 +137,16 @@ class OpObjectsSegment(Operator):
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
 
+        ## request the bounding box coordinates ##
+        feats = self.BoundingBoxes[0].wait()
+        mins = feats["Coord<Minimum>"]
+        maxs = feats["Coord<Maximum>"]
+        nobj = mins.shape[0]
+        # these are indices, so they should have an index datatype
+        mins = mins.astype(np.uint32)
+        maxs = maxs.astype(np.uint32)
+
+        ## request the prediction image ##
         # add time and channel to roi (we reordered to full 'xyztc'!)
         predRoi = roi.copy()
         predRoi.insertDim(3, 0, 1)  # t
@@ -149,21 +158,15 @@ class OpObjectsSegment(Operator):
         #FIXME what about time slices???
         pred = pred.withAxes(*'xyz')
 
+        ## request the connected components image ##
         ccRoi = roi.copy()
         ccRoi.insertDim(3, 0, 1)  # t
         ccRoi.insertDim(4, 0, 1)  # c
-        cc = self._opCC.CachedOutput.get(ccRoi).wait()
-        cc = vigra.taggedView(cc,
-                              axistags=self._opCC.CachedOutput.meta.axistags)
+        cc = self._opReorderLabels.Output.get(ccRoi).wait()
+        cc = vigra.taggedView(
+            cc, axistags=self._opReorderLabels.Output.meta.axistags)
         #FIXME what about time slices???
         cc = cc.withAxes(*'xyz')
-
-        feats = self.BoundingBoxes[0].wait()
-        mins = feats["Coord<Minimum>"]
-        maxs = feats["Coord<Maximum>"]
-        nobj = mins.shape[0]
-        mins = mins.astype(np.uint32)
-        maxs = maxs.astype(np.uint32)
 
         # provide xyz view for the output
         resultXYZ = vigra.taggedView(result, axistags=self.Output.meta.axistags
@@ -172,7 +175,7 @@ class OpObjectsSegment(Operator):
         resultXYZ[:] = 0
 
         # let's hope the objects are not overlapping
-        def parallel(i):
+        def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             xmin = max(mins[i][0]-margin[0], 0)
             ymin = max(mins[i][1]-margin[1], 0)
@@ -183,7 +186,7 @@ class OpObjectsSegment(Operator):
             ccbox = cc[xmin:xmax, ymin:ymax, zmin:zmax]
             resbox = resultXYZ[xmin:xmax, ymin:ymax, zmin:zmax]
 
-            nVoxels = np.prod(ccbox.shape)
+            nVoxels = ccbox.size
             if nVoxels > MAXBOXSIZE:
                 #problem too large to run graph cut, assign to seed
                 logger.warn("Object {} too large for graph cut.".format(i))
@@ -216,7 +219,7 @@ class OpObjectsSegment(Operator):
         pool = RequestPool()
         #TODO make sure that the parallel computations fit into memory
         for i in range(1, nobj):
-            req = Request(functools.partial(parallel, i))
+            req = Request(functools.partial(processSingleObject, i))
             pool.add(req)
 
         logger.info("Processing {} objects ...".format(nobj-1))

@@ -675,7 +675,9 @@ if have_opengm:
 
             opGraphCut.RawInput.connect(rawSlot)
             opGraphCut.InputImage.connect(opData.ImageGroup[1])
-            opGraphCut.Binary.connect(binarySlot)
+            # the 'binary' slot is not really binary, but connected components
+            # with possible holes in the numbering
+            opGraphCut.LabelImage.connect(binarySlot)
             opGraphCut.Channel.connect(opThreshold.Channel)
 
             op5Binary = OpReorderAxes(parent=self)

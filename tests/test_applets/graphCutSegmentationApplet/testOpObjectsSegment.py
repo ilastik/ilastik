@@ -30,7 +30,9 @@ class TestOpObjectsSegment(unittest.TestCase):
         vol[20:40, 20:40, 20:40] = np.random.rand(20, 20, 20)*.39 + .6
         vol[60:80, 60:80, 60:80] = np.random.rand(20, 20, 20)*.39 + .6
 
-        bin = np.where(vol > .5, 1, 0)
+        labels = np.zeros(shape, dtype=np.uint32)
+        labels[20:40, 20:40, 20:40] = 13
+        labels[60:80, 60:80, 60:80] = 37
 
         withChannels = np.zeros(shape + (4,), dtype=np.float32)
         withChannels[..., channel] = vol
@@ -41,7 +43,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         self.withChannels = vigra.taggedView(withChannels, axistags='xyzc')
         self.crazyAxes = vigra.taggedView(crazyAxes, axistags='yzx')
         self.vol = vigra.taggedView(vol, axistags='xyz')
-        self.bin = vigra.taggedView(bin.astype(np.uint8), axistags='xyz')
+        self.labels = vigra.taggedView(labels.astype(np.uint8), axistags='xyz')
         self.channel = channel
 
     def testCC(self):
@@ -51,8 +53,8 @@ class TestOpObjectsSegment(unittest.TestCase):
         piper.Input.setValue(self.vol)
         op.Prediction.connect(piper.Output)
         piper = OpArrayPiper(graph=graph)
-        piper.Input.setValue(self.bin)
-        op.Binary.connect(piper.Output)
+        piper.Input.setValue(self.labels)
+        op.LabelImage.connect(piper.Output)
 
         out = op.ConnectedComponents[...].wait()
 
@@ -69,7 +71,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         piper = OpArrayPiper(graph=graph)
         piper.Input.setValue(self.vol)
         op.Prediction.connect(piper.Output)
-        op.Binary.setValue(self.bin)
+        op.LabelImage.setValue(self.labels)
 
         bbox = op.BoundingBoxes[...].wait()
         assert isinstance(bbox, dict)
@@ -80,7 +82,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         piper = OpArrayPiper(graph=graph)
         piper.Input.setValue(self.vol)
         op.Prediction.connect(piper.Output)
-        op.Binary.setValue(self.bin)
+        op.LabelImage.setValue(self.labels)
 
         out = op.Output[...].wait()
         assert_array_equal(out.shape, self.vol.shape)
@@ -98,7 +100,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         piper = OpArrayPiper(graph=graph)
         piper.Input.setValue(self.withChannels)
         op.Prediction.connect(piper.Output)
-        op.Binary.setValue(self.bin)
+        op.LabelImage.setValue(self.labels)
         op.Channel.setValue(self.channel)
         out = op.Output[...].wait()
 
@@ -115,4 +117,4 @@ class TestOpObjectsSegment(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             op.Prediction.connect(piper.Output)
-            op.Binary.connect(piper.Output)
+            op.LabelImage.connect(piper.Output)
