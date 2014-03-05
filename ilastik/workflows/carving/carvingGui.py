@@ -80,11 +80,15 @@ class CarvingGui(LabelingGui):
         self.maxLabelNumber = 2
         
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         
         #set up keyboard shortcuts
-        segmentShortcut = QShortcut(QKeySequence("3"), self, member=self.labelingDrawerUi.segment.click,
-                                    ambiguousMember=self.labelingDrawerUi.segment.click)
-        mgr.register("Carving", "Run interactive segmentation", segmentShortcut, self.labelingDrawerUi.segment)
+        mgr.register( "3", ActionInfo( "Carving", 
+                                       "Run interactive segmentation", 
+                                       "Run interactive segmentation", 
+                                       self.labelingDrawerUi.segment.click,
+                                       self.labelingDrawerUi.segment,
+                                       self.labelingDrawerUi.segment  ) )
         
         try:
             self.render = True
@@ -193,12 +197,21 @@ class CarvingGui(LabelingGui):
 
         self._labelControlUi.labelListModel.allowRemove(False)
 
-        bg = QShortcut(QKeySequence("1"), self, member=labelBackground, ambiguousMember=labelBackground)
         bgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 0)
-        mgr.register("Carving", "Select background label", bg, bgToolTipObject)
-        fg = QShortcut(QKeySequence("2"), self, member=labelObject, ambiguousMember=labelObject)
+        mgr.register( "1", ActionInfo( "Carving", 
+                                       "Select background label", 
+                                       "Select background label", 
+                                       labelBackground,
+                                       self.viewerControlWidget(),
+                                       bgToolTipObject ) )
+
         fgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 1)
-        mgr.register("Carving", "Select object label", fg, fgToolTipObject)
+        mgr.register( "2", ActionInfo( "Carving", 
+                                       "Select object label", 
+                                       "Select object label", 
+                                       labelObject,
+                                       self.viewerControlWidget(),
+                                       fgToolTipObject ) )
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
@@ -210,15 +223,18 @@ class CarvingGui(LabelingGui):
                 layer = self.layerstack[row]
                 layer.visible = not layer.visible
                 self.viewerControlWidget().layerWidget.setFocus()
-            shortcut = QShortcut(QKeySequence(shortcut), self, member=toggle, ambiguousMember=toggle)
-            mgr.register("Carving", "Toggle layer %s" % layername, shortcut)
+
+            mgr.register(shortcut, ActionInfo( "Carving", 
+                                               "Toggle layer %s" % layername, 
+                                               "Toggle layer %s" % layername, 
+                                               toggle,
+                                               self.viewerControlWidget(),
+                                               None ) )
 
         #TODO
-        addLayerToggleShortcut("done", "d")
-        addLayerToggleShortcut("segmentation", "s")
-        addLayerToggleShortcut("raw", "r")
-        addLayerToggleShortcut("pmap", "v")
-        addLayerToggleShortcut("hints","t")
+        addLayerToggleShortcut("Completed segments (unicolor)", "d")
+        addLayerToggleShortcut("Segmentation", "s")
+        addLayerToggleShortcut("Input Data", "r")
 
         '''
         def updateLayerTimings():

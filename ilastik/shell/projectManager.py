@@ -27,7 +27,7 @@ import traceback
 import ilastik
 from ilastik import isVersionCompatible
 from ilastik.workflow import getWorkflowFromName
-from lazyflow.utility.timer import Timer
+from lazyflow.utility.timer import Timer, timeLogged
 
 class ProjectManager(object):
     """
@@ -362,6 +362,7 @@ class ProjectManager(object):
         else:
             return []
 
+    @timeLogged(logger, logging.DEBUG)
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
