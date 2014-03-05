@@ -162,6 +162,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "ilastik.widgets":                                          { "level":"INFO" },
             "workflows":                                                { "level":"INFO" },
             "volumina":                                                 { "level":"INFO" },
+            "volumina.pixelpipeline":                                   { "level":"INFO" },
             "volumina.imageScene2D":                                    { "level":"INFO" },
             # Python doesn't provide a trace log level, so we use a workaround.
             # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
