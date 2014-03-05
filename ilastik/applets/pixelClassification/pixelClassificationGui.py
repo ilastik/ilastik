@@ -27,7 +27,7 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager2
 
 # ilastik
 from ilastik.utility import bind
@@ -142,26 +142,30 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.viewerControls.setupConnections(model)
        
     def _initShortcuts(self):
-        mgr = ShortcutManager()
+        mgr = ShortcutManager2()
+        ActionInfo = ShortcutManager2.ActionInfo
         shortcutGroupName = "Predictions"
 
-        togglePredictions = QShortcut( QKeySequence("p"), self, member=self._viewerControlUi.checkShowPredictions.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Prediction Layer Visibility",
-                      togglePredictions,
-                      self._viewerControlUi.checkShowPredictions )
+        mgr.register( "p", ActionInfo( shortcutGroupName,
+                                       "Toggle Prediction",
+                                       "Toggle Prediction Layer Visibility",
+                                       self._viewerControlUi.checkShowPredictions.click,
+                                       self._viewerControlUi.checkShowPredictions,
+                                       self._viewerControlUi.checkShowPredictions ) )
 
-        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self._viewerControlUi.checkShowSegmentation.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Segmentaton Layer Visibility",
-                      toggleSegmentation,
-                      self._viewerControlUi.checkShowSegmentation )
+        mgr.register( "s", ActionInfo( shortcutGroupName,
+                                       "Toggle Segmentaton",
+                                       "Toggle Segmentaton Layer Visibility",
+                                       self._viewerControlUi.checkShowSegmentation.click,
+                                       self._viewerControlUi.checkShowSegmentation,
+                                       self._viewerControlUi.checkShowSegmentation ) )
 
-        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.liveUpdateButton.toggle )
-        mgr.register( shortcutGroupName,
-                      "Toggle Live Prediction Mode",
-                      toggleLivePredict,
-                      self.labelingDrawerUi.liveUpdateButton )
+        mgr.register( "l", ActionInfo( shortcutGroupName,
+                                       "Live Prediction",
+                                       "Toggle Live Prediction Mode",
+                                       self.labelingDrawerUi.liveUpdateButton.toggle,
+                                       self.labelingDrawerUi.liveUpdateButton,
+                                       self.labelingDrawerUi.liveUpdateButton ) )
 
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
@@ -186,6 +190,8 @@ class PixelClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers()
 
+        ActionInfo = ShortcutManager2.ActionInfo
+
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
@@ -197,11 +203,12 @@ class PixelClassificationGui(LabelingGui):
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
-            uncertaintyLayer.shortcutRegistration = (
-                "Prediction Layers",
-                "Show/Hide Uncertainty",
-                QShortcut( QKeySequence("u"), self.viewerControlWidget(), uncertaintyLayer.toggleVisible ),
-                uncertaintyLayer )
+            uncertaintyLayer.shortcutRegistration = ( "u", ActionInfo( "Prediction Layers",
+                                                                       "Uncertainty",
+                                                                       "Show/Hide Uncertainty",
+                                                                       uncertaintyLayer.toggleVisible,
+                                                                       uncertaintyLayer,
+                                                                       uncertaintyLayer ) )
             layers.append(uncertaintyLayer)
 
         labels = self.labelListData
@@ -305,11 +312,12 @@ class PixelClassificationGui(LabelingGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            inputLayer.shortcutRegistration = (
-                "Prediction Layers",
-                "Bring Input To Top/Bottom",
-                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
-                inputLayer )
+            inputLayer.shortcutRegistration = ( "i", ActionInfo( "Prediction Layers",
+                                                                 "Bring Input To Top/Bottom",
+                                                                 "Bring Input To Top/Bottom",
+                                                                 toggleTopToBottom,
+                                                                 self.viewerControlWidget(),
+                                                                 inputLayer ) )
             layers.append(inputLayer)
         
         self.handleLabelSelectionChange()

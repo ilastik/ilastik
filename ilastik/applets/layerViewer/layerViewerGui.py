@@ -35,7 +35,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 #volumina
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, LayerStackModel
 from volumina.volumeEditor import VolumeEditor
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager2
 from volumina.interpreter import ClickReportingInterpreter
 
 #ilastik
@@ -443,9 +443,9 @@ class LayerViewerGui(QWidget):
             if needDelete:
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):
-                    obsoleteShortcut = layer.shortcutRegistration[2]
-                    obsoleteShortcut.setEnabled(False)
-                    ShortcutManager().unregister( obsoleteShortcut )
+                    action_info = layer.shortcutRegistration[1]
+                    action_info.setEnabled(False)
+                    ShortcutManager2().unregister( action_info )
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
 
@@ -459,14 +459,11 @@ class LayerViewerGui(QWidget):
 
                 # If this layer has an associated shortcut, register it with the shortcut manager
                 if hasattr(layer, 'shortcutRegistration'):
-                    ShortcutManager().register( *layer.shortcutRegistration )
+                    ShortcutManager2().register( *layer.shortcutRegistration )
             else:
                 # Clean up the layer instance that the client just gave us.
                 # We don't want to use it.
-                if hasattr(layer, 'shortcutRegistration'):
-                    shortcut = layer.shortcutRegistration[2]
-                    shortcut.setEnabled(False)
-                    layer.clean_up()
+                layer.clean_up()
 
                 # Move existing layer to the correct position
                 stackIndex = self.layerstack.findMatchingIndex(lambda l: l.name == layer.name)

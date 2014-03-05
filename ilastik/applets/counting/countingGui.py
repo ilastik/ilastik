@@ -30,7 +30,7 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 # HCI
 from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer, LazyflowSinkSource
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager2
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
@@ -574,44 +574,49 @@ class CountingGui(LabelingGui):
 
 
     def _initShortcuts(self):
-        mgr = ShortcutManager()
+        mgr = ShortcutManager2()
+        ActionInfo = ShortcutManager2.ActionInfo
         shortcutGroupName = "Predictions"
+        
+        mgr.register( "p", ActionInfo( shortcutGroupName,
+                                       "Toggle Prediction",
+                                       "Toggle Prediction Layer Visibility",
+                                       self._viewerControlUi.checkShowPredictions.click,
+                                       self._viewerControlUi.checkShowPredictions,
+                                       self._viewerControlUi.checkShowPredictions ) )
 
-        togglePredictions = QShortcut( QKeySequence("p"), self, member=self._viewerControlUi.checkShowPredictions.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Prediction Layer Visibility",
-                      togglePredictions,
-                      self._viewerControlUi.checkShowPredictions )
+        mgr.register( "s", ActionInfo( shortcutGroupName,
+                                       "Toggle Segmentation",
+                                       "Toggle Segmentaton Layer Visibility",
+                                       self._viewerControlUi.checkShowSegmentation.click,
+                                       self._viewerControlUi.checkShowSegmentation,
+                                       self._viewerControlUi.checkShowSegmentation ) )
 
-        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self._viewerControlUi.checkShowSegmentation.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Segmentaton Layer Visibility",
-                      toggleSegmentation,
-                      self._viewerControlUi.checkShowSegmentation )
-
-        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.liveUpdateButton.toggle )
-        mgr.register( shortcutGroupName,
-                      "Toggle Live Prediction Mode",
-                      toggleLivePredict,
-                      self.labelingDrawerUi.liveUpdateButton )
-
+        mgr.register( "l", ActionInfo( shortcutGroupName,
+                                       "Toggle Live Prediction Mode",
+                                       "Toggle Live",
+                                       self.labelingDrawerUi.liveUpdateButton.toggle,
+                                       self.labelingDrawerUi.liveUpdateButton,
+                                       self.labelingDrawerUi.liveUpdateButton ) )
 
         shortcutGroupName = "Counting"
 
-        deleteBox = QShortcut( QKeySequence("Del"), self, member=self.boxController.deleteSelectedItems)
-        mgr.register( shortcutGroupName,
-                      "Delete a Box",
-                      deleteBox,
-                      None )
+        mgr.register( "Del", ActionInfo( shortcutGroupName,
+                                         "Delete a Box",
+                                         "Delete a Box",
+                                         self.boxController.deleteSelectedItems,
+                                         self,
+                                         None ) )
 
         try:
             from sitecustomize import Shortcuts
-            debugging = QShortcut( QKeySequence("F5"), self, member=self._debug)
-            mgr.register( shortcutGroupName,
-                          "Activate Debug Mode",
-                          debugging,
-                          None )
-        except Exception,e:
+            mgr.register( "F5", ActionInfo( shortcutGroupName,
+                                            "Activate Debug Mode",
+                                            "Activate Debug Mode",
+                                            self._debug,
+                                            self,
+                                            None ) )
+        except ImportError as e:
             pass
 
 

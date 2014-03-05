@@ -46,7 +46,7 @@ from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoN
 from lazyflow.utility import timeLogged
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager2, decode_to_qstring, encode_from_qstring
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -321,18 +321,23 @@ class IlastikShell( QMainWindow ):
         self._initShortcuts()
 
     def _initShortcuts(self):
-        mgr = ShortcutManager()
+        mgr = ShortcutManager2()
+        ActionInfo = ShortcutManager2.ActionInfo
         shortcutGroupName = "Ilastik Shell"
 
-        nextImage = QShortcut( QKeySequence("PgDown"), self, member=self._nextImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to next image",
-                      nextImage)
+        mgr.register( "PgDown", ActionInfo( shortcutGroupName,
+                                            "shell next image",
+                                            "Switch to next image",
+                                            self._nextImage,
+                                            self,
+                                            self.imageSelectionCombo ) )
 
-        prevImage = QShortcut( QKeySequence("PgUp"), self, member=self._prevImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to previous image",
-                      prevImage)
+        mgr.register( "PgUp", ActionInfo( shortcutGroupName,
+                                          "shell previous image",
+                                          "Switch to previous image",
+                                          self._prevImage,
+                                          self,
+                                          None ) )
 
     def _nextImage(self):
         newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
