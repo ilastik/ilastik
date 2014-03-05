@@ -530,6 +530,8 @@ class IlastikShell( QMainWindow ):
             stopAction.setEnabled( yappi.is_running() )
             for action in sortedExportSubmenu.actions():
                 action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+            for action in sortedThreadExportSubmenu.actions():
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
 
         def _startProfiling():
             logger.info("Activating new profiler")
@@ -538,8 +540,9 @@ class IlastikShell( QMainWindow ):
             _updateMenuStatus()
 
         def _stopProfiling():
-            logger.info("Dectivating new profiler")
+            logger.info("Dectivating profiler...")
             yappi.stop()
+            logger.info("...profiler deactivated")
             _updateMenuStatus()
 
         def _exportSortedStats(sortby):
@@ -572,6 +575,32 @@ class IlastikShell( QMainWindow ):
                     ps.print_stats()
                 logger.info("Printed stats to file: {}".format(stats_path))
 
+        def _exportSortedThreadStats(sortby):
+            assert not yappi.is_running()
+            
+            filename = 'ilastik_threadstats_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                stats_path = encode_from_qstring( statsPath )
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_thread_stats()
+                stats.sort(sortby)
+                with open(stats_path, 'w') as f:
+                    stats.print_all(f)
+                logger.info("Printed thread stats to file: {}".format(stats_path))
+
         profilingSubmenu = QMenu("Profiling")
         if not has_yappi:
             self._profilingSubmenu = profilingSubmenu
@@ -589,7 +618,12 @@ class IlastikShell( QMainWindow ):
         for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
             action = sortedExportSubmenu.addAction(sortby)
             action.triggered.connect( partial( _exportSortedStats, sortby ) )
-        
+
+        sortedThreadExportSubmenu = profilingSubmenu.addMenu("Save Sorted Thread Stats...")
+        for sortby in ['name', 'id', 'totaltime', 'schedcount']:
+            action = sortedThreadExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedThreadStats, sortby ) )
+
         _updateMenuStatus()
 
         # Must retain this reference, otherwise the menu gets automatically removed
