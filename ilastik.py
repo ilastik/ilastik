@@ -62,6 +62,15 @@ else:
 import logging
 logger = logging.getLogger(__name__)
 
+# Monkey-patch thread starts if this special logger is active
+thread_start_logger = logging.getLogger("thread_start")
+if thread_start_logger.isEnabledFor(logging.DEBUG):
+    import threading
+    ordinary_start = threading.Thread.start
+    def logged_start(self):
+        ordinary_start(self)
+        thread_start_logger.debug( "Started thread: id={:x}, name={}".format( self.ident, self.name ) )
+    threading.Thread.start = logged_start
 
 if parsed_args.start_recording or parsed_args.playback_script:
     # Disable the opengl widgets during recording and playback.

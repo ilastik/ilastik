@@ -129,6 +129,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
+            "thread_start":                                             { "level":"INFO" },
             "lazyflow":                                                 { "level":"INFO" },
             "lazyflow.graph":                                           { "level":"INFO" },
             "lazyflow.graph.Slot":                                      { "level":"INFO" },
