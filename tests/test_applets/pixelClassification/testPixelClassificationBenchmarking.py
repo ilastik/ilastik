@@ -24,6 +24,8 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from lazyflow.utility.timer import Timer
 
+import nose
+
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler( logging.StreamHandler(sys.stdout) )
@@ -47,6 +49,10 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
     @classmethod
     def setupClass(cls):
+        # This test is useful for performance evaluation,
+        #  but it takes too long to be useful as part of the normal test suite.
+        raise nose.SkipTest
+        
         # Base class first
         super(TestPixelClassificationGuiBenchmarking, cls).setupClass()
         
