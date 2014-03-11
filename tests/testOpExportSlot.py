@@ -68,6 +68,8 @@ class TestOpExportSlot(object):
         expected_data = data.view(numpy.ndarray)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        
+        opRead.cleanUp()
 
     def testBasic_Npy(self):
         data = numpy.random.random( (100,100) ).astype( numpy.float32 )
@@ -90,6 +92,8 @@ class TestOpExportSlot(object):
         expected_data = data.view(numpy.ndarray)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        
+        opRead.cleanUp()
 
     def testBasic_Dvid(self):
         if _skip_dvid:
@@ -125,6 +129,7 @@ class TestOpExportSlot(object):
             read_data = opRead.Output[:].wait()
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
+            opRead.cleanUp()
             shutdown_event.set()
             server_proc.join()
 
@@ -151,6 +156,7 @@ class TestOpExportSlot(object):
         
         # Note: vigra inserts a channel axis, so read_data is xyc
         assert (read_data[...,0] == expected_data).all(), "Read data didn't match exported data!"
+        opRead.cleanUp()
 
     def testBasic_2d_Sequence(self):
         data = 255 * numpy.random.random( (10, 50,100, 3) )
@@ -188,6 +194,10 @@ class TestOpExportSlot(object):
         assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
         assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
 
+        # Cleanup
+        opReorderAxes.cleanUp()
+        opReader.cleanUp()
+
     def testBasic_MultipageTiffSequence(self):
         data = 255 * numpy.random.random( (5, 10, 50,100, 3) )
         data = data.astype( numpy.uint8 )
@@ -223,6 +233,10 @@ class TestOpExportSlot(object):
         
         assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
         assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
+
+        # Cleanup
+        opReorderAxes.cleanUp()
+        opReader.cleanUp()
 
 if __name__ == "__main__":
     import sys
