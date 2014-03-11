@@ -22,13 +22,16 @@ import h5py
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 
+import tempfile
+
 class TestOpDataSelection_Basic():
     
     @classmethod
     def setupClass(cls):
-        cls.testNpyFileName = 'testImage1.npy'
-        cls.testPngFileName = 'testImage2.png'
-        cls.projectFileName = 'testProject.ilp'
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.testNpyFileName = os.path.join(cls.tmpdir, 'testImage1.npy')
+        cls.testPngFileName = os.path.join(cls.tmpdir, 'testImage2.png')
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
 
         # Create a couple test images of different types
         cls.npyData = numpy.zeros((10, 11))
@@ -55,9 +58,11 @@ class TestOpDataSelection_Basic():
     @classmethod
     def teardownClass(cls):
         cls.projectFile.close()
-        os.remove(cls.testNpyFileName)
-        os.remove(cls.testPngFileName)
-        os.remove(cls.projectFileName)
+        for path in [ cls.testNpyFileName, cls.testPngFileName, cls.projectFileName ]:
+            try:
+                os.remove(path)
+            except:
+                pass
     
     def testBasic(self):
         graph = lazyflow.graph.Graph()
