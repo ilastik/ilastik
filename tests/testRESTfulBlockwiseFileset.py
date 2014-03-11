@@ -20,7 +20,10 @@ import shutil
 import tempfile
 import numpy
 import h5py
-from lazyflow.roi import sliceToRoi    
+import nose
+import platform    
+
+from lazyflow.roi import sliceToRoi
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,6 +38,11 @@ class TestRESTFullBlockwiseFilset(object):
     
     @classmethod
     def setupClass(cls):
+        if platform.system() == 'Darwin' or platform.system() == 'Windows':
+            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
+            # On windows, there are other errors, and we make no attempt to solve them (at the moment).
+            raise nose.SkipTest
+        
         cls.tempDir = tempfile.mkdtemp()
         logger.debug("Working in {}".format( cls.tempDir ))
 

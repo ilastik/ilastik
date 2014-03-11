@@ -30,6 +30,7 @@ from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpSt
 
 try:
     import dvidclient
+    from mockserver.h5mockserver import H5MockServerDataFile, H5MockServer
     _skip_dvid = False
 except ImportError:
     _skip_dvid = True
@@ -95,7 +96,6 @@ class TestOpExportSlot(object):
             raise nose.SkipTest
         
         # Spin up a mock dvid server to test with.
-        from mockserver.h5mockserver import H5MockServerDataFile, H5MockServer
         dvid_dataset, data_uuid, data_name = "datasetA", "abcde", "indices_data"
         mockserver_data_file = self._tmpdir + '/mockserver_data.h5'
         with H5MockServerDataFile( mockserver_data_file ) as test_h5file:
