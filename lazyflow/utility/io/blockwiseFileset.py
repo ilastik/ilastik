@@ -18,6 +18,7 @@ import os
 import copy
 import shutil
 import threading
+import platform
 import numpy
 import h5py
 import logging
@@ -168,6 +169,11 @@ class BlockwiseFileset(object):
         :param mode: Set to ``'r'`` if the fileset should be read-only.
         :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
         """
+        
+        # None of this code is tested on Windows.
+        # It might work, but you'll need to improve the unit tests to know for sure.
+        assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
+        
         assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode
         
