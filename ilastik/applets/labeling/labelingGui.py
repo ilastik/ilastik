@@ -366,7 +366,8 @@ class LabelingGui(LayerViewerGui):
             labelsAllowed = labelsAllowedSlot.value
 
             if hasattr(self._labelControlUi, "AddLabelButton"):
-                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+                if not labelsAllowed or self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
+                    self._labelControlUi.AddLabelButton.setEnabled(False)
                 if labelsAllowed:
                     self._labelControlUi.AddLabelButton.setText("Add Label")
                 else:
