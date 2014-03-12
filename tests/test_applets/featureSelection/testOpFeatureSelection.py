@@ -73,6 +73,8 @@ class TestOpFeatureSelection(object):
         self.opReader = opReader
         
     def tearDown(self):
+        self.opFeatures.cleanUp()
+        self.opReader.cleanUp()
         try:
             os.remove(self.filePath)
         except:

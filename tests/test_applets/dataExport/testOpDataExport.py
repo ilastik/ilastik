@@ -79,6 +79,8 @@ class TestOpDataExport(object):
         expected_data = expected_data.astype(numpy.uint8)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        
+        opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys
