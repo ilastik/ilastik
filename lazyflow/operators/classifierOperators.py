@@ -176,6 +176,12 @@ class OpTrainRandomForestFromFeatures(Operator):
         maxLabel = self.MaxLabel.value
         labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
+        if featMatrix.shape[0] < maxLabel:
+            # If there isn't enough data for the random forest to train with, return None
+            result[:] = None
+            self.trainingCompleteSignal()
+            return
+
         try:
             self.logger.debug("Learning %d random forests with %d trees each with vigra..." % (self._forest_count, self._tree_count))
             t = time.time()
@@ -196,8 +202,19 @@ class OpTrainRandomForestFromFeatures(Operator):
                 (self._forest_count, self._tree_count, time.time()-t))
         except:
             self.logger.error( "ERROR: could not learn classifier" )
-            self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
-            self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
+            
+            if numpy.prod(featMatrix.shape) > 0:
+                m = featMatrix.max()
+            else:
+                m = 'N/A'
+            self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, m, featMatrix.dtype) )
+
+            if numpy.prod(labelsMatrix.shape) > 0:
+                m = labelsMatrix.max()
+            else:
+                m = 'N/A'
+            self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, m, labelsMatrix.dtype ) )
+
             raise
 
         self._forests = result
