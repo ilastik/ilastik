@@ -444,7 +444,6 @@ class LayerViewerGui(QWidget):
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):
                     action_info = layer.shortcutRegistration[1]
-                    action_info.setEnabled(False)
                     ShortcutManager().unregister( action_info )
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
