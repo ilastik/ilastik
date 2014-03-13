@@ -72,6 +72,9 @@ class TestOpDataSelectionGroup(object):
 
         assert op.Image.ready()
         assert (op.Image[:].wait() == expectedDataA).all()
+        
+        # Ensure that files opened by the inner operators are closed before we exit.
+        op.DatasetGroup.resize(0)
 
 
 if __name__ == "__main__":

@@ -129,6 +129,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
+            "thread_start":                                             { "level":"INFO" },
             "lazyflow":                                                 { "level":"INFO" },
             "lazyflow.graph":                                           { "level":"INFO" },
             "lazyflow.graph.Slot":                                      { "level":"INFO" },
@@ -143,9 +144,12 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
             "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
             "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
+            "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
+            "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
             "ilastik":                                                  { "level":"INFO" },
             "ilastik.clusterOps":                                       { "level":"INFO" },
             "ilastik.applets":                                          { "level":"INFO" },
+            "ilastik.applets.base.appletSerializer":                    { "level":"INFO" },
             "ilastik.applets.dataSelection":                            { "level":"INFO" },
             "ilastik.applets.featureSelection":                         { "level":"INFO" },
             "ilastik.applets.pixelClassification":                      { "level":"INFO" },
@@ -154,10 +158,12 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
             "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
             "ilastik.shell":                                            { "level":"INFO" },
+            "ilastik.shell.projectManager":                             { "level":"INFO" },
             "ilastik.workflows":                                        { "level":"INFO" },
             "ilastik.widgets":                                          { "level":"INFO" },
             "workflows":                                                { "level":"INFO" },
             "volumina":                                                 { "level":"INFO" },
+            "volumina.pixelpipeline":                                   { "level":"INFO" },
             "volumina.imageScene2D":                                    { "level":"INFO" },
             # Python doesn't provide a trace log level, so we use a workaround.
             # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages

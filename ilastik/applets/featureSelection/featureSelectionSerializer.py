@@ -20,6 +20,7 @@ from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent
 
 from ilastik.utility import bind
+from lazyflow.utility.timer import timeLogged
 
 import logging
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ class FeatureSelectionSerializer(AppletSerializer):
             
         self._dirty = False
 
+    @timeLogged(logger, logging.DEBUG)
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         try:
             scales = topGroup['Scales'].value

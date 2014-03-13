@@ -366,15 +366,25 @@ class OpThresholdTwoLevels(Operator):
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
         self.opThreshold2.HighThreshold.connect(self.HighThreshold)
 
+        # HACK: For backwards compatibility with old projects, 
+        #       the cache must by in xyzct order,
+        #       because the cache is loaded directly from the serializer
+        self._op5CacheInput = OpReorderAxes(parent=self)
+        self._op5CacheInput.AxisOrder.setValue( "xyzct" )
+
         #cache our own output, don't propagate from internal operator
         self._opCache = OpCompressedCache(parent=self)
         self._opCache.name = "OpThresholdTwoLevels._opCache"
         self._opCache.InputHdf5.connect(self.InputHdf5)
+        self._opCache.Input.connect( self._op5CacheInput.Output )
+
+        self._op5CacheOutput = OpReorderAxes(parent=self)
+        self._op5CacheOutput.Input.connect( self._opCache.Output )
 
         self._opReorder2 = OpReorderAxes(parent=self)
         self.Output.connect(self._opReorder2.Output)
 
-        self.CachedOutput.connect(self._opCache.Output)
+        self.CachedOutput.connect(self._op5CacheOutput.Output)
 
         # Serialization outputs
         self.CleanBlocks.connect(self._opCache.CleanBlocks)
@@ -406,7 +416,7 @@ class OpThresholdTwoLevels(Operator):
                          self.FilteredSmallLabels]:
                 slot.disconnect()
                 slot.meta.NOTREADY = True
-            self._opCache.Input.disconnect()
+            self._op5CacheInput.Input.disconnect()
             self._opReorder2.Input.disconnect()
 
             # connect the operators for SingleThreshold
@@ -414,8 +424,12 @@ class OpThresholdTwoLevels(Operator):
             # Blockshape is the entire block, except only 1 time slice
             tagged_shape = self.opThreshold1.Output.meta.getTaggedShape()
             tagged_shape['t'] = 1
-            self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
-            self._opCache.Input.connect(self.opThreshold1.Output)
+            
+            # Blockshape must correspond to cache input order
+            blockshape = map( lambda k: tagged_shape[k], 'xyzct' )
+            self._opCache.BlockShape.setValue(tuple(blockshape))
+            self._op5CacheInput.Input.connect(self.opThreshold1.Output)
+            self._op5CacheOutput.AxisOrder.setValue( self._op5CacheInput.Input.meta.getAxisKeys() )
 
             self.BeforeSizeFilter.connect(self.opThreshold1.BeforeSizeFilter)
             self.BeforeSizeFilter.meta.NOTREADY = None
@@ -429,7 +443,7 @@ class OpThresholdTwoLevels(Operator):
             # start from back
             self.BeforeSizeFilter.disconnect()
             self.BeforeSizeFilter.meta.NOTREADY = True
-            self._opCache.Input.disconnect()
+            self._op5CacheInput.Input.disconnect()
             self._opReorder2.Input.disconnect()
 
             # connect the operators for TwoLevelThreshold
@@ -437,8 +451,11 @@ class OpThresholdTwoLevels(Operator):
             # Blockshape is the entire block, except only 1 time slice
             tagged_shape = self.opThreshold2.Output.meta.getTaggedShape()
             tagged_shape['t'] = 1
-            self._opCache.BlockShape.setValue(tuple(tagged_shape.values()))
-            self._opCache.Input.connect( self.opThreshold2.Output )
+
+            # Blockshape must correspond to cache input order
+            blockshape = map( lambda k: tagged_shape[k], 'xyzct' )
+            self._opCache.BlockShape.setValue(tuple(blockshape))
+            self._op5CacheInput.Input.connect( self.opThreshold2.Output )
 
             self.BigRegions.connect(self.opThreshold2.BigRegions)
             self.SmallRegions.connect(self.opThreshold2.SmallRegions)
@@ -717,6 +734,7 @@ class _OpFilterLabels5d(Operator):
 
         self._op = OpFilterLabels(parent=self)
         self._op.Input.connect(self._reorder1.Output)
+        #self._op.Input.connect(self.Input)
         self._op.MinLabelSize.connect(self.MinLabelSize)
         self._op.MaxLabelSize.connect(self.MaxLabelSize)
         self._op.BinaryOut.connect(self.BinaryOut)
@@ -724,6 +742,7 @@ class _OpFilterLabels5d(Operator):
         self._reorder2 = OpReorderAxes(parent=self)
         self._reorder2.Input.connect(self._ReorderedOutput)
         self.Output.connect(self._reorder2.Output)
+        #self.Output.connect(self._)
 
     def setupOutputs(self):
         assert len(self._reorder1.Output.meta.shape) == 5

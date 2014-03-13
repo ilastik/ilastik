@@ -15,6 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 # Standard
+import sys
 import re
 import traceback
 import os
@@ -22,11 +23,11 @@ import time
 from functools import partial
 import weakref
 import logging
+import platform
+import threading
 
 # SciPy
 import numpy
-import platform
-import threading
 
 # PyQt
 from PyQt4 import uic
@@ -42,6 +43,7 @@ from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.utility import timeLogged
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
@@ -151,8 +153,6 @@ class ProgressDisplayManager(QObject):
 
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
-
-        # Add all applets from the workflow
 
     def initializeForWorkflow(self, workflow):
         """When a workflow is available, call this method to connect the workflows' progress signals
@@ -322,17 +322,22 @@ class IlastikShell( QMainWindow ):
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Ilastik Shell"
 
-        nextImage = QShortcut( QKeySequence("PgDown"), self, member=self._nextImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to next image",
-                      nextImage)
+        mgr.register( "PgDown", ActionInfo( shortcutGroupName,
+                                            "shell next image",
+                                            "Switch to next image",
+                                            self._nextImage,
+                                            self,
+                                            self.imageSelectionCombo ) )
 
-        prevImage = QShortcut( QKeySequence("PgUp"), self, member=self._prevImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to previous image",
-                      prevImage)
+        mgr.register( "PgUp", ActionInfo( shortcutGroupName,
+                                          "shell previous image",
+                                          "Switch to previous image",
+                                          self._prevImage,
+                                          self,
+                                          None ) )
 
     def _nextImage(self):
         newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
@@ -515,7 +520,120 @@ class IlastikShell( QMainWindow ):
             exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
+        menu.addMenu( self._createProfilingSubmenu() )
         return menu
+
+    def _createProfilingSubmenu(self):
+        try:
+            import yappi
+            has_yappi = True
+        except ImportError:
+            has_yappi = False
+        
+        def _updateMenuStatus():
+            startAction.setEnabled( not yappi.is_running() )
+            stopAction.setEnabled( yappi.is_running() )
+            for action in sortedExportSubmenu.actions():
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+            for action in sortedThreadExportSubmenu.actions():
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+
+        def _startProfiling():
+            logger.info("Activating new profiler")
+            yappi.clear_stats()
+            yappi.start()
+            _updateMenuStatus()
+
+        def _stopProfiling():
+            logger.info("Dectivating profiler...")
+            yappi.stop()
+            logger.info("...profiler deactivated")
+            _updateMenuStatus()
+
+        def _exportSortedStats(sortby):
+            assert not yappi.is_running()
+            
+            filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                stats_path = encode_from_qstring( statsPath )
+                pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_func_stats()
+                stats.save(pstats_path, type='pstat')
+                with open(stats_path, 'w') as f:
+                    import pstats
+                    ps = pstats.Stats(pstats_path, stream=f)
+                    ps.sort_stats(sortby)
+                    ps.print_stats()
+                logger.info("Printed stats to file: {}".format(stats_path))
+
+        def _exportSortedThreadStats(sortby):
+            assert not yappi.is_running()
+            
+            filename = 'ilastik_threadstats_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                stats_path = encode_from_qstring( statsPath )
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_thread_stats()
+                stats.sort(sortby)
+                with open(stats_path, 'w') as f:
+                    stats.print_all(f)
+                logger.info("Printed thread stats to file: {}".format(stats_path))
+
+        profilingSubmenu = QMenu("Profiling")
+        if not has_yappi:
+            self._profilingSubmenu = profilingSubmenu
+            errorMsgAction = self._profilingSubmenu.addAction("<yappi module not installed>")
+            errorMsgAction.setEnabled(False)
+            return self._profilingSubmenu
+        
+        startAction = profilingSubmenu.addAction("Start (reset)")
+        startAction.triggered.connect( _startProfiling )
+
+        stopAction = profilingSubmenu.addAction("Stop")
+        stopAction.triggered.connect( _stopProfiling )
+        
+        sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
+        for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
+            action = sortedExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedStats, sortby ) )
+
+        sortedThreadExportSubmenu = profilingSubmenu.addMenu("Save Sorted Thread Stats...")
+        for sortby in ['name', 'id', 'totaltime', 'schedcount']:
+            action = sortedThreadExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedThreadStats, sortby ) )
+
+        _updateMenuStatus()
+
+        # Must retain this reference, otherwise the menu gets automatically removed
+        self._profilingSubmenu = profilingSubmenu
+        return profilingSubmenu
 
     def showMemUsageDialog(self):
         if self._memDlg is None:
@@ -653,6 +771,7 @@ class IlastikShell( QMainWindow ):
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
 
+    @timeLogged( logger, logging.DEBUG )
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
         and self.populatingImageSelectionCombo == False:
@@ -1264,6 +1383,11 @@ class IlastikShell( QMainWindow ):
         Reimplemented from QWidget.  Ignore the close event if the user has unsaved data and changes his mind.
         """
         if self.confirmQuit():
+            # Since we're shutting down the app, we don't want to process any more gui events.
+            # (We may encounter segfaults at this point if we try.)
+            ThreadRouter.app_is_shutting_down = True
+
+            # Quit.
             self.closeAndQuit()
         else:
             closeEvent.ignore()

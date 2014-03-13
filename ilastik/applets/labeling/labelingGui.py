@@ -257,39 +257,37 @@ class LabelingGui(LayerViewerGui):
 
     def __initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Labeling"
 
         if hasattr(self.labelingDrawerUi, "AddLabelButton"):
-            addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
-            mgr.register( shortcutGroupName,
-                          "Add New Label Class",
-                          addLabel,
-                          self.labelingDrawerUi.AddLabelButton )
+            mgr.register("a", ActionInfo( shortcutGroupName,
+                                          "New Label",
+                                          "Add New Label Class",
+                                          self.labelingDrawerUi.AddLabelButton.click,
+                                          self.labelingDrawerUi.AddLabelButton,
+                                          self.labelingDrawerUi.AddLabelButton ) )
 
-        navMode = QShortcut( QKeySequence("n"), self.labelingDrawerUi.arrowToolButton, member=self.labelingDrawerUi.arrowToolButton.click )
-        mgr.register( shortcutGroupName,
-                      "Navigation Cursor",
-                      navMode,
-                      self.labelingDrawerUi.arrowToolButton )
+        mgr.register( "n", ActionInfo( shortcutGroupName,
+                                       "Navigation Cursor",
+                                       "Navigation Cursor",
+                                       self.labelingDrawerUi.arrowToolButton.click,
+                                       self.labelingDrawerUi.arrowToolButton,
+                                       self.labelingDrawerUi.arrowToolButton ) )
 
-        brushMode = QShortcut( QKeySequence("b"), self.labelingDrawerUi.paintToolButton, member=self.labelingDrawerUi.paintToolButton.click )
-        mgr.register( shortcutGroupName,
-                      "Brush Cursor",
-                      brushMode,
-                      self.labelingDrawerUi.paintToolButton )
+        mgr.register( "b", ActionInfo( shortcutGroupName,
+                                       "Brush Cursor",
+                                       "Brush Cursor",
+                                       self.labelingDrawerUi.paintToolButton.click,
+                                       self.labelingDrawerUi.paintToolButton,
+                                       self.labelingDrawerUi.paintToolButton ) )
 
-        eraserMode = QShortcut( QKeySequence("e"), self.labelingDrawerUi.eraserToolButton, member=self.labelingDrawerUi.eraserToolButton.click )
-        mgr.register( shortcutGroupName,
-                      "Eraser Cursor",
-                      eraserMode,
-                      self.labelingDrawerUi.eraserToolButton )
-        '''
-        changeBrushSize = QShortcut( QKeySequence("c"), self, member=self.labelingDrawerUi.brushSizeComboBox.showPopup )
-        mgr.register( shortcutGroupName,
-                      "Change Brush Size",
-                      changeBrushSize,
-                      self.labelingDrawerUi.brushSizeComboBox )
-        '''
+        mgr.register( "e", ActionInfo( shortcutGroupName,
+                                       "Eraser Cursor",
+                                       "Eraser Cursor",
+                                       self.labelingDrawerUi.eraserToolButton.click,
+                                       self.labelingDrawerUi.eraserToolButton,
+                                       self.labelingDrawerUi.eraserToolButton ) )
 
         self._labelShortcuts = []
 
@@ -297,20 +295,26 @@ class LabelingGui(LayerViewerGui):
         numShortcuts = len(self._labelShortcuts)
         numRows = len(self._labelControlUi.labelListModel)
 
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         # Add any shortcuts we don't have yet.
         for i in range(numShortcuts,numRows):
-            shortcut = QShortcut( QKeySequence(str(i+1)),
-                                  self,
-                                  member=partial(self._labelControlUi.labelListView.selectRow, i) )
-            self._labelShortcuts.append(shortcut)
             toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)
-            ShortcutManager().register("Labeling", "", shortcut, toolTipObject)
+            action_info = ActionInfo( "Labeling", 
+                                      "Select Label {}".format(i+1),
+                                      "Select Label {}".format(i+1),
+                                      partial(self._labelControlUi.labelListView.selectRow, i),
+                                      self._labelControlUi.labelListView,
+                                      toolTipObject )
+            mgr.register( str(i+1), action_info )
+            self._labelShortcuts.append( action_info )
 
         # Make sure that all shortcuts have an appropriate description
         for i in range(numRows):
-            shortcut = self._labelShortcuts[i]
+            action_info = self._labelShortcuts[i]
             description = "Select " + self._labelControlUi.labelListModel[i].name
-            ShortcutManager().setDescription(shortcut, description)
+            new_action_info = mgr.update_description(action_info, description)
+            self._labelShortcuts[i] = new_action_info
 
     def hideEvent(self, event):
         """
