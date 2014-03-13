@@ -148,7 +148,9 @@ class OpSlicedBlockedArrayCache(OpCache):
             if slot == self.Input:
                 self.Output.setDirty( key )        
             elif slot == self.outerBlockShape or slot == self.innerBlockShape:
-                self.Output.setDirty( slice(None) )
+                #self.Output.setDirty( slice(None) )
+                pass # Blockshape changes don't trigger dirty notifications
+                     # It is considered an error to change the blockshape after the initial configuration.
             elif slot == self.fixAtCurrent:
                 self.Output.setDirty( slice(None) )
             else:
