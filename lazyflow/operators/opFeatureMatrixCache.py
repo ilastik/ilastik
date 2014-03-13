@@ -66,7 +66,7 @@ class OpFeatureMatrixCache(Operator):
         # Auto-choose a blockshape
         self._blockshape = determineBlockShape( self.LabelImage.meta.shape,
                                                 OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
-
+        
     def execute(self, slot, subindex, roi, result):
         assert slot == self.LabelAndFeatureMatrix
         self.progressSignal(0.0)
@@ -83,8 +83,7 @@ class OpFeatureMatrixCache(Operator):
             self.progressSignal( percent_complete )
 
         # Update all dirty blocks in the cache
-        logger.debug( "Updating {} dirty blocks ({} are clean)"\
-                      "".format(num_dirty_blocks, len(self._blockwise_feature_matrices)) )
+        logger.debug( "Updating {} dirty blocks".format(num_dirty_blocks) )
         pool = RequestPool()
         for block_start in self._dirty_blocks:
             req = Request( partial(self._update_block, block_start ) )
@@ -99,6 +98,7 @@ class OpFeatureMatrixCache(Operator):
             total_feature_matrix = numpy.ndarray( shape=(0,0), dtype=numpy.float )
 
         self.progressSignal(100.0)
+        logger.debug( "After update, there are {} clean blocks".format( len(self._blockwise_feature_matrices) ) )
         result[0] = total_feature_matrix
 
     def propagateDirty(self, slot, subindex, roi):
@@ -114,6 +114,15 @@ class OpFeatureMatrixCache(Operator):
         # Bookkeeping: Track the dirty blocks
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         block_starts = map( tuple, block_starts )
+        
+        # 
+        # If the features were dirty (not labels), we only really care about
+        #  the blocks that are actually stored already
+        # For big dirty rois (e.g. the entire image), 
+        #  we avoid a lot of unecessary entries in self._dirty_blocks
+        if slot == self.FeatureImage:
+            block_starts = set( block_starts ).intersection( self._blockwise_feature_matrices.keys() )
+
         with self._lock:
             self._dirty_blocks.update( block_starts )
 
@@ -134,9 +143,15 @@ class OpFeatureMatrixCache(Operator):
             # TODO: Shrink the requested roi using the nonzero blocks slot...
             #       ...or just get rid of the nonzero blocks slot...
             labels_and_features_matrix = self._extract_feature_matrix(block_roi)
-            self._blockwise_feature_matrices[block_start] = labels_and_features_matrix
             with self._lock:
-                self._dirty_blocks.remove(block_start)
+                if labels_and_features_matrix.shape[0] > 0:
+                    self._blockwise_feature_matrices[block_start] = labels_and_features_matrix
+                    self._dirty_blocks.remove(block_start)
+                else:
+                    try:
+                        del self._blockwise_feature_matrices[block_start]
+                    except KeyError:
+                        pass
 
     def _extract_feature_matrix(self, label_block_roi):
         num_feature_channels = self.FeatureImage.meta.shape[-1]
