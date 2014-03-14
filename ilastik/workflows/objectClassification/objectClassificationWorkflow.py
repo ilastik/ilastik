@@ -31,13 +31,6 @@ from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
 from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification
 
-try:
-    from ilastik.applets.graphCutSegmentation import GraphCutSegmentationApplet
-except ImportError:
-    have_opengm = False
-else:
-    have_opengm = True
-
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
@@ -186,9 +179,6 @@ class ObjectClassificationWorkflow(Workflow):
         if isinstance(self, ObjectClassificationWorkflowBinary):
             #FIXME
             pass
-        elif isinstance(self, ObjectClassificationWorkflowGraphcut):
-            #FIXME
-            pass
         else:
             opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
             opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
@@ -236,7 +226,7 @@ class ObjectClassificationWorkflow(Workflow):
         
         
         op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
-        if not self.binary and not isinstance(self, ObjectClassificationWorkflowGraphcut):
+        if not self.binary:
             op5Pred = OperatorWrapper(OpReorderAxes, parent=self)
             op5Pred.Input.connect(batchInputsOther)
             opBatchThreshold.RawInput.connect(op5Raw.Output)
@@ -653,51 +643,6 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         thresholding_ready = True  # is that so?
         cumulated_readyness = cumulated_readyness and thresholding_ready
         super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
-
-if have_opengm:
-    class ObjectClassificationWorkflowGraphcut(ObjectClassificationWorkflowPrediction):
-        workflowName = "Object Classification (from prediction image, with graph-cut segmentation)"
-
-        def setupInputs(self):
-            super(ObjectClassificationWorkflowGraphcut, self).setupInputs()
-
-            self.segmentationApplet = GraphCutSegmentationApplet(self, "Graph-Cut",
-                                                                "GraphCutSegmentation")
-            self._applets.append(self.segmentationApplet)
-
-        def connectInputs(self, laneIndex):
-            opGraphCut = self.segmentationApplet.topLevelOperator.getLane(laneIndex)
-            opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-            opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
-
-            rawSlot, binarySlot = super(ObjectClassificationWorkflowGraphcut,
-                                        self).connectInputs(laneIndex)
-
-            opGraphCut.RawInput.connect(rawSlot)
-            opGraphCut.InputImage.connect(opData.ImageGroup[1])
-            # the 'binary' slot is not really binary, but connected components
-            # with possible holes in the numbering
-            opGraphCut.LabelImage.connect(binarySlot)
-            opGraphCut.Channel.connect(opThreshold.Channel)
-
-            op5Binary = OpReorderAxes(parent=self)
-            op5Binary.AxisOrder.setValue("txyzc")
-            op5Binary.Input.connect(opGraphCut.CachedOutput)
-
-            return rawSlot, op5Binary.Output
-
-        def handleAppletStateUpdateRequested(self):
-            """
-            Overridden from Workflow base class
-            Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-            """
-            input_ready = self._inputReady(2)
-            cumulated_readyness = input_ready
-            self._shell.setAppletEnabled(self.segmentationApplet, cumulated_readyness)
-
-            thresholding_ready = True  # is that so?
-            cumulated_readyness = cumulated_readyness and thresholding_ready
-            super(ObjectClassificationWorkflowGraphcut, self).handleAppletStateUpdateRequested()
 
 
 if __name__ == "__main__":

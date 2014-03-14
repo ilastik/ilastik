@@ -1,13 +1,26 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
+
 import unittest
 import numpy as np
 import vigra
 
-try:
-    import opengm
-except ImportError:
-    have_opengm = False
-else:
-    have_opengm = True
+from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
+have_opengm = haveGraphCut()
 
 from numpy.testing.utils import assert_array_equal,\
     assert_array_almost_equal, assert_array_less
@@ -17,7 +30,8 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 if have_opengm:
-    from ilastik.applets.graphCutSegmentation.opObjectsSegment import OpObjectsSegment
+    from ilastik.applets.thresholdTwoLevels.opGraphcutSegment\
+        import OpObjectsSegment
 
 
 @unittest.skipIf(not have_opengm, "OpenGM not available")

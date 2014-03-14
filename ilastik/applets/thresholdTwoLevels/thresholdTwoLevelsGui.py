@@ -30,6 +30,8 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
+from opGraphcutSegment import haveGraphCut
+
 # always available
 import math
 
@@ -61,6 +63,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
         self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
 
+        # disable graph cut applet if not available
+        if not haveGraphCut():
+            self._drawer.tab_3.setVisible(False)
+
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
                                  'z' : self._drawer.sigmaSpinBox_Z }
@@ -72,7 +78,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.highThresholdSpinBox,
             self._drawer.thresholdSpinBox,
             self._drawer.minSizeSpinBox,
-            self._drawer.maxSizeSpinBox
+            self._drawer.maxSizeSpinBox,
+            self._drawer.thresholdSpinBoxGC,
+            self._drawer.lambdaSpinBoxGC
         ]
         
         for widget in self._allWatchedWidgets:
@@ -117,6 +125,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
         self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
+        self._drawer.thresholdSpinBoxGC.setValue( op.SingleThresholdGC.value )
+        self._drawer.lambdaSpinBoxGC.setValue( op.Beta.value )
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
@@ -165,7 +175,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         singleThreshold = self._drawer.thresholdSpinBox.value()
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
-        
+        singleThresholdGC = self._drawer.thresholdSpinBoxGC.value()
+        beta = self._drawer.lambdaSpinBoxGC.value()
+
         if lowThreshold>highThreshold:
             mexBox=QMessageBox()
             mexBox.setText("Low threshold must be lower than high threshold ")
@@ -193,6 +205,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         op.SingleThreshold.setValue( singleThreshold )
         op.LowThreshold.setValue( lowThreshold )
         op.HighThreshold.setValue( highThreshold )
+        op.SingleThresholdGC.setValue(singleThresholdGC)
+        op.Beta.setValue(beta)
         op.MinSize.setValue( minSize )
         op.MaxSize.setValue( maxSize )
         
