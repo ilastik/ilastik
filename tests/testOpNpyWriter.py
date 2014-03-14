@@ -51,6 +51,8 @@ class TestOpNpyWriter(object):
         expected_data = data.view(numpy.ndarray)
         read_data = opRead.Output[:].wait()
         assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        
+        opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

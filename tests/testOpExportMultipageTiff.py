@@ -78,6 +78,10 @@ class TestOpMultipageTiff(object):
         
         assert opReorderAxes.Output.meta.shape == self.testData.shape, "Exported files were of the wrong shape or number."
         assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), "Exported data was not correct"
+        
+        # Cleanup
+        opReorderAxes.cleanUp()
+        opReader.cleanUp()
 
 if __name__ == "__main__":
     # Run this file independently to see debug output.

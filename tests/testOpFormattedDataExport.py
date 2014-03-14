@@ -85,6 +85,8 @@ class TestOpFormattedDataExport(object):
         #  e.g. if the original pixel value was 32.99999999
         difference_from_expected = expected_data - read_data
         assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
+        
+        opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

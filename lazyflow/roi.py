@@ -437,7 +437,7 @@ def determineBlockShape( max_shape, target_size ):
     for (m, i), num_remaining_axes in zip(sorted_max, range(ndims, 0, -1)):
         # Make a block_shape that is isotropic in the remaining dimensions
         remaining_factor = target_size/prod_so_far
-        block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) )
+        block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) + 0.5 )
         block_side = min( block_side, m )
         block_shape.append( block_side )
         prod_so_far *= block_side        

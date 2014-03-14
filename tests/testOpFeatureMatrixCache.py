@@ -46,7 +46,11 @@ class TestOpFeatureMatrixCache(object):
         assert labels_and_features.shape == (4,3)
         assert (labels_and_features[:,0] == 1).sum() == 2
         assert (labels_and_features[:,0] == 2).sum() == 2
-        assert (labels_and_features[:,1:] == [[10.5, 10.5], [10.5, 11.5], [20.5, 20.5], [20.5, 21.5]]).all()
+
+        # Can't check for equality because feature blocks can be in a random order.
+        # Just check that all features are present, regardless of order.
+        for feature_vec in [[10.5, 10.5], [10.5, 11.5], [20.5, 20.5], [20.5, 21.5]]:
+            assert feature_vec in labels_and_features[:,1:]
 
 
 if __name__ == "__main__":
