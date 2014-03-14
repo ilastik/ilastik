@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # try to import the blockedarray module, fail only if neccessary
 try:
     import blockedarray
+    import blockedarray.adapters
 except ImportError as e:
     _blockedarray_module_available = False
     _importMsg = str(e)
