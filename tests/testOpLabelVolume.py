@@ -12,7 +12,7 @@ from lazyflow.rtype import SubRegion
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 try:
-    import blockedarray
+    import blockedarray.adapters
 except ImportError:
     have_blocked = False
 else:
