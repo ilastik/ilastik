@@ -199,13 +199,18 @@ class OpBlockedSparseLabelArray(OpCache):
 
 
         if self.inputs["deleteLabel"].ready():
+            # First, get the roi for ALL blocks we track.
+            nonzero_slicelist = self._get_nonzero_blocks()
+
+            # Now delete the label from all of them.
             for l in self._labelers.values():
                 l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
                 
-                # Our internal labelers will mark their outputs as dirty,
-                # But we aren't hooked up to forward those dirty notifications to our outputs.
-                # Instead, we'll just mark our whole output dirty right now.
-                self.Output.setDirty(slice(None))
+            # Our internal labelers will mark their outputs as dirty,
+            # But we aren't hooked up to forward those dirty notifications to our outputs.
+            # Instead, we'll just mark all (previously) nonzero blocks dirty.
+            for slicing in nonzero_slicelist:
+                self.Output.setDirty(slicing)
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
@@ -257,20 +262,22 @@ class OpBlockedSparseLabelArray(OpCache):
             #result[0] = numpy.array(self._sparseNZ.keys())
         elif slot.name == "nonzeroBlocks":
             #we only return all non-zero blocks, no keys
-            slicelist = []
-            for b_ind in self._labelers.keys():
-                offset = self._blockShape*self._flatBlockIndices[b_ind]
-                bigstart = offset
-                bigstop = numpy.minimum(offset + self._blockShape, self._cacheShape)
-                bigkey = roiToSlice(bigstart, bigstop)
-                slicelist.append(bigkey)
-
-            result[0] = slicelist
+            result[0] = self._get_nonzero_blocks()
         elif slot.name == "maxLabel":
             result[0] = self._maxLabel
 
         self.lock.release()
         return result
+
+    def _get_nonzero_blocks(self):
+        slicelist = []
+        for b_ind in self._labelers.keys():
+            offset = self._blockShape*self._flatBlockIndices[b_ind]
+            bigstart = offset
+            bigstop = numpy.minimum(offset + self._blockShape, self._cacheShape)
+            bigkey = roiToSlice(bigstart, bigstop)
+            slicelist.append(bigkey)
+        return slicelist
 
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
@@ -340,8 +347,13 @@ class OpBlockedSparseLabelArray(OpCache):
         
         time2 = time.time()
         logger.debug("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
-        # Set our max label output dirty
 
+        # Trade-off here:
+        # Instead of sending a separate dirty notification for each block we touched,
+        #  we just send a single dirty notification for the entire encompassing roi.
+        # This results in fewer notifications, but more "dirty" pixels.
+        # Downstream operators will probably ask for updated values for all of the 
+        #  blocks we said were "dirty" even though some of them were not really touched.
         self.Output.setDirty(key)
 
         time3 = time.time()
