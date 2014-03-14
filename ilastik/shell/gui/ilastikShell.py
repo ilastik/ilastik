@@ -645,9 +645,6 @@ class IlastikShell( QMainWindow ):
             self._memDlg.raise_()
 
     def _createSettingsMenu(self):
-        if not ilastik.config.cfg.getboolean("ilastik", "debug"):
-            return None
-
         menu = QMenu("&Settings", self)
         menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts

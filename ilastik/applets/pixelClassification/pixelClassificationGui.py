@@ -207,7 +207,7 @@ class PixelClassificationGui(LabelingGui):
                                                                        "Uncertainty",
                                                                        "Show/Hide Uncertainty",
                                                                        uncertaintyLayer.toggleVisible,
-                                                                       uncertaintyLayer,
+                                                                       self.viewerControlWidget(),
                                                                        uncertaintyLayer ) )
             layers.append(uncertaintyLayer)
 

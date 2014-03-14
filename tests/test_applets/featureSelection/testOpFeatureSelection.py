@@ -24,11 +24,13 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
+import tempfile
+
 class TestOpFeatureSelection(object):
     def setUp(self):
         data = numpy.random.random((2,100,100,100,3))
 
-        self.filePath = os.path.expanduser('~') + '/featureSelectionTestData.npy'
+        self.filePath = tempfile.mkdtemp() + '/featureSelectionTestData.npy'
         numpy.save(self.filePath, data)
     
         graph = Graph()
@@ -71,6 +73,8 @@ class TestOpFeatureSelection(object):
         self.opReader = opReader
         
     def tearDown(self):
+        self.opFeatures.cleanUp()
+        self.opReader.cleanUp()
         try:
             os.remove(self.filePath)
         except:
@@ -114,9 +118,7 @@ class TestOpFeatureSelection(object):
                                    [False, False, False, True, False, False, False],   # H of G EVs
                                    [False, False, False, False, False, False, False],   # GGM
                                    [False, False, False, False, False, False, False]] ) # Diff of G
-        print "About to change matrix."
         opFeatures.SelectionMatrix.setValue(selections)
-        print "Matrix changed."
         
         assert len(dirtyRois) == 1
         assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi( slice(None), self.opFeatures.OutputImage[0].meta.shape )
