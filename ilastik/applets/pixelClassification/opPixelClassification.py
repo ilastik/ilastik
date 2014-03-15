@@ -267,12 +267,9 @@ class OpLabelPipeline( Operator ):
     
     def __init__(self, *args, **kwargs):
         super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        self.opInputShapeReader = OpShapeReader( parent=self )
-        self.opInputShapeReader.Input.connect( self.RawImage )
         
         self.opLabelArray = OpCompressedUserLabelArray( parent=self )
         self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.eraser.setValue(100)
 
         self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
@@ -439,40 +436,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
-
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def __init__(self, *args, **kwargs):
-        super(OpShapeReader, self).__init__(*args, **kwargs)
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-        
-        # Our output is simply the shape of our input, but with only one channel
-        shapeList = list(self.Input.meta.shape)
-        try:
-            channelIndex = self.Input.meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except:
-            pass
-        self.OutputShape.setValue( tuple(shapeList) )
-    
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
 
 class OpEnsembleMargin(Operator):
     """
