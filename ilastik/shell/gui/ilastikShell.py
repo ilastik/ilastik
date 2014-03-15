@@ -31,12 +31,11 @@ import numpy
 
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList, QTimer
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
-                        QVBoxLayout, QHBoxLayout, QShortcut, QSizePolicy
+                        QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
+                        QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
 
 # lazyflow
 from lazyflow.roi import TinyVector
@@ -579,6 +578,8 @@ class IlastikShell( QMainWindow ):
                     ps.sort_stats(sortby)
                     ps.print_stats()
                 logger.info("Printed stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
 
         def _exportSortedThreadStats(sortby):
             assert not yappi.is_running()
@@ -605,6 +606,8 @@ class IlastikShell( QMainWindow ):
                 with open(stats_path, 'w') as f:
                     stats.print_all(f)
                 logger.info("Printed thread stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
 
         profilingSubmenu = QMenu("Profiling")
         if not has_yappi:
