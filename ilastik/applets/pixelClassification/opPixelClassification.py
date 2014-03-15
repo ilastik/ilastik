@@ -25,9 +25,9 @@ import vigra
 #lazyflow
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
+from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPixelOperator, OpMaxChannelIndicatorOperator
+                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -270,7 +270,7 @@ class OpLabelPipeline( Operator ):
         self.opInputShapeReader = OpShapeReader( parent=self )
         self.opInputShapeReader.Input.connect( self.RawImage )
         
-        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
         self.opLabelArray.Input.connect( self.LabelInput )
         self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.eraser.setValue(100)
