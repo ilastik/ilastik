@@ -129,8 +129,8 @@ class CountingGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.EraserLabelValue
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.DeleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames

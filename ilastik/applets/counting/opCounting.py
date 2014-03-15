@@ -26,10 +26,12 @@ import vigra
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
+from lazyflow.operators import OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
                                Op5ifyer
+from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
+
 from lazyflow.request import Request, RequestPool
 from lazyflow.roi     import roiToSlice, sliceToRoi
                                
@@ -188,7 +190,6 @@ class OpCounting( Operator ):
     #PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     #SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     
-    MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
     BoxLabelImages= OutputSlot(level=1) # Input for providing label data from an external source
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
@@ -200,6 +201,8 @@ class OpCounting( Operator ):
     #HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
 
     UncertaintyEstimate = OutputSlot(level=1)
+
+    MaxLabelValue = OutputSlot()
 
     # GUI-only (not part of the pipeline, but saved to the project)
     UpperBound = OutputSlot()
@@ -218,9 +221,9 @@ class OpCounting( Operator ):
         
         # Default values for some input slots
         self.FreezePredictions.setValue(True)
-        self.LabelNames.setValue( [] )
-        self.LabelColors.setValue( [] )
-        self.PmapColors.setValue( [] )
+        self.LabelNames.setValue( ["Foreground", "Background"] )
+        self.LabelColors.setValue( [ (255,0,0), (0,255,0) ] )
+        self.PmapColors.setValue( [ (255,0,0), (0,255,0) ] )
 
         # SPECIAL connection: The LabelInputs slot doesn't get it's data  
         #  from the InputImages slot, but it's shape must match.
@@ -236,10 +239,6 @@ class OpCounting( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
                 
         self.BoxLabelImages.connect( self.opLabelPipeline.BoxOutput)
-        # Find the highest label in all the label images
-        self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
-        self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
-        self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
         self.GetFore= OpMultiLaneWrapper(OpPixelOperator,parent = self)
         def conv(arr):
@@ -279,7 +278,7 @@ class OpCounting( Operator ):
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
         self.opPredictionPipeline.FeatureImages.connect( self.FeatureImages )
         self.opPredictionPipeline.CachedFeatureImages.connect( self.CachedFeatureImages )
-        self.opPredictionPipeline.MaxLabel.connect( self.opMaxLabel.Output )
+        self.opPredictionPipeline.MaxLabel.setValue(2)
         self.opPredictionPipeline.Classifier.connect( self.classifier_cache.Output )
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
@@ -315,7 +314,6 @@ class OpCounting( Operator ):
         self.InputImages.notifyResized( inputResizeHandler )
 
         # Debug assertions: Check to make sure the non-wrapped operators stayed that way.
-        assert self.opMaxLabel.Inputs.operator == self.opMaxLabel
         assert self.opTrain.Images.operator == self.opTrain
 
         def handleNewInputImage( multislot, index, *args ):
@@ -350,6 +348,7 @@ class OpCounting( Operator ):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
+        self.MaxLabelValue.setValue(2)
 
 
     def setupCaches(self, imageIndex):
@@ -459,40 +458,32 @@ class OpLabelPipeline( Operator ):
     BoxOutput = OutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        self.opInputShapeReader = OpShapeReader( parent=self )
-        self.opInputShapeReader.Input.connect( self.RawImage )
-        
-        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
-        self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
-        self.opLabelArray.eraser.setValue(100)
+        super( OpLabelPipeline, self ).__init__( *args, **kwargs )        
+        self.opLabelArray = OpDenseLabelArray( parent=self )
+        self.opLabelArray.MetaInput.connect( self.RawImage )
+        self.opLabelArray.LabelSinkInput.connect( self.LabelInput )
+        self.opLabelArray.EraserLabelValue.setValue(100)
 
-        self.opBoxArray = OpBlockedSparseLabelArray( parent = self)
-        self.opBoxArray.Input.connect(self.BoxLabelInput)
-        self.opBoxArray.shape.connect( self.opInputShapeReader.OutputShape )
-        self.opBoxArray.eraser.setValue(100)
+        self.opBoxArray = OpDenseLabelArray( parent = self)
+        self.opBoxArray.MetaInput.connect( self.RawImage )
+        self.opBoxArray.LabelSinkInput.connect( self.BoxLabelInput )
+        self.opBoxArray.EraserLabelValue.setValue(100)
 
         # Initialize the delete input to -1, which means "no label".
         # Now changing this input to a positive value will cause label deletions.
         # (The deleteLabel input is monitored for changes.)
-        self.opLabelArray.deleteLabel.setValue(-1)
+        self.opLabelArray.DeleteLabel.setValue(-1)
 
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
-        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-        self.MaxLabel.connect( self.opLabelArray.maxLabel )
+        self.nonzeroBlocks.connect( self.opLabelArray.NonzeroBlocks )
+        self.MaxLabel.connect( self.opLabelArray.MaxLabelValue )
         self.BoxOutput.connect( self.opBoxArray.Output )
     
 
 
     def setupOutputs(self):
-        taggedShape = self.RawImage.meta.getTaggedShape()
-        blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
-        blockDims = dict( filter( lambda (k,v): k in taggedShape, blockDims.items() ) )
-        taggedShape.update( blockDims )
-        self.opLabelArray.blockShape.setValue( tuple( taggedShape.values() ) )
-        self.opBoxArray.blockShape.setValue( tuple( taggedShape.values() ) )
+        pass
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -605,81 +596,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     def setupOutputs(self):
         pass
-
-
-
-
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def __init__(self, *args, **kwargs):
-        super(OpShapeReader, self).__init__(*args, **kwargs)
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-        
-        # Our output is simply the shape of our input, but with only one channel
-        shapeList = list(self.Input.meta.shape)
-        try:
-            channelIndex = self.Input.meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except:
-            pass
-        self.OutputShape.setValue( tuple(shapeList) )
-    
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
-
-class OpMaxValue(Operator):
-    """
-    Accepts a list of non-array values as an input and outputs the max of the list.
-    """
-    Inputs = InputSlot(level=1) # A list of non-array values
-    Output = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super(OpMaxValue, self).__init__(*args, **kwargs)
-        self.Output.meta.shape = (1,)
-        self.Output.meta.dtype = object
-        self._output = 0
-        
-    def setupOutputs(self):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def execute(self, slot, subindex, roi, result):
-        result[0] = self._output
-        return result
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def updateOutput(self):
-        # Return the max value of all our inputs
-        maxValue = None
-        for i, inputSubSlot in enumerate(self.Inputs):
-            # Only use inputs that are actually configured
-            if inputSubSlot.ready():
-                if maxValue is None:
-                    maxValue = inputSubSlot.value
-                else:
-                    maxValue = max(maxValue, inputSubSlot.value)
-
-        self._output = maxValue
 
 class OpEnsembleMargin(Operator):
     """
