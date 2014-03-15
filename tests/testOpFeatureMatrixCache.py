@@ -36,7 +36,7 @@ class TestOpFeatureMatrixCache(object):
         opFeatureMatrixCache.NonZeroLabelBlocks.setValue(0)
         
         labels_and_features = opFeatureMatrixCache.LabelAndFeatureMatrix.value
-        assert labels_and_features.shape == (0,0)
+        assert labels_and_features.shape == (0,3), "Empty feature matrix has wrong shape: {}".format( labels_and_features.shape )
         
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[10:11, 10:12] )
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[20:21, 20:22] )

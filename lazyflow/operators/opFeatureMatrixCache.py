@@ -105,7 +105,10 @@ class OpFeatureMatrixCache(Operator):
         if self._blockwise_feature_matrices:
             total_feature_matrix = numpy.concatenate( self._blockwise_feature_matrices.values(), axis=0 )
         else:
-            total_feature_matrix = numpy.ndarray( shape=(0,0), dtype=numpy.float )
+            # No label points at all.
+            # Return an empty label&feature matrix (of the correct shape)
+            num_feature_channels = self.FeatureImage.meta.shape[-1]
+            total_feature_matrix = numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 
         self.progressSignal(100.0)
         logger.debug( "After update, there are {} clean blocks".format( len(self._blockwise_feature_matrices) ) )
@@ -170,7 +173,7 @@ class OpFeatureMatrixCache(Operator):
         labels_matrix = labels[label_block_positions].astype(numpy.float).view(numpy.ndarray)
         
         if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
-            # No label points in this roi.  
+            # No label points in this roi.
             # Return an empty label&feature matrix (of the correct shape)
             return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 
