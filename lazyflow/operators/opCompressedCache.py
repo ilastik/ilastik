@@ -262,20 +262,24 @@ class OpCompressedCache(OpCache):
             return self._cacheFiles[block_start]
         with self._lock:
             if block_start not in self._cacheFiles:
-                logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
                 # Create an in-memory hdf5 file with a unique name
-                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start) 
+                logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
+                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start)
                 mem_file = h5py.File(filename, driver='core', backing_store=False, mode='w')                
-                
-                # Make a compressed dataset
+
+                # h5py will crash if the chunkshape is larger than the dataset shape.
                 datashape = tuple( entire_block_roi[1] - entire_block_roi[0] )
+                chunkshape = numpy.minimum(numpy.array(datashape), self._chunkshape )
+                chunkshape = tuple(chunkshape)
+
+                # Make a compressed dataset
                 mem_file.create_dataset('data',
                                         shape=datashape,
                                         dtype=self.Input.meta.dtype,
-                                        chunks=self._chunkshape,
+                                        chunks=chunkshape,
                                         compression='lzf' ) # lzf should be faster than gzip, 
                                                             # with a slightly worse compression ratio
-                    
+
                 self._blockLocks[block_start] = RequestLock()
                 self._cacheFiles[block_start] = mem_file
                 self._dirtyBlocks.add( block_start )
