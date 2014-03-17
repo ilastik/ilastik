@@ -122,14 +122,16 @@ class TestOpExportSlot(object):
             assert opExport.ExportPath.ready()
             assert opExport.ExportPath.value == url
             opExport.run_export()
-            
-            opRead = OpInputDataReader( graph=graph )
-            opRead.FilePath.setValue( opExport.ExportPath.value )
-            expected_data = data.view(numpy.ndarray)
-            read_data = opRead.Output[:].wait()
-            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+
+            try:
+                opRead = OpInputDataReader( graph=graph )
+                opRead.FilePath.setValue( opExport.ExportPath.value )
+                expected_data = data.view(numpy.ndarray)
+                read_data = opRead.Output[:].wait()
+                assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+            finally:
+                opRead.cleanUp()
         finally:
-            opRead.cleanUp()
             shutdown_event.set()
             server_proc.join()
 

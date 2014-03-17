@@ -60,9 +60,9 @@ class TestOpDvidVolume(unittest.TestCase):
         """
         if not have_dvid:
             return
-        shutil.rmtree(cls._tmp_dir)
         cls.shutdown_event.set()
         cls.server_proc.join()
+        shutil.rmtree(cls._tmp_dir)
 
     @classmethod
     def _generate_testdata_h5(cls, test_filepath):
