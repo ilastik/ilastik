@@ -14,6 +14,7 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
+import numpy
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot
 
 class PixelClassificationSerializer(AppletSerializer):
@@ -50,9 +51,18 @@ class PixelClassificationSerializer(AppletSerializer):
         #   create some default names.
         if not self.operator.LabelNames.ready():
             # How many labels are there?
-            max_label = 0
-            for op in self.operator.opLabelPipeline:
-                max_label = max(max_label, op.opLabelArray.maxLabel.value)
+            # We have to count them.  
+            # This is slow, but okay for this special backwards-compatibilty scenario.
+
+            # For each image
+            all_labels = set()
+            for image_index, group in enumerate(topGroup['LabelSets'].values()):
+                # For each label block
+                for block in group.values():
+                    data = block[:]
+                    all_labels.update( numpy.unique(data) )
+
+            max_label = max(all_labels)
             
             label_names = []
             for i in range(max_label):
