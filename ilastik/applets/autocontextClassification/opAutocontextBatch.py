@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
+from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, Op50ToMulti, OpArrayPiper, OpMultiArrayStacker
                                

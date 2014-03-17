@@ -499,7 +499,9 @@ class DataSelectionGui(QWidget):
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                logger.critical(ex)
+                logger.error(ex)
+                import sys, traceback
+                traceback.print_tb(sys.exc_info()[2])
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
