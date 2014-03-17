@@ -185,7 +185,8 @@ class OpThresholdTwoLevels(Operator):
 
         # propagate drange
         self.opThreshold1.InputImage.meta.drange = self.InputImage.meta.drange
-        self.opThreshold1GC.InputImage.meta.drange = self.InputImage.meta.drange
+        if haveGraphCut():
+            self.opThreshold1GC.InputImage.meta.drange = self.InputImage.meta.drange
         self.opThreshold2.InputImage.meta.drange = self.InputImage.meta.drange
 
         self._disconnectAll()
@@ -235,6 +236,7 @@ class OpThresholdTwoLevels(Operator):
         return self.opThreshold2.Output
 
     def _connectForGraphCut(self):
+        assert haveGraphCut(), "Module for graph cut is not available"
         self._connectForSingleThreshold(self.opThreshold1GC)
 
         return self.opGraphCut.Output

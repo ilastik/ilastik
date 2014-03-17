@@ -65,7 +65,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # disable graph cut applet if not available
         if not haveGraphCut():
-            self._drawer.tab_3.setVisible(False)
+            self._drawer.tabWidget.setTabEnabled(2, False)
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
