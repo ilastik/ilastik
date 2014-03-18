@@ -36,13 +36,13 @@ logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 #logger.setLevel(logging.DEBUG)
 
+
 class TestBlockwiseFileset(object):
     
     @classmethod
     def setupClass(cls):
-        if platform.system() == 'Darwin' or platform.system() == 'Windows':
-            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
-            # On windows, there are other errors, and we make no attempt to solve them (at the moment).
+        if platform.system() == 'Windows':
+            # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
         
         testConfig = \
@@ -236,9 +236,8 @@ class TestObjectBlockwiseFileset(object):
 
     @classmethod
     def setupClass(cls):
-        if platform.system() == 'Darwin' or platform.system() == 'Windows':
-            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
-            # On windows, there are other errors, and we make no attempt to solve them (at the moment).
+        if platform.system() == 'Windows':
+            # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
 
         testConfig = \

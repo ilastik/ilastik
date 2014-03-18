@@ -161,6 +161,19 @@ class BlockwiseFileset(object):
             bfs = None
         return bfs
 
+    def _prepare_system(self):
+        # None of this code is tested on Windows.
+        # It might work, but you'll need to improve the unit tests to know for sure.
+        assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
+
+        # If you get a "Too many open files" error, this soft limit may need to be increased.
+        # The way to set this limit in bash is via "ulimit -n 4096"
+        # Fortunately, Python lets us increase the limit via the resource module.
+        import resource
+        softlimit, hardlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        softlimit = max( 4096, softlimit )
+        resource.setrlimit(resource.RLIMIT_NOFILE, ( softlimit, hardlimit ))
+
     def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
         """
         Constructor.  Uses `readDescription` interally.
@@ -169,10 +182,7 @@ class BlockwiseFileset(object):
         :param mode: Set to ``'r'`` if the fileset should be read-only.
         :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
         """
-        
-        # None of this code is tested on Windows.
-        # It might work, but you'll need to improve the unit tests to know for sure.
-        assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
+        self._prepare_system()
         
         assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode

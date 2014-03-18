@@ -41,9 +41,8 @@ class TestOpBlockwiseFilesetReader(object):
         """
         Create a blockwise fileset to test with.
         """
-        if platform.system() == 'Darwin' or platform.system() == 'Windows':
-            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
-            # On windows, there are other errors, and we make no attempt to solve them (at the moment).
+        if platform.system() == 'Windows':
+            # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
         
         testConfig = \
