@@ -62,7 +62,6 @@ class OpCompressedCache(OpCache):
 
 
     def setupOutputs(self):
-        self._closeAllCacheFiles()
         self.Output.meta.assignFrom(self.Input.meta)
         self.OutputHdf5.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
@@ -70,7 +69,10 @@ class OpCompressedCache(OpCache):
 
         # Clip blockshape to image bounds
         if self.BlockShape.ready():
-            self._blockshape = numpy.minimum( self.BlockShape.value, self.Input.meta.shape )
+            if self._blockshape and tuple(self.BlockShape.value) != self._blockshape:
+                assert len(self._cacheFiles) == 0, \
+                    "It is an error to reconfigure the cache block shape after you have started using it!"
+            self._blockshape = tuple(numpy.minimum( self.BlockShape.value, self.Input.meta.shape ))
         else:
             self._blockshape = self.Input.meta.shape
         
