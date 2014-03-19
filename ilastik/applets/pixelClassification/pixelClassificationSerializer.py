@@ -118,6 +118,24 @@ class Ilastik05ImportDeserializer(AppletSerializer):
             numImages = len(hdf5File['DataSets'])
             self.mainOperator.LabelInputs.resize(numImages)
 
+            if numImages == 0:
+                return
+
+            first_group_name, first_group = sorted(hdf5File['DataSets'].items())[0]
+            label_names = first_group['labels'].attrs['name']
+            label_hexcolors = first_group['labels'].attrs['color']
+
+            color_tuples = []            
+            for color_hex in label_hexcolors:
+                red = ( color_hex & 0xff0000 ) >> 16
+                green = ( color_hex & 0x00ff00 ) >> 8
+                blue = ( color_hex & 0x0000ff ) >> 0
+                color_tuples.append( (red, green, blue) )
+
+            self.mainOperator.LabelNames.setValue( label_names )
+            self.mainOperator.LabelColors.setValue( color_tuples )
+            self.mainOperator.PmapColors.setValue( color_tuples )
+
             for index, (datasetName, datasetGroup) in enumerate(sorted(hdf5File['DataSets'].items())):
                 try:
                     dataset = datasetGroup['labels/data']
