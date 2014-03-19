@@ -17,10 +17,9 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 from ilastik.config import cfg as ilastik_config
-from ilastik import isVersionCompatible
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
@@ -31,9 +30,7 @@ import numpy
 import warnings
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
-from lazyflow.rtype import SubRegion
-from lazyflow.slot import OutputSlot
-from lazyflow.utility import Timer, timeLogged
+from lazyflow.utility import timeLogged
 
 #######################
 # Convenience methods #
@@ -778,14 +775,6 @@ class AppletSerializer(object):
             (Most serializers do not use this parameter.)
 
         """
-        # Check the overall file version
-        fileVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not isVersionCompatible(fileVersion):
-            msg = "Can't read project with format version: {}".format( fileVersion )
-            raise self.IncompatibleProjectVersionError(msg)
-
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
         progress = 0
@@ -826,14 +815,6 @@ class AppletSerializer(object):
             (in headless mode corrupted files cannot be fixed via the GUI)
         
         """
-        # Check the overall file version
-        fileVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not isVersionCompatible(fileVersion):
-            msg = "Can't read project with format version: {}".format( fileVersion )
-            raise self.IncompatibleProjectVersionError(msg)
-
         self.progressSignal.emit(0)
 
         # If the top group isn't there, call initWithoutTopGroup
