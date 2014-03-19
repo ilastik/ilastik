@@ -22,20 +22,21 @@ import numpy
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.rtype import SubRegion
 
 logger = logging.getLogger(__name__)
 
-class OpCompressedUserLabelArray(OpCache):
-    Input = InputSlot()
+class OpCompressedUserLabelArray(OpCompressedCache):
+    #Input = InputSlot()
     shape = InputSlot(optional=True) # Should not be used.
     eraser = InputSlot()
     deleteLabel = InputSlot(optional = True)
     blockShape = InputSlot()
 
-    Output = OutputSlot()
+    #Output = OutputSlot()
     #nonzeroValues = OutputSlot()
     #nonzeroCoordinates = OutputSlot()
     nonzeroBlocks = OutputSlot()
@@ -45,28 +46,33 @@ class OpCompressedUserLabelArray(OpCache):
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
         self._blockshape = None
         self._label_to_purge = 0
-        
-        # We want our cache to have direct access to the input, but not for "setInSlot", which
-        self._opInputConnectionProvider = OpCompressedUserLabelArray._OpLabelInputConnectionProvider( parent=self )
-        self._opInputConnectionProvider.Input.connect( self.Input )
-
-        # Labels are stored blockwise in a compressed cache
-        self._opCompressedCache = OpCompressedCache( parent=self )
-        self._opCompressedCache.Input.connect( self._opInputConnectionProvider.Output )
-        
-        self.Output.connect( self._opCompressedCache.Output )
     
     def setupOutputs(self):
+        # Due to a temporary naming clash, pass our subclass blockshape to the superclass
+        # TODO: Fix this by renaming the BlockShape slots to be consistent.
+        self.BlockShape.setValue( self.blockShape.value )
+        
+        super( OpCompressedUserLabelArray, self ).setupOutputs()
         self.nonzeroBlocks.meta.dtype = object
         self.nonzeroBlocks.meta.shape = (1,)
+        
+        # Overwrite the Output metadata (should be uint8 no matter what the input data is...)
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
+        self.Output.meta.drange = (0,255)
+        self.OutputHdf5.meta.assignFrom(self.Output.meta)
 
+        # Overwrite the blockshape
         if self._blockshape is None:
-            self._blockshape = self.blockShape.value
+            self._blockshape = numpy.minimum( self.BlockShape.value, self.Output.meta.shape )
         else:
             assert self.blockShape.value == self._blockshape, \
                 "Not allowed to change the blockshape after initial setup"
 
-        self._opCompressedCache.BlockShape.setValue( self._blockshape )
+        # Overwrite chunkshape now that blockshape has been overwritten
+        self._chunkshape = self._chooseChunkshape(self._blockshape)
+
         self._eraser_magic_value = self.eraser.value
         
         # Are we being told to delete a label?
@@ -84,10 +90,16 @@ class OpCompressedUserLabelArray(OpCache):
         (2) Decrement all labels above that value so the set of stored labels is consecutive
         """
         changed_block_rois = []
-        stored_block_rois = self._opCompressedCache.CleanBlocks.value
+        #stored_block_rois = self.CleanBlocks.value
+        stored_block_roi_destination = [None]
+        self.execute(self.CleanBlocks, (), SubRegion( self.Output, (0,),(1,) ), stored_block_roi_destination)
+        stored_block_rois = stored_block_roi_destination[0]
+
         for block_roi in stored_block_rois:
             # Get data
-            block = self._opCompressedCache.Output(block_roi[0], block_roi[1]).wait()
+            block_shape = numpy.subtract( block_roi[1], block_roi[0] )
+            block = numpy.ndarray( shape=block_shape, dtype=self.Output.meta.dtype )
+            self.execute(self.Output, (), SubRegion( self.Output, *block_roi ), block)
 
             # Locate pixels to change
             matching_label_coords = numpy.nonzero( block == label_to_purge )
@@ -99,7 +111,7 @@ class OpCompressedUserLabelArray(OpCache):
             
             # Update cache with the new data (only if something really changed)
             if len(matching_label_coords[0]) > 0 or len(coords_to_decrement[0]) > 0:
-                self._opCompressedCache.Input[roiToSlice(*block_roi)] = block
+                super( OpCompressedUserLabelArray, self )._setInSlotInput( self.Input, (), SubRegion( self.Output, *block_roi ), block, store_zero_blocks=False )
                 changed_block_rois.append( block_roi )
 
         for block_roi in changed_block_rois:
@@ -107,19 +119,65 @@ class OpCompressedUserLabelArray(OpCache):
             self.Output.setDirty( *block_roi )
     
     def execute(self, slot, subindex, roi, destination):
-        assert slot != self.Output, "Output is supposed to be directly connected to our cache..."
-        if slot == self.nonzeroBlocks:
-            stored_block_rois = self._opCompressedCache.CleanBlocks.value
+        if slot == self.Output:
+            self._executeOutput(roi, destination)
+        elif slot == self.nonzeroBlocks:
+            stored_block_rois = self.CleanBlocks.value
             block_slicings = map( lambda block_roi: roiToSlice(*block_roi), stored_block_rois )
             destination[0] = block_slicings
             return
-        assert False, "Unknown slot: {}".format( slot.name )            
+        else:
+            return super( OpCompressedUserLabelArray, self ).execute( slot, subindex, roi, destination )
+
+    def _executeOutput(self, roi, destination):
+        assert len(roi.stop) == len(self.Input.meta.shape), \
+            "roi: {} has the wrong number of dimensions for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), \
+            "roi: {} is out-of-bounds for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
+        
+        block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
+        self._copyData(roi, destination, block_starts)
+        return destination
+
+    def _copyData(self, roi, destination, block_starts):
+        """
+        Copy data from each block into the destination array.
+        For blocks that aren't currently stored, just write zeros.
+        """
+        # (Parallelism not needed here: h5py will serialize these requests anyway)
+        block_starts = map( tuple, block_starts )
+        for block_start in block_starts:
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
+
+            # This block's portion of the roi
+            intersecting_roi = getIntersection( (roi.start, roi.stop), entire_block_roi )
+            
+            # Compute slicing within destination array and slicing within this block
+            destination_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
+            block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+            
+            if block_start in self._cacheFiles:
+                # Copy from block to destination
+                dataset = self._getBlockDataset( entire_block_roi )
+                destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
+            else:
+                # Not stored yet.  Overwrite with zeros.
+                destination[ roiToSlice(*destination_relative_intersection) ] = 0
 
     def propagateDirty(self, slot, subindex, roi):
         # There should be no way to make the output dirty except via setInSlot()
         pass
 
     def setInSlot(self, slot, subindex, roi, new_pixels):
+        if slot == self.Input:
+            self._setInSlotInput(slot, subindex, roi, new_pixels)
+        else:
+            # We don't yet support the InputHdf5 slot in this function.
+            assert False, "Unsupported slot for setInSlot: {}".format( slot.name )
+            
+    def _setInSlotInput(self, slot, subindex, roi, new_pixels):
         """
         Since this is a label array, inserting pixels has a special meaning:
         We only overwrite the new non-zero pixels. In the new data, zeros mean "don't change".
@@ -132,10 +190,10 @@ class OpCompressedUserLabelArray(OpCache):
         N: change to N
         magic_eraser_value: change to 0  
         """
-        assert slot == self.Input
 
         # Extract the data to modify
-        original_data = self._opCompressedCache.Output(roi.start, roi.stop).wait()
+        original_data = numpy.ndarray( shape=new_pixels.shape, dtype=self.Output.meta.dtype )
+        self.execute(self.Output, (), roi, original_data)
         
         # Reset the pixels we need to change (so we can use |= below)
         original_data[new_pixels.nonzero()] = 0
@@ -146,42 +204,8 @@ class OpCompressedUserLabelArray(OpCache):
         # Replace 'eraser' values with zeros.
         cleaned_data = numpy.where(original_data == self._eraser_magic_value, 0, original_data[:])
 
-        # Set in the cache.
-        self._opCompressedCache.Input[roiToSlice(roi.start, roi.stop)] = cleaned_data
+        # Set in the cache (our superclass).
+        super( OpCompressedUserLabelArray, self )._setInSlotInput( slot, subindex, roi, cleaned_data, store_zero_blocks=False )
         
-        # FIXME: Shouldn't this notification be triggered from within opCompressedCache?
+        # FIXME: Shouldn't this notification be triggered from within OpCompressedCache?
         self.Output.setDirty( roi.start, roi.stop )
-    
-    class _OpLabelInputConnectionProvider(Operator):
-        """
-        Provides an input slot for the compressed cache that allows the compressed cache to be used for labeling.
-        - Output is intended to be connected to a CompressedCache
-        - Output will have the same shape as Input (except just one channel)
-        - Output has dtype uint8 (for user label data)
-        - If the cache requests 'input' data, it is provided zeros only.
-        - setInSlot() is NOT implemented, and calls to setInSlot are not forwarded to the cache
-        """
-        Input = InputSlot()
-        Output = OutputSlot()
-        
-        def setupOutputs(self):
-            assert self.Input.meta.getAxisKeys()[-1] == 'c', "OpCompressedUserLabels assumes that the last axis is channel."
-            self.Output.meta.assignFrom(self.Input.meta)
-            self.Output.meta.dtype = numpy.uint8
-            self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
-            self.Output.meta.drange = (0,255)
-        
-        def execute(self, slot, subindex, roi, destination):
-            # The cache is asking for initial label data.
-            # The only real label data in the cache is inserted via setInSlot()
-            # All block initial values are zero.
-            destination[:] = 0
-            return
-        
-        def propagateDirty(self, slot, subindex, roi):
-            # The cache is only changed via setInSlot(), and that's the only place it becomes dirty.
-            pass
-        
-        def setInSlot(self, *args):
-            pass
-
