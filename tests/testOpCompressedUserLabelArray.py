@@ -88,7 +88,7 @@ class TestOpCompressedUserLabelArray(object):
 
         op.deleteLabel.setValue(1)
         outputData = op.Output[...].wait()
-
+        
         # Expected: All 1s removed, all 2s converted to 1s
         expectedOutput = numpy.where(self.data == 1, 0, self.data)
         expectedOutput = numpy.where(expectedOutput == 2, 1, expectedOutput)
