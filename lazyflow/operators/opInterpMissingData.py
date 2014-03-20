@@ -32,7 +32,7 @@ import numpy as np
 import vigra
 
 from opDetectMissingData import *
-
+from opDetectMissingData import _histogramIntersectionKernel
 
 ############################
 ############################
