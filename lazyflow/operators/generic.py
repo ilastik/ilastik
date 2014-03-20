@@ -28,6 +28,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
 from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector
+from lazyflow.request import RequestPool
 
 def axisTagObjectFromFlag(flag):
 
@@ -349,45 +350,45 @@ class OpMultiArrayStacker(Operator):
         #print "requesting an outslot from stacker:", key, result.shape
         #print "input slots total: ", len(self.inputs['Images'])
         requests = []
-
+        
+        pool = RequestPool()
 
         for i, inSlot in enumerate(self.inputs['Images']):
-            if inSlot.ready():
-                req = None
-                inTagKeys = [ax.key for ax in inSlot.meta.axistags]
-                if flag in inTagKeys:
-                    slices = inSlot.meta.shape[axisindex]
-                    if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
-                        begin = 0
-                        if cnt < start[axisindex]:
-                            begin = start[axisindex] - cnt
-                        end = slices
-                        if cnt + end > stop[axisindex]:
-                            end -= cnt + end - stop[axisindex]
-                        key_ = copy.copy(oldkey)
-                        key_.insert(axisindex, slice(begin, end, None))
-                        reskey = [slice(None, None, None) for x in range(len(result.shape))]
-                        reskey[axisindex] = slice(written, written+end-begin, None)
+            req = None
+            inTagKeys = [ax.key for ax in inSlot.meta.axistags]
+            if flag in inTagKeys:
+                slices = inSlot.meta.shape[axisindex]
+                if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
+                    begin = 0
+                    if cnt < start[axisindex]:
+                        begin = start[axisindex] - cnt
+                    end = slices
+                    if cnt + end > stop[axisindex]:
+                        end -= cnt + end - stop[axisindex]
+                    key_ = copy.copy(oldkey)
+                    key_.insert(axisindex, slice(begin, end, None))
+                    reskey = [slice(None, None, None) for x in range(len(result.shape))]
+                    reskey[axisindex] = slice(written, written+end-begin, None)
 
-                        req = inSlot[tuple(key_)].writeInto(result[tuple(reskey)])
-                        written += end - begin
-                    cnt += slices
-                else:
-                    if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
-                        #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
-                        #print "result: ", result.shape, "inslot:", inSlot.meta.shape
-                        reskey = [slice(None, None, None) for s in oldkey]
-                        reskey.insert(axisindex, written)
-                        destArea = result[tuple(reskey)]
-                        req = inSlot[tuple(oldkey)].writeInto(destArea)
-                        written += 1
-                    cnt += 1
+                    req = inSlot[tuple(key_)].writeInto(result[tuple(reskey)])
+                    written += end - begin
+                cnt += slices
+            else:
+                if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
+                    #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
+                    #print "result: ", result.shape, "inslot:", inSlot.meta.shape
+                    reskey = [slice(None, None, None) for s in oldkey]
+                    reskey.insert(axisindex, written)
+                    destArea = result[tuple(reskey)]
+                    req = inSlot[tuple(oldkey)].writeInto(destArea)
+                    written += 1
+                cnt += 1
 
-                if req is not None:
-                    requests.append(req)
+            if req is not None:
+                pool.add(req)
 
-        for r in requests:
-            r.wait()
+        pool.wait()
+        pool.clean()
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if not self.Output.ready():
