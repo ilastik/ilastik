@@ -15,6 +15,14 @@ class OpFeatureMatrixCache(Operator):
     - For nonzero label pixels in each block, extract the label image
     - Cache the feature matrix for each block separately
     - Output the concatenation of all feature matrices
+    
+    Note: This operator does not currently use the NonZeroLabelBlocks slot.
+          Instead, it only requests labels for blocks that have been
+          marked dirty via dirty notifications from the LabelImage slot.
+          As a result, you MUST connect/configure this operator before you 
+          load your upstream label cache with values.
+          This operator must already be "watching" when when the label operator 
+          is initialized with its first labels.
     """    
     FeatureImage = InputSlot()
     LabelImage = InputSlot()
@@ -34,15 +42,17 @@ class OpFeatureMatrixCache(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpFeatureMatrixCache, self).__init__(*args, **kwargs)
+        self._blockshape = None
         self._lock = RequestLock()
         
         self.progressSignal = OrderedSignal()
         self._progress_lock = RequestLock()
         
-        self._blockshape = None
+        # In these set/dict members, the block id (dict key) 
+        #  is simply the block's start coordinate (as a tuple)
         self._blockwise_feature_matrices = {}
         self._dirty_blocks = set()
-        self._block_locks = {}
+        self._block_locks = {} # One lock per stored block
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -95,7 +105,10 @@ class OpFeatureMatrixCache(Operator):
         if self._blockwise_feature_matrices:
             total_feature_matrix = numpy.concatenate( self._blockwise_feature_matrices.values(), axis=0 )
         else:
-            total_feature_matrix = numpy.ndarray( shape=(0,0), dtype=numpy.float )
+            # No label points at all.
+            # Return an empty label&feature matrix (of the correct shape)
+            num_feature_channels = self.FeatureImage.meta.shape[-1]
+            total_feature_matrix = numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 
         self.progressSignal(100.0)
         logger.debug( "After update, there are {} clean blocks".format( len(self._blockwise_feature_matrices) ) )
@@ -144,9 +157,9 @@ class OpFeatureMatrixCache(Operator):
             #       ...or just get rid of the nonzero blocks slot...
             labels_and_features_matrix = self._extract_feature_matrix(block_roi)
             with self._lock:
+                self._dirty_blocks.remove(block_start)
                 if labels_and_features_matrix.shape[0] > 0:
                     self._blockwise_feature_matrices[block_start] = labels_and_features_matrix
-                    self._dirty_blocks.remove(block_start)
                 else:
                     try:
                         del self._blockwise_feature_matrices[block_start]
@@ -160,7 +173,7 @@ class OpFeatureMatrixCache(Operator):
         labels_matrix = labels[label_block_positions].astype(numpy.float).view(numpy.ndarray)
         
         if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
-            # No label points in this roi.  
+            # No label points in this roi.
             # Return an empty label&feature matrix (of the correct shape)
             return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
 

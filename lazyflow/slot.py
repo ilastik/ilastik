@@ -1039,10 +1039,17 @@ class Slot(object):
             #  can occur if you supplied an equivalent value that 'is not' the original.
             # For example: x=numpy.uint8(3); y=numpy.int64(3); assert x == y;  assert x is not y
             if check_changed:
+                changed = False
+                # Fast path checks for array types
+                if isinstance(value, numpy.ndarray) or isinstance(self._value, numpy.ndarray):
+                    if type(value) != type(self._value) or value.shape != self._value.shape:
+                        changed = True
                 if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
                     if type(value) != type(self._value) or value.axistags != self._value.axistags:
                         changed = True
-                else:
+
+                if not changed:
+                    # Slow-patth checks
                     same = (value is self._value)
                     if not same:
                         try:

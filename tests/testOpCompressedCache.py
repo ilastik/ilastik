@@ -199,7 +199,7 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")
         for i, data in results.items():
-            assert (data == expectedData).all(), "Incorrect output for index {]".format( i )
+            assert (data == expectedData).all(), "Incorrect output for index {}".format( i )
 
     def testSetInSlot(self):
         logger.info("Generating sample data...")

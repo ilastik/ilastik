@@ -43,6 +43,9 @@ class OpDenseLabelArray(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.MetaInput.meta )
         self.Output.meta.dtype = numpy.uint8
+
+        assert self.MetaInput.meta.getAxisKeys()[-1] == 'c', "This operator assumes that the last axis must be channel."
+        self.Output.meta.shape =  self.MetaInput.meta.shape[:-1] + (1,)
         
         self.MaxLabelValue.meta.dtype = numpy.uint8 
         self.MaxLabelValue.meta.shape = (1,)
