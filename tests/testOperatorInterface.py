@@ -589,6 +589,31 @@ class TestSlotStates(object):
         b = op.Output[:, :, :].wait()
         assert b.shape == a.shape
 
+    def testIssue130(self):
+        # Verify the fix for issue ilastik/lazyflow#130
+        op = operators.OpArrayPiper(graph=self.g)
+
+        dirty_flag = [False]
+        def handleDirty(*args):
+            dirty_flag[0] = True
+        
+        op.Input.notifyDirty(handleDirty)
+        
+        a = numpy.zeros( 5*(10,), dtype=int )
+        op.Input.setValue( a )
+        dirty_flag[0] = False
+        
+        # If setting the same value, still not dirty...
+        op.Input.setValue(a)
+        assert dirty_flag[0] is False
+
+        # Now if we set an array with different shape, but still broadcastable to the original,
+        #  dirtiness should be detected.
+        a = numpy.zeros( 4*(10,) + (1,), dtype=int)
+        op.Input.setValue(a)
+        assert dirty_flag[0] is True
+        
+
 if __name__ == "__main__":
     import sys
     import nose
