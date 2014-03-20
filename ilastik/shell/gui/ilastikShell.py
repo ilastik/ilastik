@@ -415,7 +415,7 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("Save Copy as...")
         shellActions.saveProjectSnapshotAction.setIcon( QIcon(ilastikIcons.SaveAs) )
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
 
@@ -648,7 +648,7 @@ class IlastikShell( QMainWindow ):
             self._memDlg.raise_()
 
     def _createSettingsMenu(self):
-        menu = QMenu("&Settings", self)
+        menu = QMenu("Settings", self)
         menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
 
