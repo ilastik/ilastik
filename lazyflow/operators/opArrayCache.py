@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import time
 import weakref
@@ -140,7 +156,7 @@ class OpArrayCache(OpCache):
     
         self._blockShape = numpy.minimum(self._blockShape, shape)
     
-        self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape))
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape)).astype(numpy.int)
     
         self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
     
@@ -343,15 +359,15 @@ class OpArrayCache(OpCache):
 
                 #sanity check:
                 if (self._blockState[key2] != OpArrayCache.DIRTY).any():
-                    print "original condition", cond
-                    print "original tilearray", tileArray, tileArray.shape
-                    print "original tileWeights", tileWeights, tileWeights.shape
-                    print "sub condition", self._blockState[key2] == OpArrayCache.DIRTY
-                    print "START, STOP", drStart2, drStop2
+                    logger.warning( "original condition" + str(cond) )
+                    logger.warning( "original tilearray {} {}".format( tileArray, tileArray.shape ) )
+                    logger.warning( "original tileWeights {} {}".format( tileWeights, tileWeights.shape ) )
+                    logger.warning( "sub condition {}".format( self._blockState[key2] == OpArrayCache.DIRTY ) )
+                    logger.warning( "START={}, STOP={}".format( drStart2, drStop2 ) )
                     import h5py
                     with h5py.File("test.h5", "w") as f:
                         f.create_dataset("data",data = tileWeights)
-                        print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                        logger.warning( "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights) )
                     assert False
                 self._blockState[key2] = OpArrayCache.IN_PROCESS
 

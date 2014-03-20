@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 
 class PathComponents(object):
@@ -85,6 +101,8 @@ class PathComponents(object):
 
 def areOnSameDrive(path1,path2):
     #if one path is relative, assume they are on same drive
+    if isUrl(path1) or isUrl(path2):
+        return False
     if not os.path.isabs(path1) or not os.path.isabs(path2):
         return True
     drive1,path1 = os.path.splitdrive(path1)
@@ -101,7 +119,9 @@ def compressPathForDisplay(pathstr,maxlength):
     component_list = pathstr.split("/")
     while component_list:
         c = component_list.pop(-1)
-        if len(suffix)+1+len(c)+len(prefix)>maxlength:
+        newlength = len(suffix)+1+len(c)+len(prefix)
+        if newlength>maxlength:
+            suffix = c[-min(len(c)-3,maxlength-3):]
             break
         suffix="/"+c+suffix
         if not component_list:
@@ -111,12 +131,20 @@ def compressPathForDisplay(pathstr,maxlength):
             break
         prefix=prefix+c+"/"
     return prefix+"..."+suffix
-    
+
+def isUrl(path):
+    # For now, the simplest rule will work.
+    return '://' in path
+
 def getPathVariants(originalPath, workingDirectory):
     """
     Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
     and return a tuple of the absolute and relative paths to the file.
     """
+    # urls are considered absolute
+    if isUrl(originalPath):
+        return originalPath, None
+    
     relPath = originalPath
     
     if os.path.isabs(originalPath):
@@ -155,4 +183,11 @@ if __name__ == "__main__":
     assert components.extension == '.h5'
     assert components.internalPath == '/with/internal/path/to/data'
 
+    # Everything should work for URLs, too.
+    components = PathComponents('http://somehost:8000/path/to/data/with.ext')
+    assert components.externalPath == 'http://somehost:8000/path/to/data/with.ext'
+    assert components.extension == '.ext'    
+    assert components.internalPath is None
+    assert components.externalDirectory == 'http://somehost:8000/path/to/data'
+    assert components.filenameBase == 'with'
 

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
 import time
 import random
@@ -189,20 +205,23 @@ class TestRequest(object):
         req = Request( big_workload )
         req.notify_finished( handle_complete )
         req.submit()
-        time.sleep(.5)
+
+        while workcounter[0] == 0:
+            time.sleep(0.5)
+            
         req.cancel()
+        time.sleep(1)
         
         assert req.cancelled
         
-        time.sleep(2)
         assert not completed[0]
         assert got_cancel[0]
         
         # Make sure this test is functioning properly:
         # The cancellation should have occurred in the middle (not before the request even got started)
         # If not, then adjust the timing of the cancellation, above.
-        assert workcounter[0] != 0
-        assert workcounter[0] != 100
+        assert workcounter[0] != 0, "This timing-sensitive test needs to be tweaked."
+        assert workcounter[0] != 100, "This timing-sensitive test needs to be tweaked."
 
     @traceLogged(traceLogger)
     def test_dont_cancel_shared_request(self):

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import copy
 from functools import partial
 import numpy
@@ -10,7 +26,7 @@ class OpReorderAxes(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        output_order = self.AxisOrder.value
+        output_order = "".join(self.AxisOrder.value)
         input_order = self.Input.meta.getAxisKeys()
         input_tags = self.Input.meta.axistags
         tagged_input_shape = self.Input.meta.getTaggedShape()

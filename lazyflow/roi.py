@@ -1,6 +1,32 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
+if __name__ == "__main__":
+    # When executing this file directly for doctest purposes,
+    #  we must remove the lazyflow module from sys.path
+    # This is due to the fact that the builtin collections module 
+    #  ALSO has an 'operator' module,
+    #  which conflicts with lazyflow.operator in this case.    
+    import sys
+    assert sys.path[0].endswith('lazyflow/lazyflow')
+    sys.path.pop(0)
+
 import numpy
 from numpy.lib.stride_tricks import as_strided as ast
-from math import ceil, floor
+from math import ceil, floor, pow
 import collections
 
 class TinyVector(list):
@@ -399,6 +425,48 @@ def getBlockBounds(dataset_shape, block_shape, block_start):
     # Clip to dataset bounds
     block_bounds = getIntersection( block_bounds, entire_dataset_roi )
     return block_bounds
+
+def determineBlockShape( max_shape, target_block_volume ):
+    """
+    Choose a blockshape that is close to the target_block_volume (in pixels), 
+    without exceeding max_shape in any dimension.
+    
+    The resulting blockshape will be as isometric as possible, except 
+    for those dimensions must be restricted due to small max_shape.  If possible, the 
+    block's other dimensions are expanded to achieve a total volume of target_block_volume.
+    
+    >>> determineBlockShape( (1000,2000,3000,1), 1e6 )
+    (100, 100, 100, 1)
+
+    >>> determineBlockShape( (1,100,5,200,3), 1000 )
+    (1, 8, 5, 8, 3)
+    """
+    assert (TinyVector(max_shape) > 0).all(), "Invalid max_shape: {}".format( max_shape )
+    ndims = len( max_shape )
+    
+    # Attach indexes to remember where each max_shape element came from
+    max_with_index = zip( max_shape, range( len(max_shape) ) )
+    
+    # Sort from smallest to largest, to ensure that larger dimensions
+    #   will pick up the slack that smaller dims can't accommodate.
+    sorted_max = sorted( max_with_index )
+    
+    volume_so_far = 1
+    block_shape = []
+    
+    for (m, i), num_remaining_axes in zip(sorted_max, range(ndims, 0, -1)):
+        # Make a block_shape that is isometric in the remaining dimensions
+        remaining_factor = target_block_volume/volume_so_far
+        block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) + 0.5 )
+        block_side = min( block_side, m )
+        block_shape.append( block_side )
+        volume_so_far *= block_side        
+    
+    # Sort block_shape dimensions back to the original axis order
+    index_order = zip( *sorted_max )[1]
+    indexed_block_shape = zip( index_order, block_shape )
+    block_shape = zip( *sorted( indexed_block_shape ) )[1]    
+    return tuple(block_shape)
 
 if __name__ == "__main__":
     import doctest

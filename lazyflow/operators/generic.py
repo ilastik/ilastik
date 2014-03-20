@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import copy
 import logging
@@ -309,6 +325,7 @@ class OpMultiArrayStacker(Operator):
                 axisindex = self.Output.meta.axistags.index(flag)
                 newshape[axisindex]=c
             else:
+                #FIXME axisindex is not necessarily defined yet (try setValue on subslot)
                 newshape.insert(axisindex, c)
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
@@ -383,15 +400,20 @@ class OpMultiArrayStacker(Operator):
             imageIndex = subindex[0]
             axisflag = self.AxisFlag.value
             axisIndex = self.Output.meta.axistags.index(axisflag)
-            if len(roi.start)>axisIndex:
+
+            if len(roi.start) == len(self.Output.meta.shape):
+                # axis is already in the input 
                 roi.start[axisIndex] += self.intervals[imageIndex][0] 
                 roi.stop[axisIndex] += self.intervals[imageIndex][0] 
-                self.Output.setDirty( roi )
+                self.Output.setDirty(roi)
             else:
+                # insert axis into roi
                 newroi = copy.copy(roi)
-                newroi = newroi.insertDim(axisIndex, self.intervals[imageIndex][0], self.intervals[imageIndex][0]+1)
-                self.Output.setDirty( newroi )
-                
+                newroi = newroi.insertDim(axisIndex, 
+                                          self.intervals[imageIndex][0],
+                                          self.intervals[imageIndex][0]+1)
+                self.Output.setDirty(newroi)
+
         else:
             assert False, "Unknown input slot."
 
@@ -591,6 +613,7 @@ class OpMaxChannelIndicatorOperator(Operator):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.axistags = self.Input.meta.axistags
         self.Output.meta.dtype = numpy.uint8
+        self.Output.meta.drange = (0,1)
         self._num_channels = self.Input.meta.shape[-1]
 
     def execute(self, slot, subindex, roi, result):

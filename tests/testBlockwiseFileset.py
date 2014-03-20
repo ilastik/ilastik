@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import sys
 import shutil
@@ -20,12 +36,13 @@ logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 #logger.setLevel(logging.DEBUG)
 
+
 class TestBlockwiseFileset(object):
     
     @classmethod
     def setupClass(cls):
-        if 'Darwin' in platform.platform():
-            # For unknown reasons, blockwise fileset tests fail due to strange "too many files" errors on mac
+        if platform.system() == 'Windows':
+            # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
         
         testConfig = \
@@ -120,8 +137,11 @@ class TestBlockwiseFileset(object):
         datasetPath = self.bfs.exportRoiToHdf5( roi, exportDir )
         path_parts = PathComponents( datasetPath )
 
-        try:        
-            assert path_parts.externalDirectory == exportDir, "Dataset was not exported to the correct directory"
+        try:
+            assert path_parts.externalDirectory == exportDir, \
+            "Dataset was not exported to the correct directory:\n"\
+            "Expected: {}\n"\
+            "Got: {}".format( exportDir, path_parts.externalDirectory )
             
             expected_data = self.data[ roiToSlice(*roi) ]
             with h5py.File(path_parts.externalPath, 'r') as f:
@@ -216,6 +236,10 @@ class TestObjectBlockwiseFileset(object):
 
     @classmethod
     def setupClass(cls):
+        if platform.system() == 'Windows':
+            # On windows, there are errors, and we make no attempt to solve them (at the moment).
+            raise nose.SkipTest
+
         testConfig = \
         """
         {

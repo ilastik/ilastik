@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import sys
 import logging
@@ -1023,10 +1039,17 @@ class Slot(object):
             #  can occur if you supplied an equivalent value that 'is not' the original.
             # For example: x=numpy.uint8(3); y=numpy.int64(3); assert x == y;  assert x is not y
             if check_changed:
+                changed = False
+                # Fast path checks for array types
+                if isinstance(value, numpy.ndarray) or isinstance(self._value, numpy.ndarray):
+                    if type(value) != type(self._value) or value.shape != self._value.shape:
+                        changed = True
                 if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
                     if type(value) != type(self._value) or value.axistags != self._value.axistags:
                         changed = True
-                else:
+
+                if not changed:
+                    # Slow-patth checks
                     same = (value is self._value)
                     if not same:
                         try:

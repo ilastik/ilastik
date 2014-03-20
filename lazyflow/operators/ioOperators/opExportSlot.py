@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import collections
 from functools import partial
@@ -11,6 +27,14 @@ from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
                                            OpExportMultipageTiff, OpExportMultipageTiffSequence
+
+try:
+    from lazyflow.operators.ioOperators import OpExportDvidVolume
+    _supports_dvid = True
+except ImportError as ex:
+    if 'OpDvidVolume' not in ex.args[0] and 'OpExportDvidVolume' not in ex.args[0]:
+        raise
+    _supports_dvid = False
 
 FormatInfo = collections.namedtuple('FormatInfo', ('name', 'extension', 'min_dim', 'max_dim'))
 class OpExportSlot(Operator):
@@ -38,7 +62,8 @@ class OpExportSlot(Operator):
     _3d_volume_formats = [ FormatInfo('multipage tiff', 'tiff', 3, 3) ]
     _4d_sequence_formats = [ FormatInfo('multipage tiff sequence', 'tiff', 4, 4) ]
     nd_format_formats = [ FormatInfo('hdf5', 'h5', 0, 5),
-                        FormatInfo('numpy', 'npy', 0, 5)]
+                          FormatInfo('numpy', 'npy', 0, 5),
+                          FormatInfo('dvid', '', 2, 5) ]
     
     ALL_FORMATS = _2d_formats + _3d_sequence_formats + _3d_volume_formats\
                 + _4d_sequence_formats + nd_format_formats
@@ -51,6 +76,7 @@ class OpExportSlot(Operator):
         export_impls = {}
         export_impls['hdf5'] = ('h5', self._export_hdf5)
         export_impls['npy'] = ('npy', self._export_npy)
+        export_impls['dvid'] = ('', self._export_dvid)
         
         for fmt in self._2d_formats:
             export_impls[fmt.name] = (fmt.extension, partial(self._export_2d, fmt.extension) )
@@ -83,9 +109,10 @@ class OpExportSlot(Operator):
         path_format = self.OutputFilenameFormat.value
         file_extension = self._export_impls[ self.OutputFormat.value ][0]
         
-        # Remove existing extension (if present) and add the correct extension
-        path_format = os.path.splitext(path_format)[0]
-        path_format += '.' + file_extension
+        # Remove existing extension (if present) and add the correct extension (if any)
+        if file_extension:
+            path_format = os.path.splitext(path_format)[0]
+            path_format += '.' + file_extension
 
         # Provide the TOTAL path (including dataset name)
         if self.OutputFormat.value == 'hdf5':
@@ -121,13 +148,31 @@ class OpExportSlot(Operator):
             return False
         output_format = self.OutputFormat.value
 
-        # hdf5 and npy support all combinations
-        if output_format == 'hdf5' or output_format == 'npy':
+        # These cases support all combinations
+        if output_format in ('hdf5', 'npy'):
             return True
         
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
         output_dtype = self.Input.meta.dtype
+
+        if output_format == 'dvid':
+            # dvid requires a channel axis, which must come last.
+            # Internally, we transpose it before sending it over the wire
+            if tagged_shape.keys()[-1] != 'c':
+                return False
+
+            # Make sure DVID supports this dtype/channel combo.
+            from dvidclient.volume_metainfo import MetaInfo
+            metainfo = MetaInfo( self.Input.meta.shape,
+                                 output_dtype,
+                                 self.Input.meta.axistags )
+            try:
+                metainfo.determine_dvid_typename()
+            except:
+                return False
+            else:
+                return True
 
         # None of the remaining formats support more than 4 channels.
         if 'c' in tagged_shape and tagged_shape['c'] > 4:
@@ -251,7 +296,22 @@ class OpExportSlot(Operator):
         finally:
             opWriter.cleanUp()
             self.progressSignal(100)
+    
+    def _export_dvid(self):
+        self.progressSignal(0)
+        export_path = self.ExportPath.value
         
+        opExport = OpExportDvidVolume( transpose_axes=True, parent=self )
+        try:
+            opExport.Input.connect( self.Input )
+            opExport.NodeDataUrl.setValue( export_path )
+            
+            # Run the export in this thread
+            opExport.run_export()
+        finally:
+            opExport.cleanUp()
+            self.progressSignal(100)
+    
     def _export_2d(self, fmt):
         self.progressSignal(0)
         export_path = self.ExportPath.value

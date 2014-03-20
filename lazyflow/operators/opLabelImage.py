@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Third-party
 import numpy
 import vigra
@@ -5,8 +21,10 @@ import vigra
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpVigraLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.utility.helpers import warn_deprecated
 
-class OpLabelImage(Operator):
+
+class _OpLabelImage(Operator):
     """
     Produces labeled 5D volumes.  If multiple time slices and/or channels are present, 
     each time/channel combo is treated as a separate volume for labeling,
@@ -32,7 +50,7 @@ class OpLabelImage(Operator):
 
         See ascii schematic in comments above for an overview.
         """
-        super( OpLabelImage, self ).__init__( *args, **kwargs )
+        super(_OpLabelImage, self).__init__( *args, **kwargs )
         
         self.opTimeSlicer = OpMultiArraySlicer2( parent=self )
         self.opTimeSlicer.AxisFlag.setValue('t')
@@ -136,7 +154,11 @@ class OpLabelImage(Operator):
         pass # Nothing to do...
 
 
-
+class OpLabelImage(_OpLabelImage):
+    def __init__(self, *args, **kwargs):
+        warn_deprecated("OpLabelImage is deprecated,"
+                        " use OpLabelVolume instead")
+        super(OpLabelImage, self).__init__(*args, **kwargs)
 
 
 

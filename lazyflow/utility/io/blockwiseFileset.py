@@ -1,7 +1,24 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import copy
 import shutil
 import threading
+import platform
 import numpy
 import h5py
 import logging
@@ -144,6 +161,19 @@ class BlockwiseFileset(object):
             bfs = None
         return bfs
 
+    def _prepare_system(self):
+        # None of this code is tested on Windows.
+        # It might work, but you'll need to improve the unit tests to know for sure.
+        assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
+
+        # If you get a "Too many open files" error, this soft limit may need to be increased.
+        # The way to set this limit in bash is via "ulimit -n 4096"
+        # Fortunately, Python lets us increase the limit via the resource module.
+        import resource
+        softlimit, hardlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        softlimit = max( 4096, softlimit )
+        resource.setrlimit(resource.RLIMIT_NOFILE, ( softlimit, hardlimit ))
+
     def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
         """
         Constructor.  Uses `readDescription` interally.
@@ -152,6 +182,8 @@ class BlockwiseFileset(object):
         :param mode: Set to ``'r'`` if the fileset should be read-only.
         :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
         """
+        self._prepare_system()
+        
         assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode
         

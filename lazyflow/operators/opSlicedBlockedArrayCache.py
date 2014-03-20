@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import time
 import logging
@@ -132,7 +148,9 @@ class OpSlicedBlockedArrayCache(OpCache):
             if slot == self.Input:
                 self.Output.setDirty( key )        
             elif slot == self.outerBlockShape or slot == self.innerBlockShape:
-                self.Output.setDirty( slice(None) )
+                #self.Output.setDirty( slice(None) )
+                pass # Blockshape changes don't trigger dirty notifications
+                     # It is considered an error to change the blockshape after the initial configuration.
             elif slot == self.fixAtCurrent:
                 self.Output.setDirty( slice(None) )
             else:

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Built-in
 import copy
 import logging
@@ -46,7 +62,6 @@ class OpCompressedCache(OpCache):
 
 
     def setupOutputs(self):
-        self._closeAllCacheFiles()
         self.Output.meta.assignFrom(self.Input.meta)
         self.OutputHdf5.meta.assignFrom(self.Input.meta)
         self.CleanBlocks.meta.shape = (1,)
@@ -54,7 +69,10 @@ class OpCompressedCache(OpCache):
 
         # Clip blockshape to image bounds
         if self.BlockShape.ready():
-            self._blockshape = numpy.minimum( self.BlockShape.value, self.Input.meta.shape )
+            if self._blockshape and tuple(self.BlockShape.value) != self._blockshape:
+                assert len(self._cacheFiles) == 0, \
+                    "It is an error to reconfigure the cache block shape after you have started using it!"
+            self._blockshape = tuple(numpy.minimum( self.BlockShape.value, self.Input.meta.shape ))
         else:
             self._blockshape = self.Input.meta.shape
         
@@ -64,7 +82,6 @@ class OpCompressedCache(OpCache):
 
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
-            
             return self._executeOutput(roi, destination)
         elif slot == self.CleanBlocks:
             return self._executeCleanBlocks(destination)
@@ -75,27 +92,40 @@ class OpCompressedCache(OpCache):
         
 
     def _executeOutput(self, roi, destination):
-        t = time.time()
-        assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
-        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
+        assert len(roi.stop) == len(self.Input.meta.shape), \
+            "roi: {} has the wrong number of dimensions for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), \
+            "roi: {} is out-of-bounds for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         block_starts = map( tuple, block_starts )
 
         # Ensure all block cache files are up-to-date
+        self._waitForBlocks(block_starts)
+        self._copyData(roi, destination, block_starts)
+        return destination
+
+    def _waitForBlocks(self, block_starts):
+        """
+        Make sure that all blocks in the given list of blocks are present in the cache before returning.
+        (Blocks that are not yet present will be requested from our Input slot.)
+        """
         reqPool = RequestPool() # (Do the work in parallel.)
         for block_start in block_starts:
-            entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
             f = partial( self._ensureCached, entire_block_roi)
             reqPool.add( Request(f) )
         logger.debug( "Waiting for {} blocks...".format( len(block_starts) ) )
         reqPool.wait()
 
+    def _copyData(self, roi, destination, block_starts):
         # Copy data from each block
         # (Parallelism not needed here: h5py will serialize these requests anyway)
         logger.debug( "Copying data from {} blocks...".format( len(block_starts) ) )
         for block_start in block_starts:
-            entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
 
             # This block's portion of the roi
             intersecting_roi = getIntersection( (roi.start, roi.stop), entire_block_roi )
@@ -107,9 +137,6 @@ class OpCompressedCache(OpCache):
             # Copy from block to destination
             dataset = self._getBlockDataset( entire_block_roi )
             destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
-        logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
-        return destination
-
 
     def _executeCleanBlocks(self, destination):
         """
@@ -119,8 +146,8 @@ class OpCompressedCache(OpCache):
         # Set difference: clean = existing - dirty
         clean_block_starts = set( self._cacheFiles.keys() ) - self._dirtyBlocks
         
-        inputShape = self.Input.meta.shape
-        clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockshape ),
+        output_shape = self.Output.meta.shape
+        clean_block_rois = map( partial( getBlockBounds, output_shape, self._blockshape ),
                                 clean_block_starts )
         destination[0] = map( partial(map, TinyVector), clean_block_rois )
         return destination
@@ -130,7 +157,7 @@ class OpCompressedCache(OpCache):
 
         assert isinstance( destination, h5py.Group ), "OutputHdf5 slot requires an hdf5 GROUP to copy into (not a numpy array)."
         assert ((roi.start % self._blockshape) == 0).all(), "OutputHdf5 slot requires roi to be exactly one block."
-        block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
+        block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, roi.start )
         assert (block_roi == numpy.array((roi.start, roi.stop))).all(), "OutputHdf5 slot requires roi to be exactly one block."
 
         block_roi = [roi.start, roi.stop]
@@ -169,11 +196,11 @@ class OpCompressedCache(OpCache):
         # - aim for roughly the same ratio of xyz sizes as the blockshape
 
         # Start with a copy of blockshape
-        axes = self.Input.meta.getTaggedShape().keys()
+        axes = self.Output.meta.getTaggedShape().keys()
         taggedBlockshape = collections.OrderedDict( zip(axes, self._blockshape) )
         taggedChunkshape = copy.copy( taggedBlockshape )
 
-        dtypeBytes = self._getDtypeBytes(self.Input.meta.dtype)
+        dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
         # How much xyz space can a chunk occupy and still fit within 100k?
         desiredSpace = 100000.0 / dtypeBytes
@@ -246,20 +273,24 @@ class OpCompressedCache(OpCache):
             return self._cacheFiles[block_start]
         with self._lock:
             if block_start not in self._cacheFiles:
-                logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
                 # Create an in-memory hdf5 file with a unique name
-                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start) 
+                logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
+                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start)
                 mem_file = h5py.File(filename, driver='core', backing_store=False, mode='w')                
-                
-                # Make a compressed dataset
+
+                # h5py will crash if the chunkshape is larger than the dataset shape.
                 datashape = tuple( entire_block_roi[1] - entire_block_roi[0] )
+                chunkshape = numpy.minimum(numpy.array(datashape), self._chunkshape )
+                chunkshape = tuple(chunkshape)
+
+                # Make a compressed dataset
                 mem_file.create_dataset('data',
                                         shape=datashape,
-                                        dtype=self.Input.meta.dtype,
-                                        chunks=self._chunkshape,
+                                        dtype=self.Output.meta.dtype,
+                                        chunks=chunkshape,
                                         compression='lzf' ) # lzf should be faster than gzip, 
                                                             # with a slightly worse compression ratio
-                    
+
                 self._blockLocks[block_start] = RequestLock()
                 self._cacheFiles[block_start] = mem_file
                 self._dirtyBlocks.add( block_start )
@@ -310,9 +341,18 @@ class OpCompressedCache(OpCache):
         else:
             assert False, "Invalid input slot for setInSlot(): {}".format( slot.name )
 
-    def _setInSlotInput(self, slot, subindex, roi, value):
-        assert len(roi.stop) == len(self.Input.meta.shape), "roi: {} has the wrong number of dimensions for Input shape: {}".format( roi, self.Input.meta.shape )
-        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), "roi: {} is out-of-bounds for Input shape: {}".format( roi, self.Input.meta.shape )
+    def _setInSlotInput(self, slot, subindex, roi, value, store_zero_blocks=True):
+        """
+        Write the data in the array 'value' into the cache.
+        If the optional ignore_zero_blocks param is True, then don't bother 
+        creating cache blocks for blocks thare are totally zero.
+        """
+        assert len(roi.stop) == len(self.Input.meta.shape), \
+            "roi: {} has the wrong number of dimensions for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), \
+            "roi: {} is out-of-bounds for Input shape: {}"\
+            "".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         block_starts = map( tuple, block_starts )
@@ -320,7 +360,7 @@ class OpCompressedCache(OpCache):
         # Copy data to each block
         logger.debug( "Copying data INTO {} blocks...".format( len(block_starts) ) )
         for block_start in block_starts:
-            entire_block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
 
             # This block's portion of the roi
             intersecting_roi = getIntersection( (roi.start, roi.stop), entire_block_roi )
@@ -329,36 +369,50 @@ class OpCompressedCache(OpCache):
             source_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
             
-            # Copy from source to block
-            dataset = self._getBlockDataset( entire_block_roi )
-            
-            dataset[ roiToSlice( *block_relative_intersection ) ] = value[ roiToSlice(*source_relative_intersection) ]
-
+            new_block_data = value[ roiToSlice(*source_relative_intersection) ]
+            if not store_zero_blocks and new_block_data.sum() == 0 and block_start not in self._cacheFiles:
+                # Special fast-path: If this block doesn't exist yet, 
+                #  don't bother creating if we're just going to fill it with zeros
+                # (Used by the OpCompressedUserLabelArray)
+                pass
+            else:
+                # Copy from source to block
+                dataset = self._getBlockDataset( entire_block_roi )
+                dataset[ roiToSlice( *block_relative_intersection ) ] = new_block_data
+    
             # Here, we assume that if this function is used to update ANY PART of a 
             #  block, he is responsible for updating the ENTIRE block.
             # Therefore, this block is no longer 'dirty'
             self._dirtyBlocks.discard( block_start )
-
-#            self.Output._sig_value_changed()
-#            self.OutputHdf5._sig_value_changed()
-#            self.CleanBlocks._sig_value_changed()
+    
+    #            self.Output._sig_value_changed()
+    #            self.OutputHdf5._sig_value_changed()
+    #            self.CleanBlocks._sig_value_changed()
 
     def _setInSlotInputHdf5(self, slot, subindex, roi, value):
         logger.debug("Setting block {} from hdf5".format( roi ))
         assert isinstance( value, h5py.Dataset ), "InputHdf5 slot requires an hdf5 Dataset to copy from (not a numpy array)."
-        assert ((roi.start % self._blockshape) == 0).all(), "InputHdf5 slot requires roi to be exactly one block."
-        block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, roi.start )
-        assert (block_roi == numpy.array((roi.start, roi.stop))).all(), "InputHdf5 slot requires roi to be exactly one block."
 
-        cachefile = self._getCacheFile( block_roi )
-        logger.debug( "Copying HDF5 data directly into block {}".format( block_roi ) )
-        assert cachefile['data'].dtype == value.dtype
-        assert cachefile['data'].shape == value.shape
-        del cachefile['data']
-        cachefile.copy( value, 'data' )
+        block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, roi.start )
 
-        block_start = tuple(roi.start)
-        self._dirtyBlocks.discard( block_start )
+        roi_is_exactly_one_block = True
+        roi_is_exactly_one_block &= ((roi.start % self._blockshape) == 0).all()
+        roi_is_exactly_one_block &= (block_roi == numpy.array((roi.start, roi.stop))).all()
+        if roi_is_exactly_one_block:
+            cachefile = self._getCacheFile( block_roi )
+            logger.debug( "Copying HDF5 data directly into block {}".format( block_roi ) )
+            assert cachefile['data'].dtype == value.dtype
+            assert cachefile['data'].shape == value.shape
+            del cachefile['data']
+            cachefile.copy( value, 'data' )
+    
+            block_start = tuple(roi.start)
+            self._dirtyBlocks.discard( block_start )
+        else:
+            # This hdf5 data does not correspond to exactly one block.
+            # We must uncompress it and write it the "normal" way (the slow way)
+            # FIXME: This would use less memory if we uncompressed the data block-by-block
+            self.Input[roiToSlice(roi.start, roi.stop)] = value[:]
 
 #        self.Output._sig_value_changed()
 #        self.OutputHdf5._sig_value_changed()

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import time
 import copy
@@ -10,10 +26,13 @@ import numpy
 import vigra
 
 #lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.request import Request, RequestPool
 from lazyflow.utility import traceLogged
+
+from opFeatureMatrixCache import OpFeatureMatrixCache
+from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
 class OpTrainRandomForest(Operator):
     name = "TrainRandomForest"
@@ -78,8 +97,136 @@ class OpTrainRandomForest(Operator):
         if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-
 class OpTrainRandomForestBlocked(Operator):
+    Images = InputSlot(level=1)
+    Labels = InputSlot(level=1)
+    nonzeroLabelBlocks = InputSlot(level=1) # TODO: Eliminate this slot. It isn't used any more...
+    MaxLabel = InputSlot()
+    
+    Classifier = OutputSlot()
+    
+    # Images[N] ---                                                                                    MaxLabel ------
+    #              \                                                                                                  \
+    # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
+
+    def __init__(self, *args, **kwargs):
+        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)        
+        self.progressSignal = OrderedSignal()
+        
+        self._opFeatureMatrixCaches = OperatorWrapper( OpFeatureMatrixCache, parent=self )
+        self._opFeatureMatrixCaches.LabelImage.connect( self.Labels )
+        self._opFeatureMatrixCaches.FeatureImage.connect( self.Images )
+        self._opFeatureMatrixCaches.NonZeroLabelBlocks.connect( self.nonzeroLabelBlocks )
+        
+        self._opConcatenateFeatureMatrices = OpConcatenateFeatureMatrices( parent=self )
+        self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )
+        self._opConcatenateFeatureMatrices.ProgressSignals.connect( self._opFeatureMatrixCaches.ProgressSignal )
+        
+        self._opTrainFromFeatures = OpTrainRandomForestFromFeatures( parent=self )
+        self._opTrainFromFeatures.LabelAndFeatureMatrix.connect( self._opConcatenateFeatureMatrices.ConcatenatedOutput )
+        self._opTrainFromFeatures.MaxLabel.connect( self.MaxLabel )
+        
+        self.Classifier.connect( self._opTrainFromFeatures.Classifier )
+
+        # Progress reporting
+        def _handleFeatureProgress( progress ):
+            self.progressSignal( 0.8*progress )
+        self._opConcatenateFeatureMatrices.progressSignal.subscribe( _handleFeatureProgress )
+        
+        def _handleTrainingComplete():
+            self.progressSignal( 100.0 )
+        self._opTrainFromFeatures.trainingCompleteSignal.subscribe( _handleTrainingComplete )
+
+    def setupOutputs(self):
+        pass # Nothing to do; our output is connected to an internal operator.
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here..."
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+class OpTrainRandomForestFromFeatures(Operator):
+    LabelAndFeatureMatrix = InputSlot()
+    
+    MaxLabel = InputSlot()
+    Classifier = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpTrainRandomForestFromFeatures, self).__init__(*args, **kwargs)
+        self.trainingCompleteSignal = OrderedSignal()
+        self._forest_count = 10
+        self._forests = (None,) * self._forest_count
+
+        # TODO: Make treecount configurable via an InputSlot
+        self._tree_count = 10
+
+        # TODO: Progress...
+        #self.progressSignal = OrderedSignal()
+
+    def setupOutputs(self):
+        self.outputs["Classifier"].meta.dtype = object
+        self.outputs["Classifier"].meta.shape = (self._forest_count,)
+
+    def execute(self, slot, subindex, roi, result):
+        labels_and_features = self.LabelAndFeatureMatrix.value
+        featMatrix = labels_and_features[:,1:]
+        labelsMatrix = labels_and_features[:,0:1]
+        
+        maxLabel = self.MaxLabel.value
+        labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
+
+        if featMatrix.shape[0] < maxLabel:
+            # If there isn't enough data for the random forest to train with, return None
+            result[:] = None
+            self.trainingCompleteSignal()
+            return
+
+        try:
+            self.logger.debug("Learning %d random forests with %d trees each with vigra..." % (self._forest_count, self._tree_count))
+            t = time.time()
+            # train and store self._forest_count forests in parallel
+            pool = RequestPool()
+
+            for i in range(self._forest_count):
+                def train_and_store(number):
+                    result[number] = vigra.learning.RandomForest(self._tree_count, labels=labelList)
+                    result[number].learnRF( numpy.asarray(featMatrix, dtype=numpy.float32),
+                                            numpy.asarray(labelsMatrix, dtype=numpy.uint32))
+                req = pool.request(partial(train_and_store, i))
+
+            pool.wait()
+            pool.clean()
+
+            self.logger.debug("Learning %d random forests with %d trees each with vigra took %f sec." % \
+                (self._forest_count, self._tree_count, time.time()-t))
+        except:
+            self.logger.error( "ERROR: could not learn classifier" )
+            
+            if numpy.prod(featMatrix.shape) > 0:
+                m = featMatrix.max()
+            else:
+                m = 'N/A'
+            self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, m, featMatrix.dtype) )
+
+            if numpy.prod(labelsMatrix.shape) > 0:
+                m = labelsMatrix.max()
+            else:
+                m = 'N/A'
+            self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, m, labelsMatrix.dtype ) )
+
+            raise
+
+        self._forests = result
+        
+        self.trainingCompleteSignal()
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Classifier.setDirty()        
+
+class OpTrainRandomForestBlocked_OLD(Operator):
+    # TODO: Eliminate this obsolete operator....
     name = "TrainRandomForestBlocked"
     description = "Train a random forest on multiple images"
     category = "Learning"
@@ -104,6 +251,7 @@ class OpTrainRandomForestBlocked(Operator):
         self.outputs["Classifier"].meta.dtype = object
         self.outputs["Classifier"].meta.shape = (self._forest_count,)
 
+    @traceLogged(logger, level=logging.DEBUG, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, subindex, roi, result):
         progress = 0
         self.progressSignal(progress)
@@ -188,6 +336,7 @@ class OpTrainRandomForestBlocked(Operator):
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+            
             maxLabel = self.MaxLabel.value
             labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
