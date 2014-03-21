@@ -61,8 +61,10 @@ class PixelClassificationWorkflow(Workflow):
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
+        parser.add_argument('--print-labels-by-slice', help="Print the number of labels for each Z-slice of each image.", action="store_true")
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         self.filter_implementation = parsed_args.filter
+        self.print_labels_by_slice = parsed_args.print_labels_by_slice
         
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -280,8 +282,11 @@ class PixelClassificationWorkflow(Workflow):
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """
+        if self.print_labels_by_slice:
+            self._print_labels_by_slice()
+
         # Configure the batch data selection operator.
-        if self._batch_input_args and self._batch_input_args.input_files: 
+        if self._batch_input_args and self._batch_input_args.input_files:
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.
@@ -312,3 +317,40 @@ class PixelClassificationWorkflow(Workflow):
                 # Finished.
                 sys.stdout.write("\n")
 
+    def _print_labels_by_slice(self):
+        """
+        Iterate over each label image in the project and print the number of labels present on each Z-slice of the image.
+        (This is a special feature requested by the FlyEM proofreaders.)
+        """
+        opTopLevelClassify = self.pcApplet.topLevelOperator
+        project_label_count = 0
+        for image_index, label_slot in enumerate(opTopLevelClassify.LabelImages):
+            tagged_shape = label_slot.meta.getTaggedShape()
+            if 'z' not in tagged_shape:
+                logger.error("Can't print label counts by Z-slices.  Image #{} has no Z-dimension.".format(image_index))
+            else:
+                print "Label counts in Z-slices of Image #{}:".format( image_index )
+                slicing = [slice(None)] * len(tagged_shape)
+                blank_slices = []
+                image_label_count = 0
+                for z in range(tagged_shape['z']):
+                    slicing[tagged_shape.keys().index('z')] = slice(z, z+1)
+                    label_slice = label_slot[slicing].wait()
+                    count = (label_slice != 0).sum()
+                    if count > 0:
+                        print "Z={}: {}".format( z, count )
+                        image_label_count += count
+                    else:
+                        blank_slices.append( z )
+                project_label_count += image_label_count
+                if len(blank_slices) > 20:
+                    # Don't list the blank slices if there were a lot of them.
+                    print "Image #{} has {} blank slices.".format( image_index, len(blank_slices) )
+                elif len(blank_slices) > 0:
+                    print "Image #{} has {} blank slices: {}".format( image_index, len(blank_slices), blank_slices )
+                else:
+                    print "Image #{} has no blank slices.".format( image_index )
+                print "Total labels for Image #{}: {}".format( image_index, image_label_count )
+        print "Total labels for project: {}".format( project_label_count )
+
+    
