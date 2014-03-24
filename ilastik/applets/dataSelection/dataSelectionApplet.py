@@ -1,10 +1,26 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import glob
 import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-from lazyflow.utility import PathComponents
+from lazyflow.utility import PathComponents, isUrl
 from ilastik.applets.base.applet import Applet
 from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -87,6 +103,9 @@ class DataSelectionApplet( Applet ):
         input_paths = parsed_args.input_files
         error = False
         for p in input_paths:
+            if isUrl(p):
+                # Don't error-check urls in advance.
+                continue
             p = PathComponents(p).externalPath
             if '*' in p:
                 if len(glob.glob(p)) == 0:
@@ -120,13 +139,15 @@ class DataSelectionApplet( Applet ):
         for p in input_paths:
             info = DatasetInfo()
             info.location = DatasetInfo.Location.FileSystem
-    
-            # Convert all paths to absolute 
-            # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+            info.filePath = p
+
             comp = PathComponents(p)
-            comp.externalPath = os.path.abspath(comp.externalPath)
-            
-            info.filePath = comp.totalPath()
+
+            # Convert all (non-url) paths to absolute 
+            # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+            if not isUrl(p):
+                comp.externalPath = os.path.abspath(comp.externalPath)
+                info.filePath = comp.totalPath()
             info.nickname = comp.filenameBase
             input_infos.append(info)
 

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4 import uic, QtGui
 import os
 
@@ -61,6 +77,9 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         
         
         def _track():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+            
             app = self._drawer.appSpinBox.value()
             dis = self._drawer.disSpinBox.value()
             opp = self._drawer.oppSpinBox.value()
@@ -116,12 +135,16 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
             self._setLayerVisible("Objects", False) 
+            self.applet.busy = False            
+            self.applet.appletStateUpdateRequested.emit()
             
         def _handle_failure( exc, exc_info ):
             self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
         
         self._drawer.TrackButton.setEnabled(False)        
         self.applet.progressSignal.emit(0)

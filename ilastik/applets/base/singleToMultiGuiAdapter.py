@@ -1,4 +1,19 @@
-import sip
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 class SingleToMultiGuiAdapter( object ):
     """
     Utility class used by the StandardApplet to wrap several single-image 
@@ -101,6 +116,8 @@ class SingleToMultiGuiAdapter( object ):
         for gui in filter(lambda x:x, self._guis):
             gui.setEnabled(enabled)
         for blank_drawer in self._tempDrawers.values():
+            # Late import here to avoid importing sip in headless mode.
+            import sip
             if not sip.isdeleted(blank_drawer):
                 blank_drawer.setEnabled(enabled)
         

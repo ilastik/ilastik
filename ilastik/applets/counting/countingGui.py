@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Built-in
 import os
 import logging
@@ -157,6 +173,7 @@ class CountingGui(LabelingGui):
 
 
         self.initCounting()
+        #personal debugging code
         try:
             from sitecustomize import Shortcuts
         except Exception,e:
@@ -238,7 +255,7 @@ class CountingGui(LabelingGui):
         self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
 
         self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor.imageScenes[2],self.density5d.output,self.labelingDrawerUi.boxListModel)
+        self.boxController=BoxController(mainwin.editor,self.density5d.output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
         self.navigationInterpreterDefault=self.editor.navInterpret
@@ -558,35 +575,49 @@ class CountingGui(LabelingGui):
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Predictions"
+        
+        mgr.register( "p", ActionInfo( shortcutGroupName,
+                                       "Toggle Prediction",
+                                       "Toggle Prediction Layer Visibility",
+                                       self._viewerControlUi.checkShowPredictions.click,
+                                       self._viewerControlUi.checkShowPredictions,
+                                       self._viewerControlUi.checkShowPredictions ) )
 
-        togglePredictions = QShortcut( QKeySequence("p"), self, member=self._viewerControlUi.checkShowPredictions.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Prediction Layer Visibility",
-                      togglePredictions,
-                      self._viewerControlUi.checkShowPredictions )
+        mgr.register( "s", ActionInfo( shortcutGroupName,
+                                       "Toggle Segmentation",
+                                       "Toggle Segmentaton Layer Visibility",
+                                       self._viewerControlUi.checkShowSegmentation.click,
+                                       self._viewerControlUi.checkShowSegmentation,
+                                       self._viewerControlUi.checkShowSegmentation ) )
 
-        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self._viewerControlUi.checkShowSegmentation.click )
-        mgr.register( shortcutGroupName,
-                      "Toggle Segmentaton Layer Visibility",
-                      toggleSegmentation,
-                      self._viewerControlUi.checkShowSegmentation )
-
-        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.liveUpdateButton.toggle )
-        mgr.register( shortcutGroupName,
-                      "Toggle Live Prediction Mode",
-                      toggleLivePredict,
-                      self.labelingDrawerUi.liveUpdateButton )
-
+        mgr.register( "l", ActionInfo( shortcutGroupName,
+                                       "Toggle Live Prediction Mode",
+                                       "Toggle Live",
+                                       self.labelingDrawerUi.liveUpdateButton.toggle,
+                                       self.labelingDrawerUi.liveUpdateButton,
+                                       self.labelingDrawerUi.liveUpdateButton ) )
 
         shortcutGroupName = "Counting"
 
-        deleteBox = QShortcut( QKeySequence("Del"), self, member=self.boxController.deleteSelectedItems)
-        mgr.register( shortcutGroupName,
-                      "Delete a Box",
-                      deleteBox,
-                      None )
+        mgr.register( "Del", ActionInfo( shortcutGroupName,
+                                         "Delete a Box",
+                                         "Delete a Box",
+                                         self.boxController.deleteSelectedItems,
+                                         self,
+                                         None ) )
 
+        try:
+            from sitecustomize import Shortcuts
+            mgr.register( "F5", ActionInfo( shortcutGroupName,
+                                            "Activate Debug Mode",
+                                            "Activate Debug Mode",
+                                            self._debug,
+                                            self,
+                                            None ) )
+        except ImportError as e:
+            pass
 
 
     def _setup_contexts(self, layer):
@@ -661,11 +692,13 @@ class CountingGui(LabelingGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            inputLayer.shortcutRegistration = (
-                "Prediction Layers",
-                "Bring Input To Top/Bottom",
-                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
-                inputLayer )
+            inputLayer.shortcutRegistration = ( "i", ShortcutManager.ActionInfo(
+                                                        "Prediction Layers",
+                                                        "Bring Input To Top/Bottom",
+                                                        "Bring Input To Top/Bottom",
+                                                        toggleTopToBottom,
+                                                        self.viewerControlWidget(),
+                                                        inputLayer ) )
             layers.append(inputLayer)
 
         self.handleLabelSelectionChange()

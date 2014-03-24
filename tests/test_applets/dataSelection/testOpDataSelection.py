@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import numpy
 import vigra
@@ -6,13 +22,16 @@ import h5py
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 
+import tempfile
+
 class TestOpDataSelection_Basic():
     
     @classmethod
     def setupClass(cls):
-        cls.testNpyFileName = 'testImage1.npy'
-        cls.testPngFileName = 'testImage2.png'
-        cls.projectFileName = 'testProject.ilp'
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.testNpyFileName = os.path.join(cls.tmpdir, 'testImage1.npy')
+        cls.testPngFileName = os.path.join(cls.tmpdir, 'testImage2.png')
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
 
         # Create a couple test images of different types
         cls.npyData = numpy.zeros((10, 11))
@@ -39,9 +58,11 @@ class TestOpDataSelection_Basic():
     @classmethod
     def teardownClass(cls):
         cls.projectFile.close()
-        os.remove(cls.testNpyFileName)
-        os.remove(cls.testPngFileName)
-        os.remove(cls.projectFileName)
+        for path in [ cls.testNpyFileName, cls.testPngFileName, cls.projectFileName ]:
+            try:
+                os.remove(path)
+            except:
+                pass
     
     def testBasic(self):
         graph = lazyflow.graph.Graph()

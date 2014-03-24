@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSlot
 from PyQt4.QtGui import QShortcut, QKeySequence
@@ -16,6 +32,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler
 
 from volumina.slicingtools import index2slice
+from volumina.utility import ShortcutManager
 
 import logging
 logger = logging.getLogger(__name__)
@@ -128,6 +145,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
     def setupLayers(self):
+        ActionInfo = ShortcutManager.ActionInfo
         layers = []
 
         self.updateInputChannelGui()
@@ -139,11 +157,13 @@ class VigraWatershedViewerGui(LayerViewerGui):
             outputLayer.name = "Watershed"
             outputLayer.visible = True
             outputLayer.opacity = 0.5
-            outputLayer.shortcutRegistration = (
-                "Watershed Layers",
-                "Show/Hide Watershed",
-                QShortcut( QKeySequence("w"), self.viewerControlWidget(), outputLayer.toggleVisible ),
-                outputLayer )
+            outputLayer.shortcutRegistration = ( "w", ActionInfo(
+                                                        "Watershed Layers",
+                                                        "Show/Hide Watershed",
+                                                        "Show/Hide Watershed",
+                                                        outputLayer.toggleVisible,
+                                                        self,
+                                                        outputLayer ) )
             layers.append(outputLayer)
         
         # Show the watershed seeds
@@ -153,11 +173,13 @@ class VigraWatershedViewerGui(LayerViewerGui):
             seedLayer.name = "Watershed Seeds"
             seedLayer.visible = True
             seedLayer.opacity = 0.5
-            seedLayer.shortcutRegistration = (
+            seedLayer.shortcutRegistration = ( "s", ActionInfo(
                 "Watershed Layers",
                 "Show/Hide Watershed Seeds",
-                QShortcut( QKeySequence("s"), self.viewerControlWidget(), seedLayer.toggleVisible ),
-                seedLayer )
+                "Show/Hide Watershed Seeds",
+                seedLayer.toggleVisible,
+                self.viewerControlWidget(),
+                seedLayer ) )
             layers.append(seedLayer)
 
         selectedInputImageSlot = self.topLevelOperatorView.SelectedInputChannels
@@ -197,11 +219,13 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            rawLayer.shortcutRegistration = (
-                "Watershed Layers",
-                "Bring Raw Data To Top/Bottom",
-                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
-                rawLayer )
+            rawLayer.shortcutRegistration = ( "i", ActionInfo( 
+                                                    "Watershed Layers",
+                                                    "Bring Raw Data To Top/Bottom",
+                                                    "Bring Raw Data To Top/Bottom",
+                                                    toggleTopToBottom,
+                                                    self.viewerControlWidget(),
+                                                    rawLayer ) )
             layers.append(rawLayer)
 
         return layers

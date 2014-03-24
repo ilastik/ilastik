@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -5,6 +21,9 @@ from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
 
 import numpy as np
+
+import logging
+logger = logging.getLogger(__name__)
 
 class OpManualTracking(Operator):
     name = "Manual Tracking"
@@ -162,7 +181,7 @@ class OpManualTracking(Operator):
                             alltids.add(l)   
                         count += 1
                          
-            print "at timestep ", t, count, "traxels found"
+            logger.info( "at timestep {}, {} traxels found".format( t, count ) )
             
         return oid2tids, alltids
     

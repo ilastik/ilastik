@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import copy
 from functools import partial
@@ -7,10 +23,11 @@ import numpy
 import vigra
 
 #lazyflow
+from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
+from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPixelOperator, OpMaxChannelIndicatorOperator
+                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -117,6 +134,11 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
         
         def _updateNumClasses(*args):
+            """
+            When the number of labels changes, we MUST make sure that the prediction image changes its shape (the number of channels).
+            Since setupOutputs is not called for mere dirty notifications, but is called in response to setValue(),
+            we use this function to call setValue().
+            """
             numClasses = len(self.LabelNames.value)
             self.opTrain.MaxLabel.setValue( numClasses )
             self.opPredictionPipeline.NumClasses.setValue( numClasses )
@@ -245,12 +267,9 @@ class OpLabelPipeline( Operator ):
     
     def __init__(self, *args, **kwargs):
         super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        self.opInputShapeReader = OpShapeReader( parent=self )
-        self.opInputShapeReader.Input.connect( self.RawImage )
         
-        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
         self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.eraser.setValue(100)
 
         self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
@@ -260,11 +279,12 @@ class OpLabelPipeline( Operator ):
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
     
     def setupOutputs(self):
-        taggedShape = self.RawImage.meta.getTaggedShape()
-        blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
-        blockDims = dict( filter( lambda (k,v): k in taggedShape, blockDims.items() ) )
-        taggedShape.update( blockDims )
-        self.opLabelArray.blockShape.setValue( tuple( taggedShape.values() ) )
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        tagged_shape['c'] = 1
+        
+        # Aim for blocks that are roughly 1MB
+        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -417,67 +437,47 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def __init__(self, *args, **kwargs):
-        super(OpShapeReader, self).__init__(*args, **kwargs)
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-        
-        # Our output is simply the shape of our input, but with only one channel
-        shapeList = list(self.Input.meta.shape)
-        try:
-            channelIndex = self.Input.meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except:
-            pass
-        self.OutputShape.setValue( tuple(shapeList) )
-    
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
-
 class OpEnsembleMargin(Operator):
     """
     Produces a pixelwise measure of the uncertainty of the pixelwise predictions.
+    
+    Uncertainty is negatively proportional to the difference between the 
+    highest two probabilities at every pixel.
     """
     Input = InputSlot()
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-
         taggedShape = self.Input.meta.getTaggedShape()
         taggedShape['c'] = 1
         self.Output.meta.shape = tuple(taggedShape.values())
-
+        
     def execute(self, slot, subindex, roi, result):
+        # If there's only 1 channel, there's zero uncertainty
+        if self.Input.meta.getTaggedShape()['c'] <= 1:
+            result[:] = 0
+            return
+
         roi = copy.copy(roi)
         taggedShape = self.Input.meta.getTaggedShape()
         chanAxis = self.Input.meta.axistags.index('c')
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = taggedShape['c']
         pmap = self.Input.get(roi).wait()
-        
-        pmap_sort = numpy.sort(pmap, axis=self.Input.meta.axistags.index('c')).view(vigra.VigraArray)
-        pmap_sort.axistags = self.Input.meta.axistags
 
-        res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
+        # Sort along channel axis so the every pixel's channels are sorted lowest to highest.
+        pmap.sort(axis=self.Input.meta.axistags.index('c'))
+        pmap = pmap.view(vigra.VigraArray)
+        pmap.axistags = self.Input.meta.axistags
+
+        # Subtract the highest channel from the second-highest channel.
+        res = pmap.bindAxis('c', -1) - pmap.bindAxis('c', -2)
         res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        
+        # Subtract from 1 to make this an "uncertainty" measure, not a "certainty" measure
+        # e.g. predictions of .99 and .01 -> low uncertainty (0.98)
+        # e.g. predictions of .51 and .49 -> high uncertainty (0.02)
         result[...] = (1-res)
         return result 
 

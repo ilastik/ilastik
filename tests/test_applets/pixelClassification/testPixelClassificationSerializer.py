@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import numpy
 import h5py
@@ -75,17 +91,19 @@ class OpMockPixelClassifier(Operator):
             self.NonzeroLabelBlocks[i].meta.shape = (1,)
             self.NonzeroLabelBlocks[i].meta.dtype = object
 
-            self.LabelImages[i].meta.shape = self.dataShape
-            self.LabelImages[i].meta.dtype = numpy.float64
-            
             # Hard-coded: Two prediction classes
             self.PredictionProbabilities[i].meta.shape = self.prediction_shape
             self.PredictionProbabilities[i].meta.dtype = numpy.float64
             self.PredictionProbabilities[i].meta.axistags = vigra.defaultAxistags('txyzc')
             
             # Classify with random data
-            self.opClassifier.Images[i].setValue( numpy.random.random(self.dataShape) )
+            self.opClassifier.Images[i].setValue( vigra.taggedView( numpy.random.random(self.dataShape), 'txyzc' ) )
         
+            self.LabelImages[i].meta.shape = self.dataShape
+            self.LabelImages[i].meta.dtype = numpy.float64
+            self.LabelImages[i].meta.axistags = self.opClassifier.Images[i].meta.axistags
+            
+
         self.Classifier.connect( self.opClassifier.Classifier )
         
     def setInSlot(self, slot, subindex, roi, value):
@@ -158,7 +176,7 @@ class TestPixelClassificationSerializer(object):
     
         # Create an empty project
         with h5py.File(testProjectName) as testProject:
-            testProject.create_dataset("ilastikVersion", data=0.6)
+            testProject.create_dataset("ilastikVersion", data="1.0.0")
             
             # Create an operator to work with and give it some input
             g = Graph()

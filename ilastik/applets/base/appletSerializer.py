@@ -1,10 +1,25 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import logging
 logger = logging.getLogger(__name__)
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 from ilastik.config import cfg as ilastik_config
-from ilastik import isVersionCompatible
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
@@ -15,9 +30,7 @@ import numpy
 import warnings
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
-from lazyflow.rtype import SubRegion
-from lazyflow.slot import OutputSlot
-from lazyflow.utility import Timer, timeLogged
+from lazyflow.utility import timeLogged
 
 #######################
 # Convenience methods #
@@ -318,7 +331,9 @@ class SerialListSlot(SerialSlot):
             raise
         sg.attrs['isEmpty'] = isempty
 
+    @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
+        logger.debug("Deserializing ListSlot: {}".format(self.name))
         try:
             subgroup = group[self.name]
         except KeyError:
@@ -361,6 +376,7 @@ class SerialBlockSlot(SerialSlot):
 
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
+        logger.debug("Serializing BlockSlot: {}".format( self.name ))
         mygroup = group.create_group(name)
         num = len(self.blockslot)
         for index in range(num):
@@ -388,7 +404,9 @@ class SerialBlockSlot(SerialSlot):
                 subgroup.create_dataset(blockName, data=block)
                 subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
+    @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
+        logger.debug("Deserializing BlockSlot: {}".format( self.name ))
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
@@ -646,6 +664,9 @@ class AppletSerializer(object):
     # override if necessary
     version = "0.1"
 
+    class IncompatibleProjectVersionError(Exception):
+        pass
+
     #########################
     # Semi-abstract methods #
     #########################
@@ -754,13 +775,6 @@ class AppletSerializer(object):
             (Most serializers do not use this parameter.)
 
         """
-        # Check the overall file version
-        fileVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not isVersionCompatible(fileVersion):
-            return
-
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
         progress = 0
@@ -801,13 +815,6 @@ class AppletSerializer(object):
             (in headless mode corrupted files cannot be fixed via the GUI)
         
         """
-        # Check the overall file version
-        fileVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not isVersionCompatible(fileVersion):
-            return
-
         self.progressSignal.emit(0)
 
         # If the top group isn't there, call initWithoutTopGroup

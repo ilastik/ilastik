@@ -1,4 +1,21 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Standard
+import sys
 import re
 import traceback
 import os
@@ -6,26 +23,26 @@ import time
 from functools import partial
 import weakref
 import logging
-
-# SciPy
-import numpy
 import platform
 import threading
 
+# SciPy
+import numpy
+
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QSize, QStringList, QTimer
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QTreeWidgetItem, QAbstractItemView, QProgressBar, QDialog, \
-                        QInputDialog, QIcon, QFont, QToolButton, QLabel, QTreeWidget, \
-                        QVBoxLayout, QHBoxLayout, QShortcut, QSizePolicy
+                        QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
+                        QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
 
 # lazyflow
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.utility import timeLogged
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
@@ -43,6 +60,10 @@ from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
+
+from ilastik.shell.gui.splashScreen import showSplashScreen
+
+from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -131,8 +152,6 @@ class ProgressDisplayManager(QObject):
 
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
-
-        # Add all applets from the workflow
 
     def initializeForWorkflow(self, workflow):
         """When a workflow is available, call this method to connect the workflows' progress signals
@@ -230,6 +249,8 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
 
         self._loaduifile()
+        
+        assert isinstance(self.appletBar, AppletDrawerToolBox)
 
         # show a nice window icon
         self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
@@ -300,17 +321,22 @@ class IlastikShell( QMainWindow ):
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Ilastik Shell"
 
-        nextImage = QShortcut( QKeySequence("PgDown"), self, member=self._nextImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to next image",
-                      nextImage)
+        mgr.register( "PgDown", ActionInfo( shortcutGroupName,
+                                            "shell next image",
+                                            "Switch to next image",
+                                            self._nextImage,
+                                            self,
+                                            self.imageSelectionCombo ) )
 
-        prevImage = QShortcut( QKeySequence("PgUp"), self, member=self._prevImage)
-        mgr.register( shortcutGroupName,
-                      "Switch to previous image",
-                      prevImage)
+        mgr.register( "PgUp", ActionInfo( shortcutGroupName,
+                                          "shell previous image",
+                                          "Switch to previous image",
+                                          self._prevImage,
+                                          self,
+                                          None ) )
 
     def _nextImage(self):
         newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
@@ -389,7 +415,7 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Copy as...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("Save Copy as...")
         shellActions.saveProjectSnapshotAction.setIcon( QIcon(ilastikIcons.SaveAs) )
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
 
@@ -398,10 +424,11 @@ class IlastikShell( QMainWindow ):
         shellActions.importProjectAction.setIcon( QIcon(ilastikIcons.Open) )
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
-        shellActions.closeAction = menu.addAction("&Close")
-        shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
-        shellActions.closeAction.setShortcuts( QKeySequence.Close )
-        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        if ilastik_config.getboolean("ilastik", "debug"):
+            shellActions.closeAction = menu.addAction("&Close")
+            shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
+            shellActions.closeAction.setShortcuts( QKeySequence.Close )
+            shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
@@ -461,7 +488,7 @@ class IlastikShell( QMainWindow ):
 
         pos = 1
         for workflow,_name in getAvailableWorkflows():
-            b = QToolButton(self.startscreen)
+            b = QToolButton(self.startscreen, objectName="NewProjectButton_"+workflow.__name__)
             styleStartScreenButton(b, ilastikIcons.GoNext)
             b.setText(_name)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
@@ -477,14 +504,8 @@ class IlastikShell( QMainWindow ):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
-        aboutIlastikAction.triggered.connect(self._showAboutDialog)
+        aboutIlastikAction.triggered.connect(showSplashScreen)
         return menu
-
-    def _showAboutDialog(self):
-        localDir = os.path.split(__file__)[0]
-        dlg = QDialog()
-        uic.loadUi( localDir + "/ui/ilastikAbout.ui", dlg)
-        dlg.exec_()
 
     def _createDebugMenu(self):
         menu = QMenu("&Debug", self)
@@ -498,7 +519,124 @@ class IlastikShell( QMainWindow ):
             exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
+        menu.addMenu( self._createProfilingSubmenu() )
         return menu
+
+    def _createProfilingSubmenu(self):
+        try:
+            import yappi
+            has_yappi = True
+        except ImportError:
+            has_yappi = False
+        
+        def _updateMenuStatus():
+            startAction.setEnabled( not yappi.is_running() )
+            stopAction.setEnabled( yappi.is_running() )
+            for action in sortedExportSubmenu.actions():
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+            for action in sortedThreadExportSubmenu.actions():
+                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+
+        def _startProfiling():
+            logger.info("Activating new profiler")
+            yappi.clear_stats()
+            yappi.start()
+            _updateMenuStatus()
+
+        def _stopProfiling():
+            logger.info("Dectivating profiler...")
+            yappi.stop()
+            logger.info("...profiler deactivated")
+            _updateMenuStatus()
+
+        def _exportSortedStats(sortby):
+            assert not yappi.is_running()
+            
+            filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                stats_path = encode_from_qstring( statsPath )
+                pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_func_stats()
+                stats.save(pstats_path, type='pstat')
+                with open(stats_path, 'w') as f:
+                    import pstats
+                    ps = pstats.Stats(pstats_path, stream=f)
+                    ps.sort_stats(sortby)
+                    ps.print_stats()
+                logger.info("Printed stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
+
+        def _exportSortedThreadStats(sortby):
+            assert not yappi.is_running()
+            
+            filename = 'ilastik_threadstats_sortedby_{}.txt'.format(sortby)
+            
+            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            statsPath = QFileDialog.getSaveFileName(
+               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not statsPath.isNull():
+                stats_path = encode_from_qstring( statsPath )
+                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
+                
+                # Export the yappi stats to builtin pstats format, 
+                #  since pstats provides nicer printing IMHO
+                stats = yappi.get_thread_stats()
+                stats.sort(sortby)
+                with open(stats_path, 'w') as f:
+                    stats.print_all(f)
+                logger.info("Printed thread stats to file: {}".format(stats_path))
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
+
+        profilingSubmenu = QMenu("Profiling")
+        if not has_yappi:
+            self._profilingSubmenu = profilingSubmenu
+            errorMsgAction = self._profilingSubmenu.addAction("<yappi module not installed>")
+            errorMsgAction.setEnabled(False)
+            return self._profilingSubmenu
+        
+        startAction = profilingSubmenu.addAction("Start (reset)")
+        startAction.triggered.connect( _startProfiling )
+
+        stopAction = profilingSubmenu.addAction("Stop")
+        stopAction.triggered.connect( _stopProfiling )
+        
+        sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
+        for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
+            action = sortedExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedStats, sortby ) )
+
+        sortedThreadExportSubmenu = profilingSubmenu.addMenu("Save Sorted Thread Stats...")
+        for sortby in ['name', 'id', 'totaltime', 'schedcount']:
+            action = sortedThreadExportSubmenu.addAction(sortby)
+            action.triggered.connect( partial( _exportSortedThreadStats, sortby ) )
+
+        _updateMenuStatus()
+
+        # Must retain this reference, otherwise the menu gets automatically removed
+        self._profilingSubmenu = profilingSubmenu
+        return profilingSubmenu
 
     def showMemUsageDialog(self):
         if self._memDlg is None:
@@ -510,10 +648,7 @@ class IlastikShell( QMainWindow ):
             self._memDlg.raise_()
 
     def _createSettingsMenu(self):
-        if not ilastik.config.cfg.getboolean("ilastik", "debug"):
-            return None
-
-        menu = QMenu("&Settings", self)
+        menu = QMenu("Settings", self)
         menu.setObjectName("settings_menu")
         # Menu item: Keyboard Shortcuts
 
@@ -590,7 +725,8 @@ class IlastikShell( QMainWindow ):
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
-        self._shellActions.closeAction.setEnabled(projectIsOpen)
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -635,6 +771,7 @@ class IlastikShell( QMainWindow ):
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
 
+    @timeLogged( logger, logging.DEBUG )
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
         and self.populatingImageSelectionCombo == False:
@@ -805,6 +942,10 @@ class IlastikShell( QMainWindow ):
         stackedWidget.addWidget( controlGuiWidget )
 
         self.appletBar.addItem( stackedWidget, controlName )
+        if not app.interactive:
+            # Some applets don't really need a GUI, but they still have a top-level operator and serializer.
+            # In that case, we don't show it in the applet drawer
+            self.appletBar.hideIndexItem( applet_index )
 
         # Set up handling of GUI commands from this applet
         self._disableCounts.append(0)
@@ -1024,7 +1165,10 @@ class IlastikShell( QMainWindow ):
 
         except Exception, e:
             traceback.print_exc()
-            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
+            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(e))
+
+            # no project will be loaded, free the file resource
+            hdf5File.close()
         else:
 
             try:
@@ -1043,10 +1187,19 @@ class IlastikShell( QMainWindow ):
             except Exception as ex:
                 traceback.print_exc()
                 self.closeCurrentProject()
-                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + ex.message)
+
+                # _loadProject failed, so we cannot expect it to clean up
+                # the hdf5 file (but it might have cleaned it up, so we catch 
+                # the error)
+                try:
+                    hdf5File.close()
+                except:
+                    pass
+                QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(ex))
+
             else:
                 stop = time.time()
-                print "Loading the project took %f sec." % (stop-start,)
+                logger.debug( "Loading the project took {:.2f} sec.".format(stop-start) )
 
                 #add file and workflow to users preferences
                 mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
@@ -1230,6 +1383,11 @@ class IlastikShell( QMainWindow ):
         Reimplemented from QWidget.  Ignore the close event if the user has unsaved data and changes his mind.
         """
         if self.confirmQuit():
+            # Since we're shutting down the app, we don't want to process any more gui events.
+            # (We may encounter segfaults at this point if we try.)
+            ThreadRouter.app_is_shutting_down = True
+
+            # Quit.
             self.closeAndQuit()
         else:
             closeEvent.ignore()
@@ -1300,8 +1458,9 @@ class IlastikShell( QMainWindow ):
         """
         self._shellActions.openProjectAction.setEnabled( enabled )
         self._shellActions.importProjectAction.setEnabled( enabled )
-        self._shellActions.closeAction.setEnabled( enabled )
         self._shellActions.quitAction.setEnabled( enabled )
+        if self._shellActions.closeAction is not None:
+            self._shellActions.closeAction.setEnabled( enabled )
 
     def _setAppletEnabled(self, applet, enabled):
         try:

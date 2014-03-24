@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import gc
 import copy
@@ -11,6 +27,7 @@ import traceback
 import ilastik
 from ilastik import isVersionCompatible
 from ilastik.workflow import getWorkflowFromName
+from lazyflow.utility.timer import Timer, timeLogged
 
 class ProjectManager(object):
     """
@@ -345,6 +362,7 @@ class ProjectManager(object):
         else:
             return []
 
+    @timeLogged(logger, logging.DEBUG)
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
@@ -371,16 +389,18 @@ class ProjectManager(object):
         try:
             # Applet serializable items are given the whole file (root group)
             for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.ignoreDirty = True
-                                        
-                    if item.caresOfHeadless:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
-                    else:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-
-                    item.ignoreDirty = False
+                with Timer() as timer:
+                    for item in aplt.dataSerializers:
+                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                        item.ignoreDirty = True
+                                            
+                        if item.caresOfHeadless:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+                        else:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+    
+                        item.ignoreDirty = False
+                logger.debug('Deserializing applet "{}" took {} seconds'.format( aplt.name, timer.seconds() ))
             
 
             self.closed = False
@@ -406,7 +426,14 @@ class ProjectManager(object):
         All caches, etc. will be lost.
         """
         self.saveProjectSnapshot( newPath )
-        hdf5File, readOnly = ProjectManager.openProjectFile( newPath )
+        hdf5File, workflowClass, readOnly = ProjectManager.openProjectFile( newPath )
+        
+        # Close the old project *file*, but don't destroy the workflow.
+        assert self.currentProjectFile is not None
+        self.currentProjectFile.close()
+        self.currentProjectFile = None
+        
+        # Open the snapshot of the old project that we just made
         self._loadProject(hdf5File, newPath, readOnly)
 
     def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):

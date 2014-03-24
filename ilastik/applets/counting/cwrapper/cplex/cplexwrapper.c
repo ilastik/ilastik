@@ -301,8 +301,8 @@ EXPORT int fit(const double * X_p, const double * Yl_p, double* w, int postags, 
     status = CPXaddrows(env, lp, 0, numBoxSamples, numBoxSamples* (numFeatures + 1), NULL,
                         hSense, hmatbeg, hmatind, hmatval, NULL, NULL);
     /*    printf("WHY IS NOTHING HAPPENING\n") */
-    printf ("Number of Columns in Problem: %d\n", CPXgetnumcols(env, lp));
-    printf("%d\n", numcols + (2 * numBoxConstraints));
+    /*printf ("Number of Columns in Problem: %d\n", CPXgetnumcols(env, lp));*/
+    /*printf("%d\n", numcols + (2 * numBoxConstraints));*/
     status = CPXcopyqpsep (env, lp, qsepvec);
     status = CPXwriteprob (env, lp, "qpex1.lp", NULL);
     status = CPXqpopt (env, lp);

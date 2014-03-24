@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import numpy
 from functools import partial
@@ -7,11 +23,15 @@ from PyQt4.QtGui import QColor, QFileDialog, QShortcut, QKeySequence
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
+from volumina.utility import ShortcutManager
 
 from ilastik.utility import bind
 from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.splitBodyCarving.bodySplitInfoWidget import BodySplitInfoWidget
+
+import logging
+logger = logging.getLogger(__name__)
 
 class SplitBodyPostprocessingGui(LayerViewerGui):
     
@@ -65,7 +85,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
 
         def handleProgress(progress):
             # TODO: Hook this up to the progress bar
-            print "Export progress: {}%".format( progress )
+            logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
         req = op.exportFinalSegmentation( encode_from_qstring( exportPath ), 
@@ -157,12 +177,13 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
             rawLayer.name = "raw"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            rawLayer.shortcutRegistration = ( "Postprocessing",
-                                              "Raw Data to Top",
-                                              QShortcut( QKeySequence("g"),
-                                                         self.viewerControlWidget(),
-                                                         partial(self._toggleRawDataPosition, rawLayer) ),
-                                             rawLayer )
+            rawLayer.shortcutRegistration = ( "g", ShortcutManager.ActionInfo(
+                                                       "Postprocessing",
+                                                       "Raw Data to Top",
+                                                       "Raw Data to Top",
+                                                       partial(self._toggleRawDataPosition, rawLayer),
+                                                       self.viewerControlWidget(),
+                                                       rawLayer ) )
             layers.append(rawLayer)
 
         return layers
