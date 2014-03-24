@@ -24,6 +24,11 @@ try:
 except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
+try:
+    import mriVolumetry
+except ImportError as e:
+    logger.warn("Failed to import mri volumetry workflow; check dependencies: " + str(e))
+
 
 # Examples
 import ilastik.config
