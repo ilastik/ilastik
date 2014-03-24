@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import threading
 from functools import partial, wraps
 from PyQt4.QtCore import QObject, pyqtSignal, Qt
@@ -7,6 +23,10 @@ class ThreadRouter(QObject):
     Create an instance of this class called 'threadRouter' to enable the :py:func:`@threadRouted<threadRouted>` decorator for methods of your object.
     """
     routeToParent = pyqtSignal(object)
+    
+    # The main window of the app should set this to True when the 
+    #  app is shutting down and thus no gui events should be processed any more.
+    app_is_shutting_down = False
 
     def __init__(self, parent):
         """
@@ -33,6 +53,9 @@ def threadRouted(func):
     """
     @wraps(func)
     def routed(*args, **kwargs):
+        if ThreadRouter.app_is_shutting_down:
+            return
+        
         assert len(args) > 0
         obj = args[0]
         assert isinstance(obj, QObject)
@@ -43,7 +66,7 @@ def threadRouted(func):
             val = func(*args, **kwargs)
             # We rely on Qt signals (below) so it is an error to 
             #  use @threadRouted with a function that gives a return value
-            assert val is None, "Can't return a valud from an @threadRouted function."
+            assert val is None, "Can't return a value from an @threadRouted function."
         
         # Otherwise, we rely on the Qt BlockingQueuedConnection 
         #  signal behavior to transfer the call to the parent thread. 

@@ -1,4 +1,21 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import sys
+import copy
 import argparse
 import logging
 logger = logging.getLogger(__name__)
@@ -15,7 +32,7 @@ from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelectionNoCache
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipelineNoCache
 
-from lazyflow.roi import TinyVector
+from lazyflow.roi import TinyVector, fullSlicing
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
@@ -45,8 +62,18 @@ class PixelClassificationWorkflow(Workflow):
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
+        parser.add_argument('--print-labels-by-slice', help="Print the number of labels for each Z-slice of each image.", action="store_true")
+        parser.add_argument('--label-search-value', help="If provided, only this value is considered when using --print-labels-by-slice", default=0, type=int)
+        parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
+        parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
+        parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         self.filter_implementation = parsed_args.filter
+        self.print_labels_by_slice = parsed_args.print_labels_by_slice
+        self.label_search_value = parsed_args.label_search_value
+        self.generate_random_labels = parsed_args.generate_random_labels
+        self.random_label_value = parsed_args.random_label_value
+        self.random_label_count = parsed_args.random_label_count
         
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -264,8 +291,14 @@ class PixelClassificationWorkflow(Workflow):
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """
+        if self.generate_random_labels:
+            self._generate_random_labels(self.random_label_count, self.random_label_value)
+        
+        if self.print_labels_by_slice:
+            self._print_labels_by_slice( self.label_search_value )
+
         # Configure the batch data selection operator.
-        if self._batch_input_args and self._batch_input_args.input_files: 
+        if self._batch_input_args and self._batch_input_args.input_files:
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.
@@ -280,7 +313,7 @@ class PixelClassificationWorkflow(Workflow):
             # Now run the batch export and report progress....
             opBatchDataExport = self.batchResultsApplet.topLevelOperator
             for i, opExportDataLaneView in enumerate(opBatchDataExport):
-                print "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value)
+                logger.info( "Exporting result {} to {}".format(i, opExportDataLaneView.ExportPath.value) )
     
                 sys.stdout.write( "Result {}/{} Progress: ".format( i, len( opBatchDataExport ) ) )
                 sys.stdout.flush()
@@ -295,4 +328,81 @@ class PixelClassificationWorkflow(Workflow):
                 
                 # Finished.
                 sys.stdout.write("\n")
+
+    def _print_labels_by_slice(self, search_value):
+        """
+        Iterate over each label image in the project and print the number of labels present on each Z-slice of the image.
+        (This is a special feature requested by the FlyEM proofreaders.)
+        """
+        opTopLevelClassify = self.pcApplet.topLevelOperator
+        project_label_count = 0
+        for image_index, label_slot in enumerate(opTopLevelClassify.LabelImages):
+            tagged_shape = label_slot.meta.getTaggedShape()
+            if 'z' not in tagged_shape:
+                logger.error("Can't print label counts by Z-slices.  Image #{} has no Z-dimension.".format(image_index))
+            else:
+                print "Label counts in Z-slices of Image #{}:".format( image_index )
+                slicing = [slice(None)] * len(tagged_shape)
+                blank_slices = []
+                image_label_count = 0
+                for z in range(tagged_shape['z']):
+                    slicing[tagged_shape.keys().index('z')] = slice(z, z+1)
+                    label_slice = label_slot[slicing].wait()
+                    if search_value:                        
+                        count = (label_slice == search_value).sum()
+                    else:
+                        count = (label_slice != 0).sum()
+                    if count > 0:
+                        print "Z={}: {}".format( z, count )
+                        image_label_count += count
+                    else:
+                        blank_slices.append( z )
+                project_label_count += image_label_count
+                if len(blank_slices) > 20:
+                    # Don't list the blank slices if there were a lot of them.
+                    print "Image #{} has {} blank slices.".format( image_index, len(blank_slices) )
+                elif len(blank_slices) > 0:
+                    print "Image #{} has {} blank slices: {}".format( image_index, len(blank_slices), blank_slices )
+                else:
+                    print "Image #{} has no blank slices.".format( image_index )
+                print "Total labels for Image #{}: {}".format( image_index, image_label_count )
+        print "Total labels for project: {}".format( project_label_count )
+
+    
+    def _generate_random_labels(self, labels_per_image, label_value):
+        """
+        Inject random labels into the project file.
+        (This is a special feature requested by the FlyEM proofreaders.)
+        """
+        print "Injecting {} labels of value {} into all images.".format( labels_per_image, label_value )
+        opTopLevelClassify = self.pcApplet.topLevelOperator
+        
+        label_names = copy.copy(opTopLevelClassify.LabelNames.value)
+        while len(label_names) < label_value:
+            label_names.append( "Label {}".format( len(label_names)+1 ) )
+        
+        opTopLevelClassify.LabelNames.setValue( label_names )
+        
+        for image_index in range(len(opTopLevelClassify.LabelImages)):
+            print "Injecting labels into image #{}".format( image_index )
+            # For reproducibility of label generation
+            SEED = 1
+            numpy.random.seed([SEED, image_index])
+        
+            label_input_slot = opTopLevelClassify.LabelInputs[image_index]
+            label_output_slot = opTopLevelClassify.LabelImages[image_index]
+        
+            shape = label_output_slot.meta.shape
+            random_labels = numpy.zeros( shape=shape, dtype=numpy.uint8 )
+            num_pixels = len(random_labels.flat)
+            for sample_index in range(labels_per_image):
+                flat_index = numpy.random.randint(0,num_pixels)
+                # Don't overwrite existing labels
+                # Keep looking until we find a blank pixel
+                while random_labels.flat[flat_index]:
+                    flat_index = numpy.random.randint(0,num_pixels)
+                random_labels.flat[flat_index] = label_value
+
+            # Write into the operator
+            label_input_slot[fullSlicing(shape)] = random_labels
 

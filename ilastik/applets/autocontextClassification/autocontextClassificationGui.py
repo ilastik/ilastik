@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 # Built-in
 import os
 import logging
@@ -14,7 +30,6 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 # HCI
 from lazyflow.utility import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind
@@ -43,13 +58,6 @@ class AutocontextClassificationGui(LabelingGui):
     def stopAndCleanUp(self):
         # Base class first
         super(AutocontextClassificationGui, self).stopAndCleanUp()
-
-        # Ensure that we are NOT in interactive mode
-        self._viewerControlUi.liveUpdateButton.setChecked(False)
-        self._viewerControlUi.checkShowPredictions.setChecked(False)
-        self._viewerControlUi.checkShowSegmentation.setChecked(False)
-        self.toggleInteractive(False)
-        
 
     def viewerControlWidget(self):
         return self._viewerControlUi
@@ -174,12 +182,20 @@ class AutocontextClassificationGui(LabelingGui):
                 predictLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
-                def setLayerColor(c):
-                    predictLayer.tintColor = c
-                def setLayerName(n):
-                    newName = "Prediction for %s %s" % (ref_label.name, name_suffix)
-                    predictLayer.name = newName
-                setLayerName(ref_label.name)
+                def setLayerColor(c, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    predictLayer_.tintColor = c
+                def setLayerName(n, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    newName = "Prediction for %s" % n
+                    predictLayer_.name = newName
+                setLayerName(ref_label.name, initializing=True)
 
                 ref_label.colorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)

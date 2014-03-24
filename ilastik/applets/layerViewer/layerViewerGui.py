@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import os
 from functools import partial
@@ -8,6 +24,8 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 #PyQt
 from PyQt4.QtGui import *
 from PyQt4 import uic
+
+import vigra
 
 #lazyflow
 from lazyflow.stype import ArrayLike
@@ -187,8 +205,9 @@ class LayerViewerGui(QWidget):
         """
         layers = []
         for multiLayerSlot in self.observedSlots:
-            for j, slot in enumerate(multiLayerSlot):
-                if slot.ready() and slot.meta.axistags is not None:
+            for j, slot in enumerate(multiLayerSlot):                
+                has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
+                if slot.ready() and has_space:
                     layer = self.createStandardLayerFromSlot(slot)
                     
                     # Name the layer after the slot name.
@@ -424,9 +443,8 @@ class LayerViewerGui(QWidget):
             if needDelete:
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):
-                    obsoleteShortcut = layer.shortcutRegistration[2]
-                    obsoleteShortcut.setEnabled(False)
-                    ShortcutManager().unregister( obsoleteShortcut )
+                    action_info = layer.shortcutRegistration[1]
+                    ShortcutManager().unregister( action_info )
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
 
@@ -444,10 +462,7 @@ class LayerViewerGui(QWidget):
             else:
                 # Clean up the layer instance that the client just gave us.
                 # We don't want to use it.
-                if hasattr(layer, 'shortcutRegistration'):
-                    shortcut = layer.shortcutRegistration[2]
-                    shortcut.setEnabled(False)
-                    layer.clean_up()
+                layer.clean_up()
 
                 # Move existing layer to the correct position
                 stackIndex = self.layerstack.findMatchingIndex(lambda l: l.name == layer.name)

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import sys
 import nose
 import threading
@@ -13,6 +29,9 @@ import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
+
+from ilastik.ilastik_logging import default_config
+default_config.init(output_mode=default_config.OutputMode.CONSOLE)
 
 @atexit.register
 def quitApp():

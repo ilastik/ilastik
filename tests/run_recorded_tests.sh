@@ -9,8 +9,8 @@ do
   if [[ `whoami` = "vagrant" ]]
   then
     # On the ilastik-test-vm, we clean the environment to ensure reproducibility of test runs.
-    echo "Cleaning environment..."
-    rm -f ~/*.ilp && rm -f ~/.ilastik_preferences
+    echo "Cleaning preferences file..."
+    rm -f ~/.ilastik_preferences
   fi
   echo "Running recorded test: $f"; python ../ilastik.py --playback_script=$f --exit_on_failure --exit_on_success
   RETVAL=$?

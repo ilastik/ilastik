@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor
 
@@ -28,10 +44,6 @@ class ManualTrackingGui(LayerViewerGui):
     def appletDrawer( self ):
         return self._drawer
 
-    def reset( self ):
-        super( ManualTrackingGui, self ).stopAndCleanUp()
-        print "TrackinGui.reset(): not implemented"
-
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -47,6 +59,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
+        self._drawer.exportMergers.pressed.connect(self._onExportMergersButtonPressed)
+        self._drawer.exportDivisions.pressed.connect(self._onExportDivisionsButtonPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
@@ -57,42 +71,50 @@ class ManualTrackingGui(LayerViewerGui):
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Manual Tracking"
 
-        divisionEvent = QtGui.QShortcut( QtGui.QKeySequence("d"), self, member=self._drawer.divEvent.click )
-        mgr.register( shortcutGroupName,
-                      "Mark Division Event (Click on parent object first, then on the two children.)",
-                      divisionEvent,
-                      self._drawer.divEvent )
+        mgr.register( "d", ActionInfo( shortcutGroupName,
+                                       "Mark Division Event",
+                                       "Mark Division Event (Click on parent object first, then on the two children.)",
+                                       self._drawer.divEvent.click,
+                                       self._drawer.divEvent,
+                                       self._drawer.divEvent ) )
         
-        newTrack = QtGui.QShortcut( QtGui.QKeySequence("s"), self, member=self._drawer.newTrack.click )
-        mgr.register( shortcutGroupName,
-                      "Start New Track",
-                      newTrack,
-                      self._drawer.newTrack )
+        mgr.register( "s", ActionInfo( shortcutGroupName,
+                                       "Start New Track",
+                                       "Start New Track",
+                                       self._drawer.newTrack.click,
+                                       self._drawer.newTrack,
+                                       self._drawer.newTrack ) )
 
-        markMisdet = QtGui.QShortcut( QtGui.QKeySequence("f"), self, member=self._drawer.markMisdetection.click )
-        mgr.register( shortcutGroupName,
-                      "Mark False Detection",
-                      markMisdet,
-                      self._drawer.markMisdetection )
+        mgr.register( "f", ActionInfo( shortcutGroupName,
+                                       "Mark False Detection",
+                                       "Mark False Detection",
+                                       self._drawer.markMisdetection.click,
+                                       self._drawer.markMisdetection,
+                                       self._drawer.markMisdetection ) )
         
-        activeTrackUp = QtGui.QShortcut( QtGui.QKeySequence("q"), self, member=self._incrementActiveTrack )
-        mgr.register( shortcutGroupName,
-                      "Increment Active Track ID",
-                      activeTrackUp,)
+        mgr.register( "q", ActionInfo( shortcutGroupName,
+                                       "Increment Active Track ID",
+                                       "Increment Active Track ID",
+                                       self._incrementActiveTrack,
+                                       self,
+                                       None ) )
         
-        activeTrackDown = QtGui.QShortcut( QtGui.QKeySequence("a"), self, member=self._decrementActiveTrack )
-        mgr.register( shortcutGroupName,
-                      "Decrement Active Track ID",
-                      activeTrackDown,)
+        mgr.register( "a", ActionInfo( shortcutGroupName,
+                                       "Decrement Active Track ID",
+                                       "Decrement Active Track ID",
+                                       self._decrementActiveTrack,
+                                       self,
+                                       None ) ) 
         
-        goToNext = QtGui.QShortcut( QtGui.QKeySequence("g"), self, member=self._onNextUnlabeledPressed )
-        mgr.register( shortcutGroupName,
-                      "Go To Next Unlabeled Object",
-                      goToNext,)
-        
-        
+        mgr.register( "g", ActionInfo( shortcutGroupName,
+                                       "Go To Next Unlabeled Object",
+                                       "Go To Next Unlabeled Object",
+                                       self._onNextUnlabeledPressed,
+                                       self,
+                                       None ) )
         
     ###########################################
     ###########################################
@@ -167,11 +189,13 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleTrackingVisibility():
                 trackingLayer.visible = not trackingLayer.visible
                 
-            trackingLayer.shortcutRegistration = (
-                    "Layer Visibilities",
-                    "Toggle Manual Tracking Layer Visibility",
-                    QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
-                    trackingLayer )
+            trackingLayer.shortcutRegistration = ( "e", ShortcutManager.ActionInfo( 
+                                                            "Layer Visibilities",
+                                                            "Toggle Manual Tracking Layer Visibility",
+                                                            "Toggle Manual Tracking Layer Visibility",
+                                                            toggleTrackingVisibility,
+                                                            self,
+                                                            trackingLayer ) )
             layers.append(trackingLayer)
         
         
@@ -187,12 +211,12 @@ class ManualTrackingGui(LayerViewerGui):
             untrackedLayer.opacity = 0.8
             layers.append(untrackedLayer)
         
-        if self.topLevelOperatorView.BinaryImage.ready():
+        if self.topLevelOperatorView.LabelImage.ready():
             ct = colortables.create_random_16bit()
             for i in range(len(ct)):
                 ct[i] = QColor(255,255,0,100).rgba()
             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.BinaryImage )             
+            self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )             
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 0.8
@@ -201,12 +225,13 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleObjectVisibility():
                 objLayer.visible = not objLayer.visible
                 
-            objLayer.shortcutRegistration = (
-                    "Layer Visibilities",
-                    "Toggle Objects Layer Visibility",
-                    QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
-                    objLayer )
-            
+            objLayer.shortcutRegistration = ( "r", ShortcutManager.ActionInfo(
+                                                       "Layer Visibilities",
+                                                       "Toggle Objects Layer Visibility",
+                                                       "Toggle Objects Layer Visibility",
+                                                       toggleObjectVisibility,
+                                                       self,
+                                                       objLayer ) )            
             layers.append(objLayer)
 
 
@@ -535,7 +560,7 @@ class ManualTrackingGui(LayerViewerGui):
         if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
-                                       " Remove division event first.")
+                                       " Remove division event first by right clicking on the parent.")
             self._gotoObject(oid, t)
             return False
         
@@ -595,8 +620,8 @@ class ManualTrackingGui(LayerViewerGui):
         self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
         
         
-    def _runSubtracking(self, position5d, oid):
-                    
+    def _runSubtracking(self, position5d, oid):        
+               
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
@@ -665,12 +690,18 @@ class ManualTrackingGui(LayerViewerGui):
         
         def _handle_finished(*args):
             self._enableButtons(enable=True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
-            
+            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
         self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
@@ -870,22 +901,75 @@ class ManualTrackingGui(LayerViewerGui):
                         merger_sizes[m_size] = 0
                     merger_sizes[m_size] += 1
         
-        print 'Merger-Sizes:', merger_sizes
+        logging.info( 'Merger-Sizes: {}'.format(merger_sizes) )
         
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
+    def _onExportDivisionsButtonPressed(self):
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
         
+        if out_fn is None or str(out_fn) == '':            
+            return
+        if out_fn.split(".")[-1] != "csv":
+            out_fn += ".csv"
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
+        try:            
+            import csv
+            with open(out_fn, 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['timestep_parent','track_id_parent','track_id_child1','track_id_child2'])
+                for tid in self.mainOperator.divisions.keys():
+                    children, t_parent = self.mainOperator.divisions[tid]
+                    writer.writerow([t_parent, tid, children[0], children[1]])
+                
+        finally:
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()  
+    
+    def _onExportMergersButtonPressed(self):        
+        options = QtGui.QFileDialog.Options()
+        if ilastik_config.getboolean("ilastik", "debug"):
+            options |= QtGui.QFileDialog.DontUseNativeDialog
+
+        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        
+        if out_fn is None or str(out_fn) == '':            
+            return
+        if out_fn.split(".")[-1] != "csv":
+            out_fn += ".csv"
+        
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
+        try:            
+            import csv
+            with open(out_fn, 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['timestep','object_id','track_ids'])
+                for t in self.mainOperator.labels.keys():
+                    for oid in self.mainOperator.labels[t].keys():
+                        if len(self.mainOperator.labels[t][oid]) > 1:
+                            writer.writerow([t,oid,";".join(list(str(x) for x in self.mainOperator.labels[t][oid]))])
+                
+        finally:
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()            
+            
+            
     def _onExportButtonPressed(self):
-        import h5py
-        self._drawer.exportButton.setEnabled(False)
+        import h5py        
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
         directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
-        if directory is None or str(directory) == '':
-            self._drawer.exportButton.setEnabled(True)
+        if directory is None or str(directory) == '':            
             return
         directory = str(directory)
         
@@ -893,6 +977,8 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.progressSignal.emit(x)
             
         def _export():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()    
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
             num_files = float(len(oid2tids.keys()))
@@ -964,7 +1050,7 @@ class ManualTrackingGui(LayerViewerGui):
                         if len(merger_at):
                             merger_at = numpy.array(sorted(merger_at, key=lambda a_entry: a_entry[0]))[::-1]
                             ds = tg.create_dataset("Mergers", data=merger_at[:, :-1], dtype=numpy.uint32, compression=1)
-                            ds.attrs["Format"] = "descendant (current file), number of objects"    
+                            ds.attrs["Format"] = "descendant (current file), number of objects"
                             ds = tg.create_dataset("Mergers-Energy", data=merger_at[:, -1], dtype=numpy.double, compression=1)
                             ds.attrs["Format"] = "lower energy -> higher confidence"
                         if len(multiMoves_at):
@@ -980,27 +1066,27 @@ class ManualTrackingGui(LayerViewerGui):
                 _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
         
-        def _handle_finished(*args):
-            self._drawer.exportButton.setEnabled(True)
+        def _handle_finished(*args):            
             self.applet.progressSignal.emit(100)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
                
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")
-            self._drawer.exportButton.setEnabled(True)    
             self.applet.progressSignal.emit(100)
         
-        self.applet.progressSignal.emit(0)      
+        self.applet.progressSignal.emit(0)  
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
 
     def _onExportTifButtonPressed(self):
-        import vigra
-        
-        self._drawer.exportTifButton.setEnabled(False)
+        import vigra        
         
         options = QtGui.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
@@ -1008,13 +1094,14 @@ class ManualTrackingGui(LayerViewerGui):
 
         directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
         if directory is None or len(str(directory)) == 0:
-            self._drawer.exportTifButton.setEnabled(True)
             return
         
         def _handle_progress(x):       
             self.applet.progressSignal.emit(x)
             
         def _export():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
             for k, vals in divisions.items():
@@ -1059,16 +1146,18 @@ class ManualTrackingGui(LayerViewerGui):
             self._log("-> tracking successfully exported")
         
         def _handle_finished(*args):
-            self._drawer.exportTifButton.setEnabled(True)
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             import traceback, sys
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during export.  See traceback above.\n")     
-            self._drawer.exportTifButton.setEnabled(True)
             self.applet.progressSignal.emit(100)       
-        
+                
         self.applet.progressSignal.emit(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
@@ -1116,7 +1205,7 @@ class ManualTrackingGui(LayerViewerGui):
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
-        print prompt
+        logger.info( prompt )
 
 
     def _onNextUnlabeledPressed(self):

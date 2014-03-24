@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import collections
 from functools import partial
 import numpy
@@ -298,12 +314,12 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 # fragment_image = numpy.where( fragment_image, fragment_image+max_label, 0) 
 
                 # Instead, we bend over backwards here to do this 'in place'
-                print "Adding body {} to final image.".format( body_index )
+                logger.info( "Adding body {} to final image.".format( body_index ) )
                 fragment_image[:] = numpy.where( fragment_image, fragment_image, -max_label )
                 numpy.add( fragment_image, max_label, out=fragment_image )
                 result[:] = numpy.where( fragment_image, fragment_image, result )
                 
-                print "Finding new max label..."
+                logger.info( "Finding new max label..." )
                 # New max
                 max_label = result.max()
                 
@@ -312,7 +328,7 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 body_id = slot.meta.selected_label
                 self._mapping[(old_max,max_label+1)] = body_id
 
-            print "Finished assembling final segmentation."
+            logger.info( "Finished assembling final segmentation." )
             return result
         else:
             assert False, "Unknown output slot: {}".format( slot.name )

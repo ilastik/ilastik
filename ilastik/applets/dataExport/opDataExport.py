@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import collections
 import numpy
 
@@ -113,10 +129,10 @@ class OpDataExport(Operator):
         # We don't export the raw data, but we connect it to it's own op 
         #  so it can be displayed alongside the data to export in the same viewer.  
         # This keeps axis order, shape, etc. in sync with the displayed export data.
-        # Note that we must not modify the channels of the raw data, so it gets passed throught a helper.
+        # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
         opHelper = OpRawSubRegionHelper( parent=self )
         opHelper.RawImage.connect( self.RawData )
-        opHelper.ExportStop.connect( self.RegionStart )        
+        opHelper.ExportStart.connect( self.RegionStart )
         opHelper.ExportStop.connect( self.RegionStop )
 
         opFormatRaw = OpFormattedDataExport( parent=self )
@@ -247,7 +263,7 @@ class OpRawSubRegionHelper(Operator):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         if self.ExportStart.ready():
             tagged_start = collections.OrderedDict( zip( self.RawImage.meta.getAxisKeys(), self.ExportStart.value ) )
-            tagged_start['c'] = tagged_shape['c']
+            tagged_start['c'] = 0
             self.RawStart.setValue( tagged_start.values() )
         else:
             self.RawStart.meta.NOTREADY = True

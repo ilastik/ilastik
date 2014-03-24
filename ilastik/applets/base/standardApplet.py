@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
@@ -19,14 +35,14 @@ class StandardApplet( Applet ):
     3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  
     """
 
-    def __init__(self, name, workflow=None):
+    def __init__(self, name, workflow=None, interactive=True, *args, **kwargs):
         """
         Constructor.
 
         :param name: The applet's name as it will appear in the GUI (e.g. the Applet Drawer title).
         :param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).
         """
-        super(StandardApplet, self).__init__(name)
+        super(StandardApplet, self).__init__(name, *args, interactive=interactive, **kwargs)
         self._gui = None
         self.__topLevelOperator = None
         self.__workflow = workflow

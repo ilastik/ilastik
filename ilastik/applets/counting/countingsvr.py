@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import numpy as np
 import vigra
 import itertools
@@ -8,6 +24,9 @@ except:
 
 import h5py, cPickle
 import sys
+
+import logging
+logger = logging.getLogger(__name__)
 
 class RegressorC(object):
 
@@ -189,7 +208,7 @@ class RegressorGurobi(object):
         
          
         model.update()
-        print "done "
+        logger.info( "done " )
         
         #print "setting penalty objective %s ..."%self.penalty,
         obj=None
@@ -198,7 +217,7 @@ class RegressorGurobi(object):
         elif self.penalty=="l2":
             obj=self._C * (gu.quicksum([u*u for u in u_vars1 ])+gu.quicksum([u*u for u in u_vars2 ]))
         else:
-            print  "penalty term not know !"
+            logger.error( "penalty term not know !" )
             raise RuntimeError
         
         
@@ -208,13 +227,13 @@ class RegressorGurobi(object):
         model.setObjective(obj)
 
 
-        print "done"
+        logger.info( "done" )
         #print "objective = ", model.getObjective()
         
         ### add constraint for the variables
-        print "adding constraint penalty"
+        logger.info( "adding constraint penalty" )
         if tags:
-            print "huh, wtf"
+            logger.debug( "huh, ???" )
             for i in range(sum(tags)):
                 #logme("%.2f"%(i/float(X_hat.shape[0])*100.0))
                 constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
@@ -394,8 +413,8 @@ class SVR(object):
             try:
                 dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
             except Exception,e:
-                print "HHHHHHHH",dot.shape,dot.dtype
-                print e
+                logger.error( "HHHHHHHH {} {}".format(dot.shape,dot.dtype) )
+                logger.error(str(e))
                 raise Exception
             
         

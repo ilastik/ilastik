@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import logging
 from functools import partial
@@ -125,7 +141,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
         block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
-        if (block_shape_dict['x']<0.1) != (block_shape_dict['y']<0.1):
+        neededAxes = 'xyz' if self._drawer.sigmaSpinBox_Z.isVisible() else 'xy'
+        sigmaIsZero = [block_shape_dict[index] < .1 for index in neededAxes]
+        if any(sigmaIsZero) and not all(sigmaIsZero):
             mexBox = QMessageBox()
             mexBox.setText("One of the smoothing sigma values is 0. Reset it to a value > 0.1 or set all sigmas to 0 for no smoothing.")
             mexBox.exec_()

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
 import numpy
 from lazyflow.roi import sliceToRoi
@@ -8,11 +24,13 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
+import tempfile
+
 class TestOpFeatureSelection(object):
     def setUp(self):
         data = numpy.random.random((2,100,100,100,3))
 
-        self.filePath = os.path.expanduser('~') + '/featureSelectionTestData.npy'
+        self.filePath = tempfile.mkdtemp() + '/featureSelectionTestData.npy'
         numpy.save(self.filePath, data)
     
         graph = Graph()
@@ -55,6 +73,8 @@ class TestOpFeatureSelection(object):
         self.opReader = opReader
         
     def tearDown(self):
+        self.opFeatures.cleanUp()
+        self.opReader.cleanUp()
         try:
             os.remove(self.filePath)
         except:
@@ -98,9 +118,7 @@ class TestOpFeatureSelection(object):
                                    [False, False, False, True, False, False, False],   # H of G EVs
                                    [False, False, False, False, False, False, False],   # GGM
                                    [False, False, False, False, False, False, False]] ) # Diff of G
-        print "About to change matrix."
         opFeatures.SelectionMatrix.setValue(selections)
-        print "Matrix changed."
         
         assert len(dirtyRois) == 1
         assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi( slice(None), self.opFeatures.OutputImage[0].meta.shape )

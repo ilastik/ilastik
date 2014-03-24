@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import numpy
 import vigra
 import time
@@ -15,6 +31,8 @@ from functools import partial
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+
+from ilastik.applets.base.applet import DatasetConstraintError
 
 import logging
 logger = logging.getLogger(__name__)
@@ -126,8 +144,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.Features.connect(self.ObjectFeatures)
         self.opPredict.Classifier.connect(self.classifier_cache.Output)
-        self.opPredict.LabelsCount.connect(self.opMaxLabel.Output)
         self.opPredict.SelectedFeatures.connect(self.SelectedFeatures)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.opPredict.LabelsCount.connect(self.opMaxLabel.Output) # See _updateNumClasses()
 
         self.opLabelsToImage.Image.connect(self.SegmentationImages)
         self.opLabelsToImage.ObjectMap.connect(self.LabelInputs)
@@ -187,12 +208,22 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
         self.opPredict.InputProbabilities.connect(self.InputProbabilities)
 
+        def _updateNumClasses(*args):
+            """
+            When the number of labels changes, we MUST make sure that the prediction image changes its shape (the number of channels).
+            Since setupOutputs is not called for mere dirty notifications, but is called in response to setValue(),
+            we use this function to call setValue().
+            """
+            numClasses = len(self.LabelNames.value)
+            self.opPredict.LabelsCount.setValue( numClasses )
+            self.NumLabels.setValue( numClasses )
+        self.LabelNames.notifyDirty( _updateNumClasses )
+
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
 
         # connect outputs
-        self.NumLabels.connect( self.opMaxLabel.Output )
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
@@ -207,6 +238,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.Classifier.connect(self.classifier_cache.Output)
 
         self.SegmentationImagesOut.connect(self.SegmentationImages)
+
+        # Not directly connected.  Must always use setValue() to update.
+        # See _updateNumClasses()
+        # self.NumLabels.connect( self.opMaxLabel.Output )
+
 
         self.Eraser.setValue(100)
         self.DeleteLabel.setValue(-1)
@@ -227,6 +263,11 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     def setupCaches(self, imageIndex):
         """Setup the label input and caches to correct dimensions"""
         numImages=len(self.SegmentationImages)
+        cctype = self.SegmentationImages[imageIndex].meta.dtype
+        if not issubclass(cctype, numpy.integer):
+            msg = "Connected Components image should be of integer type.\n"\
+                  "Ask your workflow developer to change the input applet accordingly.\n"
+            raise DatasetConstraintError("Object Classification", msg)
         self.LabelInputs.resize(numImages)
         self.LabelInputs[imageIndex].meta.shape = (1,)
         self.LabelInputs[imageIndex].meta.dtype = object
@@ -260,12 +301,13 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 
             cur_labels = label_slot.value
             nTimes = self.RawImages[islot].meta.shape[0]
-            nLabels = len(self.LabelNames.value)
+            nLabels = len(self.LabelNames.value)+1 #+1 because we already took out the name in labelingGui
             for t in range(nTimes):
                 label_values = cur_labels[t]
                 label_values[label_values==label+1] = 0
                 for nextLabel in range(label, nLabels):
                     label_values[label_values==nextLabel+1]=nextLabel
+        self.LabelInputs.setDirty([])
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)
@@ -550,6 +592,7 @@ def make_feature_array(feats, selected, labels=None):
             index = numpy.nonzero(lab)
             labellist_tmp.append(lab[index])
 
+        timestep_col_names = []
         for plugin in sorted(feats[t].keys()):
             if plugin == default_features_key or plugin not in selected:
                 continue
@@ -561,9 +604,12 @@ def make_feature_array(feats, selected, labels=None):
                 if index is not None:
                     ft = ft[index]
                 featsMatrix_tmp.append(ft)
-                col_names.extend([(plugin, featname)] * value.shape[1])
-
-
+                timestep_col_names.extend([(plugin, featname)] * value.shape[1])
+        if not col_names:
+            col_names = timestep_col_names
+        elif col_names != timestep_col_names:
+            raise Exception('different time slices did not have same features.')
+            
         #FIXME: we can do it all with just arrays
         featsMatrix_tmp_combined = _concatenate(featsMatrix_tmp, axis=1)
         featlist.append(featsMatrix_tmp_combined)
@@ -638,15 +684,29 @@ class OpObjectTrain(Operator):
             return
         
         for i in range(len(self.Labels)):
-            # FIXME: we should only compute the features if there are nonzero labels in this image
-            feats = self.Features[i]([]).wait()
+            # this loop is by image, not time! 
 
             # TODO: we should be able to use self.Labels[i].value,
             # but the current implementation of Slot.value() does not
             # do the right thing.
-            labels = self.Labels[i]([]).wait()
+            labels_image = self.Labels[i]([]).wait()
+            labels_image_filtered = {}
+            nztimes = []
+            for timestep, labels_time in labels_image.iteritems():
+                nz = numpy.nonzero(labels_time)
+                if len(nz[0])==0:
+                    continue
+                else:
+                    nztimes.append(timestep)
+                    labels_image_filtered[timestep] = labels_time
 
-            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels)
+            if len(nztimes)==0:
+                continue
+            # compute the features if there are nonzero labels in this image
+            # and only for the time steps, which have labels
+            feats = self.Features[i](nztimes).wait()
+
+            featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels_image_filtered)
             if labelstmp.size == 0 or featstmp.size == 0:
                 continue
 
@@ -677,7 +737,7 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-
+        
         logger.info("training on matrix of shape {}".format(featMatrix.shape))
 
         if featMatrix.size == 0 or labelsMatrix.size == 0:

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>770</height>
+    <height>794</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -319,6 +319,20 @@
        </property>
        <property name="text">
         <string>Export</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportDivisions">
+       <property name="text">
+        <string>Export Divisions as csv ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportMergers">
+       <property name="text">
+        <string>Export Mergers as csv ...</string>
        </property>
       </widget>
      </item>

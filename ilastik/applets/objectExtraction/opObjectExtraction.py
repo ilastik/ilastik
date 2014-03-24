@@ -1,6 +1,18 @@
-#have to do that so that plugin manager has a handler
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
 
 #Python
 from copy import copy
@@ -14,8 +26,8 @@ import vigra.analysis
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-from lazyflow.roi import roiToSlice
+from lazyflow.rtype import List, SubRegion
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 import logging
@@ -28,8 +40,6 @@ except:
     logger.warn('could not import pluginManager')
 
 from ilastik.applets.base.applet import DatasetConstraintError
-
-import collections
 
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.
@@ -177,7 +187,7 @@ class OpRegionFeatures3d(Operator):
         acc = self._extract(rawVolume4d, labelVolume4d)
         result[tuple(roi.start)] = acc
         stop = time.time()
-        logger.info("TIMING: computing features took {:.3f}s".format(stop-start))
+        logger.debug("TIMING: computing features took {:.3f}s".format(stop-start))
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
@@ -562,6 +572,7 @@ class OpObjectCenterImage(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
+        
         result[:] = 0
         ndim = 3
         taggedShape = self.BinaryImage.meta.getTaggedShape()
@@ -587,9 +598,11 @@ class OpObjectCenterImage(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
+        # the roi here is a list of time steps 
         if slot is self.RegionCenters:
-            self.Output.setDirty(slice(None))
-
+            for t in roi:
+                self.Output.setDirty(slice(t, t+1, None))
+                                  
 
 class OpObjectExtraction(Operator):
     """The top-level operator for the object extraction applet.
@@ -601,7 +614,7 @@ class OpObjectExtraction(Operator):
 
     RawImage = InputSlot()
     BinaryImage = InputSlot()
-    BackgroundLabels = InputSlot()
+    BackgroundLabels = InputSlot(optional=True)
 
     # which features to compute.
     # nested dictionary with format:

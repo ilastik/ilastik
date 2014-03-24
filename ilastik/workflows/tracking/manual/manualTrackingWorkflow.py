@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -87,4 +103,51 @@ class ManualTrackingWorkflow( Workflow ):
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.Input.connect( opTracking.TrackImage )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+    
+    def _inputReady(self, nRoles):
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                    all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+
+        return input_ready
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.statusUpdateSignal`
+        """
+        # If no data, nothing else is ready.        
+        input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
         
+        opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
+        thresholdingOutput = opThresholding.CachedOutput
+        thresholding_ready = input_ready and \
+                       len(thresholdingOutput) > 0 
+
+        opObjectExtraction = self.objectExtractionApplet.topLevelOperator
+        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
+        features_ready = thresholding_ready and \
+                         len(objectExtractionOutput) > 0
+
+        opTracking = self.trackingApplet.topLevelOperator
+        tracking_ready = features_ready and \
+                           len(opTracking.Labels) > 0 and \
+                           opTracking.Labels.ready() and \
+                           opTracking.TrackImage.ready() 
+        
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.dataExportApplet.busy    
+        busy |= self.trackingApplet.busy    
+        self._shell.enableProjectChanges( not busy )
+        
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
+        self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
+        self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)

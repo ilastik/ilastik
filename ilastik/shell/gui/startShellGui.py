@@ -1,4 +1,21 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import os
+import functools
 import platform
 
 #make the program quit on Ctrl+C
@@ -6,17 +23,10 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
-from PyQt4.QtCore import Qt, QObject, QTimer, QEvent
+from PyQt4.QtCore import Qt, QTimer
 
-# Logging configuration
-import ilastik.ilastik_logging
-ilastik.ilastik_logging.default_config.init()
-ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
-
+import splashScreen
 import ilastik.config
-
-import functools
-
 shell = None
 
 def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):
@@ -47,10 +57,10 @@ def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *test
         app = QApplication([])
     _applyStyleSheet(app)
 
-    showSplashScreen()
+    splashScreen.showSplashScreen()
     app.processEvents()
     QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, *testFuncs ) )
-    QTimer.singleShot( 0, hideSplashScreen)
+    QTimer.singleShot( 0, splashScreen.hideSplashScreen)
 
     return app.exec_()
 
@@ -63,18 +73,6 @@ def _applyStyleSheet(app):
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
 
-splashScreen = None
-def showSplashScreen():
-    splash_path = os.path.join(os.path.split(ilastik.__file__)[0], 'ilastik-splash.png')
-    splashImage = QPixmap(splash_path)
-    global splashScreen
-    splashScreen = QSplashScreen(splashImage)
-    splashScreen.show()
-
-def hideSplashScreen():
-    global splashScreen
-    global shell
-    splashScreen.finish(shell)
 
 def launchShell(workflow_cmdline_args, *testFuncs):
     """

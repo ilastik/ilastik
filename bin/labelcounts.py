@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 """
 Give the histogram of labels in a project file.
 """
@@ -5,8 +21,6 @@ import sys
 import os
 import h5py
 import numpy
-
-sys.argv.append("/Users/bergs/MyProject.ilp")
 
 if len(sys.argv) != 2 or not sys.argv[1].endswith(".ilp"):
     sys.stderr.write("Usage: {} <my_project.ilp>\n".format( sys.argv[0] ))
@@ -23,7 +37,7 @@ def print_bincounts(label_names, bins_list, image_name):
     # Sum up the bincounts we got from each label block
     sum_bins = numpy.array( [0]*( len(label_names)+1 ), dtype=numpy.uint32)
     for bins in bins_list:
-        zero_pad_bins = numpy.append( bins, [0]*(num_bins-len(bins)) )
+        zero_pad_bins = numpy.append( bins, [0]*(len(sum_bins)-len(bins)) )
         sum_bins += zero_pad_bins
     
     print "Counted a total of {} label points for {}.".format( sum_bins.sum(), image_name )
@@ -35,12 +49,8 @@ def print_bincounts(label_names, bins_list, image_name):
 if __name__ == "__main__":
     all_bins = []
     num_bins = 0
-    with h5py.File(project_path, 'r') as f:
-        try:
-            label_names = f['PixelClassification/LabelNames'].value
-        except KeyError:
-            label_names = map( lambda n: "Label {}".format(n), range(num_bins) )[1:]
-        
+    bins_by_image = []
+    with h5py.File(project_path, 'r') as f:        
         # For each image
         for image_index, group in enumerate(f['PixelClassification/LabelSets'].values()):
             # For each label block
@@ -52,6 +62,18 @@ if __name__ == "__main__":
                 this_img_bins.append( bins )
                 num_bins = max(num_bins, len(bins))
             all_bins += this_img_bins
-            print_bincounts( label_names, this_img_bins, "Image #{}".format( image_index+1 ) )
+            bins_by_image.append(this_img_bins)
+
+        # Now print the findings for each image
+        try:
+            label_names = f['PixelClassification/LabelNames'].value
+        except KeyError:
+            label_names = map( lambda n: "Label {}".format(n), range(num_bins) )[1:]
         
+        for image_index, img_bins in enumerate(bins_by_image):
+            print_bincounts( label_names, img_bins, "Image #{}".format( image_index+1 ) )
+        
+        # Finally, print the total results
         print_bincounts( label_names, all_bins, "ALL IMAGES")
+
+

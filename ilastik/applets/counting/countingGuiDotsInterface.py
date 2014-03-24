@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #===============================================================================
 # Implements a mechanism to keep in sync the Dot Graphic Items
 # with ilastik's operators 
@@ -27,7 +43,8 @@ import vigra
 
 from countingGuiBoxesInterface import OpArrayPiper2
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 
 #===============================================================================
@@ -169,6 +186,16 @@ class DotInterpreter(BrushingInterpreter):
         etype = event.type()
         
         if self._current_state == self.DEFAULT_MODE:
+            
+            if event.type()==QEvent.KeyPress:
+                if event.key()==Qt.Key_Control :
+                    QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+
+            if event.type()==QEvent.KeyRelease:
+                if event.key()==Qt.Key_Control :
+                    QApplication.restoreOverrideCursor()
+
+
             if etype == QEvent.MouseButtonPress \
                 and event.button() == Qt.LeftButton \
                 and event.modifiers() == Qt.NoModifier \
@@ -238,7 +265,7 @@ class DotController(QObject):
     def addNewDot(self,pos5D):
         pos=tuple(pos5D[1:3])
         if self._currentDotsHash.has_key(pos): 
-            print "Dot is already there %s",self._currentDotsHash[pos]
+            logger.debug( "Dot is already there %s",self._currentDotsHash[pos] )
             return
         
         newdot=QDot(pos,self._radius,self.Signaller)
@@ -382,7 +409,7 @@ if __name__=="__main__":
     
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,500,500,1,1)
-    print mainwin.centralWidget()    
+    logger.debug( str(mainwin.centralWidget()) )    
      
      
     BoxContr=DotController(mainwin.editor.imageScenes[2],mainwin.editor.brushingControler)

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from ilastik.workflow import Workflow
 
 from lazyflow.graph import Graph
@@ -6,6 +22,9 @@ from lazyflow.roi import TinyVector
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+
+import logging
+logger = logging.getLogger(__name__)
 
 class LayerViewerWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
@@ -38,8 +57,8 @@ class LayerViewerWorkflow(Workflow):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
         """
-        print "LayerViewerWorkflow Project was opened with the following args: "
-        print self._workflow_cmdline_args
+        logger.info( "LayerViewerWorkflow Project was opened with the following args: " )
+        logger.info( self._workflow_cmdline_args )
 
     def connectLane(self, laneIndex):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)

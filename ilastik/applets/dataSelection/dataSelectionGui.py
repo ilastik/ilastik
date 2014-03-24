@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 #Python
 import os
 import threading
@@ -8,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QStackedWidget, QMenu, QMessageBox, QFileDialog, QDialog
+from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, QDialog
 
 #lazyflow
 from lazyflow.request import Request
@@ -20,7 +36,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.utility.pathHelpers import getPathVariants, areOnSameDrive, PathComponents
+from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -271,6 +287,9 @@ class DataSelectionGui(QWidget):
             return
         
         assert threading.current_thread().name == "MainThread"
+        
+        if laneIndex >= len(self.topLevelOperator.Image):
+            return
         imageSlot = self.topLevelOperator.Image[laneIndex]
 
         # Create if necessary
@@ -369,6 +388,8 @@ class DataSelectionGui(QWidget):
         file_dialog.setNameFilterDetailsVisible(False)
         # select multiple files
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setDirectory( defaultDirectory )
+        
         if ilastik_config.getboolean("ilastik", "debug"):
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
 
@@ -424,7 +445,7 @@ class DataSelectionGui(QWidget):
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
-        for i, filePath in enumerate(fileNames):
+        for _, filePath in enumerate(fileNames):
             datasetInfo = DatasetInfo()
             cwd = self.topLevelOperator.WorkingDirectory.value
             
@@ -456,6 +477,7 @@ class DataSelectionGui(QWidget):
             
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
+        loaded_all = True
         for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
@@ -466,18 +488,23 @@ class DataSelectionGui(QWidget):
                 if not return_val[0]:
                     # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
+                    loaded_all = False
                     break
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
+                    loaded_all = False
                     break
-            except:
-                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See console for details." )
+            except Exception as ex:
+                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
-                raise
+                loaded_all = False
+                logger.error(ex)
+                import sys, traceback
+                traceback.print_tb(sys.exc_info()[2])
 
         # If we succeeded in adding all images, show the first one.
-        if laneIndex == endingLane:
+        if loaded_all:
             self.showDataset(startingLane, roleIndex)
 
         # Notify the workflow that something that could affect applet readyness has occurred.
@@ -592,7 +619,6 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
 
         # Remove all operators that no longer have any connected slots        
-        last_valid = -1
         laneIndexes = range( len(self.topLevelOperator.DatasetGroup) )
         for laneIndex, multislot in reversed(zip(laneIndexes, self.topLevelOperator.DatasetGroup)):
             any_ready = False

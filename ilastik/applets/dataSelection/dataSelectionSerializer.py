@@ -1,9 +1,27 @@
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
 
 import os
 import vigra
 from lazyflow.utility import PathComponents
+from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
 from lazyflow.utility.pathHelpers import getPathVariants, isUrl
 import ilastik.utility.globals
@@ -55,6 +73,7 @@ class DataSelectionSerializer( AppletSerializer ):
         # If a dataset was removed, we need to be reserialized.
         self.topLevelOperator.DatasetGroup.notifyRemoved( bind(handleDirty) )
         
+    @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Write any missing local datasets to the local_data group
         localDataGroup = getOrCreateGroup(topGroup, 'local_data')
@@ -204,6 +223,7 @@ class DataSelectionSerializer( AppletSerializer ):
         
         self._dirty = False
 
+    @timeLogged(logger, logging.DEBUG)
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless):
         self._projectFilePath = projectFilePath
         self.initWithoutTopGroup(hdf5File, projectFilePath)
@@ -428,7 +448,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
                 datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
             
             # Write to the 'private' members to avoid resetting the dataset id
-            totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
+            totalDatasetPath = str(projectFilePath + '/DataSets/' + datasetDirName + '/data' )
             datasetInfo._filePath = totalDatasetPath
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
             datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )

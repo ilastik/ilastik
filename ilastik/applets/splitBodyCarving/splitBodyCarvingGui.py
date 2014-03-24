@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 import sys
 import os
 from functools import partial
@@ -9,6 +25,7 @@ from lazyflow.roi import TinyVector
 
 from volumina.layer import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.utility import ShortcutManager
 
 from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
@@ -21,6 +38,9 @@ from bodySplitInfoWidget import BodySplitInfoWidget
 from ilastik.applets.labeling.labelingGui import Tool
 
 from ilastik.utility.gui import threadRouted, ThunkEventHandler, ThunkEvent
+
+import logging
+logger = logging.getLogger(__name__)
 
 class SplitBodyCarvingGui(CarvingGui):
     
@@ -122,7 +142,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         rendered_volume_shape = (250, 250, 250)
 
-        print "Starting to update 3D volume data"
+        logger.info( "Starting to update 3D volume data" )
 
         fragmentColors = self._fragmentColors
         op = self.topLevelOperatorView
@@ -153,9 +173,9 @@ class SplitBodyCarvingGui(CarvingGui):
 
         ravelerLabel = op.CurrentRavelerLabel.value
         if ravelerLabel != 0:
-            print " Asking for fragment segmentation"
+            logger.info( " Asking for fragment segmentation" )
             op.CurrentFragmentSegmentation(*rendering_roi_5d).writeInto(renderVol5d).wait()
-            print " Obtained Fragment Segmentation"
+            logger.info( " Obtained Fragment Segmentation" )
 
             fragmentNames = op.getFragmentNames(ravelerLabel)
             numFragments = len(fragmentNames)
@@ -171,14 +191,14 @@ class SplitBodyCarvingGui(CarvingGui):
                     renderLabels.append( renderLabel )
 
             if op.CurrentEditingFragment.value != "":
-                print " Asking for masked editing segmentation"
+                logger.info( " Asking for masked editing segmentation" )
                 maskedSegmentation = op.MaskedSegmentation(*rendering_roi_5d).wait()
-                print " Obtained for masked editing segmentation"
+                logger.info( " Obtained for masked editing segmentation" )
                 segLabel = numFragments
 
-                print " Start updating volume data with masked segmentation"
+                logger.info( " Start updating volume data with masked segmentation" )
                 renderVol5d[:] = numpy.where(maskedSegmentation != 0, segLabel, renderVol5d)
-                print " Finished updating volume data with masked segmentation"
+                logger.info( " Finished updating volume data with masked segmentation" )
 
                 segmentationColor = (0.0, 1.0, 0.0)
                 renderLabel = self._renderMgr.addObject( color=segmentationColor )
@@ -189,7 +209,7 @@ class SplitBodyCarvingGui(CarvingGui):
             if renderLabels != list(range(len(renderLabels))):
                 renderVol5d[:] = numpy.array([0] + renderLabels)[renderVol5d]
 
-        print "Finished updating 3D volume data"
+        logger.info( "Finished updating 3D volume data" )
         self.thunkEventHandler.post(self._refreshRenderMgr)
 
     @threadRouted
@@ -197,9 +217,9 @@ class SplitBodyCarvingGui(CarvingGui):
         """
         The render mgr can segfault if this isn't called from the main thread.
         """
-        print "Begin render update"
+        logger.info( "Begin render update" )
         self._renderMgr.update()
-        print "End render update"
+        logger.info( "End render update" )
 
     
     def setupLayers(self):
@@ -292,16 +312,18 @@ class SplitBodyCarvingGui(CarvingGui):
         removeBaseLayer( "done" )
         removeBaseLayer( "done" )
         
+        ActionInfo = ShortcutManager.ActionInfo
+        
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():
             rawLayer = findLayer(lambda l: l.name == "raw", baseCarvingLayers)
             assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
-            rawLayer.shortcutRegistration = ( "Carving",
-                                              "Raw Data to Top",
-                                              QShortcut( QKeySequence("f"),
-                                                         self.viewerControlWidget(),
-                                                         partial(self._toggleRawDataPosition, rawLayer) ),
-                                             rawLayer )
+            rawLayer.shortcutRegistration = ( "f", ActionInfo( "Carving",
+                                                               "Raw Data to Top",
+                                                               "Raw Data to Top",
+                                                               partial(self._toggleRawDataPosition, rawLayer),
+                                                               self.viewerControlWidget(),
+                                                               rawLayer ) )
         layers += baseCarvingLayers
         return layers
 

@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
@@ -177,6 +193,44 @@ class OpVigraWatershedViewer(Operator):
         # All outputs are directly connected to internal operators
         pass
 
+if __name__ == "__main__":
+    import h5py
+    from lazyflow.graph import Graph
+    from lazyflow.utility import Timer
+
+    print "Reading data..."    
+    prediction_path = '/tmp/STACKED_prediction.h5'
+    with h5py.File( prediction_path, 'r' ) as prediction_file:
+        data = prediction_file['volume/predictions'][:] #[0:50,0:50,0:50,:]
+
+    # Scale and convert to uint8, then add axistags and drange
+    data = (data*255).astype(numpy.uint8)
+    data = vigra.taggedView( data, 'xyzc' )
+    data.drange = (0,255)
+    
+    graph = Graph()
+    op = OpVigraWatershedViewer(graph=graph)
+    op.InputImage.setValue( data )
+    op.InputChannelIndexes.setValue([0])
+    op.WatershedPadding.setValue(0)
+    op.FreezeCache.setValue(False)
+    op.CacheBlockShape.setValue((520,520))
+    op.OverrideLabels.setValue({})
+    op.SeedThresholdValue.setValue(0)
+    op.MinSeedSize.setValue(5)
+    
+    assert op.WatershedLabels.ready()
+    
+    print "Computing watershed..."
+    with Timer() as timer:
+        watershed_labels = op.opWatershed.Output[:].wait()
+    print "Computing watershed took {} seconds".format( timer.seconds() )
+    
+    print "Saving watershed..."
+    with h5py.File('/tmp/watershed_output.h5', 'w') as output_file:
+        output_file.create_dataset('watershed_labels', data=watershed_labels)
+    
+    print "DONE."
 
 
 

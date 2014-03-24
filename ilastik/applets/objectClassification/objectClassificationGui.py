@@ -1,3 +1,19 @@
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# Copyright 2011-2014, the ilastik developers
+
 from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
@@ -79,9 +95,7 @@ class ObjectClassificationGui(LabelingGui):
         # Base class
         super(ObjectClassificationGui, self).stopAndCleanUp()
 
-        # Ensure that we are NOT in interactive mode
-        self.labelingDrawerUi.checkInteractive.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+    PREDICTION_LAYER_NAME = "Prediction"
 
     def __init__(self, parentApplet, op):
         self.__cleanup_fns = []
@@ -361,16 +375,37 @@ class ObjectClassificationGui(LabelingGui):
                              self.topLevelOperatorView.PmapColors)
 
     def _onLabelRemoved(self, parent, start, end):
+        # Don't respond unless this actually came from the GUI
+        if self._programmaticallyRemovingLabels:
+            return
+
+        # update the pmap colors. copied from labelingGui._onLabelRemoved
+        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
+        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
+        oldColor = self._colorTable16_forpmaps.pop(start+1)
+        # Recycle the deleted color back into the table (for the next label to be added)
+        self._colorTable16_forpmaps.insert(oldcount, oldColor)
+
+        # Find the prediction layer and update its colortable
+        layer_index = self.layerstack.findMatchingIndex(lambda x: x.name == self.PREDICTION_LAYER_NAME)
+        predictLayer = self.layerstack[layer_index]
+        predictLayer.colorTable = self._colorTable16_forpmaps
+
+        # Base class
         super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+
         op = self.topLevelOperatorView
         op.removeLabel(start)
-        for slot in (op.LabelNames, op.LabelColors, op.PmapColors):
-            value = slot.value
-            if start in value:
+        # Keep colors in sync with names
+        # (If we deleted a name, delete its corresponding colors, too.)
+        if len(op.PmapColors.value) > len(op.LabelNames.value):
+            for slot in (op.LabelColors, op.PmapColors):
+                value = slot.value
                 value.pop(start)
-            slot.setValue(value)
-
-
+                # Force dirty propagation even though the list id is unchanged.
+                slot.setValue(value, check_changed=False)
+        
+        
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.
@@ -432,14 +467,22 @@ class ObjectClassificationGui(LabelingGui):
                 probLayer.visible = False
                 probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
                     
-                def setLayerColor(c, predictLayer=probLayer, ch=channel):
-                    predictLayer.tintColor = c
+                def setLayerColor(c, predictLayer_=probLayer, ch=channel, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    predictLayer_.tintColor = c
 
-                def setLayerName(n, predictLayer=probLayer):
+                def setLayerName(n, predictLayer_=probLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
                     newName = "Prediction for %s" % n
-                    predictLayer.name = newName
+                    predictLayer_.name = newName
 
-                setLayerName(ref_label.name)
+                setLayerName(ref_label.name, initializing=True)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 layers.append(probLayer)
@@ -451,7 +494,7 @@ class ObjectClassificationGui(LabelingGui):
             predictLayer = ColortableLayer(predictsrc,
                                            colorTable=self._colorTable16_forpmaps)
 
-            predictLayer.name = "Prediction"
+            predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
             predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             predictLayer.opacity = 0.5
@@ -596,8 +639,8 @@ class ObjectClassificationGui(LabelingGui):
             return
         if action.text() == text:
             numpy.set_printoptions(precision=4)
-            print "------------------------------------------------------------"
-            print "object:         {}".format(obj)
+            logger.info( "------------------------------------------------------------" )
+            logger.info( "object:         {}".format(obj) )
             
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
@@ -605,21 +648,21 @@ class ObjectClassificationGui(LabelingGui):
                 label = int(labels[obj])
             else:
                 label = "none"
-            print "label:          {}".format(label)
+            logger.info( "label:          {}".format(label) )
             
-            print 'features:'
+            logger.info( 'features:' )
             feats = self.op.ObjectFeatures([t]).wait()[t]
             selected = self.op.SelectedFeatures([]).wait()
             for plugin in sorted(feats.keys()):
                 if plugin == default_features_key or plugin not in selected:
                     continue
-                print "Feature category: {}".format(plugin)
+                logger.info( "Feature category: {}".format(plugin) )
                 for featname in sorted(feats[plugin].keys()):
                     if featname not in selected[plugin]:
                         continue
                     value = feats[plugin][featname]
                     ft = numpy.asarray(value.squeeze())[obj]
-                    print "{}: {}".format(featname, ft)
+                    logger.info( "{}: {}".format(featname, ft) )
 
             if len(selected)>0 and label!='none':
                 if self.op.Predictions.ready():
@@ -635,11 +678,11 @@ class ObjectClassificationGui(LabelingGui):
                     if len(probs) >= obj:
                         prob = probs[obj]
     
-                print "probabilities:  {}".format(prob)
-                print "prediction:     {}".format(pred)
+                logger.info( "probabilities:  {}".format(prob) )
+                logger.info( "prediction:     {}".format(pred) )
 
             
-            print "------------------------------------------------------------"
+            logger.info( "------------------------------------------------------------" )
         elif action.text()==clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
