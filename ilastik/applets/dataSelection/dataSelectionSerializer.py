@@ -448,7 +448,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
                 datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
             
             # Write to the 'private' members to avoid resetting the dataset id
-            totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
+            totalDatasetPath = str(projectFilePath + '/DataSets/' + datasetDirName + '/data' )
             datasetInfo._filePath = totalDatasetPath
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
             datasetInfo.nickname = "{} (imported from v0.5)".format( datasetDirName )

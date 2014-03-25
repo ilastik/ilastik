@@ -440,30 +440,44 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 class OpEnsembleMargin(Operator):
     """
     Produces a pixelwise measure of the uncertainty of the pixelwise predictions.
+    
+    Uncertainty is negatively proportional to the difference between the 
+    highest two probabilities at every pixel.
     """
     Input = InputSlot()
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-
         taggedShape = self.Input.meta.getTaggedShape()
         taggedShape['c'] = 1
         self.Output.meta.shape = tuple(taggedShape.values())
-
+        
     def execute(self, slot, subindex, roi, result):
+        # If there's only 1 channel, there's zero uncertainty
+        if self.Input.meta.getTaggedShape()['c'] <= 1:
+            result[:] = 0
+            return
+
         roi = copy.copy(roi)
         taggedShape = self.Input.meta.getTaggedShape()
         chanAxis = self.Input.meta.axistags.index('c')
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = taggedShape['c']
         pmap = self.Input.get(roi).wait()
-        
-        pmap_sort = numpy.sort(pmap, axis=self.Input.meta.axistags.index('c')).view(vigra.VigraArray)
-        pmap_sort.axistags = self.Input.meta.axistags
 
-        res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
+        # Sort along channel axis so the every pixel's channels are sorted lowest to highest.
+        pmap.sort(axis=self.Input.meta.axistags.index('c'))
+        pmap = pmap.view(vigra.VigraArray)
+        pmap.axistags = self.Input.meta.axistags
+
+        # Subtract the highest channel from the second-highest channel.
+        res = pmap.bindAxis('c', -1) - pmap.bindAxis('c', -2)
         res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        
+        # Subtract from 1 to make this an "uncertainty" measure, not a "certainty" measure
+        # e.g. predictions of .99 and .01 -> low uncertainty (0.98)
+        # e.g. predictions of .51 and .49 -> high uncertainty (0.02)
         result[...] = (1-res)
         return result 
 
