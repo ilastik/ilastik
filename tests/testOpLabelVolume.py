@@ -11,12 +11,7 @@ from lazyflow.rtype import SubRegion
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-try:
-    import blockedarray.adapters
-except ImportError:
-    have_blocked = False
-else:
-    have_blocked = True
+from lazyflow.operators.opLabelVolume import haveBlocked
 
 
 class TestVigra(unittest.TestCase):
@@ -219,19 +214,20 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
 
-@unittest.skipIf(not have_blocked, "Cannot test blockedarray because you don't have the module")
+@unittest.skipIf(not haveBlocked(), "Cannot test blockedarray because you don't have the module")
 class TestBlocked(TestVigra):
 
     def setUp(self):
         self.method = np.asarray(['blocked'], dtype=np.object)
 
-    @unittest.skip("Not implemented yet")
-    def testUnsupported(self):
-        pass
+    #@unittest.skip("Not implemented yet")
+    #def testUnsupported(self):
+        #pass
 
-    @unittest.skip("Not implemented yet")
+    # background value is unsupported for blocked labeling
+    @unittest.expectedFailure
     def testBackground(self):
-        pass
+        super(TestBlocked, self).testBackground()
 
 
 def assertEquivalentLabeling(x, y):
