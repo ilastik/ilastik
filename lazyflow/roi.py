@@ -281,6 +281,9 @@ def roiFromShape(shape):
     stop = TinyVector(shape)
     return ( start, stop )
 
+def fullSlicing(shape):
+    return roiToSlice(*roiFromShape(shape))
+
 def getIntersection( roiA, roiB, assertIntersect=True ):    
     start = numpy.maximum( roiA[0], roiB[0] )    
     stop = numpy.minimum( roiA[1], roiB[1] )

@@ -241,6 +241,101 @@ class TestAxisIndex(unittest.TestCase):
         op.Images[0].setDirty(slice(None))
 
 
+class TestOpMultiArrayStacker(unittest.TestCase):
+
+    def setUp(self):
+        self.g = Graph()
+        vol = numpy.zeros((100,200,2))
+        vol = vigra.taggedView(vol, axistags='xyz')
+        self.vol = vol
+
+    def testSimpleUsage(self):
+        n = self.vol.shape[2]
+        op = OpMultiArrayStacker(graph=self.g)
+        op.AxisFlag.setValue('z')
+
+        provider = OperatorWrapper(OpArrayPiper, graph=self.g)
+        vol = self.vol
+
+        op.Images.connect(provider.Output)
+        provider.Input.resize(n)
+
+        for i in range(n):
+            provider.Input[i].setValue(vol[..., i])
+
+        out = op.Output[...].wait()
+        out = vigra.taggedView(out, axistags='xyz')
+        numpy.testing.assert_array_equal(out, vol)
+
+    def testIndexing(self):
+        n = self.vol.shape[2]
+        op = OpMultiArrayStacker(graph=self.g)
+        op.AxisFlag.setValue('z')
+        op.AxisIndex.setValue(0)
+
+        provider = OperatorWrapper(OpArrayPiper, graph=self.g)
+        vol = self.vol
+
+        op.Images.connect(provider.Output)
+        provider.Input.resize(n)
+
+        for i in range(n):
+            provider.Input[i].setValue(vol[..., i])
+
+        out = op.Output[...].wait()
+        out = vigra.taggedView(out, axistags='zxy')
+        out = out.withAxes(*"xyz")
+        numpy.testing.assert_array_equal(out, vol)
+
+
+    ## slots could become unready after a while, the old implementation used to
+    ## ignore this
+    def testNonReady(self):
+        n = self.vol.shape[2]
+        op = OpMultiArrayStacker(graph=self.g)
+        op.AxisFlag.setValue('z')
+        op.AxisIndex.setValue(0)
+
+        providers = [OpNonReady(graph=self.g),OpNonReady(graph=self.g)]
+        provider = OperatorWrapper(OpArrayPiper, graph=self.g)
+        provider.Input.resize(n)
+        vol = self.vol
+
+        op.Images.resize(n)
+
+        for i in range(n):
+            provider.Input[i].setValue(vol[..., i])
+            providers[i].Input.connect(provider.Output[i])
+            op.Images[i].connect(providers[i].Output)
+
+        out = op.Output[...].wait()
+
+        with self.assertRaises(InputSlot.SlotNotReadyError):
+            providers[0].screwWithOutput()
+            out = op.Output[...].wait()
+
+
+class OpNonReady(Operator):
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+
+    def execute(self, slot, subindex, roi, result):
+        assert self.Output.ready()
+        result[:] = 0
+
+    def propagateDirty(self, slot, subindex, roi):
+        newroi = roi.copy()
+        self.Output.setDirty(roi)
+
+    def screwWithOutput(self):
+        self.Input.disconnect()
+        self.Output.meta.NOTREADY = True
+
+
+
 if __name__ == "__main__":
     import sys
     import nose
