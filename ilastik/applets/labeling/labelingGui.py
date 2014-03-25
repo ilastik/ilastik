@@ -220,19 +220,26 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
 
         # Initialize the thresholding tool
-        thresholdIconPath = os.path.split(__file__)[0] + "/icons/threshold.png"
-        thresholdIcon = QIcon(thresholdIconPath)
-        _labelControlUi.thresToolButton.setIcon(thresholdIcon)
-        _labelControlUi.thresToolButton.setCheckable(True)
-        _labelControlUi.thresToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold) )
+        if hasattr(_labelControlUi, "thresToolButton"):
+            thresholdIconPath = os.path.split(__file__)[0] \
+              + "/icons/threshold.png"
+            thresholdIcon = QIcon(thresholdIconPath)
+            _labelControlUi.thresToolButton.setIcon(thresholdIcon)
+            _labelControlUi.thresToolButton.setCheckable(True)
+            _labelControlUi.thresToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold) )
 
 
         # This maps tool types to the buttons that enable them
-        self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
-                             Tool.Paint      : _labelControlUi.paintToolButton,
-                             Tool.Erase      : _labelControlUi.eraserToolButton,
-                             Tool.Threshold  : _labelControlUi.thresToolButton}
-
+        if hasattr(_labelControlUi, "thresToolButton"):
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton,
+                                 Tool.Threshold  : _labelControlUi.thresToolButton}
+        else:
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton}
+            
         self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
 
         for size in self.brushSizes:
@@ -299,13 +306,13 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
-        
-        mgr.register( "t", ActionInfo( shortcutGroupName,
-                                       "Thresholding",
-                                       "Thresholding",
-                                       self.labelingDrawerUi.thresToolButton.click,
-                                       self.labelingDrawerUi.thresToolButton,
-                                       self.labelingDrawerUi.thresToolButton ) )
+        if hasattr(self.labelingDrawerUi, "thresToolButton"):
+            mgr.register( "t", ActionInfo( shortcutGroupName,
+                                           "Thresholding",
+                                           "Thresholding",
+                                           self.labelingDrawerUi.thresToolButton.click,
+                                           self.labelingDrawerUi.thresToolButton,
+                                           self.labelingDrawerUi.thresToolButton ) )
         
 
         self._labelShortcuts = []
