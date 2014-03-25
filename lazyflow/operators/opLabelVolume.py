@@ -271,14 +271,14 @@ class OpLabelingABC(Operator):
         pass
 
 
-class _OpNonLazyCC(OpLabelingABC):
+class OpNonLazyCC(OpLabelingABC):
 
     def setupOutputs(self):
         if self.Input.ready():
             s = self.Input.meta.getTaggedShape()
             shape = (s['c'], s['t'])
             self._cached = np.zeros(shape, dtype=np.bool)
-        super(_OpNonLazyCC, self).setupOutputs()
+        super(OpNonLazyCC, self).setupOutputs()
 
     ## wraps the childrens' updateSlice function to check if recomputation is
     ## needed
@@ -295,7 +295,7 @@ class _OpNonLazyCC(OpLabelingABC):
 
 
 ## vigra connected components
-class _OpLabelVigra(_OpNonLazyCC):
+class _OpLabelVigra(OpNonLazyCC):
     name = "OpLabelVigra"
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
@@ -327,7 +327,7 @@ class _OpLabelVigra(_OpNonLazyCC):
 
 
 ## blockedarray connected components
-class _OpLabelBlocked(_OpNonLazyCC):
+class _OpLabelBlocked(OpNonLazyCC):
     name = "OpLabelBlocked"
     supportedDtypes = [np.uint8]
 
