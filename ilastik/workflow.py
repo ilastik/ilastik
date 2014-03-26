@@ -93,7 +93,7 @@ class Workflow( Operator ):
     # Public methods #
     ##################
 
-    def __init__(self, shell, headless=False, workflow_cmdline_args=(), parent=None, graph=None):
+    def __init__(self, shell, headless=False, workflow_cmdline_args=(), project_creation_args=(), parent=None, graph=None):
         """
         Constructor.  Subclasses MUST call this in their own ``__init__`` functions.
         The parent and graph parameters will be passed directly to the Operator base class. If both are None,
@@ -103,6 +103,7 @@ class Workflow( Operator ):
                          in which case the workflow should not attempt to access applet GUIs.
         :param workflow_cmdline_args: a (possibly empty) sequence of arguments to control
                                       the workflow from the command line
+        :param project_creation_args: The original workflow_cmdline_args used when the project was first created.
         :param parent: The parent operator of the workflow or None (see also: Operator)
         :param graph: The graph instance the workflow is assigned to (see also: Operator)
 

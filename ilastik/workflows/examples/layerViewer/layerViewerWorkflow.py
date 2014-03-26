@@ -27,11 +27,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LayerViewerWorkflow(Workflow):
-    def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LayerViewerWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        super(LayerViewerWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 

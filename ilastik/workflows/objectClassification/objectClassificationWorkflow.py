@@ -46,11 +46,12 @@ class ObjectClassificationWorkflow(Workflow):
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
+                 project_creation_args,
                  *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs:
             del kwargs['graph']
-        super(ObjectClassificationWorkflow, self).__init__(shell, headless=headless, graph=graph, *args, **kwargs)
+        super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -58,13 +59,22 @@ class ObjectClassificationWorkflow(Workflow):
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
         parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
         
+        parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
+
+        self.fillMissing = parsed_creation_args.fillmissing
+        self.filter_implementation = parsed_creation_args.filter
+
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        if parsed_args.fillmissing != 'none' and parsed_creation_args.fillmissing != parsed_args.fillmissing:
+            logger.error( "Ignoring --fillmissing cmdline arg.  Can't specify a different fillmissing setting after the project has already been created." )
+        
+        if parsed_args.filter != 'Original' and parsed_creation_args.filter != parsed_args.filter:
+            logger.error( "Ignoring --filter cmdline arg.  Can't specify a different filter setting after the project has already been created." )
+
+        self.batch = not parsed_args.nobatch
+        
         if unused_args:
             warnings.warn("Unused command-line args: {}".format( unused_args ))
-
-        self.fillMissing = parsed_args.fillmissing
-        self.filter_implementation = parsed_args.filter
-        self.batch = not parsed_args.nobatch
 
         self._applets = []
 

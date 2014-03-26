@@ -21,8 +21,8 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
 
     workflowName = "Pixel Classification (with Watershed Preview)"
     
-    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
-        super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, appendBatchOperators=False, *args, **kwargs )
+    def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
+        super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=False, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")

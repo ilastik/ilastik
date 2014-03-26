@@ -22,10 +22,10 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.deviationFromMean import DeviationFromMeanApplet
 
 class DeviationFromMeanWorkflow(Workflow):
-    def __init__(self, shell, headless, workflow_cmdline_args):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(DeviationFromMeanWorkflow, self).__init__(shell, headless, graph=graph)
+        super(DeviationFromMeanWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph)
         self._applets = []
 
         # Create applets 
