@@ -11,12 +11,7 @@ from lazyflow.rtype import SubRegion
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-try:
-    import blockedarray
-except ImportError:
-    have_blocked = False
-else:
-    have_blocked = True
+from lazyflow.operators.opLabelVolume import haveBlocked
 
 
 class TestVigra(unittest.TestCase):
@@ -62,6 +57,33 @@ class TestVigra(unittest.TestCase):
         blocks[30:50, 40:60, 50:70, 2:4, 3:5] = 1
         blocks[30:50, 40:60, 50:70, 2:4, 0:2] = 2
         blocks[60:70, 30:40, 10:33, :, :] = 3
+
+        vol[blocks == 1] = 255
+        vol[blocks == 2] = 255
+        vol[blocks == 3] = 255
+
+        op = OpLabelVolume(graph=Graph())
+        op.Method.setValue(self.method)
+        op.Input.setValue(vol)
+
+        out = op.Output[...].wait()
+        tags = op.Output.meta.getTaggedShape()
+        print(tags)
+        out = vigra.taggedView(out, axistags="".join([s for s in tags]))
+
+        for c in range(out.shape[3]):
+            for t in range(out.shape[4]):
+                print("t={}, c={}".format(t, c))
+                assertEquivalentLabeling(blocks[..., c, t], out[..., c, t])
+
+    def testSingletonZ(self):
+        vol = np.zeros((82, 70, 1, 5, 5), dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyzct')
+
+        blocks = np.zeros(vol.shape, dtype=np.uint8)
+        blocks[30:50, 40:60, :, 2:4, 3:5] = 1
+        blocks[30:50, 40:60, :, 2:4, 0:2] = 2
+        blocks[60:70, 30:40, :, :, :] = 3
 
         vol[blocks == 1] = 255
         vol[blocks == 2] = 255
@@ -192,19 +214,20 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
 
-@unittest.skipIf(not have_blocked, "Cannot test blockedarray because you don't have the module")
+@unittest.skipIf(not haveBlocked(), "Cannot test blockedarray because you don't have the module")
 class TestBlocked(TestVigra):
 
     def setUp(self):
         self.method = np.asarray(['blocked'], dtype=np.object)
 
-    @unittest.skip("Not implemented yet")
-    def testUnsupported(self):
-        pass
+    #@unittest.skip("Not implemented yet")
+    #def testUnsupported(self):
+        #pass
 
-    @unittest.skip("Not implemented yet")
+    # background value is unsupported for blocked labeling
+    @unittest.expectedFailure
     def testBackground(self):
-        pass
+        super(TestBlocked, self).testBackground()
 
 
 def assertEquivalentLabeling(x, y):
