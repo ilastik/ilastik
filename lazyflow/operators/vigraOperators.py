@@ -966,7 +966,6 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             req.destination = None
             if sourceArray.dtype != numpy.float32:
                 sourceArrayF = sourceArray.astype(numpy.float32)
-                sourceArray.resize((1,), refcheck = False)
                 del sourceArray
                 sourceArray = sourceArrayF
             sourceArrayV = sourceArray.view(vigra.VigraArray)
