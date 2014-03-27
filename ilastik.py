@@ -54,7 +54,7 @@ if parsed_args.debug or parsed_args.start_recording or parsed_args.playback_scri
 
 # Initialize logging before anything else
 from ilastik.ilastik_logging import default_config
-if ilastik_config.getboolean('ilastik', 'debug'):
+if ilastik_config.getboolean('ilastik', 'debug') or parsed_args.headless:
     default_config.init(output_mode=default_config.OutputMode.BOTH)
 else:
     default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
