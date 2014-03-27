@@ -421,6 +421,7 @@ class PixelClassificationWorkflow(Workflow):
                 if progress != current_progress:
                     current_progress = progress
                     sys.stdout.write( "{}% ".format( current_progress ) )
+                    sys.stdout.flush()
 
             sys.stdout.write( "100%\n" )
             # Write into the operator
