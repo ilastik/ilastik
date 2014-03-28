@@ -44,7 +44,7 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
         def imageNameListSlot(self):
             return self.dataSelectionApplet.topLevelOperator.ImageName
     
-        def __init__(self, shell, headless, workflow_cmdline_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
+        def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, hintoverlayFile=None, pmapoverlayFile=None, *args, **kwargs):
             if workflow_cmdline_args:
                 assert False, "Not using workflow cmdline args yet."
             
@@ -55,7 +55,7 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     
             graph = Graph()
             
-            super(CarvingFromPixelPredictionsWorkflow, self).__init__(shell, headless, *args, graph=graph, **kwargs)
+            super(CarvingFromPixelPredictionsWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, *args, graph=graph, **kwargs)
             
             ## Create applets 
             self.projectMetadataApplet = ProjectMetadataApplet()
