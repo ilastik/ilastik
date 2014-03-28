@@ -66,9 +66,12 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         # Overwrite the blockshape
         if self._blockshape is None:
             self._blockshape = numpy.minimum( self.BlockShape.value, self.Output.meta.shape )
-        else:
-            assert self.blockShape.value == self._blockshape, \
-                "Not allowed to change the blockshape after initial setup"
+        elif self.blockShape.value != self._blockshape:
+            nonzero_blocks_destination = [None]
+            self._execute_nonzeroBlocks(nonzero_blocks_destination)
+            nonzero_blocks = nonzero_blocks_destination[0]
+            if len(nonzero_blocks) > 0:
+                raise RuntimeError( "You are not permitted to reconfigure the labeling operator after you've already stored labels in it." )
 
         # Overwrite chunkshape now that blockshape has been overwritten
         self._chunkshape = self._chooseChunkshape(self._blockshape)
@@ -122,10 +125,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         if slot == self.Output:
             self._executeOutput(roi, destination)
         elif slot == self.nonzeroBlocks:
-            stored_block_rois = self.CleanBlocks.value
-            block_slicings = map( lambda block_roi: roiToSlice(*block_roi), stored_block_rois )
-            destination[0] = block_slicings
-            return
+            self._execute_nonzeroBlocks(destination)
         else:
             return super( OpCompressedUserLabelArray, self ).execute( slot, subindex, roi, destination )
 
@@ -140,6 +140,13 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         self._copyData(roi, destination, block_starts)
         return destination
+
+    def _execute_nonzeroBlocks(self, destination):
+        stored_block_rois_destination = [None]
+        self._executeCleanBlocks( stored_block_rois_destination )
+        stored_block_rois = stored_block_rois_destination[0]
+        block_slicings = map( lambda block_roi: roiToSlice(*block_roi), stored_block_rois )
+        destination[0] = block_slicings
 
     def _copyData(self, roi, destination, block_starts):
         """
