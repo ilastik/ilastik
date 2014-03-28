@@ -33,7 +33,7 @@ from lazyflow.operators.generic import OpSingleChannelSelector
 from opGraphcutSegment import haveGraphCut
 
 # always available
-import math
+import numpy as np
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -96,19 +96,22 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
-        
-        # check if the data is 2D. If so, hide the z-sigma
-        if self.topLevelOperatorView.InputImage.ready():
-            tShape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-            if not 'z' in tShape or tShape['z']==1:
-                self._drawer.sigmaSpinBox_Z.setVisible(False) 
-        
-    
+
     @threadRouted
     def _updateGuiFromOperator(self):
         op = self.topLevelOperatorView
 
-        numChannels = 0        
+        # check if the data is 2D. If so, hide the z-dependent spinboxes
+        data_has_z_axis = True
+        if self.topLevelOperatorView.InputImage.ready():
+            tShape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+            if not 'z' in tShape or tShape['z']==1:
+                data_has_z_axis = False
+
+        self._drawer.sigmaSpinBox_Z.setVisible(data_has_z_axis)
+        self._drawer.marginSpinBoxGC_Z.setVisible(data_has_z_axis)
+
+        numChannels = 0
         if op.InputImage.ready():
             # Channel
             channelIndex = op.InputImage.meta.axistags.index('c')
@@ -127,6 +130,15 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
         self._drawer.thresholdSpinBoxGC.setValue( op.SingleThresholdGC.value )
         self._drawer.lambdaSpinBoxGC.setValue( op.Beta.value )
+        margin = op.Margin.value
+        self._drawer.marginSpinBoxGC_X.setValue(margin[0])
+        self._drawer.marginSpinBoxGC_Y.setValue(margin[1])
+        self._drawer.marginSpinBoxGC_Z.setValue(margin[2])
+        if op.UsePreThreshold.value:
+            self._drawer.radioButtonGC_local.setChecked(True)
+        else:
+            self._drawer.radioButtonGC_global.setChecked(True)
+            
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
@@ -162,7 +174,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
         for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            req_sigma = math.floor(shape[ax]/2-1)
+            req_sigma = np.floor(shape[ax]/2-1)
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()
                 mexBox.setText("The sigma value {} for dimension '{}'"
@@ -177,6 +189,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         highThreshold = self._drawer.highThresholdSpinBox.value()
         singleThresholdGC = self._drawer.thresholdSpinBoxGC.value()
         beta = self._drawer.lambdaSpinBoxGC.value()
+        margin = [self._drawer.marginSpinBoxGC_X.value(),
+                  self._drawer.marginSpinBoxGC_Y.value(),
+                  self._drawer.marginSpinBoxGC_Z.value()]
+        margin = np.asarray(margin)
 
         if lowThreshold>highThreshold:
             mexBox=QMessageBox()
@@ -200,16 +216,18 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
-        op.Channel.setValue( channel )
-        sigmaSlot.setValue( block_shape_dict )
-        op.SingleThreshold.setValue( singleThreshold )
-        op.LowThreshold.setValue( lowThreshold )
+        op.Channel.setValue(channel)
+        sigmaSlot.setValue(block_shape_dict)
+        op.SingleThreshold.setValue(singleThreshold)
+        op.LowThreshold.setValue(lowThreshold)
         op.HighThreshold.setValue( highThreshold )
         op.SingleThresholdGC.setValue(singleThresholdGC)
         op.Beta.setValue(beta)
-        op.MinSize.setValue( minSize )
-        op.MaxSize.setValue( maxSize )
-        
+        op.Margin.setValue(margin)
+        op.MinSize.setValue(minSize)
+        op.MaxSize.setValue(maxSize)
+        op.UsePreThreshold.setValue(
+            self._drawer.radioButtonGC_local.isChecked())
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()

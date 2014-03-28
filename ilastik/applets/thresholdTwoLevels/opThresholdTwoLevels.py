@@ -41,7 +41,7 @@ from thresholdingTools import OpSelectLabels
 from opGraphcutSegment import haveGraphCut
 
 if haveGraphCut():
-    from opGraphcutSegment import OpObjectsSegment
+    from opGraphcutSegment import OpObjectsSegment, OpGraphCut
 
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,12 @@ class OpThresholdTwoLevels(Operator):
     SingleThresholdGC = InputSlot(stype='float', value=0.5)
     Beta = InputSlot(value=.2)
     CurOperator = InputSlot(stype='int', value=0)
+
+    # apply thresholding before graph-cut
+    UsePreThreshold = InputSlot(stype='bool', value=True)
+
+    # margin around single object (only graph-cut)
+    Margin = InputSlot(value=numpy.asarray((20,20,20)))
 
     Output = OutputSlot()
 
@@ -138,11 +144,16 @@ class OpThresholdTwoLevels(Operator):
             self.opThreshold1GC.MinSize.connect(self.MinSize)
             self.opThreshold1GC.MaxSize.connect(self.MaxSize)
 
-            self.opGraphCut = OpObjectsSegment(parent=self)
-            self.opGraphCut.Prediction.connect(self._smoothStacker.Output)
+            self.opObjectsGraphCut = OpObjectsSegment(parent=self)
+            self.opObjectsGraphCut.Prediction.connect(self._smoothStacker.Output)
             #FIXME get rid of channel here
-            self.opGraphCut.Channel.setValue(0)
-            self.opGraphCut.LabelImage.connect(self.opThreshold1.Output)
+            self.opObjectsGraphCut.Channel.setValue(0)
+            self.opObjectsGraphCut.LabelImage.connect(self.opThreshold1.Output)
+            self.opObjectsGraphCut.Beta.connect(self.Beta)
+            self.opObjectsGraphCut.Margin.connect(self.Margin)
+
+            self.opGraphCut = OpGraphCut(parent=self)
+            self.opGraphCut.Prediction.connect(self._smoothStacker.Output)
             self.opGraphCut.Beta.connect(self.Beta)
 
         # HACK: For backwards compatibility with old projects,
@@ -237,9 +248,11 @@ class OpThresholdTwoLevels(Operator):
 
     def _connectForGraphCut(self):
         assert haveGraphCut(), "Module for graph cut is not available"
-        self._connectForSingleThreshold(self.opThreshold1GC)
-
-        return self.opGraphCut.Output
+        if self.UsePreThreshold.value:
+            self._connectForSingleThreshold(self.opThreshold1GC)
+            return self.opObjectsGraphCut.Output
+        else:
+            return self.opGraphCut.Output
 
     def _setBlockShape(self):
         # Blockshape is the entire block, except only 1 time slice

@@ -40,6 +40,8 @@ from lazyflow.operators.valueProviders import OpArrayCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
+from _OpGraphCut import segmentGC_fast
+
 
 ## TODO documentation
 class OpObjectsSegment(Operator):
@@ -57,6 +59,9 @@ class OpObjectsSegment(Operator):
 
     # graph cut parameter
     Beta = InputSlot(value=.2)
+
+    # margin around each object (always xyz!)
+    Margin = InputSlot(value=np.asarray((20, 20, 20)))
 
     ## intermediate results ##
 
@@ -148,8 +153,7 @@ class OpObjectsSegment(Operator):
 
     def _execute_graphcut(self, roi, result):
 
-        #TODO make margins an InputSlot
-        margin = np.asarray((20, 20, 10))
+        margin = self.Margin.value
         channel = self.Channel.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
@@ -194,12 +198,13 @@ class OpObjectsSegment(Operator):
         # let's hope the objects are not overlapping
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
+            # maxs are inclusive, so we need to add 1
             xmin = max(mins[i][0]-margin[0], 0)
             ymin = max(mins[i][1]-margin[1], 0)
             zmin = max(mins[i][2]-margin[2], 0)
-            xmax = min(maxs[i][0]+margin[0], cc.shape[0])
-            ymax = min(maxs[i][1]+margin[1], cc.shape[1])
-            zmax = min(maxs[i][2]+margin[2], cc.shape[2])
+            xmax = min(maxs[i][0]+margin[0]+1, cc.shape[0])
+            ymax = min(maxs[i][1]+margin[1]+1, cc.shape[1])
+            zmax = min(maxs[i][2]+margin[2]+1, cc.shape[2])
             ccbox = cc[xmin:xmax, ymin:ymax, zmin:zmax]
             resbox = resultXYZ[xmin:xmax, ymin:ymax, zmin:zmax]
 
@@ -211,7 +216,7 @@ class OpObjectsSegment(Operator):
                 return
 
             probbox = pred[xmin:xmax, ymin:ymax, zmin:zmax]
-            gcsegm = self._segmentGC_fast(probbox, beta)
+            gcsegm = segmentGC_fast(probbox, beta)
             gcsegm = vigra.taggedView(gcsegm, axistags='xyz')
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
@@ -250,57 +255,6 @@ class OpObjectsSegment(Operator):
         resultXYZ[resultXYZ > 0] = 1
 
         return result
-
-    @staticmethod
-    def _segmentGC_fast(pred, beta):
-        nx, ny, nz = pred.shape
-
-        numVar = pred.size
-        numLabels = 2
-
-        numberOfStates = np.ones(numVar, dtype=opengm.index_type)*numLabels
-        gm = opengm.graphicalModel(numberOfStates, operator='adder')
-
-        #Adding unary function and factors
-        functions = np.zeros((numVar, 2))
-        predflat = pred.reshape((numVar, 1))
-        if (predflat.dtype == np.uint8):
-            predflat = predflat.astype(np.float32)
-            predflat = predflat/256.
-
-        functions[:, 0] = 2*predflat[:, 0]
-        functions[:, 1] = 1-2*predflat[:, 0]
-
-        fids = gm.addFunctions(functions)
-        gm.addFactors(fids, np.arange(0, numVar))
-
-        #add one binary function (potts fuction)
-        potts = opengm.PottsFunction([2, 2], 0.0, beta)
-        fid = gm.addFunction(potts)
-
-        #add binary factors
-        nyz = ny*nz
-        indices = np.arange(numVar,
-                            dtype=np.uint32).reshape((nx, ny, nz))
-        arg1 = np.concatenate([indices[:nx - 1, :, :], indices[1:, :, :]]
-                              ).reshape((2, numVar - nyz)).transpose()
-
-        arg2 = np.concatenate([indices[:, :ny - 1, :], indices[:, 1:, :]]
-                              ).reshape((2, numVar - nx*nz)).transpose()
-
-        arg3 = np.concatenate([indices[:, :, :nz - 1], indices[:, :, 1:]]
-                              ).reshape((2, numVar - nx*ny)).transpose()
-
-        gm.addFactors(fid, arg1)
-        gm.addFactors(fid, arg2)
-        gm.addFactors(fid, arg3)
-
-        grcut = opengm.inference.GraphCut(gm)
-        grcut.infer()
-        argmin = grcut.arg()
-
-        res = argmin.reshape((nx, ny, nz))
-        return res
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
