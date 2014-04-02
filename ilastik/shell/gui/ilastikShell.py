@@ -66,6 +66,7 @@ from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 
 from ilastik.shell.gui.splashScreen import showSplashScreen
+from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 
@@ -509,6 +510,8 @@ class IlastikShell( QMainWindow ):
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(showSplashScreen)
+        licenseAction = menu.addAction("License")
+        licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
 
     def _createDebugMenu(self):
