@@ -24,6 +24,28 @@ from PyQt4.QtGui import  QMessageBox, QPixmap
 from PyQt4.QtCore import Qt
 
 import ilastik
+ilastik_path = os.path.split(ilastik.__file__)[0]
+def get_buildem_license():
+    """
+    Check if ilastik is run from a binary install created by BuildEM and
+    return path to the license file from the binary distribution.
+
+    Looks up the names of the directories from the base of the binary
+    install up to the ilastik Python module source.
+    """
+    dir_names = ['src', 'ilastik', 'ilastik', 'ilastik']
+    global ilastik_path
+    path_components = ilastik_path.split(os.sep)
+    if path_components[-len(dir_names):] == dir_names:
+        # this is safer than
+        # os.path.join(path_components[:-len(dir_names)]
+        new_components = [ilastik_path] + len(dir_names)*['..'] + \
+                ['COPYING']
+        license_path = os.path.join(*new_components)
+        if os.path.isfile(license_path):
+            return license_path
+    return None
+
 
 class LicenseDialog(QMessageBox):
     LICENSE_SHORT = u"""<p>Copyright © 2011-2014, the ilastik developers <team@ilastik.org></p>
@@ -53,14 +75,20 @@ License information is available on the the ilastik web site at http://ilastik.o
 
         self.setText(self.LICENSE_SHORT)
 
-        ilastik_path = os.path.split(ilastik.__file__)[0]
-        logo_path = os.path.join(ilastik_path, 'shell', 'gui','ilastik-logo-alternate-colors.png')
+        global ilastik_path
+        logo_path = os.path.join(ilastik_path, 'shell', 'gui',
+                'ilastik-logo-alternate-colors.png')
 
-        logoImage = QPixmap(logo_path).scaled(125, 200, Qt.KeepAspectRatio)
-        self.setIconPixmap(logoImage)
+        logo_image = QPixmap(logo_path).scaled(125, 200, Qt.KeepAspectRatio)
+        self.setIconPixmap(logo_image)
 
         license_path = os.path.join(ilastik_path, '..', 'LICENSE')
-        if os.path.isfile(license_path):
+        # if ilastik is run from a binary
+        # use the COPYING file in the distribution
+        license_path_dist = get_buildem_license()
+        if license_path_dist:
+            license_long = open(license_path_dist, 'r').read()
+        elif os.path.isfile(license_path):
             license_long = open(license_path, 'r').read()
         else:
             license_long = self.LICENSE_ERROR
@@ -68,4 +96,13 @@ License information is available on the the ilastik web site at http://ilastik.o
         self.setDetailedText(license_long)
 
         self.setWindowModality(Qt.NonModal)
-        self.exec_()
+        self.open()
+
+    def closeEvent(self, event):
+        """
+        Emulate accept signal to close the window.
+
+        Using the window close button does not close a QMessageBox.
+        """
+        self.accept()
+        super(LicenseDialog, self).closeEvent(event)
