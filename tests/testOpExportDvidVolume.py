@@ -27,7 +27,7 @@ from lazyflow.graph import Graph
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
-    # Must be imported AFTER lazyflow, which adds dvidclient to sys.path
+    # Must be imported AFTER lazyflow, which adds pydvid to sys.path
     from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
 except ImportError:
     have_dvid = False
@@ -35,7 +35,7 @@ else:
     have_dvid = True
 
 
-@unittest.skipIf(not have_dvid, "optional module dvidclient not available.")
+@unittest.skipIf(not have_dvid, "optional module pydvid not available.")
 class TestOpDvidVolume(unittest.TestCase):
     
     @classmethod
@@ -105,7 +105,7 @@ class TestOpDvidVolume(unittest.TestCase):
             exported_data = f['all_nodes'][self.data_uuid][self.data_name][:]
 
         # Compare.
-        assert ( data.view(numpy.ndarray) == exported_data ).all(),\
+        assert ( data.view(numpy.ndarray) == exported_data.transpose() ).all(),\
             "Exported data is not correct"
 
 if __name__ == "__main__":

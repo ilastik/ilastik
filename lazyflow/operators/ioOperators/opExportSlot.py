@@ -163,7 +163,7 @@ class OpExportSlot(Operator):
                 return False
 
             # Make sure DVID supports this dtype/channel combo.
-            from dvidclient.volume_metainfo import MetaInfo
+            from pydvid.volume_metainfo import MetaInfo
             metainfo = MetaInfo( self.Input.meta.shape,
                                  output_dtype,
                                  self.Input.meta.axistags )

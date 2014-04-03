@@ -29,7 +29,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 
 try:
-    import dvidclient
+    import pydvid
     from mockserver.h5mockserver import H5MockServerDataFile, H5MockServer
     _skip_dvid = False
 except ImportError:

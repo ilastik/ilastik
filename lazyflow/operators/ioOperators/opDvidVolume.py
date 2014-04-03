@@ -16,9 +16,10 @@
 
 import vigra
 from lazyflow.graph import Operator, OutputSlot
-from dvidclient.volume_client import VolumeClient
 import httplib
 import socket
+
+import pydvid
 
 class OpDvidVolume(Operator):
     Output = OutputSlot()
@@ -46,8 +47,9 @@ class OpDvidVolume(Operator):
         This serves as an alternative init function, from which we are allowed to raise exceptions.
         """
         try:
-            self._volume_client = VolumeClient( self._hostname, self._uuid, self._dataname )
-        except VolumeClient.ErrorResponseException as ex:
+            self._connection = httplib.HTTPConnection( self._hostname )
+            self._volume_client = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
+        except pydvid.errors.ErrorResponseException as ex:
             if ex.status_code == httplib.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
             raise
@@ -57,27 +59,28 @@ class OpDvidVolume(Operator):
                 raise OpDvidVolume.DatasetReadError("Connection refused: {}".format( self._hostname ))
             raise
     
+    def cleanUp(self):
+        self._connection.close()
+        super( OpDvidVolume, self ).cleanUp()
+    
     def setupOutputs(self):
-        shape, dtype, axistags = self._volume_client.metainfo
+        shape, dtype, axiskeys = self._volume_client.shape, self._volume_client.dtype, self._volume_client.axiskeys
         if self._transpose_axes:
             shape = tuple(reversed(shape))
-            axistags = vigra.AxisTags( list(reversed(axistags)) )
-
-        assert 0 <= axistags.index('c') == axistags.channelIndex < len(axistags), \
-            "Invalid channel index: {}".format( axistags.channelIndex )
+            axiskeys = "".join(reversed(axiskeys))
 
         self.Output.meta.shape = shape
         self.Output.meta.dtype = dtype
-        self.Output.meta.axistags = axistags
+        self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
 
     def execute(self, slot, subindex, roi, result):
         # TODO: Modify volume client implementation to accept a pre-allocated array.
         if self._transpose_axes:
             roi_start = tuple(reversed(roi.start))
             roi_stop = tuple(reversed(roi.stop))
-            result[:] = self._volume_client.retrieve_subvolume(roi_start, roi_stop).transpose()
+            result[:] = self._volume_client.get_ndarray(roi_start, roi_stop).transpose()
         else:
-            result[:] = self._volume_client.retrieve_subvolume(roi.start, roi.stop)
+            result[:] = self._volume_client.get_ndarray(roi.start, roi.stop)
         return result
     
     def propagateDirty(self, *args):

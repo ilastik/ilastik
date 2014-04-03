@@ -13,11 +13,12 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Copyright 2011-2014, the ilastik developers
+import httplib
+import contextlib
 
 import vigra
 
-from dvidclient.volume_client import VolumeClient
-from dvidclient.volume_metainfo import MetaInfo
+import pydvid
 
 from lazyflow.graph import Operator, InputSlot
 from lazyflow.utility import OrderedSignal
@@ -55,26 +56,32 @@ class OpExportDvidVolume(Operator):
         assert node == 'node'
         
         # Request the data
-        data = vigra.taggedView( self.Input[:].wait(), self.Input.meta.axistags )
+        axiskeys = self.Input.meta.getAxisKeys()
+        data = self.Input[:].wait()
         
         if self._transpose_axes:
             data = data.transpose()
+            axiskeys = reversed(axiskeys)
+        
+        axiskeys = "".join( axiskeys )
         
         # FIXME: We assume the dataset needs to be created first.
         #        If it already existed, this (presumably) causes an error on the DVID side.
-        metainfo = MetaInfo( data.shape, data.dtype.type, data.axistags )
+        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( data.shape, data.dtype.type, axiskeys, 0.0, "" )
 
-        self.progressSignal(5)
-        VolumeClient.create_volume(hostname, uuid, dataname, metainfo)
-
-        client = VolumeClient( hostname, uuid, dataname )
-        
-        # For now, we send the whole darn thing at once.
-        # TODO: Stream it over in blocks...
-        
-        # Send it to dvid
-        start, stop = roiFromShape(data.shape)
-        client.modify_subvolume( start, stop, data )
+        connection = httplib.HTTPConnection( hostname )
+        with contextlib.closing( connection ):
+            self.progressSignal(5)
+            pydvid.voxels.create_new(connection, uuid, dataname, metadata)
+    
+            client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname )
+            
+            # For now, we send the whole darn thing at once.
+            # TODO: Stream it over in blocks...
+            
+            # Send it to dvid
+            start, stop = roiFromShape(data.shape)
+            client.post_ndarray( start, stop, data )
         
         self.progressSignal(100)
     

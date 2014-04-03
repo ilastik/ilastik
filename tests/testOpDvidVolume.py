@@ -25,9 +25,15 @@ import h5py
 
 from lazyflow.graph import Graph
 
+from lazyflow.operators.ioOperators import OpDvidVolume
+# Must be imported AFTER lazyflow, which adds pydvid to sys.path
+from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
+
+from pydvid import voxels
+
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume
-    # Must be imported AFTER lazyflow, which adds dvidclient to sys.path
+    # Must be imported AFTER lazyflow, which adds pydvid to sys.path
     from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
 except ImportError:
     have_dvid = False
@@ -35,7 +41,7 @@ else:
     have_dvid = True
 
 
-@unittest.skipIf(not have_dvid, "optional module dvidclient not available.")
+@unittest.skipIf(not have_dvid, "optional module pydvid not available.")
 class TestOpDvidVolume(unittest.TestCase):
     """
     Mostly copied from the dvid_volume test...
@@ -71,19 +77,21 @@ class TestOpDvidVolume(unittest.TestCase):
         """
         # Generate some test data
         data = numpy.indices( (10, 100, 200, 3) )
-        assert data.shape == (4, 10, 100, 200, 3)
+        data = data.transpose()
+        assert data.shape == (3, 200, 100, 10, 4)
         data = data.astype( numpy.uint32 )
-        data = vigra.taggedView( data, 'tzyxc' )
+        data = vigra.taggedView( data, 'cxyzt' )
 
         # Choose names
         cls.dvid_dataset = "datasetA"
         cls.data_uuid = "abcde"
         cls.data_name = "indices_data"
+        cls.voxels_metadata = voxels.VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
 
         # Write to h5 file
         with H5MockServerDataFile( test_filepath ) as test_h5file:
             test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data )
+            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.voxels_metadata )
     
     def test_cutout(self):
         """
@@ -104,13 +112,15 @@ class TestOpDvidVolume(unittest.TestCase):
         opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, graph=graph )
         subvol = opDvidVolume.Output( start, stop ).wait()
 
-        # Retrieve from file
+        # Retrieve from file (which uses fortran order)
         slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
+        slicing = tuple( reversed(slicing) )
+
         with h5py.File(h5filename, 'r') as f:
             expected_data = f['all_nodes'][uuid][dataname][slicing]
 
         # Compare.
-        assert ( subvol.view(numpy.ndarray) == expected_data ).all(),\
+        assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\
             "Data from server didn't match data from file!"
 
 if __name__ == "__main__":
