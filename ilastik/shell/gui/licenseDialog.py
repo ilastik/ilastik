@@ -23,6 +23,7 @@ import os
 from PyQt4.QtGui import  QMessageBox, QPixmap
 from PyQt4.QtCore import Qt
 
+import platform
 import ilastik
 ilastik_path = os.path.split(ilastik.__file__)[0]
 def get_buildem_license():
@@ -33,14 +34,18 @@ def get_buildem_license():
     Looks up the names of the directories from the base of the binary
     install up to the ilastik Python module source.
     """
-    dir_names = ['src', 'ilastik', 'ilastik', 'ilastik']
+    system = platform.system()
+    if system == "Windows":
+        dir_names = ['ilastik', 'ilastik', 'ilastik']
+    else:
+        dir_names = ['src', 'ilastik', 'ilastik', 'ilastik']
     global ilastik_path
     path_components = ilastik_path.split(os.sep)
     if path_components[-len(dir_names):] == dir_names:
         # this is safer than
         # os.path.join(path_components[:-len(dir_names)]
         new_components = [ilastik_path] + len(dir_names)*['..'] + \
-                ['COPYING']
+                ['COPYING' + ('.txt' if system == "Windows" else '')]
         license_path = os.path.join(*new_components)
         if os.path.isfile(license_path):
             return license_path
