@@ -102,12 +102,6 @@ class LayerViewerGui(QWidget):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Stop rendering
-        for scene in self.editor.imageScenes:
-            if scene._tileProvider:
-                scene._tileProvider.notifyThreadsToStop()
-            scene.joinRendering()
             
         for op in self._orphanOperators:
             op.cleanUp()
