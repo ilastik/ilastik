@@ -49,7 +49,7 @@ class OpDvidVolume(Operator):
         try:
             self._connection = httplib.HTTPConnection( self._hostname )
             self._volume_client = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
-        except pydvid.errors.ErrorResponseException as ex:
+        except pydvid.errors.DvidHttpError as ex:
             if ex.status_code == httplib.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
             raise
