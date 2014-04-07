@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>307</width>
-    <height>325</height>
+    <width>417</width>
+    <height>477</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -129,17 +129,11 @@
    </item>
    <item>
     <widget class="QTabWidget" name="tabWidget">
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>111</height>
-      </size>
-     </property>
      <property name="toolTip">
-      <string extracomment="Simple (one threshold) or Advanced(two threshold)">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;One threshold&lt;/span&gt;: discard all pixel lower than threshold value.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Two thresholds&lt;/span&gt;: hysteresis thresholding. High threshold serves for detection, low threshold for segmentation. First the high threshold is applied and all pixels lower than the high threshold are discarded. Size filtering is performed on the objects (connected components). For the remaining objects, pixel value threshold is relaxed to the low threshold value. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string extracomment="Simple (one threshold) or Advanced(two threshold)">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;One threshold&lt;/span&gt;: discard all pixel lower than threshold value.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Two thresholds&lt;/span&gt;: hysteresis thresholding. High threshold serves for detection, low threshold for segmentation. First the high threshold is applied and all pixels lower than the high threshold are discarded. Size filtering is performed on the objects (connected components). For the remaining objects, pixel value threshold is relaxed to the low threshold value. &lt;/p &gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Graph-Cut&lt;/span&gt;: TODO.  &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_1">
       <attribute name="title">
@@ -214,6 +208,150 @@
             <double>1.000000000000000</double>
            </property>
           </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_3">
+      <attribute name="title">
+       <string>Graph-Cut</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="tab_gc_outer_layout">
+       <item>
+        <layout class="QHBoxLayout" name="tab_gc_lambda_spinbox_layout">
+         <property name="spacing">
+          <number>-1</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_8">
+           <property name="text">
+            <string>Lambda:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="lambdaSpinBoxGC">
+           <property name="toolTip">
+            <string>Lambda value</string>
+           </property>
+           <property name="maximum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.200000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="radioButtonGC_global">
+         <property name="text">
+          <string>global</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <item>
+            <widget class="QRadioButton" name="radioButtonGC_local">
+             <property name="text">
+              <string>with thresholding</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_7">
+             <property name="text">
+              <string>Threshold:</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="thresholdSpinBoxGC">
+             <property name="toolTip">
+              <string>Threshold value</string>
+             </property>
+             <property name="maximum">
+              <double>1.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.500000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_8">
+             <property name="toolTip">
+              <string>Margin around a single object (XYZ)</string>
+             </property>
+             <property name="text">
+              <string>Margin:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_10">
+             <item>
+              <widget class="QDoubleSpinBox" name="marginSpinBoxGC_X"/>
+             </item>
+             <item>
+              <widget class="QDoubleSpinBox" name="marginSpinBoxGC_Y"/>
+             </item>
+             <item>
+              <widget class="QDoubleSpinBox" name="marginSpinBoxGC_Z"/>
+             </item>
+            </layout>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>

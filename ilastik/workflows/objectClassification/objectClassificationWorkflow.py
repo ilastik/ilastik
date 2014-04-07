@@ -182,14 +182,14 @@ class ObjectClassificationWorkflow(Workflow):
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
         opObjectTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
-        
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
-
-        
 
         # If we are not in the binary workflow, connect the thresholding operator.
         # Parameter inputs are cloned from the interactive workflow,
-        if not isinstance(self, ObjectClassificationWorkflowBinary):
+        if isinstance(self, ObjectClassificationWorkflowBinary):
+            #FIXME
+            pass
+        else:
             opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
             opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
             opBatchThreshold.MinSize.connect(opInteractiveThreshold.MinSize)
@@ -653,6 +653,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         thresholding_ready = True  # is that so?
         cumulated_readyness = cumulated_readyness and thresholding_ready
         super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
+
 
 if __name__ == "__main__":
     from sys import argv
