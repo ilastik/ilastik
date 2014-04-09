@@ -49,7 +49,7 @@ from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
-    import dvidclient
+    import pydvid
     _has_dvid_support = True
 except:
     _has_dvid_support = False
@@ -499,7 +499,9 @@ class DataSelectionGui(QWidget):
                 QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
                 opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                logger.critical(ex)
+                logger.error(ex)
+                import sys, traceback
+                traceback.print_tb(sys.exc_info()[2])
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
@@ -640,7 +642,7 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        from dvidclient.gui.contents_browser import ContentsBrowser
+        from pydvid.gui.contents_browser import ContentsBrowser
         browser = ContentsBrowser(["localhost:8000"], parent=self)
         if browser.exec_() == ContentsBrowser.Rejected:
             return

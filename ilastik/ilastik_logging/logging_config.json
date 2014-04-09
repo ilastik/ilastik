@@ -6,6 +6,7 @@
         "py.warnings": {  "level":"WARN" },
 
         "__main__":                                                 { "level":"INFO" },
+        "thread_start":                                             { "level":"INFO" },
         "lazyflow":                                                 { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
         "lazyflow.graph.Slot":                                      { "level":"INFO" },
@@ -52,6 +53,7 @@
         "ilastik.widgets":                                          { "level":"INFO" },
         "workflows":                                                { "level":"INFO" },
         "volumina":                                                 { "level":"INFO" },
+        "volumina.pixelpipeline":                                   { "level":"INFO" },
         "volumina.imageScene2D":                                    { "level":"INFO" },
 
         "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },

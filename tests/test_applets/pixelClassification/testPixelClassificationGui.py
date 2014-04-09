@@ -16,6 +16,7 @@
 
 import os
 import sys
+import tempfile
 import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
@@ -44,7 +45,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def workflowClass(cls):
         return PixelClassificationWorkflow
 
-    PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
+    dir = tempfile.mkdtemp()
+    PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod

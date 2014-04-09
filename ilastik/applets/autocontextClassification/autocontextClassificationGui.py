@@ -30,7 +30,6 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 # HCI
 from lazyflow.utility import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind

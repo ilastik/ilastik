@@ -48,12 +48,12 @@ class DataConversionWorkflow(Workflow):
               or (2) cd into your project file's directory before launching ilastik.
     
     """
-    def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
 
         
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(DataConversionWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        super(DataConversionWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 

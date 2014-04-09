@@ -14,13 +14,19 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
-# to ensure that plugin system is available
-from ilastik.plugins import pluginManager
 
-import logging
-logger = logging.getLogger(__name__)
+try:
+    import opengm
+except ImportError:
+    _have_opengm = False
+else:
+    _have_opengm = True
 
-from objectClassificationWorkflow import \
-    ObjectClassificationWorkflowPixel, \
-    ObjectClassificationWorkflowBinary, \
-    ObjectClassificationWorkflowPrediction
+
+def haveGraphCut():
+    return _have_opengm
+
+
+if haveGraphCut():
+    from _OpGraphCut import OpGraphCut
+    from _OpObjectsSegment import OpObjectsSegment
