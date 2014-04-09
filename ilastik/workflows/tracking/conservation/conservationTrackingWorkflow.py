@@ -54,7 +54,7 @@ class ConservationTrackingWorkflow( Workflow ):
         if self.withOptTrans:
             self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
                                                                    
-        self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self,
+        self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                      
         
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
