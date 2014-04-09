@@ -113,12 +113,24 @@ class sklearn_recipe(object):
             packages=['sklearn']
         )
 
+class jsonschema_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('jsonschema')
+        if m is None:
+            return None
+
+        # Don't put jsonschema in the site-packages.zip file
+        return dict(
+            packages=['jsonschema']
+        )
+
 import py2app.recipes
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
 py2app.recipes.sklearn = sklearn_recipe()
+py2app.recipes.jsonschema = jsonschema_recipe()
 
 
 ##
