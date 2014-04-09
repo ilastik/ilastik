@@ -14,6 +14,7 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
+import numpy
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot
 
 class PixelClassificationSerializer(AppletSerializer):
@@ -50,9 +51,18 @@ class PixelClassificationSerializer(AppletSerializer):
         #   create some default names.
         if not self.operator.LabelNames.ready():
             # How many labels are there?
-            max_label = 0
-            for op in self.operator.opLabelPipeline:
-                max_label = max(max_label, op.opLabelArray.maxLabel.value)
+            # We have to count them.  
+            # This is slow, but okay for this special backwards-compatibilty scenario.
+
+            # For each image
+            all_labels = set()
+            for image_index, group in enumerate(topGroup['LabelSets'].values()):
+                # For each label block
+                for block in group.values():
+                    data = block[:]
+                    all_labels.update( numpy.unique(data) )
+
+            max_label = max(all_labels)
             
             label_names = []
             for i in range(max_label):
@@ -107,6 +117,24 @@ class Ilastik05ImportDeserializer(AppletSerializer):
         if ilastikVersion == 0.5:
             numImages = len(hdf5File['DataSets'])
             self.mainOperator.LabelInputs.resize(numImages)
+
+            if numImages == 0:
+                return
+
+            first_group_name, first_group = sorted(hdf5File['DataSets'].items())[0]
+            label_names = first_group['labels'].attrs['name']
+            label_hexcolors = first_group['labels'].attrs['color']
+
+            color_tuples = []            
+            for color_hex in label_hexcolors:
+                red = ( color_hex & 0xff0000 ) >> 16
+                green = ( color_hex & 0x00ff00 ) >> 8
+                blue = ( color_hex & 0x0000ff ) >> 0
+                color_tuples.append( (red, green, blue) )
+
+            self.mainOperator.LabelNames.setValue( label_names )
+            self.mainOperator.LabelColors.setValue( color_tuples )
+            self.mainOperator.PmapColors.setValue( color_tuples )
 
             for index, (datasetName, datasetGroup) in enumerate(sorted(hdf5File['DataSets'].items())):
                 try:

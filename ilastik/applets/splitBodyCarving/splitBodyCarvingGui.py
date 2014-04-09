@@ -25,6 +25,7 @@ from lazyflow.roi import TinyVector
 
 from volumina.layer import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.utility import ShortcutManager
 
 from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
@@ -311,16 +312,18 @@ class SplitBodyCarvingGui(CarvingGui):
         removeBaseLayer( "done" )
         removeBaseLayer( "done" )
         
+        ActionInfo = ShortcutManager.ActionInfo
+        
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():
             rawLayer = findLayer(lambda l: l.name == "raw", baseCarvingLayers)
             assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
-            rawLayer.shortcutRegistration = ( "Carving",
-                                              "Raw Data to Top",
-                                              QShortcut( QKeySequence("f"),
-                                                         self.viewerControlWidget(),
-                                                         partial(self._toggleRawDataPosition, rawLayer) ),
-                                             rawLayer )
+            rawLayer.shortcutRegistration = ( "f", ActionInfo( "Carving",
+                                                               "Raw Data to Top",
+                                                               "Raw Data to Top",
+                                                               partial(self._toggleRawDataPosition, rawLayer),
+                                                               self.viewerControlWidget(),
+                                                               rawLayer ) )
         layers += baseCarvingLayers
         return layers
 

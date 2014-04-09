@@ -27,6 +27,7 @@ import traceback
 import ilastik
 from ilastik import isVersionCompatible
 from ilastik.workflow import getWorkflowFromName
+from lazyflow.utility.timer import Timer, timeLogged
 
 class ProjectManager(object):
     """
@@ -146,7 +147,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None):
+    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None, project_creation_args=None):
         """
         Constructor.
         
@@ -155,9 +156,6 @@ class ProjectManager(object):
                          indicating whether or not the workflow should be opened in 'headless' mode.
         :param workflow_cmdline_args: A list of strings from the command-line to configure the workflow.
         """
-        if workflow_cmdline_args is None:
-            workflow_cmdline_args = []
-
         # Init
         self.closed = True
         self._shell = shell
@@ -169,11 +167,12 @@ class ProjectManager(object):
         # Instantiate the workflow.
         self._workflowClass = workflowClass
         self._workflow_cmdline_args = workflow_cmdline_args or []
+        self._project_creation_args = project_creation_args or []
         self._headless = headless
         
         #the workflow class has to be specified at this point
         assert workflowClass is not None
-        self.workflow = workflowClass(shell, headless, workflow_cmdline_args)
+        self.workflow = workflowClass(shell, headless, self._workflow_cmdline_args, self._project_creation_args)
     
     
     def cleanUp(self):
@@ -231,11 +230,6 @@ class ProjectManager(object):
             if "workflowName" in self.currentProjectFile:
                 del self.currentProjectFile["workflowName"]
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
-
-            if "workflow_cmdline_args" in self.currentProjectFile:
-                del self.currentProjectFile["workflow_cmdline_args"]
-            if self._workflow_cmdline_args is not None and len(self._workflow_cmdline_args) > 0:
-                self.currentProjectFile.create_dataset(name='workflow_cmdline_args', data=self._workflow_cmdline_args)
 
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
@@ -361,6 +355,7 @@ class ProjectManager(object):
         else:
             return []
 
+    @timeLogged(logger, logging.DEBUG)
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
@@ -387,16 +382,18 @@ class ProjectManager(object):
         try:
             # Applet serializable items are given the whole file (root group)
             for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.ignoreDirty = True
-                                        
-                    if item.caresOfHeadless:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
-                    else:
-                        item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-
-                    item.ignoreDirty = False
+                with Timer() as timer:
+                    for item in aplt.dataSerializers:
+                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                        item.ignoreDirty = True
+                                            
+                        if item.caresOfHeadless:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+                        else:
+                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+    
+                        item.ignoreDirty = False
+                logger.debug('Deserializing applet "{}" took {} seconds'.format( aplt.name, timer.seconds() ))
             
 
             self.closed = False
@@ -467,7 +464,7 @@ class ProjectManager(object):
         self.currentProjectFile = None
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args)
+        self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args, self._project_creation_args)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)

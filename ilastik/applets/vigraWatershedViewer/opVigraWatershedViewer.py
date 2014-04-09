@@ -193,6 +193,44 @@ class OpVigraWatershedViewer(Operator):
         # All outputs are directly connected to internal operators
         pass
 
+if __name__ == "__main__":
+    import h5py
+    from lazyflow.graph import Graph
+    from lazyflow.utility import Timer
+
+    print "Reading data..."    
+    prediction_path = '/tmp/STACKED_prediction.h5'
+    with h5py.File( prediction_path, 'r' ) as prediction_file:
+        data = prediction_file['volume/predictions'][:] #[0:50,0:50,0:50,:]
+
+    # Scale and convert to uint8, then add axistags and drange
+    data = (data*255).astype(numpy.uint8)
+    data = vigra.taggedView( data, 'xyzc' )
+    data.drange = (0,255)
+    
+    graph = Graph()
+    op = OpVigraWatershedViewer(graph=graph)
+    op.InputImage.setValue( data )
+    op.InputChannelIndexes.setValue([0])
+    op.WatershedPadding.setValue(0)
+    op.FreezeCache.setValue(False)
+    op.CacheBlockShape.setValue((520,520))
+    op.OverrideLabels.setValue({})
+    op.SeedThresholdValue.setValue(0)
+    op.MinSeedSize.setValue(5)
+    
+    assert op.WatershedLabels.ready()
+    
+    print "Computing watershed..."
+    with Timer() as timer:
+        watershed_labels = op.opWatershed.Output[:].wait()
+    print "Computing watershed took {} seconds".format( timer.seconds() )
+    
+    print "Saving watershed..."
+    with h5py.File('/tmp/watershed_output.h5', 'w') as output_file:
+        output_file.create_dataset('watershed_labels', data=watershed_labels)
+    
+    print "DONE."
 
 
 

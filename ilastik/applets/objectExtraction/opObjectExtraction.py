@@ -26,8 +26,8 @@ import vigra.analysis
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
-from lazyflow.rtype import List
-from lazyflow.roi import roiToSlice
+from lazyflow.rtype import List, SubRegion
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 import logging
@@ -571,6 +571,7 @@ class OpObjectCenterImage(Operator):
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
+        
         result[:] = 0
         ndim = 3
         taggedShape = self.BinaryImage.meta.getTaggedShape()
@@ -596,9 +597,11 @@ class OpObjectCenterImage(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
+        # the roi here is a list of time steps 
         if slot is self.RegionCenters:
-            self.Output.setDirty(slice(None))
-
+            for t in roi:
+                self.Output.setDirty(slice(t, t+1, None))
+                                  
 
 class OpObjectExtraction(Operator):
     """The top-level operator for the object extraction applet.
@@ -610,7 +613,7 @@ class OpObjectExtraction(Operator):
 
     RawImage = InputSlot()
     BinaryImage = InputSlot()
-    BackgroundLabels = InputSlot()
+    BackgroundLabels = InputSlot(optional=True)
 
     # which features to compute.
     # nested dictionary with format:

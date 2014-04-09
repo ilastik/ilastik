@@ -30,7 +30,6 @@ from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButto
 # HCI
 from lazyflow.utility import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
-from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind
@@ -183,12 +182,20 @@ class AutocontextClassificationGui(LabelingGui):
                 predictLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
-                def setLayerColor(c):
-                    predictLayer.tintColor = c
-                def setLayerName(n):
-                    newName = "Prediction for %s %s" % (ref_label.name, name_suffix)
-                    predictLayer.name = newName
-                setLayerName(ref_label.name)
+                def setLayerColor(c, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    predictLayer_.tintColor = c
+                def setLayerName(n, predictLayer_=predictLayer, initializing=False):
+                    if not initializing and predictLayer_ not in self.layerstack:
+                        # This layer has been removed from the layerstack already.
+                        # Don't touch it.
+                        return
+                    newName = "Prediction for %s" % n
+                    predictLayer_.name = newName
+                setLayerName(ref_label.name, initializing=True)
 
                 ref_label.colorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)

@@ -37,7 +37,7 @@ def print_bincounts(label_names, bins_list, image_name):
     # Sum up the bincounts we got from each label block
     sum_bins = numpy.array( [0]*( len(label_names)+1 ), dtype=numpy.uint32)
     for bins in bins_list:
-        zero_pad_bins = numpy.append( bins, [0]*(num_bins-len(bins)) )
+        zero_pad_bins = numpy.append( bins, [0]*(len(sum_bins)-len(bins)) )
         sum_bins += zero_pad_bins
     
     print "Counted a total of {} label points for {}.".format( sum_bins.sum(), image_name )
@@ -49,12 +49,8 @@ def print_bincounts(label_names, bins_list, image_name):
 if __name__ == "__main__":
     all_bins = []
     num_bins = 0
-    with h5py.File(project_path, 'r') as f:
-        try:
-            label_names = f['PixelClassification/LabelNames'].value
-        except KeyError:
-            label_names = map( lambda n: "Label {}".format(n), range(num_bins) )[1:]
-        
+    bins_by_image = []
+    with h5py.File(project_path, 'r') as f:        
         # For each image
         for image_index, group in enumerate(f['PixelClassification/LabelSets'].values()):
             # For each label block
@@ -66,6 +62,18 @@ if __name__ == "__main__":
                 this_img_bins.append( bins )
                 num_bins = max(num_bins, len(bins))
             all_bins += this_img_bins
-            print_bincounts( label_names, this_img_bins, "Image #{}".format( image_index+1 ) )
+            bins_by_image.append(this_img_bins)
+
+        # Now print the findings for each image
+        try:
+            label_names = f['PixelClassification/LabelNames'].value
+        except KeyError:
+            label_names = map( lambda n: "Label {}".format(n), range(num_bins) )[1:]
         
+        for image_index, img_bins in enumerate(bins_by_image):
+            print_bincounts( label_names, img_bins, "Image #{}".format( image_index+1 ) )
+        
+        # Finally, print the total results
         print_bincounts( label_names, all_bins, "ALL IMAGES")
+
+

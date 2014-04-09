@@ -6,6 +6,7 @@
         "py.warnings": {  "level":"WARN" },
 
         "__main__":                                                 { "level":"INFO" },
+        "thread_start":                                             { "level":"INFO" },
         "lazyflow":                                                 { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
         "lazyflow.graph.Slot":                                      { "level":"INFO" },
@@ -13,15 +14,16 @@
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
         "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
+        "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
+        "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
         
         "lazyflow.operators.opArrayCache.OpArrayCache":                           { "level":"INFO" },
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
-        "lazyflow.operators.opCompressedCache.OpCompressedCache":                 { "level":"DEBUG" },
+        "lazyflow.operators.opCompressedCache.OpCompressedCache":                 { "level":"INFO" },
         
         "lazyflow.operators.ioOperators.opInputDataReader.OpInputDataReader":     { "level":"INFO" },
         "lazyflow.operators.ioOperators.opStreamingHdf5Reader.OpStreamingHdf5Reader":     { "level":"INFO" },
-        "lazyflow.operators.vigraOperators.OpImageReader":                        { "level":"INFO" },
         "lazyflow.operators.vigraOperators.OpImageReader":                        { "level":"INFO" },
         
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
@@ -37,6 +39,7 @@
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"INFO" },
         "ilastik.applets":                                          { "level":"INFO" },
+        "ilastik.applets.base.appletSerializer":                    { "level":"INFO" },
         "ilastik.applets.dataSelection":                            { "level":"INFO" },
         "ilastik.applets.featureSelection":                         { "level":"INFO" },
         "ilastik.applets.pixelClassification":                      { "level":"INFO" },
@@ -45,10 +48,12 @@
         "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
         "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
         "ilastik.shell":                                            { "level":"INFO" },
+        "ilastik.shell.projectManager":                             { "level":"INFO" },
         "ilastik.workflows":                                        { "level":"INFO" },
         "ilastik.widgets":                                          { "level":"INFO" },
         "workflows":                                                { "level":"INFO" },
         "volumina":                                                 { "level":"INFO" },
+        "volumina.pixelpipeline":                                   { "level":"INFO" },
         "volumina.imageScene2D":                                    { "level":"INFO" },
 
         "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },

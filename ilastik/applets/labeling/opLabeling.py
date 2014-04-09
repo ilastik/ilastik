@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedSparseLabelArray
+from lazyflow.operators import OpCompressedUserLabelArray
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -38,7 +38,8 @@ class OpLabelingTopLevel( Operator ):
     LabelImages = OutputSlot(level=1) #: Stored labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) #: A list if slices that contain non-zero label values
 
-    MaxLabelValue = OutputSlot() #: The highest label value currently stored in the array of labels
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
 
     def __init__(self, blockDims = None, *args, **kwargs):
         super( OpLabelingTopLevel, self ).__init__( *args, **kwargs )
@@ -65,11 +66,6 @@ class OpLabelingTopLevel( Operator ):
         self.LabelImages.connect( self.opLabelLane.LabelImage )
         self.NonzeroLabelBlocks.connect( self.opLabelLane.NonzeroLabelBlocks )
 
-        # Use an OpMaxValue to find the highest label in all the label image lanes
-        self.opMaxLabel = OpMaxValue( parent=self )
-        self.opMaxLabel.Inputs.connect( self.opLabelLane.MaxLabelValue )
-        self.MaxLabelValue.connect( self.opMaxLabel.Output )
-
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
@@ -79,6 +75,12 @@ class OpLabelingTopLevel( Operator ):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
+    
+    def setupOutputs(self):
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
 
     ###
     # MultiLaneOperatorABC
@@ -108,7 +110,7 @@ class OpLabelingTopLevel( Operator ):
 class OpLabelingSingleLane( Operator ):
     """
     This is a single-lane operator that can be used with the labeling applet gui.
-    It is basically a wrapper around the ``OpBlockedSparseLabelArray`` (lazyflow), 
+    It is basically a wrapper around the ``OpCompressedUserLabelArray`` (lazyflow), 
     with the 'shape' and 'blockshape' input slots taken care of for you.
     """
     name="OpLabelingSingleLane"
@@ -125,8 +127,12 @@ class OpLabelingSingleLane( Operator ):
     LabelImage = OutputSlot() #: Stored labels from the user
     NonzeroLabelBlocks = OutputSlot() #: A list if slices that contain non-zero label values
 
-    MaxLabelValue = OutputSlot()
-
+    # These are used in the single-lane case.
+    # When using the multi-lane operator (above),
+    #  its LabelNames and LabelColors slots are used instead.    
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
+    
     def __init__(self, blockDims = None, *args, **kwargs):
         """
         Instantiate all internal operators and connect them together.
@@ -139,40 +145,25 @@ class OpLabelingSingleLane( Operator ):
         assert isinstance(blockDims, dict)
         self._blockDims = blockDims
 
-        # Create internal operators
-        self.opInputShapeReader = OpShapeReader( parent=self )
-        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
-
-        # Set up label cache shape input
-        self.opInputShapeReader.Input.connect( self.InputImage )
-        # Note: 'shape' is a (poorly named) INPUT SLOT here
-        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
-
-        # Set up other label cache inputs
+        # Create internal operator
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
         self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.eraser.connect(self.LabelEraserValue)                
+        self.opLabelArray.eraser.connect(self.LabelEraserValue)
         self.opLabelArray.deleteLabel.connect(self.LabelDelete)
         
         # Connect our internal outputs to our external outputs
         self.LabelImage.connect( self.opLabelArray.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelArray.nonzeroBlocks )
-        self.MaxLabelValue.connect( self.opLabelArray.maxLabel )
+        
+        self.LabelNames.setValue([])
+        self.LabelColors.setValue([])
         
     def setupOutputs(self):
-        self.setupInputMeta()
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
         self.setupCache(self._blockDims)
-
-    def setupInputMeta(self):
-        # Special case: We have to set up the shape of our label *input* according to our image input shape
-        shapeList = list(self.InputImage.meta.shape)
-        try:
-            # If present, LabelInput channel dim must be 1
-            channelIndex = self.InputImage.meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except IndexError:
-            pass
-        self.LabelInput.meta.shape = tuple(shapeList)
-        self.LabelInput.meta.axistags = self.InputImage.meta.axistags
 
     def setupCache(self, blockDims):
         # Set the blockshapes for each input image separately, depending on which axistags it has.
@@ -195,73 +186,4 @@ class OpLabelingSingleLane( Operator ):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
-
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def __init__(self, *args, **kwargs):
-        super(OpShapeReader, self).__init__(*args, **kwargs)
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-        
-        # Our output is simply the shape of our input, but with only one channel
-        shapeList = list(self.Input.meta.shape)
-        try:
-            channelIndex = self.Input.meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except:
-            pass
-        self.OutputShape.setValue( tuple(shapeList) )
-    
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
-
-class OpMaxValue(Operator):
-    """
-    Accepts a list of non-array values as an input and outputs the max of the list.
-    """
-    Inputs = InputSlot(level=1) # A list of non-array values
-    Output = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super(OpMaxValue, self).__init__(*args, **kwargs)
-        self.Output.meta.shape = (1,)
-        self.Output.meta.dtype = object
-        self._output = 0
-        
-    def setupOutputs(self):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def execute(self, slot, subindex, roi, result):
-        result[0] = self._output
-        return result
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        self.updateOutput()
-        self.Output.setValue(self._output)
-
-    def updateOutput(self):
-        # Return the max value of all our inputs
-        maxValue = None
-        for i, inputSubSlot in enumerate(self.Inputs):
-            # Only use inputs that are actually configured
-            if inputSubSlot.ready():
-                if maxValue is None:
-                    maxValue = inputSubSlot.value
-                else:
-                    maxValue = max(maxValue, inputSubSlot.value)
-
-        self._output = maxValue
 

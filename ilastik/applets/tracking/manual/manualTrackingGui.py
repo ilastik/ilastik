@@ -71,42 +71,50 @@ class ManualTrackingGui(LayerViewerGui):
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Manual Tracking"
 
-        divisionEvent = QtGui.QShortcut( QtGui.QKeySequence("d"), self, member=self._drawer.divEvent.click )
-        mgr.register( shortcutGroupName,
-                      "Mark Division Event (Click on parent object first, then on the two children.)",
-                      divisionEvent,
-                      self._drawer.divEvent )
+        mgr.register( "d", ActionInfo( shortcutGroupName,
+                                       "Mark Division Event",
+                                       "Mark Division Event (Click on parent object first, then on the two children.)",
+                                       self._drawer.divEvent.click,
+                                       self._drawer.divEvent,
+                                       self._drawer.divEvent ) )
         
-        newTrack = QtGui.QShortcut( QtGui.QKeySequence("s"), self, member=self._drawer.newTrack.click )
-        mgr.register( shortcutGroupName,
-                      "Start New Track",
-                      newTrack,
-                      self._drawer.newTrack )
+        mgr.register( "s", ActionInfo( shortcutGroupName,
+                                       "Start New Track",
+                                       "Start New Track",
+                                       self._drawer.newTrack.click,
+                                       self._drawer.newTrack,
+                                       self._drawer.newTrack ) )
 
-        markMisdet = QtGui.QShortcut( QtGui.QKeySequence("f"), self, member=self._drawer.markMisdetection.click )
-        mgr.register( shortcutGroupName,
-                      "Mark False Detection",
-                      markMisdet,
-                      self._drawer.markMisdetection )
+        mgr.register( "f", ActionInfo( shortcutGroupName,
+                                       "Mark False Detection",
+                                       "Mark False Detection",
+                                       self._drawer.markMisdetection.click,
+                                       self._drawer.markMisdetection,
+                                       self._drawer.markMisdetection ) )
         
-        activeTrackUp = QtGui.QShortcut( QtGui.QKeySequence("q"), self, member=self._incrementActiveTrack )
-        mgr.register( shortcutGroupName,
-                      "Increment Active Track ID",
-                      activeTrackUp,)
+        mgr.register( "q", ActionInfo( shortcutGroupName,
+                                       "Increment Active Track ID",
+                                       "Increment Active Track ID",
+                                       self._incrementActiveTrack,
+                                       self,
+                                       None ) )
         
-        activeTrackDown = QtGui.QShortcut( QtGui.QKeySequence("a"), self, member=self._decrementActiveTrack )
-        mgr.register( shortcutGroupName,
-                      "Decrement Active Track ID",
-                      activeTrackDown,)
+        mgr.register( "a", ActionInfo( shortcutGroupName,
+                                       "Decrement Active Track ID",
+                                       "Decrement Active Track ID",
+                                       self._decrementActiveTrack,
+                                       self,
+                                       None ) ) 
         
-        goToNext = QtGui.QShortcut( QtGui.QKeySequence("g"), self, member=self._onNextUnlabeledPressed )
-        mgr.register( shortcutGroupName,
-                      "Go To Next Unlabeled Object",
-                      goToNext,)
-        
-        
+        mgr.register( "g", ActionInfo( shortcutGroupName,
+                                       "Go To Next Unlabeled Object",
+                                       "Go To Next Unlabeled Object",
+                                       self._onNextUnlabeledPressed,
+                                       self,
+                                       None ) )
         
     ###########################################
     ###########################################
@@ -181,11 +189,13 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleTrackingVisibility():
                 trackingLayer.visible = not trackingLayer.visible
                 
-            trackingLayer.shortcutRegistration = (
-                    "Layer Visibilities",
-                    "Toggle Manual Tracking Layer Visibility",
-                    QtGui.QShortcut( QtGui.QKeySequence("e"), self.viewerControlWidget(), toggleTrackingVisibility),
-                    trackingLayer )
+            trackingLayer.shortcutRegistration = ( "e", ShortcutManager.ActionInfo( 
+                                                            "Layer Visibilities",
+                                                            "Toggle Manual Tracking Layer Visibility",
+                                                            "Toggle Manual Tracking Layer Visibility",
+                                                            toggleTrackingVisibility,
+                                                            self,
+                                                            trackingLayer ) )
             layers.append(trackingLayer)
         
         
@@ -215,12 +225,13 @@ class ManualTrackingGui(LayerViewerGui):
             def toggleObjectVisibility():
                 objLayer.visible = not objLayer.visible
                 
-            objLayer.shortcutRegistration = (
-                    "Layer Visibilities",
-                    "Toggle Objects Layer Visibility",
-                    QtGui.QShortcut( QtGui.QKeySequence("r"), self.viewerControlWidget(), toggleObjectVisibility),
-                    objLayer )
-            
+            objLayer.shortcutRegistration = ( "r", ShortcutManager.ActionInfo(
+                                                       "Layer Visibilities",
+                                                       "Toggle Objects Layer Visibility",
+                                                       "Toggle Objects Layer Visibility",
+                                                       toggleObjectVisibility,
+                                                       self,
+                                                       objLayer ) )            
             layers.append(objLayer)
 
 

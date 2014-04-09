@@ -35,10 +35,10 @@ class CountingWorkflow(Workflow):
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
 
-    def __init__(self, shell, headless, workflow_cmdline_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super( CountingWorkflow, self ).__init__( shell, headless, graph=graph, *args, **kwargs )
+        super( CountingWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
 
         ######################
         # Interactive workflow

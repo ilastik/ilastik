@@ -47,8 +47,8 @@ class LabelingSingleLaneApplet( StandardApplet ):
         labelingSlots.labelOutput = opLabeling.LabelImage
         labelingSlots.labelEraserValue = opLabeling.LabelEraserValue
         labelingSlots.labelDelete = opLabeling.LabelDelete
-        labelingSlots.maxLabelValue = opLabeling.MaxLabelValue
         labelingSlots.labelsAllowed = opLabeling.LabelsAllowedFlag
+        labelingSlots.labelNames = opLabeling.LabelNames
         
         # Special hack for labeling, required by the internal label array operator
         # Normally, it is strange to connect two same-operator input slots together like this.

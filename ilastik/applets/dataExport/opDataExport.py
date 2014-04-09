@@ -129,10 +129,10 @@ class OpDataExport(Operator):
         # We don't export the raw data, but we connect it to it's own op 
         #  so it can be displayed alongside the data to export in the same viewer.  
         # This keeps axis order, shape, etc. in sync with the displayed export data.
-        # Note that we must not modify the channels of the raw data, so it gets passed throught a helper.
+        # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
         opHelper = OpRawSubRegionHelper( parent=self )
         opHelper.RawImage.connect( self.RawData )
-        opHelper.ExportStop.connect( self.RegionStart )        
+        opHelper.ExportStart.connect( self.RegionStart )
         opHelper.ExportStop.connect( self.RegionStop )
 
         opFormatRaw = OpFormattedDataExport( parent=self )
@@ -263,7 +263,7 @@ class OpRawSubRegionHelper(Operator):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         if self.ExportStart.ready():
             tagged_start = collections.OrderedDict( zip( self.RawImage.meta.getAxisKeys(), self.ExportStart.value ) )
-            tagged_start['c'] = tagged_shape['c']
+            tagged_start['c'] = 0
             self.RawStart.setValue( tagged_start.values() )
         else:
             self.RawStart.meta.NOTREADY = True
