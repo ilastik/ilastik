@@ -35,7 +35,7 @@ class LabelImageViewerWorkflow(Workflow):
         #return self.rawDataSelectionApplet.topLevelOperator.ImageName
         return self.labelDataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless=False, workflow_cmdline_args, project_creation_args, parent=None, graph=None):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, parent=None, graph=None):
         # Create a graph to be shared by all operators
         graph = Graph()
         super(LabelImageViewerWorkflow, self ).__init__( shell,
