@@ -447,9 +447,9 @@ class CarvingGui(LabelingGui):
         """
         recent_dir = PreferencesManager().get( 'carving', 'recent export mesh directory' )
         if recent_dir is None:
-            defaultPath = os.path.join( os.path.expanduser('~'), '{} mesh.obj'.format(_name) )
+            defaultPath = os.path.join( os.path.expanduser('~'), '{}obj'.format(_name) )
         else:
-            defaultPath = os.path.join( recent_dir, '{} mesh.obj'.format(_name) )
+            defaultPath = os.path.join( recent_dir, '{}.obj'.format(_name) )
         filepath = QFileDialog.getSaveFileName(self, 
                                                "Save meshes for object '{}'".format(_name),
                                                defaultPath,
