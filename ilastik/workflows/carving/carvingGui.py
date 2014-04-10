@@ -16,28 +16,34 @@
 
 #Python
 import os
+import tempfile
 from functools import partial
 import numpy
 
 #PyQt
-from PyQt4.QtGui import QShortcut, QKeySequence
-from PyQt4.QtGui import QColor, QMenu
-from PyQt4.QtGui import QMessageBox
 from PyQt4 import uic
+from PyQt4.QtCore import QTimer
+from PyQt4.QtGui import QColor, QMenu, QMessageBox, QFileDialog
 
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
+
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
-except:
-    pass
+    from volumina.view3d.view3d import convertVTPtoOBJ
+    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
+    _have_vtk = True
+except ImportError:
+    _have_vtk = False
 
 #ilastik
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -408,6 +414,11 @@ class CarvingGui(LabelingGui):
                         self._update_rendering()
                     showAction = submenu.addAction("Show 3D %s" % name)
                     showAction.triggered.connect( partial(onShow3D, name ) )
+            
+            # Export mesh
+            if _have_vtk:
+                exportAction = submenu.addAction("Export mesh for %s" % name)
+                exportAction.triggered.connect( partial(self._onContextMenuExportMesh, name) )
                         
             menu.addMenu(submenu)
 
@@ -427,6 +438,58 @@ class CarvingGui(LabelingGui):
         menu.addAction("Segment").triggered.connect( self.onSegmentButton )
         menu.addAction("Clear").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
         return menu
+
+    def _onContextMenuExportMesh(self, _name):
+        recentPath = PreferencesManager().get( 'carving', 'recent export mesh directory' )
+        if recentPath is None:
+            defaultPath = os.path.join( os.path.expanduser('~'), '{} mesh.obj'.format(_name) )
+        else:
+            defaultPath = os.path.join( os.path.split(recentPath)[0], '{} mesh.obj'.format(_name) )
+        filepath = QFileDialog.getSaveFileName(self, 
+                                               "Save meshes for object '{}'".format(_name),
+                                               defaultPath,
+                                               "OBJ Files (*.obj)")
+        if filepath.isNull():
+            return
+        obj_filepath = str(filepath)
+        recentPath = PreferencesManager().get( 'carving', 'recent export mesh directory' )
+        PreferencesManager().set( 'carving', 'recent export mesh directory', obj_filepath )
+
+        # Construct a volume with only this object.
+        # We might be tempted to get the object directly from opCarving.DoneObjects, 
+        #  but that won't be correct for overlapping objects.
+        mst = self.topLevelOperatorView.MST.value
+        object_supervoxels = mst.object_lut[_name]
+        object_lut = numpy.zeros(len(mst.objects.lut), dtype=numpy.int32)
+        object_lut[object_supervoxels] = 1
+        supervoxel_volume = mst.regionVol
+        object_volume = object_lut[supervoxel_volume]
+
+        # Run the mesh extractor
+        window = MeshExtractorDialog()
+        
+        def onMeshesComplete():
+            logger.info( "Mesh generation complete." )
+            assert len( window.extractor.meshes ) == 1
+            mesh = window.extractor.meshes.values()[0]
+
+            logger.info( "Saving meshes to {}".format( obj_filepath ) )
+            tmpdir = tempfile.mkdtemp()
+            vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
+            w = vtkPolyDataWriter()
+            w.SetFileTypeToASCII()
+            w.SetInput(mesh)
+            w.SetFileName(vtkpoly_path)
+            w.Write()
+            
+            convertVTPtoOBJ(vtkpoly_path, obj_filepath)
+            
+        window.finished.connect( onMeshesComplete )
+
+        # Start the save process...
+        window.show()
+        QTimer.singleShot(0, partial(window.run, object_volume, [0]))
+
     
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.doneObjectNamesForPosition(position5d[1:4])
