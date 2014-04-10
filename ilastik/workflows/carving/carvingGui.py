@@ -466,7 +466,7 @@ class CarvingGui(LabelingGui):
         object_volume = object_lut[supervoxel_volume]
 
         # Run the mesh extractor
-        window = MeshExtractorDialog()
+        window = MeshExtractorDialog(parent=self)
         
         def onMeshesComplete():
             logger.info( "Mesh generation complete." )
@@ -483,6 +483,7 @@ class CarvingGui(LabelingGui):
             w.Write()
             
             convertVTPtoOBJ(vtkpoly_path, obj_filepath)
+            window.setParent(None) # We don't need the window anymore...
             
         window.finished.connect( onMeshesComplete )
 
