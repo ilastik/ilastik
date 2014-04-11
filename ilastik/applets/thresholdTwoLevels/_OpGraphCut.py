@@ -41,7 +41,10 @@ from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
-## TODO documentation
+## TODO @akreshuk documentation
+#
+# TODO
+#   - multiple time slices are not supported
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
@@ -50,8 +53,6 @@ class OpGraphCut(Operator):
 
     # graph cut parameter
     Beta = InputSlot(value=.2)
-
-    ## intermediate results ##
 
     # segmentation image -> graph cut segmentation
     Output = OutputSlot()
@@ -65,10 +66,14 @@ class OpGraphCut(Operator):
         self._opReorderPred = opReorder
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Prediction.meta)
+        # output is a binary image
         self.Output.meta.dtype = np.uint8
+
         self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
         self.Output.meta.axistags = vigra.defaultAxistags('xyz')
+        d = self.Prediction.meta.getTaggedShape()
+        assert d['c'] == 1, "Channel axis is supposed to be singleton"
+        assert d['t'] == 1, "Time axis is supposed to be singleton"
 
     def execute(self, slot, subindex, roi, result):
         self._execute_graphcut(roi, result)
@@ -100,6 +105,8 @@ class OpGraphCut(Operator):
         #FIXME time slices?
         self.Output.setDirty(slice(None))
 
+
+##TODO @akreshuk documetation needed
 def segmentGC_fast(pred, beta):
     nx, ny, nz = pred.shape
 

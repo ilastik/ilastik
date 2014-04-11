@@ -19,7 +19,6 @@
 import functools
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 from threading import Lock as ThreadLock
 
 # required numerical modules
@@ -43,7 +42,15 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from _OpGraphCut import segmentGC_fast
 
 
-## TODO documentation
+## segment predictions with pre-thresholding
+#
+# This operator segments an image into foreground and background and makes use
+# of a preceding thresholding step. The connected components in the label image
+# are taken as single objects, and their bounding boxes are fed into the graph-
+# cut segmentation algorithm (see _OpGraphCut.OpGraphCut).
+#
+# TODO
+#   - multiple time slices are not supported
 class OpObjectsSegment(Operator):
     name = "OpObjectsSegment"
 
@@ -55,6 +62,8 @@ class OpObjectsSegment(Operator):
     LabelImage = InputSlot()
 
     # which channel to use (if there are multiple channels)
+    # this slot is needed because we just want to segment one channel of the
+    # predictions
     Channel = InputSlot(value=0)
 
     # graph cut parameter
@@ -105,6 +114,9 @@ class OpObjectsSegment(Operator):
         haveAxes = [tags.index(c) < len(shape) for c in 'xyz']
         if not all(haveAxes):
             raise ValueError("Prediction maps must be a volume (XYZ)")
+        d = self.Prediction.meta.getTaggedShape()
+        assert d['t'] == 1, "Time axis is supposed to be singleton"
+
         # bounding boxes are just one element arrays of type object
         self.BoundingBoxes.meta.shape = (1,)
 
@@ -138,7 +150,6 @@ class OpObjectsSegment(Operator):
 
         cc = self._opReorderLabels.Output[...].wait()
         cc = vigra.taggedView(cc, axistags=self._opReorderLabels.Output.meta.axistags)
-        #FIXME what about time slices???
         cc = cc.withAxes(*'xyz')
 
         feats = vigra.analysis.extractRegionFeatures(
@@ -221,7 +232,7 @@ class OpObjectsSegment(Operator):
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
 
-            #FIXME document what this part is doing
+            #TODO @akreshuk document what this part is doing
             seed = ccbox == i
             filtered = seed*ccsegm
             passed = np.unique(filtered)
@@ -239,7 +250,7 @@ class OpObjectsSegment(Operator):
                 resbox[ccsegm == label] = 1
 
         pool = RequestPool()
-        #TODO make sure that the parallel computations fit into memory
+        #FIXME make sure that the parallel computations fit into memory
         for i in range(1, nobj):
             req = Request(functools.partial(processSingleObject, i))
             pool.add(req)
@@ -258,6 +269,7 @@ class OpObjectsSegment(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
+        #FIXME handle time slices
         self.Output.setDirty(slice(None))
         self.CachedOutput.setDirty(slice(None))
 
