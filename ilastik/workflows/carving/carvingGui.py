@@ -521,23 +521,30 @@ class CarvingGui(LabelingGui):
             Writes the extracted mesh to an .obj file
             """
             logger.info( "Mesh generation complete." )
-            assert len( window.extractor.meshes ) == 1
-            mesh = window.extractor.meshes.values()[0]
+            mesh_count = len( window.extractor.meshes )
 
-            logger.info( "Saving meshes to {}".format( obj_filepath ) )
-
-            # Use VTK to write to a temporary .vtk file
-            tmpdir = tempfile.mkdtemp()
-            vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
-            w = vtkPolyDataWriter()
-            w.SetFileTypeToASCII()
-            w.SetInput(mesh)
-            w.SetFileName(vtkpoly_path)
-            w.Write()
-            
-            # Now convert the file to .obj format.
-            convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-            window.setParent(None) # We don't need the window anymore...
+            # Mesh count can sometimes be 0 for the '<not saved yet>' object...
+            if mesh_count > 0:
+                assert mesh_count == 1, \
+                    "Found {} meshes processing object '{}',"\
+                    "(only expected 1)".format( mesh_count, object_name )
+                mesh = window.extractor.meshes.values()[0]
+                logger.info( "Saving meshes to {}".format( obj_filepath ) )
+    
+                # Use VTK to write to a temporary .vtk file
+                tmpdir = tempfile.mkdtemp()
+                vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
+                w = vtkPolyDataWriter()
+                w.SetFileTypeToASCII()
+                w.SetInput(mesh)
+                w.SetFileName(vtkpoly_path)
+                w.Write()
+                
+                # Now convert the file to .obj format.
+                convertVTPtoOBJ(vtkpoly_path, obj_filepath)
+    
+            # Cleanup: We don't need the window anymore.
+            window.setParent(None)
 
             # If there are still objects left to process,
             #   start again with the remainder of the list.
