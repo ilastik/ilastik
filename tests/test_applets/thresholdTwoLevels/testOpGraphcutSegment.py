@@ -38,29 +38,26 @@ if have_opengm:
 class TestOpGraphCut(unittest.TestCase):
     def setUp(self):
         shape = (120, 100, 90)
-        channel = 2
         vol = np.zeros(shape, dtype=np.float32)
         vol += + np.random.rand(*shape)*.1
         vol[20:40, 20:40, 20:40] = np.random.rand(20, 20, 20)*.39 + .6
         vol[60:80, 60:80, 60:80] = np.random.rand(20, 20, 20)*.39 + .6
 
-        labels = np.zeros(shape, dtype=np.uint32)
-        labels[20:40, 20:40, 20:40] = 13
-        labels[60:80, 60:80, 60:80] = 37
-
-        withChannels = np.zeros(shape + (4,), dtype=np.float32)
-        withChannels[..., channel] = vol
-
         crazyAxes = np.zeros(shape, dtype=np.float32)
         crazyAxes[...] = vol
+        
+        t = 3
+        c = 2
+        fullVolume = np.zeros(shape + (t, c), dtype=np.float32)
+        for i in range(t):
+            for j in range(c):
+                fullVolume[..., i, j] = vol
 
-        self.withChannels = vigra.taggedView(withChannels, axistags='xyzc')
+        self.fullVolume = vigra.taggedView(fullVolume, axistags='xyztc')
         self.crazyAxes = vigra.taggedView(crazyAxes, axistags='yzx')
         self.vol = vigra.taggedView(vol, axistags='xyz')
-        self.labels = vigra.taggedView(labels.astype(np.uint8), axistags='xyz')
-        self.channel = channel
 
-    def testComplete(self):
+    def testSpatial(self):
         graph = Graph()
         op = OpGraphCut(graph=graph)
         piper = OpArrayPiper(graph=graph)
@@ -76,6 +73,25 @@ class TestOpGraphCut(unittest.TestCase):
         # check whether the interior was labeled 1
         assert np.all(out[22:38, 22:38, 22:38, ...] > .5)
         assert np.all(out[62:78, 62:78, 62:78, ...] > .5)
+
+    def testComplete(self):
+        graph = Graph()
+        op = OpGraphCut(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(self.fullVolume)
+        op.Prediction.connect(piper.Output)
+
+        out = op.Output[...].wait()
+        assert_array_equal(out.shape, self.fullVolume.shape)
+
+        # check whether no new blocks introduced
+        # assert np.all(out[0:20, ...] < .5)
+
+        # check whether the interior was labeled 1
+        assert np.all(out[22:38, 22:38, 22:38, ...] > .5)
+        assert np.all(out[62:78, 62:78, 62:78, ...] > .5)
+
+    #TODO test dirty propagation
 
 
 @unittest.skipIf(not have_opengm, "OpenGM not available")

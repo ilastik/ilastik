@@ -42,9 +42,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 ## TODO @akreshuk documentation
-#
-# TODO
-#   - multiple time slices are not supported
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
@@ -57,6 +54,10 @@ class OpGraphCut(Operator):
     # segmentation image -> graph cut segmentation
     Output = OutputSlot()
 
+    # for internal (reordered) use
+    _Output = OutputSlot()
+    _FakeSlot = OutputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
 
@@ -65,45 +66,117 @@ class OpGraphCut(Operator):
         opReorder.AxisOrder.setValue('xyztc')  # vigra order
         self._opReorderPred = opReorder
 
-    def setupOutputs(self):
-        # output is a binary image
-        self.Output.meta.dtype = np.uint8
+        cache = OpCompressedCache(parent=self)
+        cache.Input.connect(self._FakeSlot)
+        self._cache = cache
 
-        self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
-        self.Output.meta.axistags = vigra.defaultAxistags('xyz')
-        d = self.Prediction.meta.getTaggedShape()
-        assert d['c'] == 1, "Channel axis is supposed to be singleton"
-        assert d['t'] == 1, "Time axis is supposed to be singleton"
+        opReorder = OpReorderAxes(parent=self)
+        opReorder.Input.connect(self._Output)
+        self._opReorderOutput = opReorder
+
+        self.Output.connect(self._opReorderOutput.Output)
+
+    def setupOutputs(self):
+        self._opReorderOutput.AxisOrder.setValue(self.Prediction.meta.getAxisKeys())
+        self._Output.meta.assignFrom(self._opReorderPred.Output.meta)
+        # output is a binary image
+        self._Output.meta.dtype = np.uint8
+
+        # fake slot provides meta data for cache
+        self._FakeSlot.meta.assignFrom(self._Output.meta)
+        
+        # cache should hold entire c-t-slices in memory
+        shape = np.asarray(self._opReorderPred.Output.meta.shape)
+        t = shape[3]
+        c = shape[4]
+        shape[3:5] = 1
+        self._cache.BlockShape.setValue(tuple(shape))
+
+        # set up multithreading environment
+        self._need = np.ones((t, c), dtype=np.bool)
+        self._lock = np.empty((t, c), dtype=np.object)
+        for i in range(t):
+            for j in range(c):
+                self._lock[i, j] = ThreadLock()
 
     def execute(self, slot, subindex, roi, result):
-        self._execute_graphcut(roi, result)
+        assert slot == self._Output, "Unknown slot requested: {}".format(slot)
+        self._updateCache(roi)
+        req = self._cache.Output.get(roi)
+        req.writeInto(result)
+        req.block()
 
-    def _execute_graphcut(self, roi, result):
+    def _updateCache(self, roi):
 
         beta = self.Beta.value
 
-        ## request the prediction image ##
-        # add time and channel to roi (we reordered to full 'xyztc'!)
-        #FIXME support time slices
-        predRoi = roi.copy()
-        predRoi.insertDim(3, 0, 1)  # t
-        predRoi.insertDim(4, 0, 1)  # c
+        # closure to be handed to the request pool
+        def processSingleVolume(t, c):
+            self._lock[t, c].acquire()
+            if not self._need[t, c]:
+                return
+            start = (0, 0, 0, t, c)
+            stop = self._opReorderPred.Output.meta.shape[:3] + (t+1, c+1)
+            predRoi = SubRegion(self._opReorderPred.Output,
+                                start=start, stop=stop)
+            cacheRoi = SubRegion(self._cache.Input, start=start, stop=stop)
 
-        pred = self._opReorderPred.Output.get(predRoi).wait()
-        pred = vigra.taggedView(pred,
-                                axistags=self._opReorderPred.Output.meta.axistags)
-        pred = pred.withAxes(*'xyz')
+            ## request the prediction image ##
+            pred = self._opReorderPred.Output.get(predRoi).wait()
+            pred = vigra.taggedView(
+                pred, axistags=self._opReorderPred.Output.meta.axistags)
+            pred = pred.withAxes(*'xyz')
 
-        logger.info("Running global graph-cut")
-        result[:] = segmentGC_fast(pred, beta)
+            data = segmentGC_fast(pred, beta)
+            data = vigra.taggedView(data, axistags='xyz')
+            data = data.withAxes(*'xyztc')
+            # process single volume, write result to cache
+            self._cache.setInSlot(self._cache.Input, (), cacheRoi,
+                                  data)
+            self._need[t, c] = False
+            self._lock[t, c].release()
+
+        pool = RequestPool()
+
+        for t in range(roi.start[3], roi.stop[3]):
+            for c in range(roi.start[4], roi.stop[4]):
+                pool.add(Request(functools.partial(processSingleVolume, t, c)))
+
+        logger.info("Updating graph-cut cache")
+        pool.wait()
+        pool.clean()
         logger.info("Graph-cut done")
-
-        return result
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
-        #FIXME time slices?
-        self.Output.setDirty(slice(None))
+
+        if slot == self.Beta:
+            # beta value affects the whole volume
+            self._Output.setDirty(slice(None))
+        elif slot == self.Prediction:
+            # time-channel slices are pairwise independent
+            
+            # determine t, c from input volume
+            t_ind = self.Prediction.meta.axistags.index('t')
+            if t_ind < len(self.Prediction.meta.shape):
+                t = (roi.start[t_ind], roi.stop[t_ind])
+            else:
+                t = (0, 1)
+            c_ind = self.Prediction.meta.axistags.index('t')
+            if c_ind < len(self.Prediction.meta.shape):
+                c = (roi.start[c_ind], roi.stop[c_ind])
+            else:
+                c = (0, 1)
+
+            # schedule slices for recomputation
+            #FIXME do we need a lock here?
+            self._need[t[0]:t[1], c[0]:c[1]] = True
+
+            # set output dirty
+            start = (0,)*3 + t[0:1] + c[0:1]
+            stop = (0,)*3 + t[1:2] + c[1:2]
+            roi = SubRegion(self._Output, start=start, stop=stop)
+            self._Output.setDirty(roi)
 
 
 ##TODO @akreshuk documetation needed
