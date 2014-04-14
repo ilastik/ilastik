@@ -145,6 +145,9 @@ def getPathVariants(originalPath, workingDirectory):
     if isUrl(originalPath):
         return originalPath, None
     
+    if originalPath[0] == '~':
+        originalPath = os.path.expanduser(originalPath)
+    
     relPath = originalPath
     
     if os.path.isabs(originalPath):
