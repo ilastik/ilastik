@@ -318,11 +318,11 @@ class PixelClassificationWorkflow(Workflow):
         if self._batch_export_args:
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
+        if self.retrain:
+            # re-train Classifier (useful if the stored labels were changed outside ilastik)
+            self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+
         if self._headless and self._batch_input_args and self._batch_export_args:
-            
-            if self.retrain:
-                # re-train Classifier
-                self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
 
             # Make sure we're using the up-to-date classifier.
             self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
