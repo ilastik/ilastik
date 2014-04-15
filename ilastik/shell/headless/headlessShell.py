@@ -51,6 +51,14 @@ class HeadlessShell(object):
             # Open the project file
             hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
 
+            # If there are any "creation-time" command-line args saved to the project file,
+            #  load them so that the workflow can be instantiated with the same settings 
+            #  that were used when the project was first created. 
+            project_creation_args = []
+            if "workflow_cmdline_args" in hdf5File.keys():
+                if len(hdf5File["workflow_cmdline_args"]) > 0:
+                    project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
+
             if workflow_class is None:
                 # If the project file has no known workflow, we assume pixel classification
                 import ilastik.workflows
@@ -64,7 +72,8 @@ class HeadlessShell(object):
             self.projectManager = ProjectManager( self,
                                                   workflow_class,
                                                   headless=True,
-                                                  workflow_cmdline_args=self._workflow_cmdline_args )
+                                                  workflow_cmdline_args=self._workflow_cmdline_args,
+                                                  project_creation_args=project_creation_args )
             self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
 
         except ProjectManager.FileMissingError:
@@ -89,7 +98,10 @@ class HeadlessShell(object):
             self.projectManager = ProjectManager( self,
                                                   default_workflow,
                                                   importFromPath=oldProjectFilePath,
-                                                  headless=True )
+                                                  headless=True,
+                                                  workflow_cmdline_args=self._workflow_cmdline_args,
+                                                  project_creation_args=self._workflow_cmdline_args )
+
             self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath,readOnly = False)
 
     def setAppletEnabled(self, applet, enabled):

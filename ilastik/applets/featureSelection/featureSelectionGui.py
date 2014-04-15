@@ -34,6 +34,8 @@ from lazyflow.operators.generic import OpSubRegion
 
 # volumina
 from volumina.utility import PreferencesManager
+from volumina.widgets.layercontextmenu import layercontextmenu
+
 
 # ilastik
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -174,6 +176,14 @@ class FeatureSelectionGui(LayerViewerGui):
         self.layerstack.rowsRemoved.connect( handleRemovedLayers )
         self.layerstack.rowsInserted.connect( handleInsertedLayers )
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
+        
+        # Support the same right-click menu as 'normal' layer list widgets
+        def showLayerContextMenu( pos ):
+            idx = layerListWidget.indexAt(pos)
+            layer = self.layerstack[idx.row()]
+            layercontextmenu( layer, layerListWidget.mapToGlobal(pos), layerListWidget )
+        layerListWidget.customContextMenuRequested.connect( showLayerContextMenu )
+        layerListWidget.setContextMenuPolicy( Qt.CustomContextMenu )
     
     def setupLayers(self):
         opFeatureSelection = self.topLevelOperatorView

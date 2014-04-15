@@ -16,28 +16,34 @@
 
 #Python
 import os
+import tempfile
 from functools import partial
 import numpy
 
 #PyQt
-from PyQt4.QtGui import QShortcut, QKeySequence
-from PyQt4.QtGui import QColor, QMenu
-from PyQt4.QtGui import QMessageBox
 from PyQt4 import uic
+from PyQt4.QtCore import QTimer
+from PyQt4.QtGui import QColor, QMenu, QMessageBox, QFileDialog
 
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
+
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
-except:
-    pass
+    from volumina.view3d.view3d import convertVTPtoOBJ
+    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
+    _have_vtk = True
+except ImportError:
+    _have_vtk = False
 
 #ilastik
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -189,6 +195,8 @@ class CarvingGui(LabelingGui):
         ## object names
         
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
+        self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+
         
         def labelBackground():
             self.selectLabel(0)
@@ -408,6 +416,11 @@ class CarvingGui(LabelingGui):
                         self._update_rendering()
                     showAction = submenu.addAction("Show 3D %s" % name)
                     showAction.triggered.connect( partial(onShow3D, name ) )
+            
+            # Export mesh
+            if _have_vtk:
+                exportAction = submenu.addAction("Export mesh for %s" % name)
+                exportAction.triggered.connect( partial(self._onContextMenuExportMesh, name) )
                         
             menu.addMenu(submenu)
 
@@ -427,6 +440,123 @@ class CarvingGui(LabelingGui):
         menu.addAction("Segment").triggered.connect( self.onSegmentButton )
         menu.addAction("Clear").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
         return menu
+
+    def _onContextMenuExportMesh(self, _name):
+        """
+        Export a single object mesh to a user-specified filename.
+        """
+        recent_dir = PreferencesManager().get( 'carving', 'recent export mesh directory' )
+        if recent_dir is None:
+            defaultPath = os.path.join( os.path.expanduser('~'), '{}obj'.format(_name) )
+        else:
+            defaultPath = os.path.join( recent_dir, '{}.obj'.format(_name) )
+        filepath = QFileDialog.getSaveFileName(self, 
+                                               "Save meshes for object '{}'".format(_name),
+                                               defaultPath,
+                                               "OBJ Files (*.obj)")
+        if filepath.isNull():
+            return
+        obj_filepath = str(filepath)
+        PreferencesManager().set( 'carving', 'recent export mesh directory', os.path.split(obj_filepath)[0] )
+        
+        self._exportMeshes([_name], [obj_filepath])
+
+    def _exportAllObjectMeshes(self):
+        """
+        Export all objects in the project as separate .obj files, stored to a user-specified directory.
+        """
+        recent_dir = PreferencesManager().get( 'carving', 'recent export mesh directory' )
+        if recent_dir is None:
+            defaultPath = os.path.join( os.path.expanduser('~') )
+        else:
+            defaultPath = os.path.join( recent_dir )
+        export_dir = QFileDialog.getExistingDirectory( self, 
+                                                       "Select export directory for mesh files",
+                                                       defaultPath)
+        if export_dir.isNull():
+            return
+        export_dir = str(export_dir)
+        PreferencesManager().set( 'carving', 'recent export mesh directory', export_dir )
+
+        # Get the list of all object names
+        object_names = []
+        obj_filepaths = []
+        mst = self.topLevelOperatorView.MST.value
+        for object_name in mst.object_lut.keys():
+            object_names.append( object_name )
+            obj_filepaths.append( os.path.join( export_dir, "{}.obj".format( object_name ) ) )
+        
+        self._exportMeshes( object_names, obj_filepaths )
+
+    def _exportMeshes(self, object_names, obj_filepaths):
+        """
+        Export a mesh .obj file for each object in the object_names list to the corresponding file name from the obj_filepaths list.
+        This function is pseudo-recursive. It works like this:
+        1) Pop the first name/file from the args
+        2) Kick off the export by launching the export mesh dlg
+        3) return from this function to allow the eventloop to resume while the export is running
+        4) When the export dlg is finished, create the mesh file (by writing a temporary .vtk file and converting it into a .obj file)
+        5) If there are still more items in the object_names list to process, repeat this function.
+        """
+        # Pop the first object off the list
+        object_name = object_names.pop(0)
+        obj_filepath = obj_filepaths.pop(0)
+        
+        # Construct a volume with only this object.
+        # We might be tempted to get the object directly from opCarving.DoneObjects, 
+        #  but that won't be correct for overlapping objects.
+        mst = self.topLevelOperatorView.MST.value
+        object_supervoxels = mst.object_lut[object_name]
+        object_lut = numpy.zeros(len(mst.objects.lut), dtype=numpy.int32)
+        object_lut[object_supervoxels] = 1
+        supervoxel_volume = mst.regionVol
+        object_volume = object_lut[supervoxel_volume]
+
+        # Run the mesh extractor
+        window = MeshExtractorDialog(parent=self)
+        
+        def onMeshesComplete():
+            """
+            Called when mesh extraction is complete.
+            Writes the extracted mesh to an .obj file
+            """
+            logger.info( "Mesh generation complete." )
+            mesh_count = len( window.extractor.meshes )
+
+            # Mesh count can sometimes be 0 for the '<not saved yet>' object...
+            if mesh_count > 0:
+                assert mesh_count == 1, \
+                    "Found {} meshes processing object '{}',"\
+                    "(only expected 1)".format( mesh_count, object_name )
+                mesh = window.extractor.meshes.values()[0]
+                logger.info( "Saving meshes to {}".format( obj_filepath ) )
+    
+                # Use VTK to write to a temporary .vtk file
+                tmpdir = tempfile.mkdtemp()
+                vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
+                w = vtkPolyDataWriter()
+                w.SetFileTypeToASCII()
+                w.SetInput(mesh)
+                w.SetFileName(vtkpoly_path)
+                w.Write()
+                
+                # Now convert the file to .obj format.
+                convertVTPtoOBJ(vtkpoly_path, obj_filepath)
+    
+            # Cleanup: We don't need the window anymore.
+            window.setParent(None)
+
+            # If there are still objects left to process,
+            #   start again with the remainder of the list.
+            if object_names:
+                self._exportMeshes(object_names, obj_filepaths)
+            
+        window.finished.connect( onMeshesComplete )
+
+        # Kick off the save process and exit to the event loop
+        window.show()
+        QTimer.singleShot(0, partial(window.run, object_volume, [0]))
+
     
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.doneObjectNamesForPosition(position5d[1:4])
