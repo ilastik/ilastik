@@ -27,6 +27,7 @@ from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels\
     import _OpThresholdOneLevel as OpThresholdOneLevel
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels\
     import _OpThresholdTwoLevels as OpThresholdTwoLevels5d
+from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
@@ -194,6 +195,11 @@ class TestThresholdOneLevelInternal(Generator1):
 
 
 class TestThresholdOneLevel(Generator1):
+    def setUp(self):
+        super(TestThresholdOneLevel, self).setUp()
+        self.curOperator = 0
+        self.usePreThreshold = False
+
     def testSimpleUsage(self):
         oper5d = OpThresholdTwoLevels(graph=Graph())
         oper5d.InputImage.setValue(self.data5d)
@@ -202,7 +208,8 @@ class TestThresholdOneLevel(Generator1):
         oper5d.SingleThreshold.setValue(0.5)
         oper5d.SmootherSigma.setValue(self.sigma)
         oper5d.Channel.setValue(0)
-        oper5d.CurOperator.setValue(0)
+        oper5d.CurOperator.setValue(self.curOperator)
+        oper5d.UsePreThreshold.setValue(self.usePreThreshold)
 
         out5d = oper5d.Output[:].wait()
         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
@@ -216,10 +223,11 @@ class TestThresholdOneLevel(Generator1):
         oper5d.SmootherSigma.setValue(self.sigma)
         # the operator should be able to figure out that this channel index is wrong
         oper5d.Channel.setValue(15)
-        oper5d.CurOperator.setValue(0)
+        oper5d.CurOperator.setValue(self.curOperator)
+        oper5d.UsePreThreshold.setValue(self.usePreThreshold)
 
-        out5d = oper5d.Output[:].wait()
-        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+        with self.assertRaises(Exception):
+            out5d = oper5d.Output[:].wait()
 
     def testNoOp(self):
         oper5d = OpThresholdTwoLevels(graph=Graph())
@@ -229,7 +237,8 @@ class TestThresholdOneLevel(Generator1):
         oper5d.SingleThreshold.setValue(-0.01)
         oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
         oper5d.Channel.setValue(0)
-        oper5d.CurOperator.setValue(0)
+        oper5d.CurOperator.setValue(self.curOperator)
+        oper5d.UsePreThreshold.setValue(self.usePreThreshold)
 
         out5d = oper5d.Output[:].wait()
         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
@@ -260,7 +269,8 @@ class TestThresholdOneLevel(Generator1):
         oper5d.MaxSize.setValue(vol.size)
         oper5d.SingleThreshold.setValue(128)
         oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
-        oper5d.CurOperator.setValue(0)
+        oper5d.CurOperator.setValue(self.curOperator)
+        oper5d.UsePreThreshold.setValue(self.usePreThreshold)
 
         #for i in range(vol.shape[3]):
         for i in range(2, 5):  # just test some sample slices (runtime :)
@@ -268,6 +278,31 @@ class TestThresholdOneLevel(Generator1):
             out5d = oper5d.Output[:].wait()
             out5d[out5d > 0] = 1
             numpy.testing.assert_array_equal(out5d.squeeze(), desiredResult[..., i, :])
+
+
+@unittest.skipIf(not haveGraphCut(), "opengm not available")
+class TestObjectsSegment(TestThresholdOneLevel):
+    def setUp(self):
+        super(TestObjectsSegment, self).setUp()
+        self.curOperator = 2
+        self.usePreThreshold = True
+
+    # time axes not implemented
+    @unittest.expectedFailure
+    def testEvenFunnierAxes(self):
+        super(TestObjectsSegment, self).testEvenFunnierAxes()
+
+    # NoOp uses threshold value -> not meaningful for graphcut
+    @unittest.skip("Makes no sense with graph cut")
+    def testNoOp(self):
+        super(TestGraphCut, self).testNoOp()
+
+
+@unittest.skipIf(not haveGraphCut(), "opengm not available")
+class TestGraphCut(TestObjectsSegment):
+    def setUp(self):
+        super(TestGraphCut, self).setUp()
+        self.usePreThreshold = False
 
 
 class Generator2(Generator1):
@@ -542,8 +577,8 @@ class TestTTLUseCase(unittest.TestCase):
         # The setting:
         # We have a 3-dimensional plus sign (3 bars crossing) that wanders
         # around as time passes. The predictions are noisy. Predictions for the
-        # plus are around .9, predictions for background are around .1. The axis
-        # order is a bit strange.
+        # plus are around .9, predictions for background are around .1. The
+        # axis order is a bit strange.
 
         shift = np.asarray((5, 4, 3), dtype=np.int)
         vol = np.ones((70, 60, 50))*.1

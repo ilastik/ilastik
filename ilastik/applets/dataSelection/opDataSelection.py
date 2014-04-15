@@ -197,16 +197,24 @@ class OpDataSelection(Operator):
                 providerSlot = op5.Output
                 self._opReaders.append(op5)
             
-            # If there is no channel axis, use an OpReorderAxes to append one.
-            if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
+            # If the channel axis is not last (or is missing),
+            #  make sure the axes are re-ordered so that channel is last.
+            if providerSlot.meta.axistags.index('c') != len( providerSlot.meta.axistags )-1:
                 op5 = OpReorderAxes( parent=self )
-                providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
-                op5.AxisOrder.setValue(providerKeys + 'c')
+                keys = providerSlot.meta.getTaggedShape().keys()
+                try:
+                    # Remove if present.
+                    keys.remove('c')
+                except ValueError:
+                    pass
+                # Append
+                keys.append('c')
+                op5.AxisOrder.setValue( "".join( keys ) )
                 op5.Input.connect( providerSlot )
                 providerSlot = op5.Output
                 self._opReaders.append( op5 )
             
-            # Most of workflows can't handle replacement of a dataset of a different dimensionality.
+            # Most workflows can't handle replacement of a dataset of a different dimensionality.
             # We guard against that by checking for errors NOW, before connecting our Image output,
             #  which is connected to the rest of the workflow.
             new_axiskeys = "".join( providerSlot.meta.getAxisKeys() )

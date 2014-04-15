@@ -49,7 +49,7 @@ from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
-    import dvidclient
+    import pydvid
     _has_dvid_support = True
 except:
     _has_dvid_support = False
@@ -642,7 +642,7 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        from dvidclient.gui.contents_browser import ContentsBrowser
+        from pydvid.gui.contents_browser import ContentsBrowser
         browser = ContentsBrowser(["localhost:8000"], parent=self)
         if browser.exec_() == ContentsBrowser.Rejected:
             return
