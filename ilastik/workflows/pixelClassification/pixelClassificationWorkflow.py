@@ -67,6 +67,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -79,7 +80,8 @@ class PixelClassificationWorkflow(Workflow):
         self.generate_random_labels = parsed_args.generate_random_labels
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
-        
+        self.retrain = parsed_args.retrain
+
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
         
@@ -318,6 +320,10 @@ class PixelClassificationWorkflow(Workflow):
 
         if self._headless and self._batch_input_args and self._batch_export_args:
             
+            if self.retrain:
+                # re-train Classifier
+                self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+
             # Make sure we're using the up-to-date classifier.
             self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
         
@@ -339,6 +345,10 @@ class PixelClassificationWorkflow(Workflow):
                 
                 # Finished.
                 sys.stdout.write("\n")
+
+            if self.retrain:
+                # store re-trained classifier to file
+                projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """
