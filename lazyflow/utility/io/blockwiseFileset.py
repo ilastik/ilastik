@@ -536,7 +536,8 @@ class BlockwiseFileset(object):
                 try:
                     writeLock = FileLock( blockFilePath, timeout=10 )
                     if self.mode == 'a':
-                        assert writeLock.acquire( blocking=False ), "Couldn't obtain an exclusive lock for writing to file: {}".format( blockFilePath )
+                        acquired = writeLock.acquire( blocking=False )
+                        assert acquired, "Couldn't obtain an exclusive lock for writing to file: {}".format( blockFilePath )
                         self._fileLocks[blockFilePath] = writeLock
                     elif self.mode == 'r':
                         assert writeLock.available(), "Can't read from a file that is being written to elsewhere."

@@ -273,7 +273,8 @@ class Request( object ):
 
             # Clean-up
             if self.greenlet is not None:
-                assert self.greenlet.owning_requests.pop() == self
+                popped = self.greenlet.owning_requests.pop()
+                assert popped == self
             self.greenlet = None
 
     def submit(self):

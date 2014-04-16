@@ -43,7 +43,8 @@ class TestRoiRequestBatch(object):
         resultsCount = [0]
         
         def handleResult(roi, result):
-            assert resultslock.acquire(False), "resultslock is contested! Access to callback is supposed to be automatically serialized."
+            acquired = resultslock.acquire(False)
+            assert acquired, "resultslock is contested! Access to callback is supposed to be automatically serialized."
             results[ roiToSlice( *roi ) ] = result
             logger.debug( "Got result for {}".format(roi) )
             resultslock.release()

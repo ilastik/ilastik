@@ -3,6 +3,7 @@
 #KDevelop project files
 *.kdev4
 *.pyc
+*.pyo
 *.backup
 build
 dist
