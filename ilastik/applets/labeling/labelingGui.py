@@ -49,6 +49,7 @@ class Tool():
     Navigation = 0 # Arrow
     Paint      = 1
     Erase      = 2
+    Threshold  = 3
 
 class LabelingGui(LayerViewerGui):
     """
@@ -218,11 +219,27 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.eraserToolButton.setCheckable(True)
         _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
 
-        # This maps tool types to the buttons that enable them
-        self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
-                             Tool.Paint      : _labelControlUi.paintToolButton,
-                             Tool.Erase      : _labelControlUi.eraserToolButton }
+        # Initialize the thresholding tool
+        if hasattr(_labelControlUi, "thresToolButton"):
+            thresholdIconPath = os.path.split(__file__)[0] \
+              + "/icons/threshold.png"
+            thresholdIcon = QIcon(thresholdIconPath)
+            _labelControlUi.thresToolButton.setIcon(thresholdIcon)
+            _labelControlUi.thresToolButton.setCheckable(True)
+            _labelControlUi.thresToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold) )
 
+
+        # This maps tool types to the buttons that enable them
+        if hasattr(_labelControlUi, "thresToolButton"):
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton,
+                                 Tool.Threshold  : _labelControlUi.thresToolButton}
+        else:
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton}
+            
         self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
 
         for size in self.brushSizes:
@@ -261,6 +278,7 @@ class LabelingGui(LayerViewerGui):
         shortcutGroupName = "Labeling"
 
         if hasattr(self.labelingDrawerUi, "AddLabelButton"):
+
             mgr.register("a", ActionInfo( shortcutGroupName,
                                           "New Label",
                                           "Add New Label Class",
@@ -288,6 +306,14 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
+        if hasattr(self.labelingDrawerUi, "thresToolButton"):
+            mgr.register( "t", ActionInfo( shortcutGroupName,
+                                           "Thresholding",
+                                           "Thresholding",
+                                           self.labelingDrawerUi.thresToolButton.click,
+                                           self.labelingDrawerUi.thresToolButton,
+                                           self.labelingDrawerUi.thresToolButton ) )
+        
 
         self._labelShortcuts = []
 
@@ -356,7 +382,8 @@ class LabelingGui(LayerViewerGui):
         # The volume editor expects one of two specific names
         modeNames = { Tool.Navigation   : "navigation",
                       Tool.Paint        : "brushing",
-                      Tool.Erase        : "brushing" }
+                      Tool.Erase        : "brushing" ,
+                      Tool.Threshold    : "thresholding"}
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
@@ -401,10 +428,17 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI 
                 self._gui_setErasing()
+            elif toolId == Tool.Threshold:
+                self._gui_setThresholding()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
         
+    def _gui_setThresholding(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.thresToolButton.setChecked(True)
+
     def _gui_setErasing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
@@ -415,7 +449,7 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-        self._labelControlUi.arrowToolButton.setChecked(True)
+        # self._labelControlUi.arrowToolButton.setChecked(True) # why twice?
     def _gui_setBrushing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
@@ -430,7 +464,6 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.eraserToolButton.setEnabled(enable)
         self._labelControlUi.brushSizeCaption.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
-    
 
 
     def _onBrushSizeChange(self, index):
