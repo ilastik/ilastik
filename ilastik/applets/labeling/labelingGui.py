@@ -380,10 +380,15 @@ class LabelingGui(LayerViewerGui):
             return
 
         # The volume editor expects one of two specific names
-        modeNames = { Tool.Navigation   : "navigation",
-                      Tool.Paint        : "brushing",
-                      Tool.Erase        : "brushing" ,
-                      Tool.Threshold    : "thresholding"}
+        if hasattr(self.labelingDrawerUi, "thresToolButton"):
+            modeNames = { Tool.Navigation   : "navigation",
+                          Tool.Paint        : "brushing",
+                          Tool.Erase        : "brushing" ,
+                          Tool.Threshold    : "thresholding"}
+        else:
+            modeNames = { Tool.Navigation   : "navigation",
+                          Tool.Paint        : "brushing",
+                          Tool.Erase        : "brushing" }
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
