@@ -319,6 +319,12 @@ class PixelClassificationGui(LabelingGui):
                                                                  self.viewerControlWidget(),
                                                                  inputLayer ) )
             layers.append(inputLayer)
+            
+            # Show/hide the thresholding button
+            if inputDataSlot.meta.getTaggedShape()['c'] > 1:
+                self.labelingDrawerUi.thresToolButton.hide()
+            else:
+                self.labelingDrawerUi.thresToolButton.show()
         
         self.handleLabelSelectionChange()
         return layers
