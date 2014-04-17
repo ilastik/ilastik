@@ -52,6 +52,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
 
+        # connect callbacks last -> avoid undefined behaviour
+        self._connectCallbacks()
+
     def initAppletDrawerUi(self):
         """
         Reimplemented from LayerViewerGui base class.
@@ -59,9 +62,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
-        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
 
         # disable graph cut applet if not available
         if not haveGraphCut():
@@ -96,6 +96,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
+
+    def _connectCallbacks(self):
+        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
+        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
+
 
     @threadRouted
     def _updateGuiFromOperator(self):
