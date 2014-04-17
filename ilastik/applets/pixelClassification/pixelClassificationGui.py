@@ -26,7 +26,7 @@ from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
 
 # HCI
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 
 # ilastik
@@ -320,11 +320,11 @@ class PixelClassificationGui(LabelingGui):
                                                                  inputLayer ) )
             layers.append(inputLayer)
             
-            # Show/hide the thresholding button
-            if inputDataSlot.meta.getTaggedShape()['c'] > 1:
-                self.labelingDrawerUi.thresToolButton.hide()
-            else:
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if isinstance( inputLayer, GrayscaleLayer ):
                 self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
         return layers
