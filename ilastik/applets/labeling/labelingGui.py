@@ -308,8 +308,8 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton ) )
         if hasattr(self.labelingDrawerUi, "thresToolButton"):
             mgr.register( "t", ActionInfo( shortcutGroupName,
-                                           "Thresholding",
-                                           "Thresholding",
+                                           "Window Leveling",
+                                           "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button leads to an automatic range adjustment.",
                                            self.labelingDrawerUi.thresToolButton.click,
                                            self.labelingDrawerUi.thresToolButton,
                                            self.labelingDrawerUi.thresToolButton ) )
