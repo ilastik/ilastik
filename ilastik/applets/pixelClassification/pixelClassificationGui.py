@@ -303,6 +303,12 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
+            # the flag window_leveling is used to determine if the contrast 
+            # of the layer is adjustable
+            if isinstance( inputLayer, GrayscaleLayer ):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
 
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
@@ -321,7 +327,7 @@ class PixelClassificationGui(LabelingGui):
             layers.append(inputLayer)
             
             # The thresholding button can only be used if the data is displayed as grayscale.
-            if isinstance( inputLayer, GrayscaleLayer ):
+            if inputLayer.window_leveling:
                 self.labelingDrawerUi.thresToolButton.show()
             else:
                 self.labelingDrawerUi.thresToolButton.hide()
