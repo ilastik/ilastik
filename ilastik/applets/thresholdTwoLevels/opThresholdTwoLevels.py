@@ -61,15 +61,21 @@ class OpThresholdTwoLevels(Operator):
     SingleThreshold = InputSlot(stype='float', value=0.5)
     SmootherSigma = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
     Channel = InputSlot(value=0)
-    SingleThresholdGC = InputSlot(stype='float', value=0.5)
-    Beta = InputSlot(value=.2)
     CurOperator = InputSlot(stype='int', value=0)
+
+    ## Graph-Cut options ##
+
+    SingleThresholdGC = InputSlot(stype='float', value=0.5)
+
+    Beta = InputSlot(value=.2)
 
     # apply thresholding before graph-cut
     UsePreThreshold = InputSlot(stype='bool', value=True)
 
     # margin around single object (only graph-cut)
     Margin = InputSlot(value=numpy.asarray((20,20,20)))
+
+    ## Output slots ##
 
     Output = OutputSlot()
 
@@ -82,7 +88,8 @@ class OpThresholdTwoLevels(Operator):
 
     OutputHdf5 = OutputSlot()
 
-    # Debug outputs
+    ## Debug outputs
+
     InputChannel = OutputSlot()
     Smoothed = OutputSlot()
     BigRegions = OutputSlot()
@@ -117,6 +124,7 @@ class OpThresholdTwoLevels(Operator):
         # stack output again, everything is now going to work for arbitrary dimensions
         self._smoothStacker = OpMultiArrayStacker(parent=self)
         self._smoothStacker.AxisFlag.setValue('t')
+        self._smoothStacker.AxisIndex.setValue(0)
         self._smoothStacker.Images.connect(self._opSmoother.Output)
 
         # debug output
@@ -124,14 +132,14 @@ class OpThresholdTwoLevels(Operator):
 
         # single threshold operator
         self.opThreshold1 = _OpThresholdOneLevel(parent=self)
-        self.opThreshold1.InputImage.connect(self._smoothStacker.Output)
+        self.opThreshold1.InputImage.connect(self.Smoothed)
         self.opThreshold1.Threshold.connect(self.SingleThreshold)
         self.opThreshold1.MinSize.connect(self.MinSize)
         self.opThreshold1.MaxSize.connect(self.MaxSize)
 
         # double threshold operator
         self.opThreshold2 = _OpThresholdTwoLevels(parent=self)
-        self.opThreshold2.InputImage.connect(self._smoothStacker.Output)
+        self.opThreshold2.InputImage.connect(self.Smoothed)
         self.opThreshold2.MinSize.connect(self.MinSize)
         self.opThreshold2.MaxSize.connect(self.MaxSize)
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
@@ -139,21 +147,19 @@ class OpThresholdTwoLevels(Operator):
 
         if haveGraphCut():
             self.opThreshold1GC = _OpThresholdOneLevel(parent=self)
-            self.opThreshold1GC.InputImage.connect(self._smoothStacker.Output)
+            self.opThreshold1GC.InputImage.connect(self.Smoothed)
             self.opThreshold1GC.Threshold.connect(self.SingleThresholdGC)
             self.opThreshold1GC.MinSize.connect(self.MinSize)
             self.opThreshold1GC.MaxSize.connect(self.MaxSize)
 
             self.opObjectsGraphCut = OpObjectsSegment(parent=self)
-            self.opObjectsGraphCut.Prediction.connect(self._smoothStacker.Output)
-            #FIXME get rid of channel here
-            self.opObjectsGraphCut.Channel.setValue(0)
-            self.opObjectsGraphCut.LabelImage.connect(self.opThreshold1.Output)
+            self.opObjectsGraphCut.Prediction.connect(self.Smoothed)
+            self.opObjectsGraphCut.LabelImage.connect(self.opThreshold1GC.Output)
             self.opObjectsGraphCut.Beta.connect(self.Beta)
             self.opObjectsGraphCut.Margin.connect(self.Margin)
 
             self.opGraphCut = OpGraphCut(parent=self)
-            self.opGraphCut.Prediction.connect(self._smoothStacker.Output)
+            self.opGraphCut.Prediction.connect(self.Smoothed)
             self.opGraphCut.Beta.connect(self.Beta)
 
         # HACK: For backwards compatibility with old projects,
@@ -181,17 +187,14 @@ class OpThresholdTwoLevels(Operator):
         self.OutputHdf5.connect(self._opCache.OutputHdf5)
 
         #Debug outputs
-        #TODO reorder?
         self._inputStacker = OpMultiArrayStacker(parent=self)
         self._inputStacker.AxisFlag.setValue('t')
+        self._inputStacker.AxisIndex.setValue(0)
         self._inputStacker.Images.connect(self._opChannelSelector.Output)
         self.InputChannel.connect(self._inputStacker.Output)
 
     def setupOutputs(self):
 
-        t_index = self.InputImage.meta.axistags.index('t')
-        self._smoothStacker.AxisIndex.setValue(t_index)
-        self._inputStacker.AxisIndex.setValue(t_index)
         self._opReorder2.AxisOrder.setValue(self.InputImage.meta.getAxisKeys())
 
         # propagate drange

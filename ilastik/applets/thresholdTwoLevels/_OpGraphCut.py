@@ -73,10 +73,12 @@ class OpGraphCut(Operator):
         shape = self.Prediction.meta.shape
         if len(shape) < 5:
             raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
-        tags = self.Prediction.meta.axistags
-        haveAxes = [tags.index(c) == i for i, c in enumerate('txyzc')]
-        if not all(haveAxes):
-            raise ValueError("Prediction maps have the wrong axes order (expected: txyzc)")
+        tags = self.Prediction.meta.getAxisKeys()
+        tags = "".join(tags)
+        haveAxes =  tags == 'txyzc'
+        if not haveAxes:
+            raise ValueError("Prediction maps have wrong axes order"
+                             "(expected: txyzc, got: {})".format(tags))
 
         self.Output.meta.assignFrom(self.Prediction.meta)
         # output is a binary image

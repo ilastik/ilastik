@@ -91,13 +91,16 @@ class OpObjectsSegment(OpGraphCut):
         super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
         shape = self.LabelImage.meta.shape
-        assert all([i == j for i, j in zip(self.Prediction.meta.shape, shape)])
+        assert all([i == j for i, j in zip(self.Prediction.meta.shape, shape)]),\
+            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape, shape)
         if len(shape) < 5:
             raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
-        tags = self.LabelImage.meta.axistags
-        haveAxes = [tags.index(c) == i for i, c in enumerate('txyzc')]
-        if not all(haveAxes):
-            raise ValueError("Prediction maps have the wrong axes order (expected: txyzc)")
+        tags = self.LabelImage.meta.getAxisKeys()
+        tags = "".join(tags)
+        haveAxes =  tags == 'txyzc'
+        if not haveAxes:
+            raise ValueError("Label image has wrong axes order"
+                             "(expected: txyzc, got: {})".format(tags))
 
         # bounding boxes are just one element arrays of type object
         shape = self.Prediction.meta.shape
