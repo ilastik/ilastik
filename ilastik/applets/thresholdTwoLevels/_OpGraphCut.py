@@ -54,42 +54,31 @@ class OpGraphCut(Operator):
     # segmentation image -> graph cut segmentation
     Output = OutputSlot()
 
-    # for internal (reordered) use
+    # for internal (reordered) use TODO remove
     _Output = OutputSlot()
     _FakeSlot = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
 
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.Prediction)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderPred = opReorder
-
         cache = OpCompressedCache(parent=self)
         cache.Input.connect(self._FakeSlot)
         self._cache = cache
 
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self._Output)
-        self._opReorderOutput = opReorder
-
-        self.Output.connect(self._opReorderOutput.Output)
-
     def setupOutputs(self):
-        self._opReorderOutput.AxisOrder.setValue(self.Prediction.meta.getAxisKeys())
-        self._Output.meta.assignFrom(self._opReorderPred.Output.meta)
+        self.Output.meta.assignFrom(self.Prediction.meta)
         # output is a binary image
-        self._Output.meta.dtype = np.uint8
+        self.Output.meta.dtype = np.uint8
 
         # fake slot provides meta data for cache
-        self._FakeSlot.meta.assignFrom(self._Output.meta)
+        self._FakeSlot.meta.assignFrom(self.Output.meta)
         
         # cache should hold entire c-t-slices in memory
-        shape = np.asarray(self._opReorderPred.Output.meta.shape)
-        t = shape[3]
+        shape = list(self.Prediction.meta.shape)
+        t = shape[0]
         c = shape[4]
-        shape[3:5] = 1
+        shape[0] = 1
+        shape[4] = 1
         self._cache.BlockShape.setValue(tuple(shape))
 
         # set up multithreading environment
@@ -100,7 +89,7 @@ class OpGraphCut(Operator):
                 self._lock[i, j] = ThreadLock()
 
     def execute(self, slot, subindex, roi, result):
-        assert slot == self._Output, "Unknown slot requested: {}".format(slot)
+        assert slot == self.Output, "Unknown slot requested: {}".format(slot)
         self._updateCache(roi)
         req = self._cache.Output.get(roi)
         req.writeInto(result)
@@ -115,21 +104,21 @@ class OpGraphCut(Operator):
             self._lock[t, c].acquire()
             if not self._need[t, c]:
                 return
-            start = (0, 0, 0, t, c)
-            stop = self._opReorderPred.Output.meta.shape[:3] + (t+1, c+1)
-            predRoi = SubRegion(self._opReorderPred.Output,
+            start = (t, 0, 0, 0, c)
+            stop = (t+1,) + self.Prediction.meta.shape[1:4] + (c+1,)
+            predRoi = SubRegion(self.Prediction,
                                 start=start, stop=stop)
             cacheRoi = SubRegion(self._cache.Input, start=start, stop=stop)
 
             ## request the prediction image ##
-            pred = self._opReorderPred.Output.get(predRoi).wait()
+            pred = self.Prediction.get(predRoi).wait()
             pred = vigra.taggedView(
-                pred, axistags=self._opReorderPred.Output.meta.axistags)
+                pred, axistags=self.Prediction.meta.axistags)
             pred = pred.withAxes(*'xyz')
 
             data = segmentGC_fast(pred, beta)
             data = vigra.taggedView(data, axistags='xyz')
-            data = data.withAxes(*'xyztc')
+            data = data.withAxes(*'txyzc')
             # process single volume, write result to cache
             self._cache.setInSlot(self._cache.Input, (), cacheRoi,
                                   data)
@@ -138,7 +127,7 @@ class OpGraphCut(Operator):
 
         pool = RequestPool()
 
-        for t in range(roi.start[3], roi.stop[3]):
+        for t in range(roi.start[0], roi.stop[0]):
             for c in range(roi.start[4], roi.stop[4]):
                 pool.add(Request(functools.partial(processSingleVolume, t, c)))
 
@@ -157,24 +146,18 @@ class OpGraphCut(Operator):
             # time-channel slices are pairwise independent
             
             # determine t, c from input volume
-            t_ind = self.Prediction.meta.axistags.index('t')
-            if t_ind < len(self.Prediction.meta.shape):
-                t = (roi.start[t_ind], roi.stop[t_ind])
-            else:
-                t = (0, 1)
-            c_ind = self.Prediction.meta.axistags.index('t')
-            if c_ind < len(self.Prediction.meta.shape):
-                c = (roi.start[c_ind], roi.stop[c_ind])
-            else:
-                c = (0, 1)
+            t_ind = 0
+            c_ind = 4
+            t = (roi.start[t_ind], roi.stop[t_ind])
+            c = (roi.start[c_ind], roi.stop[c_ind])
 
             # schedule slices for recomputation
             #FIXME do we need a lock here?
             self._need[t[0]:t[1], c[0]:c[1]] = True
 
             # set output dirty
-            start = (0,)*3 + t[0:1] + c[0:1]
-            stop = (0,)*3 + t[1:2] + c[1:2]
+            start = t[0:1] + (0,)*3 + c[0:1]
+            stop = t[1:2] + (0,)*3 + c[1:2]
             roi = SubRegion(self._Output, start=start, stop=stop)
             self._Output.setDirty(roi)
 
