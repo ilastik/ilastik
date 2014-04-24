@@ -53,19 +53,31 @@ class OpGraphCut(Operator):
 
     # segmentation image -> graph cut segmentation
     Output = OutputSlot()
+    CachedOutput = OutputSlot()
 
-    # for internal (reordered) use TODO remove
-    _Output = OutputSlot()
+    # for internal use
     _FakeSlot = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
 
         cache = OpCompressedCache(parent=self)
+        cache.name = "{}._cache".format(self.name)
         cache.Input.connect(self._FakeSlot)
         self._cache = cache
 
+        self.CachedOutput.connect(self.Output)
+
     def setupOutputs(self):
+        # sanity checks
+        shape = self.Prediction.meta.shape
+        if len(shape) < 5:
+            raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
+        tags = self.Prediction.meta.axistags
+        haveAxes = [tags.index(c) == i for i, c in enumerate('txyzc')]
+        if not all(haveAxes):
+            raise ValueError("Prediction maps have the wrong axes order (expected: txyzc)")
+
         self.Output.meta.assignFrom(self.Prediction.meta)
         # output is a binary image
         self.Output.meta.dtype = np.uint8
@@ -103,6 +115,7 @@ class OpGraphCut(Operator):
         def processSingleVolume(t, c):
             self._lock[t, c].acquire()
             if not self._need[t, c]:
+                self._lock[t, c].release()
                 return
             start = (t, 0, 0, 0, c)
             stop = (t+1,) + self.Prediction.meta.shape[1:4] + (c+1,)
@@ -141,10 +154,10 @@ class OpGraphCut(Operator):
 
         if slot == self.Beta:
             # beta value affects the whole volume
-            self._Output.setDirty(slice(None))
+            self.Output.setDirty(slice(None))
         elif slot == self.Prediction:
             # time-channel slices are pairwise independent
-            
+
             # determine t, c from input volume
             t_ind = 0
             c_ind = 4
@@ -157,9 +170,9 @@ class OpGraphCut(Operator):
 
             # set output dirty
             start = t[0:1] + (0,)*3 + c[0:1]
-            stop = t[1:2] + (0,)*3 + c[1:2]
-            roi = SubRegion(self._Output, start=start, stop=stop)
-            self._Output.setDirty(roi)
+            stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
+            roi = SubRegion(self.Output, start=start, stop=stop)
+            self.Output.setDirty(roi)
 
 
 ##TODO @akreshuk documetation needed

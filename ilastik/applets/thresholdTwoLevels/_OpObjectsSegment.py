@@ -39,7 +39,7 @@ from lazyflow.operators.valueProviders import OpArrayCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from _OpGraphCut import segmentGC_fast
+from _OpGraphCut import segmentGC_fast, OpGraphCut
 
 
 ## segment predictions with pre-thresholding
@@ -49,98 +49,68 @@ from _OpGraphCut import segmentGC_fast
 # are taken as single objects, and their bounding boxes are fed into the graph-
 # cut segmentation algorithm (see _OpGraphCut.OpGraphCut).
 #
-# TODO
-#   - multiple time slices are not supported
-class OpObjectsSegment(Operator):
+# The operator inherits from OpGraphCut because they share some details:
+#   * output meta
+#   * dirtiness propagation
+#   * input slots
+#   * multithreading approach
+#
+class OpObjectsSegment(OpGraphCut):
     name = "OpObjectsSegment"
-
-    # prediction maps
-    Prediction = InputSlot()
 
     # thresholded predictions, or otherwise obtained ROI indicators
     # (a value of 0 is assumed to be background and ignored)
     LabelImage = InputSlot()
 
-    # which channel to use (if there are multiple channels)
-    # this slot is needed because we just want to segment one channel of the
-    # predictions
-    Channel = InputSlot(value=0)
-
-    # graph cut parameter
-    Beta = InputSlot(value=.2)
-
     # margin around each object (always xyz!)
     Margin = InputSlot(value=np.asarray((20, 20, 20)))
 
-    ## intermediate results ##
+    # bounding boxes of the labeled objects
+    # this slot returns an array of dicts with shape (t, c)
+    BoundingBoxes = OutputSlot()
 
-    # these slots are just piped
-    ConnectedComponents = OutputSlot()
-    CachedConnectedComponents = OutputSlot()
+    ### slots from OpGraphCut ###
 
-    BoundingBoxes = OutputSlot(stype=Opaque)
+    ## prediction maps
+    #Prediction = InputSlot()
 
-    # segmentation image -> graph cut segmentation
-    Output = OutputSlot()
+    ## graph cut parameter
+    #Beta = InputSlot(value=.2)
 
-    CachedOutput = OutputSlot()
+    ## segmentation image -> graph cut segmentation
+    #Output = OutputSlot()
+    #CachedOutput = OutputSlot()
+
+    ## for internal use
+    #_FakeSlot = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectsSegment, self).__init__(*args, **kwargs)
 
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.Prediction)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderPred = opReorder
-
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.LabelImage)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderLabels = opReorder
-
-        self.ConnectedComponents.connect(self.LabelImage)
-        self.CachedConnectedComponents.connect(self.LabelImage)
-
-        self._outputCache = OpCompressedCache(parent=self)
-        self._outputCache.name = "{}._outputCache".format(self.name)
-        self._outputCache.Input.connect(self.Output)
-
-        self._lock = ThreadLock()
-
     def setupOutputs(self):
+        super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
-        tags = self.Prediction.meta.axistags
-        shape = self.Prediction.meta.shape
-        haveAxes = [tags.index(c) < len(shape) for c in 'xyz']
+        shape = self.LabelImage.meta.shape
+        assert all([i == j for i, j in zip(self.Prediction.meta.shape, shape)])
+        if len(shape) < 5:
+            raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
+        tags = self.LabelImage.meta.axistags
+        haveAxes = [tags.index(c) == i for i, c in enumerate('txyzc')]
         if not all(haveAxes):
-            raise ValueError("Prediction maps must be a volume (XYZ)")
-        d = self.Prediction.meta.getTaggedShape()
-        assert d['t'] == 1, "Time axis is supposed to be singleton"
+            raise ValueError("Prediction maps have the wrong axes order (expected: txyzc)")
 
         # bounding boxes are just one element arrays of type object
-        self.BoundingBoxes.meta.shape = (1,)
-
-        self.Output.meta.assignFrom(self.Prediction.meta)
-        self.Output.meta.dtype = np.uint8
-        self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
-        self.Output.meta.axistags = vigra.defaultAxistags('xyz')
-        self.CachedOutput.meta.assignFrom(self.Output.meta)
-
-        self._outputCache.BlockShape.setValue(self.Output.meta.shape)
+        shape = self.Prediction.meta.shape
+        self.BoundingBoxes.meta.shape = (shape[0], shape[4])
+        self.BoundingBoxes.meta.dtype = np.object
+        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('tc')
 
     def execute(self, slot, subindex, roi, result):
 
         if slot == self.BoundingBoxes:
-            return self._execute_bbox(roi, result)
+            self._execute_bbox(roi, result)
         elif slot == self.Output:
-            return self._execute_graphcut(roi, result)
-        elif slot == self.CachedOutput:
-            self._lock.acquire()
-            newroi = roi.copy()
-            req = self._outputCache.Output.get(newroi)
-            req.writeInto(result)
-            req.block()
-            self._lock.release()
+            self._execute_graphcut(roi, result)
         else:
             raise NotImplementedError(
                 "execute() is not implemented for slot {}".format(str(slot)))
@@ -148,29 +118,53 @@ class OpObjectsSegment(Operator):
     def _execute_bbox(self, roi, result):
         logger.debug("computing bboxes...")
 
-        cc = self._opReorderLabels.Output[...].wait()
-        cc = vigra.taggedView(cc, axistags=self._opReorderLabels.Output.meta.axistags)
-        cc = cc.withAxes(*'xyz')
+        def getBoundingBoxForSlice(t, c):
+            cc = self.LabelImage[t, ..., c].wait()
+            cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
+            cc = cc.withAxes(*'xyz')
 
-        feats = vigra.analysis.extractRegionFeatures(
-            cc.astype(np.float32),
-            cc.astype(np.uint32),
-            features=["Count", "Coord<Minimum>", "Coord<Maximum>"])
-        feats_dict = {}
-        feats_dict["Coord<Minimum>"] = feats["Coord<Minimum>"]
-        feats_dict["Coord<Maximum>"] = feats["Coord<Maximum>"]
-        feats_dict["Count"] = feats["Count"]
-        return feats_dict
+            feats = vigra.analysis.extractRegionFeatures(
+                cc.astype(np.float32),
+                cc.astype(np.uint32),
+                features=["Count", "Coord<Minimum>", "Coord<Maximum>"])
+            feats_dict = {}
+            feats_dict["Coord<Minimum>"] = feats["Coord<Minimum>"]
+            feats_dict["Coord<Maximum>"] = feats["Coord<Maximum>"]
+            feats_dict["Count"] = feats["Count"]
+            return feats_dict
+
+        # we already do the objects in parallel, so sequential computation here
+        print(roi)
+        for ti, t in enumerate(range(roi.start[0], roi.stop[0])):
+            for ci, c in enumerate(range(roi.start[1], roi.stop[1])):
+                result[ti, ci] = getBoundingBoxForSlice(t, c)
 
     def _execute_graphcut(self, roi, result):
+        # we already do the objects in parallel, so sequential computation here
+        for t in range(roi.start[0], roi.stop[0]):
+            for c in range(roi.start[4], roi.stop[4]):
+                with self._lock[t, c]:
+                    self._runGraphCutForSlice(t, c)
+        req = self._cache.Output.get(roi)
+        req.writeInto(result)
+        req.block()
+
+    ## run graph cut algorithm on a single c-t-slice
+    # assumes that it has exclusive access (i.e. use with lock)
+    def _runGraphCutForSlice(self, t, c):
+
+        # check whether cache is filled or not
+        if not self._need[t, c]:
+            return
 
         margin = self.Margin.value
-        channel = self.Channel.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
 
         ## request the bounding box coordinates ##
-        feats = self.BoundingBoxes[0].wait()
+        # the trailing index brackets give us the dictionary (instead of an
+        # array of size 1)
+        feats = self.BoundingBoxes[t, c].wait()[0, 0]
         mins = feats["Coord<Minimum>"]
         maxs = feats["Coord<Maximum>"]
         nobj = mins.shape[0]
@@ -178,35 +172,33 @@ class OpObjectsSegment(Operator):
         mins = mins.astype(np.uint32)
         maxs = maxs.astype(np.uint32)
 
+        stop = np.asarray(self.Prediction.meta.shape, dtype=np.int)
+        start = stop * 0
+        start[0] = t
+        start[4] = c
+        stop[0] = t+1
+        stop[4] = c+1
+        start = tuple(start)
+        stop = tuple(stop)
         ## request the prediction image ##
-        # add time and channel to roi (we reordered to full 'xyztc'!)
-        predRoi = roi.copy()
-        predRoi.insertDim(3, 0, 1)  # t
-        predRoi.insertDim(4, channel, channel+1)  # c
-
-        pred = self._opReorderPred.Output.get(predRoi).wait()
-        pred = vigra.taggedView(pred,
-                                axistags=self._opReorderPred.Output.meta.axistags)
-        #FIXME what about time slices???
+        predRoi = SubRegion(self.Prediction,
+                            start=start, stop=stop)
+        pred = self.Prediction.get(predRoi).wait()
+        pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
         pred = pred.withAxes(*'xyz')
 
         ## request the connected components image ##
-        ccRoi = roi.copy()
-        ccRoi.insertDim(3, 0, 1)  # t
-        ccRoi.insertDim(4, 0, 1)  # c
-        cc = self._opReorderLabels.Output.get(ccRoi).wait()
-        cc = vigra.taggedView(
-            cc, axistags=self._opReorderLabels.Output.meta.axistags)
-        #FIXME what about time slices???
+        ccRoi = SubRegion(self.LabelImage,
+                        start=start, stop=stop)
+        cc = self.LabelImage.get(ccRoi).wait()
+        cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
         # provide xyz view for the output
-        resultXYZ = vigra.taggedView(result, axistags=self.Output.meta.axistags
-                                     ).withAxes(*'xyz')
-        # initialize result
-        resultXYZ[:] = 0
+        resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
+                                     axistags='xyz')
 
-        # let's hope the objects are not overlapping
+        #FIXME what do we do if the objects' bboxes overlap?
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             # maxs are inclusive, so we need to add 1
@@ -265,11 +257,34 @@ class OpObjectsSegment(Operator):
         # convert from label image to segmentation
         resultXYZ[resultXYZ > 0] = 1
 
-        return result
+        # write to cache
+        cacheRoi = SubRegion(self._cache.Input,
+                            start=start, stop=stop)
+        self._cache.setInSlot(self._cache.Input, (), cacheRoi,
+                            resultXYZ.withAxes(*'txyzc'))
+        self._need[t, c] = False
 
     def propagateDirty(self, slot, subindex, roi):
-        # all input slots affect the (global) graph cut computation
-        #FIXME handle time slices
-        self.Output.setDirty(slice(None))
-        self.CachedOutput.setDirty(slice(None))
+        super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)
 
+        if slot == self.LabelImage:
+            # time-channel slices are pairwise independent
+
+            # determine t, c from input volume
+            t_ind = 0
+            c_ind = 4
+            t = (roi.start[t_ind], roi.stop[t_ind])
+            c = (roi.start[c_ind], roi.stop[c_ind])
+
+            # schedule slices for recomputation
+            #FIXME do we need a lock here?
+            self._need[t[0]:t[1], c[0]:c[1]] = True
+
+            # set output dirty
+            start = t[0:1] + (0,)*3 + c[0:1]
+            stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
+            roi = SubRegion(self.Output, start=start, stop=stop)
+            self.Output.setDirty(roi)
+        elif slot == self.Margin:
+            # margin affects the whole volume
+            self.Output.setDirty(slice(None))

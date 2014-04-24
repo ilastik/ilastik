@@ -88,29 +88,6 @@ class TestOpObjectsSegment(unittest.TestCase):
     def setUp(self):
         self.vol, self.labels = getTestVolume()
 
-    def testCC(self):
-        graph = Graph()
-        op = OpObjectsSegment(graph=graph)
-        piper = OpArrayPiper(graph=graph)
-        piper.Input.setValue(self.vol)
-        op.Prediction.connect(piper.Output)
-        piper = OpArrayPiper(graph=graph)
-        piper.Input.setValue(self.labels)
-        op.LabelImage.connect(piper.Output)
-
-        # get block with t==0, c==0
-        out = op.ConnectedComponents[0, ..., 0].wait()
-        out = vigra.taggedView(out, axistags=op.Output.meta.axistags).squeeze()
-
-        # check whether no new blocks introduced
-        mask = np.where(self.labels[0, ..., 0] > 0, 0, 1)
-        masked = out * mask
-        assert_array_equal(masked, 0*masked)
-
-        # check whether the interior was labeled 1
-        assert np.all(out[22:38, 22:38, 22:38] > 0)
-        assert np.all(out[62:78, 62:78, 62:78] > 0)
-
     def testBB(self):
         graph = Graph()
         op = OpObjectsSegment(graph=graph)
@@ -120,7 +97,8 @@ class TestOpObjectsSegment(unittest.TestCase):
         op.LabelImage.setValue(self.labels)
 
         bbox = op.BoundingBoxes[...].wait()
-        assert isinstance(bbox, dict)
+        assert_array_equal(bbox.shape, (self.vol.shape[0], self.vol.shape[4]))
+        assert isinstance(bbox[0, 0], dict)
 
     def testComplete(self):
         graph = Graph()
@@ -133,7 +111,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         op.LabelImage.connect(piper.Output)
 
         # get whole volume
-        out = op.ConnectedComponents[...].wait()
+        out = op.CachedOutput[...].wait()
         out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
 
         # check whether no new blocks introduced
@@ -190,3 +168,5 @@ class TestOpObjectsSegment(unittest.TestCase):
         with self.assertRaises(ValueError):
             op.Prediction.connect(piper.Output)
             op.LabelImage.connect(piper.Output)
+
+    #TODO test dirty propagation
