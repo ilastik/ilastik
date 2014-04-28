@@ -27,7 +27,7 @@ import vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow import roi
-from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector
+from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection
 from lazyflow.request import RequestPool
 
 def axisTagObjectFromFlag(flag):
@@ -545,6 +545,46 @@ class OpSubRegion(Operator):
             if ((smallstop - smallstart ) > 0).all():
                 self.Output.setDirty( smallstart, smallstop )
 
+class OpSubRegion2(Operator):
+    """
+    A simplified version of OpSubRegion:
+    - Takes a single Roi input instead of separate Start/Stop inputs.
+    - Always propagates dirty state.
+    - Simpler implementation...
+    """
+    Input = InputSlot()
+    Roi = InputSlot() # tuple: (start, stop)
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self._roi = self.Roi.value
+        assert isinstance(self._roi[0], tuple)
+        assert isinstance(self._roi[1], tuple)
+        start, stop = map( TinyVector, self._roi )
+        assert len(start) == len(stop) == len(self.Input.meta.shape), \
+            "Roi dimensionality must match shape dimensionality"
+        if (start >= stop).any():
+            print "oops", start, stop
+            self.Output.meta.NOTREADY = True
+        else:
+            self.Output.meta.assignFrom( self.Input.meta )
+            self.Output.meta.shape = tuple( stop - start )
+    
+    def execute(self, slot, subindex, output_roi, result):
+        input_roi = numpy.array( (output_roi.start, output_roi.stop) )
+        input_roi += self._roi[0]
+        input_roi = map( tuple, input_roi )
+        self.Input(*input_roi).writeInto(result).wait()
+        return result
+
+    def propagateDirty(self, dirtySlot, subindex, input_dirty_roi):
+        input_dirty_roi = ( input_dirty_roi.start, input_dirty_roi.stop )
+        intersection = getIntersection( input_dirty_roi, self._roi, False )
+        if intersection:
+            output_dirty_roi = numpy.array(intersection)
+            output_dirty_roi -= self._roi[0]
+            output_dirty_roi = map( tuple, output_dirty_roi )
+            self.Output.setDirty( *output_dirty_roi )
 
 class OpMultiArrayMerger(Operator):
     inputSlots = [InputSlot("Inputs", level=1),InputSlot('MergingFunction')]
@@ -901,7 +941,8 @@ class OpSelectSubslot(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-
+class OpDownsample( Operator ):
+    
 
 
 
