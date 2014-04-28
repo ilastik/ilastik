@@ -63,6 +63,7 @@ except:
     from opMaskedSelect import OpMaskedSelect
     from opReorderAxes import OpReorderAxes
     from opLabelVolume import OpLabelVolume
+    from opResize import OpResize
 
     ops = list(itersubclasses(Operator))
     '''
