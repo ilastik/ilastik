@@ -344,8 +344,8 @@ class OpCompressedCache(OpCache):
     def _setInSlotInput(self, slot, subindex, roi, value, store_zero_blocks=True):
         """
         Write the data in the array 'value' into the cache.
-        If the optional ignore_zero_blocks param is True, then don't bother 
-        creating cache blocks for blocks thare are totally zero.
+        If the optional store_zero_blocks param is False, then don't bother 
+        creating cache blocks for blocks that are totally zero.
         """
         assert len(roi.stop) == len(self.Input.meta.shape), \
             "roi: {} has the wrong number of dimensions for Input shape: {}"\
