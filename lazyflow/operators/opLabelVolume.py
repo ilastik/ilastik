@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 class OpLabelVolume(Operator):
 
     ## provide the volume to label here
-    # (arbitrary shape, dtype could be restricted #TODO)
+    # (arbitrary shape, dtype could be restricted, see the implementations
+    # property supportedDtypes below)
     Input = InputSlot()
 
     ## provide labels that are treated as background
@@ -41,18 +42,30 @@ class OpLabelVolume(Operator):
     # currently available:
     # * 'vigra': use the fast algorithm from ukoethe/vigra
     # * 'blocked': use the memory saving algorithm from thorbenk/blockedarray
+    #
+    # A change here deletes all previously cached results.
     Method = InputSlot(value='vigra')
 
     ## Labeled volume
     # Axistags and shape are the same as on the Input, dtype is an integer
     # datatype.
-    # Note: This output is just an alias for CachedOutput, because all
-    # implementations use internal caches.
+    # This slot operates on a what-you-request-is-what-you-get basis, if you
+    # request a subregion only that subregion will be considered for labeling
+    # and no internal caches are used. If you want consistent labels for
+    # subsequent requests, use CachedOutput instead.
+    # This slot will be set dirty by time and channel if the background or the
+    # input changes for the respective time-channel-slice.
     Output = OutputSlot()
 
     ## Cached label image
     # Axistags and shape are the same as on the Input, dtype is an integer
     # datatype.
+    # This slot extends the ROI to the full xyz volume (c and t are unaffected)
+    # and computes the labeling for the whole volume. As long as the input does
+    # not get dirty, subsequent requests to this slot guarantee consistent
+    # labelings. The internal cache in use is an OpCompressedCache.
+    # This slot will be set dirty by time and channel if the background or the
+    # input changes for the respective time-channel-slice.
     CachedOutput = OutputSlot()
 
     name = "OpLabelVolume"
@@ -108,7 +121,7 @@ class OpLabelVolume(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Method:
             # We are changing the labeling method. In principle, the labelings
-            # are equivalent, but not neccessary the same!
+            # are equivalent, but not necessarily the same!
             self.Output.setDirty(slice(None))
         elif slot == self.Input:
             # handled by internal operator
