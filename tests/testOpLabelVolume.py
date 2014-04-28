@@ -164,6 +164,9 @@ class TestVigra(unittest.TestCase):
             "Parallel requests to CachedOutput resulted in recomputation "\
             "({}/4)".format(opCount.numExecutes)
 
+        # reset numCounts
+        opCount.numExecutes = 0
+
         reqs = [op.Output[250*i:250*(i+1), ...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
