@@ -10,7 +10,7 @@ class TestOpResize(object):
         graph = Graph()
         op = OpResize( graph=graph )
         
-        data = numpy.zeros( (128, 128), dtype=numpy.float32 )
+        data = numpy.zeros( (128, 256), dtype=numpy.float32 )
         data[32, 96] = 0.5
         data[48, 48] = 1.0
         data = vigra.filters.gaussianSmoothing(data, sigma=5.0)
@@ -18,13 +18,12 @@ class TestOpResize(object):
         data = vigra.taggedView( data, 'xy' )
 
         op.Input.setValue( data )
-        op.ResizedShape.setValue( (64, 64) )
+        op.ResizedShape.setValue( (64, 128) )
         resized_data = op.Output[:].wait()
 
         #print data.mean(), resized_data.mean()
         assert abs( 1.0 - data.mean()/resized_data.mean() ) < 0.03
         
-
         # Suppress rounding noise
         resized_data = numpy.where( resized_data > 0.1, resized_data, 0.0 )        
 
@@ -93,6 +92,32 @@ class TestOpResize(object):
         # Must tolerate a larger error due to dtype conversion...
         # The tolerance here is somewhat arbitrary.
         assert abs( 1.0 - data.mean()/resized_data.mean() ) < 1.0
+
+    def test5D(self):
+        graph = Graph()
+        op = OpResize( graph=graph )
+        
+        data = numpy.zeros( (5, 32, 128, 128, 3), dtype=numpy.float32 )
+        data[0, 0, 32, 96, 1] = 0.5
+        data[1, 16, 48, 48, 2] = 1.0
+        data = vigra.taggedView( data, 'tyzxc' ) # deliberately strange order...
+        data[0] = vigra.filters.gaussianSmoothing(data[0], sigma=5.0)
+        data[1] = vigra.filters.gaussianSmoothing(data[1], sigma=5.0)
+        data *= 1.0/data.max()
+
+        op.Input.setValue( data )
+        op.ResizedShape.setValue( (5, 32, 128, 64, 3) )
+        resized_data = op.Output[:].wait()
+
+        #print data.mean(), resized_data.mean()
+        #assert abs( 1.0 - data.mean()/resized_data.mean() ) < 0.03
+        
+        # Suppress rounding noise
+        resized_data = numpy.where( resized_data > 0.1, resized_data, 0.0 )
+
+        # Did our two high points remain?
+        assert abs(resized_data[0, 0, 32, 48, 1] - 0.5) < 0.1
+        assert abs(resized_data[1, 16, 48, 24, 2] - 1.0) < 0.1
 
 
 if __name__ == "__main__":
