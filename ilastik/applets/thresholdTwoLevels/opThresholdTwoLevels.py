@@ -29,12 +29,11 @@ from lazyflow.operators import OpPixelOperator, OpLabelVolume,\
     OpCompressedCache, OpColorizeLabels,\
     OpSingleChannelSelector, OperatorWrapper,\
     OpMultiArrayStacker, OpMultiArraySlicer,\
-    OpReorderAxes
+    OpReorderAxes, OpFilterLabels
 from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpFilterLabels5d
 from thresholdingTools import OpAnisotropicGaussianSmoothing
 from thresholdingTools import OpSelectLabels
 
@@ -258,22 +257,25 @@ class OpThresholdTwoLevels(Operator):
             return self.opGraphCut.Output
 
     def _setBlockShape(self):
-        # Blockshape is the entire block, except only 1 time slice
+        # Blockshape is the entire spatial block
         tagged_shape = self._opCache.Input.meta.getTaggedShape()
         tagged_shape['t'] = 1
+        tagged_shape['c'] = 1
 
         # Blockshape must correspond to cache input order
         blockshape = map(lambda k: tagged_shape[k], 'xyzct')
         self._opCache.BlockShape.setValue(tuple(blockshape))
 
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
+    # raise an error if setInSlot is called, we do not pre-cache input
+    #def setInSlot(self, slot, subindex, roi, value):
+        #pass
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
 
     def propagateDirty(self, slot, subindex, roi):
-        pass  # Nothing to do...
+        # dirtiness propagation is handled in the sub-operators
+        pass
 
 
 ## internal operator for one level thresholding
@@ -303,7 +305,7 @@ class _OpThresholdOneLevel(Operator):
 
         self.BeforeSizeFilter.connect( self._opLabeler.CachedOutput )
 
-        self._opFilter = OpFilterLabels5d( parent=self )
+        self._opFilter = OpFilterLabels( parent=self )
         self._opFilter.Input.connect(self._opLabeler.CachedOutput )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
@@ -348,6 +350,10 @@ class _OpThresholdOneLevel(Operator):
 ## internal operator for two level thresholding
 #
 # The input must have 5 dimensions.
+# Input is processed on a what-you-request-is-what-you-get basis: You have to
+# make sure that the ROI for slot 'Output' matches the input shape at least in
+# the spatial dimensions, or you will get inconsistent results. All requests to
+# slot 'CachedOutput' are guaranteed to be consistent though.
 class _OpThresholdTwoLevels(Operator):
     name = "_OpThresholdTwoLevels"
 
@@ -397,7 +403,7 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighLabeler = OpLabelVolume(parent=self)
         self._opHighLabeler.Input.connect(self._opHighThresholder.Output)
 
-        self._opHighLabelSizeFilter = OpFilterLabels5d(parent=self)
+        self._opHighLabelSizeFilter = OpFilterLabels(parent=self)
         self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.CachedOutput)
         self._opHighLabelSizeFilter.MinLabelSize.connect(self.MinSize)
         self._opHighLabelSizeFilter.MaxLabelSize.connect(self.MaxSize)
@@ -408,11 +414,11 @@ class _OpThresholdTwoLevels(Operator):
         self._opSelectLabels.BigLabels.connect( self._opLowLabeler.CachedOutput )
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
-        #remove the remaining very large objects - 
-        #they might still be present in case a big object
-        #was split into many small ones for the higher threshold
-        #and they got reconnected again at lower threshold
-        self._opFinalLabelSizeFilter = OpFilterLabels5d( parent=self )
+        # remove the remaining very large objects -
+        # they might still be present in case a big object
+        # was split into many small ones for the higher threshold
+        # and they got reconnected again at lower threshold
+        self._opFinalLabelSizeFilter = OpFilterLabels( parent=self )
         self._opFinalLabelSizeFilter.Input.connect(self._opSelectLabels.Output )
         self._opFinalLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
@@ -422,7 +428,7 @@ class _OpThresholdTwoLevels(Operator):
         self._opCache.name = "_OpThresholdTwoLevels._opCache"
         self._opCache.InputHdf5.connect( self.InputHdf5 )
         self._opCache.Input.connect( self._opFinalLabelSizeFilter.Output )
-       
+
         # Connect our own outputs
         self.Output.connect( self._opFinalLabelSizeFilter.Output )
         self.CachedOutput.connect( self._opCache.Output )
@@ -472,10 +478,12 @@ class _OpThresholdTwoLevels(Operator):
 
         # Copy the input metadata to the output
         self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype = numpy.uint32
+        self.Output.meta.dtype = numpy.uint8
 
-        # Blockshape is the entire block, except only 1 time slice
+        # Blockshape is the entire spatial volume (hysteresis thresholding is
+        # a global operation)
         tagged_shape = self.Output.meta.getTaggedShape()
+        tagged_shape['c'] = 1
         tagged_shape['t'] = 1
         self._opCache.BlockShape.setValue(
             tuple(tagged_shape.values()))

@@ -48,12 +48,13 @@ from _OpGraphCut import segmentGC_fast, OpGraphCut
 # of a preceding thresholding step. The connected components in the label image
 # are taken as single objects, and their bounding boxes are fed into the graph-
 # cut segmentation algorithm (see _OpGraphCut.OpGraphCut).
+# The slot CachedOutput guarantees consistent results, the slot Output computes
+# the roi on demand.
 #
 # The operator inherits from OpGraphCut because they share some details:
 #   * output meta
 #   * dirtiness propagation
 #   * input slots
-#   * multithreading approach
 #
 class OpObjectsSegment(OpGraphCut):
     name = "OpObjectsSegment"
@@ -67,7 +68,7 @@ class OpObjectsSegment(OpGraphCut):
 
     # bounding boxes of the labeled objects
     # this slot returns an array of dicts with shape (t, c)
-    BoundingBoxes = OutputSlot()
+    BoundingBoxes = OutputSlot(stype=Opaque)
 
     ### slots from OpGraphCut ###
 
@@ -81,9 +82,6 @@ class OpObjectsSegment(OpGraphCut):
     #Output = OutputSlot()
     #CachedOutput = OutputSlot()
 
-    ## for internal use
-    #_FakeSlot = OutputSlot()
-
     def __init__(self, *args, **kwargs):
         super(OpObjectsSegment, self).__init__(*args, **kwargs)
 
@@ -91,27 +89,28 @@ class OpObjectsSegment(OpGraphCut):
         super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
         shape = self.LabelImage.meta.shape
-        assert all([i == j for i, j in zip(self.Prediction.meta.shape, shape)]),\
-            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape, shape)
-        if len(shape) < 5:
-            raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
+        agree = [i == j for i, j in zip(self.Prediction.meta.shape, shape)]
+        assert all(agree),\
+            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape,
+                                               shape)
+        assert len(shape) == 5,\
+            "Prediction maps must be a full 5d volume (txyzc)"
         tags = self.LabelImage.meta.getAxisKeys()
         tags = "".join(tags)
-        haveAxes =  tags == 'txyzc'
-        if not haveAxes:
-            raise ValueError("Label image has wrong axes order"
-                             "(expected: txyzc, got: {})".format(tags))
+        assert tags == 'txyzc',\
+            "Label image has wrong axes order"\
+            "(expected: txyzc, got: {})".format(tags)
 
         # bounding boxes are just one element arrays of type object
         shape = self.Prediction.meta.shape
-        self.BoundingBoxes.meta.shape = (shape[0], shape[4])
+        self.BoundingBoxes.meta.shape = shape
         self.BoundingBoxes.meta.dtype = np.object
-        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('tc')
+        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('txyzc')
 
     def execute(self, slot, subindex, roi, result):
 
         if slot == self.BoundingBoxes:
-            self._execute_bbox(roi, result)
+            return self._execute_bbox(roi, result)
         elif slot == self.Output:
             self._execute_graphcut(roi, result)
         else:
@@ -119,46 +118,27 @@ class OpObjectsSegment(OpGraphCut):
                 "execute() is not implemented for slot {}".format(str(slot)))
 
     def _execute_bbox(self, roi, result):
+        cc = self.LabelImage.get(roi).wait()
+        cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
+        cc = cc.withAxes(*'xyz')
+
         logger.debug("computing bboxes...")
-
-        def getBoundingBoxForSlice(t, c):
-            cc = self.LabelImage[t, ..., c].wait()
-            cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
-            cc = cc.withAxes(*'xyz')
-
-            feats = vigra.analysis.extractRegionFeatures(
-                cc.astype(np.float32),
-                cc.astype(np.uint32),
-                features=["Count", "Coord<Minimum>", "Coord<Maximum>"])
-            feats_dict = {}
-            feats_dict["Coord<Minimum>"] = feats["Coord<Minimum>"]
-            feats_dict["Coord<Maximum>"] = feats["Coord<Maximum>"]
-            feats_dict["Count"] = feats["Count"]
-            return feats_dict
-
-        # we already do the objects in parallel, so sequential computation here
-        print(roi)
-        for ti, t in enumerate(range(roi.start[0], roi.stop[0])):
-            for ci, c in enumerate(range(roi.start[1], roi.stop[1])):
-                result[ti, ci] = getBoundingBoxForSlice(t, c)
+        feats = vigra.analysis.extractRegionFeatures(
+            cc.astype(np.float32),
+            cc.astype(np.uint32),
+            features=["Count", "Coord<Minimum>", "Coord<Maximum>"])
+        feats_dict = {}
+        feats_dict["Coord<Minimum>"] = feats["Coord<Minimum>"]
+        feats_dict["Coord<Maximum>"] = feats["Coord<Maximum>"]
+        feats_dict["Count"] = feats["Count"]
+        return feats_dict
 
     def _execute_graphcut(self, roi, result):
-        # we already do the objects in parallel, so sequential computation here
-        for t in range(roi.start[0], roi.stop[0]):
-            for c in range(roi.start[4], roi.stop[4]):
-                with self._lock[t, c]:
-                    self._runGraphCutForSlice(t, c)
-        req = self._cache.Output.get(roi)
-        req.writeInto(result)
-        req.block()
-
-    ## run graph cut algorithm on a single c-t-slice
-    # assumes that it has exclusive access (i.e. use with lock)
-    def _runGraphCutForSlice(self, t, c):
-
-        # check whether cache is filled or not
-        if not self._need[t, c]:
-            return
+        for i in (0, 4):
+            assert roi.stop[i] - roi.start[i] == 1,\
+                "Invalid roi for graph-cut: {}".format(str(roi))
+        t = roi.start[0]
+        c = roi.start[4]
 
         margin = self.Margin.value
         beta = self.Beta.value
@@ -167,7 +147,7 @@ class OpObjectsSegment(OpGraphCut):
         ## request the bounding box coordinates ##
         # the trailing index brackets give us the dictionary (instead of an
         # array of size 1)
-        feats = self.BoundingBoxes[t, c].wait()[0, 0]
+        feats = self.BoundingBoxes.get(roi).wait()
         mins = feats["Coord<Minimum>"]
         maxs = feats["Coord<Maximum>"]
         nobj = mins.shape[0]
@@ -175,25 +155,13 @@ class OpObjectsSegment(OpGraphCut):
         mins = mins.astype(np.uint32)
         maxs = maxs.astype(np.uint32)
 
-        stop = np.asarray(self.Prediction.meta.shape, dtype=np.int)
-        start = stop * 0
-        start[0] = t
-        start[4] = c
-        stop[0] = t+1
-        stop[4] = c+1
-        start = tuple(start)
-        stop = tuple(stop)
         ## request the prediction image ##
-        predRoi = SubRegion(self.Prediction,
-                            start=start, stop=stop)
-        pred = self.Prediction.get(predRoi).wait()
+        pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
         pred = pred.withAxes(*'xyz')
 
         ## request the connected components image ##
-        ccRoi = SubRegion(self.LabelImage,
-                        start=start, stop=stop)
-        cc = self.LabelImage.get(ccRoi).wait()
+        cc = self.LabelImage.get(roi).wait()
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
@@ -257,15 +225,12 @@ class OpObjectsSegment(OpGraphCut):
 
         logger.info("object loop done")
 
-        # convert from label image to segmentation
-        resultXYZ[resultXYZ > 0] = 1
+        # prepare result
+        resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
+        resView = resView.withAxes(*'xyz')
 
-        # write to cache
-        cacheRoi = SubRegion(self._cache.Input,
-                            start=start, stop=stop)
-        self._cache.setInSlot(self._cache.Input, (), cacheRoi,
-                            resultXYZ.withAxes(*'txyzc'))
-        self._need[t, c] = False
+        # convert from label image to segmentation
+        resView[:] = resultXYZ > 0
 
     def propagateDirty(self, slot, subindex, roi):
         super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)
@@ -278,10 +243,6 @@ class OpObjectsSegment(OpGraphCut):
             c_ind = 4
             t = (roi.start[t_ind], roi.stop[t_ind])
             c = (roi.start[c_ind], roi.stop[c_ind])
-
-            # schedule slices for recomputation
-            #FIXME do we need a lock here?
-            self._need[t[0]:t[1], c[0]:c[1]] = True
 
             # set output dirty
             start = t[0:1] + (0,)*3 + c[0:1]

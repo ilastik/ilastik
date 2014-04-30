@@ -67,7 +67,7 @@ class TestOpGraphCut(unittest.TestCase):
         piper.Input.setValue(self.fullVolume)
         op.Prediction.connect(piper.Output)
 
-        out = op.Output[...].wait()
+        out = op.CachedOutput[...].wait()
         out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
         assert_array_equal(out.shape, self.fullVolume.shape)
 
@@ -96,9 +96,8 @@ class TestOpObjectsSegment(unittest.TestCase):
         op.Prediction.connect(piper.Output)
         op.LabelImage.setValue(self.labels)
 
-        bbox = op.BoundingBoxes[...].wait()
-        assert_array_equal(bbox.shape, (self.vol.shape[0], self.vol.shape[4]))
-        assert isinstance(bbox[0, 0], dict)
+        bbox = op.BoundingBoxes[0, ..., 0].wait()
+        assert isinstance(bbox, dict)
 
     def testComplete(self):
         graph = Graph()
@@ -165,7 +164,7 @@ class TestOpObjectsSegment(unittest.TestCase):
         piper = OpArrayPiper(graph=graph)
         piper.Input.setValue(vec)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
             op.Prediction.connect(piper.Output)
             op.LabelImage.connect(piper.Output)
 

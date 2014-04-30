@@ -42,6 +42,9 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 ## TODO @akreshuk documentation
+#  - this operator assumes txyzc axis order
+#  - only ROIs with 1 channel, 1 time slice are valid for slot Output
+#  - requests to slot CachedOutput are guaranteed to be consistent
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
@@ -55,100 +58,54 @@ class OpGraphCut(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
-    # for internal use
-    _FakeSlot = OutputSlot()
-
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
 
         cache = OpCompressedCache(parent=self)
         cache.name = "{}._cache".format(self.name)
-        cache.Input.connect(self._FakeSlot)
+        cache.Input.connect(self.Output)
         self._cache = cache
 
-        self.CachedOutput.connect(self.Output)
+        self.CachedOutput.connect(self._cache.Output)
 
     def setupOutputs(self):
         # sanity checks
         shape = self.Prediction.meta.shape
-        if len(shape) < 5:
-            raise ValueError("Prediction maps must be a full 5d volume (txyzc)")
+        assert len(shape) == 5,\
+            "Prediction maps must be a full 5d volume (txyzc)"
         tags = self.Prediction.meta.getAxisKeys()
         tags = "".join(tags)
-        haveAxes =  tags == 'txyzc'
-        if not haveAxes:
-            raise ValueError("Prediction maps have wrong axes order"
-                             "(expected: txyzc, got: {})".format(tags))
+        assert tags == 'txyzc',\
+            "Prediction maps have wrong axes order"\
+            "(expected: txyzc, got: {})".format(tags)
 
         self.Output.meta.assignFrom(self.Prediction.meta)
         # output is a binary image
         self.Output.meta.dtype = np.uint8
 
-        # fake slot provides meta data for cache
-        self._FakeSlot.meta.assignFrom(self.Output.meta)
-        
         # cache should hold entire c-t-slices in memory
         shape = list(self.Prediction.meta.shape)
-        t = shape[0]
-        c = shape[4]
         shape[0] = 1
         shape[4] = 1
         self._cache.BlockShape.setValue(tuple(shape))
 
-        # set up multithreading environment
-        self._need = np.ones((t, c), dtype=np.bool)
-        self._lock = np.empty((t, c), dtype=np.object)
-        for i in range(t):
-            for j in range(c):
-                self._lock[i, j] = ThreadLock()
-
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown slot requested: {}".format(slot)
-        self._updateCache(roi)
-        req = self._cache.Output.get(roi)
-        req.writeInto(result)
-        req.block()
+        for i in (0, 4):
+            assert roi.stop[i] - roi.start[i] == 1,\
+                "Invalid roi for graph-cut: {}".format(str(roi))
 
-    def _updateCache(self, roi):
+        ## request the prediction image ##
+        pred = self.Prediction.get(roi).wait()
+        pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
+        pred = pred.withAxes(*'xyz')
 
-        beta = self.Beta.value
+        # prepare result
+        resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
+        resView = resView.withAxes(*'xyz')
 
-        # closure to be handed to the request pool
-        def processSingleVolume(t, c):
-            self._lock[t, c].acquire()
-            if not self._need[t, c]:
-                self._lock[t, c].release()
-                return
-            start = (t, 0, 0, 0, c)
-            stop = (t+1,) + self.Prediction.meta.shape[1:4] + (c+1,)
-            predRoi = SubRegion(self.Prediction,
-                                start=start, stop=stop)
-            cacheRoi = SubRegion(self._cache.Input, start=start, stop=stop)
-
-            ## request the prediction image ##
-            pred = self.Prediction.get(predRoi).wait()
-            pred = vigra.taggedView(
-                pred, axistags=self.Prediction.meta.axistags)
-            pred = pred.withAxes(*'xyz')
-
-            data = segmentGC_fast(pred, beta)
-            data = vigra.taggedView(data, axistags='xyz')
-            data = data.withAxes(*'txyzc')
-            # process single volume, write result to cache
-            self._cache.setInSlot(self._cache.Input, (), cacheRoi,
-                                  data)
-            self._need[t, c] = False
-            self._lock[t, c].release()
-
-        pool = RequestPool()
-
-        for t in range(roi.start[0], roi.stop[0]):
-            for c in range(roi.start[4], roi.stop[4]):
-                pool.add(Request(functools.partial(processSingleVolume, t, c)))
-
-        logger.info("Updating graph-cut cache")
-        pool.wait()
-        pool.clean()
+        logger.info("Executing graph cut ... (this might take a while)")
+        resView[:] = segmentGC_fast(pred, self.Beta.value)
         logger.info("Graph-cut done")
 
     def propagateDirty(self, slot, subindex, roi):
@@ -165,10 +122,6 @@ class OpGraphCut(Operator):
             c_ind = 4
             t = (roi.start[t_ind], roi.stop[t_ind])
             c = (roi.start[c_ind], roi.stop[c_ind])
-
-            # schedule slices for recomputation
-            #FIXME do we need a lock here?
-            self._need[t[0]:t[1], c[0]:c[1]] = True
 
             # set output dirty
             start = t[0:1] + (0,)*3 + c[0:1]
