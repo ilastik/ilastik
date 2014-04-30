@@ -141,6 +141,27 @@ class TestVigra(unittest.TestCase):
 
         assert opCount.numExecutes == 1
 
+    def testCorrectBlocking(self):
+        g = Graph()
+        c, t = 2, 3
+        vol = np.zeros((1000, 100, 10, 2, 3))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        opCount = CountExecutes(graph=g)
+        opCount.Input.setValue(vol)
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.connect(opCount.Output)
+
+        out1 = op.CachedOutput[:500, ...].wait()
+        out2 = op.CachedOutput[500:, ...].wait()
+
+        assert opCount.numExecutes == c*t
+
     def testThreadSafety(self):
         g = Graph()
 
@@ -268,20 +289,20 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
 
-@unittest.skipIf(not haveBlocked(), "Cannot test blockedarray because you don't have the module")
-class TestBlocked(TestVigra):
+if haveBlocked():
+    class TestBlocked(TestVigra):
 
-    def setUp(self):
-        self.method = np.asarray(['blocked'], dtype=np.object)
+        def setUp(self):
+            self.method = np.asarray(['blocked'], dtype=np.object)
 
-    #@unittest.skip("Not implemented yet")
-    #def testUnsupported(self):
-        #pass
+        #@unittest.skip("Not implemented yet")
+        #def testUnsupported(self):
+            #pass
 
-    # background value is unsupported for blocked labeling
-    @unittest.expectedFailure
-    def testBackground(self):
-        super(TestBlocked, self).testBackground()
+        # background value is unsupported for blocked labeling
+        @unittest.expectedFailure
+        def testBackground(self):
+            super(TestBlocked, self).testBackground()
 
 
 def assertEquivalentLabeling(x, y):
