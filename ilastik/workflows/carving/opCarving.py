@@ -249,9 +249,9 @@ class OpCarving(Operator):
     def connectToPreprocessingApplet(self,applet):
         self.PreprocessingApplet = applet
     
-    def updatePreprocessing(self):
-        if self.PreprocessingApplet is None or self._mst is None:
-            return
+#     def updatePreprocessing(self):
+#         if self.PreprocessingApplet is None or self._mst is None:
+#             return
         #FIXME: why were the following lines needed ?
         # if len(self._mst.object_names)==0:
         #     self.PreprocessingApplet.enableWriteprotect(True)
@@ -416,7 +416,7 @@ class OpCarving(Operator):
         self.BackgroundPriority.setValue( mst.bg_priority[name] )
         self.NoBiasBelow.setValue( mst.no_bias_below[name] )
         
-        self.updatePreprocessing()
+        #self.updatePreprocessing()
         # The entire segmentation layer needs to be refreshed now.
         self.Segmentation.setDirty()
         
@@ -447,7 +447,7 @@ class OpCarving(Operator):
 
         #now that 'name' has been deleted, rebuild the done overlay
         self._buildDone()
-        self.updatePreprocessing()
+        #self.updatePreprocessing()
     
     def deleteObject(self, name):
         logger.info( "want to delete object with name = %s" % name )
@@ -538,7 +538,7 @@ class OpCarving(Operator):
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
         
-        self.updatePreprocessing()
+        #self.updatePreprocessing()
 
 
     def get_label_voxels(self):

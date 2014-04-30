@@ -26,7 +26,7 @@ from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QColor, QMenu, QMessageBox, QFileDialog
 
 #volumina
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
@@ -195,7 +195,8 @@ class CarvingGui(LabelingGui):
         ## object names
         
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
-        self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+        if hasattr( self.labelingDrawerUi, 'exportAllMeshesButton' ):
+            self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
 
         
         def labelBackground():
@@ -738,17 +739,15 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         #raw data
-        '''
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
             raw5D = self.topLevelOperatorView.RawData.value
             layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
             #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
             layer.visible = True
-            layer.name = 'raw'
+            layer.name = 'Raw Data'
             layer.opacity = 1.0
             layers.append(layer)
-        '''
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
