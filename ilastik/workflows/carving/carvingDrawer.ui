@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>338</width>
-    <height>730</height>
+    <height>732</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -355,7 +355,7 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_5">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QPushButton" name="namesButton">
        <property name="sizePolicy">
@@ -370,6 +370,17 @@
        <property name="icon">
         <iconset>
          <normaloff>../../shell/gui/icons/16x16/actions/document-open.png</normaloff>../../shell/gui/icons/16x16/actions/document-open.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportAllMeshesButton">
+       <property name="text">
+        <string>Export All Meshes</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>../../shell/gui/icons/16x16/actions/document-save-as.png</normaloff>../../shell/gui/icons/16x16/actions/document-save-as.png</iconset>
        </property>
       </widget>
      </item>

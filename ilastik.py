@@ -19,6 +19,7 @@
 
 # Standard
 import sys
+import os
 import argparse
 
 from ilastik.config import cfg as ilastik_config
@@ -102,6 +103,7 @@ elif parsed_args.start_recording or \
 
 # Auto-open project
 if parsed_args.project is not None:
+    parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
     from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.project).totalPath()
@@ -113,6 +115,7 @@ if parsed_args.project is not None:
 
 # Auto-create new project
 if parsed_args.new_project is not None:
+    parsed_args.new_project = os.path.expanduser(parsed_args.new_project)
     #convert path to convenient format
     from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.new_project).totalPath()
