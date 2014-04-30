@@ -155,7 +155,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         # Block must not exceed total bounds.
         # Shift start up if necessary
-        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2.0
+        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2
         rendering_start_3d = numpy.maximum( (0,0,0), rendering_start_3d )
 
         # Compute stop and shift down if necessary
