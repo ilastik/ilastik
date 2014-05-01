@@ -169,6 +169,9 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
                         axisorder = "".join(tag.key for tag in datasetInfo.axistags)
                         infoGroup.create_dataset('axisorder', data=axisorder)
+                    if datasetInfo.subvolume_roi is not None:
+                        infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
+                        
 
         self._dirty = False
 
@@ -324,6 +327,12 @@ class DataSelectionSerializer( AppletSerializer ):
                 datasetInfo.axistags = vigra.defaultAxistags(axisorder)
             except KeyError:
                 pass
+        
+        try:
+            start, stop = map( tuple, infoGroup['subvolume_roi'].value )
+            datasetInfo.subvolume_roi = (start, stop)
+        except KeyError:
+            pass
         
         # If the data is supposed to be in the project,
         #  check for it now.

@@ -420,11 +420,16 @@ class DataSelectionGui(QWidget):
                 break
         return firstNewLane
 
-    def addFileNames(self, fileNames, roleIndex, startingLane=None):
+    def addFileNames(self, fileNames, roleIndex, startingLane=None, rois=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         If startingLane is None, the filenames will be *appended* to the role's list of files.
+        
+        If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
         """
+        if rois is not None:
+            assert len(rois) == len(fileNames)
+            
         infos = []
 
         if startingLane is None or startingLane == -1:
@@ -452,8 +457,12 @@ class DataSelectionGui(QWidget):
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
-        for _, filePath in enumerate(fileNames):
+        for file_index, filePath in enumerate(fileNames):
             datasetInfo = DatasetInfo()
+            
+            if rois is not None:
+                datasetInfo.subvolume_roi = rois[file_index]
+            
             cwd = self.topLevelOperator.WorkingDirectory.value
             
             absPath, relPath = getPathVariants(filePath, cwd)
@@ -649,14 +658,28 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        from pydvid.gui.contents_browser import ContentsBrowser
-        browser = ContentsBrowser(["localhost:8000"], parent=self)
-        if browser.exec_() == ContentsBrowser.Rejected:
+        #from pydvid.gui.contents_browser import ContentsBrowser
+        from dvidDataSelectionBrowser import DvidDataSelectionBrowser
+        browser = DvidDataSelectionBrowser(["localhost:8000"], parent=self)
+        if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return
 
+        rois = None
         hostname, dset_index, volume_name, uuid = browser.get_selection()
-        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )        
-        self.addFileNames([dvid_url], roleIndex, laneIndex)
+        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
+        subvolume_roi = browser.get_subvolume_roi()
+
+        if subvolume_roi is None:
+            self.addFileNames([dvid_url], roleIndex, laneIndex)
+        else:
+            # In ilastik, we display the dvid volume axes in C-order, despite the dvid convention of F-order
+            # Transpose the subvolume roi to match
+            # (see implementation of OpDvidVolume)
+            start, stop = subvolume_roi
+            start = tuple(reversed(start))
+            stop = tuple(reversed(stop))
+            self.addFileNames([dvid_url], roleIndex, laneIndex, [(start, stop)])
+            
 
 
 

@@ -23,6 +23,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -49,6 +50,7 @@ class DatasetInfo(object):
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
+        self.subvolume_roi = None
 
         if jsonNamespace is not None:
             self.updateFromJson( jsonNamespace )
@@ -75,7 +77,8 @@ class DatasetInfo(object):
         "filepath" : str,
         "drange" : tuple,
         "nickname" : str,
-        "axistags" : str
+        "axistags" : str,
+        "subvolume_roi" : RoiTuple()
     }
 
     def updateFromJson(self, namespace):
@@ -165,6 +168,8 @@ class OpDataSelection(Operator):
             else:
                 # Use a normal (filesystem) reader
                 opReader = OpInputDataReader(parent=self)
+                if datasetInfo.subvolume_roi is not None:
+                    opReader.SubVolumeRoi.setValue( datasetInfo.subvolume_roi )
                 opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
                 opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
