@@ -940,13 +940,3 @@ class OpSelectSubslot(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
-
-class OpDownsample( Operator ):
-    
-
-
-
-
-
-
-    
