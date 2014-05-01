@@ -22,7 +22,7 @@ import shutil
 import collections
 import numpy
 import nose
-from lazyflow.utility.jsonConfig import Namespace, JsonConfigParser, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import Namespace, JsonConfigParser, AutoEval, RoiTuple, FormattedField
 
 import logging
 logger = logging.getLogger(__name__)
@@ -86,6 +86,7 @@ class TestJsonConfig(object):
         "formatted_setting" : FormattedField( requiredFields=["user_name", "user_home_town"]),
         "array_setting" : numpy.array,
         "array_from_string_setting" : AutoEval(numpy.array),
+        "roi_setting" : RoiTuple(),
         
         "subconfig" : JsonConfigParser(SubConfigSchema)
     }
@@ -106,6 +107,7 @@ class TestJsonConfig(object):
             "formatted_setting" : "Greetings, {user_name} from {user_home_town}!",
             "array_setting" : [1,2,3,4],
             "array_from_string_setting" : "[1, 1*2, 1*3, 1*4]",
+            "roi_setting" : [[1,2,3,4,5], [6,7,8,9,10]],
             
             "subconfig" :   {
                                 "_schema_name" : "sub-schema",
@@ -137,6 +139,7 @@ class TestJsonConfig(object):
         assert configFields.another_auto_int_setting == 43
         assert configFields.bool_setting is True
         assert configFields.formatted_setting.format( user_name="Stuart", user_home_town="Washington, DC" ) == "Greetings, Stuart from Washington, DC!"
+        assert configFields.roi_setting == ((1,2,3,4,5), (6,7,8,9,10))
         
         assert isinstance(configFields.array_setting, numpy.ndarray)
         assert (configFields.array_setting == [1,2,3,4]).all()
