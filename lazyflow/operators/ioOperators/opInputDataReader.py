@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpBlockedArrayCache
+from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpSubRegion2
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
@@ -60,6 +60,10 @@ class OpInputDataReader(Operator):
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype='filestring', optional=True)
     FilePath = InputSlot(stype='filestring')
+
+    # FIXME: Document this.
+    SubVolumeRoi = InputSlot(optional=True) # (start, stop)
+
     Output = OutputSlot()
     
     loggingName = __name__ + ".OpInputDataReader"
@@ -128,6 +132,13 @@ class OpInputDataReader(Operator):
         if self.internalOutput is None:
             raise RuntimeError("Can't read " + filePath + " because it has an unrecognized format.")
 
+        # If we've got a ROI, append a subregion operator.
+        if self.SubVolumeRoi.ready():
+            self._opSubRegion = OpSubRegion2( parent=self )
+            self._opSubRegion.Roi.setValue( self.SubVolumeRoi.value )
+            self._opSubRegion.Input.connect( self.internalOutput )
+            self.internalOutput = self._opSubRegion.Output
+        
         # Directly connect our own output to the internal output
         self.Output.connect( self.internalOutput )
     
