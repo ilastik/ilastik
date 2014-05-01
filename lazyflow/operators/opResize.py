@@ -6,6 +6,7 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from .opReorderAxes import OpReorderAxes
+from lazyflow.utility import OrderedSignal
 
 class OpResize5D( Operator ):
     """
@@ -22,6 +23,7 @@ class OpResize5D( Operator ):
     def __init__(self, *args, **kwargs):
         super( OpResize5D, self ).__init__( *args, **kwargs )
         self._input_to_output_scales = None
+        self.progressSignal = OrderedSignal()
     
     def setupOutputs(self):
         assert self.Input.meta.getAxisKeys() == list('tzyxc')
@@ -87,9 +89,15 @@ class OpResize5D( Operator ):
                 result_float = vigra.sampling.resize(step_input_squeezed, shape=result_step.shape[:-1])
                 result_step[:] = result_float.round()
 
-        # FIXME: request pool...        
+        # FIXME: Progress here will not be correct for multiple threads.
+        self.progressSignal(0)        
+
+        # FIXME: request pool...
         for t in range( t_start, t_stop ):
             process_timestep( t )
+            progress = 100*(t-t_start)/(t_stop-t_start)
+            self.progressSignal( int(progress) )
+        self.progressSignal(100)
 
         return result
 
@@ -127,6 +135,8 @@ class OpResize(Operator):
         self._op5_out.Input.connect( self._opResize5D.Output )
         # AxisOrder is configured below
         self.Output.connect( self._op5_out.Output )
+        
+        self.progressSignal = self._opResize5D.progressSignal
 
     def setupOutputs(self):
         axes = self.Input.meta.getAxisKeys()
