@@ -41,7 +41,12 @@ from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
-## TODO @akreshuk documentation
+# This operator implements an interface to compute Graph Cut segmentations
+# via the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
+# Potts model is assumed, with a 4-neighborhood for 2D data and
+# a 6-neighborhood for 3D data. The prediction maps in the input
+# are used as unaries and are taken "as is", without an additional
+# Log operation (TODO: make optional log).
 #  - this operator assumes txyzc axis order
 #  - only ROIs with 1 channel, 1 time slice are valid for slot Output
 #  - requests to slot CachedOutput are guaranteed to be consistent
@@ -51,7 +56,7 @@ class OpGraphCut(Operator):
     # prediction maps
     Prediction = InputSlot()
 
-    # graph cut parameter
+    # graph cut parameter, usually called lambda
     Beta = InputSlot(value=.2)
 
     # segmentation image -> graph cut segmentation
@@ -105,7 +110,7 @@ class OpGraphCut(Operator):
         resView = resView.withAxes(*'xyz')
 
         logger.info("Executing graph cut ... (this might take a while)")
-        resView[:] = segmentGC_fast(pred, self.Beta.value)
+        resView[:] = segmentGC(pred, self.Beta.value)
         logger.info("Graph-cut done")
 
     def propagateDirty(self, slot, subindex, roi):
@@ -130,8 +135,20 @@ class OpGraphCut(Operator):
             self.Output.setDirty(roi)
 
 
-##TODO @akreshuk documetation needed
-def segmentGC_fast(pred, beta):
+def segmentGC(pred, beta):
+    '''
+       This function implements a call to the standard Graph Cut segmentation
+       in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
+       Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood 
+       for 3D data to define the pairwise terms.
+       Parameters:
+       -- pred - the unary terms, used directly (no Log applied, do it outside if needed)
+          This input is assumed to be 3D! 
+       -- beta - the weight of the pairwise potentials, usually called lambda
+       Return:
+       -- binary volume, as produced by OpenGM
+       
+    '''
     nx, ny, nz = pred.shape
 
     numVar = pred.size
@@ -147,8 +164,8 @@ def segmentGC_fast(pred, beta):
         predflat = predflat.astype(np.float32)
         predflat = predflat/256.
 
-    functions[:, 0] = 2*predflat[:, 0]
-    functions[:, 1] = 1-2*predflat[:, 0]
+    functions[:, 0] = predflat[:, 0]
+    functions[:, 1] = 1-predflat[:, 0]
 
     fids = gm.addFunctions(functions)
     gm.addFactors(fids, np.arange(0, numVar))

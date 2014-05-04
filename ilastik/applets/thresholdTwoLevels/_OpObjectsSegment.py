@@ -39,15 +39,23 @@ from lazyflow.operators.valueProviders import OpArrayCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from _OpGraphCut import segmentGC_fast, OpGraphCut
+from _OpGraphCut import segmentGC, OpGraphCut
 
 
 ## segment predictions with pre-thresholding
 #
 # This operator segments an image into foreground and background and makes use
-# of a preceding thresholding step. The connected components in the label image
-# are taken as single objects, and their bounding boxes are fed into the graph-
-# cut segmentation algorithm (see _OpGraphCut.OpGraphCut).
+# of a preceding thresholding step. After thresholding, connected components
+# are computed and are then considered to be "cores" of objects to be segmented.
+# The Graph Cut optimization (see _OpGraphCut.OpGraphCut) is then applied to
+# the bounding boxes of the object "cores, enlarged by a user-specified margin.
+# The pre-thresholding operation allows to apply Graph Cut segmentation on
+# large data volumes, in case the segmented foreground consists of sparse objects
+# of limited size and the probability map of the unaries is of high recall, but
+# possibly low precision. One particular application for this setup is
+# segmentation of synapses in anisotropic 3D Electron Microscopy image stacks.
+# 
+#
 # The slot CachedOutput guarantees consistent results, the slot Output computes
 # the roi on demand.
 #
@@ -169,7 +177,6 @@ class OpObjectsSegment(OpGraphCut):
         resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
                                      axistags='xyz')
 
-        #FIXME what do we do if the objects' bboxes overlap?
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             # maxs are inclusive, so we need to add 1
@@ -190,12 +197,16 @@ class OpObjectsSegment(OpGraphCut):
                 return
 
             probbox = pred[xmin:xmax, ymin:ymax, zmin:zmax]
-            gcsegm = segmentGC_fast(probbox, beta)
+            gcsegm = segmentGC(probbox, beta)
             gcsegm = vigra.taggedView(gcsegm, axistags='xyz')
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
 
-            #TODO @akreshuk document what this part is doing
+            # Extended bboxes of different objects might overlap.
+            # To avoid conflicting segmentations, we find all connected
+            # components in the results and only take the one, which
+            # overlaps with the object "core" or "seed", defined by the
+            # pre-thresholding
             seed = ccbox == i
             filtered = seed*ccsegm
             passed = np.unique(filtered)
