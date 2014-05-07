@@ -15,89 +15,22 @@
 # Copyright 2011-2014, the ilastik developers
 
 #Python
-import time
 import copy
-from functools import partial
 import logging
 traceLogger = logging.getLogger("TRACE." + __name__)
 
 #SciPy
 import numpy
-import vigra
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.request import Request, RequestPool
-from lazyflow.utility import traceLogged
+from lazyflow.classifiers import LazyflowClassifierABC
 
 from opFeatureMatrixCache import OpFeatureMatrixCache
 from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
-class OpTrainRandomForest(Operator):
-    name = "TrainRandomForest"
-    description = "Train a random forest on multiple images"
-    category = "Learning"
-
-    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool")]
-    outputSlots = [OutputSlot("Classifier")]
-    
-    logger = logging.getLogger(__name__+".OpTrainRandomForest")
-
-    def __init__(self, parent = None, graph=None):
-        Operator.__init__(self, parent=parent, graph=graph)
-        self._forest_count = 4
-        # TODO: Make treecount configurable via an InputSlot
-        self._tree_count = 25
-
-    def setupOutputs(self):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].meta.dtype = object
-            self.outputs["Classifier"].meta.shape = (self._forest_count,)
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-    #FIXME: It is not possible to access the class variable logger here.
-    #
-    #@traceLogged(OpTrainRandomForest.logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
-    def execute(self, slot, subindex, roi, result):
-        featMatrix=[]
-        labelsMatrix=[]
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.meta.shape is not None:
-                labels=labels[:].wait()
-
-                indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-                #Maybe later request only part of the region?
-
-                image=self.inputs["Images"][i][:].wait()
-
-                features=image[indexes]
-                labels=labels[indexes]
-
-                featMatrix.append(features)
-                labelsMatrix.append(labels)
-
-
-        featMatrix=numpy.concatenate(featMatrix,axis=0)
-        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-
-        # train and store self._forest_count forests in parallel
-        pool = RequestPool()
-        for i in range(self._forest_count):
-            def train_and_store(number):
-                result[number] = vigra.learning.RandomForest(self._tree_count)
-                result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-            req = pool.request(partial(train_and_store, i))
-
-        pool.wait()
-
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-class OpTrainRandomForestBlocked(Operator):
+class OpTrainClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
     nonzeroLabelBlocks = InputSlot(level=1) # TODO: Eliminate this slot. It isn't used any more...
@@ -109,8 +42,8 @@ class OpTrainRandomForestBlocked(Operator):
     #              \                                                                                                  \
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
 
-    def __init__(self, *args, **kwargs):
-        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)        
+    def __init__(self, classifier_factory, *args, **kwargs):
+        super(OpTrainClassifierBlocked, self).__init__(*args, **kwargs)        
         self.progressSignal = OrderedSignal()
         
         self._opFeatureMatrixCaches = OperatorWrapper( OpFeatureMatrixCache, parent=self )
@@ -122,7 +55,7 @@ class OpTrainRandomForestBlocked(Operator):
         self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )
         self._opConcatenateFeatureMatrices.ProgressSignals.connect( self._opFeatureMatrixCaches.ProgressSignal )
         
-        self._opTrainFromFeatures = OpTrainRandomForestFromFeatures( parent=self )
+        self._opTrainFromFeatures = OpTrainClassifierFromFeatures( classifier_factory, parent=self )
         self._opTrainFromFeatures.LabelAndFeatureMatrix.connect( self._opConcatenateFeatureMatrices.ConcatenatedOutput )
         self._opTrainFromFeatures.MaxLabel.connect( self.MaxLabel )
         
@@ -146,35 +79,36 @@ class OpTrainRandomForestBlocked(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-class OpTrainRandomForestFromFeatures(Operator):
+class OpTrainClassifierFromFeatures(Operator):
     LabelAndFeatureMatrix = InputSlot()
     
     MaxLabel = InputSlot()
     Classifier = OutputSlot()
     
-    def __init__(self, *args, **kwargs):
-        super(OpTrainRandomForestFromFeatures, self).__init__(*args, **kwargs)
+    def __init__(self, lazyflow_classifier, *args, **kwargs):
+        """
+        classifier_factory: A callable that creates a classifier instance.
+                            Examples: 
+                                - sklearn.naive_bayes.GaussianNB
+                                - partial(sklearn.ensemble.RandomForestClassifier, 10)
+        """
+        super(OpTrainClassifierFromFeatures, self).__init__(*args, **kwargs)
+        self._lazyflow_classifier = lazyflow_classifier
         self.trainingCompleteSignal = OrderedSignal()
-        self._forest_count = 10
-        self._forests = (None,) * self._forest_count
-
-        # TODO: Make treecount configurable via an InputSlot
-        self._tree_count = 10
 
         # TODO: Progress...
         #self.progressSignal = OrderedSignal()
 
     def setupOutputs(self):
-        self.outputs["Classifier"].meta.dtype = object
-        self.outputs["Classifier"].meta.shape = (self._forest_count,)
+        self.Classifier.meta.dtype = object
+        self.Classifier.meta.shape = (1,)
 
     def execute(self, slot, subindex, roi, result):
         labels_and_features = self.LabelAndFeatureMatrix.value
         featMatrix = labels_and_features[:,1:]
-        labelsMatrix = labels_and_features[:,0:1]
+        labelsMatrix = labels_and_features[:,0:1].astype(numpy.uint32)
         
         maxLabel = self.MaxLabel.value
-        labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
 
         if featMatrix.shape[0] < maxLabel:
             # If there isn't enough data for the random forest to train with, return None
@@ -182,42 +116,11 @@ class OpTrainRandomForestFromFeatures(Operator):
             self.trainingCompleteSignal()
             return
 
-        try:
-            self.logger.debug("Learning %d random forests with %d trees each with vigra..." % (self._forest_count, self._tree_count))
-            t = time.time()
-            # train and store self._forest_count forests in parallel
-            pool = RequestPool()
-
-            for i in range(self._forest_count):
-                def train_and_store(number):
-                    result[number] = vigra.learning.RandomForest(self._tree_count, labels=labelList)
-                    result[number].learnRF( numpy.asarray(featMatrix, dtype=numpy.float32),
-                                            numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                req = pool.request(partial(train_and_store, i))
-
-            pool.wait()
-            pool.clean()
-
-            self.logger.debug("Learning %d random forests with %d trees each with vigra took %f sec." % \
-                (self._forest_count, self._tree_count, time.time()-t))
-        except:
-            self.logger.error( "ERROR: could not learn classifier" )
-            
-            if numpy.prod(featMatrix.shape) > 0:
-                m = featMatrix.max()
-            else:
-                m = 'N/A'
-            self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, m, featMatrix.dtype) )
-
-            if numpy.prod(labelsMatrix.shape) > 0:
-                m = labelsMatrix.max()
-            else:
-                m = 'N/A'
-            self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, m, labelsMatrix.dtype ) )
-
-            raise
-
-        self._forests = result
+        assert isinstance(self._lazyflow_classifier, LazyflowClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the ClassifierABC interface."\
+            "".format( type(self._lazyflow_classifier) )
+        self._lazyflow_classifier.train( featMatrix, labelsMatrix[:,0] )
+        result[0] = self._lazyflow_classifier
         
         self.trainingCompleteSignal()
         return result
@@ -225,167 +128,20 @@ class OpTrainRandomForestFromFeatures(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Classifier.setDirty()        
 
-class OpTrainRandomForestBlocked_OLD(Operator):
-    # TODO: Eliminate this obsolete operator....
-    name = "TrainRandomForestBlocked"
-    description = "Train a random forest on multiple images"
-    category = "Learning"
 
-    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), \
-                  InputSlot("nonzeroLabelBlocks", level=1), InputSlot("MaxLabel")]
-    outputSlots = [OutputSlot("Classifier")]
-
-    WarningEmitted = False
+class OpClassifierPredict(Operator):
+    Image = InputSlot()
+    LabelsCount = InputSlot()
+    Classifier = InputSlot()
     
-    logger = logging.getLogger(__name__+".OpTrainRandomForestBlocked")
+    PMaps = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
-        self.progressSignal = OrderedSignal()
-        self._forest_count = 10
-        # TODO: Make treecount configurable via an InputSlot
-        self._tree_count = 10
-        self._forests = (None,) * self._forest_count
+        super( OpClassifierPredict, self ).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        self.outputs["Classifier"].meta.dtype = object
-        self.outputs["Classifier"].meta.shape = (self._forest_count,)
-
-    @traceLogged(logger, level=logging.DEBUG, msg="OpTrainRandomForestBlocked: Training Classifier")
-    def execute(self, slot, subindex, roi, result):
-        progress = 0
-        self.progressSignal(progress)
-        numImages = len(self.Images)
-
-        featMatrix=[]
-        labelsMatrix=[]
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.meta.shape is not None:
-                #labels=labels[:].wait()
-                blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
-
-                progress += 10/numImages
-                self.progressSignal(progress)
-
-                reqlistlabels = []
-                reqlistfeat = []
-                traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
-                for b in blocks[0]:
-
-                    request = labels[b]
-                    featurekey = list(b)
-                    featurekey[-1] = slice(None, None, None)
-                    request2 = self.inputs["Images"][i][featurekey]
-
-                    reqlistlabels.append(request)
-                    reqlistfeat.append(request2)
-
-                traceLogger.debug("Requests prepared")
-
-                numLabelBlocks = len(reqlistlabels)
-                progress_outer = [progress] # Store in list for closure access
-                if numLabelBlocks > 0:
-                    progressInc = (80-10)/numLabelBlocks/numImages
-
-                def progressNotify(req):
-                    # Note: If we wanted perfect progress reporting, we could use lock here
-                    #       to protect the progress from being incremented simultaneously.
-                    #       But that would slow things down and imperfect reporting is okay for our purposes.
-                    progress_outer[0] += progressInc/2
-                    self.progressSignal(progress_outer[0])
-
-                for ir, req in enumerate(reqlistfeat):
-                    req.notify_finished(progressNotify)
-                    req.submit()
-
-                for ir, req in enumerate(reqlistlabels):
-                    req.notify_finished(progressNotify)
-                    req.submit()
-
-                traceLogger.debug("Requests fired")
-
-                for ir, req in enumerate(reqlistlabels):
-                    traceLogger.debug("Waiting for a label block...")
-                    labblock = req.wait()
-
-                    traceLogger.debug("Waiting for an image block...")
-                    image = reqlistfeat[ir].wait()
-
-                    indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-                    
-                    # Even though our input is supposed to be "nonzeroLabelBlocks"
-                    #  users are allowed to give some all-zero blocks.
-                    # If this block all zero, discard and continue with next block.
-                    if len(indexes[0]) > 0:
-                        features=image[indexes]
-                        labbla=labblock[indexes]
-    
-                        featMatrix.append(features)
-                        labelsMatrix.append(labbla)
-
-                progress = progress_outer[0]
-
-                traceLogger.debug("Requests processed")
-
-        self.progressSignal(80/numImages)
-
-        if len(featMatrix) == 0 or len(labelsMatrix) == 0:
-            # If there was no actual data for the random forest to train with, we return None
-            result[:] = None
-            self.progressSignal(100)
-        else:
-            featMatrix=numpy.concatenate(featMatrix,axis=0)
-            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-            
-            maxLabel = self.MaxLabel.value
-            labelList = range(1, maxLabel+1) if maxLabel > 0 else list()
-
-            try:
-                self.logger.debug("Learning %d random forests with %d trees each with vigra..." % (self._forest_count, self._tree_count))
-                t = time.time()
-                # train and store self._forest_count forests in parallel
-                pool = RequestPool()
-
-                for i in range(self._forest_count):
-                    def train_and_store(number):
-                        result[number] = vigra.learning.RandomForest(self._tree_count, labels=labelList)
-                        result[number].learnRF( numpy.asarray(featMatrix, dtype=numpy.float32),
-                                                numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                    req = pool.request(partial(train_and_store, i))
-
-                pool.wait()
-                pool.clean()
-
-                self.logger.debug("Learning %d random forests with %d trees each with vigra took %f sec." % \
-                    (self._forest_count, self._tree_count, time.time()-t))
-            except:
-                self.logger.error( "ERROR: could not learn classifier" )
-                self.logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
-                self.logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
-                raise
-            finally:
-                self.progressSignal(100)
-
-        self._forests = result
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.Classifier.setDirty()
-
-class OpPredictRandomForest(Operator):
-    name = "PredictRandomForest"
-    description = "Predict on multiple images"
-    category = "Learning"
-
-    inputSlots = [InputSlot("Image"),InputSlot("Classifier"), InputSlot("LabelsCount")]
-    outputSlots = [OutputSlot("PMaps")]
-    
-    logger = logging.getLogger(__name__+".OpPredictRandomForestBlocked")
-
-    def __init__(self, *args, **kwargs):
-        super( OpPredictRandomForest, self ).__init__(*args, **kwargs)
-
-    def setupOutputs(self):
+        assert self.Image.meta.getAxisKeys()[-1] == 'c'
+        
         nlabels = max(self.LabelsCount.value, 1) #we'll have at least 2 labels once we actually predict something
                                                 #not setting it to 0 here is friendlier to possible downstream
                                                 #ilastik operators, setting it to 2 causes errors in pixel classification
@@ -397,63 +153,50 @@ class OpPredictRandomForest(Operator):
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self, slot, subindex, roi, result):
-        t1 = time.time()
         key = roi.toSlice()
 
-        traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
-        forests=self.inputs["Classifier"][:].wait()
-
-        if forests is None or any(x is None for x in forests):
+        classifier = self.Classifier.value
+        if classifier is None:
             # Training operator may return 'None' if there was no data to train with
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
 
-        traceLogger.debug("OpPredictRandomForest: Got classifier")
-
         newKey = key[:-1]
-        newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
+        newKey += (slice(0,self.Image.meta.shape[-1],None),)
 
-        res = self.inputs["Image"][newKey].wait()
+        input_data = self.Image[newKey].wait()
 
-        shape=res.shape
+        shape=input_data.shape
         prod = numpy.prod(shape[:-1])
-        res = res.reshape((prod, shape[-1]))
-        features=res
+        features = input_data.reshape((prod, shape[-1]))
 
-        predictions = [0]*len(forests)
-
-        def predict_forest(number):
-            predictions[number] = forests[number].predictProbabilities(numpy.asarray(features, dtype=numpy.float32))
-
-        t2 = time.time()
-
-        # predict the data with all the forests in parallel
-        pool = RequestPool()
-
-        for i,f in enumerate(forests):
-            pool.add( Request(partial(predict_forest, i)) )
-
-        pool.wait()
-        pool.clean()
-
-        prediction=numpy.dstack(predictions)
-        prediction = numpy.average(prediction, axis=2)
-        prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
+        probabilities = classifier.predict_probabilities( features )
+        
+        # We're expecting a channel for each label class.
+        # If we didn't provide at least one sample for each label,
+        #  we may get back fewer channels.
+        if probabilities.shape[1] != self.PMaps.meta.shape[-1]:
+            # Copy to an array of the correct shape
+            # This is slow, but it's an unusual case
+            assert probabilities.shape[-1] == len(classifier.known_classes)
+            full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
+            for i, label in enumerate(classifier.known_classes):
+                full_probabilities[:, label-1] = probabilities[:, i]
+            
+            probabilities = full_probabilities
+        
+        # Reshape to image
+        probabilities.shape = shape[:-1] + (self.PMaps.meta.shape[-1],)
 
         # Copy only the prediction channels the client requested.
-        result[...] = prediction[...,roi.start[-1]:roi.stop[-1]]
-        
-        t3 = time.time()
-
-        self.logger.debug("predict roi=%r took %fseconds, actual RF time was %fs, feature time was %fs" % (key, t3-t1, t3-t2, t2-t1))
-        
+        result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.inputs["Classifier"]:
+        if slot == self.Classifier:
             self.logger.debug("classifier changed, setting dirty")
-            self.outputs["PMaps"].setDirty()
-        elif slot == self.inputs["Image"]:
-            self.outputs["PMaps"].setDirty()
+            self.PMaps.setDirty()
+        elif slot == self.Image:
+            self.PMaps.setDirty()
 
 
 class OpSegmentation(Operator):
