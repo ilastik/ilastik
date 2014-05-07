@@ -86,7 +86,7 @@ class OpPixelClassification( Operator ):
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
 
-    def __init__( self, lazyflow_classifier, *args, **kwargs ):
+    def __init__( self, classifier_factory, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
@@ -111,7 +111,7 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Training operator
-        self.opTrain = OpTrainClassifierBlocked( lazyflow_classifier, parent=self )
+        self.opTrain = OpTrainClassifierBlocked( classifier_factory, parent=self )
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
