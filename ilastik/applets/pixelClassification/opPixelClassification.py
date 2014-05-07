@@ -25,8 +25,8 @@ import vigra
 #lazyflow
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
-                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
+from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
+                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
 
 #ilastik
@@ -86,7 +86,7 @@ class OpPixelClassification( Operator ):
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
 
-    def __init__( self, *args, **kwargs ):
+    def __init__( self, lazyflow_classifier, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
@@ -111,7 +111,7 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Training operator
-        self.opTrain = OpTrainRandomForestBlocked( parent=self )
+        self.opTrain = OpTrainClassifierBlocked( lazyflow_classifier, parent=self )
         self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
@@ -317,8 +317,8 @@ class OpPredictionPipelineNoCache(Operator):
         # Random forest prediction using the raw feature image slot (not the cached features)
         # This would be bad for interactive labeling, but it's good for headless flows 
         #  because it avoids the overhead of cache.        
-        self.cacheless_predict = OpPredictRandomForest( parent=self )
-        self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
+        self.cacheless_predict = OpClassifierPredict( parent=self )
+        self.cacheless_predict.name = "OpScikitClassifierPredict (Cacheless Path)"
         self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
         self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.inputs['LabelsCount'].connect(self.NumClasses)
@@ -358,8 +358,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         super(OpPredictionPipeline, self).__init__( *args, **kwargs )
 
         # Random forest prediction using CACHED features.
-        self.predict = OpPredictRandomForest( parent=self )
-        self.predict.name = "OpPredictRandomForest"
+        self.predict = OpClassifierPredict( parent=self )
+        self.predict.name = "OpScikitClassifierPredict"
         self.predict.inputs['Classifier'].connect(self.Classifier) 
         self.predict.inputs['Image'].connect(self.CachedFeatureImages)
         self.predict.LabelsCount.connect( self.NumClasses )
