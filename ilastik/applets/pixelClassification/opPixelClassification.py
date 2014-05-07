@@ -28,6 +28,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
                                OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
+from lazyflow.classifiers import VigraRfLazyflowClassifierFactory
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -52,6 +53,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
+    ClassifierFactory = InputSlot(value=VigraRfLazyflowClassifierFactory(100))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
@@ -86,7 +88,7 @@ class OpPixelClassification( Operator ):
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
 
-    def __init__( self, classifier_factory, *args, **kwargs ):
+    def __init__( self, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
@@ -111,10 +113,11 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Training operator
-        self.opTrain = OpTrainClassifierBlocked( classifier_factory, parent=self )
-        self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
-        self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
-        self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
+        self.opTrain = OpTrainClassifierBlocked( parent=self )
+        self.opTrain.ClassifierFactory.connect( self.ClassifierFactory )
+        self.opTrain.Labels.connect( self.opLabelPipeline.Output )
+        self.opTrain.Images.connect( self.CachedFeatureImages )
+        self.opTrain.nonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in

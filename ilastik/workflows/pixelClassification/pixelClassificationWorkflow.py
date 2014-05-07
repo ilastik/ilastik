@@ -105,11 +105,11 @@ class PixelClassificationWorkflow(Workflow):
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
         #classifier_factory = VigraRfLazyflowClassifierFactory(100)
-        classifier_factory = SklearnLazyflowClassifierFactory(sklearn.ensemble.RandomForestClassifier, 100)
+        #classifier_factory = SklearnLazyflowClassifierFactory(sklearn.ensemble.RandomForestClassifier, 100)
         #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.ensemble.AdaBoostClassifier)
         #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.svm.SVC, probability=True)
         #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.naive_bayes.GaussianNB)
-        self.pcApplet = PixelClassificationApplet( self, "PixelClassification", classifier_factory=classifier_factory )
+        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
