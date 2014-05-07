@@ -17,13 +17,14 @@
 # Built-in
 import os
 import logging
+import collections
 from functools import partial
 
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
+from PyQt4.QtCore import Qt, pyqtSlot, QVariant
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer
@@ -37,7 +38,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
-except:
+except ImportError:
     pass
 
 # Loggers
@@ -49,6 +50,67 @@ def _listReplace(old, new):
     else:
         return new
 
+class ClassifierSelectionDlg(QDialog):
+    """
+    A simple window to let the user select a classifier type.
+    """
+    def __init__(self, opPixelClassification, parent):
+        super( QDialog, self ).__init__(parent=parent)
+        self._op = opPixelClassification
+        classifier_listwidget = QListWidget(parent=self)
+        classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
+
+        classifer_factories = self._get_available_classifier_factories()
+        for name, classifier_factory in classifer_factories.items():
+            item = QListWidgetItem( name )
+            item.setData( Qt.UserRole, QVariant(classifier_factory) )
+            classifier_listwidget.addItem(item)
+
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.accepted.connect( self.accept )
+        buttonbox.rejected.connect( self.reject )
+        
+        layout = QVBoxLayout()
+        layout.addWidget( classifier_listwidget )
+        layout.addWidget( buttonbox )
+
+        self.setLayout(layout)
+        self.setWindowTitle( "Select Classifier Type" )
+        
+        # Save members
+        self._classifier_listwidget = classifier_listwidget
+        
+    def _get_available_classifier_factories(self):
+        # FIXME: Replace this logic with a proper plugin mechanism
+        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory
+        classifiers = collections.OrderedDict()
+        classifiers["Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
+        
+        try:
+            from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+            from sklearn.naive_bayes import GaussianNB
+            from sklearn.tree import DecisionTreeClassifier
+            from sklearn.neighbors import KNeighborsClassifier
+            classifiers["Random Forest (scikit-learn)"] = SklearnLazyflowClassifierFactory( RandomForestClassifier, 100 )
+            classifiers["Gaussian Naive Bayes (scikit-learn)"] = SklearnLazyflowClassifierFactory( GaussianNB )
+            classifiers["AdaBoost (scikit-learn)"] = SklearnLazyflowClassifierFactory( AdaBoostClassifier, n_estimators=100 )
+            classifiers["Single Decision Tree (scikit-learn)"] = SklearnLazyflowClassifierFactory( DecisionTreeClassifier, max_depth=5 )
+            classifiers["K-Neighbors"] = SklearnLazyflowClassifierFactory( KNeighborsClassifier )
+        except ImportError:
+            import warnings
+            warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
+        return classifiers
+        
+    def accept(self):
+        # Configure the operator with the newly selected classfier factory
+        selected_item = self._classifier_listwidget.selectedItems()[0]
+        selected_factory = selected_item.data(Qt.UserRole).toPyObject()
+        self._op.ClassifierFactory.setValue( selected_factory )
+
+        # Close the dlg
+        super( ClassifierSelectionDlg, self ).accept()
+    
 class PixelClassificationGui(LabelingGui):
 
     ###########################################
@@ -66,6 +128,19 @@ class PixelClassificationGui(LabelingGui):
 
     def viewerControlWidget(self):
         return self._viewerControlUi
+
+    def menus( self ):
+        base_menus = super( PixelClassificationGui, self ).menus()
+        advanced_menu = QMenu("Advanced", parent=self)
+        
+        def handleClassifierAction():
+            dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
+            dlg.exec_()
+        
+        classifier_action = advanced_menu.addAction("Classifier...")
+        classifier_action.triggered.connect( handleClassifierAction )
+        
+        return base_menus + [advanced_menu]
 
     ###########################################
     ###########################################
