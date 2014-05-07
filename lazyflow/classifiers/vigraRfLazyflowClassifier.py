@@ -1,19 +1,16 @@
 import numpy
 import vigra
 
-class VigraRfLazyflowClassifier(object):
-    """
-    Adapt the vigra RandomForest class to the interface lazyflow expects.
-    """
+from .lazyflowClassifier import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+
+class VigraRfLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
-        self._known_labels = []
-        self._classifier = None
     
-    def train(self, X, y):
+    def create_and_train(self, X, y):
         # Save for future reference
-        self._known_labels = numpy.unique(y)
+        known_labels = numpy.unique(y)
 
         X = numpy.asarray(X, numpy.float32)
         y = numpy.asarray(y, numpy.uint32)
@@ -22,17 +19,31 @@ class VigraRfLazyflowClassifier(object):
 
         assert X.ndim == 2
         assert len(X) == len(y)
-        self._classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
-        self._classifier.learnRF(X, y)
+        classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
+        classifier.learnRF(X, y)
+
+        return VigraRfLazyflowClassifier( classifier, known_labels )
+
+    @property
+    def description(self):
+        temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
+        return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
+
+assert issubclass( VigraRfLazyflowClassifierFactory, LazyflowClassifierFactoryABC )
+
+class VigraRfLazyflowClassifier(LazyflowClassifierABC):
+    """
+    Adapt the vigra RandomForest class to the interface lazyflow expects.
+    """
+    def __init__(self, vigra_rf, known_labels):
+        self._known_labels = known_labels
+        self._vigra_rf = vigra_rf
     
     def predict_probabilities(self, X):
-        return self._classifier.predictProbabilities( numpy.asarray(X, dtype=numpy.float32) )
+        return self._vigra_rf.predictProbabilities( numpy.asarray(X, dtype=numpy.float32) )
     
     @property
     def known_classes(self):
         return self._known_labels
-    
-    @property
-    def n_classes_(self):
-        return len(self._known_labels)
-    
+
+assert issubclass( VigraRfLazyflowClassifier, LazyflowClassifierABC )

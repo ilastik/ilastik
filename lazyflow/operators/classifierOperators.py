@@ -25,7 +25,7 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.classifiers import LazyflowClassifierABC
+from lazyflow.classifiers import LazyflowClassifierABC, LazyflowClassifierFactoryABC
 
 from opFeatureMatrixCache import OpFeatureMatrixCache
 from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
@@ -85,15 +85,9 @@ class OpTrainClassifierFromFeatures(Operator):
     MaxLabel = InputSlot()
     Classifier = OutputSlot()
     
-    def __init__(self, lazyflow_classifier, *args, **kwargs):
-        """
-        classifier_factory: A callable that creates a classifier instance.
-                            Examples: 
-                                - sklearn.naive_bayes.GaussianNB
-                                - partial(sklearn.ensemble.RandomForestClassifier, 10)
-        """
+    def __init__(self, classifier_factory, *args, **kwargs):
         super(OpTrainClassifierFromFeatures, self).__init__(*args, **kwargs)
-        self._lazyflow_classifier = lazyflow_classifier
+        self._classifier_factory = classifier_factory
         self.trainingCompleteSignal = OrderedSignal()
 
         # TODO: Progress...
@@ -116,11 +110,16 @@ class OpTrainClassifierFromFeatures(Operator):
             self.trainingCompleteSignal()
             return
 
-        assert isinstance(self._lazyflow_classifier, LazyflowClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the ClassifierABC interface."\
-            "".format( type(self._lazyflow_classifier) )
-        self._lazyflow_classifier.train( featMatrix, labelsMatrix[:,0] )
-        result[0] = self._lazyflow_classifier
+        assert isinstance(self._classifier_factory, LazyflowClassifierFactoryABC), \
+            "Factory is of type {}, which does not satisfy the LazyflowClassifierFactoryABC interface."\
+            "".format( type(self._classifier_factory) )
+
+        classifier = self._classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
+        assert isinstance(classifier, LazyflowClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
+            "".format( type(classifier) )
+
+        result[0] = classifier
         
         self.trainingCompleteSignal()
         return result
@@ -146,7 +145,7 @@ class OpClassifierPredict(Operator):
                                                 #not setting it to 0 here is friendlier to possible downstream
                                                 #ilastik operators, setting it to 2 causes errors in pixel classification
                                                 #(live prediction doesn't work when only two labels are present)
-        
+
         self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
@@ -159,6 +158,10 @@ class OpClassifierPredict(Operator):
         if classifier is None:
             # Training operator may return 'None' if there was no data to train with
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
+
+        assert isinstance(classifier, LazyflowClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
+            "".format( type(classifier) )
 
         newKey = key[:-1]
         newKey += (slice(0,self.Image.meta.shape[-1],None),)
