@@ -33,6 +33,7 @@ from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 class OpTrainClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
+    ClassifierFactory = InputSlot()
     nonzeroLabelBlocks = InputSlot(level=1) # TODO: Eliminate this slot. It isn't used any more...
     MaxLabel = InputSlot()
     
@@ -42,7 +43,7 @@ class OpTrainClassifierBlocked(Operator):
     #              \                                                                                                  \
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
 
-    def __init__(self, classifier_factory, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(OpTrainClassifierBlocked, self).__init__(*args, **kwargs)        
         self.progressSignal = OrderedSignal()
         
@@ -55,7 +56,8 @@ class OpTrainClassifierBlocked(Operator):
         self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )
         self._opConcatenateFeatureMatrices.ProgressSignals.connect( self._opFeatureMatrixCaches.ProgressSignal )
         
-        self._opTrainFromFeatures = OpTrainClassifierFromFeatures( classifier_factory, parent=self )
+        self._opTrainFromFeatures = OpTrainClassifierFromFeatures( parent=self )
+        self._opTrainFromFeatures.ClassifierFactory.connect( self.ClassifierFactory )
         self._opTrainFromFeatures.LabelAndFeatureMatrix.connect( self._opConcatenateFeatureMatrices.ConcatenatedOutput )
         self._opTrainFromFeatures.MaxLabel.connect( self.MaxLabel )
         
@@ -80,14 +82,14 @@ class OpTrainClassifierBlocked(Operator):
         pass
 
 class OpTrainClassifierFromFeatures(Operator):
+    ClassifierFactory = InputSlot()
     LabelAndFeatureMatrix = InputSlot()
     
     MaxLabel = InputSlot()
     Classifier = OutputSlot()
     
-    def __init__(self, classifier_factory, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(OpTrainClassifierFromFeatures, self).__init__(*args, **kwargs)
-        self._classifier_factory = classifier_factory
         self.trainingCompleteSignal = OrderedSignal()
 
         # TODO: Progress...
@@ -110,11 +112,12 @@ class OpTrainClassifierFromFeatures(Operator):
             self.trainingCompleteSignal()
             return
 
-        assert isinstance(self._classifier_factory, LazyflowClassifierFactoryABC), \
+        classifier_factory = self.ClassifierFactory.value
+        assert isinstance(classifier_factory, LazyflowClassifierFactoryABC), \
             "Factory is of type {}, which does not satisfy the LazyflowClassifierFactoryABC interface."\
-            "".format( type(self._classifier_factory) )
+            "".format( type(classifier_factory) )
 
-        classifier = self._classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
+        classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
         assert isinstance(classifier, LazyflowClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
             "".format( type(classifier) )
