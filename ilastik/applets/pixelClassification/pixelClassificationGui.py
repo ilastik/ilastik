@@ -83,20 +83,28 @@ class ClassifierSelectionDlg(QDialog):
         
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
-        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory
+        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifierFactory
         classifiers = collections.OrderedDict()
         classifiers["Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
+        classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
         
         try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
             from sklearn.tree import DecisionTreeClassifier
             from sklearn.neighbors import KNeighborsClassifier
+            from sklearn.lda import LDA
+            from sklearn.qda import QDA
+            from sklearn.svm import SVC, NuSVC
             classifiers["Random Forest (scikit-learn)"] = SklearnLazyflowClassifierFactory( RandomForestClassifier, 100 )
             classifiers["Gaussian Naive Bayes (scikit-learn)"] = SklearnLazyflowClassifierFactory( GaussianNB )
             classifiers["AdaBoost (scikit-learn)"] = SklearnLazyflowClassifierFactory( AdaBoostClassifier, n_estimators=100 )
             classifiers["Single Decision Tree (scikit-learn)"] = SklearnLazyflowClassifierFactory( DecisionTreeClassifier, max_depth=5 )
-            classifiers["K-Neighbors"] = SklearnLazyflowClassifierFactory( KNeighborsClassifier )
+            classifiers["K-Neighbors (scikit-learn)"] = SklearnLazyflowClassifierFactory( KNeighborsClassifier )
+            classifiers["LDA (scikit-learn)"] = SklearnLazyflowClassifierFactory( LDA )
+            classifiers["QDA (scikit-learn)"] = SklearnLazyflowClassifierFactory( QDA )
+            classifiers["SVM C-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( SVC, probability=True )
+            classifiers["SVM Nu-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( NuSVC, probability=True )
         except ImportError:
             import warnings
             warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
