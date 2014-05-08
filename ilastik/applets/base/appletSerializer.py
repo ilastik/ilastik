@@ -28,6 +28,7 @@ import vigra
 import h5py
 import numpy
 import warnings
+import cPickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
@@ -447,16 +448,14 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, inslot=None, name=None, subname=None,
+    def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
+            slot, inslot, name, None, default, depends, selfdepends
         )
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        if self.subname is None:
-            self.subname = "Forest{:04d}"
         self._bind(cache.Output)
 
     def unload(self):
@@ -466,30 +465,16 @@ class SerialClassifierSlot(SerialSlot):
         if self.cache._dirty:
             return
 
-        classifier_forests = self.cache._value
+        cache_contents = self.cache._value
+        assert cache_contents.shape == (1,)
+        classifier = cache_contents[0]
 
         # Classifier can be None if there isn't any training data yet.
-        if classifier_forests is None:
+        if classifier is None:
             return
-        for forest in classifier_forests:
-            if forest is None:
-                return
 
-        # Due to non-shared hdf5 dlls, vigra can't write directly to
-        # our open hdf5 group. Instead, we'll use vigra to write the
-        # classifier to a temporary file.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
-        for i, forest in enumerate(classifier_forests):
-            targetname = '{0}/{1}'.format(name, self.subname.format(i))
-            forest.writeHDF5(cachePath, targetname)
-
-        # Open the temp file and copy to our project group
-        with h5py.File(cachePath, 'r') as cacheFile:
-            group.copy(cacheFile[name], name)
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        classifier_group = group.create_group( name )
+        classifier.serialize_hdf5( classifier_group )
 
     def deserialize(self, group):
         """
@@ -499,21 +484,17 @@ class SerialClassifierSlot(SerialSlot):
         self.dirty = False
 
     def _deserialize(self, classifierGroup, slot):
-        # Due to non-shared hdf5 dlls, vigra can't read directly
-        # from our open hdf5 group. Instead, we'll copy the
-        # classfier data to a temporary file and give it to vigra.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
-        with h5py.File(cachePath, 'w') as cacheFile:
-            cacheFile.copy(classifierGroup, self.name)
-
-        forests = []
-        for name, forestGroup in sorted(classifierGroup.items()):
-            targetname = '{0}/{1}'.format(self.name, name)
-            forests.append(vigra.learning.RandomForest(cachePath, targetname))
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        try:
+            classifier_type = pickle.loads( classifierGroup['pickled_type'][()] )
+        except KeyError:
+            # For compatibility with old project files, choose the default classifier.
+            from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+            classifier_type = ParallelVigraRfLazyflowClassifier
+        
+        try:
+            classifier = classifier_type.deserialize_hdf5( classifierGroup )
+        except:
+            return
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can
@@ -522,7 +503,7 @@ class SerialClassifierSlot(SerialSlot):
         # consistent with the images and labels that we just
         # loaded. As soon as training input changes, it will be
         # retrained.)
-        self.cache.forceValue(numpy.array(forests))
+        self.cache.forceValue( classifier )
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
@@ -648,6 +629,18 @@ class SerialDictSlot(SerialSlot):
         except AssertionError as e:
             warnings.warn('setValue() failed. message: {}'.format(e.message))
 
+class SerialPickledSlot(SerialSlot):
+    def __init__(self, slot, name=None):
+        super( SerialPickledSlot, self ).__init__( slot, name=name )
+    
+    def _saveValue(self, group, name, value):
+        pickled = pickle.dumps( value )
+        group.create_dataset(name, data=pickled)
+
+    def _getValue(self, dset, slot):
+        pickled = dset[()]
+        value = pickle.loads(pickled)
+        slot.setValue( value )         
 
 ####################################
 # the base applet serializer class #
