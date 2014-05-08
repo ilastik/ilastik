@@ -13,6 +13,8 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from lazyflow.operators.opLabelVolume import haveBlocked
 
+from multiprocessing import Process
+
 
 class TestVigra(unittest.TestCase):
 
@@ -114,9 +116,84 @@ class TestVigra(unittest.TestCase):
         op.Method.setValue(self.method)
         op.Input.setValue(vol)
 
-        out1 = op.Output[:500, ...].wait()
-        out2 = op.Output[500:, ...].wait()
+        out1 = op.CachedOutput[:500, ...].wait()
+        out2 = op.CachedOutput[500:, ...].wait()
         assert out1[0, 0, 0] != out2[499, 0, 0]
+
+    def testNoRecomputation(self):
+        g = Graph()
+
+        vol = np.zeros((1000, 100, 10))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyz')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        opCount = CountExecutes(graph=g)
+        opCount.Input.setValue(vol)
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.connect(opCount.Output)
+
+        out1 = op.CachedOutput[:500, ...].wait()
+        out2 = op.CachedOutput[500:, ...].wait()
+
+        assert opCount.numExecutes == 1
+
+    def testCorrectBlocking(self):
+        g = Graph()
+        c, t = 2, 3
+        vol = np.zeros((1000, 100, 10, 2, 3))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        opCount = CountExecutes(graph=g)
+        opCount.Input.setValue(vol)
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.connect(opCount.Output)
+
+        out1 = op.CachedOutput[:500, ...].wait()
+        out2 = op.CachedOutput[500:, ...].wait()
+
+        assert opCount.numExecutes == c*t
+
+    def testThreadSafety(self):
+        g = Graph()
+
+        vol = np.zeros((1000, 100, 10))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyz')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        opCount = CountExecutes(graph=g)
+        opCount.Input.setValue(vol)
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.connect(opCount.Output)
+
+        reqs = [op.CachedOutput[...] for i in range(4)]
+        [r.submit() for r in reqs]
+        [r.block() for r in reqs]
+        assert opCount.numExecutes == 1,\
+            "Parallel requests to CachedOutput resulted in recomputation "\
+            "({}/4)".format(opCount.numExecutes)
+
+        # reset numCounts
+        opCount.numExecutes = 0
+
+        reqs = [op.Output[250*i:250*(i+1), ...] for i in range(4)]
+        [r.submit() for r in reqs]
+        [r.block() for r in reqs]
+        assert opCount.numExecutes == 4,\
+            "Not all requests to Output were computed on demand "\
+            "({}/4)".format(opCount.numExecutes)
 
     def testSetDirty(self):
         g = Graph()
@@ -133,8 +210,6 @@ class TestVigra(unittest.TestCase):
         opCheck = DirtyAssert(graph=g)
         opCheck.Input.connect(op.Output)
         opCheck.willBeDirty(1, 1)
-
-        out = op.Output[...].wait()
 
         roi = SubRegion(op.Input,
                         start=(1, 1, 0, 0, 0),
@@ -214,20 +289,20 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
 
-@unittest.skipIf(not haveBlocked(), "Cannot test blockedarray because you don't have the module")
-class TestBlocked(TestVigra):
+if haveBlocked():
+    class TestBlocked(TestVigra):
 
-    def setUp(self):
-        self.method = np.asarray(['blocked'], dtype=np.object)
+        def setUp(self):
+            self.method = np.asarray(['blocked'], dtype=np.object)
 
-    #@unittest.skip("Not implemented yet")
-    #def testUnsupported(self):
-        #pass
+        #@unittest.skip("Not implemented yet")
+        #def testUnsupported(self):
+            #pass
 
-    # background value is unsupported for blocked labeling
-    @unittest.expectedFailure
-    def testBackground(self):
-        super(TestBlocked, self).testBackground()
+        # background value is unsupported for blocked labeling
+        @unittest.expectedFailure
+        def testBackground(self):
+            super(TestBlocked, self).testBackground()
 
 
 def assertEquivalentLabeling(x, y):
@@ -268,6 +343,25 @@ class DirtyAssert(Operator):
         assert roi.stop[t_ind] == self._t+1
         assert roi.stop[c_ind] == self._c+1
         raise PropagateDirtyCalled()
+
+
+class CountExecutes(Operator):
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    numExecutes = 0
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(roi)
+
+    def execute(self, slot, sunbindex, roi, result):
+        self.numExecutes += 1
+        req = self.Input.get(roi)
+        req.writeInto(result)
+        req.block()
 
 
 class PropagateDirtyCalled(Exception):
