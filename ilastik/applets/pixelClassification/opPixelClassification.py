@@ -28,7 +28,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
                                OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
-from lazyflow.classifiers import VigraRfLazyflowClassifierFactory
+
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -53,7 +54,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
-    ClassifierFactory = InputSlot(value=VigraRfLazyflowClassifierFactory(100))
+    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(10, 10))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
