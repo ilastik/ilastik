@@ -1,7 +1,15 @@
+import os
+import tempfile
+import cPickle as pickle
+
 import numpy
 import vigra
+import h5py
 
 from .lazyflowClassifier import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+
+import logging
+logger = logging.getLogger(__name__)
 
 class VigraRfLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
     def __init__(self, *args, **kwargs):
@@ -9,6 +17,8 @@ class VigraRfLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
         self._kwargs = kwargs
     
     def create_and_train(self, X, y):
+        logger.debug( 'training single-threaded vigra RF' )
+
         # Save for future reference
         known_labels = numpy.unique(y)
 
@@ -40,10 +50,46 @@ class VigraRfLazyflowClassifier(LazyflowClassifierABC):
         self._vigra_rf = vigra_rf
     
     def predict_probabilities(self, X):
+        logger.debug( 'predicting single-threaded vigra RF' )
         return self._vigra_rf.predictProbabilities( numpy.asarray(X, dtype=numpy.float32) )
     
     @property
     def known_classes(self):
         return self._known_labels
+
+    def serialize_hdf5(self, h5py_group):
+        # Due to non-shared hdf5 dlls, vigra can't write directly to
+        # our open hdf5 group. Instead, we'll use vigra to write the
+        # classifier to a temporary file.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
+        self._vigra_rf.writeHDF5(cachePath, 'forest')
+
+        # Open the temp file and copy to our project group
+        with h5py.File(cachePath, 'r') as cacheFile:
+            h5py_group.copy(cacheFile['forest'], 'forest')
+
+        h5py_group['known_labels'] = self._known_labels
+        
+        # This field is required for all classifiers
+        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+
+    @classmethod
+    def deserialize_hdf5(cls, h5py_group):
+        # Due to non-shared hdf5 dlls, vigra can't read directly
+        # from our open hdf5 group. Instead, we'll copy the
+        # classfier data to a temporary file and give it to vigra.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
+        with h5py.File(cachePath, 'w') as cacheFile:
+            cacheFile.copy(h5py_group, 'forest')
+
+        forest = vigra.learning.RandomForest(cachePath, 'forest')
+        known_labels = list(h5py_group['known_labels'][:])
+
+        os.remove(cachePath)
+        os.rmdir(tmpDir)
+
+        return VigraRfLazyflowClassifier( forest, known_labels )
 
 assert issubclass( VigraRfLazyflowClassifier, LazyflowClassifierABC )

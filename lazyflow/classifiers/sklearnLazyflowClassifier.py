@@ -1,5 +1,9 @@
+import cPickle as pickle
 import numpy
 from .lazyflowClassifier import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+
+import logging
+logger = logging.getLogger(__name__)
 
 class SklearnLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
     """
@@ -21,6 +25,7 @@ class SklearnLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
         assert X.ndim == 2
         assert len(X) == len(y)
         sklearn_classifier = self._classifier_type(*self._args, **self._kwargs)
+        logger.debug( 'Training new sklearn classifier: {}'.format( type(sklearn_classifier).__name__ ) )
         sklearn_classifier.fit(X, y)
 
         try:
@@ -34,8 +39,8 @@ class SklearnLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
 
     @property
     def description(self):
-        return self._classifier_type.__class__.__name__
-    
+        return self._classifier_type.__name__
+
 assert issubclass( SklearnLazyflowClassifierFactory, LazyflowClassifierFactoryABC )
 
 class SklearnLazyflowClassifier(LazyflowClassifierABC):
@@ -44,10 +49,22 @@ class SklearnLazyflowClassifier(LazyflowClassifierABC):
         self._known_classes = known_classes
     
     def predict_probabilities(self, X):
+        logger.debug( 'Predicting with sklearn classifier: {}'.format( type(self._sklearn_classifier).__name__ ) )
         return self._sklearn_classifier.predict_proba( numpy.asarray(X, dtype=numpy.float32) )
     
     @property
     def known_classes(self):
         return self._known_classes
+
+    def serialize_hdf5(self, h5py_group):
+        h5py_group['pickled_classifier'] = pickle.dumps( self )        
+
+        # This is a required field for all classifiers
+        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+
+    @classmethod
+    def deserialize_hdf5(cls, h5py_group):
+        pickled = h5py_group['pickled_classifier'][()]
+        return pickle.loads( pickled )
 
 assert issubclass( SklearnLazyflowClassifier, LazyflowClassifierABC )

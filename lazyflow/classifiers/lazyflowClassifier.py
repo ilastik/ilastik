@@ -7,6 +7,10 @@ def _has_attributes( cls, attrs ):
     return all(_has_attribute(cls, a) for a in attrs)
 
 class LazyflowClassifierFactoryABC(object):
+    """
+    Defines an interface for classifier 'factory' objects, 
+    which lazyflow classifier operators use to construct new classifiers.
+    """
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -43,3 +47,16 @@ class LazyflowClassifierABC(object):
         if cls is LazyflowClassifierABC:
             return _has_attributes(C, ['predict_probabilities', 'known_classes'])
         return NotImplemented
+
+    @abc.abstractmethod
+    def serialize_hdf5(self, h5py_group):
+        """
+        Serialize the classifier as an hdf5 group
+        """
+        raise NotImplementedError
+
+    @classmethod    
+    def deserialize_hdf5(cls, h5py_group):
+        raise NotImplementedError
+    
+    
