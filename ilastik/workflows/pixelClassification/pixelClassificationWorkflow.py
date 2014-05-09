@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 import numpy
 
+from ilastik.config import cfg as ilastik_config
+
 from ilastik.workflow import Workflow
 
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
@@ -47,6 +49,9 @@ class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
+    
+    DATA_ROLE_RAW = 0
+    DATA_ROLE_PREDICTION_MASK = 1
     
     @property
     def applets(self):
@@ -100,15 +105,15 @@ class PixelClassificationWorkflow(Workflow):
                                                         batchDataGui=False,
                                                         instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            # see role constants, above
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+        else:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        #classifier_factory = VigraRfLazyflowClassifierFactory(100)
-        #classifier_factory = SklearnLazyflowClassifierFactory(sklearn.ensemble.RandomForestClassifier, 100)
-        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.ensemble.AdaBoostClassifier)
-        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.svm.SVC, probability=True)
-        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.naive_bayes.GaussianNB)
         self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
@@ -161,6 +166,9 @@ class PixelClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
