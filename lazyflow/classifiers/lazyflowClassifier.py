@@ -45,7 +45,7 @@ class LazyflowClassifierABC(object):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowClassifierABC:
-            return _has_attributes(C, ['predict_probabilities', 'known_classes'])
+            return _has_attributes(C, ['predict_probabilities', 'known_classes', 'serialize_hdf5', 'deserialize_hdf5'])
         return NotImplemented
 
     @abc.abstractmethod
