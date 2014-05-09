@@ -31,6 +31,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 
 # ilastik
+from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -138,17 +139,20 @@ class PixelClassificationGui(LabelingGui):
         return self._viewerControlUi
 
     def menus( self ):
-        base_menus = super( PixelClassificationGui, self ).menus()
-        advanced_menu = QMenu("Advanced", parent=self)
-        
-        def handleClassifierAction():
-            dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
-            dlg.exec_()
-        
-        classifier_action = advanced_menu.addAction("Classifier...")
-        classifier_action.triggered.connect( handleClassifierAction )
-        
-        return base_menus + [advanced_menu]
+        menus = super( PixelClassificationGui, self ).menus()
+
+        # For now classifier selection is only available in debug mode
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            def handleClassifierAction():
+                dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
+                dlg.exec_()
+            
+            advanced_menu = QMenu("Advanced", parent=self)
+            classifier_action = advanced_menu.addAction("Classifier...")
+            classifier_action.triggered.connect( handleClassifierAction )
+            menus += [advanced_menu]
+
+        return menus
 
     ###########################################
     ###########################################
