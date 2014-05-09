@@ -17,6 +17,7 @@
 import sys
 import copy
 import argparse
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,11 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 from lazyflow.roi import TinyVector, fullSlicing
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
+
+from lazyflow.classifiers import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
+import sklearn.ensemble
+import sklearn.svm
+import sklearn.naive_bayes
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -98,7 +104,12 @@ class PixelClassificationWorkflow(Workflow):
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        #classifier_factory = VigraRfLazyflowClassifierFactory(100)
+        #classifier_factory = SklearnLazyflowClassifierFactory(sklearn.ensemble.RandomForestClassifier, 100)
+        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.ensemble.AdaBoostClassifier)
+        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.svm.SVC, probability=True)
+        #lazyflow_classifier = SklearnLazyflowClassifier(sklearn.naive_bayes.GaussianNB)
+        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
