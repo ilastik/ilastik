@@ -176,7 +176,7 @@ class OpClassifierPredict(Operator):
             skip_prediction = not numpy.any(mask)
 
         if skip_prediction:
-            result[:] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)
+            result[:] = 0.0
             return result
 
         assert isinstance(classifier, LazyflowClassifierABC), \
