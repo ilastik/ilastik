@@ -136,10 +136,17 @@ class OpClassifierPredict(Operator):
     LabelsCount = InputSlot()
     Classifier = InputSlot()
     
+    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
+    # Otherwise, the request is serviced as usual and the mask is ignored.
+    PredictionMask = InputSlot(optional=True)
+    
     PMaps = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpClassifierPredict, self ).__init__(*args, **kwargs)
+
+        # Make sure the entire image is dirty if the prediction mask is removed.
+        self.PredictionMask.notifyUnready( lambda s: self.PMaps.setDirty() )
 
     def setupOutputs(self):
         assert self.Image.meta.getAxisKeys()[-1] == 'c'
@@ -155,22 +162,32 @@ class OpClassifierPredict(Operator):
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-
         classifier = self.Classifier.value
-        if classifier is None:
-            # Training operator may return 'None' if there was no data to train with
-            return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
+        
+        # Training operator may return 'None' if there was no data to train with
+        skip_prediction = (classifier is None)
+
+        # Shortcut: If the mask is totally zero, skip this request entirely
+        if not skip_prediction and self.PredictionMask.ready():
+            mask_roi = numpy.array((roi.start, roi.stop))
+            mask_roi[:,-1:] = [[0],[1]]
+            start, stop = map(tuple, mask_roi)
+            mask = self.PredictionMask( start, stop ).wait()
+            skip_prediction = not numpy.any(mask)
+
+        if skip_prediction:
+            result[:] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)
+            return result
 
         assert isinstance(classifier, LazyflowClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
             "".format( type(classifier) )
 
+        key = roi.toSlice()
         newKey = key[:-1]
         newKey += (slice(0,self.Image.meta.shape[-1],None),)
 
         input_data = self.Image[newKey].wait()
-
         shape=input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
@@ -203,6 +220,8 @@ class OpClassifierPredict(Operator):
             self.PMaps.setDirty()
         elif slot == self.Image:
             self.PMaps.setDirty()
+        elif slot == self.PredictionMask:
+            self.PMaps.setDirty(roi.start, roi.stop)
 
 
 class OpSegmentation(Operator):
