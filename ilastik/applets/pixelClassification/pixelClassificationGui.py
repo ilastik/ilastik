@@ -84,11 +84,10 @@ class ClassifierSelectionDlg(QDialog):
         
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
-        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifierFactory
+        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
+                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory
         classifiers = collections.OrderedDict()
-        classifiers["Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
-        
         try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
@@ -109,6 +108,11 @@ class ClassifierSelectionDlg(QDialog):
         except ImportError:
             import warnings
             warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
+
+        # Debug classifiers        
+        classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
+        classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
+        
         return classifiers
         
     def accept(self):

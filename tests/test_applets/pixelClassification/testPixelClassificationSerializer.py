@@ -20,7 +20,8 @@ import h5py
 import vigra
 from lazyflow.roi import roiToSlice
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
+from lazyflow.operators import OpTrainClassifierBlocked, OpValueCache
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
 
 import ilastik.ilastik_logging
@@ -37,6 +38,8 @@ class OpMockPixelClassifier(Operator):
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
     PredictionsFromDisk = InputSlot( optional = True, level=1 ) # TODO: Actually use this input for something
+
+    ClassifierFactory = InputSlot( value=ParallelVigraRfLazyflowClassifierFactory(10,10) )
 
     NonzeroLabelBlocks = OutputSlot(level=1, stype='object') # A list if slices that contain non-zero label values
     LabelImages = OutputSlot(level=1) # Labels from the user
@@ -64,7 +67,8 @@ class OpMockPixelClassifier(Operator):
         
         self.FreezePredictions.setValue(False)
         
-        self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
+        self.opClassifier = OpTrainClassifierBlocked(graph=self.graph, parent=self)
+        self.opClassifier.ClassifierFactory.connect( self.ClassifierFactory )
         self.opClassifier.Labels.connect(self.LabelImages)
         self.opClassifier.nonzeroLabelBlocks.connect(self.NonzeroLabelBlocks)
         self.opClassifier.MaxLabel.setValue(2)
