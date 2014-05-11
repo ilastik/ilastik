@@ -334,6 +334,12 @@ class Operator(object):
         for s in self.inputs.values() + self.outputs.values():
             s.disconnect()
 
+        # We must do this after the previous loop is complete.
+        # Resizing multislots in depth-first order triggers the OperatorWrapper resize chain...
+        for s in self.inputs.values() + self.outputs.values():
+            if s.level > 1:
+                s.resize(0)
+
         for child in self._children.keys():
             child._disconnect()
 

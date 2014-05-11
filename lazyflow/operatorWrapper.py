@@ -253,9 +253,8 @@ class OperatorWrapper(Operator):
         return op
 
     def handleEarlyDisconnect(self, slot):
-        assert False, \
-            ("You aren't allowed to disconnect the internal"
-             " connections of an operator wrapper.")
+        assert self._cleaningUp, "You aren't allowed to disconnect the internal"\
+                                 " connections of an operator wrapper."
 
     def _removeInnerOperator(self, index, length):
         if len(self.innerOperators) <= length:

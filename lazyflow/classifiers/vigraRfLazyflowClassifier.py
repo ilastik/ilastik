@@ -6,12 +6,12 @@ import numpy
 import vigra
 import h5py
 
-from .lazyflowClassifier import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
 
-class VigraRfLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
+class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -39,9 +39,9 @@ class VigraRfLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
         temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
         return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
 
-assert issubclass( VigraRfLazyflowClassifierFactory, LazyflowClassifierFactoryABC )
+assert issubclass( VigraRfLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
-class VigraRfLazyflowClassifier(LazyflowClassifierABC):
+class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
@@ -92,4 +92,4 @@ class VigraRfLazyflowClassifier(LazyflowClassifierABC):
 
         return VigraRfLazyflowClassifier( forest, known_labels )
 
-assert issubclass( VigraRfLazyflowClassifier, LazyflowClassifierABC )
+assert issubclass( VigraRfLazyflowClassifier, LazyflowVectorwiseClassifierABC )
