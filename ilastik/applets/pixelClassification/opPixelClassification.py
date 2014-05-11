@@ -339,7 +339,7 @@ class OpPredictionPipelineNoCache(Operator):
         # This would be bad for interactive labeling, but it's good for headless flows 
         #  because it avoids the overhead of cache.        
         self.cacheless_predict = OpClassifierPredict( parent=self )
-        self.cacheless_predict.name = "OpScikitClassifierPredict (Cacheless Path)"
+        self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"
         self.cacheless_predict.Classifier.connect(self.Classifier) 
         self.cacheless_predict.Image.connect(self.FeatureImages) # <--- Not from cache
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
@@ -381,7 +381,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         # Random forest prediction using CACHED features.
         self.predict = OpClassifierPredict( parent=self )
-        self.predict.name = "OpScikitClassifierPredict"
+        self.predict.name = "OpClassifierPredict"
         self.predict.Classifier.connect(self.Classifier) 
         self.predict.Image.connect(self.CachedFeatureImages)
         self.predict.PredictionMask.connect(self.PredictionMask)
