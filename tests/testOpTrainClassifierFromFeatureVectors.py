@@ -3,9 +3,10 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
-from lazyflow.operators.classifierOperators import OpTrainRandomForestFromFeatures
+from lazyflow.operators.classifierOperators import OpTrainClassifierFromFeatureVectors
+from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, VigraRfLazyflowClassifier
 
-class TestOpTrainRandomForestFromFeatures(object):
+class TestOpTrainClassifierFromFeatureVectors(object):
     
     def testBasic(self):
         features = numpy.indices( (100,100) ).astype(numpy.float) + 0.5
@@ -29,15 +30,16 @@ class TestOpTrainRandomForestFromFeatures(object):
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[20:21, 20:22] )
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[30:31, 30:32] )
 
-        opTrain = OpTrainRandomForestFromFeatures( graph=graph )
+        opTrain = OpTrainClassifierFromFeatureVectors( graph=graph )
+        opTrain.ClassifierFactory.setValue( VigraRfLazyflowClassifierFactory(10) )
         opTrain.MaxLabel.setValue(2)
         opTrain.LabelAndFeatureMatrix.connect( opFeatureMatrixCache.LabelAndFeatureMatrix )
         
-        trained_forest_list = opTrain.Classifier.value
+        trained_classifer = opTrain.Classifier.value
         
         # This isn't much of a test at the moment...
-        for forest in trained_forest_list:
-            assert isinstance( forest, vigra.learning.RandomForest )
+        assert isinstance( trained_classifer, VigraRfLazyflowClassifier )
+
 
 
 if __name__ == "__main__":

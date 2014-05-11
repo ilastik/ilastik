@@ -25,12 +25,131 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
+                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
 from opFeatureMatrixCache import OpFeatureMatrixCache
 from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
 class OpTrainClassifierBlocked(Operator):
+    Images = InputSlot(level=1)
+    Labels = InputSlot(level=1)
+    ClassifierFactory = InputSlot()
+    nonzeroLabelBlocks = InputSlot(level=1)
+    MaxLabel = InputSlot()
+    
+    Classifier = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpTrainClassifierBlocked, self).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
+        self._mode = None
+        self._training_op = None
+        
+    def setupOutputs(self):
+        # Construct an inner operator depending on the type of classifier we'll be creating.
+        classifier_factory = self.ClassifierFactory.value        
+        if isinstance( classifier_factory, LazyflowVectorwiseClassifierFactoryABC ):
+            new_mode = 'vectorwise'
+        elif isinstance( classifier_factory, LazyflowPixelwiseClassifierFactoryABC ):
+            new_mode = 'pixelwise'
+        else:
+            raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )
+        
+        if new_mode == self._mode:
+            return
+        
+        if self._training_op is not None:
+            self.Classifier.disconnect()
+            self._training_op.cleanUp()
+        self._mode = new_mode
+        
+        if self._mode == 'vectorwise':
+            self._training_op = OpTrainVectorwiseClassifierBlocked( parent=self )
+        elif self._mode == 'pixelwise':
+            self._training_op = OpTrainPixelwiseClassifierBlocked( parent=self )            
+
+        self._training_op.progressSignal.subscribe( self.progressSignal )
+
+        self._training_op.Images.connect( self.Images )
+        self._training_op.Labels.connect( self.Labels )
+        self._training_op.ClassifierFactory.connect( self.ClassifierFactory )
+        self._training_op.nonzeroLabelBlocks.connect( self.nonzeroLabelBlocks )
+        self._training_op.MaxLabel.connect( self.MaxLabel )
+        self.Classifier.connect( self._training_op.Classifier )
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here..."
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+class OpTrainPixelwiseClassifierBlocked(Operator):
+    Images = InputSlot(level=1)
+    Labels = InputSlot(level=1)
+    ClassifierFactory = InputSlot()
+    nonzeroLabelBlocks = InputSlot(level=1)
+    MaxLabel = InputSlot()
+    
+    Classifier = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpTrainPixelwiseClassifierBlocked, self).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
+    
+    def setupOutputs(self):
+        self.Classifier.meta.dtype = object
+        self.Classifier.meta.shape = (1,)
+
+        # Special metadata for downstream operators using the classifier
+        self.Classifier.meta.classifier_factory = self.ClassifierFactory.value
+
+    def cleanUp(self):
+        self.progressSignal.clean()
+        super( OpTrainPixelwiseClassifierBlocked, self ).cleanUp()
+
+    def execute(self, slot, subindex, roi, result):
+        classifier_factory = self.ClassifierFactory.value
+        assert isinstance(classifier_factory, LazyflowPixelwiseClassifierFactoryABC), \
+            "Factory is of type {}, which does not satisfy the LazyflowPixelwiseClassifierFactoryABC interface."\
+            "".format( type(classifier_factory) )
+        
+        # Accumulate all non-zero blocks of each image into lists
+        label_data_blocks = []
+        image_data_blocks = []
+        for image_slot, label_slot, nonzero_block_slot in zip(self.Images, self.Labels, self.nonzeroLabelBlocks):
+            block_slicings = nonzero_block_slot.value
+            for block_slicing in block_slicings:
+                block_label_roi = sliceToRoi( block_slicing, image_slot.meta.shape )
+                block_image_roi = numpy.array( block_label_roi )
+                assert (block_image_roi[:, -1] == [0,1]).all()
+                num_channels = image_slot.meta.shape[-1]
+                block_image_roi[:, -1] = [0, num_channels]
+
+                # TODO: Compensate for the halo as specified by the classifier...
+                #axiskeys = image_slot.meta.getAxisKeys()
+                #halo_shape = classifier_factory.get_halo_shape(axiskeys)
+
+                # Ensure the results are plain ndarray, not VigraArray, 
+                #  which some classifiers might have trouble with.
+                block_label_data = numpy.asarray( label_slot(*block_label_roi).wait() )
+                block_image_data = numpy.asarray( image_slot(*block_image_roi).wait() )
+                
+                label_data_blocks.append( block_label_data )
+                image_data_blocks.append( block_image_data )
+                
+        classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks )
+        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
+            "".format( type(classifier) )
+        result[0] = classifier
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        print 'classifier is dirty...'
+        self.Classifier.setDirty()
+
+class OpTrainVectorwiseClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
@@ -44,7 +163,7 @@ class OpTrainClassifierBlocked(Operator):
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
-        super(OpTrainClassifierBlocked, self).__init__(*args, **kwargs)        
+        super(OpTrainVectorwiseClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         
         self._opFeatureMatrixCaches = OperatorWrapper( OpFeatureMatrixCache, parent=self )
@@ -56,7 +175,7 @@ class OpTrainClassifierBlocked(Operator):
         self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )
         self._opConcatenateFeatureMatrices.ProgressSignals.connect( self._opFeatureMatrixCaches.ProgressSignal )
         
-        self._opTrainFromFeatures = OpTrainClassifierFromFeatures( parent=self )
+        self._opTrainFromFeatures = OpTrainClassifierFromFeatureVectors( parent=self )
         self._opTrainFromFeatures.ClassifierFactory.connect( self.ClassifierFactory )
         self._opTrainFromFeatures.LabelAndFeatureMatrix.connect( self._opConcatenateFeatureMatrices.ConcatenatedOutput )
         self._opTrainFromFeatures.MaxLabel.connect( self.MaxLabel )
@@ -72,6 +191,11 @@ class OpTrainClassifierBlocked(Operator):
             self.progressSignal( 100.0 )
         self._opTrainFromFeatures.trainingCompleteSignal.subscribe( _handleTrainingComplete )
 
+    def cleanUp(self):
+        self.progressSignal.clean()
+        self.Classifier.disconnect()
+        super( OpTrainVectorwiseClassifierBlocked, self ).cleanUp()
+
     def setupOutputs(self):
         pass # Nothing to do; our output is connected to an internal operator.
 
@@ -81,7 +205,7 @@ class OpTrainClassifierBlocked(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-class OpTrainClassifierFromFeatures(Operator):
+class OpTrainClassifierFromFeatureVectors(Operator):
     ClassifierFactory = InputSlot()
     LabelAndFeatureMatrix = InputSlot()
     
@@ -89,7 +213,7 @@ class OpTrainClassifierFromFeatures(Operator):
     Classifier = OutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super(OpTrainClassifierFromFeatures, self).__init__(*args, **kwargs)
+        super(OpTrainClassifierFromFeatureVectors, self).__init__(*args, **kwargs)
         self.trainingCompleteSignal = OrderedSignal()
 
         # TODO: Progress...
@@ -98,6 +222,9 @@ class OpTrainClassifierFromFeatures(Operator):
     def setupOutputs(self):
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (1,)
+        
+        # Special metadata for downstream operators using the classifier
+        self.Classifier.meta.classifier_factory = self.ClassifierFactory.value
 
     def execute(self, slot, subindex, roi, result):
         labels_and_features = self.LabelAndFeatureMatrix.value
@@ -128,10 +255,153 @@ class OpTrainClassifierFromFeatures(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        self.Classifier.setDirty()        
+        self.Classifier.setDirty()
 
 
 class OpClassifierPredict(Operator):
+    Image = InputSlot()
+    LabelsCount = InputSlot()
+    Classifier = InputSlot()
+    
+    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
+    # Otherwise, the request is serviced as usual and the mask is ignored.
+    PredictionMask = InputSlot(optional=True)
+
+    PMaps = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpClassifierPredict, self ).__init__(*args, **kwargs)
+        self._mode = None
+        self._prediction_op = None
+    
+    def setupOutputs(self):
+        # Construct an inner operator depending on the type of classifier we'll be using.
+        # We don't want to access the classifier directly here because that would trigger the full computation already.
+        # Instead, we require the factory to be passed along with the classifier metadata.
+        
+        try:
+            classifier_factory = self.Classifier.meta.classifier_factory
+        except KeyError:
+            raise Exception( "Classifier slot must include classifier factory as metadata." )
+        
+        if isinstance( classifier_factory, LazyflowVectorwiseClassifierFactoryABC ):
+            new_mode = 'vectorwise'
+        elif isinstance( classifier_factory, LazyflowPixelwiseClassifierFactoryABC ):
+            new_mode = 'pixelwise'
+        else:
+            raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )
+        
+        if new_mode == self._mode:
+            return
+        
+        if self._mode is not None:
+            self.PMaps.disconnect()
+            self._prediction_op.cleanUp()
+        self._mode = new_mode
+        
+        if self._mode == 'vectorwise':
+            self._prediction_op = OpVectorwiseClassifierPredict( parent=self )
+        elif self._mode == 'pixelwise':
+            self._prediction_op = OpPixelwiseClassifierPredict( parent=self )            
+
+        self._prediction_op.Image.connect( self.Image )
+        self._prediction_op.LabelsCount.connect( self.LabelsCount )
+        self._prediction_op.Classifier.connect( self.Classifier )
+        self.PMaps.connect( self._prediction_op.PMaps )
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here..."
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Classifier:
+            self.PMaps.setDirty()
+
+class OpPixelwiseClassifierPredict(Operator):
+    Image = InputSlot()
+    LabelsCount = InputSlot()
+    Classifier = InputSlot()
+
+    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
+    # Otherwise, the request is serviced as usual and the mask is ignored.
+    PredictionMask = InputSlot(optional=True)
+
+    PMaps = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpPixelwiseClassifierPredict, self ).__init__(*args, **kwargs)
+
+        # Make sure the entire image is dirty if the prediction mask is removed.
+        self.PredictionMask.notifyUnready( lambda s: self.PMaps.setDirty() )
+    
+    def setupOutputs(self):
+        assert self.Image.meta.getAxisKeys()[-1] == 'c'
+        
+        nlabels = max(self.LabelsCount.value, 1) #we'll have at least 2 labels once we actually predict something
+                                                #not setting it to 0 here is friendlier to possible downstream
+                                                #ilastik operators, setting it to 2 causes errors in pixel classification
+                                                #(live prediction doesn't work when only two labels are present)
+
+        self.PMaps.meta.dtype = numpy.float32
+        self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
+        self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
+        self.PMaps.meta.drange = (0.0, 1.0)
+
+    def execute(self, slot, subindex, roi, result):
+        classifier = self.Classifier.value
+        
+        # Training operator may return 'None' if there was no data to train with
+        skip_prediction = (classifier is None)
+
+        # Shortcut: If the mask is totally zero, skip this request entirely
+        if not skip_prediction and self.PredictionMask.ready():
+            mask_roi = numpy.array((roi.start, roi.stop))
+            mask_roi[:,-1:] = [[0],[1]]
+            start, stop = map(tuple, mask_roi)
+            mask = self.PredictionMask( start, stop ).wait()
+            skip_prediction = not numpy.any(mask)
+
+        if skip_prediction:
+            result[:] = 0.0
+            return result
+
+        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
+            "".format( type(classifier) )
+
+        key = roi.toSlice()
+        newKey = key[:-1]
+        newKey += (slice(0,self.Image.meta.shape[-1],None),)
+
+        input_data = self.Image[newKey].wait()
+        probabilities = classifier.predict_probabilities_pixelwise( input_data )
+        
+        # We're expecting a channel for each label class.
+        # If we didn't provide at least one sample for each label,
+        #  we may get back fewer channels.
+        if probabilities.shape[-1] != self.PMaps.meta.shape[-1]:
+            # Copy to an array of the correct shape
+            # This is slow, but it's an unusual case
+            assert probabilities.shape[-1] == len(classifier.known_classes)
+            full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
+            for i, label in enumerate(classifier.known_classes):
+                full_probabilities[:, label-1] = probabilities[:, i]
+            
+            probabilities = full_probabilities
+        
+        # Copy only the prediction channels the client requested.
+        result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Classifier:
+            self.logger.debug("classifier changed, setting dirty")
+            self.PMaps.setDirty()
+        elif slot == self.Image:
+            self.PMaps.setDirty()
+        elif slot == self.PredictionMask:
+            self.PMaps.setDirty(roi.start, roi.stop)
+
+class OpVectorwiseClassifierPredict(Operator):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
@@ -143,7 +413,7 @@ class OpClassifierPredict(Operator):
     PMaps = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super( OpClassifierPredict, self ).__init__(*args, **kwargs)
+        super( OpVectorwiseClassifierPredict, self ).__init__(*args, **kwargs)
 
         # Make sure the entire image is dirty if the prediction mask is removed.
         self.PredictionMask.notifyUnready( lambda s: self.PMaps.setDirty() )

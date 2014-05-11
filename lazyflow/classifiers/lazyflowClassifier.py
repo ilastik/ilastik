@@ -74,7 +74,7 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def create_and_train(self, feature_images, label_images):
+    def create_and_train_pixelwise(self, feature_images, label_images):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -82,7 +82,7 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
         """
         Return the halo dimensions required for optimal classifier performance.
         For example, for a classifier that performs an internal 3D convolution with sigma=1.5 and window_size = 2.0,
-        halo_shape = (3.0, 3.0, 3.0, 1.0).
+        halo_shape = (3, 3, 3, 0).
         
         Clients are not required to provide the halo during training.  
         (For example, it may not be possible for labels near the image border.)
@@ -99,7 +99,7 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowVectorwiseClassifierFactoryABC:
-            return _has_attributes(C, ['create_and_train', 'description'])
+            return _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
         return NotImplemented
 
 class LazyflowPixelwiseClassifierABC(object):
@@ -116,7 +116,7 @@ class LazyflowPixelwiseClassifierABC(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def predict_probabilities(self, feature_image):
+    def predict_probabilities_pixelwise(self, feature_image):
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -133,7 +133,7 @@ class LazyflowPixelwiseClassifierABC(object):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowPixelwiseClassifierABC:
-            return _has_attributes(C, ['predict_probabilities', 'known_classes', 'serialize_hdf5', 'deserialize_hdf5'])
+            return _has_attributes(C, ['predict_probabilities_pixelwise', 'known_classes', 'get_halo_shape', 'serialize_hdf5', 'deserialize_hdf5'])
         return NotImplemented
 
     @abc.abstractmethod
