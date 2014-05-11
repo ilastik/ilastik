@@ -535,7 +535,7 @@ class Slot(object):
         """
         Disconnect a InputSlot from its partner
         """
-        if self.backpropagate_values:
+        if self.backpropagate_values and not self.getRealOperator()._cleaningUp:
             if self.partner is not None:
                 self.partner.disconnect()
             return
@@ -556,7 +556,7 @@ class Slot(object):
         oldReady = self.meta._ready
         self.meta = MetaDict()
 
-        if len(self._subSlots) > 0:
+        if len(self._subSlots) > 0 and not self.getRealOperator()._cleaningUp:
             self.resize(0)
 
         # call callbacks
