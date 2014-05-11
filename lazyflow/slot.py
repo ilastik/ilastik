@@ -137,6 +137,10 @@ class Slot(object):
         # (We should probably change that at some point...)
         assert value is None or isinstance(self, InputSlot), "Only InputSlots can have default values.  OutputSlots cannot."
         
+        # Check for simple mistakes in parameter order...
+        assert isinstance(name, str)
+        assert isinstance(optional, bool)
+        
         if not hasattr(self, "_type"):
             self._type = None
         if type(stype) == str:
