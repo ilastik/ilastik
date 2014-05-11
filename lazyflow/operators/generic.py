@@ -884,7 +884,7 @@ class OpSelectSubslot(Operator):
     Select the Nth subslot from a multi-slot
     """
     SubslotIndex = InputSlot()
-    Inputs = InputSlot(level=1)
+    Inputs = InputSlot(level=1, optional=True)
     Output = OutputSlot()
     
     def setupOutputs(self):
