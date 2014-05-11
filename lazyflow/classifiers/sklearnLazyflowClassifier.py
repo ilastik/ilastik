@@ -1,11 +1,11 @@
 import cPickle as pickle
 import numpy
-from .lazyflowClassifier import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
 
-class SklearnLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
+class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     """
     A factory for creating and training sklearn classifiers.
     """
@@ -41,9 +41,9 @@ class SklearnLazyflowClassifierFactory(LazyflowClassifierFactoryABC):
     def description(self):
         return self._classifier_type.__name__
 
-assert issubclass( SklearnLazyflowClassifierFactory, LazyflowClassifierFactoryABC )
+assert issubclass( SklearnLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
-class SklearnLazyflowClassifier(LazyflowClassifierABC):
+class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     def __init__(self, sklearn_classifier, known_classes):
         self._sklearn_classifier = sklearn_classifier
         self._known_classes = known_classes
@@ -67,4 +67,4 @@ class SklearnLazyflowClassifier(LazyflowClassifierABC):
         pickled = h5py_group['pickled_classifier'][()]
         return pickle.loads( pickled )
 
-assert issubclass( SklearnLazyflowClassifier, LazyflowClassifierABC )
+assert issubclass( SklearnLazyflowClassifier, LazyflowVectorwiseClassifierABC )

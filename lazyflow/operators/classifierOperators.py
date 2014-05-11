@@ -25,7 +25,7 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.classifiers import LazyflowClassifierABC, LazyflowClassifierFactoryABC
+from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 from opFeatureMatrixCache import OpFeatureMatrixCache
 from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
@@ -113,13 +113,13 @@ class OpTrainClassifierFromFeatures(Operator):
             return
 
         classifier_factory = self.ClassifierFactory.value
-        assert isinstance(classifier_factory, LazyflowClassifierFactoryABC), \
-            "Factory is of type {}, which does not satisfy the LazyflowClassifierFactoryABC interface."\
+        assert isinstance(classifier_factory, LazyflowVectorwiseClassifierFactoryABC), \
+            "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
             "".format( type(classifier_factory) )
 
         classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
-        assert isinstance(classifier, LazyflowClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
+        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
             "".format( type(classifier) )
 
         result[0] = classifier
@@ -179,8 +179,8 @@ class OpClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
-        assert isinstance(classifier, LazyflowClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowClassifierABC interface."\
+        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
+            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
             "".format( type(classifier) )
 
         key = roi.toSlice()
