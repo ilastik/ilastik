@@ -212,7 +212,7 @@ class OpStackWriter(Operator):
         # Test to make sure the filepath pattern includes slice index field        
         filepath_pattern = self.FilepathPattern.value
         assert '123456789' in filepath_pattern.format( slice_index=123456789 ), \
-            "Output filepath pattern must contain the '{slice_index}' field for formatting.\n"\
+            "Output filepath pattern must contain the '{{slice_index}}' field for formatting.\n"\
             "Your format was: {}".format( filepath_pattern )
 
     # No output slots...
