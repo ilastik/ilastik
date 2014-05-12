@@ -89,9 +89,21 @@ class ClassifierSelectionDlg(QDialog):
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
         from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
-                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory
+                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
+                                         LazyflowVectorwiseClassifierFactoryABC
         classifiers = collections.OrderedDict()
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
+        
+        try:
+            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
+            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
+            
+            #assert isinstance( classifiers["IIBoost"], LazyflowVectorwiseClassifierFactoryABC )
+        except ImportError:
+            raise
+            import warnings
+            warnings.warn("Couldn't import IIBoost.")
+        
         try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
