@@ -27,7 +27,7 @@ from PyQt4.QtCore import Qt, pyqtSlot, QVariant
 from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
 
 # HCI
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 
 # ilastik
@@ -394,6 +394,12 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
+            # the flag window_leveling is used to determine if the contrast 
+            # of the layer is adjustable
+            if isinstance( inputLayer, GrayscaleLayer ):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
 
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
@@ -410,6 +416,12 @@ class PixelClassificationGui(LabelingGui):
                                                                  self.viewerControlWidget(),
                                                                  inputLayer ) )
             layers.append(inputLayer)
+            
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if inputLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
         return layers

@@ -757,7 +757,15 @@ class CarvingGui(LabelingGui):
             #layer.visible = not rawSlot.ready()
             layer.visible = True
             layer.opacity = 1.0
+            # if the flag window_leveling is set the contrast 
+            # of the layer is adjustable
+            layer.window_leveling = True
             layers.append(layer)
+
+            if layer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
