@@ -39,11 +39,6 @@ from lazyflow.roi import TinyVector, fullSlicing
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
-from lazyflow.classifiers import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
-import sklearn.ensemble
-import sklearn.svm
-import sklearn.naive_bayes
-
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
