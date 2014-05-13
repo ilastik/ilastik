@@ -85,6 +85,8 @@ def makeOpXToMulti(n):
 
         def setupOutputs(self):
             inslots = self._sorted_inputs(filterReady=True)
+            if len(inslots) > 6:
+                print "wtf"
             self.outputs["Outputs"].resize(len(inslots))
             self._do_assignfrom(inslots)
 
@@ -96,7 +98,7 @@ def makeOpXToMulti(n):
                 return inslots[index][key].wait()
 
         def propagateDirty(self, islot, subindex, roi):
-            inslots = self._sorted_inputs()
+            inslots = self._sorted_inputs(filterReady=True)
             index = inslots.index(islot)
             self.outputs["Outputs"][index].setDirty(roi)
             readyslots = list(s for s in inslots[:index] if s.ready())
@@ -330,7 +332,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             
             # If all the input channels were dirty, the dirty output region is a contiguous block
             if dirtyChannels == numChannels:
-                dirtyKey = roiToSlice(roi.start, roi.stop)
+                dirtyKey = list(roiToSlice(roi.start, roi.stop))
                 dirtyKey[channelAxis] = slice(None)
                 dirtyRoi = sliceToRoi(dirtyKey, self.Output.meta.shape)
                 self.Output.setDirty(dirtyRoi[0], dirtyRoi[1])
