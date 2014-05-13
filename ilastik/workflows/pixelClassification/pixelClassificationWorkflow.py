@@ -242,6 +242,7 @@ class PixelClassificationWorkflow(Workflow):
         # Just connect the uncached features here to satisfy the operator.
         #opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
+        self.opBatchFeatures = opBatchFeatures
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
     def handleAppletStateUpdateRequested(self):
