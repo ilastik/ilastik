@@ -11,7 +11,7 @@ from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorw
 import logging
 logger = logging.getLogger(__name__)
 
-class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
+class VigraRfLazyflowClassifierFactory(object):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs

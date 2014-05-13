@@ -284,9 +284,9 @@ class OpClassifierPredict(Operator):
         except KeyError:
             raise Exception( "Classifier slot must include classifier factory as metadata." )
         
-        if isinstance( classifier_factory, LazyflowVectorwiseClassifierFactoryABC ):
+        if issubclass( classifier_factory.__class__, LazyflowVectorwiseClassifierFactoryABC ):
             new_mode = 'vectorwise'
-        elif isinstance( classifier_factory, LazyflowPixelwiseClassifierFactoryABC ):
+        elif issubclass( classifier_factory.__class__, LazyflowPixelwiseClassifierFactoryABC ):
             new_mode = 'pixelwise'
         else:
             raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )
