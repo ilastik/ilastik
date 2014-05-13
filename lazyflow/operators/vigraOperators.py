@@ -85,8 +85,6 @@ def makeOpXToMulti(n):
 
         def setupOutputs(self):
             inslots = self._sorted_inputs(filterReady=True)
-            if len(inslots) > 6:
-                print "wtf"
             self.outputs["Outputs"].resize(len(inslots))
             self._do_assignfrom(inslots)
 
