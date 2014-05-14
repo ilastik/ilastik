@@ -262,6 +262,26 @@ class ObjectClassificationWorkflow(Workflow):
         opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
         opBatchExport.Input.connect( opBatchClassify.PredictionImage )
 
+    def onProjectLoaded(self):
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            # Force the block size to be the same as image size (1 big block)
+            tagged_shape = self.opBatchClassify.RawImage.meta.getTaggedShape
+            try:
+                tagged_shape.pop('t')
+            except KeyError:
+                pass
+            try:
+                tagged_shape.pop('c')
+            except KeyError:
+                pass
+            self.opBatchClassify.BlockShape3dDict.setValue( tagged_shape )
+    
+            # Must predict before requesting region features (see note in BlockwiseObjectClassification)
+            #prediction_image = self.opBatchClassify.PredictionImage[:].wait()
+            self.opBatchClassify._ensurePipelineExists( (0,0,0,0,0) )
+            opSingleBlockClassify = self.opBatchClassify._blockPipelines[(0,0,0,0,0)]
+            region_features = opSingleBlockClassify._opExtract.export_features()
+            
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
             return self.opBatchClassify.PredictionImage

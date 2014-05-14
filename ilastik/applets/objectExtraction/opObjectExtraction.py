@@ -732,3 +732,8 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+    
+    @classmethod
+    def exportRegionFeatures(cls, features, format='csv'):
+        
+        
