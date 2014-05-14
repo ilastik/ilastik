@@ -484,14 +484,16 @@ class LayerViewerGui(QWidget):
         return newDataShape
 
     def setViewerPos(self, pos5d, setTime=False, setChannel=False):
+            # set xyz position
             pos3d = pos5d[1:4]
             self.editor.posModel.slicingPos = pos3d
             
+            # set time and channel if requested
             if setTime:
                 self.editor.posModel.time = pos5d[0]
             if setChannel:
                 self.editor.posModel.channel = pos5d[4]
-                
+
             self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
 
     @classmethod
