@@ -65,6 +65,8 @@ from ilastik.shell.gui.splashScreen import showSplashScreen
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 
+from ilastik.shell.gui.messageServer import MessageServer
+
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
@@ -239,7 +241,10 @@ class IlastikShell( QMainWindow ):
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-
+        self.socketServer = MessageServer(self, 'localhost', 9999)
+        self.socketServer.connect('localhost', 1234, 'knime')
+        self.socketServer.send('knime', 'Hello')
+        
         self.openFileButtons = []
         self.cleanupFunctions = []
 
