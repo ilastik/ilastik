@@ -33,6 +33,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
 from lazyflow.roi import roiFromShape
+from lazyflow.request import RequestPool
 
 #SciPy
 import vigra,numpy,h5py
@@ -458,46 +459,30 @@ class OpH5WriterBigDataset(Operator):
         self.progressSignal(0)
         
         slicings=self.computeRequestSlicings()
-        numSlicings = len(slicings)
+        numSlicings = len(slicings) # used for the progressSignal
 
         self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
 
-        # Throttle: Only allow 10 outstanding requests at a time.
-        # Otherwise, the whole set of requests can be outstanding and use up ridiculous amounts of memory.        
-        activeRequests = deque()
-        activeSlicings = deque()
-        # Start by activating 10 requests 
-        for i in range( min(10, len(slicings)) ):
-            s = slicings.pop()
-            activeSlicings.append(s)
-            self.logger.debug( "Creating request for slicing {}".format(s) )
-            activeRequests.append( self.inputs["Image"][s] )
-        
-        counter = 0
-
-        while len(activeRequests) > 0:
-            # Wait for a request to finish
-            req = activeRequests.popleft()
-            s=activeSlicings.popleft()
-            data = req.wait()
-            if data.flags.c_contiguous:
-                self.d.write_direct(data.view(numpy.ndarray), dest_sel=s)
+        ncompleted = [0] # work around function closure limitation
+        def process_result(cur_slice, req_result):
+            if req_result.flags.c_contiguous:
+                self.d.write_direct(req_result.view(numpy.ndarray),
+                        dest_sel=cur_slice)
             else:
-                self.d[s] = data
-            
-            req.clean() # Discard the data in the request and allow its children to be garbage collected.
+                self.d[cur_slice] = req_result
 
-            if len(slicings) > 0:
-                # Create a new active request
-                s = slicings.pop()
-                activeSlicings.append(s)
-                activeRequests.append( self.inputs["Image"][s] )
-            
-            # Since requests finish in an arbitrary order (but we always block for them in the same order),
-            # this progress feedback will not be smooth.  It's the best we can do for now.
-            self.progressSignal( 100*counter/numSlicings )
-            self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
-            counter += 1
+            # update progress bar
+            ncompleted[0] += 1
+            self.progressSignal( 100*ncompleted[0]/numSlicings )
+
+        pool = RequestPool()
+        for s in slicings:
+            self.logger.debug( "Creating request for slicing {}".format(s) )
+            r = self.inputs["Image"][s]
+            r.notify_finished(partial(process_result, s))
+            pool.add(r)
+
+        pool.wait()
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
