@@ -424,11 +424,9 @@ class LayerViewerGui(QWidget):
                        
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
-            midpos3d = midpos5d[1:4]
-
-            # Start in the center of the volume
-            self.editor.posModel.slicingPos = midpos3d
-            self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
+            
+            # center viewer there
+            self.setViewerPos(midpos5d)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -484,6 +482,17 @@ class LayerViewerGui(QWidget):
                 if newDataShape is None:
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
+
+    def setViewerPos(self, pos5d, setTime=False, setChannel=False):
+            pos3d = pos5d[1:4]
+            self.editor.posModel.slicingPos = pos3d
+            
+            if setTime:
+                self.editor.posModel.time = pos5d[0]
+            if setChannel:
+                self.editor.posModel.channel = pos5d[4]
+                
+            self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
 
     @classmethod
     def getVoluminaShapeForSlot(self, slot):
