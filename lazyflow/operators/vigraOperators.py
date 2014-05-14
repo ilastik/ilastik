@@ -143,12 +143,6 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.source = OpArrayPiper(parent=self)
         self.source.inputs["Input"].connect(self.inputs["Input"])
 
-        self.stacker = OpMultiArrayStacker(parent=self)
-
-        self.multi = Op50ToMulti(parent=self)
-
-        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
-
         # Give our feature IDs input a default value (connected out of the box, but can be changed)
         self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
 
@@ -174,153 +168,132 @@ class OpPixelFeaturesPresmoothed(Operator):
         return invalid_scales
 
     def setupOutputs(self):
-        if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
+        assert self.Input.meta.getAxisKeys()[-1] == 'c', "This code assumes channel is the last axis"
 
-            self.stacker.inputs["Images"].disconnect()
-            self.scales = self.inputs["Scales"].value
-            self.matrix = self.inputs["Matrix"].value
+        self.scales = self.inputs["Scales"].value
+        self.matrix = self.inputs["Matrix"].value
 
-            if not isinstance(self.matrix, numpy.ndarray):
-                raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
+        if not isinstance(self.matrix, numpy.ndarray):
+            raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
 
-            dimCol = len(self.scales)
-            dimRow = len(self.inputs["FeatureIds"].value)
+        dimCol = len(self.scales)
+        dimRow = len(self.inputs["FeatureIds"].value)
 
-            assert dimRow== self.matrix.shape[0], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
-            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
+        assert dimRow== self.matrix.shape[0], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
+        assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
 
-            featureNameArray =[]
-            oparray = []
-            for j in range(dimRow):
-                oparray.append([])
-                featureNameArray.append([])
+        featureNameArray =[]
+        oparray = []
+        for j in range(dimRow):
+            oparray.append([])
+            featureNameArray.append([])
 
-            self.newScales = []
-            
+        self.newScales = []
+        
+        for j in range(dimCol):
+            destSigma = 1.0
+            if self.scales[j] > destSigma:
+                self.newScales.append(destSigma)
+            else:
+                self.newScales.append(self.scales[j])
+
+            logger.debug("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
+        
+        for i, featureId in enumerate(self.inputs["FeatureIds"].value):
+            if featureId == 'GaussianSmoothing':
+                for j in range(dimCol):
+                    oparray[i].append(OpGaussianSmoothing(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                    featureNameArray[i].append("Gaussian Smoothing (s=" + str(self.scales[j]) + ")")
+
+            elif featureId == 'LaplacianOfGaussian':
+                for j in range(dimCol):
+                    oparray[i].append(OpLaplacianOfGaussian(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                    featureNameArray[i].append("Laplacian of Gaussian (s=" + str(self.scales[j]) + ")")
+
+            elif featureId == 'StructureTensorEigenvalues':
+                for j in range(dimCol):
+                    oparray[i].append(OpStructureTensorEigenvalues(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    # Note: If you need to change the inner or outer scale,
+                    #  you must make a new feature (with a new feature ID) and
+                    #  leave this feature here to preserve backwards compatibility
+                    oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
+                    #FIXME, FIXME, FIXME
+                    #sigma1 = [x*0.5 for x in self.newScales[j]]
+                    #oparray[i][j].inputs["outerScale"].setValue(sigma1)
+                    oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
+                    featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
+
+            elif featureId == 'HessianOfGaussianEigenvalues':
+                for j in range(dimCol):
+                    oparray[i].append(OpHessianOfGaussianEigenvalues(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                    featureNameArray[i].append("Hessian of Gaussian Eigenvalues (s=" + str(self.scales[j]) + ")")
+
+            elif featureId == 'GaussianGradientMagnitude':
+                for j in range(dimCol):
+                    oparray[i].append(OpGaussianGradientMagnitude(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                    featureNameArray[i].append("Gaussian Gradient Magnitude (s=" + str(self.scales[j]) + ")")
+
+            elif featureId == 'DifferenceOfGaussians':
+                for j in range(dimCol):
+                    oparray[i].append(OpDifferenceOfGaussians(self))
+                    oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    # Note: If you need to change sigma0 or sigma1, you must make a new
+                    #  feature (with a new feature ID) and leave this feature here
+                    #  to preserve backwards compatibility
+                    oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
+                    #FIXME, FIXME, FIXME
+                    #sigma1 = [x*0.66 for x in self.newScales[j]]
+                    #oparray[i][j].inputs["sigma1"].setValue(sigma1)
+                    oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
+                    featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
+
+        channelCount = 0
+        featureCount = 0
+        self.Features.resize( 0 )
+        self.featureOutputChannels = []
+        #connect individual operators
+        for i in range(dimRow):
             for j in range(dimCol):
-                destSigma = 1.0
-                if self.scales[j] > destSigma:
-                    self.newScales.append(destSigma)
-                else:
-                    self.newScales.append(self.scales[j])
+                if self.matrix[i,j]:
+                    # Feature names are provided via metadata
+                    oparray[i][j].outputs["Output"].meta.description = featureNameArray[i][j]
 
-                logger.debug("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
-            
-            for i, featureId in enumerate(self.inputs["FeatureIds"].value):
-                if featureId == 'GaussianSmoothing':
-                    for j in range(dimCol):
-                        oparray[i].append(OpGaussianSmoothing(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Smoothing (s=" + str(self.scales[j]) + ")")
+                    # Prepare the individual features
+                    featureCount += 1
+                    self.Features.resize( featureCount )
 
-                elif featureId == 'LaplacianOfGaussian':
-                    for j in range(dimCol):
-                        oparray[i].append(OpLaplacianOfGaussian(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Laplacian of Gaussian (s=" + str(self.scales[j]) + ")")
+                    featureMeta = oparray[i][j].outputs["Output"].meta
+                    featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
+                    self.Features[featureCount-1].meta.assignFrom( featureMeta )
+                    self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
+                    channelCount += featureChannels
 
-                elif featureId == 'StructureTensorEigenvalues':
-                    for j in range(dimCol):
-                        oparray[i].append(OpStructureTensorEigenvalues(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        # Note: If you need to change the inner or outer scale,
-                        #  you must make a new feature (with a new feature ID) and
-                        #  leave this feature here to preserve backwards compatibility
-                        oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.5 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
-                        oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                        featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
-                elif featureId == 'HessianOfGaussianEigenvalues':
-                    for j in range(dimCol):
-                        oparray[i].append(OpHessianOfGaussianEigenvalues(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Hessian of Gaussian Eigenvalues (s=" + str(self.scales[j]) + ")")
-
-                elif featureId == 'GaussianGradientMagnitude':
-                    for j in range(dimCol):
-                        oparray[i].append(OpGaussianGradientMagnitude(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Gradient Magnitude (s=" + str(self.scales[j]) + ")")
-
-                elif featureId == 'DifferenceOfGaussians':
-                    for j in range(dimCol):
-                        oparray[i].append(OpDifferenceOfGaussians(self))
-                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                        # Note: If you need to change sigma0 or sigma1, you must make a new
-                        #  feature (with a new feature ID) and leave this feature here
-                        #  to preserve backwards compatibility
-                        oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.66 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
-                        oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                        featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
-
-            #disconnecting all Operators
-            for islot in self.multi.inputs.values():
-                islot.disconnect()
-
-            channelCount = 0
-            featureCount = 0
-            self.Features.resize( 0 )
-            self.featureOutputChannels = []
-            #connect individual operators
+        if self.matrix.any():
+            self.maxSigma = 0
+            #determine maximum sigma
             for i in range(dimRow):
                 for j in range(dimCol):
-                    if self.matrix[i,j]:
-                        # Feature names are provided via metadata
-                        oparray[i][j].outputs["Output"].meta.description = featureNameArray[i][j]
-                        self.multi.inputs["Input%02d" %(i*dimCol+j)].connect(oparray[i][j].outputs["Output"])
-                        logger.debug("connected  Input%02d of self.multi" %(i*dimCol+j))
+                    val=self.matrix[i,j]
+                    if val:
+                        self.maxSigma = max(self.scales[j],self.maxSigma)
 
-                        # Prepare the individual features
-                        featureCount += 1
-                        self.Features.resize( featureCount )
+            self.featureOps = oparray
 
-                        featureMeta = oparray[i][j].outputs["Output"].meta
-                        featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
-                        self.Features[featureCount-1].meta.assignFrom( featureMeta )
-                        self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
-                        channelCount += featureChannels
-            
-            #additional connection with FakeOperator
-            if (self.matrix==0).all():
-                fakeOp = OpGaussianSmoothing(parent=self)
-                fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
-                fakeOp.inputs["sigma"].setValue(10)
-                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].connect(fakeOp.outputs["Output"])
-                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].disconnect()
-                stackerShape = list(self.Input.meta.shape)
-                stackerShape[ self.Input.meta.axistags.index('c') ] = 0
-                self.stacker.Output.meta.shape = tuple(stackerShape)
-                self.stacker.Output.meta.axistags = self.Input.meta.axistags
-            else:
-                self.stacker.inputs["AxisFlag"].setValue('c')
-                self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
-                self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
-    
-                self.maxSigma = 0
-                #determine maximum sigma
-                for i in range(dimRow):
-                    for j in range(dimCol):
-                        val=self.matrix[i,j]
-                        if val:
-                            self.maxSigma = max(self.scales[j],self.maxSigma)
-    
-                self.featureOps = oparray
-
-            # Output meta is a modified copy of the input meta
-            self.Output.meta.assignFrom(self.Input.meta)
-            self.Output.meta.dtype = numpy.float32
-            self.Output.meta.axistags = self.stacker.Output.meta.axistags
-            self.Output.meta.shape = self.stacker.Output.meta.shape
+        # Output meta is a modified copy of the input meta
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.float32
+        self.Output.meta.axistags = self.Input.meta.axistags
+        self.Output.meta.shape = self.Input.meta.shape[:-1] + (channelCount,)
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
