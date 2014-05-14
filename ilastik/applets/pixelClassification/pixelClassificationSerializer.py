@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 import numpy
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialPickledSlot
 
 class PixelClassificationSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
@@ -25,8 +25,7 @@ class PixelClassificationSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
                                                            operator.classifier_cache,
-                                                           name="ClassifierForests",
-                                                           subname="Forest{:04d}")
+                                                           name="ClassifierForests")
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -38,6 +37,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
+                 SerialPickledSlot(operator.ClassifierFactory),
                  self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
