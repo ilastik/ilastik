@@ -1011,6 +1011,7 @@ class IlastikShell( QMainWindow ):
 
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
+        self.projectManager.saveProject()
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
