@@ -411,42 +411,31 @@ class OpH5WriterBigDataset(Operator):
                 g = self.f.create_group(hdf5GroupName)
 
         dataShape=self.Image.meta.shape
-        taggedShape = self.Image.meta.getTaggedShape()
+        self.logger.info( "Data shape: {}".format(dataShape))
+
+        # set t to 1 in the final chunk shape
+        axistags = self.Image.meta.axistags
+        dataShapeNoTime = list(dataShape)
+        if vigra.AxisInfo.t in axistags:
+            dataShapeNoTime[axistags.index('t')] = 1
+
         dtype = self.Image.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
-
-        numChannels = 1
-        if 'c' in taggedShape:
-            numChannels = taggedShape['c']
-
-        # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
-        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
-        cubeDim = int(cubeDim)
 
-        chunkDims = {}
-        chunkDims['t'] = 1
-        chunkDims['x'] = cubeDim
-        chunkDims['y'] = cubeDim
-        chunkDims['z'] = cubeDim
-        chunkDims['c'] = numChannels
-        
-        # h5py guide to chunking says chunks of 300k or less "work best"
-        assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
+        # aim for a chunk size of 512 Kb
+        from lazyflow.roi import determineBlockShape
+        self.chunkShape = determineBlockShape( dataShapeNoTime,
+                (1<<19) / dtypeBytes )
+        self.logger.info( "Chunk shape: {}".format(self.chunkShape))
 
-        chunkShape = ()
-        for i in range( len(dataShape) ):
-            axisKey = self.Image.meta.axistags[i].key
-            # Chunk shape can't be larger than the data shape
-            chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
-
-        self.chunkShape = chunkShape
         if datasetName in g.keys():
             del g[datasetName]
-        kwargs = { 'shape' : dataShape, 'dtype' : dtype, 'chunks' : self.chunkShape }
+        kwargs = { 'shape' : dataShape, 'dtype' : dtype,
+            'chunks' : self.chunkShape }
         if self.CompressionEnabled.value:
             kwargs['compression'] = 'gzip' # <-- Would be nice to use lzf compression here, but that is h5py-specific.
             kwargs['compression_opts'] = 1 # <-- Optimize for speed, not disk space.
