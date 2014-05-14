@@ -264,7 +264,7 @@ class OpThresholdTwoLevels(Operator):
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
 
-        # Blockshape must correspond to cache input order
+        # Blockshape must correspond to cachsetInSlote input order
         blockshape = map(lambda k: tagged_shape[k], 'xyzct')
         self._opCache.BlockShape.setValue(tuple(blockshape))
 
@@ -278,6 +278,15 @@ class OpThresholdTwoLevels(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # dirtiness propagation is handled in the sub-operators
         pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5,\
+            "[{}] Wrong slot for setInSlot(): {}".format(self.name,
+                                                         slot)
+        pass
+        # InputHDF5 is connected to the cache so we don't have to do
+        # anything, all other slots are rejected
+        
 
 
 ## internal operator for one level thresholding
