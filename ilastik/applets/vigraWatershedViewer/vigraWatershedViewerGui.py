@@ -14,6 +14,7 @@
 #
 # Copyright 2011-2014, the ilastik developers
 
+import sip
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSlot
 from PyQt4.QtGui import QShortcut, QKeySequence
@@ -392,7 +393,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
         for i, checkbox in enumerate(self._inputChannelCheckboxes):
 #            if i >= numChannels:
 #                checkbox.setChecked(False)
-            checkbox.setVisible( i < numChannels )
+            if not sip.isdeleted(checkbox):
+                checkbox.setVisible( i < numChannels )
 
         # Make sure the correct boxes are checked
         if self.topLevelOperatorView.InputChannelIndexes.ready():
