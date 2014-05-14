@@ -221,6 +221,8 @@ class OpThresholdTwoLevels(Operator):
         self._op5CacheOutput.AxisOrder.setValue(
             self._op5CacheInput.Input.meta.getAxisKeys())
         self._setBlockShape()
+        # force the cache to emit a dirty signal
+        self._opCache.Input.setDirty(slice(None))
 
     def _disconnectAll(self):
         # start from back

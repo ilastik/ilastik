@@ -595,6 +595,33 @@ class TestThresholdTwoLevels(Generator2):
         print(output2[idx])
         numpy.testing.assert_array_almost_equal(ref, output)
 
+    def testPropagateDirty(self):
+        g = Graph()
+        oper = OpThresholdTwoLevels(graph=g)
+        oper.InputImage.setValue(self.tvol)
+        oper.MinSize.setValue(1)
+        oper.MaxSize.setValue(np.prod(self.tvol.shape[1:]))
+        oper.HighThreshold.setValue(.7)
+        oper.LowThreshold.setValue(.3)
+        oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
+        oper.CurOperator.setValue(1)
+        
+        inspector = DirtyAssert(graph=g)
+        inspector.Input.connect(oper.CachedOutput)
+        
+        with self.assertRaises(DirtyAssert.WasSetDirty):
+            oper.CurOperator.setValue(0)
+
+
+from lazyflow.operator import Operator, InputSlot
+
+class DirtyAssert(Operator):
+    Input = InputSlot()
+    class WasSetDirty(Exception):
+        pass
+    def propagateDirty(self, slot, subindex, roi):
+        raise DirtyAssert.WasSetDirty()
+
 
 class TestTTLUseCase(unittest.TestCase):
     def setUp(self):
@@ -640,6 +667,7 @@ class TestTTLUseCase(unittest.TestCase):
         output = oper.Output[:].wait()
         output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
         self.checkCorrect(output)
+
 
 if __name__ == "__main__":
     import nose

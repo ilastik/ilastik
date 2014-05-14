@@ -241,9 +241,12 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         for layer in self.layerstack:
             if "Final" in layer.name:
                 layer.visible = True
+        self.updateAllLayers()
 
     def _onTabCurrentChanged(self):
-        self._updateOperatorFromGui()
+        pass
+        # not needed, we update ONLY on apply button
+        #self._updateOperatorFromGui()
         #not needed, LayerViewerGui monitors op.CurOperator
         #self.updateAllLayers()
 
