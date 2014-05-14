@@ -598,9 +598,9 @@ class TestThresholdTwoLevels(Generator2):
     def testPropagateDirty(self):
         g = Graph()
         oper = OpThresholdTwoLevels(graph=g)
-        oper.InputImage.setValue(self.tvol)
+        oper.InputImage.setValue(self.data5d)
         oper.MinSize.setValue(1)
-        oper.MaxSize.setValue(np.prod(self.tvol.shape[1:]))
+        oper.MaxSize.setValue(np.prod(self.data5d.shape[1:]))
         oper.HighThreshold.setValue(.7)
         oper.LowThreshold.setValue(.3)
         oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
