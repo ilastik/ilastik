@@ -20,6 +20,9 @@ import collections
 import heapq
 import threading
 import platform
+import psutil
+import time
+
 
 # This module's code needs to be sanitized if you're not using CPython.
 # In particular, check that deque operations like push() and pop() are still atomic.
@@ -75,7 +78,54 @@ class LifoQueue(object):
     
     def __len__(self):
         return len(self._deque)
+
+
+class MemoryWatcher(threading.Thread):
+    """
+    Background thread for checking memory usage
+    """
     
+    def __init__(self, thread_pool):
+        threading.Thread.__init__(self)
+        self.process = psutil.Process()
+        self.usage = self.process.get_memory_percent()
+        self.tasks = FifoQueue()
+        self.thread_pool = thread_pool
+        self.threshold = 85 # threshold at which to 
+        
+    def run(self):
+        """
+        Computes memory usage every 0.1 second.
+        Flushes queued tasks, if memory usage is below a threshold.
+        """
+        while True:
+            self.usage = self.process.get_memory_percent()
+            if self.usage < self.threshold:
+                self.flush()
+            time.sleep(0.1)
+            
+            
+    def filter(self, task):
+        """
+        See if a task needs to be queued due to high memory usages.
+        """
+        if self.usage > self.threshold and len(task._priority) == 1:
+            print "MemoryWatcher: memory usage above %d\% filtering task." % (self.threshold,)
+            self.tasks.push(task)
+            raise IndexError
+        return task
+            
+    def flush(self):
+        """
+        Flush all queued tasks back to the threadpool.
+        """
+        if len(self.tasks) > 0:
+            print "MemoryWatcher: memory usage below %d\%. Flushing queued tasks ..." % (self.threshold,)
+
+        while len(self.tasks) > 0:
+            task = self.tasks.pop()
+            self.thread_pool.wake_up(task)
+   
 class ThreadPool(object):
     """
     Manages a set of worker threads and dispatches tasks to them.
@@ -95,7 +145,8 @@ class ThreadPool(object):
         """
         self.job_condition = threading.Condition()
         self.unassigned_tasks = queue_type()
-
+        self.memory = MemoryWatcher(self)
+        self.memory.start()
         self.workers = self._start_workers( num_workers, queue_type )
 
         # ThreadPools automatically stop upon program exit
@@ -232,7 +283,7 @@ class _Worker(threading.Thread):
 
         # Otherwise, try to claim a job from the global unassigned list            
         try:
-            task = self.thread_pool.unassigned_tasks.pop()
+            task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
         except IndexError:
             return None
         else:
