@@ -95,7 +95,6 @@ class Workflow( Operator ):
     def handleSendMessageToServer(self, name, data):
         try:
             server = self._shell.socketServer
-            server.connect('localhost', 9000, name)
             server.send(name, data)
         except Exception, e:
             logger.error("Failed sending message to server '%s': %s" % (name, e))

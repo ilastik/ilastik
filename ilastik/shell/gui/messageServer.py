@@ -45,6 +45,7 @@ class MessageServer(object):
         try:
             self.connections[name] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.connections[name].connect((host, port))
+            logger.info("Successfully connected to server '%s' at %s:%d" % (name, host, port))
         except Exception, e:
             if name in self.connections:
                 del self.connections[name]
@@ -69,6 +70,7 @@ class MessageServer(object):
         try:
             if name in self.connections:
                 self.connections[name].send(json.dumps(data))
+                logger.info("Sent message to '%s': %s" % (name, data))
             else:
                 raise Exception("No connection with name '%s' exists" % name)
         except Exception, e:
@@ -81,6 +83,7 @@ class TCPRequestHandler(SocketServer.StreamRequestHandler):
     
     def handle(self):
         data = json.loads(self.rfile.readline().strip())
+        logger.info("Received message from %s: %s" % (self.client_address, data))
         try:
             self.parse(data)
         except Exception, e:
@@ -118,8 +121,8 @@ class CommandProcessor(object):
     def execute(self, cmd, data):
         try:
             self.allowedCommands[cmd](data)
-        except:
-            raise Exception("Executing command '%s' failed" % cmd)
+        except Exception, e:
+            raise Exception("Executing command '%s' failed: %s" % (cmd, e))
     
     def _setViewerPos(self, data):
         # pos5d is a dict which may contain one entry for each coordinate
@@ -134,8 +137,9 @@ class CommandProcessor(object):
     def _connectToServer(self, data):
         if ('port' in data and 'name' in data and 
             isinstance(data['port'], int) and 
-            isinstance(data['name'], str)):
+            isinstance(data['name'], basestring)):
             host = 'localhost'  
-            self.shell.socketServer.connect(host, data['port'], data['name'])
+            self.shell.socketServer.connect(host, data['port'], 
+                                            data['name'].encode('ascii','ignore'))
         else:
             raise Exception("Please supply at least server 'name' and 'port' for handshake")
