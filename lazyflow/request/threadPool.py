@@ -92,6 +92,7 @@ class MemoryWatcher(threading.Thread):
         self.tasks = FifoQueue()
         self.thread_pool = thread_pool
         self.threshold = 85 # threshold at which to 
+        self.daemon = True
         
     def run(self):
         """
