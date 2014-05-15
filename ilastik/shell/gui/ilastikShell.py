@@ -1453,24 +1453,24 @@ class IlastikShell( QMainWindow ):
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
     
-    def setAllViewersPosition(self, pos5d):
+    def setAllViewersPosition(self, pos):
         # operate on currently displayed applet first
-        self._setViewerPosition(self._applets[self.currentAppletIndex], pos5d) 
+        self._setViewerPosition(self._applets[self.currentAppletIndex], pos) 
         
         # now iterate over all other applets and change the viewer focus
         for applet in self._applets:
             if not applet is self._applets[self.currentAppletIndex]:
-                self._setViewerPosition(applet, pos5d)
+                self._setViewerPosition(applet, pos)
         
     @threadRouted
-    def _setViewerPosition(self, applet, pos5d):
+    def _setViewerPosition(self, applet, pos):
         gui = applet.getMultiLaneGui()
         # test if gui is a Gui on its own or just created by a SingleToMultiGuiAdapter
         if isinstance(gui, SingleToMultiGuiAdapter):
             gui = gui.currentGui()
         # test if gui implements "setViewerPos()" method
         if issubclass(type(gui), VolumeViewerGui):
-            gui.setViewerPos(pos5d)
+            gui.setViewerPos(pos)
 
     def enableProjectChanges(self, enabled):
         # Post this to the gui thread
