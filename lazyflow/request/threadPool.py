@@ -93,6 +93,7 @@ class MemoryWatcher(threading.Thread):
         self.thread_pool = thread_pool
         self.threshold = 85 # threshold at which to 
         self.daemon = True
+        self.threshold_reached = False
         
     def run(self):
         """
@@ -111,7 +112,9 @@ class MemoryWatcher(threading.Thread):
         See if a task needs to be queued due to high memory usages.
         """
         if self.usage > self.threshold and len(task._priority) == 1:
-            print "MemoryWatcher: memory usage above %d\% filtering task." % (self.threshold,)
+            if self.threshold_reached is False:
+                print "MemoryWatcher: memory usage above %f%% filtering task." % (self.threshold,)
+                self.threshold_reached = True
             self.tasks.push(task)
             raise IndexError
         return task
@@ -121,8 +124,10 @@ class MemoryWatcher(threading.Thread):
         Flush all queued tasks back to the threadpool.
         """
         if len(self.tasks) > 0:
-            print "MemoryWatcher: memory usage below %d\%. Flushing queued tasks ..." % (self.threshold,)
-
+            if self.threshold_reached is True:
+                print "MemoryWatcher: memory usage below %f%%. Flushing queued tasks ..." % (self.threshold,)
+                self.threshold_reached = False
+                
         while len(self.tasks) > 0:
             task = self.tasks.pop()
             self.thread_pool.wake_up(task)
