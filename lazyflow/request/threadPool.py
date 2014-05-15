@@ -92,7 +92,6 @@ class MemoryWatcher(threading.Thread):
         self.tasks = FifoQueue()
         self.thread_pool = thread_pool
         self.threshold = 85 # threshold at which to 
-        self.daemon = True
         self.threshold_reached = False
         self.stopped = False
         self.daemon = True
@@ -107,7 +106,6 @@ class MemoryWatcher(threading.Thread):
             if self.usage < self.threshold:
                 self.flush()
             time.sleep(0.1)
-        print "MemoryWatcher: exiting."    
             
     def filter(self, task):
         """
