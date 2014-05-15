@@ -93,18 +93,20 @@ class MemoryWatcher(threading.Thread):
         self.thread_pool = thread_pool
         self.threshold = 85 # threshold at which to 
         self.threshold_reached = False
+        self.stopped = False
+        self.daemon = True
         
     def run(self):
         """
         Computes memory usage every 0.1 second.
         Flushes queued tasks, if memory usage is below a threshold.
         """
-        while True:
+        while self.stopped is False:
             self.usage = self.process.get_memory_percent()
             if self.usage < self.threshold:
                 self.flush()
             time.sleep(0.1)
-            
+        print "MemoryWatcher: exiting."    
             
     def filter(self, task):
         """
@@ -130,6 +132,12 @@ class MemoryWatcher(threading.Thread):
         while len(self.tasks) > 0:
             task = self.tasks.pop()
             self.thread_pool.wake_up(task)
+            
+    def stop(self):
+        """
+        stop the MemoryWatcher
+        """
+        self.stopped = True
    
 class ThreadPool(object):
     """
@@ -175,6 +183,8 @@ class ThreadPool(object):
         Stop all threads in the pool, and block for them to complete.
         Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
         """
+        self.memory.stop()
+        
         for w in self.workers:
             w.stop()
         
