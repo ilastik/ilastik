@@ -2,7 +2,6 @@ import SocketServer
 import threading
 import socket
 import logging
-import string
 import json
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,12 @@ class MessageServer(object):
             self.connections[name] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.connections[name].connect((host, port))
         except Exception, e:
+            if name in self.connections:
+                del self.connections[name]
             logger.error("Error connecting to socket '%s': %s" % (name, e))
+    
+    def connected(self, name):
+        return (name in self.connections)
     
     def closeConnection(self, name):
         if name in self.connections:
@@ -108,7 +112,8 @@ class CommandProcessor(object):
         self.shell = shell
         
         # define allowed commands and implement them in this class
-        self.allowedCommands = {'setviewerposition': self._setViewerPos}
+        self.allowedCommands = {'setviewerposition': self._setViewerPos,
+                                'handshake': self._connectToServer}
     
     def execute(self, cmd, data):
         try:
@@ -125,3 +130,12 @@ class CommandProcessor(object):
             else:
                 pos5d.append(0)
         self.shell.setAllViewersPosition(pos5d)
+        
+    def _connectToServer(self, data):
+        if ('port' in data and 'name' in data and 
+            isinstance(data['port'], int) and 
+            isinstance(data['name'], str)):
+            host = 'localhost'  
+            self.shell.socketServer.connect(host, data['port'], data['name'])
+        else:
+            raise Exception("Please supply at least server 'name' and 'port' for handshake")

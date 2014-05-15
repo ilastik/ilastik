@@ -244,9 +244,7 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
         
         # Server/client for inter process communication
-        self.socketServer = MessageServer(self, 'localhost', 9999)
-        #self.socketServer.connect('localhost', 9998, 'knime')
-        #self.socketServer.send('knime', 'Hello')
+        self.socketServer = MessageServer(self, 'localhost', 9997)
         
         self.openFileButtons = []
         self.cleanupFunctions = []

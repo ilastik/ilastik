@@ -483,6 +483,7 @@ class LayerViewerGui(QWidget):
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
 
+    @threadRouted
     def setViewerPos(self, pos, setTime=False, setChannel=False):
         try:
             pos5d = self.validatePos(pos, dims=5)
