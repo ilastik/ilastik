@@ -508,7 +508,7 @@ class LayerViewerGui(QWidget):
         if not len(pos) == dims:
             raise Exception("Wrong data format")
         ds = self.editor.dataShape
-        for i in range(0,dims):
+        for i in range(dims):
             try:
                 pos[i] = max(0, min(int(pos[i]), ds[i]-1))
             except:

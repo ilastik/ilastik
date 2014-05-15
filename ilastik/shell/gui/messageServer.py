@@ -107,7 +107,7 @@ class CommandProcessor(object):
     def __init__(self, shell):
         self.shell = shell
         
-        # define allowed commands
+        # define allowed commands and implement them in this class
         self.allowedCommands = {'setviewerposition': self._setViewerPos}
     
     def execute(self, cmd, data):

@@ -670,15 +670,23 @@ class ObjectClassificationGui(LabelingGui):
             return
 
         menu = QMenu(self)
-        text = "print info for object {} in the terminal".format(obj)
+        text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
-        clearlabel = "clear object label"
+        menu.addSeparator()
+        knime_hilite = "Highlight object {} in KNIME".format(obj)
+        menu.addAction(knime_hilite)
+        knime_unhilite = "Unhighlight object {} in KNIME".format(obj)
+        menu.addAction(knime_unhilite)
+        knime_clearhilite = "Clear all highlighted objects in KNIME".format(obj)
+        menu.addAction(knime_clearhilite)
+        menu.addSeparator()
+        clearlabel = "Clear label for object {}".format(obj)
         menu.addAction(clearlabel)
         numLabels = self.labelListData.rowCount()
         label_actions = []
         for l in range(numLabels):
             color_icon = self.labelListData.createIconForLabel(l)
-            act_text = "label with label {}".format(l+1)
+            act_text = "Label object {} with label {}".format(obj, l+1)
             act = QAction(color_icon, act_text, menu)
             act.setIconVisibleInMenu(True)
             label_actions.append(act_text)
@@ -738,6 +746,15 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
+        elif action.text()==knime_hilite:
+            data = {'command': 'hilite', 'objectid': str(obj)}
+            print data
+        elif action.text()==knime_unhilite:
+            data = {'command': 'unhilite', 'objectid': str(obj)}
+            print data
+        elif action.text()==knime_clearhilite:
+            data = {'command': 'clearhilite'}
+            print data  
         else:
             try:
                 label = label_actions.index(action.text())

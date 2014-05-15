@@ -242,9 +242,11 @@ class IlastikShell( QMainWindow ):
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
+        
+        # Server/client for inter process communication
         self.socketServer = MessageServer(self, 'localhost', 9999)
-        self.socketServer.connect('localhost', 1234, 'knime')
-        self.socketServer.send('knime', 'Hello')
+        #self.socketServer.connect('localhost', 9998, 'knime')
+        #self.socketServer.send('knime', 'Hello')
         
         self.openFileButtons = []
         self.cleanupFunctions = []
