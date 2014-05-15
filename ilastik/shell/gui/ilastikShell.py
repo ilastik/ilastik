@@ -1455,13 +1455,14 @@ class IlastikShell( QMainWindow ):
     
     def setAllViewersPosition(self, pos5d):
         # operate on currently displayed applet first
-        self.thunkEventHandler.post(self._setViewerPosition, self._applets[self.currentAppletIndex], pos5d) 
+        self._setViewerPosition(self._applets[self.currentAppletIndex], pos5d) 
         
         # now iterate over all other applets and change the viewer focus
         for applet in self._applets:
             if not applet is self._applets[self.currentAppletIndex]:
-                self.thunkEventHandler.post(self._setViewerPosition, applet, pos5d)
+                self._setViewerPosition(applet, pos5d)
         
+    @threadRouted
     def _setViewerPosition(self, applet, pos5d):
         gui = applet.getMultiLaneGui()
         # test if gui is a Gui on its own or just created by a SingleToMultiGuiAdapter
