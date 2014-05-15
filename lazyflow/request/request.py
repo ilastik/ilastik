@@ -872,6 +872,15 @@ class RequestPool(object):
             # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
             # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
             raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
+        def remove_request(result):
+            try:
+                self._requests.remove(req)
+            except KeyError:
+                # request may have been removed already by the while
+                # loop in the wait() method
+                pass
+
+        req.notify_finished(remove_request)
         self._requests.add(req)
 
     def submit(self):
@@ -880,8 +889,12 @@ class RequestPool(object):
         """
         if self._started:
             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
-        for req in self._requests:
-            req.submit()
+        # shallow copy prevents python complaining when finished requests
+        # remove themselves from self._requests
+        requests = self._requests.copy()
+        # while loop with pop() allows the gc to clean up completed requests
+        while requests:
+            requests.pop().submit()
 
     def wait(self):
         """
@@ -889,7 +902,15 @@ class RequestPool(object):
         """
         if not self._started:
             self.submit()
-        for req in self._requests:
+        # do not use a for loop since _requests will be modified as
+        # finished requests remove themselves from the set
+        while self._requests:
+            try:
+                req = self._requests.pop()
+            except KeyError:
+                # the _requests set was modified in the mean time
+                # we can quit the loop since there are no more requests
+                break
             req.block()
 
     def cancel(self):
