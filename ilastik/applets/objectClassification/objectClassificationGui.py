@@ -20,8 +20,11 @@ from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
+from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectClassification.opExportToKnime import OpExportToKnime
+
 
 import os
 import numpy
@@ -96,6 +99,10 @@ class ObjectClassificationGui(LabelingGui):
         super(ObjectClassificationGui, self).stopAndCleanUp()
 
     PREDICTION_LAYER_NAME = "Prediction"
+    
+    #FIXME
+    #temporary place for this operator, move somewhere else later
+    _knime_exporter = None
 
     def __init__(self, parentApplet, op):
         self.__cleanup_fns = []
@@ -188,6 +195,50 @@ class ObjectClassificationGui(LabelingGui):
         self.__cleanup_fns.append( partial( op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
         
         self.checkEnableButtons()
+
+    def menus(self):
+        m = QMenu("Special Stuff", self.volumeEditorWidget)
+        m.addAction( "Export to Knime" ).triggered.connect(self.exportStuff)
+        return [m]
+
+    def exportStuff(self):
+        if not self.layerstack or len(self.layerstack)==0:
+            print "Wait, nothing defined yet"
+            
+        else:
+            rawIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Raw data")
+            objIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Objects")
+            rawLayer = self.layerstack[rawIndex]
+            objLayer = self.layerstack[objIndex]
+            mainOperator = self.topLevelOperatorView
+            computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
+            
+            dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
+            if dlg.exec_() == QDialog.Accepted:
+                print "exporting"
+                if self._knime_exporter is None:
+                    #topLevelOp = self.topLevelOperatorView.viewed_operator()
+                    #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
+                    self._knime_exporter = OpExportToKnime(parent=mainOperator.viewed_operator())
+                    
+                    
+                    
+                    self._knime_exporter.RawImage.connect(mainOperator.RawImages)
+                    self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
+                    feature_table = mainOperator.exportTable(0)
+                    if feature_table is None:
+                        return
+                    self._knime_exporter.ObjectFeatures.setValue(feature_table)
+                    self._knime_exporter.ImagePerObject.setValue(True)
+                    self._knime_exporter.ImagePerTime.setValue(False)
+                
+                success = self._knime_exporter.run_export()
+                print "EXPORTED:", success
+                        
+
+            else:
+                print "not exporting" 
+            
 
     @property
     def labelMode(self):

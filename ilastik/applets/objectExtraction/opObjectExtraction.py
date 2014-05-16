@@ -732,3 +732,77 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+
+    @staticmethod
+    def exportTable(features):
+        #Assume features is the output of our own RegionFeatures slot
+        #Now we have a dict of dicts. Let's make a table
+        
+        #print features
+        ntimes = len(features.keys())
+        nplugins = len(features[0].keys())
+        nchannels = 0
+        nobjects = []
+        dtype_names = []
+        dtype_types = []
+        for t, plugin_name in features.iteritems():
+            feat0 = plugin_name.values()[0]
+            feat0_name = feat0.keys()[0]
+            feat0_array = feat0.values()[0]
+            nobjects.append(feat0_array.shape[0])
+                
+                
+        for plugin_name, plugins in features[0].iteritems():
+            for feature_name, feature_array in plugins.iteritems():
+                feature_channels = feature_array.shape[-1]
+                nchannels += feature_channels
+                if feature_channels==1:
+                    dtype_names.append(plugin_name + ", "+feature_name)
+                    dtype_types.append(feature_array.dtype)
+                else:
+                    for ich in range(feature_channels):
+                        dtype_names.append(plugin_name + ", "+ feature_name+"_ch_%d"%ich)
+                        dtype_types.append(feature_array.dtype)
+                    
+        #print "nchannels:", nchannels, "nobjects:", nobjects
+        #print dtype_names
+        #print dtype_types
+        nchannels += 2 #true channels + time value + explicit object id
+        
+        dtype_names.insert(0, "time")
+        dtype_names.insert(0, "object id")
+        
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        
+        nobjects_total = sum(nobjects)
+        
+        table = np.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
+        
+        #table = np.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
+        #                           'formats': [np.dtype(np.uint32), np.dtype(np.uint8)]})
+        
+        
+        start = 0
+        finish = start
+        for itime in range(ntimes):
+            print str(itime) + "/" + str(ntimes)
+            finish = start+nobjects[itime]
+            print start, finish
+            table["object id"][start: finish] = np.arange(nobjects[itime])
+            table["time"][start: finish] = itime
+            nfeat = 2
+            for plugin_name, plugins in features[itime].iteritems():
+                for feature_name, feature_array in plugins.iteritems():
+                    nchannels = feature_array.shape[-1]
+                    for ich in range(nchannels):
+                        table[dtype_names[nfeat]][start: finish] = feature_array[:, ich]
+                        nfeat += 1
+            start = finish
+        
+        #print table
+        #print table['Default features, RegionCenter_ch_1']
+        #print table['object id']
+        #dtype={'names':['col1', 'col2'], 'formats':['i4','f4']}
+        return table
+        
