@@ -51,6 +51,20 @@ class OpA(Operator):
         pass
 
 
+class TimeIt(object):
+    def __init__(self):
+        self.t1 = 0
+        self.t2 = 0
+        
+    def __enter__(self):
+        self.t1 = time.time()
+        
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.t2 = time.time()
+        
+    def time(self):
+        return self.t2 - self.t1
+
 results = []
 results_gc = []
 
@@ -67,23 +81,28 @@ for slots in range(0,100):
     
     array = numpy.ndarray((10,20), dtype = numpy.float32)
         
-    t1 = time.time()
-    opaw.Input.resize(slots)
-    for s in range(slots):
-        opaw.Input[s].setValue(array)
-    t2 = time.time()    
+    time_resize = TimeIt()
+    with time_resize:
+        opaw.Input.resize(slots)
+        for s in range(slots):
+            opaw.Input[s].setValue(array)
     
-    print slots, t2-t1
-    results.append(t2-t1)
-
-    print slots, gc.get_count()    
-
-    t1 = time.time()
-    gc.collect()
-    t2 = time.time()
     
-    print "GC", slots, t2-t1
-    results_gc.append(t2-t1)
+    time_addlane = TimeIt()
+    with time_addlane:
+        for num_slots in range(1,slots):
+            opaw.Input.resize(num_slots)
+            opaw.Input[num_slots-1].setValue(array)
+       
+    
+    results.append(time_resize.time())
+
+    time_gc = TimeIt()
+    with time_gc:
+        gc.collect()
+        
+    print "slots: %d, time_resize=%2.2f, time_addlane=%2.2f, time_gc=%2.2f" % (slots, time_resize.time(), time_addlane.time(), time_gc.time())
+    results_gc.append(time_gc.time())
     
 pyplot.title("Garbage collection time")
 pyplot.xlabel("Number of lanes")    
