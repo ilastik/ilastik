@@ -42,3 +42,5 @@ from opExportMultipageTiffSequence import OpExportMultipageTiffSequence
 from opExportSlot import OpExportSlot
 from opFormattedDataExport import OpFormattedDataExport
 
+from hdf5SerializerKnime import *
+
