@@ -23,7 +23,6 @@ from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.objectClassification.opExportToKnime import OpExportToKnime
 
 
 import os
@@ -34,6 +33,7 @@ from functools import partial
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.operators import OpSubRegion
+from lazyflow.operators.ioOperators import OpExportToKnime 
 
 import logging
 logger = logging.getLogger(__name__)
