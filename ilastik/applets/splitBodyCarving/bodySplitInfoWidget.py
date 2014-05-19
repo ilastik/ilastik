@@ -64,17 +64,18 @@ class BodySplitInfoWidget( QWidget ):
         self.opSplitBodyCarving = opSplitBodyCarving
         self._bodyTreeParentItems = {} # This is easier to maintain than using setData/find
         
-        annotation_filepath = None
+        self._annotation_filepath = None
         if self.opSplitBodyCarving.AnnotationFilepath.ready():
-            annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
+            self._annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
         self._annotations = {} # coordinate : Annotation
         self._ravelerLabels = set()
         
         self._initUi()
         
-        if annotation_filepath is not None:
-            self._loadAnnotationFile( annotation_filepath )
-        self.refreshButton.setEnabled( annotation_filepath is not None )
+        if self._annotation_filepath is not None:
+            self._loadAnnotationFile( self._annotation_filepath )
+        self.refreshButton.setEnabled( self._annotation_filepath is not None )
+
 
     def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
@@ -108,8 +109,8 @@ class BodySplitInfoWidget( QWidget ):
         Ask the user for a new annotation filepath, and then load it.
         """
         navDir = ""
-        if self._annotationFilepath is not None:
-            navDir = os.path.split( self._annotationFilepath )[0]
+        if self._annotation_filepath is not None:
+            navDir = os.path.split( self._annotation_filepath )[0]
 
         selected_file = QFileDialog.getOpenFileName(self,
                                     "Load Split Annotation File",

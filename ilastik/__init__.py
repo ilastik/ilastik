@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import sys
+import re
 
 ################################
 ## Add Submodules to sys.path ##
@@ -42,7 +43,7 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 0, 3)
+__version_info__ = (1, 0, '5b')
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Stuart Berg", 
@@ -72,7 +73,16 @@ developers = [ "Markus Doering",
 def convertVersion(vstring):
     if not isinstance(vstring, str):
         raise Exception('tried to convert non-string version: {}'.format(vstring))
-    return tuple(int(i) for i in vstring.split('.'))
+    
+    # We permit versions like '1.0.5b', in which case '5b' 
+    #  is simply converted to the integer 5 for compatibility purposes.
+    int_tuple = ()
+    for i in vstring.split('.'):
+        m = re.search('(\d+)', i)
+        assert bool(m), "Don't understand version component: {}".format( i )
+        next_int = int(m.groups()[0])
+        int_tuple = int_tuple + (next_int,)
+    return int_tuple
 
 
 def isVersionCompatible(version):

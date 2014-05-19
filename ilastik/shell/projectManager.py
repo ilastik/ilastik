@@ -116,6 +116,7 @@ class ProjectManager(object):
         If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
         If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
         """
+        projectFilePath = os.path.expanduser(projectFilePath)
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):

@@ -21,10 +21,13 @@
 import sys
 import copy
 import argparse
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
 import numpy
+
+from ilastik.config import cfg as ilastik_config
 
 from ilastik.workflow import Workflow
 
@@ -45,6 +48,9 @@ class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
+    
+    DATA_ROLE_RAW = 0
+    DATA_ROLE_PREDICTION_MASK = 1
     
     @property
     def applets(self):
@@ -71,6 +77,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -83,7 +90,8 @@ class PixelClassificationWorkflow(Workflow):
         self.generate_random_labels = parsed_args.generate_random_labels
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
-        
+        self.retrain = parsed_args.retrain
+
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
         
@@ -96,11 +104,16 @@ class PixelClassificationWorkflow(Workflow):
                                                         batchDataGui=False,
                                                         instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            # see role constants, above
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+        else:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
@@ -152,6 +165,9 @@ class PixelClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
@@ -230,6 +246,7 @@ class PixelClassificationWorkflow(Workflow):
         # Just connect the uncached features here to satisfy the operator.
         #opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
+        self.opBatchFeatures = opBatchFeatures
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
     def handleAppletStateUpdateRequested(self):
@@ -320,8 +337,12 @@ class PixelClassificationWorkflow(Workflow):
         if self._batch_export_args:
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
+        if self.retrain:
+            # re-train Classifier (useful if the stored labels were changed outside ilastik)
+            self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+
         if self._headless and self._batch_input_args and self._batch_export_args:
-            
+
             # Make sure we're using the up-to-date classifier.
             self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
         
@@ -343,6 +364,10 @@ class PixelClassificationWorkflow(Workflow):
                 
                 # Finished.
                 sys.stdout.write("\n")
+
+            if self.retrain:
+                # store re-trained classifier to file
+                projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """

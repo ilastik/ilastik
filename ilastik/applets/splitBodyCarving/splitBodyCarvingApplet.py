@@ -47,7 +47,7 @@ class SplitBodyCarvingApplet(CarvingApplet):
         # Get a single-lane view of the top-level operator
         topLevelOperatorView = self.topLevelOperator.getLane(laneIndex)
 
-        gui = SplitBodyCarvingGui( topLevelOperatorView )
+        gui = SplitBodyCarvingGui( self, topLevelOperatorView )
 
         gui.minLabelNumber = 2
         gui.maxLabelNumber = 2

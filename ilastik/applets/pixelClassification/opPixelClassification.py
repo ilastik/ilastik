@@ -29,9 +29,11 @@ import vigra
 #lazyflow
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
-                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
+from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
+                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
+
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 #ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -48,6 +50,7 @@ class OpPixelClassification( Operator ):
     # Graph inputs
     
     InputImages = InputSlot(level=1) # Original input data.  Used for display only.
+    PredictionMasks = InputSlot(level=1, optional=True) # Routed to OpClassifierPredict.PredictionMask.  See there for details.
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
@@ -56,6 +59,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
+    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(10, 10))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
@@ -115,10 +119,11 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Training operator
-        self.opTrain = OpTrainRandomForestBlocked( parent=self )
-        self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
-        self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
-        self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
+        self.opTrain = OpTrainClassifierBlocked( parent=self )
+        self.opTrain.ClassifierFactory.connect( self.ClassifierFactory )
+        self.opTrain.Labels.connect( self.opLabelPipeline.Output )
+        self.opTrain.Images.connect( self.CachedFeatureImages )
+        self.opTrain.nonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
@@ -136,6 +141,7 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.Classifier.connect( self.classifier_cache.Output )
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
+        self.opPredictionPipeline.PredictionMask.connect( self.PredictionMasks )
         
         def _updateNumClasses(*args):
             """
@@ -176,6 +182,12 @@ class OpPixelClassification( Operator ):
             multislot[index].notifyReady(handleInputReady)
                 
         self.InputImages.notifyInserted( handleNewInputImage )
+
+        def handleNewMaskImage( multislot, index, *args ):
+            def handleInputReady(slot):
+                self._checkConstraints( index )
+            multislot[index].notifyReady(handleInputReady)        
+        self.PredictionMasks.notifyInserted( handleNewMaskImage )
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
@@ -238,7 +250,15 @@ class OpPixelClassification( Operator ):
                  "All input images must have the same dimensionality.  "\
                  "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
                  .format( len(thisLaneTaggedShape), len(validShape) ) )
-            
+        
+        mask_slot = self.PredictionMasks[laneIndex]
+        input_shape = tuple(thisLaneTaggedShape.values())
+        if mask_slot.ready() and mask_slot.meta.shape[:-1] != input_shape[:-1]:
+            raise DatasetConstraintError(
+                 "Pixel Classification",
+                 "If you supply a prediction mask, it must have the same shape as the input image."\
+                 "Your input image has shape {}, but your mask has shape {}."\
+                 .format( input_shape, mask_slot.meta.shape ) )
     
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -307,6 +327,7 @@ class OpPredictionPipelineNoCache(Operator):
     This contains only the cacheless parts of the prediction pipeline, for easy use in headless workflows.
     """
     FeatureImages = InputSlot()
+    PredictionMask = InputSlot(optional=True)
     Classifier = InputSlot()
     FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
@@ -321,11 +342,12 @@ class OpPredictionPipelineNoCache(Operator):
         # Random forest prediction using the raw feature image slot (not the cached features)
         # This would be bad for interactive labeling, but it's good for headless flows 
         #  because it avoids the overhead of cache.        
-        self.cacheless_predict = OpPredictRandomForest( parent=self )
-        self.cacheless_predict.name = "OpPredictRandomForest (Cacheless Path)"
-        self.cacheless_predict.inputs['Classifier'].connect(self.Classifier) 
-        self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
-        self.cacheless_predict.inputs['LabelsCount'].connect(self.NumClasses)
+        self.cacheless_predict = OpClassifierPredict( parent=self )
+        self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"
+        self.cacheless_predict.Classifier.connect(self.Classifier) 
+        self.cacheless_predict.Image.connect(self.FeatureImages) # <--- Not from cache
+        self.cacheless_predict.LabelsCount.connect(self.NumClasses)
+        self.cacheless_predict.PredictionMask.connect(self.PredictionMask)
         self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
 
         # Alternate headless output: uint8 instead of float.
@@ -362,10 +384,11 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         super(OpPredictionPipeline, self).__init__( *args, **kwargs )
 
         # Random forest prediction using CACHED features.
-        self.predict = OpPredictRandomForest( parent=self )
-        self.predict.name = "OpPredictRandomForest"
-        self.predict.inputs['Classifier'].connect(self.Classifier) 
-        self.predict.inputs['Image'].connect(self.CachedFeatureImages)
+        self.predict = OpClassifierPredict( parent=self )
+        self.predict.name = "OpClassifierPredict"
+        self.predict.Classifier.connect(self.Classifier) 
+        self.predict.Image.connect(self.CachedFeatureImages)
+        self.predict.PredictionMask.connect(self.PredictionMask)
         self.predict.LabelsCount.connect( self.NumClasses )
         self.PredictionProbabilities.connect( self.predict.PMaps )
 

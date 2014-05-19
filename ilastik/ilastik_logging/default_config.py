@@ -138,6 +138,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.graph":                                           { "level":"INFO" },
             "lazyflow.graph.Slot":                                      { "level":"INFO" },
             "lazyflow.operators":                                       { "level":"INFO" },
+            "lazyflow.classifiers":                                     { "level":"INFO" },
             "lazyflow.operators.ioOperators":                           { "level":"INFO" },
             "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },

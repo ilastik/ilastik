@@ -27,6 +27,18 @@ class SplitBodyCarvingSerializer(CarvingSerializer):
     def __init__(self, topLevelOperator, *args, **kwargs):
         super( SplitBodyCarvingSerializer, self ).__init__(topLevelOperator, *args, **kwargs)
         self._topLevelOperator = topLevelOperator
+
+        # Set up dirty tracking...
+        def setDirty(*args):
+            self.__dirty = True
+
+        def doMulti(slot, index, size):
+            slot[index].notifyDirty(setDirty)
+            slot[index].notifyValueChanged(setDirty)
+
+        topLevelOperator.AnnotationFilepath.notifyInserted(doMulti)
+        topLevelOperator.AnnotationFilepath.notifyRemoved(setDirty)
+
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         split_settings_grp = getOrCreateGroup(topGroup, "split_settings")
@@ -41,6 +53,7 @@ class SplitBodyCarvingSerializer(CarvingSerializer):
 
         # Now save the regular the carving data.        
         super( SplitBodyCarvingSerializer, self )._serializeToHdf5( topGroup, hdf5File, projectFilePath )
+        self.__dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         try:
@@ -60,7 +73,9 @@ class SplitBodyCarvingSerializer(CarvingSerializer):
         
         # Now load the regular carving data.
         super( SplitBodyCarvingSerializer, self )._deserializeFromHdf5( topGroup, groupVersion, hdf5File, projectFilePath )
+        self.__dirty = False
         
 
-        
+    def isDirty(self):
+        return self.__dirty or super( SplitBodyCarvingSerializer, self ).isDirty()
         

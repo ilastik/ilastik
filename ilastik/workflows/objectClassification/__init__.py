@@ -21,6 +21,9 @@
 # to ensure that plugin system is available
 from ilastik.plugins import pluginManager
 
+import logging
+logger = logging.getLogger(__name__)
+
 from objectClassificationWorkflow import \
     ObjectClassificationWorkflowPixel, \
     ObjectClassificationWorkflowBinary, \

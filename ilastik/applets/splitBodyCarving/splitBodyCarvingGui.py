@@ -48,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 class SplitBodyCarvingGui(CarvingGui):
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         drawerUiPath = os.path.join( os.path.split(__file__)[0], 'splitBodyCarvingDrawer.ui' )
-        super( SplitBodyCarvingGui, self ).__init__(topLevelOperatorView, drawerUiPath=drawerUiPath)
+        super( SplitBodyCarvingGui, self ).__init__(parentApplet, topLevelOperatorView, drawerUiPath=drawerUiPath)
         self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)
         self._splitInfoWidget.navigationRequested.connect( self._handleNavigationRequest )
         self._labelControlUi.annotationWindowButton.pressed.connect( self._splitInfoWidget.show )
@@ -159,7 +159,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         # Block must not exceed total bounds.
         # Shift start up if necessary
-        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2.0
+        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2
         rendering_start_3d = numpy.maximum( (0,0,0), rendering_start_3d )
 
         # Compute stop and shift down if necessary
@@ -309,18 +309,19 @@ class SplitBodyCarvingGui(CarvingGui):
                 baseCarvingLayers.remove(layer)
 
         # Don't show carving layers that aren't relevant to the split-body workflow
-        removeBaseLayer( "uncertainty" )
-        removeBaseLayer( "done seg" )
-        removeBaseLayer( "pmap" )
-        removeBaseLayer( "hints" )
-        removeBaseLayer( "done" )
-        removeBaseLayer( "done" )
+        removeBaseLayer( "Uncertainty" )
+        removeBaseLayer( "Segmentation" )
+        removeBaseLayer( "Completed segments (unicolor)" )
+        #removeBaseLayer( "pmap" )
+        #removeBaseLayer( "hints" )
+        #removeBaseLayer( "done" )
+        #removeBaseLayer( "done" )
         
         ActionInfo = ShortcutManager.ActionInfo
         
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():
-            rawLayer = findLayer(lambda l: l.name == "raw", baseCarvingLayers)
+            rawLayer = findLayer(lambda l: l.name == "Raw Data", baseCarvingLayers)
             assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
             rawLayer.shortcutRegistration = ( "f", ActionInfo( "Carving",
                                                                "Raw Data to Top",
