@@ -426,10 +426,20 @@ class OpVectorwiseClassifierPredict(Operator):
                                                 #ilastik operators, setting it to 2 causes errors in pixel classification
                                                 #(live prediction doesn't work when only two labels are present)
 
+        self.PMaps.meta.assignFrom( self.Image.meta )
         self.PMaps.meta.dtype = numpy.float32
-        self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
+        
+        ideal_blockshape = self.Image.meta.ideal_blockshape
+        if ideal_blockshape is not None:
+            ideal_blockshape = (0,) * len( self.Image.meta.shape )
+        ideal_blockshape = list(ideal_blockshape)
+        ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
+        self.PMaps.meta.ideal_blockshape = tuple(ideal_blockshape)
+        
+        # FIXME: This is not really accurate, since we have no idea how much RAM the classifier needs.
+        self.PMaps.meta.ram_usage_per_requested_pixel = 4.0 * nlabels
 
     def execute(self, slot, subindex, roi, result):
         classifier = self.Classifier.value
