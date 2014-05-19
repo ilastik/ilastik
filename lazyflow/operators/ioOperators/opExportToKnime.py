@@ -129,7 +129,7 @@ class OpExportToKnime(Operator):
                 newrecarray[name] = a[name]
         return newrecarray
     
-    def run_export(self):
+    def run_export(self, constraints={}):
         
         if not self.RawImage.ready() or not self.CCImage.ready():
             print "NOT READY"
@@ -209,6 +209,42 @@ class OpExportToKnime(Operator):
                 assert image_paths.shape[0] == table.shape[0]
                 #newtable = self.join_struct_arrays((table, image_paths))
             
+            elif self.imagePerTime and not self.imagePerObject:
+                # check for constraints passed with function call
+                try:
+                    if 't' in constraints:                    
+                        tmin = constraints['t']['min']
+                        tmax = constraints['t']['max']
+                    else:
+                        raise Exception("Constraints on an axis have to be defined by 'min' and 'max' value")
+                except:
+                    tmin, tmax = (-1, -1)
+                
+                # sanity check given constraint values
+                tmax = max(min(tmax, self.RawImage.meta.getTaggedShape()['t']), 0)
+                tmin = min(max(tmin, 0), tmax)
+                
+                for t in range(tmin, tmax):                                              
+                    bbox = [slice(t, t+1, None), slice(None), slice(None), slice(None), slice(None)]      
+                    
+                    raw_image = self.RawImage[bbox].wait()
+                    cc_image = self.CCImage[bbox].wait()
+                
+                    gr_images_obj = gr_images.create_group("{}".format(t))
+                    rawname = "{}/raw".format(t)
+                    ccname = "{}/labels".format(t)
+                    
+                    image_paths["raw"][t] = rawname
+                    image_paths["labels"][t] = ccname
+                    
+                    ri = gr_images_obj.create_dataset("raw", data=raw_image.squeeze())
+                    cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())
+                    
+                    ri.attrs["type"] = "image"
+                    cci.attrs["type"] = "labeling"
+                                        
+                assert image_paths.shape[0] == table.shape[0]
+
             write_numpy_structured_array_to_HDF5(fout, "tables/FeatureTable", table, True)
             write_numpy_structured_array_to_HDF5(fout, "tables/ImagePathTable", image_paths, True)
             #gr = fout.create_group("table")
