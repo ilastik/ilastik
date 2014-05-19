@@ -17,10 +17,13 @@
 import sys
 import copy
 import argparse
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
 import numpy
+
+from ilastik.config import cfg as ilastik_config
 
 from ilastik.workflow import Workflow
 
@@ -41,6 +44,9 @@ class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
+    
+    DATA_ROLE_RAW = 0
+    DATA_ROLE_PREDICTION_MASK = 1
     
     @property
     def applets(self):
@@ -94,11 +100,16 @@ class PixelClassificationWorkflow(Workflow):
                                                         batchDataGui=False,
                                                         instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            # see role constants, above
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+        else:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
@@ -150,6 +161,9 @@ class PixelClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
@@ -228,6 +242,7 @@ class PixelClassificationWorkflow(Workflow):
         # Just connect the uncached features here to satisfy the operator.
         #opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
+        self.opBatchFeatures = opBatchFeatures
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
     def handleAppletStateUpdateRequested(self):

@@ -55,8 +55,8 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
         _fragmentColors.append(QColor(r,g,b))
     _fragmentColors[0:len(firstFragmentColors)] = firstFragmentColors
 
-    def __init__(self, topLevelOperatorView):
-        super( SplitBodyPostprocessingGui, self ).__init__( topLevelOperatorView )
+    def __init__(self, parentApplet, topLevelOperatorView):
+        super( SplitBodyPostprocessingGui, self ).__init__( parentApplet, topLevelOperatorView )
         
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)

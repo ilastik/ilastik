@@ -22,7 +22,7 @@ import unittest
 import shutil
 import tempfile
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
-from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache, OpCompressedUserLabelArray
+from lazyflow.operators import OpCompressedUserLabelArray
 
 from ilastik.applets.base.appletSerializer import \
     SerialSlot, SerialListSlot, AppletSerializer, SerialDictSlot, SerialBlockSlot
