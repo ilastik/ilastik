@@ -26,15 +26,18 @@ from collections import deque, OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+import psutil
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
-from lazyflow.roi import roiFromShape
+from lazyflow.roi import roiFromShape, determine_optimal_request_blockshape, determineBlockShape
+from lazyflow.request import Request, RequestPool
+from lazyflow.utility import RoiRequestBatch
 
 #SciPy
 import vigra,numpy,h5py
 
 #lazyflow
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import roiToSlice, getIntersectingBlocks, getBlockBounds
 
 class OpStackLoader(Operator):
     """Imports an image stack.
@@ -452,50 +455,21 @@ class OpH5WriterBigDataset(Operator):
     def execute(self, slot, subindex, rroi, result):
         self.progressSignal(0)
         
-        slicings=self.computeRequestSlicings()
-        numSlicings = len(slicings)
-
-        self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
-
-        # Throttle: Only allow 10 outstanding requests at a time.
-        # Otherwise, the whole set of requests can be outstanding and use up ridiculous amounts of memory.        
-        activeRequests = deque()
-        activeSlicings = deque()
-        # Start by activating 10 requests 
-        for i in range( min(10, len(slicings)) ):
-            s = slicings.pop()
-            activeSlicings.append(s)
-            self.logger.debug( "Creating request for slicing {}".format(s) )
-            activeRequests.append( self.inputs["Image"][s] )
-        
-        counter = 0
-
-        while len(activeRequests) > 0:
-            # Wait for a request to finish
-            req = activeRequests.popleft()
-            s=activeSlicings.popleft()
-            data = req.wait()
-            if data.flags.c_contiguous:
-                self.d.write_direct(data.view(numpy.ndarray), dest_sel=s)
-            else:
-                self.d[s] = data
-            
-            req.clean() # Discard the data in the request and allow its children to be garbage collected.
-
-            if len(slicings) > 0:
-                # Create a new active request
-                s = slicings.pop()
-                activeSlicings.append(s)
-                activeRequests.append( self.inputs["Image"][s] )
-            
-            # Since requests finish in an arbitrary order (but we always block for them in the same order),
-            # this progress feedback will not be smooth.  It's the best we can do for now.
-            self.progressSignal( 100*counter/numSlicings )
-            self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
-            counter += 1
-
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
+
+        rois = self.computeRequestRois()
+        self.logger.debug( "Dividing work into {} pieces".format( len(rois) ) )
+        def handle_block_result(roi, data):
+            slicing = roiToSlice(*roi)
+            if data.flags.c_contiguous:
+                self.d.write_direct(data.view(numpy.ndarray), dest_sel=slicing)
+            else:
+                self.d[slicing] = data
+        requester = RoiRequestBatch( self.Image, iter(rois), numpy.prod( self.Image.meta.shape ), batchSize=100 )
+        requester.resultSignal.subscribe( handle_block_result )
+        requester.progressSignal.subscribe( self.progressSignal )
+        requester.execute()            
 
         # Be paranoid: Flush right now.
         self.f.file.flush()
@@ -505,33 +479,80 @@ class OpH5WriterBigDataset(Operator):
 
         self.progressSignal(100)
 
-    def computeRequestSlicings(self):
-        #TODO: reimplement the request better
-        shape=numpy.asarray(self.inputs['Image'].meta.shape)
+    def computeRequestRois(self):
+        input_shape = self.Image.meta.shape
+        max_blockshape = input_shape
+        ideal_blockshape = self.Image.meta.ideal_blockshape
+        ram_usage_per_requested_pixel = self.Image.meta.ram_usage_per_requested_pixel
+        
+        num_threads = Request.global_thread_pool.num_workers
+        available_ram = psutil.virtual_memory().available
+        
+        # Fudge factor: Reduce RAM usage by a bit
+        available_ram *= 0.5
+        
+        if ideal_blockshape is None:
+            blockshape = determineBlockShape( input_shape, available_ram/num_threads )
+            self.logger.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
+        else:
+            if ram_usage_per_requested_pixel is None:
+                # Make a conservative guess: (bytes for dtype) * (num channels) + (fudge factor=4)
+                ram_usage_per_requested_pixel = 4 + 2*self.Image.meta.dtype().nbytes*self.Image.meta.shape[-1]
+                self.logger.warn( "Unknown RAM usage.  Making a guess." )
+            else:
+                self.logger.debug( "Estimated RAM usage per pixel is {} bytes"
+                                   .format( ram_usage_per_requested_pixel ) )
 
-        chunkShape = numpy.asarray(self.chunkShape)
+            self.logger.debug( "determining blockshape assuming available_ram is {} GB, split between {} threads"
+                               .format( available_ram/1e9, num_threads ) )
+            
+            # By convention, ram_usage_per_requested_pixel refers to the ram used when requesting ALL channels of a 'pixel'
+            # Therefore, we do not include the channel dimension in the blockshapes here.
+            blockshape = determine_optimal_request_blockshape( max_blockshape[:-1], 
+                                                               ideal_blockshape[:-1], 
+                                                               ram_usage_per_requested_pixel, 
+                                                               num_threads, 
+                                                               available_ram )
+            blockshape += (self.Image.meta.shape[-1],)
+            self.logger.debug( "Chose blockshape: {}".format( blockshape ) )
+            self.logger.debug( "Estimated RAM usage per block is {} GB"
+                               .format( ram_usage_per_requested_pixel * numpy.prod( blockshape[:-1] ) / 1e9 ) )
 
-        # Choose a request shape that is a multiple of the chunk shape
-        axistags = self.Image.meta.axistags
-        multipliers = { 'x':5, 'y':5, 'z':5, 't':1, 'c':100 } # For most problems, there is little advantage to breaking up the channels.
-        multiplier = [multipliers[tag.key] for tag in axistags ]
-        shift = chunkShape * numpy.array(multiplier)
-        shift=numpy.minimum(shift,shape)
-        start=numpy.asarray([0]*len(shape))
+        block_starts = getIntersectingBlocks( blockshape, ((0,) * len(input_shape), input_shape) )
 
-        stop=shift
-        reqList=[]
+        rois = []
+        for block_start in block_starts:
+            start, stop = getBlockBounds( input_shape, blockshape, block_start )
+            rois.append( (start, stop) )
+        return rois
 
-        #shape = shape - (numpy.mod(numpy.asarray(shape),
-        #                  shift))
-
-        for indices in product(*[range(0, stop, step)
-                        for stop,step in zip(shape, shift)]):
-
-            start=numpy.asarray(indices)
-            stop=numpy.minimum(start+shift,shape)
-            reqList.append(roiToSlice(start,stop))
-        return reqList
+#     def computeRequestSlicings(self):
+#         #TODO: reimplement the request better
+#         shape=numpy.asarray(self.inputs['Image'].meta.shape)
+# 
+#         chunkShape = numpy.asarray(self.chunkShape)
+# 
+#         # Choose a request shape that is a multiple of the chunk shape
+#         axistags = self.Image.meta.axistags
+#         multipliers = { 'x':5, 'y':5, 'z':5, 't':1, 'c':100 } # For most problems, there is little advantage to breaking up the channels.
+#         multiplier = [multipliers[tag.key] for tag in axistags ]
+#         shift = chunkShape * numpy.array(multiplier)
+#         shift=numpy.minimum(shift,shape)
+#         start=numpy.asarray([0]*len(shape))
+# 
+#         stop=shift
+#         reqList=[]
+# 
+#         #shape = shape - (numpy.mod(numpy.asarray(shape),
+#         #                  shift))
+# 
+#         for indices in product(*[range(0, stop, step)
+#                         for stop,step in zip(shape, shift)]):
+# 
+#             start=numpy.asarray(indices)
+#             stop=numpy.minimum(start+shift,shape)
+#             reqList.append(roiToSlice(start,stop))
+#         return reqList
 
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.
