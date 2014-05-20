@@ -471,6 +471,65 @@ def determineBlockShape( max_shape, target_block_volume ):
     block_shape = zip( *sorted( indexed_block_shape ) )[1]    
     return tuple(block_shape)
 
+def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram ):
+    """
+    Choose a blockshape for requests subject to the following constraints:
+    - not larger than max_blockshape in any dimension
+    - not too large to run in parallel without exceeding available ram (according to num_threads and available_ram)
+    
+    Within those constraints, choose the largest blockshape possible.  
+    The blockshape will be chosen according to the following heuristics:
+    - If any dimensions in ideal_blockshape are 0, prefer to expand those first until max_blockshape is reached.
+    (The result is known as atomic_blockshape.)
+    - After that, attempt to expand the blockshape by incrementing a dimension according to its width in atomic_blockshape.
+    
+    Note: For most use-cases, the ``ram_usage_per_requested_pixel`` parameter refers to the ram consumed when requesting ALL channels of an image.
+          Therefore, you probably want to omit the channel dimension from your max_blockshape and ideal_blockshape parameters.
+    
+    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e6 )
+    array([158, 158,   1])
+    
+    >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e9 )
+    array([1000, 1000,   24])
+    
+    """
+    assert len( max_blockshape ) == len( ideal_blockshape )
+    
+    # Convert to numpy for convenience.
+    max_blockshape = numpy.asarray( max_blockshape )
+    ideal_blockshape = numpy.asarray( ideal_blockshape )
+
+    target_block_volume_bytes = available_ram / num_threads
+    target_block_volume_pixels = target_block_volume_bytes / ram_usage_per_requested_pixel
+    
+    # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
+    complete_ideal_blockshape = numpy.where( ideal_blockshape == 0, max_blockshape, ideal_blockshape )
+    
+    # Clip to max
+    clipped_ideal_blockshape = numpy.minimum( max_blockshape, complete_ideal_blockshape )
+
+    # Try to expand.
+    atomic_blockshape = determineBlockShape( clipped_ideal_blockshape, target_block_volume_pixels )
+    atomic_blockshape = numpy.asarray( atomic_blockshape )
+    
+    # Does our blockshape consume all available RAM?  Or was it limited by the max_shape?
+    blockshape = atomic_blockshape
+    while True:
+        # Find a dimension of atomic_blockshape that isn't already maxed out,
+        # And see if we have enough RAM to 
+        for index in range( len(blockshape) ):
+            # If we were to expand the blockshape in this dimension, would the block still fit in RAM?
+            candidate_blockshape = blockshape.copy()
+            candidate_blockshape[index] += atomic_blockshape[index]
+            if (candidate_blockshape <= max_blockshape).all() and \
+               (numpy.prod(candidate_blockshape) < target_block_volume_pixels):
+                blockshape = candidate_blockshape
+                break
+        if blockshape is not candidate_blockshape:
+            break
+        
+    return tuple(blockshape)
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
