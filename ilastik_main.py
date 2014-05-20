@@ -31,12 +31,12 @@ def main( parsed_args, workflow_cmdline_args=[] ):
         parsed_args.debug = True
     
     # Initialize logging before anything else
-    from ilastik.ilastik_logging import default_config
+    from ilastik.ilastik_logging import default_config, startUpdateInterval
     if ilastik_config.getboolean('ilastik', 'debug') or parsed_args.headless:
         default_config.init(output_mode=default_config.OutputMode.BOTH)
     else:
         default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
-        ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
+        startUpdateInterval(10) # 10 second periodic refresh
     import logging
     logger = logging.getLogger(__name__)
     
