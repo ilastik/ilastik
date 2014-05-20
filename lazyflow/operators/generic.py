@@ -641,7 +641,7 @@ class OpPixelOperator(Operator):
     def setupOutputs(self):
         self.function = self.inputs["Function"].value
 
-        self.Output.meta.assign( self.Input.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         
         # To determine the output dtype, we'll test the function on a tiny array.
         # For pathological functions, this might raise an exception (e.g. divide by zero).
