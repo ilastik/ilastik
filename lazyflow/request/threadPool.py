@@ -96,6 +96,7 @@ class ThreadPool(object):
         self.job_condition = threading.Condition()
         self.unassigned_tasks = queue_type()
 
+        self.num_workers = num_workers
         self.workers = self._start_workers( num_workers, queue_type )
 
         # ThreadPools automatically stop upon program exit
