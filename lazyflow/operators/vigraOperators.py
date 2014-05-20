@@ -296,19 +296,19 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (channelCount,)
         self.Output.meta.ideal_blockshape = self._get_ideal_blockshape()
         
-        # FIXME: Features are float, so we need AT LEAST 4 bytes per output pixel,
+        # FIXME: Features are float, so we need AT LEAST 4 bytes per output channel,
         #        but vigra functions may use internal RAM as well.
-        self.Output.meta.ram_usage_per_requested_pixel = 4.0
+        self.Output.meta.ram_usage_per_requested_pixel = 4.0 * self.Output.meta.shape[-1]
 
     def _get_ideal_blockshape(self):
         tagged_blockshape = self.Output.meta.getTaggedShape()
-        if 't' in tagged_blockshape['t']:
+        if 't' in tagged_blockshape:
             # There is no advantage to grouping time slices in a single request.
-            tagged_blockshape = 1
+            tagged_blockshape['t'] = 1
         for k in 'xyz':
             # There is no natural blockshape for spatial dimensions.
             if k in tagged_blockshape:
-                tagged_blockshape = 0
+                tagged_blockshape[k] = 0
         input_blockshape = self.Input.meta.ideal_blockshape
         if input_blockshape is None:
             input_blockshape = (0,) * len( self.Input.meta.shape )

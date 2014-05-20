@@ -116,6 +116,10 @@ class OpSlicedBlockedArrayCache(OpCache):
         elif numpy.dtype == object:
             ram_per_pixel = sys.getsizeof(None)
 
+        tagged_shape = self.Output.meta.getTaggedShape()
+        if 'c' in tagged_shape:
+            ram_per_pixel *= float(tagged_shape['c'])
+
         if self.Output.meta.ram_usage_per_requested_pixel is not None:
             ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
 

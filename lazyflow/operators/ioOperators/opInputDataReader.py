@@ -15,7 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpBlockedArrayCache
+from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
@@ -102,6 +102,7 @@ class OpInputDataReader(Operator):
         # Clean up before reconfiguring
         if self.internalOperator is not None:
             self.Output.disconnect()
+            self.opInjector.cleanUp()
             self.internalOperator.cleanUp()
             self.internalOperator = None
             self.internalOutput = None
@@ -128,8 +129,21 @@ class OpInputDataReader(Operator):
         if self.internalOutput is None:
             raise RuntimeError("Can't read " + filePath + " because it has an unrecognized format.")
 
+        self.opInjector = OpMetadataInjector( parent=self )
+        self.opInjector.Input.connect( self.internalOutput )
+        
+        # Add metadata for estimated RAM usage if the internal operator didn't already provide it.
+        if self.internalOutput.meta.ram_per_pixelram_usage_per_requested_pixel is None:
+            ram_per_pixel = self.internalOutput.meta.dtype().nbytes
+            if 'c' in self.internalOutput.meta.getTaggedShape():
+                ram_per_pixel *= self.internalOutput.meta.getTaggedShape()['c']
+            self.opInjector.Metadata.setValue( {'ram_per_pixelram_usage_per_requested_pixel' : ram_per_pixel} )
+        else:
+            # Nothing to add
+            self.opInjector.Metadata.setValue( {} )            
+
         # Directly connect our own output to the internal output
-        self.Output.connect( self.internalOutput )
+        self.Output.connect( self.opInjector.Output )
     
     def _attemptOpenAsStack(self, filePath):
         if '*' in filePath:
@@ -162,8 +176,7 @@ class OpInputDataReader(Operator):
             h5File = h5py.File(externalPath, 'r')
         except Exception as e:
             msg = "Unable to open HDF5 File: {}".format( externalPath )
-            if hasattr(e, 'message'):
-                msg += e.message
+            msg += str(e)
             raise OpInputDataReader.DatasetReadError( msg )
         self._file = h5File
 

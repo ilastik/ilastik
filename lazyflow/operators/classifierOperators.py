@@ -438,8 +438,15 @@ class OpVectorwiseClassifierPredict(Operator):
         ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
         self.PMaps.meta.ideal_blockshape = tuple(ideal_blockshape)
         
-        # FIXME: This is not really accurate, since we have no idea how much RAM the classifier needs.
-        self.PMaps.meta.ram_usage_per_requested_pixel = 4.0 * nlabels
+        output_channels = nlabels
+        input_channels = self.Image.meta.shape[-1]
+        # Temporarily consumed RAM includes the following:
+        # >> result array: 4 * N output_channels
+        # >> (times 2 due to temporary variable)
+        # >> input data allocation
+        ram_per_pixel = 4.0 * output_channels * 2 + self.Image.meta.dtype().nbytes * input_channels
+        ram_per_pixel = max( ram_per_pixel, self.Image.meta.ram_usage_per_requested_pixel )
+        self.PMaps.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
         classifier = self.Classifier.value
@@ -454,6 +461,7 @@ class OpVectorwiseClassifierPredict(Operator):
             start, stop = map(tuple, mask_roi)
             mask = self.PredictionMask( start, stop ).wait()
             skip_prediction = not numpy.any(mask)
+            del mask
 
         if skip_prediction:
             result[:] = 0.0
