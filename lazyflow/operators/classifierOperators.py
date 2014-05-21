@@ -437,7 +437,7 @@ class OpVectorwiseClassifierPredict(Operator):
         self.PMaps.meta.drange = (0.0, 1.0)
         
         ideal_blockshape = self.Image.meta.ideal_blockshape
-        if ideal_blockshape is not None:
+        if ideal_blockshape is None:
             ideal_blockshape = (0,) * len( self.Image.meta.shape )
         ideal_blockshape = list(ideal_blockshape)
         ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
