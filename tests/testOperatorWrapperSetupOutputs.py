@@ -65,6 +65,7 @@ class TestOperatorWrapperSetupOutputs(object):
         opbw.input.connect(opaw.Output)
         
         array = numpy.ndarray((10,20), dtype = numpy.float32)
+        array = vigra.taggedView( array, 'xy' )
         opaw.Input.resize(1)
         opaw.Input[0].setValue(array)
         

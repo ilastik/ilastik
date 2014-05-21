@@ -29,7 +29,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators.operators import OpArrayCache, OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 
@@ -55,8 +55,11 @@ class TestOpExportSlot(object):
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
         
         graph = Graph()
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+
         opExport = OpExportSlot(graph=graph)
-        opExport.Input.setValue(data)
+        opExport.Input.connect( opPiper.Output )
         opExport.OutputFormat.setValue( 'hdf5' )
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.OutputInternalPath.setValue('volume/data')
@@ -81,8 +84,11 @@ class TestOpExportSlot(object):
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
         
         graph = Graph()
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+
         opExport = OpExportSlot(graph=graph)
-        opExport.Input.setValue(data)
+        opExport.Input.connect( opPiper.Output )
         opExport.OutputFormat.setValue( 'npy' )
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.CoordinateOffset.setValue( (10, 20) )
@@ -118,8 +124,12 @@ class TestOpExportSlot(object):
             data = vigra.taggedView( data, vigra.defaultAxistags('xyc') )
             
             graph = Graph()
+            
+            opPiper = OpArrayPiper(graph=graph)
+            opPiper.Input.setValue( data )
+            
             opExport = OpExportSlot(graph=graph)
-            opExport.Input.setValue( data )
+            opExport.Input.connect( opPiper.Output )
             opExport.OutputFormat.setValue( 'dvid' )
             url = 'http://localhost:8000/api/node/{data_uuid}/{data_name}'.format( **locals() )
             opExport.OutputFilenameFormat.setValue( url )

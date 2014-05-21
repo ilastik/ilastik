@@ -20,12 +20,12 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
+import os
 import time
 import random
-import nose
 import numpy
-import h5py
 import gc
+import platform
 from functools import partial
 
 import psutil
@@ -632,11 +632,14 @@ class TestRequest(object):
         so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
         are broken.  Preferably, requests should be deleted early as possible.
         """
-        cur_process = psutil.Process()
+        cur_process = psutil.Process(os.getpid())
         def getMemoryUsage():
             # Collect garbage first
             gc.collect()
-            return cur_process.memory_info().vms
+            vmem = psutil.virtual_memory()
+            if 'Linux' in platform.platform():
+                return (vmem.total - vmem.available)
+            return (vmem.total - vmem.free)
 
         starting_usage = getMemoryUsage()
         def getMemoryIncrease():
