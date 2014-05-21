@@ -54,15 +54,17 @@ class OpExportDvidVolume(Operator):
         assert node == 'node'
         
         axiskeys = self.Input.meta.getAxisKeys()
+        shape = self.Input.meta.shape
         
         if self._transpose_axes:
             axiskeys = reversed(axiskeys)
+            shape = tuple(reversed(shape))
         
         axiskeys = "".join( axiskeys )
         
         # FIXME: We assume the dataset needs to be created first.
         #        If it already existed, this (presumably) causes an error on the DVID side.
-        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( self.Input.meta.shape, 
+        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
                                                                          self.Input.meta.dtype, 
                                                                          axiskeys, 
                                                                          0.0, 
