@@ -211,7 +211,7 @@ class OpArrayCache(OpCache):
 
             # Estimate ram usage            
             ram_per_pixel = 0
-            if self.Output.meta.dtype == object:
+            if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
                 ram_per_pixel = sys.getsizeof(None)
             elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
                 ram_per_pixel = self.Output.meta.dtype().nbytes
