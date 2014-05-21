@@ -27,6 +27,7 @@ import threading
 import platform
 import psutil
 import time
+import os
 
 
 # This module's code needs to be sanitized if you're not using CPython.
@@ -92,7 +93,7 @@ class MemoryWatcher(threading.Thread):
     
     def __init__(self, thread_pool):
         threading.Thread.__init__(self)
-        self.process = psutil.Process()
+        self.process = psutil.Process(os.getpid())
         self.usage = self.process.get_memory_percent()
         self.tasks = FifoQueue()
         self.thread_pool = thread_pool
@@ -164,6 +165,7 @@ class ThreadPool(object):
         self.unassigned_tasks = queue_type()
         self.memory = MemoryWatcher(self)
         self.memory.start()
+        self.num_workers = num_workers
         self.workers = self._start_workers( num_workers, queue_type )
 
         # ThreadPools automatically stop upon program exit

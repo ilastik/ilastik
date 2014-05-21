@@ -110,6 +110,25 @@ class OpSlicedBlockedArrayCache(OpCache):
             op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
 
         self.Output.meta.assignFrom(self.Input.meta)
+        
+        # Blockshape: Somewhat arbitrarily, we choose the first blockshape
+        self.Output.meta.blockshape = self._innerShapes[0]
+
+        # Estimate ram usage            
+        ram_per_pixel = 0
+        if self.Output.meta.dtype == object:
+            ram_per_pixel = sys.getsizeof(None)
+        elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
+            ram_per_pixel = self.Output.meta.dtype().nbytes
+
+        tagged_shape = self.Output.meta.getTaggedShape()
+        if 'c' in tagged_shape:
+            ram_per_pixel *= float(tagged_shape['c'])
+
+        if self.Output.meta.ram_usage_per_requested_pixel is not None:
+            ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+
+        self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
         # We also provide direct access to each of our inner cache outputs.        
         self.InnerOutputs.resize( len(self._innerOps) )

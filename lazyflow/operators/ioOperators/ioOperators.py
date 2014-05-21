@@ -31,16 +31,17 @@ from collections import deque, OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+import psutil
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
-from lazyflow.roi import roiFromShape
-from lazyflow.request import RequestPool
+from lazyflow.roi import roiFromShape, determine_optimal_request_blockshape, determineBlockShape
+from lazyflow.request import Request
 
 #SciPy
 import vigra,numpy,h5py
 
 #lazyflow
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import roiToSlice, getIntersectingBlocks, getBlockBounds
 
 class OpStackLoader(Operator):
     """Imports an image stack.
@@ -413,24 +414,20 @@ class OpH5WriterBigDataset(Operator):
         dataShape=self.Image.meta.shape
         self.logger.info( "Data shape: {}".format(dataShape))
 
-        # set t to 1 in the final chunk shape
-        axistags = self.Image.meta.axistags
-        dataShapeNoTime = list(dataShape)
-        if vigra.AxisInfo.t in axistags:
-            dataShapeNoTime[axistags.index('t')] = 1
-
         dtype = self.Image.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
+        # Set up our chunk shape: Aim for a cube that's roughly 512k in size
         dtypeBytes = dtype().nbytes
 
-        # aim for a chunk size of 512 Kb
-        from lazyflow.roi import determineBlockShape
-        self.chunkShape = determineBlockShape( dataShapeNoTime,
-                (1<<19) / dtypeBytes )
-        self.logger.info( "Chunk shape: {}".format(self.chunkShape))
+        tagged_maxshape = self.Image.meta.getTaggedShape()
+        if 't' in tagged_maxshape:
+            # Assume that chunks should not span multiple t-slices
+            tagged_maxshape['t'] = 1
+        
+        self.chunkShape = determineBlockShape( tagged_maxshape.values(), 512000.0 / dtypeBytes )
 
         if datasetName in g.keys():
             del g[datasetName]
@@ -447,34 +444,19 @@ class OpH5WriterBigDataset(Operator):
     def execute(self, slot, subindex, rroi, result):
         self.progressSignal(0)
         
-        slicings=self.computeRequestSlicings()
-        numSlicings = len(slicings) # used for the progressSignal
-
-        self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
-
-        ncompleted = [0] # work around function closure limitation
-        def process_result(cur_slice, req_result):
-            if req_result.flags.c_contiguous:
-                self.d.write_direct(req_result.view(numpy.ndarray),
-                        dest_sel=cur_slice)
-            else:
-                self.d[cur_slice] = req_result
-
-            # update progress bar
-            ncompleted[0] += 1
-            self.progressSignal( 100*ncompleted[0]/numSlicings )
-
-        pool = RequestPool()
-        for s in slicings:
-            self.logger.debug( "Creating request for slicing {}".format(s) )
-            r = self.inputs["Image"][s]
-            r.notify_finished(partial(process_result, s))
-            pool.add(r)
-
-        pool.wait()
-
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
+
+        def handle_block_result(roi, data):
+            slicing = roiToSlice(*roi)
+            if data.flags.c_contiguous:
+                self.d.write_direct(data.view(numpy.ndarray), dest_sel=slicing)
+            else:
+                self.d[slicing] = data
+        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ) )
+        requester.resultSignal.subscribe( handle_block_result )
+        requester.progressSignal.subscribe( self.progressSignal )
+        requester.execute()            
 
         # Be paranoid: Flush right now.
         self.f.file.flush()
@@ -483,34 +465,6 @@ class OpH5WriterBigDataset(Operator):
         result[0] = True
 
         self.progressSignal(100)
-
-    def computeRequestSlicings(self):
-        #TODO: reimplement the request better
-        shape=numpy.asarray(self.inputs['Image'].meta.shape)
-
-        chunkShape = numpy.asarray(self.chunkShape)
-
-        # Choose a request shape that is a multiple of the chunk shape
-        axistags = self.Image.meta.axistags
-        multipliers = { 'x':5, 'y':5, 'z':5, 't':1, 'c':100 } # For most problems, there is little advantage to breaking up the channels.
-        multiplier = [multipliers[tag.key] for tag in axistags ]
-        shift = chunkShape * numpy.array(multiplier)
-        shift=numpy.minimum(shift,shape)
-        start=numpy.asarray([0]*len(shape))
-
-        stop=shift
-        reqList=[]
-
-        #shape = shape - (numpy.mod(numpy.asarray(shape),
-        #                  shift))
-
-        for indices in product(*[range(0, stop, step)
-                        for stop,step in zip(shape, shift)]):
-
-            start=numpy.asarray(indices)
-            stop=numpy.minimum(start+shift,shape)
-            reqList.append(roiToSlice(start,stop))
-        return reqList
 
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.

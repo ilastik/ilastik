@@ -431,10 +431,27 @@ class OpVectorwiseClassifierPredict(Operator):
                                                 #ilastik operators, setting it to 2 causes errors in pixel classification
                                                 #(live prediction doesn't work when only two labels are present)
 
+        self.PMaps.meta.assignFrom( self.Image.meta )
         self.PMaps.meta.dtype = numpy.float32
-        self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
+        
+        ideal_blockshape = self.Image.meta.ideal_blockshape
+        if ideal_blockshape is not None:
+            ideal_blockshape = (0,) * len( self.Image.meta.shape )
+        ideal_blockshape = list(ideal_blockshape)
+        ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
+        self.PMaps.meta.ideal_blockshape = tuple(ideal_blockshape)
+        
+        output_channels = nlabels
+        input_channels = self.Image.meta.shape[-1]
+        # Temporarily consumed RAM includes the following:
+        # >> result array: 4 * N output_channels
+        # >> (times 2 due to temporary variable)
+        # >> input data allocation
+        ram_per_pixel = 4.0 * output_channels * 2 + self.Image.meta.dtype().nbytes * input_channels
+        ram_per_pixel = max( ram_per_pixel, self.Image.meta.ram_usage_per_requested_pixel )
+        self.PMaps.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
         classifier = self.Classifier.value
@@ -449,6 +466,7 @@ class OpVectorwiseClassifierPredict(Operator):
             start, stop = map(tuple, mask_roi)
             mask = self.PredictionMask( start, stop ).wait()
             skip_prediction = not numpy.any(mask)
+            del mask
 
         if skip_prediction:
             result[:] = 0.0

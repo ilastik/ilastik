@@ -142,12 +142,12 @@ class RoiRequestBatch( object ):
         self.progressSignal( 0 )
 
         with self._condition:
-            # Start by activating a batch of N requests
-            for _ in range(self._batchSize):
-                self._activateNewRequest()
-                self._activated_count += 1
-
             try:
+                # Start by activating a batch of N requests
+                for _ in range(self._batchSize):
+                    self._activateNewRequest()
+                    self._activated_count += 1
+
                 # Loop until StopIteration
                 while True:
                     # Wait for at least one active request to finish

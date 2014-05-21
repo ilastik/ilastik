@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+import sys
 import time
 import weakref
 import itertools
@@ -192,7 +193,6 @@ class OpArrayCache(OpCache):
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
-        
 
         reconfigure = False
         if  self.inputs["fixAtCurrent"].ready():
@@ -206,7 +206,24 @@ class OpArrayCache(OpCache):
             self._blockShape = newBShape
             
             inputSlot = self.inputs["Input"]
-            self.outputs["Output"].meta.assignFrom(inputSlot.meta)
+            self.Output.meta.assignFrom(inputSlot.meta)
+            self.Output.meta.ideal_blockshape = self._blockShape
+
+            # Estimate ram usage            
+            ram_per_pixel = 0
+            if self.Output.meta.dtype == object:
+                ram_per_pixel = sys.getsizeof(None)
+            elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
+                ram_per_pixel = self.Output.meta.dtype().nbytes
+            
+            tagged_shape = self.Output.meta.getTaggedShape()
+            if 'c' in tagged_shape:
+                ram_per_pixel *= float(tagged_shape['c'])
+
+            if self.Output.meta.ram_usage_per_requested_pixel is not None:
+                ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+
+            self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
         shape = self.Output.meta.shape
         if reconfigure and shape is not None:

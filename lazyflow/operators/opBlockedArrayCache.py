@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+import sys
 import time
 import generic
 import logging
@@ -109,6 +110,28 @@ class OpBlockedArrayCache(OpCache):
                 assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
 
                 self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                
+                # For downstream operators:
+                # If requesting the entire image (or a big portion of it), 
+                #  it's most efficient to size your requests according to the outer blockshape
+                self.Output.meta.blockshape = self._blockShape
+
+                # Estimate ram usage            
+                ram_per_pixel = 0
+                if self.Output.meta.dtype == object:
+                    ram_per_pixel = sys.getsizeof(None)
+                elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
+                    ram_per_pixel = self.Output.meta.dtype().nbytes
+
+                tagged_shape = self.Output.meta.getTaggedShape()
+                if 'c' in tagged_shape:
+                    ram_per_pixel *= float(tagged_shape['c'])
+    
+                if self.Output.meta.ram_usage_per_requested_pixel is not None:
+                    ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+    
+                self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
+
 
             _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
             _blockNumbers.shape = self._dirtyShape

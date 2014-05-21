@@ -304,9 +304,7 @@ class OpMultiArrayStacker(Operator):
         for inSlot in self.inputs["Images"]:
             inTagKeys = [ax.key for ax in inSlot.meta.axistags]
             if inSlot.partner is not None:
-                self.outputs["Output"].meta.dtype = inSlot.meta.dtype
-                self.outputs["Output"].meta.axistags = copy.copy(inSlot.meta.axistags)
-                #indexAxis=inSlot.meta.axistags.index(flag)
+                self.Output.meta.assignFrom( inSlot.meta )
 
                 outTagKeys = [ax.key for ax in self.outputs["Output"].meta.axistags]
 
@@ -559,16 +557,14 @@ class OpMultiArrayMerger(Operator):
     category = "Misc"
 
     def setupOutputs(self):
-        shape=self.inputs["Inputs"][0].meta.shape
-        axistags=copy.copy(self.inputs["Inputs"][0].meta.axistags)
+        first_meta =self.inputs["Inputs"][0].meta 
 
-        self.outputs["Output"].meta.shape = shape
-        self.outputs["Output"].meta.axistags = axistags
+        self.outputs["Output"].meta.assignFrom( first_meta )
         self.outputs["Output"].meta.dtype = self.inputs["Inputs"][0].meta.dtype
 
         for input in self.inputs["Inputs"]:
-            assert input.meta.shape==shape, "Only possible merging consistent shapes"
-            assert input.meta.axistags==axistags, "Only possible merging same axistags"
+            assert input.meta.shape == first_meta.shape, "Only possible merging consistent shapes"
+            assert input.meta.axistags == first_meta.axistags, "Only possible merging same axistags"
 
         # If *all* inputs have a drange, then provide a drange for the output.
         # Note: This assumes the merging function is pixel-wise
@@ -616,8 +612,7 @@ class OpMaxChannelIndicatorOperator(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Output.meta.shape = self.Input.meta.shape
-        self.Output.meta.axistags = self.Input.meta.axistags
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.uint8
         self.Output.meta.drange = (0,1)
         self._num_channels = self.Input.meta.shape[-1]
@@ -651,8 +646,7 @@ class OpPixelOperator(Operator):
     def setupOutputs(self):
         self.function = self.inputs["Function"].value
 
-        self.Output.meta.shape = self.Input.meta.shape
-        self.Output.meta.axistags = self.Input.meta.axistags
+        self.Output.meta.assignFrom( self.Input.meta )
         
         # To determine the output dtype, we'll test the function on a tiny array.
         # For pathological functions, this might raise an exception (e.g. divide by zero).

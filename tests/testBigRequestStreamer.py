@@ -94,7 +94,7 @@ class TestBigRequestStreamer(object):
 
             def setupOutputs(self):
                 self.Output.meta.dtype = numpy.float32
-                self.Output.shape = (2000, 2000, 2000)
+                self.Output.meta.shape = (2000, 2000, 2000)
     
             def execute(self, slot, subindex, roi, result):
                 """
