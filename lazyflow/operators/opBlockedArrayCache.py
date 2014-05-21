@@ -113,10 +113,10 @@ class OpBlockedArrayCache(OpCache):
 
                 # Estimate ram usage            
                 ram_per_pixel = 0
-                if numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
-                    ram_per_pixel = self.Output.meta.dtype().nbytes
-                elif numpy.dtype == object:
+                if self.Output.meta.dtype == object:
                     ram_per_pixel = sys.getsizeof(None)
+                elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
+                    ram_per_pixel = self.Output.meta.dtype().nbytes
 
                 tagged_shape = self.Output.meta.getTaggedShape()
                 if 'c' in tagged_shape:
