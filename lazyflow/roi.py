@@ -487,10 +487,10 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
           Therefore, you probably want to omit the channel dimension from your max_blockshape and ideal_blockshape parameters.
     
     >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e6 )
-    array([158, 158,   1])
+    (158, 158, 1)
     
     >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e9 )
-    array([1000, 1000,   24])
+    (1000, 1000, 24)
     
     """
     assert len( max_blockshape ) == len( ideal_blockshape )
