@@ -30,6 +30,7 @@ import logging
 
 logger = logging.getLogger("tests.testOpH5WriterBigDataset")
 cacheLogger = logging.getLogger("lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset")
+requesterLogger = logging.getLogger( "lazyflow.utility.bigRequestStreamer" )
 
 class TestOpH5WriterBigDataset(object):
  
@@ -180,9 +181,11 @@ if __name__ == "__main__":
     logHandler = logging.StreamHandler( sys.stdout )
     logger.addHandler( logHandler )
     cacheLogger.addHandler( logHandler )
+    requesterLogger.addHandler( logHandler )
 
     logger.setLevel( logging.DEBUG )
     cacheLogger.setLevel( logging.DEBUG )
+    requesterLogger.setLevel( logging.INFO )
 
     import sys
     import nose
