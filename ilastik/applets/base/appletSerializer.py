@@ -104,9 +104,7 @@ class SerialSlot(object):
           should be able to call subname.format(i), where i is an
           integer.
 
-        :param default: the default value when unload() is called. If it is
-          None, the slot will just be disconnected (for level 0 slots) or
-          resized to length 0 (for multislots)
+        :param default: DEPRECATED
 
         :param depends: a list of slots which must be ready before this slot
           can be serialized. If None, defaults to [].
@@ -278,17 +276,6 @@ class SerialSlot(object):
                     # we disconnect the subslot.
                     subslot.disconnect()
 
-    def unload(self):
-        """see AppletSerializer.unload()"""
-        if self.slot.level == 0:
-            if self.default is None:
-                self.slot.disconnect()
-            else:
-                self.inslot.setValue(self.default)
-        else:
-            self.slot.resize(0)
-
-
 #######################################################
 # some serial slots that are used in multiple applets #
 #######################################################
@@ -330,37 +317,18 @@ class SerialListSlot(SerialSlot):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        try:
-            sg = group.create_dataset(name, data=map(self._store_transform, value))
-        except:
-            raise
+        sg = group.create_dataset(name, data=map(self._store_transform, value))
         sg.attrs['isEmpty'] = isempty
 
     @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
         logger.debug("Deserializing ListSlot: {}".format(self.name))
-        try:
-            subgroup = group[self.name]
-        except KeyError:
-            self.unload()
+        subgroup = group[self.name]
+        if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
+            self.inslot.setValue( self._iterable([]) )
         else:
-            if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
-                self.inslot.setValue( self._iterable([]) )
-            else:
-                try:
-                    self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
-                except:
-                    self.unload()
-        finally:
-            self.dirty = False
-
-    def unload(self):
-        if self.slot.level == 0:
-            self.inslot.disconnect()
-        else:
-            self.slot.resize(0)
+            self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
         self.dirty = False
-
 
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
@@ -462,9 +430,6 @@ class SerialClassifierSlot(SerialSlot):
             self.name = slot.name
         self._bind(cache.Output)
 
-    def unload(self):
-        self.cache.Input.setDirty(slice(None))
-
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
             return
@@ -498,6 +463,8 @@ class SerialClassifierSlot(SerialSlot):
         try:
             classifier = classifier_type.deserialize_hdf5( classifierGroup )
         except:
+            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+                           "It will need to be retrainied" )
             return
 
         # Now force the classifier into our classifier cache. The
@@ -522,9 +489,6 @@ class SerialCountingSlot(SerialSlot):
         if self.subname is None:
             self.subname = "wrapper{:04d}"
         self._bind(cache.Output)
-
-    def unload(self):
-        self.cache.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
@@ -726,22 +690,6 @@ class AppletSerializer(object):
         self._ignoreDirty = value
         for ss in self.serialSlots:
             ss.ignoreDirty = value
-
-    def unload(self):
-        """Called if either
-
-        (1) the user closed the project or
-
-        (2) the project opening process needs to be aborted for some
-            reason (e.g. not all items could be deserialized
-            properly due to a corrupted ilp)
-
-        This way we can avoid invalid state due to a partially loaded
-        project.
-
-        """
-        for ss in self.serialSlots:
-            ss.unload()
 
     def progressIncrement(self, group=None):
         """Get the percentage progress for each slot.
