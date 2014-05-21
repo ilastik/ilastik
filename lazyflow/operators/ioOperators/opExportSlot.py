@@ -168,10 +168,12 @@ class OpExportSlot(Operator):
                 return False
 
             # Make sure DVID supports this dtype/channel combo.
-            from pydvid.volume_metainfo import MetaInfo
-            metainfo = MetaInfo( self.Input.meta.shape,
-                                 output_dtype,
-                                 self.Input.meta.axistags )
+            from pydvid.voxels import VoxelsMetadata
+            metainfo = VoxelsMetadata.create_default_metadata( self.Input.meta.shape,
+                                                               output_dtype,
+                                                               "".join(self.Input.meta.getAxisKeys()),
+                                                               0.0,
+                                                               'nanometers' )
             try:
                 metainfo.determine_dvid_typename()
             except:
