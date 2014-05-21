@@ -16,13 +16,11 @@
 import httplib
 import contextlib
 
-import vigra
-
 import pydvid
 
 from lazyflow.graph import Operator, InputSlot
-from lazyflow.utility import OrderedSignal
-from lazyflow.roi import roiFromShape
+from lazyflow.utility import OrderedSignal, BigRequestStreamer
+from lazyflow.roi import roiFromShape, roiToSlice
 
 import logging
 logger = logging.getLogger(__name__)
@@ -55,19 +53,20 @@ class OpExportDvidVolume(Operator):
         assert api == 'api'
         assert node == 'node'
         
-        # Request the data
         axiskeys = self.Input.meta.getAxisKeys()
-        data = self.Input[:].wait()
         
         if self._transpose_axes:
-            data = data.transpose()
             axiskeys = reversed(axiskeys)
         
         axiskeys = "".join( axiskeys )
         
         # FIXME: We assume the dataset needs to be created first.
         #        If it already existed, this (presumably) causes an error on the DVID side.
-        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( data.shape, data.dtype.type, axiskeys, 0.0, "" )
+        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( self.Input.meta.shape, 
+                                                                         self.Input.meta.dtype, 
+                                                                         axiskeys, 
+                                                                         0.0, 
+                                                                         "" )
 
         connection = httplib.HTTPConnection( hostname )
         with contextlib.closing( connection ):
@@ -76,12 +75,18 @@ class OpExportDvidVolume(Operator):
     
             client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname )
             
-            # For now, we send the whole darn thing at once.
-            # TODO: Stream it over in blocks...
-            
-            # Send it to dvid
-            start, stop = roiFromShape(data.shape)
-            client.post_ndarray( start, stop, data )
+            def handle_block_result(roi, data):
+                # Send it to dvid
+                start, stop = roi
+                if self._transpose_axes:
+                    data = data.transpose()
+                    start = tuple(reversed(start))
+                    stop = tuple(reversed(stop))
+                client.post_ndarray( start, stop, data )
+            requester = BigRequestStreamer( self.Input, roiFromShape( self.Input.meta.shape ) )
+            requester.resultSignal.subscribe( handle_block_result )
+            requester.progressSignal.subscribe( self.progressSignal )
+            requester.execute()
         
         self.progressSignal(100)
     

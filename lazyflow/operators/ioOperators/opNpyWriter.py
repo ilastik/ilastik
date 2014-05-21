@@ -22,6 +22,9 @@
 import numpy
 from lazyflow.graph import Operator, InputSlot
 
+from lazyflow.roi import roiToSlice, roiFromShape
+from lazyflow.utility import BigRequestStreamer, OrderedSignal
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -31,6 +34,7 @@ class OpNpyWriter(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNpyWriter, self ).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
     
     def setupOutputs(self):
         pass
@@ -51,6 +55,19 @@ class OpNpyWriter(Operator):
         
         logger.warn("The current implementation of NPY-format data export computes the entire dataset at once, which requires lots of RAM.")
         path = self.Filepath.value
-        data = self.Input[:].wait()
-        numpy.save(path, data)
+
+        self.progressSignal(0)
+
+        final_data = numpy.zeros( self.Input.meta.shape, self.Input.meta.dtype )
+
+        def handle_block_result(roi, data):
+            slicing = roiToSlice(*roi)
+            final_data[slicing] = data
+        requester = BigRequestStreamer( self.Input, roiFromShape( self.Input.meta.shape ) )
+        requester.resultSignal.subscribe( handle_block_result )
+        requester.progressSignal.subscribe( self.progressSignal )
+        requester.execute()
+
+        numpy.save(path, final_data)
+        self.progressSignal(100)
     

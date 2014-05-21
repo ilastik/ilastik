@@ -29,6 +29,7 @@ import vigra
 import h5py
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -89,17 +90,21 @@ class TestOpDvidVolume(unittest.TestCase):
         h5dataset: The dataset name, also used as the name of the dvid dataset
         start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True.
         """
-        # Retrieve from server
-        graph = Graph()
-        opExport = OpExportDvidVolume( transpose_axes=True, graph=graph )
-        
         data = numpy.indices( (10, 100, 200, 4) )
         assert data.shape == (4, 10, 100, 200, 4)
         data = data.astype( numpy.uint8 )
         data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
 
+        # Retrieve from server
+        graph = Graph()
+        
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+        
+        opExport = OpExportDvidVolume( transpose_axes=True, graph=graph )
+        
         # Reverse data order for dvid export
-        opExport.Input.setValue( data )
+        opExport.Input.connect( opPiper.Output )
         opExport.NodeDataUrl.setValue( 'http://localhost:8000/api/node/{uuid}/{dataname}'.format( uuid=self.data_uuid, dataname=self.data_name ) )
 
         # Export!

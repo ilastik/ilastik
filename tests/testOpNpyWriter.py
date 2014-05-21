@@ -27,6 +27,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import OpInputDataReader, OpNpyWriter
 
 class TestOpNpyWriter(object):
@@ -44,8 +45,12 @@ class TestOpNpyWriter(object):
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
         
         graph = Graph()
+        
+        opPiper = OpArrayPiper( graph=graph )
+        opPiper.Input.setValue(data)
+        
         opWriter = OpNpyWriter(graph=graph)
-        opWriter.Input.setValue(data)
+        opWriter.Input.connect( opPiper.Output )
         opWriter.Filepath.setValue( self._tmpdir + '/npy_writer_test_output.npy' )
 
         # Write it...
