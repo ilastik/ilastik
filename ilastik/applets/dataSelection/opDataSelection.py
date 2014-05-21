@@ -187,6 +187,14 @@ class OpDataSelection(Operator):
                     metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
                 if datasetInfo.axistags is not None:
                     metadata['axistags'] = datasetInfo.axistags
+                
+                    # FIXME: We are overwriting the axistags metadata to intentionally allow 
+                    #        the user to change our interpretation of which axis is which.
+                    #        That's okay, but technically there's a special corner case if 
+                    #        the user redefines the channel axis index.  
+                    #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
+                    #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
+                
                 opMetadataInjector = OpMetadataInjector( parent=self )
                 opMetadataInjector.Input.connect( providerSlot )
                 opMetadataInjector.Metadata.setValue( metadata )
