@@ -1,19 +1,24 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
 # of the License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
 # Built-in
 import sys
 import functools
@@ -872,6 +877,15 @@ class RequestPool(object):
             # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
             # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
             raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
+        def remove_request(result):
+            try:
+                self._requests.remove(req)
+            except KeyError:
+                # request may have been removed already by the while
+                # loop in the wait() method
+                pass
+
+        req.notify_finished(remove_request)
         self._requests.add(req)
 
     def submit(self):
@@ -880,8 +894,12 @@ class RequestPool(object):
         """
         if self._started:
             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
-        for req in self._requests:
-            req.submit()
+        # shallow copy prevents python complaining when finished requests
+        # remove themselves from self._requests
+        requests = self._requests.copy()
+        # while loop with pop() allows the gc to clean up completed requests
+        while requests:
+            requests.pop().submit()
 
     def wait(self):
         """
@@ -889,7 +907,15 @@ class RequestPool(object):
         """
         if not self._started:
             self.submit()
-        for req in self._requests:
+        # do not use a for loop since _requests will be modified as
+        # finished requests remove themselves from the set
+        while self._requests:
+            try:
+                req = self._requests.pop()
+            except KeyError:
+                # the _requests set was modified in the mean time
+                # we can quit the loop since there are no more requests
+                break
             req.block()
 
     def cancel(self):

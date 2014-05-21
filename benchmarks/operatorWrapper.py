@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import time
+import gc
 import random
 import threading
 from functools import partial
@@ -30,6 +31,8 @@ from lazyflow.operators.operators import OpArrayCache
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.operatorWrapper import OperatorWrapper
+from matplotlib import pyplot
+
 
 class OpA(Operator):
     input = InputSlot()
@@ -52,34 +55,67 @@ class OpA(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-class TestOperatorWrapperSetupOutputs(object):
+
+class TimeIt(object):
+    def __init__(self):
+        self.t1 = 0
+        self.t2 = 0
+        
+    def __enter__(self):
+        self.t1 = time.time()
+        
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.t2 = time.time()
+        
+    def time(self):
+        return self.t2 - self.t1
+
+results = []
+results_gc = []
+
     
-    def test(self):
-        # test wether setupOutputs is only called once
-        # for each inner operator, even when resizing the slot
-        # more then one time
-        graph = lazyflow.graph.Graph()
-        opaw = OperatorWrapper(OpArrayCache, graph = graph)
-        opbw = OperatorWrapper(OpA, graph = graph)
-        
-        opbw.input.connect(opaw.Output)
-        
-        array = numpy.ndarray((10,20), dtype = numpy.float32)
-        opaw.Input.resize(1)
-        opaw.Input[0].setValue(array)
-        
-        assert opbw.innerOperators[0].countSetupOutputs == 1
+gc.disable()
 
-        opaw.Input.resize(2)
-        opaw.Input[1].setValue(array)
-
-        assert opbw.innerOperators[0].countSetupOutputs == 1
-
+for slots in range(0,100):
+    
+    graph = lazyflow.graph.Graph()
+    opaw = OperatorWrapper(OpArrayCache, graph = graph)
+    opbw = OperatorWrapper(OpA, graph = graph)
+    
+    opbw.input.connect(opaw.Output)
+    
+    array = numpy.ndarray((10,20), dtype = numpy.float32)
         
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    time_resize = TimeIt()
+    with time_resize:
+        opaw.Input.resize(slots)
+        for s in range(slots):
+            opaw.Input[s].setValue(array)
+    
+    
+    time_addlane = TimeIt()
+    with time_addlane:
+        for num_slots in range(1,slots):
+            opaw.Input.resize(num_slots)
+            opaw.Input[num_slots-1].setValue(array)
+       
+    
+    results.append(time_resize.time())
+
+    time_gc = TimeIt()
+    with time_gc:
+        gc.collect()
+        
+    print "slots: %d, time_resize=%2.2f, time_addlane=%2.2f, time_gc=%2.2f" % (slots, time_resize.time(), time_addlane.time(), time_gc.time())
+    results_gc.append(time_gc.time())
+    
+pyplot.title("Garbage collection time")
+pyplot.xlabel("Number of lanes")    
+pyplot.plot(results_gc)
+pyplot.show()
+
+pyplot.title("Setup time")    
+pyplot.xlabel("Number of lanes")    
+pyplot.plot(results)
+pyplot.show()
+    

@@ -1,19 +1,24 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
 # of the License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
 from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
 import time
 import random
@@ -627,16 +632,15 @@ class TestRequest(object):
         so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
         are broken.  Preferably, requests should be deleted early as possible.
         """
-        def getMemoryUsageMb():
+        cur_process = psutil.Process()
+        def getMemoryUsage():
             # Collect garbage first
             gc.collect()
-            vmem = psutil.virtual_memory()
-            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-            return mem_usage_mb
-        
-        starting_usage_mb = getMemoryUsageMb()
-        def getMemoryIncreaseMb():
-            return getMemoryUsageMb() - starting_usage_mb
+            return cur_process.memory_info().vms
+
+        starting_usage = getMemoryUsage()
+        def getMemoryIncrease():
+            return getMemoryUsage() - starting_usage
 
         resultShape = (500,1000,1000)
         resultSize = numpy.prod(resultShape)
@@ -644,10 +648,10 @@ class TestRequest(object):
             """
             Simulate the memory footprint of a series of computation steps.
             """
-            logger.debug( "Usage delta before depth {}: {} MB".format(recursionDepth, getMemoryIncreaseMb() ) )
+            logger.debug( "Usage delta before depth {}: {}".format(recursionDepth, getMemoryIncrease() ) )
 
             if recursionDepth == 0:
-                # A 500GB result
+                # A 500MB result
                 result = numpy.zeros(shape=resultShape, dtype=numpy.uint8)
             else:
                 req = Request( partial(getBigArray, directExecute=directExecute, recursionDepth=recursionDepth-1) )
@@ -659,9 +663,9 @@ class TestRequest(object):
             
             # Note that we expect there to be 2X memory usage here:
             #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
-            memory_increase_mb = getMemoryIncreaseMb()
-            logger.debug( "Usage delta after depth {}: {} MB".format(recursionDepth, memory_increase_mb ) )
-            assert memory_increase_mb < 2.5*resultSize, "Memory from finished requests didn't get freed!"
+            memory_increase = getMemoryIncrease()
+            logger.debug( "Usage delta after depth {}: {}".format(recursionDepth, memory_increase ) )
+            assert memory_increase < 2.5*resultSize, "Memory from finished requests didn't get freed!"
             
             return result
 
@@ -674,9 +678,9 @@ class TestRequest(object):
         test_impl(True)
         test_impl(False)
 
-        memory_increase_mb = getMemoryIncreaseMb()
-        logger.debug( "Finished test with memory usage delta at: {} MB".format( memory_increase_mb ) )
-        assert memory_increase_mb < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
+        memory_increase = getMemoryIncrease()
+        logger.debug( "Finished test with memory usage delta at: {}".format( memory_increase ) )
+        assert memory_increase < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
 
     def testThreadPoolReset(self):
         Request.reset_thread_pool(num_workers=1)

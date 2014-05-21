@@ -1,19 +1,24 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
 # of the License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
 #Python
 from functools import partial
 import os
@@ -28,6 +33,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
 from lazyflow.roi import roiFromShape
+from lazyflow.request import RequestPool
 
 #SciPy
 import vigra,numpy,h5py
@@ -405,42 +411,31 @@ class OpH5WriterBigDataset(Operator):
                 g = self.f.create_group(hdf5GroupName)
 
         dataShape=self.Image.meta.shape
-        taggedShape = self.Image.meta.getTaggedShape()
+        self.logger.info( "Data shape: {}".format(dataShape))
+
+        # set t to 1 in the final chunk shape
+        axistags = self.Image.meta.axistags
+        dataShapeNoTime = list(dataShape)
+        if vigra.AxisInfo.t in axistags:
+            dataShapeNoTime[axistags.index('t')] = 1
+
         dtype = self.Image.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
-
-        numChannels = 1
-        if 'c' in taggedShape:
-            numChannels = taggedShape['c']
-
-        # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
-        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
-        cubeDim = int(cubeDim)
 
-        chunkDims = {}
-        chunkDims['t'] = 1
-        chunkDims['x'] = cubeDim
-        chunkDims['y'] = cubeDim
-        chunkDims['z'] = cubeDim
-        chunkDims['c'] = numChannels
-        
-        # h5py guide to chunking says chunks of 300k or less "work best"
-        assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
+        # aim for a chunk size of 512 Kb
+        from lazyflow.roi import determineBlockShape
+        self.chunkShape = determineBlockShape( dataShapeNoTime,
+                (1<<19) / dtypeBytes )
+        self.logger.info( "Chunk shape: {}".format(self.chunkShape))
 
-        chunkShape = ()
-        for i in range( len(dataShape) ):
-            axisKey = self.Image.meta.axistags[i].key
-            # Chunk shape can't be larger than the data shape
-            chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
-
-        self.chunkShape = chunkShape
         if datasetName in g.keys():
             del g[datasetName]
-        kwargs = { 'shape' : dataShape, 'dtype' : dtype, 'chunks' : self.chunkShape }
+        kwargs = { 'shape' : dataShape, 'dtype' : dtype,
+            'chunks' : self.chunkShape }
         if self.CompressionEnabled.value:
             kwargs['compression'] = 'gzip' # <-- Would be nice to use lzf compression here, but that is h5py-specific.
             kwargs['compression_opts'] = 1 # <-- Optimize for speed, not disk space.
@@ -453,46 +448,30 @@ class OpH5WriterBigDataset(Operator):
         self.progressSignal(0)
         
         slicings=self.computeRequestSlicings()
-        numSlicings = len(slicings)
+        numSlicings = len(slicings) # used for the progressSignal
 
         self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
 
-        # Throttle: Only allow 10 outstanding requests at a time.
-        # Otherwise, the whole set of requests can be outstanding and use up ridiculous amounts of memory.        
-        activeRequests = deque()
-        activeSlicings = deque()
-        # Start by activating 10 requests 
-        for i in range( min(10, len(slicings)) ):
-            s = slicings.pop()
-            activeSlicings.append(s)
-            self.logger.debug( "Creating request for slicing {}".format(s) )
-            activeRequests.append( self.inputs["Image"][s] )
-        
-        counter = 0
-
-        while len(activeRequests) > 0:
-            # Wait for a request to finish
-            req = activeRequests.popleft()
-            s=activeSlicings.popleft()
-            data = req.wait()
-            if data.flags.c_contiguous:
-                self.d.write_direct(data.view(numpy.ndarray), dest_sel=s)
+        ncompleted = [0] # work around function closure limitation
+        def process_result(cur_slice, req_result):
+            if req_result.flags.c_contiguous:
+                self.d.write_direct(req_result.view(numpy.ndarray),
+                        dest_sel=cur_slice)
             else:
-                self.d[s] = data
-            
-            req.clean() # Discard the data in the request and allow its children to be garbage collected.
+                self.d[cur_slice] = req_result
 
-            if len(slicings) > 0:
-                # Create a new active request
-                s = slicings.pop()
-                activeSlicings.append(s)
-                activeRequests.append( self.inputs["Image"][s] )
-            
-            # Since requests finish in an arbitrary order (but we always block for them in the same order),
-            # this progress feedback will not be smooth.  It's the best we can do for now.
-            self.progressSignal( 100*counter/numSlicings )
-            self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
-            counter += 1
+            # update progress bar
+            ncompleted[0] += 1
+            self.progressSignal( 100*ncompleted[0]/numSlicings )
+
+        pool = RequestPool()
+        for s in slicings:
+            self.logger.debug( "Creating request for slicing {}".format(s) )
+            r = self.inputs["Image"][s]
+            r.notify_finished(partial(process_result, s))
+            pool.add(r)
+
+        pool.wait()
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
