@@ -19,29 +19,24 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-#Python
-from functools import partial
 import os
 import math
 import logging
 import glob
-import copy
-from itertools import product, chain
-from collections import deque, OrderedDict
+from collections import OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 import psutil
-from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
-from lazyflow.roi import roiFromShape, determine_optimal_request_blockshape, determineBlockShape
-from lazyflow.request import Request
 
-#SciPy
-import vigra,numpy,h5py
+import numpy
+import vigra
 
-#lazyflow
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
-from lazyflow.roi import roiToSlice, getIntersectingBlocks, getBlockBounds
+from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
+from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
+from lazyflow.request import Request 
+
 
 class OpStackLoader(Operator):
     """Imports an image stack.
@@ -190,13 +185,29 @@ class OpStackWriter(Operator):
         tagged_sliceshape[self._volume_axes[0]] = 1
         slice_shape = (tagged_sliceshape.values())
 
-        # Use a request streamer to automatically request a constant batch of 4 active requests.
+        parallel_requests = 4
+
+        # If ram usage info is available, make a better guess about how many requests we can launch in parallel
+        ram_usage_per_requested_pixel = self.Input.meta.ram_usage_per_requested_pixel
+        if ram_usage_per_requested_pixel is not None:
+            pixels_per_slice = numpy.prod(slice_shape)
+            if 'c' in tagged_sliceshape:
+                pixels_per_slice /= tagged_sliceshape['c']
+            
+            ram_usage_per_slice = pixels_per_slice * ram_usage_per_requested_pixel
+
+            # Fudge factor: Reduce RAM usage by a bit
+            available_ram = psutil.virtual_memory().available
+            available_ram *= 0.5
+
+            parallel_requests = int(available_ram / ram_usage_per_slice)
+
         streamer = BigRequestStreamer( self.Input,
                                        roiFromShape( self.Input.meta.shape ),
                                        slice_shape,
-                                       batchSize=4 )
+                                       parallel_requests )
 
-        # Write the slices as they come in (possibly out-of-order, but probably not.        
+        # Write the slices as they come in (possibly out-of-order, but probably not)
         streamer.resultSignal.subscribe( self._write_slice )
         streamer.progressSignal.subscribe( self.progressSignal )
 

@@ -23,6 +23,8 @@ import os
 import collections
 
 import numpy
+import psutil
+
 import vigra
 
 from lazyflow.graph import Operator, InputSlot
@@ -37,7 +39,7 @@ class OpExportMultipageTiff(Operator):
                         # Re-order the axes yourself if you want an alternative slicing direction
     Filepath = InputSlot()
 
-    BATCH_SIZE = 4
+    DEFAULT_BATCH_SIZE = 4
 
     def __init__(self, *args, **kwargs):
         super(OpExportMultipageTiff, self).__init__(*args, **kwargs)
@@ -72,9 +74,26 @@ class OpExportMultipageTiff(Operator):
 
         tagged_shape = self.Input.meta.getTaggedShape()
 
+        parallel_requests = self.DEFAULT_BATCH_SIZE
+        
+        # If ram usage info is available, make a better guess about how many requests we can launch in parallel
+        ram_usage_per_requested_pixel = self.Input.meta.ram_usage_per_requested_pixel
+        if ram_usage_per_requested_pixel is not None:
+            pixels_per_slice = numpy.prod(slice_shape)
+            if 'c' in tagged_sliceshape:
+                pixels_per_slice /= tagged_sliceshape['c']
+            
+            ram_usage_per_slice = pixels_per_slice * ram_usage_per_requested_pixel
+
+            # Fudge factor: Reduce RAM usage by a bit
+            available_ram = psutil.virtual_memory().available
+            available_ram *= 0.5
+
+            parallel_requests = int(available_ram / ram_usage_per_slice)
+        
         # Start with a batch of images
         reqs = collections.deque()
-        for slice_index in range( min(self.BATCH_SIZE, tagged_shape[step_axis]) ):
+        for slice_index in range( min(parallel_requests, tagged_shape[step_axis]) ):
             reqs.append( create_slice_req( slice_index ) )
         
         self.progressSignal(0)
