@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.utility.pathHelpers import compressPathForDisplay
+from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants
 
 class TestPathHelpers(object):
     
@@ -28,6 +28,21 @@ class TestPathHelpers(object):
         path = "/test/bla/bla/this_is_a_very_long_filename_bla_bla.txt"
         for l in [5,10,15,20,30]:
             assert len(compressPathForDisplay(path, l)) == l
+
+    def test_getPathVariants(self):
+        abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
+        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        assert rel == '../ddd.txt'
+    
+        abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
+        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        assert rel == '../ddd.txt'
+    
+        abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
+        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        assert rel == 'ddd.txt'
+
+        assert getPathVariants('', '/abc') == ('/abc', '')
         
 if __name__ == "__main__":
     import sys

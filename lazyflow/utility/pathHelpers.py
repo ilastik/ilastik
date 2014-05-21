@@ -150,7 +150,7 @@ def getPathVariants(originalPath, workingDirectory):
     if isUrl(originalPath):
         return originalPath, None
     
-    if originalPath[0] == '~':
+    if len(originalPath) > 0 and originalPath[0] == '~':
         originalPath = os.path.expanduser(originalPath)
     
     relPath = originalPath
@@ -180,6 +180,8 @@ if __name__ == "__main__":
     abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
     assert abs == '/aaa/bbb/ccc/ddd.txt'
     assert rel == 'ddd.txt'
+
+    assert getPathVariants('', '/abc') == ('/abc', '')
     
     components = PathComponents('/some/external/path/to/file.h5/with/internal/path/to/data')
     assert components.externalPath == '/some/external/path/to/file.h5'
