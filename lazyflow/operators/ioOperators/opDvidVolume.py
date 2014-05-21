@@ -75,7 +75,7 @@ class OpDvidVolume(Operator):
             axiskeys = "".join(reversed(axiskeys))
 
         self.Output.meta.shape = shape
-        self.Output.meta.dtype = dtype
+        self.Output.meta.dtype = dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
 
     def execute(self, slot, subindex, roi, result):
