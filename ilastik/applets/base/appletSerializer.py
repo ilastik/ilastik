@@ -323,7 +323,11 @@ class SerialListSlot(SerialSlot):
     @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
         logger.debug("Deserializing ListSlot: {}".format(self.name))
-        subgroup = group[self.name]
+        try:
+            subgroup = group[self.name]
+        except:
+            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
         else:
