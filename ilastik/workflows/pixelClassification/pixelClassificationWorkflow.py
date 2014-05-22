@@ -339,7 +339,7 @@ class PixelClassificationWorkflow(Workflow):
 
         if self.retrain:
             # re-train Classifier (useful if the stored labels were changed outside ilastik)
-            self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+            self.pcApplet.topLevelOperator.opTrain._training_op._opTrainFromFeatures.Classifier.setDirty()
 
         if self._headless and self._batch_input_args and self._batch_export_args:
 
