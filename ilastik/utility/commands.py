@@ -19,9 +19,9 @@ def connectToServer(shell, data):
             host = data['host']
         else:
             host = 'localhost'
-            
-        shell.socketServer.connect(host, data['port'], 
-                                   data['name'].encode('ascii','ignore'))
+        name = data['name'].encode('ascii','ignore')
+        shell.socketServer.connect(host, data['port'], name)
+        shell.newServerConnected(name)
     else:
         raise Exception("Please supply at least server 'name' and 'port' for handshake")
 

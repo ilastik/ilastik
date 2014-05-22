@@ -676,13 +676,16 @@ class ObjectClassificationGui(LabelingGui):
         menu = QMenu(self)
         text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
-        menu.addSeparator()
-        knime_hilite = "Highlight object {} in KNIME".format(obj)
-        menu.addAction(knime_hilite)
-        knime_unhilite = "Unhighlight object {} in KNIME".format(obj)
-        menu.addAction(knime_unhilite)
-        knime_clearhilite = "Clear all highlighted objects in KNIME".format(obj)
-        menu.addAction(knime_clearhilite)
+        
+        if self.applet.connected_to_knime:
+            menu.addSeparator()
+            knime_hilite = "Highlight object {} in KNIME".format(obj)
+            menu.addAction(knime_hilite)
+            knime_unhilite = "Unhighlight object {} in KNIME".format(obj)
+            menu.addAction(knime_unhilite)
+            knime_clearhilite = "Clear all highlighted objects in KNIME".format(obj)
+            menu.addAction(knime_clearhilite)
+            
         menu.addSeparator()
         clearlabel = "Clear label for object {}".format(obj)
         menu.addAction(clearlabel)

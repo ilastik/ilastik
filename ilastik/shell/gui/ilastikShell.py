@@ -1460,6 +1460,13 @@ class IlastikShell( QMainWindow ):
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
     
+    def newServerConnected(self, name):
+        # iterate over all other applets and inform about new connection if relevant
+        for applet in self._applets:
+            if name == "knime":
+                if hasattr(applet, "connected_to_knime"):
+                    applet.connected_to_knime = True
+    
     def setAllViewersPosition(self, pos):
         # operate on currently displayed applet first
         self._setViewerPosition(self._applets[self.currentAppletIndex], pos) 
