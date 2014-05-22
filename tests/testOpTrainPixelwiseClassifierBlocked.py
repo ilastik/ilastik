@@ -39,7 +39,8 @@ class TestOpTrainPixelwiseClassifierBlocked(object):
         
         # This isn't much of a test at the moment...
         assert isinstance( trained_classifier, VigraRfPixelwiseClassifier )
-        
+
+        # Try predicting while we're at it...        
         opPredict = OpPixelwiseClassifierPredict( graph=graph )
         opPredict.Image.connect( opTrain.Images[0] )
         opPredict.LabelsCount.connect( opTrain.MaxLabel )
@@ -47,7 +48,7 @@ class TestOpTrainPixelwiseClassifierBlocked(object):
         
         predictions = opPredict.PMaps[:].wait()
         assert predictions.shape == features.shape[:-1] + (2,) # We used 2 input labels above.
-        
+
 
 if __name__ == "__main__":
     import sys

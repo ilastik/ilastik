@@ -29,7 +29,7 @@ import numpy
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
-from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
                                  LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
@@ -109,6 +109,10 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         self.progressSignal = OrderedSignal()
     
     def setupOutputs(self):
+        for slot in list(self.Images) + list(self.Labels):
+            assert slot.meta.getAxisKeys()[-1] == 'c', \
+                "This opearator assumes channel is the last axis."
+        
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (1,)
 
@@ -132,14 +136,23 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
             block_slicings = nonzero_block_slot.value
             for block_slicing in block_slicings:
                 block_label_roi = sliceToRoi( block_slicing, image_slot.meta.shape )
+
+                # Ask for the halo needed by the classifier
+                axiskeys = image_slot.meta.getAxisKeys()
+                halo_shape = classifier_factory.get_halo_shape(axiskeys)
+                assert len(halo_shape) == len( block_label_roi[0] )
+                assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+
+                # Expand block by halo, then clip to image bounds
+                block_label_roi = numpy.array( block_label_roi )
+                block_label_roi[0] -= halo_shape
+                block_label_roi[1] += halo_shape
+                block_label_roi = getIntersection( block_label_roi, roiFromShape(image_slot.meta.shape) )
+
                 block_image_roi = numpy.array( block_label_roi )
                 assert (block_image_roi[:, -1] == [0,1]).all()
                 num_channels = image_slot.meta.shape[-1]
                 block_image_roi[:, -1] = [0, num_channels]
-
-                # TODO: Compensate for the halo as specified by the classifier...
-                #axiskeys = image_slot.meta.getAxisKeys()
-                #halo_shape = classifier_factory.get_halo_shape(axiskeys)
 
                 # Ensure the results are plain ndarray, not VigraArray, 
                 #  which some classifiers might have trouble with.
@@ -378,11 +391,32 @@ class OpPixelwiseClassifierPredict(Operator):
             "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
             "".format( type(classifier) )
 
-        key = roi.toSlice()
-        newKey = key[:-1]
-        newKey += (slice(0,self.Image.meta.shape[-1],None),)
+        upstream_roi = (roi.start, roi.stop)
+        # Ask for the halo needed by the classifier
+        axiskeys = self.Image.meta.getAxisKeys()
+        halo_shape = classifier.get_halo_shape(axiskeys)
+        assert len(halo_shape) == len( upstream_roi[0] )
+        assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
-        input_data = self.Image[newKey].wait()
+        # Expand block by halo, then clip to image bounds
+        upstream_roi = numpy.array( upstream_roi )
+        upstream_roi[0] -= halo_shape
+        upstream_roi[1] += halo_shape
+        upstream_roi = getIntersection( upstream_roi, roiFromShape(self.Image.meta.shape) )
+        upstream_roi = numpy.asarray( upstream_roi )
+
+        # Determine how to extract the data from the result (without the halo)
+        downstream_roi = numpy.array((roi.start, roi.stop))
+        downstream_channels = self.PMaps.meta.shape[-1]
+        roi_within_result = downstream_roi - upstream_roi[0]
+        roi_within_result[-1] = [0, downstream_channels]
+
+        # Request all upstream channels
+        input_channels = self.Image.meta.shape[-1]
+        upstream_roi[:,-1] = [0, input_channels]
+
+        # Request the data
+        input_data = self.Image(*upstream_roi).wait()
         probabilities = classifier.predict_probabilities_pixelwise( input_data )
         
         # We're expecting a channel for each label class.
@@ -397,6 +431,9 @@ class OpPixelwiseClassifierPredict(Operator):
                 full_probabilities[:, label-1] = probabilities[:, i]
             
             probabilities = full_probabilities
+
+        # Extract requested region (discard halo)
+        probabilities = probabilities[ roiToSlice(*roi_within_result) ]
         
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
