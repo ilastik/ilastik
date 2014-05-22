@@ -1477,7 +1477,7 @@ class IlastikShell( QMainWindow ):
             gui = gui.currentGui()
         # test if gui implements "setViewerPos()" method
         if issubclass(type(gui), VolumeViewerGui):
-            gui.setViewerPos(pos)
+            gui.setViewerPos(pos, setTime=True, setChannel=True)
 
     def enableProjectChanges(self, enabled):
         # Post this to the gui thread
