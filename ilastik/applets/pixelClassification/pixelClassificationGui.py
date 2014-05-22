@@ -99,7 +99,6 @@ class ClassifierSelectionDlg(QDialog):
             classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
             assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
         except ImportError:
-            raise
             import warnings
             warnings.warn("Couldn't import IIBoost.")
         
@@ -131,7 +130,7 @@ class ClassifierSelectionDlg(QDialog):
         return classifiers
         
     def accept(self):
-        # Configure the operator with the newly selected classfier factory
+        # Configure the operator with the newly selected classifier factory
         selected_item = self._classifier_listwidget.selectedItems()[0]
         selected_factory = selected_item.data(Qt.UserRole).toPyObject()
         self._op.ClassifierFactory.setValue( selected_factory )
