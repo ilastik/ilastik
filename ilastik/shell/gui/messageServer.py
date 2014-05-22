@@ -45,38 +45,50 @@ class MessageServer(object):
 
     def connect(self, host, port, name):
         try:
-            self.connections[name] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.connections[name].connect((host, port))
+            # send handshake message to check if connection possible
+            # -> establish connection only while sending a message
+            handshake = {'command': 'handshake', 'name': 'ilastik',
+                         'host': self.host, 'port': self.port}
+            self._send(host, port, data=handshake)
+            self.connections[name] = {'host': host, 'port': port}
             logger.info("Successfully connected to server '%s' at %s:%d" % (name, host, port))
         except Exception, e:
             if name in self.connections:
                 del self.connections[name]
-            logger.error("Error connecting to socket '%s': %s" % (name, e))
+            logger.error("Error connecting to server '%s': %s" % (name, e))
     
     def connected(self, name):
         return (name in self.connections)
     
     def closeConnection(self, name):
         if name in self.connections:
-            try:
-                self.connections[name].close()
-            except:
-                pass
             del self.connections[name]
     
     def closeConnections(self):
         for name in self.connections:
             self.closeConnection(name)
     
-    def send(self, name, data):  
+    def send(self, name, data):
         try:
             if name in self.connections:
-                self.connections[name].send(json.dumps(data))
+                self._send(self.connections[name]['host'], 
+                           self.connections[name]['port'], 
+                           data)
                 logger.info("Sent message to '%s': %s" % (name, data))
             else:
                 raise Exception("No connection with name '%s' exists" % name)
         except Exception, e:
             logger.error("Error sending message '%s' to '%s': %s" % (data, name, e))
+    
+    def _send(self, host, port, data=None):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect((host, port))
+            sock.send(json.dumps(data))
+        except Exception, e:
+            raise Exception('%s', e)
+        finally:
+            sock.close()
 
 class TCPRequestHandler(SocketServer.StreamRequestHandler):    
     def __init__(self, request, client_address, server):
